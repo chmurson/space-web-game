@@ -12,10 +12,17 @@ import {
   writeDebugScenarioSnapshot,
   type RuntimeScenario,
 } from "./debugScenarioSnapshot";
+import {
+  getTrajectoryPredictionConfig,
+  predictAssistedTrajectory,
+  predictCoastTrajectory,
+  type PredictedClosestApproach,
+  type PredictedImpact,
+} from "./prediction/trajectoryPrediction";
 import { G, RENDER_SCALE } from "./simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "./simulation/physics";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "./simulation/scenarios/earthMoon";
-import { cloneSimulationState, idleControls } from "./simulation/state";
+import { idleControls } from "./simulation/state";
 import type { Body, ControlInput, SimulationState } from "./simulation/types";
 import { add, fromAngle, length, lengthSq, normalize, scale, sub } from "./simulation/vector";
 import { readUserSettings, updateUserSettings } from "./userSettingsStorage";
@@ -75,8 +82,8 @@ let coastPredictionHorizonHours = THREE.MathUtils.clamp(
   maxCoastPredictionHorizonHours,
 );
 let crashedBodyName: string | null = null;
-let predictedImpact: { bodyName: string; time: number } | null = null;
-let predictedTargetClosestApproach: { altitude: number; bodyName: string; time: number } | null = null;
+let predictedImpact: PredictedImpact | null = null;
+let predictedTargetClosestApproach: PredictedClosestApproach | null = null;
 let spacecraftLabelIntroUntil = performance.now() + 5_000;
 let mouseScreenX = 0;
 let mouseScreenY = 0;
@@ -408,16 +415,6 @@ for (const body of state.bodies) {
 
 const renderPosition = (x: number, y: number, lift = 0) => new THREE.Vector3(x * RENDER_SCALE, lift, y * RENDER_SCALE);
 
-const getTargetRelativePosition = (simulationState: SimulationState, targetId: string, spacecraftPosition: { x: number; y: number }) => {
-  const predictedTarget = simulationState.bodies.find((body) => body.id === targetId);
-
-  if (!predictedTarget) {
-    return { ...spacecraftPosition };
-  }
-
-  return sub(spacecraftPosition, predictedTarget.position);
-};
-
 const applyTargetRelativePredictionLine = (
   relativePoints: { x: number; y: number }[],
   geometry: LineGeometry,
@@ -746,23 +743,14 @@ const formatBodyInfluences = (simulationState: SimulationState) =>
     .join(" | ");
 
 const getCoastPredictionHorizonSeconds = () => coastPredictionHorizonHours * 60 * 60;
-const predictionStepOptionsSeconds = gameConfig.trajectory.sampling.stepOptionsSeconds;
-const targetMaxTrajectoryPredictionSteps = gameConfig.trajectory.sampling.targetMaxSteps;
-
-const getPredictionStepSeconds = (horizonSeconds: number) => {
-  const targetStepSeconds = horizonSeconds / targetMaxTrajectoryPredictionSteps;
-  return predictionStepOptionsSeconds.find((stepSeconds) => stepSeconds >= targetStepSeconds) ?? predictionStepOptionsSeconds.at(-1) ?? 1800;
-};
 
 const getPredictionConfig = () => {
-  return {
-    refreshInterval: gameConfig.trajectory.sampling.refreshInterval,
-    stepSeconds: getPredictionStepSeconds(getCoastPredictionHorizonSeconds()),
-  };
+  return getTrajectoryPredictionConfig(
+    getCoastPredictionHorizonSeconds(),
+    gameConfig.trajectory.sampling,
+    gameConfig.trajectory.loopTrim.maxRevolutions,
+  );
 };
-
-const maxLoopedPredictionRevolutions = gameConfig.trajectory.loopTrim.maxRevolutions;
-const maxLoopedPredictionAngularTravel = maxLoopedPredictionRevolutions * Math.PI * 2;
 
 const updateControls = (): ControlInput => {
   if (crashedBodyName) {
@@ -1039,58 +1027,15 @@ const updateRipples = (dt: number) => {
 
 const updateTrajectoryPrediction = () => {
   const predictionConfig = getPredictionConfig();
-  let predictedState = cloneSimulationState(state);
-  const predictedRelativePoints: { x: number; y: number }[] = [];
-  const predictionStep = predictionConfig.stepSeconds;
-  const maxPredictionSeconds = getCoastPredictionHorizonSeconds();
-  const maxSteps = maxPredictionSeconds / predictionStep;
-  const targetId = getAssistTarget().id;
   const initialTarget = getAssistTarget();
+  const targetId = initialTarget.id;
   const allowLoopTrim = getCaptureMetrics(initialTarget).specificEnergy < 0;
-  let previousPredictionAngle = Math.atan2(state.spacecraft.position.y - initialTarget.position.y, state.spacecraft.position.x - initialTarget.position.x);
-  let predictionAngularTravel = 0;
-  predictedImpact = null;
-  predictedTargetClosestApproach = null;
+  const coastPrediction = predictCoastTrajectory(state, physicsEngine, initialTarget, predictionConfig, allowLoopTrim);
 
-  for (let step = 0; step < maxSteps; step += 1) {
-    predictedState = physicsEngine.step(predictedState, predictionStep);
-    const { spacecraft } = predictedState;
-    const predictionTime = (step + 1) * predictionStep;
-    const relativePoint = getTargetRelativePosition(predictedState, targetId, spacecraft.position);
-    const predictionAngle = Math.atan2(relativePoint.y, relativePoint.x);
-    predictionAngularTravel += Math.abs(normalizeAngle(predictionAngle - previousPredictionAngle));
-    previousPredictionAngle = predictionAngle;
-    predictedRelativePoints.push(relativePoint);
-
-    const predictedTarget = predictedState.bodies.find((body) => body.id === targetId);
-    if (predictedTarget) {
-      const altitude = length(sub(spacecraft.position, predictedTarget.position)) - predictedTarget.radius;
-
-      if (!predictedTargetClosestApproach || altitude < predictedTargetClosestApproach.altitude) {
-        predictedTargetClosestApproach = {
-          altitude,
-          bodyName: predictedTarget.name,
-          time: predictionTime,
-        };
-      }
-    }
-
-    const hitBody = predictedState.bodies.find((body) => length(sub(spacecraft.position, body.position)) <= body.radius);
-    if (hitBody) {
-      predictedImpact = {
-        bodyName: hitBody.name,
-        time: predictionTime,
-      };
-      break;
-    }
-
-    if (allowLoopTrim && predictionAngularTravel >= maxLoopedPredictionAngularTravel) {
-      break;
-    }
-  }
-
-  targetRelativePredictionPoints = predictedRelativePoints;
-  targetRelativePredictionEnd = predictedRelativePoints.at(-1) ?? null;
+  predictedImpact = coastPrediction.impact;
+  predictedTargetClosestApproach = coastPrediction.closestApproach;
+  targetRelativePredictionPoints = coastPrediction.relativePoints;
+  targetRelativePredictionEnd = targetRelativePredictionPoints.at(-1) ?? null;
   predictionGeometry = applyTargetRelativePredictionLine(targetRelativePredictionPoints, predictionGeometry, predictionLine, 0.18);
 
   if (assistMode === "off") {
@@ -1099,25 +1044,8 @@ const updateTrajectoryPrediction = () => {
     return;
   }
 
-  let assistedState = cloneSimulationState(state);
-  const assistedRelativePoints: { x: number; y: number }[] = [];
-
-  for (let step = 0; step < maxSteps; step += 1) {
-    assistedState = {
-      ...assistedState,
-      controls: getAssistPredictionControls(assistedState, targetId),
-    };
-    assistedState = physicsEngine.step(assistedState, predictionStep);
-    assistedRelativePoints.push(getTargetRelativePosition(assistedState, targetId, assistedState.spacecraft.position));
-
-    const hitBody = assistedState.bodies.find((body) => length(sub(assistedState.spacecraft.position, body.position)) <= body.radius);
-    if (hitBody) {
-      break;
-    }
-  }
-
   assistedPredictionMaterial.color.set(assistMode === "capture" ? 0xf59e0b : 0xfacc15);
-  targetRelativeAssistedPoints = assistedRelativePoints;
+  targetRelativeAssistedPoints = predictAssistedTrajectory(state, physicsEngine, targetId, predictionConfig, getAssistPredictionControls).relativePoints;
   assistedPredictionGeometry = applyTargetRelativePredictionLine(targetRelativeAssistedPoints, assistedPredictionGeometry, assistedPredictionLine, 0.2);
 };
 
