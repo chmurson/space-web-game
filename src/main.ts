@@ -112,7 +112,6 @@ const gpuTimerExtension = gl.getExtension("EXT_disjoint_timer_query_webgl2");
 const pendingGpuQueries: WebGLQuery[] = [];
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x05070d, 0.0018);
 
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000);
 const cameraTarget = new THREE.Vector3(0, 0, 0);
@@ -154,14 +153,14 @@ const spacecraftMesh = new THREE.Group();
 spacecraftMesh.scale.setScalar(1.5);
 const shipBody = new THREE.Mesh(
   new THREE.ConeGeometry(0.08, 0.32, 4),
-  new THREE.MeshStandardMaterial({ color: "#e8eef8", roughness: 0.5, fog: false }),
+  new THREE.MeshStandardMaterial({ color: "#e8eef8", roughness: 0.5 }),
 );
 shipBody.rotation.x = Math.PI / 2;
 spacecraftMesh.add(shipBody);
 
 const engineGlow = new THREE.Mesh(
   new THREE.ConeGeometry(0.06, 0.16, 12),
-  new THREE.MeshBasicMaterial({ color: "#38bdf8", transparent: true, opacity: 0, fog: false }),
+  new THREE.MeshBasicMaterial({ color: "#38bdf8", transparent: true, opacity: 0 }),
 );
 engineGlow.position.z = -0.24;
 engineGlow.rotation.x = -Math.PI / 2;
@@ -170,7 +169,7 @@ scene.add(spacecraftMesh);
 
 const spacecraftMarker = new THREE.Mesh(
   new THREE.TorusGeometry(0.25, 0.015, 8, 32),
-  new THREE.MeshBasicMaterial({ color: "#67e8f9", transparent: true, opacity: 0.9, fog: false }),
+  new THREE.MeshBasicMaterial({ color: "#67e8f9", transparent: true, opacity: 0.9 }),
 );
 spacecraftMarker.rotation.x = Math.PI / 2;
 scene.add(spacecraftMarker);
@@ -275,7 +274,6 @@ const predictionEndMarkerBacking = new THREE.Mesh(
     color: "#05070d",
     depthTest: false,
     depthWrite: false,
-    fog: false,
     side: THREE.DoubleSide,
     toneMapped: false,
   }),
@@ -288,7 +286,6 @@ const predictionEndMarkerFill = new THREE.Mesh(
     transparent: true,
     depthTest: false,
     depthWrite: false,
-    fog: false,
     side: THREE.DoubleSide,
     toneMapped: false,
   }),
