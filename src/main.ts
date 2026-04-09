@@ -38,6 +38,8 @@ import { idleControls } from "./simulation/state";
 import type { Body, ControlInput, SimulationState } from "./simulation/types";
 import { add, fromAngle, length, normalize, scale, sub } from "./simulation/vector";
 import { createDebugPanel } from "./ui/debugPanel";
+import { formatDistance } from "./ui/formatters";
+import { getDebugPanelLines, getGuidanceText } from "./ui/hudText";
 import { readUserSettings, updateUserSettings } from "./userSettingsStorage";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -471,81 +473,6 @@ const getCircularizePlan = (target: Body) => getCircularizePlanForState(state, t
 
 const getAssistPredictionControls = (simulationState: SimulationState, targetId: string): ControlInput =>
   getAssistPredictionControlsForState(simulationState, targetId, assistMode, autopilotRotationRate);
-
-const getCaptureGuidance = (target: Body) => {
-  const metrics = getCaptureMetrics(target);
-
-  if (!metrics.insideRange) {
-    if (predictedTargetClosestApproach) {
-      return `Pe ${formatDistance(Math.max(0, predictedTargetClosestApproach.altitude))} in ${formatDuration(predictedTargetClosestApproach.time)}`;
-    }
-
-    return `Close in ${formatDistance(metrics.distance - metrics.roughAssistRange)}`;
-  }
-
-  if (assistMode === "circularize") {
-    if (metrics.specificEnergy >= 0) {
-      return "Need capture first";
-    }
-
-    const plan = getCircularizePlan(target);
-    return plan.deltaV > 15 ? `Circularizing ${plan.deltaV.toFixed(0)} m/s` : "Orbit stable-ish";
-  }
-
-  if (metrics.specificEnergy < 0 && !predictedImpact) {
-    return "Captured: circularize";
-  }
-
-  if (metrics.relativeSpeed > metrics.circularSpeed * 1.05) {
-    return assistMode === "capture" ? "Burning retrograde" : "Ready: press C";
-  }
-
-  if (metrics.relativeSpeed < metrics.circularSpeed * 0.75) {
-    return "Slow: watch escape";
-  }
-
-  return "Near capture speed";
-};
-
-const formatDistance = (meters: number) => {
-  if (meters >= 1_000_000) {
-    return `${Math.round(meters / 1_000_000).toLocaleString()} Mm`;
-  }
-
-  return `${Math.round(meters / 1_000).toLocaleString()} km`;
-};
-
-const formatDuration = (seconds: number) => {
-  if (seconds < 60) {
-    return `${Math.round(seconds)}s`;
-  }
-  if (seconds < 3600) {
-    return `${Math.round(seconds / 60)}m`;
-  }
-  if (seconds >= 24 * 3600) {
-    return `${(seconds / (24 * 3600)).toLocaleString(undefined, { maximumFractionDigits: 1 })}d`;
-  }
-
-  return `${(seconds / 3600).toFixed(1)}h`;
-};
-
-const formatSpecificEnergy = (energy: number) => `${(energy / 1_000).toFixed(1)} kJ/kg`;
-
-const formatAcceleration = (acceleration: number) => {
-  if (acceleration >= 0.01) {
-    return acceleration.toFixed(3);
-  }
-  if (acceleration >= 0.0001) {
-    return acceleration.toFixed(5);
-  }
-
-  return acceleration.toExponential(2);
-};
-
-const formatBodyInfluences = (simulationState: SimulationState) =>
-  getBodyInfluences(simulationState)
-    .map((influence) => `${influence.body.name} ${formatAcceleration(influence.acceleration)} m/s^2 (${(influence.share * 100).toFixed(1)}%)`)
-    .join(" | ");
 
 const getCoastPredictionHorizonSeconds = () => coastPredictionHorizonHours * 60 * 60;
 
@@ -1027,6 +954,7 @@ const updateHud = () => {
   const target = getAssistTarget();
   const targetMetrics = getCaptureMetrics(target);
   const targetRelativeSpeed = targetMetrics.relativeSpeed;
+  const circularizePlan = assistMode === "circularize" ? getCircularizePlan(target) : null;
   if (statTarget) {
     statTarget.textContent = target.name;
   }
@@ -1037,42 +965,35 @@ const updateHud = () => {
     statAssist.textContent = crashedBodyName ? "Crashed" : assistMode === "capture" ? "Capture" : assistMode === "circularize" ? "Circularize" : "Off";
   }
   if (statGuidance) {
-    statGuidance.textContent = crashedBodyName
-      ? `Hit ${crashedBodyName}. Press R`
-      : predictedImpact
-        ? `Impact ${predictedImpact.bodyName} in ${formatDuration(predictedImpact.time)}`
-        : getCaptureGuidance(target);
+    statGuidance.textContent = getGuidanceText({
+      assistMode,
+      circularizePlan,
+      crashedBodyName,
+      predictedImpact,
+      predictedTargetClosestApproach,
+      targetMetrics,
+    });
   }
   debugPanel.element.style.display = debugModeEnabled ? "block" : "none";
   if (debugModeEnabled) {
-    const debugLines = [
-      `debug: [1] no-gravity ${debugNoGravityEnabled ? "on" : "off"} | [2] fps ${fpsIndicatorEnabled ? "on" : "off"} | [3] perf ${performanceDebugEnabled ? "on" : "off"}`,
-      `coast horizon: [4]/2 [5]x2 => ${formatDuration(getCoastPredictionHorizonSeconds())}`,
-      `prediction step: ${formatDuration(getPredictionConfig().stepSeconds)}`,
-      `snapshot: [6] save | [7] load${debugSnapshotStatus ? ` | ${debugSnapshotStatus}` : ""}`,
-      `target: ${target.name}`,
-      `gravity: ${formatBodyInfluences(state)}`,
-      `surface: ${formatDistance(targetMetrics.surfaceDistance)} | range: ${targetMetrics.insideRange ? "inside" : "outside"}`,
-      `v_rel: ${targetMetrics.relativeSpeed.toFixed(0)} m/s | v_circ: ${targetMetrics.circularSpeed.toFixed(0)} m/s`,
-      `energy: ${formatSpecificEnergy(targetMetrics.specificEnergy)} | ${targetMetrics.specificEnergy < 0 ? "bound" : "unbound"}`,
-      `assist: ${assistMode}`,
-      predictedTargetClosestApproach
-        ? `pred Pe: ${formatDistance(Math.max(0, predictedTargetClosestApproach.altitude))} in ${formatDuration(predictedTargetClosestApproach.time)}`
-        : "pred Pe: calculating",
-      predictedImpact ? `pred impact: ${predictedImpact.bodyName} in ${formatDuration(predictedImpact.time)}` : "pred impact: none",
-    ];
-
-    if (performanceDebugEnabled) {
-      const frameBudgetMs60 = 1000 / 60;
-      const frameBudgetMs30 = 1000 / 30;
-      const limitingFrameMs = smoothedGpuMs === null ? smoothedCpuMs : Math.max(smoothedCpuMs, smoothedGpuMs);
-      debugLines.push(
-        `cpu: ${smoothedCpuMs.toFixed(2)} ms | gpu: ${smoothedGpuMs === null ? "n/a" : `${smoothedGpuMs.toFixed(2)} ms`}`,
-        `headroom60: ${(frameBudgetMs60 - limitingFrameMs).toFixed(2)} ms | headroom30: ${(frameBudgetMs30 - limitingFrameMs).toFixed(2)} ms`,
-      );
-    }
-
-    debugPanel.setText(debugLines.join("\n"));
+    debugPanel.setText(
+      getDebugPanelLines({
+        assistMode,
+        bodyInfluences: getBodyInfluences(state),
+        coastPredictionHorizonSeconds: getCoastPredictionHorizonSeconds(),
+        debugNoGravityEnabled,
+        debugSnapshotStatus,
+        fpsIndicatorEnabled,
+        performanceDebugEnabled,
+        predictionStepSeconds: getPredictionConfig().stepSeconds,
+        predictedImpact,
+        predictedTargetClosestApproach,
+        smoothedCpuMs,
+        smoothedGpuMs,
+        targetMetrics,
+        targetName: target.name,
+      }).join("\n"),
+    );
     debugPanel.setJson(null);
   }
 };
