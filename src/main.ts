@@ -4,6 +4,7 @@ import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { appSettings } from "./appSettings";
+import { getAssistTargetForState } from "./assist/assistTarget";
 import {
   getAssistPredictionControlsForState,
   getAutopilotTurnForHeading,
@@ -29,12 +30,13 @@ import {
   type PredictedImpact,
 } from "./prediction/trajectoryPrediction";
 import { updateColoredLine2Geometry, updateLine2Geometry } from "./rendering/line2Geometry";
-import { G, RENDER_SCALE } from "./simulation/constants";
+import { getBodyInfluences } from "./simulation/bodyInfluence";
+import { RENDER_SCALE } from "./simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "./simulation/physics";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "./simulation/scenarios/earthMoon";
 import { idleControls } from "./simulation/state";
 import type { Body, ControlInput, SimulationState } from "./simulation/types";
-import { add, fromAngle, length, lengthSq, normalize, scale, sub } from "./simulation/vector";
+import { add, fromAngle, length, normalize, scale, sub } from "./simulation/vector";
 import { createDebugPanel } from "./ui/debugPanel";
 import { readUserSettings, updateUserSettings } from "./userSettingsStorage";
 
@@ -453,32 +455,11 @@ const updateTargetRelativePredictionVisuals = () => {
   });
 };
 
-const getBodyInfluences = (simulationState: SimulationState) => {
-  const influences = simulationState.bodies.map((body) => {
-    const distanceSquared = Math.max(lengthSq(sub(body.position, simulationState.spacecraft.position)), 1);
-    return {
-      body,
-      acceleration: (G * body.mass) / distanceSquared,
-    };
-  });
-  const totalAcceleration = influences.reduce((sum, influence) => sum + influence.acceleration, 0);
-
-  return influences
-    .map((influence) => ({
-      ...influence,
-      share: totalAcceleration > 0 ? influence.acceleration / totalAcceleration : 0,
-    }))
-    .sort((a, b) => b.acceleration - a.acceleration);
-};
-
-const getStrongestInfluenceBody = (simulationState: SimulationState) => {
-  return getBodyInfluences(simulationState)[0]?.body ?? simulationState.bodies[0];
-};
-
 const getAssistTarget = () =>
-  appSettings.assistTarget.autoDiscoverStrongestInfluence
-    ? getStrongestInfluenceBody(state)
-    : (state.bodies[assistTargetIndex % state.bodies.length] ?? state.bodies[0]);
+  getAssistTargetForState(state, {
+    autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
+    selectedIndex: assistTargetIndex,
+  });
 
 const getAutopilotTurn = (desiredHeading: number) => getAutopilotTurnForHeading(state.spacecraft.heading, desiredHeading, autopilotRotationRate);
 
