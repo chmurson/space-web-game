@@ -23,6 +23,7 @@ import {
   type PredictedImpact,
 } from "./prediction/trajectoryPrediction";
 import { createKeyboardInput } from "./input/keyboardInput";
+import { bindPointerCameraInput } from "./input/pointerCameraInput";
 import { getKeyboardShortcutAction, type KeyboardShortcutAction } from "./input/keyboardShortcuts";
 import { updateColoredLine2Geometry, updateLine2Geometry } from "./rendering/line2Geometry";
 import {
@@ -73,8 +74,6 @@ let crashedBodyName: string | null = null;
 let predictedImpact: PredictedImpact | null = null;
 let predictedTargetClosestApproach: PredictedClosestApproach | null = null;
 let spacecraftLabelIntroUntil = performance.now() + 5_000;
-let mouseScreenX = 0;
-let mouseScreenY = 0;
 const cameraDistance = gameConfig.camera.distance;
 const cameraElevation = THREE.MathUtils.degToRad(gameConfig.camera.elevationDegrees);
 const defaultViewport = gameConfig.camera.viewport.default;
@@ -287,10 +286,6 @@ type Ripple = {
   age: number;
 };
 
-const raycaster = new THREE.Raycaster();
-const pointerPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-const pointerNdc = new THREE.Vector2();
-const pointerWorld = new THREE.Vector3();
 const ripples: Ripple[] = [];
 let targetHeading: number | null = null;
 
@@ -563,21 +558,8 @@ const loadDebugScenarioSnapshot = () => {
   debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`;
 };
 
-const setTargetHeadingFromScreenPoint = (clientX: number, clientY: number) => {
-  const bounds = renderer.domElement.getBoundingClientRect();
-  pointerNdc.x = ((clientX - bounds.left) / bounds.width) * 2 - 1;
-  pointerNdc.y = -(((clientY - bounds.top) / bounds.height) * 2 - 1);
-
-  raycaster.setFromCamera(pointerNdc, camera);
-  const intersection = raycaster.ray.intersectPlane(pointerPlane, pointerWorld);
-
-  if (!intersection) {
-    return;
-  }
-
-  const targetX = pointerWorld.x / RENDER_SCALE;
-  const targetY = pointerWorld.z / RENDER_SCALE;
-  targetHeading = Math.atan2(targetY - state.spacecraft.position.y, targetX - state.spacecraft.position.x);
+const setTargetHeading = (heading: number, clientX: number, clientY: number) => {
+  targetHeading = heading;
   assistMode = "off";
   createRipple(clientX, clientY);
 };
@@ -653,6 +635,24 @@ const zoomCamera = (factor: number) => {
   viewportSize = THREE.MathUtils.clamp(viewportSize * factor, minViewport, maxViewport);
   updateCamera();
 };
+
+const pointerCameraInput = bindPointerCameraInput({
+  camera,
+  getSpacecraftPosition: () => state.spacecraft.position,
+  onResize: () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    updateCamera();
+  },
+  onTargetHeadingSelected: (heading, screenPosition) => {
+    setTargetHeading(heading, screenPosition.x, screenPosition.y);
+  },
+  onZoom: (zoomFactor) => {
+    zoomCamera(zoomFactor);
+  },
+  renderScale: RENDER_SCALE,
+  rendererElement: renderer.domElement,
+  windowTarget: window,
+});
 
 const updateMeshes = () => {
   const useSymbolicShip = viewportSize > defaultViewport / spacecraftModelZoomThreshold;
@@ -776,7 +776,9 @@ const updateCallout = () => {
   const screenY = (-position.y * 0.5 + 0.5) * window.innerHeight;
   const isVisible = position.z > -1 && position.z < 1;
   const useSymbolicShip = viewportSize > defaultViewport / spacecraftModelZoomThreshold;
-  const showLabel = performance.now() < spacecraftLabelIntroUntil || Math.hypot(mouseScreenX - screenX, mouseScreenY - screenY) < 28;
+  const showLabel =
+    performance.now() < spacecraftLabelIntroUntil ||
+    Math.hypot(pointerCameraInput.pointerScreenPosition.x - screenX, pointerCameraInput.pointerScreenPosition.y - screenY) < 28;
 
   if (!isVisible) {
     spacecraftCallout.style.display = "none";
@@ -1177,32 +1179,6 @@ window.addEventListener("keydown", (event) => {
 
 window.addEventListener("keyup", (event) => {
   keyboardInput.release(event.code);
-});
-
-window.addEventListener("resize", () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  updateCamera();
-});
-
-window.addEventListener("mousemove", (event) => {
-  mouseScreenX = event.clientX;
-  mouseScreenY = event.clientY;
-});
-
-window.addEventListener(
-  "wheel",
-  (event) => {
-    event.preventDefault();
-    const modeScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? window.innerHeight : 1;
-    const normalizedDelta = event.deltaY * modeScale;
-    const zoomFactor = THREE.MathUtils.clamp(Math.exp(normalizedDelta * 0.0015), 0.75, 1.35);
-    zoomCamera(zoomFactor);
-  },
-  { passive: false },
-);
-
-renderer.domElement.addEventListener("dblclick", (event) => {
-  setTargetHeadingFromScreenPoint(event.clientX, event.clientY);
 });
 
 updateCamera();
