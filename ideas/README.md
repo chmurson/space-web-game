@@ -2,6 +2,8 @@
 
 This folder is for rough gameplay, physics, UI, scenario, and tuning ideas.
 
+Resolved notes live in `ideas/resolved/` so completed investigations remain searchable without looking active.
+
 Suggested format for new notes:
 
 ```md
