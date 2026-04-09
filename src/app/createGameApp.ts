@@ -13,6 +13,7 @@ import { gameConfig } from "../config/gameConfig";
 import { bindKeyboardShortcuts } from "../input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "../input/keyboardInput";
 import { bindPointerCameraInput } from "../input/pointerCameraInput";
+import { createTrajectoryPresentation } from "../presentation/trajectoryPresentation";
 import { getTrajectoryPredictionConfig } from "../prediction/trajectoryPrediction";
 import { createRendererProfiler } from "../render/rendererProfiler";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
@@ -175,7 +176,18 @@ export const createGameApp = (app: HTMLDivElement) => {
     shouldCaptureBurn,
     spacecraftModelZoomThreshold,
     timeWarps,
-    trajectoryPredictionRuntime,
+    trajectoryPresentation: createTrajectoryPresentation({
+      gameScene,
+      getAssistPredictionControls,
+      getAssistTarget,
+      getCaptureMetrics,
+      getCircularizePlan,
+      getCoastPredictionHorizonSeconds,
+      getPredictionConfig,
+      physicsEngine,
+      runtime,
+      trajectoryPredictionRuntime,
+    }),
   });
 
   bindKeyboardShortcuts({

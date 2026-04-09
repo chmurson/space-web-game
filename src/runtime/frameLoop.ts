@@ -4,7 +4,8 @@ import type { CaptureMetrics, CircularizePlan } from "../assist/orbitalAssist";
 import type { KeyboardInput } from "../input/keyboardInput";
 import type { PointerCameraInput } from "../input/pointerCameraInput";
 import type { TrajectoryPredictionConfig } from "../prediction/trajectoryPrediction";
-import { renderPosition, updateCircularizationVisuals, updateSpacecraftTrail, updateTargetRelativePredictionVisuals, updateWorldVisuals } from "../render/sceneUpdates";
+import type { TrajectoryPresentation } from "../presentation/trajectoryPresentation";
+import { renderPosition, updateSpacecraftTrail, updateWorldVisuals } from "../render/sceneUpdates";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import { getBodyInfluences } from "../simulation/bodyInfluence";
@@ -15,7 +16,6 @@ import { type Ripple, updateBodyLabels, updateFpsIndicator, updateHud as updateO
 import type { AppRuntimeState } from "./appRuntimeState";
 import type { RuntimeActions } from "./runtimeActions";
 import { stepSimulationFrame } from "./simulationStep";
-import type { TrajectoryPredictionRuntime } from "./trajectoryPredictionRuntime";
 
 export const createFrameLoop = (options: {
   defaultViewport: number;
@@ -39,7 +39,7 @@ export const createFrameLoop = (options: {
   shouldCaptureBurn(target: Body): boolean;
   spacecraftModelZoomThreshold: number;
   timeWarps: number[];
-  trajectoryPredictionRuntime: TrajectoryPredictionRuntime;
+  trajectoryPresentation: TrajectoryPresentation;
 }) => {
   let lastTime = performance.now();
   let smoothedFps = 60;
@@ -52,7 +52,7 @@ export const createFrameLoop = (options: {
     const target = options.getAssistTarget();
     const targetMetrics = options.getCaptureMetrics(target);
     const circularizePlan = options.runtime.assistMode === "circularize" ? options.getCircularizePlan(target) : null;
-    const predictionState = options.trajectoryPredictionRuntime.getState();
+    const predictionState = options.trajectoryPresentation.getPredictionState();
 
     updateOverlayHud({
       assistMode: options.runtime.assistMode,
@@ -83,19 +83,7 @@ export const createFrameLoop = (options: {
   };
 
   const refreshTrajectoryPrediction = () => {
-    options.trajectoryPredictionRuntime.refresh({
-      assistMode: options.runtime.assistMode,
-      coastPredictionHorizonSeconds: options.getCoastPredictionHorizonSeconds(),
-      debugModeEnabled: options.runtime.debugModeEnabled,
-      debugNoGravityEnabled: options.runtime.debugNoGravityEnabled,
-      gameScene: options.gameScene,
-      getAssistPredictionControls: options.getAssistPredictionControls,
-      getAssistTarget: options.getAssistTarget,
-      getCaptureMetrics: options.getCaptureMetrics,
-      physicsEngine: options.physicsEngine,
-      predictionConfig: options.getPredictionConfig(),
-      state: options.runtime.state,
-    });
+    options.trajectoryPresentation.refreshPrediction();
   };
 
   const animate = (time: number) => {
@@ -130,24 +118,7 @@ export const createFrameLoop = (options: {
 
     updateRipples(options.ripples, realDt);
     options.runtimeActions.updateCamera();
-    options.trajectoryPredictionRuntime.maybeRefresh(realDt, {
-      assistMode: options.runtime.assistMode,
-      coastPredictionHorizonSeconds: options.getCoastPredictionHorizonSeconds(),
-      debugModeEnabled: options.runtime.debugModeEnabled,
-      debugNoGravityEnabled: options.runtime.debugNoGravityEnabled,
-      gameScene: options.gameScene,
-      getAssistPredictionControls: options.getAssistPredictionControls,
-      getAssistTarget: options.getAssistTarget,
-      getCaptureMetrics: options.getCaptureMetrics,
-      physicsEngine: options.physicsEngine,
-      predictionConfig: options.getPredictionConfig(),
-      state: options.runtime.state,
-    });
-
-    const predictionState = options.trajectoryPredictionRuntime.getState();
-    if (options.runtime.assistMode !== "off") {
-      options.gameScene.assistedPredictionMaterial.color.set(options.runtime.assistMode === "capture" ? 0xf59e0b : 0xfacc15);
-    }
+    options.trajectoryPresentation.maybeRefreshPrediction(realDt);
 
     updateWorldVisuals({
       bodies: options.runtime.state.bodies,
@@ -162,25 +133,7 @@ export const createFrameLoop = (options: {
       isThrusting,
       spacecraft: options.runtime.state.spacecraft,
     });
-    updateTargetRelativePredictionVisuals({
-      debugModeEnabled: options.runtime.debugModeEnabled,
-      gameScene: options.gameScene,
-      predictedImpact: predictionState.predictedImpact,
-      target: options.getAssistTarget(),
-      targetRelativeAssistedPoints: predictionState.targetRelativeAssistedPoints,
-      targetRelativePredictionEnd: predictionState.targetRelativePredictionEnd,
-      targetRelativePredictionPoints: predictionState.targetRelativePredictionPoints,
-      viewportHeight: window.innerHeight,
-      viewportSize: options.runtime.viewportSize,
-    });
-    updateCircularizationVisuals({
-      circularizePlan:
-        options.runtime.assistMode === "circularize" && !options.runtime.crashedBodyName ? options.getCircularizePlan(options.getAssistTarget()) : null,
-      gameScene: options.gameScene,
-      spacecraftPosition: options.runtime.state.spacecraft.position,
-      target: options.runtime.assistMode === "circularize" && !options.runtime.crashedBodyName ? options.getAssistTarget() : null,
-      viewportSize: options.runtime.viewportSize,
-    });
+    options.trajectoryPresentation.updateVisuals();
     updateSpacecraftCallout({
       camera: options.gameScene.camera,
       defaultViewport: options.defaultViewport,
