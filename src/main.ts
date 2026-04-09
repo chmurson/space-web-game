@@ -99,7 +99,7 @@ const cameraElevation = THREE.MathUtils.degToRad(66);
 const defaultViewport = 520;
 const spacecraftModelZoomThreshold = 15;
 const minViewport = defaultViewport / 30;
-const maxViewport = 700;
+const maxViewport = 2_500;
 let viewportSize = THREE.MathUtils.clamp(scenario.viewportSize ?? defaultViewport, minViewport, maxViewport);
 
 const ambientLight = new THREE.AmbientLight(0x7f8fa6, 1.5);
@@ -744,35 +744,24 @@ const formatBodyInfluences = (simulationState: SimulationState) =>
     .map((influence) => `${influence.body.name} ${formatAcceleration(influence.acceleration)} m/s^2 (${(influence.share * 100).toFixed(1)}%)`)
     .join(" | ");
 
-const getPredictionConfig = () => {
-  return { refreshInterval: 0.2, stepSeconds: 30 };
-};
-
 const getCoastPredictionHorizonSeconds = () => coastPredictionHorizonHours * 60 * 60;
+const predictionStepOptionsSeconds = [30, 45, 60, 90, 120, 180, 300, 450, 600, 900, 1200, 1800];
+const targetMaxTrajectoryPredictionSteps = 1200;
 
-const shouldTrimLoopedPrediction = (
-  relativePoints: { x: number; y: number }[],
-  candidatePoint: { x: number; y: number },
-  referenceDistance: number,
-  trimDelayMultiplier: number,
-) => {
-  const minPointCountBeforeTrim = Math.round(64 * trimDelayMultiplier);
-  const minimumSeparation = Math.round(40 * trimDelayMultiplier);
-
-  if (relativePoints.length < minPointCountBeforeTrim) {
-    return false;
-  }
-
-  const loopThreshold = Math.max(200_000, referenceDistance * 0.02);
-
-  for (let index = 0; index < relativePoints.length - minimumSeparation; index += 1) {
-    if (length(sub(candidatePoint, relativePoints[index])) < loopThreshold) {
-      return true;
-    }
-  }
-
-  return false;
+const getPredictionStepSeconds = (horizonSeconds: number) => {
+  const targetStepSeconds = horizonSeconds / targetMaxTrajectoryPredictionSteps;
+  return predictionStepOptionsSeconds.find((stepSeconds) => stepSeconds >= targetStepSeconds) ?? predictionStepOptionsSeconds.at(-1) ?? 1800;
 };
+
+const getPredictionConfig = () => {
+  return {
+    refreshInterval: 0.2,
+    stepSeconds: getPredictionStepSeconds(getCoastPredictionHorizonSeconds()),
+  };
+};
+
+const maxLoopedPredictionRevolutions = 2.5;
+const maxLoopedPredictionAngularTravel = maxLoopedPredictionRevolutions * Math.PI * 2;
 
 const updateControls = (): ControlInput => {
   if (crashedBodyName) {
@@ -1056,8 +1045,9 @@ const updateTrajectoryPrediction = () => {
   const maxSteps = maxPredictionSeconds / predictionStep;
   const targetId = getAssistTarget().id;
   const initialTarget = getAssistTarget();
-  const initialTargetDistance = length(sub(state.spacecraft.position, initialTarget.position));
   const allowLoopTrim = getCaptureMetrics(initialTarget).specificEnergy < 0;
+  let previousPredictionAngle = Math.atan2(state.spacecraft.position.y - initialTarget.position.y, state.spacecraft.position.x - initialTarget.position.x);
+  let predictionAngularTravel = 0;
   predictedImpact = null;
   predictedTargetClosestApproach = null;
 
@@ -1066,9 +1056,9 @@ const updateTrajectoryPrediction = () => {
     const { spacecraft } = predictedState;
     const predictionTime = (step + 1) * predictionStep;
     const relativePoint = getTargetRelativePosition(predictedState, targetId, spacecraft.position);
-    if (allowLoopTrim && shouldTrimLoopedPrediction(predictedRelativePoints, relativePoint, initialTargetDistance, coastPredictionHorizonHours / defaultCoastPredictionHorizonHours)) {
-      break;
-    }
+    const predictionAngle = Math.atan2(relativePoint.y, relativePoint.x);
+    predictionAngularTravel += Math.abs(normalizeAngle(predictionAngle - previousPredictionAngle));
+    previousPredictionAngle = predictionAngle;
     predictedRelativePoints.push(relativePoint);
 
     const predictedTarget = predictedState.bodies.find((body) => body.id === targetId);
@@ -1090,6 +1080,10 @@ const updateTrajectoryPrediction = () => {
         bodyName: hitBody.name,
         time: predictionTime,
       };
+      break;
+    }
+
+    if (allowLoopTrim && predictionAngularTravel >= maxLoopedPredictionAngularTravel) {
       break;
     }
   }
@@ -1319,6 +1313,7 @@ const updateHud = () => {
     const debugLines = [
       `debug: [1] no-gravity ${debugNoGravityEnabled ? "on" : "off"} | [2] fps ${fpsIndicatorEnabled ? "on" : "off"} | [3] perf ${performanceDebugEnabled ? "on" : "off"}`,
       `coast horizon: [4]/2 [5]x2 => ${formatDuration(getCoastPredictionHorizonSeconds())}`,
+      `prediction step: ${formatDuration(getPredictionConfig().stepSeconds)}`,
       `snapshot: [6] save | [7] load${debugSnapshotStatus ? ` | ${debugSnapshotStatus}` : ""}`,
       `target: ${target.name}`,
       `gravity: ${formatBodyInfluences(state)}`,
