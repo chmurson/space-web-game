@@ -16,13 +16,6 @@ import {
 } from "./assist/orbitalAssist";
 import { gameConfig } from "./config/gameConfig";
 import {
-  createScenarioFromSnapshot,
-  createSnapshotFromState,
-  readDebugScenarioSnapshot,
-  writeDebugScenarioSnapshot,
-  type RuntimeScenario,
-} from "./debugScenarioSnapshot";
-import {
   getTrajectoryPredictionConfig,
   predictAssistedTrajectory,
   predictCoastTrajectory,
@@ -32,10 +25,16 @@ import {
 import { createKeyboardInput } from "./input/keyboardInput";
 import { getKeyboardShortcutAction, type KeyboardShortcutAction } from "./input/keyboardShortcuts";
 import { updateColoredLine2Geometry, updateLine2Geometry } from "./rendering/line2Geometry";
+import {
+  createRequestedRuntimeScenario,
+  createRuntimeScenarioState,
+  loadDebugRuntimeScenario,
+  saveRuntimeDebugSnapshot,
+  type RuntimeScenarioOptions,
+} from "./scenario/runtimeScenario";
 import { getBodyInfluences } from "./simulation/bodyInfluence";
 import { RENDER_SCALE } from "./simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "./simulation/physics";
-import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "./simulation/scenarios/earthMoon";
 import { idleControls } from "./simulation/state";
 import type { Body, ControlInput, SimulationState } from "./simulation/types";
 import { add, fromAngle, length, normalize, scale, sub } from "./simulation/vector";
@@ -54,30 +53,8 @@ const urlParams = new URLSearchParams(window.location.search);
 const requestedEngine = urlParams.get("engine") ?? "";
 const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine;
 const requestedScenario = urlParams.get("scenario") ?? "earth-moon";
-
-const createScenario = (): RuntimeScenario => {
-  if (requestedScenario === "moon-capture-debug") {
-    return createMoonCaptureDebugScenario();
-  }
-
-  if (requestedScenario === "debug-snapshot") {
-    const snapshot = readDebugScenarioSnapshot();
-    if (snapshot) {
-      return createScenarioFromSnapshot(snapshot);
-    }
-  }
-
-  return createEarthMoonScenario();
-};
-const scenario = createScenario();
+const scenario = createRequestedRuntimeScenario(requestedScenario);
 const userSettings = readUserSettings();
-let state: SimulationState = {
-  elapsed: scenario.elapsed ?? 0,
-  bodies: scenario.bodies,
-  spacecraft: scenario.spacecraft,
-  controls: idleControls(),
-};
-
 const keyboardInput = createKeyboardInput();
 const timeWarps = gameConfig.controls.timeWarps;
 let timeWarpIndex = 0;
@@ -92,17 +69,30 @@ let debugSnapshotStatus = "";
 const defaultCoastPredictionHorizonHours = gameConfig.trajectory.horizon.defaultHours;
 const minCoastPredictionHorizonHours = gameConfig.trajectory.horizon.minHours;
 const maxCoastPredictionHorizonHours = gameConfig.trajectory.horizon.maxHours;
-let coastPredictionHorizonHours = THREE.MathUtils.clamp(
-  scenario.coastPredictionHorizonHours ?? defaultCoastPredictionHorizonHours,
-  minCoastPredictionHorizonHours,
-  maxCoastPredictionHorizonHours,
-);
 let crashedBodyName: string | null = null;
 let predictedImpact: PredictedImpact | null = null;
 let predictedTargetClosestApproach: PredictedClosestApproach | null = null;
 let spacecraftLabelIntroUntil = performance.now() + 5_000;
 let mouseScreenX = 0;
 let mouseScreenY = 0;
+const cameraDistance = gameConfig.camera.distance;
+const cameraElevation = THREE.MathUtils.degToRad(gameConfig.camera.elevationDegrees);
+const defaultViewport = gameConfig.camera.viewport.default;
+const spacecraftModelZoomThreshold = gameConfig.camera.spacecraftModelZoomThreshold;
+const minViewport = defaultViewport / gameConfig.camera.viewport.minDivisor;
+const maxViewport = gameConfig.camera.viewport.max;
+const runtimeScenarioOptions: RuntimeScenarioOptions = {
+  defaultCoastPredictionHorizonHours,
+  defaultViewportSize: defaultViewport,
+  maxCoastPredictionHorizonHours,
+  maxViewportSize: maxViewport,
+  minCoastPredictionHorizonHours,
+  minViewportSize: minViewport,
+};
+const initialRuntimeScenarioState = createRuntimeScenarioState(scenario, runtimeScenarioOptions);
+let state: SimulationState = initialRuntimeScenarioState.state;
+let coastPredictionHorizonHours = initialRuntimeScenarioState.coastPredictionHorizonHours;
+let viewportSize = initialRuntimeScenarioState.viewportSize;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -117,13 +107,6 @@ const scene = new THREE.Scene();
 
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000);
 const cameraTarget = new THREE.Vector3(0, 0, 0);
-const cameraDistance = gameConfig.camera.distance;
-const cameraElevation = THREE.MathUtils.degToRad(gameConfig.camera.elevationDegrees);
-const defaultViewport = gameConfig.camera.viewport.default;
-const spacecraftModelZoomThreshold = gameConfig.camera.spacecraftModelZoomThreshold;
-const minViewport = defaultViewport / gameConfig.camera.viewport.minDivisor;
-const maxViewport = gameConfig.camera.viewport.max;
-let viewportSize = THREE.MathUtils.clamp(scenario.viewportSize ?? defaultViewport, minViewport, maxViewport);
 
 const ambientLight = new THREE.AmbientLight(0x7f8fa6, 1.5);
 scene.add(ambientLight);
@@ -542,19 +525,10 @@ const capWarpForActiveControls = (controls: ControlInput) => {
 };
 
 const resetScenario = () => {
-  const freshScenario = createScenario();
-  state = {
-    elapsed: freshScenario.elapsed ?? 0,
-    bodies: freshScenario.bodies,
-    spacecraft: freshScenario.spacecraft,
-    controls: idleControls(),
-  };
-  viewportSize = THREE.MathUtils.clamp(freshScenario.viewportSize ?? defaultViewport, minViewport, maxViewport);
-  coastPredictionHorizonHours = THREE.MathUtils.clamp(
-    freshScenario.coastPredictionHorizonHours ?? defaultCoastPredictionHorizonHours,
-    minCoastPredictionHorizonHours,
-    maxCoastPredictionHorizonHours,
-  );
+  const freshRuntimeScenarioState = createRuntimeScenarioState(createRequestedRuntimeScenario(requestedScenario), runtimeScenarioOptions);
+  state = freshRuntimeScenarioState.state;
+  viewportSize = freshRuntimeScenarioState.viewportSize;
+  coastPredictionHorizonHours = freshRuntimeScenarioState.coastPredictionHorizonHours;
   trailPoints.length = 0;
   targetHeading = null;
   assistMode = "off";
@@ -563,41 +537,30 @@ const resetScenario = () => {
 };
 
 const saveDebugScenarioSnapshot = () => {
-  try {
-    writeDebugScenarioSnapshot(createSnapshotFromState(state, { viewportSize, coastPredictionHorizonHours }));
+  if (saveRuntimeDebugSnapshot(state, { viewportSize, coastPredictionHorizonHours })) {
     debugSnapshotStatus = "snapshot saved; use [7] load or ?scenario=debug-snapshot";
-  } catch {
+  } else {
     debugSnapshotStatus = "snapshot save failed";
   }
 };
 
 const loadDebugScenarioSnapshot = () => {
-  const snapshot = readDebugScenarioSnapshot();
-  if (!snapshot) {
+  const loadedDebugScenario = loadDebugRuntimeScenario(runtimeScenarioOptions);
+  if (!loadedDebugScenario) {
     debugSnapshotStatus = "no debug snapshot saved";
     return;
   }
 
-  const snapshotScenario = createScenarioFromSnapshot(snapshot);
-  state = {
-    elapsed: snapshotScenario.elapsed ?? 0,
-    bodies: snapshotScenario.bodies,
-    spacecraft: snapshotScenario.spacecraft,
-    controls: idleControls(),
-  };
-  viewportSize = THREE.MathUtils.clamp(snapshotScenario.viewportSize ?? defaultViewport, minViewport, maxViewport);
-  coastPredictionHorizonHours = THREE.MathUtils.clamp(
-    snapshotScenario.coastPredictionHorizonHours ?? defaultCoastPredictionHorizonHours,
-    minCoastPredictionHorizonHours,
-    maxCoastPredictionHorizonHours,
-  );
+  state = loadedDebugScenario.runtimeState.state;
+  viewportSize = loadedDebugScenario.runtimeState.viewportSize;
+  coastPredictionHorizonHours = loadedDebugScenario.runtimeState.coastPredictionHorizonHours;
   trailPoints.length = 0;
   targetHeading = null;
   assistMode = "off";
   crashedBodyName = null;
   assistTargetIndex = Math.min(assistTargetIndex, Math.max(0, state.bodies.length - 1));
   spacecraftLabelIntroUntil = performance.now() + 5_000;
-  debugSnapshotStatus = `loaded snapshot from ${new Date(snapshot.savedAt).toLocaleString()}`;
+  debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`;
 };
 
 const setTargetHeadingFromScreenPoint = (clientX: number, clientY: number) => {
