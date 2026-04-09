@@ -4,6 +4,15 @@ import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { appSettings } from "./appSettings";
+import {
+  getAssistPredictionControlsForState,
+  getAutopilotTurnForHeading,
+  getCaptureMetricsForState,
+  getCircularizePlanForState,
+  shouldCaptureBurnForMetrics,
+  shouldCircularizeBurn,
+  type AssistMode,
+} from "./assist/orbitalAssist";
 import { gameConfig } from "./config/gameConfig";
 import {
   createScenarioFromSnapshot,
@@ -68,7 +77,6 @@ const timeWarps = gameConfig.controls.timeWarps;
 let timeWarpIndex = 0;
 const autopilotRotationRate = gameConfig.controls.autopilotRotationRate;
 let assistTargetIndex = 1;
-type AssistMode = "off" | "capture" | "circularize";
 let assistMode: AssistMode = "off";
 let debugModeEnabled = userSettings.debugModeEnabled;
 let debugNoGravityEnabled = false;
@@ -445,8 +453,6 @@ const updateTargetRelativePredictionVisuals = () => {
   });
 };
 
-const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
-
 const getBodyInfluences = (simulationState: SimulationState) => {
   const influences = simulationState.bodies.map((body) => {
     const distanceSquared = Math.max(lengthSq(sub(body.position, simulationState.spacecraft.position)), 1);
@@ -474,108 +480,16 @@ const getAssistTarget = () =>
     ? getStrongestInfluenceBody(state)
     : (state.bodies[assistTargetIndex % state.bodies.length] ?? state.bodies[0]);
 
-const getAutopilotTurn = (desiredHeading: number) => {
-  const error = normalizeAngle(desiredHeading - state.spacecraft.heading);
-
-  if (Math.abs(error) < 0.015) {
-    return 0;
-  }
-
-  return THREE.MathUtils.clamp(error / autopilotRotationRate, -1, 1);
-};
-
-const getAutopilotTurnForHeading = (currentHeading: number, desiredHeading: number) => {
-  const error = normalizeAngle(desiredHeading - currentHeading);
-
-  if (Math.abs(error) < 0.015) {
-    return 0;
-  }
-
-  return THREE.MathUtils.clamp(error / autopilotRotationRate, -1, 1);
-};
-
-const getCaptureMetricsForState = (simulationState: SimulationState, target: Body) => {
-  const relativePosition = sub(simulationState.spacecraft.position, target.position);
-  const relativeVelocity = sub(simulationState.spacecraft.velocity, target.velocity);
-  const distance = length(relativePosition);
-  const relativeSpeed = length(relativeVelocity);
-  const roughAssistRange = target.radius + (target.id === "moon" ? 80_000_000 : 30_000_000);
-  const circularSpeed = Math.sqrt((G * target.mass) / Math.max(distance, target.radius));
-
-  return {
-    circularSpeed,
-    distance,
-    insideRange: distance < roughAssistRange,
-    relativeSpeed,
-    roughAssistRange,
-    surfaceDistance: Math.max(0, distance - target.radius),
-    specificEnergy: relativeSpeed ** 2 / 2 - (G * target.mass) / Math.max(distance, target.radius),
-  };
-};
+const getAutopilotTurn = (desiredHeading: number) => getAutopilotTurnForHeading(state.spacecraft.heading, desiredHeading, autopilotRotationRate);
 
 const getCaptureMetrics = (target: Body) => getCaptureMetricsForState(state, target);
 
-const shouldCaptureBurn = (target: Body) => {
-  const metrics = getCaptureMetrics(target);
-  return metrics.insideRange && metrics.relativeSpeed > metrics.circularSpeed * 1.05;
-};
-
-const getCircularizePlanForState = (simulationState: SimulationState, target: Body) => {
-  const relativePosition = sub(simulationState.spacecraft.position, target.position);
-  const relativeVelocity = sub(simulationState.spacecraft.velocity, target.velocity);
-  const distance = Math.max(length(relativePosition), target.radius);
-  const radial = normalize(relativePosition);
-  const tangentialDirection = relativePosition.x * relativeVelocity.y - relativePosition.y * relativeVelocity.x >= 0 ? 1 : -1;
-  const tangent = {
-    x: -radial.y * tangentialDirection,
-    y: radial.x * tangentialDirection,
-  };
-  const circularSpeed = Math.sqrt((G * target.mass) / distance);
-  const desiredVelocity = scale(tangent, circularSpeed);
-  const correction = sub(desiredVelocity, relativeVelocity);
-
-  return {
-    burnHeading: Math.atan2(correction.y, correction.x),
-    deltaV: length(correction),
-    desiredVelocityHeading: Math.atan2(tangent.y, tangent.x),
-    distance,
-    radialSpeed: relativeVelocity.x * radial.x + relativeVelocity.y * radial.y,
-    tangentialSpeed: relativeVelocity.x * tangent.x + relativeVelocity.y * tangent.y,
-  };
-};
+const shouldCaptureBurn = (target: Body) => shouldCaptureBurnForMetrics(getCaptureMetrics(target));
 
 const getCircularizePlan = (target: Body) => getCircularizePlanForState(state, target);
 
-const getAssistPredictionControls = (simulationState: SimulationState, targetId: string): ControlInput => {
-  const target = simulationState.bodies.find((body) => body.id === targetId);
-
-  if (!target || assistMode === "off") {
-    return idleControls();
-  }
-
-  if (assistMode === "capture") {
-    const relativeVelocity = sub(simulationState.spacecraft.velocity, target.velocity);
-    const desiredHeading = Math.atan2(-relativeVelocity.y, -relativeVelocity.x);
-    const metrics = getCaptureMetricsForState(simulationState, target);
-
-    return {
-      main: metrics.insideRange && metrics.relativeSpeed > metrics.circularSpeed * 1.05 ? 1 : 0,
-      reverse: 0,
-      strafe: 0,
-      turn: getAutopilotTurnForHeading(simulationState.spacecraft.heading, desiredHeading),
-    };
-  }
-
-  const metrics = getCaptureMetricsForState(simulationState, target);
-  const plan = getCircularizePlanForState(simulationState, target);
-
-  return {
-    main: metrics.specificEnergy < 0 && plan.deltaV > 15 ? 1 : 0,
-    reverse: 0,
-    strafe: 0,
-    turn: getAutopilotTurnForHeading(simulationState.spacecraft.heading, plan.burnHeading),
-  };
-};
+const getAssistPredictionControls = (simulationState: SimulationState, targetId: string): ControlInput =>
+  getAssistPredictionControlsForState(simulationState, targetId, assistMode, autopilotRotationRate);
 
 const getCaptureGuidance = (target: Body) => {
   const metrics = getCaptureMetrics(target);
@@ -686,9 +600,10 @@ const updateControls = (): ControlInput => {
   } else if (assistMode === "circularize") {
     const target = getAssistTarget();
     const plan = getCircularizePlan(target);
+    const metrics = getCaptureMetrics(target);
     turn = getAutopilotTurn(plan.burnHeading);
 
-    if (getCaptureMetrics(target).specificEnergy < 0 && plan.deltaV > 15) {
+    if (shouldCircularizeBurn(metrics, plan)) {
       main = 1;
     }
   } else if (targetHeading !== null) {
