@@ -8,32 +8,30 @@ import {
   getCaptureMetricsForState,
   getCircularizePlanForState,
   shouldCaptureBurnForMetrics,
-  type AssistMode,
 } from "./assist/orbitalAssist";
 import { gameConfig } from "./config/gameConfig";
 import {
   getTrajectoryPredictionConfig,
 } from "./prediction/trajectoryPrediction";
+import { bindKeyboardShortcuts } from "./input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "./input/keyboardInput";
 import { bindPointerCameraInput } from "./input/pointerCameraInput";
-import { getKeyboardShortcutAction, type KeyboardShortcutAction } from "./input/keyboardShortcuts";
 import { createRendererProfiler } from "./render/rendererProfiler";
 import {
   renderPosition,
-  updateCameraView,
   updateCircularizationVisuals,
   updateSpacecraftTrail,
   updateTargetRelativePredictionVisuals,
   updateWorldVisuals,
 } from "./render/sceneUpdates";
+import type { AppRuntimeState } from "./runtime/appRuntimeState";
+import { createRuntimeActions } from "./runtime/runtimeActions";
 import { stepSimulationFrame } from "./runtime/simulationStep";
 import { createTrajectoryPredictionRuntime } from "./runtime/trajectoryPredictionRuntime";
 import { createGameScene } from "./scene/createGameScene";
 import {
   createRequestedRuntimeScenario,
   createRuntimeScenarioState,
-  loadDebugRuntimeScenario,
-  saveRuntimeDebugSnapshot,
   type RuntimeScenarioOptions,
 } from "./scenario/runtimeScenario";
 import { getBodyInfluences } from "./simulation/bodyInfluence";
@@ -68,20 +66,10 @@ const scenario = createRequestedRuntimeScenario(requestedScenario);
 const userSettings = readUserSettings();
 const keyboardInput = createKeyboardInput();
 const timeWarps = gameConfig.controls.timeWarps;
-let timeWarpIndex = 0;
 const autopilotRotationRate = gameConfig.controls.autopilotRotationRate;
-let assistTargetIndex = 1;
-let assistMode: AssistMode = "off";
-let debugModeEnabled = userSettings.debugModeEnabled;
-let debugNoGravityEnabled = false;
-let fpsIndicatorEnabled = false;
-let performanceDebugEnabled = false;
-let debugSnapshotStatus = "";
 const defaultCoastPredictionHorizonHours = gameConfig.trajectory.horizon.defaultHours;
 const minCoastPredictionHorizonHours = gameConfig.trajectory.horizon.minHours;
 const maxCoastPredictionHorizonHours = gameConfig.trajectory.horizon.maxHours;
-let crashedBodyName: string | null = null;
-let spacecraftLabelIntroUntil = performance.now() + 5_000;
 const cameraDistance = gameConfig.camera.distance;
 const cameraElevation = THREE.MathUtils.degToRad(gameConfig.camera.elevationDegrees);
 const defaultViewport = gameConfig.camera.viewport.default;
@@ -97,9 +85,22 @@ const runtimeScenarioOptions: RuntimeScenarioOptions = {
   minViewportSize: minViewport,
 };
 const initialRuntimeScenarioState = createRuntimeScenarioState(scenario, runtimeScenarioOptions);
-let state: SimulationState = initialRuntimeScenarioState.state;
-let coastPredictionHorizonHours = initialRuntimeScenarioState.coastPredictionHorizonHours;
-let viewportSize = initialRuntimeScenarioState.viewportSize;
+const runtime: AppRuntimeState = {
+  assistMode: "off",
+  assistTargetIndex: 1,
+  coastPredictionHorizonHours: initialRuntimeScenarioState.coastPredictionHorizonHours,
+  crashedBodyName: null,
+  debugModeEnabled: userSettings.debugModeEnabled,
+  debugNoGravityEnabled: false,
+  debugSnapshotStatus: "",
+  fpsIndicatorEnabled: false,
+  performanceDebugEnabled: false,
+  spacecraftLabelIntroUntil: performance.now() + 5_000,
+  state: initialRuntimeScenarioState.state,
+  targetHeading: null,
+  timeWarpIndex: 0,
+  viewportSize: initialRuntimeScenarioState.viewportSize,
+};
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -107,37 +108,36 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x05070d);
 app.appendChild(renderer.domElement);
 const rendererProfiler = createRendererProfiler(renderer);
-const gameScene = createGameScene(state.bodies, gameConfig.trajectory.rendering);
+const gameScene = createGameScene(runtime.state.bodies, gameConfig.trajectory.rendering);
 const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime();
 const ripples: Ripple[] = [];
-let targetHeading: number | null = null;
 
 const overlayUi = createOverlayUi({
   app,
-  bodies: state.bodies,
+  bodies: runtime.state.bodies,
   scenarioDescription: scenario.description,
   scenarioName: scenario.name,
   showCycleTargetHint: !appSettings.assistTarget.autoDiscoverStrongestInfluence,
 });
 
 const getAssistTarget = () =>
-  getAssistTargetForState(state, {
+  getAssistTargetForState(runtime.state, {
     autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
-    selectedIndex: assistTargetIndex,
+    selectedIndex: runtime.assistTargetIndex,
   });
 
-const getAutopilotTurn = (desiredHeading: number) => getAutopilotTurnForHeading(state.spacecraft.heading, desiredHeading, autopilotRotationRate);
+const getAutopilotTurn = (desiredHeading: number) => getAutopilotTurnForHeading(runtime.state.spacecraft.heading, desiredHeading, autopilotRotationRate);
 
-const getCaptureMetrics = (target: Body) => getCaptureMetricsForState(state, target);
+const getCaptureMetrics = (target: Body) => getCaptureMetricsForState(runtime.state, target);
 
 const shouldCaptureBurn = (target: Body) => shouldCaptureBurnForMetrics(getCaptureMetrics(target));
 
-const getCircularizePlan = (target: Body) => getCircularizePlanForState(state, target);
+const getCircularizePlan = (target: Body) => getCircularizePlanForState(runtime.state, target);
 
 const getAssistPredictionControls = (simulationState: SimulationState, targetId: string): ControlInput =>
-  getAssistPredictionControlsForState(simulationState, targetId, assistMode, autopilotRotationRate);
+  getAssistPredictionControlsForState(simulationState, targetId, runtime.assistMode, autopilotRotationRate);
 
-const getCoastPredictionHorizonSeconds = () => coastPredictionHorizonHours * 60 * 60;
+const getCoastPredictionHorizonSeconds = () => runtime.coastPredictionHorizonHours * 60 * 60;
 
 const getPredictionConfig = () => {
   return getTrajectoryPredictionConfig(
@@ -146,109 +146,61 @@ const getPredictionConfig = () => {
     gameConfig.trajectory.loopTrim.maxRevolutions,
   );
 };
-
-const resetScenario = () => {
-  const freshRuntimeScenarioState = createRuntimeScenarioState(createRequestedRuntimeScenario(requestedScenario), runtimeScenarioOptions);
-  state = freshRuntimeScenarioState.state;
-  viewportSize = freshRuntimeScenarioState.viewportSize;
-  coastPredictionHorizonHours = freshRuntimeScenarioState.coastPredictionHorizonHours;
-  gameScene.trailPoints.length = 0;
-  targetHeading = null;
-  assistMode = "off";
-  crashedBodyName = null;
-  spacecraftLabelIntroUntil = performance.now() + 5_000;
-};
-
-const saveDebugScenarioSnapshot = () => {
-  if (saveRuntimeDebugSnapshot(state, { viewportSize, coastPredictionHorizonHours })) {
-    debugSnapshotStatus = "snapshot saved; use [7] load or ?scenario=debug-snapshot";
-  } else {
-    debugSnapshotStatus = "snapshot save failed";
-  }
-};
-
-const loadDebugScenarioSnapshot = () => {
-  const loadedDebugScenario = loadDebugRuntimeScenario(runtimeScenarioOptions);
-  if (!loadedDebugScenario) {
-    debugSnapshotStatus = "no debug snapshot saved";
-    return;
-  }
-
-  state = loadedDebugScenario.runtimeState.state;
-  viewportSize = loadedDebugScenario.runtimeState.viewportSize;
-  coastPredictionHorizonHours = loadedDebugScenario.runtimeState.coastPredictionHorizonHours;
-  gameScene.trailPoints.length = 0;
-  targetHeading = null;
-  assistMode = "off";
-  crashedBodyName = null;
-  assistTargetIndex = Math.min(assistTargetIndex, Math.max(0, state.bodies.length - 1));
-  spacecraftLabelIntroUntil = performance.now() + 5_000;
-  debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`;
-};
-
-const setTargetHeading = (heading: number, clientX: number, clientY: number) => {
-  targetHeading = heading;
-  assistMode = "off";
-  createRipple(app, ripples, clientX, clientY);
-};
-
-const updateCamera = () =>
-  updateCameraView({
-    cameraDistance,
-    cameraElevation,
-    gameScene,
-    spacecraftPosition: state.spacecraft.position,
-    viewportHeight: window.innerHeight,
-    viewportSize,
-    viewportWidth: window.innerWidth,
-  });
-
-const zoomCamera = (factor: number) => {
-  viewportSize = THREE.MathUtils.clamp(viewportSize * factor, minViewport, maxViewport);
-  updateCamera();
-};
+const runtimeActions = createRuntimeActions({
+  app,
+  cameraDistance,
+  cameraElevation,
+  createRipple,
+  gameScene,
+  maxCoastPredictionHorizonHours,
+  maxViewport,
+  minCoastPredictionHorizonHours,
+  minViewport,
+  renderer,
+  requestedScenario,
+  ripples,
+  runtime,
+  runtimeScenarioOptions,
+  timeWarps,
+  updateUserSettings,
+});
 
 const pointerCameraInput = bindPointerCameraInput({
   camera: gameScene.camera,
-  getSpacecraftPosition: () => state.spacecraft.position,
-  onResize: () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    updateCamera();
-  },
+  getSpacecraftPosition: () => runtime.state.spacecraft.position,
+  onResize: runtimeActions.handleResize,
   onTargetHeadingSelected: (heading, screenPosition) => {
-    setTargetHeading(heading, screenPosition.x, screenPosition.y);
+    runtimeActions.setTargetHeading(heading, screenPosition.x, screenPosition.y);
   },
-  onZoom: (zoomFactor) => {
-    zoomCamera(zoomFactor);
-  },
+  onZoom: runtimeActions.zoomCamera,
   renderScale: RENDER_SCALE,
   rendererElement: renderer.domElement,
   windowTarget: window,
 });
 
 const updateHud = () => {
-  const earth = state.bodies.find((body) => body.id === "earth") as Body;
-  const relativeVelocity = sub(state.spacecraft.velocity, earth.velocity);
+  const earth = runtime.state.bodies.find((body) => body.id === "earth") as Body;
+  const relativeVelocity = sub(runtime.state.spacecraft.velocity, earth.velocity);
   const speed = length(relativeVelocity);
   const target = getAssistTarget();
   const targetMetrics = getCaptureMetrics(target);
-  const circularizePlan = assistMode === "circularize" ? getCircularizePlan(target) : null;
+  const circularizePlan = runtime.assistMode === "circularize" ? getCircularizePlan(target) : null;
   const predictionState = trajectoryPredictionRuntime.getState();
 
   updateOverlayHud({
-    assistMode,
-    bodyInfluences: getBodyInfluences(state),
+    assistMode: runtime.assistMode,
+    bodyInfluences: getBodyInfluences(runtime.state),
     circularizePlan,
     coastPredictionHorizonSeconds: getCoastPredictionHorizonSeconds(),
-    crashedBodyName,
-    debugModeEnabled,
-    debugNoGravityEnabled,
-    debugSnapshotStatus,
+    crashedBodyName: runtime.crashedBodyName,
+    debugModeEnabled: runtime.debugModeEnabled,
+    debugNoGravityEnabled: runtime.debugNoGravityEnabled,
+    debugSnapshotStatus: runtime.debugSnapshotStatus,
     defaultViewport,
-    fpsIndicatorEnabled,
-    fuelUsed: state.spacecraft.fuelUsed,
+    fpsIndicatorEnabled: runtime.fpsIndicatorEnabled,
+    fuelUsed: runtime.state.spacecraft.fuelUsed,
     overlayUi,
-    performanceDebugEnabled,
+    performanceDebugEnabled: runtime.performanceDebugEnabled,
     physicsEngineName: physicsEngine.name,
     predictedImpact: predictionState.predictedImpact,
     predictedTargetClosestApproach: predictionState.predictedTargetClosestApproach,
@@ -258,8 +210,8 @@ const updateHud = () => {
     speed,
     targetMetrics,
     targetName: target.name,
-    timeWarp: timeWarps[timeWarpIndex] ?? 1,
-    viewportSize,
+    timeWarp: timeWarps[runtime.timeWarpIndex] ?? 1,
+    viewportSize: runtime.viewportSize,
   });
 };
 
@@ -272,11 +224,11 @@ const animate = (time: number) => {
   const realDt = Math.min((time - lastTime) / 1000, 0.1);
   lastTime = time;
   smoothedFps = THREE.MathUtils.lerp(smoothedFps, 1 / Math.max(realDt, 1 / 240), 0.12);
-  const isThrusting = state.controls.main > 0 && state.spacecraft.fuel > 0;
+  const isThrusting = runtime.state.controls.main > 0 && runtime.state.spacecraft.fuel > 0;
 
   const simulationStep = stepSimulationFrame({
-    assistMode,
-    crashedBodyName,
+    assistMode: runtime.assistMode,
+    crashedBodyName: runtime.crashedBodyName,
     getAssistTarget,
     getAutopilotTurn,
     getCaptureMetrics,
@@ -286,52 +238,52 @@ const animate = (time: number) => {
     physicsEngine,
     realDt,
     shouldCaptureBurn,
-    state,
-    targetHeading,
-    timeWarpIndex,
+    state: runtime.state,
+    targetHeading: runtime.targetHeading,
+    timeWarpIndex: runtime.timeWarpIndex,
     timeWarps,
   });
-  assistMode = simulationStep.assistMode;
-  crashedBodyName = simulationStep.crashedBodyName;
-  state = simulationStep.state;
-  targetHeading = simulationStep.targetHeading;
-  timeWarpIndex = simulationStep.timeWarpIndex;
+  runtime.assistMode = simulationStep.assistMode;
+  runtime.crashedBodyName = simulationStep.crashedBodyName;
+  runtime.state = simulationStep.state;
+  runtime.targetHeading = simulationStep.targetHeading;
+  runtime.timeWarpIndex = simulationStep.timeWarpIndex;
 
   updateRipples(ripples, realDt);
-  updateCamera();
+  runtimeActions.updateCamera();
   const predictionConfig = getPredictionConfig();
   trajectoryPredictionRuntime.maybeRefresh(realDt, {
-    assistMode,
+    assistMode: runtime.assistMode,
     coastPredictionHorizonSeconds: getCoastPredictionHorizonSeconds(),
-    debugModeEnabled,
-    debugNoGravityEnabled,
+    debugModeEnabled: runtime.debugModeEnabled,
+    debugNoGravityEnabled: runtime.debugNoGravityEnabled,
     gameScene,
     getAssistPredictionControls,
     getAssistTarget,
     getCaptureMetrics,
     physicsEngine,
     predictionConfig,
-    state,
+    state: runtime.state,
   });
   const predictionState = trajectoryPredictionRuntime.getState();
-  if (assistMode !== "off") {
-    gameScene.assistedPredictionMaterial.color.set(assistMode === "capture" ? 0xf59e0b : 0xfacc15);
+  if (runtime.assistMode !== "off") {
+    gameScene.assistedPredictionMaterial.color.set(runtime.assistMode === "capture" ? 0xf59e0b : 0xfacc15);
   }
   updateWorldVisuals({
-    bodies: state.bodies,
+    bodies: runtime.state.bodies,
     defaultViewport,
     gameScene,
-    spacecraft: state.spacecraft,
+    spacecraft: runtime.state.spacecraft,
     spacecraftModelZoomThreshold,
-    viewportSize,
+    viewportSize: runtime.viewportSize,
   });
   updateSpacecraftTrail({
     gameScene,
     isThrusting,
-    spacecraft: state.spacecraft,
+    spacecraft: runtime.state.spacecraft,
   });
   updateTargetRelativePredictionVisuals({
-    debugModeEnabled,
+    debugModeEnabled: runtime.debugModeEnabled,
     gameScene,
     predictedImpact: predictionState.predictedImpact,
     target: getAssistTarget(),
@@ -339,14 +291,14 @@ const animate = (time: number) => {
     targetRelativePredictionEnd: predictionState.targetRelativePredictionEnd,
     targetRelativePredictionPoints: predictionState.targetRelativePredictionPoints,
     viewportHeight: window.innerHeight,
-    viewportSize,
+    viewportSize: runtime.viewportSize,
   });
   updateCircularizationVisuals({
-    circularizePlan: assistMode === "circularize" && !crashedBodyName ? getCircularizePlan(getAssistTarget()) : null,
+    circularizePlan: runtime.assistMode === "circularize" && !runtime.crashedBodyName ? getCircularizePlan(getAssistTarget()) : null,
     gameScene,
-    spacecraftPosition: state.spacecraft.position,
-    target: assistMode === "circularize" && !crashedBodyName ? getAssistTarget() : null,
-    viewportSize,
+    spacecraftPosition: runtime.state.spacecraft.position,
+    target: runtime.assistMode === "circularize" && !runtime.crashedBodyName ? getAssistTarget() : null,
+    viewportSize: runtime.viewportSize,
   });
   updateSpacecraftCallout({
     camera: gameScene.camera,
@@ -355,28 +307,28 @@ const animate = (time: number) => {
     overlayUi,
     pointerScreenPosition: pointerCameraInput.pointerScreenPosition,
     renderPosition,
-    spacecraft: state.spacecraft,
-    spacecraftLabelIntroUntil,
+    spacecraft: runtime.state.spacecraft,
+    spacecraftLabelIntroUntil: runtime.spacecraftLabelIntroUntil,
     spacecraftModelZoomThreshold,
-    viewportSize,
+    viewportSize: runtime.viewportSize,
   });
   updateOffscreenIndicators({
-    bodies: state.bodies,
+    bodies: runtime.state.bodies,
     camera: gameScene.camera,
     overlayUi,
     renderPosition,
-    spacecraftPosition: state.spacecraft.position,
+    spacecraftPosition: runtime.state.spacecraft.position,
   });
   updateBodyLabels({
-    bodies: state.bodies,
+    bodies: runtime.state.bodies,
     camera: gameScene.camera,
     overlayUi,
     renderPosition,
-    viewportSize,
+    viewportSize: runtime.viewportSize,
   });
   updateHud();
-  updateFpsIndicator(overlayUi, debugModeEnabled && fpsIndicatorEnabled, smoothedFps);
-  rendererProfiler.render(gameScene.scene, gameScene.camera, performanceDebugEnabled);
+  updateFpsIndicator(overlayUi, runtime.debugModeEnabled && runtime.fpsIndicatorEnabled, smoothedFps);
+  rendererProfiler.render(gameScene.scene, gameScene.camera, runtime.performanceDebugEnabled);
 
   smoothedCpuMs = THREE.MathUtils.lerp(smoothedCpuMs, performance.now() - frameStart, 0.15);
   requestAnimationFrame(animate);
@@ -384,115 +336,45 @@ const animate = (time: number) => {
 
 const refreshTrajectoryPrediction = () => {
   trajectoryPredictionRuntime.refresh({
-    assistMode,
+    assistMode: runtime.assistMode,
     coastPredictionHorizonSeconds: getCoastPredictionHorizonSeconds(),
-    debugModeEnabled,
-    debugNoGravityEnabled,
+    debugModeEnabled: runtime.debugModeEnabled,
+    debugNoGravityEnabled: runtime.debugNoGravityEnabled,
     gameScene,
     getAssistPredictionControls,
     getAssistTarget,
     getCaptureMetrics,
     physicsEngine,
     predictionConfig: getPredictionConfig(),
-    state,
+    state: runtime.state,
   });
 };
-
-const handleKeyboardShortcutAction = (action: KeyboardShortcutAction) => {
-  if (action === "increaseTimeWarp") {
-    timeWarpIndex = Math.min(timeWarpIndex + 1, timeWarps.length - 1);
-    return;
-  }
-  if (action === "decreaseTimeWarp") {
-    timeWarpIndex = Math.max(timeWarpIndex - 1, 0);
-    return;
-  }
-  if (action === "resetScenario") {
-    resetScenario();
-    return;
-  }
-  if (action === "cycleAssistTarget") {
-    assistTargetIndex = (assistTargetIndex + 1) % state.bodies.length;
-    return;
-  }
-  if (action === "cycleAssistMode") {
-    assistMode = assistMode === "off" ? "capture" : assistMode === "capture" ? "circularize" : "off";
-    targetHeading = null;
-    return;
-  }
-  if (action === "toggleDebugMode") {
-    debugModeEnabled = !debugModeEnabled;
-    updateUserSettings({ debugModeEnabled });
-    return;
-  }
-  if (action === "toggleNoGravityDebug") {
-    debugNoGravityEnabled = !debugNoGravityEnabled;
-    return;
-  }
-  if (action === "toggleFpsIndicator") {
-    fpsIndicatorEnabled = !fpsIndicatorEnabled;
-    return;
-  }
-  if (action === "togglePerformanceDebug") {
-    performanceDebugEnabled = !performanceDebugEnabled;
-    return;
-  }
-  if (action === "decreaseCoastHorizon") {
-    coastPredictionHorizonHours = Math.max(minCoastPredictionHorizonHours, coastPredictionHorizonHours / 2);
-    refreshTrajectoryPrediction();
-    return;
-  }
-  if (action === "increaseCoastHorizon") {
-    coastPredictionHorizonHours = Math.min(maxCoastPredictionHorizonHours, coastPredictionHorizonHours * 2);
-    refreshTrajectoryPrediction();
-    return;
-  }
-  if (action === "saveDebugSnapshot") {
-    saveDebugScenarioSnapshot();
-    return;
-  }
-  if (action === "loadDebugSnapshot") {
-    loadDebugScenarioSnapshot();
-    return;
-  }
-  if (action === "zoomIn") {
-    zoomCamera(0.82);
-    return;
-  }
-  if (action === "zoomOut") {
-    zoomCamera(1.22);
-  }
-};
-
-window.addEventListener("keydown", (event) => {
-  keyboardInput.press(event.code);
-
-  const shortcutAction = getKeyboardShortcutAction(event, {
-    autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
-    debugModeEnabled,
-  });
-  if (shortcutAction) {
-    handleKeyboardShortcutAction(shortcutAction);
-  }
+bindKeyboardShortcuts({
+  autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
+  getDebugModeEnabled: () => runtime.debugModeEnabled,
+  handleAction: (action) => {
+    const result = runtimeActions.handleKeyboardShortcutAction(action);
+    if (result.refreshTrajectoryPrediction) {
+      refreshTrajectoryPrediction();
+    }
+  },
+  keyboardInput,
+  windowTarget: window,
 });
 
-window.addEventListener("keyup", (event) => {
-  keyboardInput.release(event.code);
-});
-
-updateCamera();
+runtimeActions.updateCamera();
 updateWorldVisuals({
-  bodies: state.bodies,
+  bodies: runtime.state.bodies,
   defaultViewport,
   gameScene,
-  spacecraft: state.spacecraft,
+  spacecraft: runtime.state.spacecraft,
   spacecraftModelZoomThreshold,
-  viewportSize,
+  viewportSize: runtime.viewportSize,
 });
 updateSpacecraftTrail({
   gameScene,
-  isThrusting: state.controls.main > 0 && state.spacecraft.fuel > 0,
-  spacecraft: state.spacecraft,
+  isThrusting: runtime.state.controls.main > 0 && runtime.state.spacecraft.fuel > 0,
+  spacecraft: runtime.state.spacecraft,
 });
 updateHud();
 requestAnimationFrame(animate);
