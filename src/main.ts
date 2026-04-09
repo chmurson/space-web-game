@@ -29,6 +29,8 @@ import {
   type PredictedClosestApproach,
   type PredictedImpact,
 } from "./prediction/trajectoryPrediction";
+import { createKeyboardInput } from "./input/keyboardInput";
+import { getKeyboardShortcutAction, type KeyboardShortcutAction } from "./input/keyboardShortcuts";
 import { updateColoredLine2Geometry, updateLine2Geometry } from "./rendering/line2Geometry";
 import { getBodyInfluences } from "./simulation/bodyInfluence";
 import { RENDER_SCALE } from "./simulation/constants";
@@ -76,7 +78,7 @@ let state: SimulationState = {
   controls: idleControls(),
 };
 
-const keys = new Set<string>();
+const keyboardInput = createKeyboardInput();
 const timeWarps = gameConfig.controls.timeWarps;
 let timeWarpIndex = 0;
 const autopilotRotationRate = gameConfig.controls.autopilotRotationRate;
@@ -486,8 +488,9 @@ const updateControls = (): ControlInput => {
     return idleControls();
   }
 
-  let main = keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0;
-  const manualTurn = (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) + (keys.has("KeyD") || keys.has("ArrowRight") ? -1 : 0);
+  const manualControls = keyboardInput.getManualControls();
+  let main = manualControls.main;
+  const manualTurn = manualControls.turn;
   let turn = manualTurn;
 
   if (manualTurn !== 0) {
@@ -521,15 +524,15 @@ const updateControls = (): ControlInput => {
 
   return {
     main,
-    reverse: keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0,
-    strafe: (keys.has("KeyQ") ? -1 : 0) + (keys.has("KeyE") ? 1 : 0),
+    reverse: manualControls.reverse,
+    strafe: manualControls.strafe,
     turn,
   };
 };
 
 const capWarpForActiveControls = (controls: ControlInput) => {
   const maxControlWarp = 100;
-  const usingManualTurn = keys.has("KeyA") || keys.has("KeyD") || keys.has("ArrowLeft") || keys.has("ArrowRight");
+  const usingManualTurn = keyboardInput.hasManualTurn();
   const usingControls = controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0 || usingManualTurn;
   const maxControlWarpIndex = timeWarps.indexOf(maxControlWarp);
 
@@ -1125,66 +1128,92 @@ const animate = (time: number) => {
   requestAnimationFrame(animate);
 };
 
-window.addEventListener("keydown", (event) => {
-  keys.add(event.code);
+const refreshTrajectoryPrediction = () => {
+  updateTrajectoryPrediction();
+  updateInertialPrediction();
+  predictionRefreshElapsed = 0;
+};
 
-  if (event.code === "BracketRight") {
+const handleKeyboardShortcutAction = (action: KeyboardShortcutAction) => {
+  if (action === "increaseTimeWarp") {
     timeWarpIndex = Math.min(timeWarpIndex + 1, timeWarps.length - 1);
+    return;
   }
-  if (event.code === "BracketLeft") {
+  if (action === "decreaseTimeWarp") {
     timeWarpIndex = Math.max(timeWarpIndex - 1, 0);
+    return;
   }
-  if (event.code === "KeyR") {
+  if (action === "resetScenario") {
     resetScenario();
+    return;
   }
-  if (!event.repeat && !appSettings.assistTarget.autoDiscoverStrongestInfluence && event.code === "KeyT") {
+  if (action === "cycleAssistTarget") {
     assistTargetIndex = (assistTargetIndex + 1) % state.bodies.length;
+    return;
   }
-  if (!event.repeat && event.code === "KeyC") {
+  if (action === "cycleAssistMode") {
     assistMode = assistMode === "off" ? "capture" : assistMode === "capture" ? "circularize" : "off";
     targetHeading = null;
+    return;
   }
-  if (!event.repeat && event.ctrlKey && event.code === "KeyX") {
+  if (action === "toggleDebugMode") {
     debugModeEnabled = !debugModeEnabled;
     updateUserSettings({ debugModeEnabled });
+    return;
   }
-  if (!event.repeat && debugModeEnabled && event.code === "Digit1") {
+  if (action === "toggleNoGravityDebug") {
     debugNoGravityEnabled = !debugNoGravityEnabled;
+    return;
   }
-  if (!event.repeat && debugModeEnabled && event.code === "Digit2") {
+  if (action === "toggleFpsIndicator") {
     fpsIndicatorEnabled = !fpsIndicatorEnabled;
+    return;
   }
-  if (!event.repeat && debugModeEnabled && event.code === "Digit3") {
+  if (action === "togglePerformanceDebug") {
     performanceDebugEnabled = !performanceDebugEnabled;
+    return;
   }
-  if (!event.repeat && debugModeEnabled && event.code === "Digit4") {
+  if (action === "decreaseCoastHorizon") {
     coastPredictionHorizonHours = Math.max(minCoastPredictionHorizonHours, coastPredictionHorizonHours / 2);
-    updateTrajectoryPrediction();
-    updateInertialPrediction();
-    predictionRefreshElapsed = 0;
+    refreshTrajectoryPrediction();
+    return;
   }
-  if (!event.repeat && debugModeEnabled && event.code === "Digit5") {
+  if (action === "increaseCoastHorizon") {
     coastPredictionHorizonHours = Math.min(maxCoastPredictionHorizonHours, coastPredictionHorizonHours * 2);
-    updateTrajectoryPrediction();
-    updateInertialPrediction();
-    predictionRefreshElapsed = 0;
+    refreshTrajectoryPrediction();
+    return;
   }
-  if (!event.repeat && debugModeEnabled && event.code === "Digit6") {
+  if (action === "saveDebugSnapshot") {
     saveDebugScenarioSnapshot();
+    return;
   }
-  if (!event.repeat && debugModeEnabled && event.code === "Digit7") {
+  if (action === "loadDebugSnapshot") {
     loadDebugScenarioSnapshot();
+    return;
   }
-  if (event.code === "Equal" || event.code === "NumpadAdd") {
+  if (action === "zoomIn") {
     zoomCamera(0.82);
+    return;
   }
-  if (event.code === "Minus" || event.code === "NumpadSubtract") {
+  if (action === "zoomOut") {
     zoomCamera(1.22);
+  }
+};
+
+window.addEventListener("keydown", (event) => {
+  keyboardInput.press(event.code);
+
+  const shortcutAction = getKeyboardShortcutAction(event, {
+    autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
+    debugModeEnabled,
+  });
+  if (shortcutAction) {
+    handleKeyboardShortcutAction(shortcutAction);
   }
 });
 
 window.addEventListener("keyup", (event) => {
-  keys.delete(event.code);
+  keyboardInput.release(event.code);
 });
 
 window.addEventListener("resize", () => {
