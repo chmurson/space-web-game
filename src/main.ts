@@ -165,6 +165,9 @@ let targetRelativePredictionEnd: { x: number; y: number } | null = null;
 let predictionGeometry = new LineGeometry();
 const predictionDashPixels = 12;
 const predictionGapPixels = 8;
+// Replacing geometry avoids stale Line2 instanced buffers after trajectory length changes.
+// Whether reusing geometry is materially faster is still an open profiling question.
+const replacePredictionLineGeometryOnUpdate = true;
 const predictionMaterial = new LineMaterial({
   color: 0x67e8f9,
   linewidth: 1.5,
@@ -433,10 +436,14 @@ const applyTargetRelativePredictionLine = (
     positions.push(renderedPoint.x, renderedPoint.y, renderedPoint.z);
   }
 
-  const nextGeometry = new LineGeometry();
+  const nextGeometry = replacePredictionLineGeometryOnUpdate ? new LineGeometry() : geometry;
   nextGeometry.setPositions(positions);
-  geometry.dispose();
-  line.geometry = nextGeometry;
+
+  if (replacePredictionLineGeometryOnUpdate) {
+    geometry.dispose();
+    line.geometry = nextGeometry;
+  }
+
   line.computeLineDistances();
   syncDashedLineEndpoint(line.material, getLineGeometryDistance(nextGeometry));
   line.visible = positions.length >= 6;
@@ -515,12 +522,16 @@ const updateTargetRelativePredictionVisuals = () => {
     previousGradientPoint = renderedPoint;
   }
 
-  const nextImpactGradientGeometry = new LineGeometry();
+  const nextImpactGradientGeometry = replacePredictionLineGeometryOnUpdate ? new LineGeometry() : impactGradientGeometry;
   nextImpactGradientGeometry.setPositions(gradientPositions);
   nextImpactGradientGeometry.setColors(gradientColors);
-  impactGradientGeometry.dispose();
-  impactGradientGeometry = nextImpactGradientGeometry;
-  impactGradientLine.geometry = impactGradientGeometry;
+
+  if (replacePredictionLineGeometryOnUpdate) {
+    impactGradientGeometry.dispose();
+    impactGradientGeometry = nextImpactGradientGeometry;
+    impactGradientLine.geometry = impactGradientGeometry;
+  }
+
   impactGradientLine.computeLineDistances();
   syncDashedLineEndpoint(impactGradientMaterial, gradientDistance);
   impactGradientLine.visible = true;
