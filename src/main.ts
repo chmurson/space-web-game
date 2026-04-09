@@ -19,6 +19,7 @@ import {
   type PredictedClosestApproach,
   type PredictedImpact,
 } from "./prediction/trajectoryPrediction";
+import { updateColoredLine2Geometry, updateLine2Geometry } from "./rendering/line2Geometry";
 import { G, RENDER_SCALE } from "./simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "./simulation/physics";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "./simulation/scenarios/earthMoon";
@@ -434,41 +435,9 @@ const applyTargetRelativePredictionLine = (
     positions.push(renderedPoint.x, renderedPoint.y, renderedPoint.z);
   }
 
-  const nextGeometry = replacePredictionLineGeometryOnUpdate ? new LineGeometry() : geometry;
-  nextGeometry.setPositions(positions);
-
-  if (replacePredictionLineGeometryOnUpdate) {
-    geometry.dispose();
-    line.geometry = nextGeometry;
-  }
-
-  line.computeLineDistances();
-  syncDashedLineEndpoint(line.material, getLineGeometryDistance(nextGeometry));
-  line.visible = positions.length >= 6;
-  return nextGeometry;
-};
-
-const getLineGeometryDistance = (geometry: LineGeometry) => {
-  const distanceAttribute = geometry.getAttribute("instanceDistanceEnd");
-  if (!distanceAttribute || distanceAttribute.count === 0) {
-    return 0;
-  }
-
-  return distanceAttribute.getX(distanceAttribute.count - 1);
-};
-
-const syncDashedLineEndpoint = (material: LineMaterial, lineDistance: number) => {
-  if (!("USE_DASH" in material.defines) || lineDistance <= 0) {
-    return;
-  }
-
-  const dashPeriod = material.dashSize + material.gapSize;
-  if (dashPeriod <= 0) {
-    return;
-  }
-
-  const endpointPhase = material.dashSize * 0.5;
-  material.dashOffset = THREE.MathUtils.euclideanModulo(endpointPhase - lineDistance, dashPeriod);
+  return updateLine2Geometry(line, geometry, positions, {
+    replaceGeometryOnUpdate: replacePredictionLineGeometryOnUpdate,
+  });
 };
 
 const updateTargetRelativePredictionVisuals = () => {
@@ -502,8 +471,6 @@ const updateTargetRelativePredictionVisuals = () => {
   const gradientColors: number[] = [];
   const startColor = new THREE.Color("#67e8f9");
   const endColor = new THREE.Color("#ef4444");
-  let previousGradientPoint: THREE.Vector3 | null = null;
-  let gradientDistance = 0;
 
   for (let index = 0; index < gradientPoints.length; index += 1) {
     const point = gradientPoints[index];
@@ -513,26 +480,11 @@ const updateTargetRelativePredictionVisuals = () => {
 
     gradientPositions.push(renderedPoint.x, renderedPoint.y, renderedPoint.z);
     gradientColors.push(color.r, color.g, color.b);
-
-    if (previousGradientPoint) {
-      gradientDistance += renderedPoint.distanceTo(previousGradientPoint);
-    }
-    previousGradientPoint = renderedPoint;
   }
 
-  const nextImpactGradientGeometry = replacePredictionLineGeometryOnUpdate ? new LineGeometry() : impactGradientGeometry;
-  nextImpactGradientGeometry.setPositions(gradientPositions);
-  nextImpactGradientGeometry.setColors(gradientColors);
-
-  if (replacePredictionLineGeometryOnUpdate) {
-    impactGradientGeometry.dispose();
-    impactGradientGeometry = nextImpactGradientGeometry;
-    impactGradientLine.geometry = impactGradientGeometry;
-  }
-
-  impactGradientLine.computeLineDistances();
-  syncDashedLineEndpoint(impactGradientMaterial, gradientDistance);
-  impactGradientLine.visible = true;
+  impactGradientGeometry = updateColoredLine2Geometry(impactGradientLine, impactGradientGeometry, gradientPositions, gradientColors, {
+    replaceGeometryOnUpdate: replacePredictionLineGeometryOnUpdate,
+  });
 };
 
 const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
