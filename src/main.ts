@@ -4,6 +4,7 @@ import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { appSettings } from "./appSettings";
+import { gameConfig } from "./config/gameConfig";
 import {
   createScenarioFromSnapshot,
   createSnapshotFromState,
@@ -54,9 +55,9 @@ let state: SimulationState = {
 };
 
 const keys = new Set<string>();
-const timeWarps = [1, 10, 50, 100, 500, 2_000, 8_000];
+const timeWarps = gameConfig.controls.timeWarps;
 let timeWarpIndex = 0;
-const autopilotRotationRate = 0.9;
+const autopilotRotationRate = gameConfig.controls.autopilotRotationRate;
 let assistTargetIndex = 1;
 type AssistMode = "off" | "capture" | "circularize";
 let assistMode: AssistMode = "off";
@@ -65,9 +66,9 @@ let debugNoGravityEnabled = false;
 let fpsIndicatorEnabled = false;
 let performanceDebugEnabled = false;
 let debugSnapshotStatus = "";
-const defaultCoastPredictionHorizonHours = 1;
-const minCoastPredictionHorizonHours = 0.5;
-const maxCoastPredictionHorizonHours = 32 * 24;
+const defaultCoastPredictionHorizonHours = gameConfig.trajectory.horizon.defaultHours;
+const minCoastPredictionHorizonHours = gameConfig.trajectory.horizon.minHours;
+const maxCoastPredictionHorizonHours = gameConfig.trajectory.horizon.maxHours;
 let coastPredictionHorizonHours = THREE.MathUtils.clamp(
   scenario.coastPredictionHorizonHours ?? defaultCoastPredictionHorizonHours,
   minCoastPredictionHorizonHours,
@@ -94,12 +95,12 @@ scene.fog = new THREE.FogExp2(0x05070d, 0.0018);
 
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000);
 const cameraTarget = new THREE.Vector3(0, 0, 0);
-const cameraDistance = 700;
-const cameraElevation = THREE.MathUtils.degToRad(66);
-const defaultViewport = 520;
-const spacecraftModelZoomThreshold = 15;
-const minViewport = defaultViewport / 30;
-const maxViewport = 2_500;
+const cameraDistance = gameConfig.camera.distance;
+const cameraElevation = THREE.MathUtils.degToRad(gameConfig.camera.elevationDegrees);
+const defaultViewport = gameConfig.camera.viewport.default;
+const spacecraftModelZoomThreshold = gameConfig.camera.spacecraftModelZoomThreshold;
+const minViewport = defaultViewport / gameConfig.camera.viewport.minDivisor;
+const maxViewport = gameConfig.camera.viewport.max;
 let viewportSize = THREE.MathUtils.clamp(scenario.viewportSize ?? defaultViewport, minViewport, maxViewport);
 
 const ambientLight = new THREE.AmbientLight(0x7f8fa6, 1.5);
@@ -163,11 +164,11 @@ let targetRelativePredictionPoints: { x: number; y: number }[] = [];
 let targetRelativeAssistedPoints: { x: number; y: number }[] = [];
 let targetRelativePredictionEnd: { x: number; y: number } | null = null;
 let predictionGeometry = new LineGeometry();
-const predictionDashPixels = 12;
-const predictionGapPixels = 8;
+const predictionDashPixels = gameConfig.trajectory.rendering.dashPixels;
+const predictionGapPixels = gameConfig.trajectory.rendering.gapPixels;
 // Replacing geometry avoids stale Line2 instanced buffers after trajectory length changes.
 // Whether reusing geometry is materially faster is still an open profiling question.
-const replacePredictionLineGeometryOnUpdate = true;
+const replacePredictionLineGeometryOnUpdate = gameConfig.trajectory.rendering.replaceLineGeometryOnUpdate;
 const predictionMaterial = new LineMaterial({
   color: 0x67e8f9,
   linewidth: 1.5,
@@ -244,8 +245,8 @@ const desiredVelocityLine = new Line2(desiredVelocityGeometry, desiredVelocityMa
 desiredVelocityLine.visible = false;
 scene.add(desiredVelocityLine);
 
-const predictionEndMarkerRadius = 0.17;
-const predictionEndMarkerMinScreenRadius = 5.5;
+const predictionEndMarkerRadius = gameConfig.trajectory.rendering.endMarkerRadius;
+const predictionEndMarkerMinScreenRadius = gameConfig.trajectory.rendering.endMarkerMinScreenRadius;
 const predictionEndMarker = new THREE.Group();
 const predictionEndMarkerBacking = new THREE.Mesh(
   new THREE.CircleGeometry(1, 24),
@@ -745,8 +746,8 @@ const formatBodyInfluences = (simulationState: SimulationState) =>
     .join(" | ");
 
 const getCoastPredictionHorizonSeconds = () => coastPredictionHorizonHours * 60 * 60;
-const predictionStepOptionsSeconds = [30, 45, 60, 90, 120, 180, 300, 450, 600, 900, 1200, 1800];
-const targetMaxTrajectoryPredictionSteps = 1200;
+const predictionStepOptionsSeconds = gameConfig.trajectory.sampling.stepOptionsSeconds;
+const targetMaxTrajectoryPredictionSteps = gameConfig.trajectory.sampling.targetMaxSteps;
 
 const getPredictionStepSeconds = (horizonSeconds: number) => {
   const targetStepSeconds = horizonSeconds / targetMaxTrajectoryPredictionSteps;
@@ -755,12 +756,12 @@ const getPredictionStepSeconds = (horizonSeconds: number) => {
 
 const getPredictionConfig = () => {
   return {
-    refreshInterval: 0.2,
+    refreshInterval: gameConfig.trajectory.sampling.refreshInterval,
     stepSeconds: getPredictionStepSeconds(getCoastPredictionHorizonSeconds()),
   };
 };
 
-const maxLoopedPredictionRevolutions = 2.5;
+const maxLoopedPredictionRevolutions = gameConfig.trajectory.loopTrim.maxRevolutions;
 const maxLoopedPredictionAngularTravel = maxLoopedPredictionRevolutions * Math.PI * 2;
 
 const updateControls = (): ControlInput => {
