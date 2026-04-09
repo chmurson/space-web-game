@@ -1,9 +1,11 @@
 # Auto target switching by surface distance
 
 ## Context
+
 Current/future auto target switching should not be based on strongest gravity influence. Early tests suggest distance-based target switching may feel better.
 
 ## Proposal
+
 Switch the selected target based on distance to the nearest surface, not distance to the center of the body.
 
 Use:
@@ -25,6 +27,7 @@ X = 20..50
 ```
 
 ## Hysteresis / anti-flicker rule
+
 If two bodies are both relatively close, do not auto-switch too eagerly.
 
 Example:
@@ -39,6 +42,7 @@ In this kind of situation, allow the player to switch manually between them and 
 The difference must be much larger before auto-switching happens.
 
 ## Possible rule
+
 Only auto-switch if the new target is clearly dominant, for example:
 
 ```text
@@ -53,11 +57,15 @@ normalizedDistance = surfaceDistance / bodyRadius
 
 This means the new body must be at least 2x closer in radius-scaled terms before auto-switching.
 
+This sounds good, but let's have some space for testing to proove that theory. Testing will be done manually so human can tell a difference.
+
 ## Open questions
+
 - What should the first `X` value be: 20, 30, 50?
 - Should auto-switching happen only when assist is off?
 - Should manual target selection lock the target for some time?
 - Should the HUD show when auto-targeting is paused due to ambiguity?
 
 ## Status
-Rough / promising
+
+Promising
