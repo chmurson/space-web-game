@@ -14,6 +14,10 @@ Add another line that leads stright to the tragets surface. The line is less imp
 
 What stylign technique we should use. Trajectory is already dashed with cyan main color. My first thought would be to use dotted line wiht less vibrant version of the main color (probably same color but some extra transparency)
 
+## Relations
+
+Touches the way trajectory line is renderd: ideas/expermient-with-other-ways-of-preseting-trajectory-line.md
+
 ## Status
 
 Promising
