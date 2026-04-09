@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { RENDER_SCALE } from "../simulation/constants";
-import type { Body, Spacecraft } from "../simulation/types";
+import type { Body } from "../simulation/types";
 import type { Vec2 } from "../simulation/vector";
 import type { GameSceneRefs } from "../scene/createGameScene";
 
@@ -46,49 +46,14 @@ export const updateCameraView = (options: {
   options.gameScene.assistedPredictionMaterial.gapSize = renderUnitsPerPixel * options.gameScene.predictionGapPixels;
 };
 
-export const updateWorldVisuals = (options: {
+export const updateBodyVisuals = (options: {
   bodies: Body[];
-  defaultViewport: number;
   gameScene: GameSceneRefs;
-  spacecraft: Spacecraft;
-  spacecraftModelZoomThreshold: number;
-  viewportSize: number;
 }) => {
-  const useSymbolicShip = options.viewportSize > options.defaultViewport / options.spacecraftModelZoomThreshold;
-
   for (const body of options.bodies) {
     const mesh = options.gameScene.bodyMeshes.get(body.id);
     if (mesh) {
       mesh.position.copy(renderPosition(body.position.x, body.position.y));
     }
-  }
-
-  options.gameScene.spacecraftMesh.position.copy(renderPosition(options.spacecraft.position.x, options.spacecraft.position.y, 1.2));
-  options.gameScene.spacecraftMesh.rotation.y = -options.spacecraft.heading + Math.PI / 2;
-  options.gameScene.spacecraftMesh.visible = !useSymbolicShip;
-  options.gameScene.spacecraftMarker.position.copy(renderPosition(options.spacecraft.position.x, options.spacecraft.position.y, 1.1));
-  options.gameScene.spacecraftMarker.scale.setScalar(Math.max(1, options.viewportSize / 520));
-  options.gameScene.spacecraftMarker.visible = !useSymbolicShip;
-};
-
-const trailPointDistanceThreshold = 4;
-const maxTrailPoints = 450;
-
-export const updateSpacecraftTrail = (options: {
-  gameScene: GameSceneRefs;
-  isThrusting: boolean;
-  spacecraft: Spacecraft;
-}) => {
-  options.gameScene.engineGlow.material.opacity = options.isThrusting ? 0.8 : 0;
-
-  const trailPosition = renderPosition(options.spacecraft.position.x, options.spacecraft.position.y, 0.35);
-  const lastPoint = options.gameScene.trailPoints.at(-1);
-  if (!lastPoint || lastPoint.distanceToSquared(trailPosition) > trailPointDistanceThreshold) {
-    options.gameScene.trailPoints.push(trailPosition);
-    if (options.gameScene.trailPoints.length > maxTrailPoints) {
-      options.gameScene.trailPoints.shift();
-    }
-    options.gameScene.trail.geometry.dispose();
-    options.gameScene.trail.geometry = new THREE.BufferGeometry().setFromPoints(options.gameScene.trailPoints);
   }
 };

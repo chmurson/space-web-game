@@ -4,9 +4,8 @@ import type { AssistMode, CaptureMetrics, CircularizePlan } from "../assist/orbi
 import { RENDER_SCALE } from "../simulation/constants";
 import type { PredictedClosestApproach, PredictedImpact } from "../prediction/trajectoryPrediction";
 import type { BodyInfluence } from "../simulation/bodyInfluence";
-import type { Body, Spacecraft } from "../simulation/types";
+import type { Body } from "../simulation/types";
 import type { Vec2 } from "../simulation/vector";
-import type { PointerScreenPosition } from "../input/pointerCameraInput";
 import { formatDistance } from "./formatters";
 import type { OverlayUiRefs } from "./createOverlayUi";
 import { getDebugPanelLines, getGuidanceText } from "./hudText";
@@ -48,71 +47,6 @@ export const updateRipples = (ripples: Ripple[], dt: number) => {
       ripple.element.remove();
       ripples.splice(index, 1);
     }
-  }
-};
-
-export const updateSpacecraftCallout = (options: {
-  camera: THREE.Camera;
-  defaultViewport: number;
-  overlayUi: OverlayUiRefs;
-  pointerScreenPosition: PointerScreenPosition;
-  renderPosition: RenderPositionFn;
-  isThrusting: boolean;
-  spacecraft: Spacecraft;
-  spacecraftLabelIntroUntil: number;
-  spacecraftModelZoomThreshold: number;
-  viewportSize: number;
-}) => {
-  const position = options.renderPosition(options.spacecraft.position.x, options.spacecraft.position.y, 1.2);
-  position.project(options.camera);
-
-  const screenX = (position.x * 0.5 + 0.5) * window.innerWidth;
-  const screenY = (-position.y * 0.5 + 0.5) * window.innerHeight;
-  const isVisible = position.z > -1 && position.z < 1;
-  const useSymbolicShip = options.viewportSize > options.defaultViewport / options.spacecraftModelZoomThreshold;
-  const showLabel =
-    performance.now() < options.spacecraftLabelIntroUntil ||
-    Math.hypot(options.pointerScreenPosition.x - screenX, options.pointerScreenPosition.y - screenY) < 28;
-
-  options.overlayUi.spacecraftCallout.style.setProperty("--dot-opacity", useSymbolicShip ? "1" : "0");
-
-  if (!isVisible) {
-    options.overlayUi.spacecraftCallout.style.display = "none";
-    options.overlayUi.spacecraftIconThrust.style.display = "none";
-    return;
-  }
-
-  options.overlayUi.spacecraftCallout.style.display = useSymbolicShip || showLabel ? "flex" : "none";
-  options.overlayUi.spacecraftCallout.style.left = `${screenX}px`;
-  options.overlayUi.spacecraftCallout.style.top = `${screenY}px`;
-  if (options.overlayUi.spacecraftCalloutLabel) {
-    options.overlayUi.spacecraftCalloutLabel.style.display = showLabel ? "inline-block" : "none";
-  }
-
-  const forward = {
-    x: Math.cos(options.spacecraft.heading),
-    y: Math.sin(options.spacecraft.heading),
-  };
-  const forwardPosition = options.renderPosition(
-    options.spacecraft.position.x + forward.x * 1_000_000,
-    options.spacecraft.position.y + forward.y * 1_000_000,
-    1.2,
-  );
-  forwardPosition.project(options.camera);
-  const forwardX = (forwardPosition.x * 0.5 + 0.5) * window.innerWidth;
-  const forwardY = (-forwardPosition.y * 0.5 + 0.5) * window.innerHeight;
-  const headingAngle = Math.atan2(forwardY - screenY, forwardX - screenX);
-
-  options.overlayUi.spacecraftCallout.style.setProperty("--ship-heading", `${headingAngle}rad`);
-
-  const iconThrustVisible =
-    options.viewportSize > options.defaultViewport / options.spacecraftModelZoomThreshold && options.isThrusting;
-  options.overlayUi.spacecraftIconThrust.style.display = iconThrustVisible ? "block" : "none";
-  if (iconThrustVisible) {
-    const backOffset = 8;
-    options.overlayUi.spacecraftIconThrust.style.left = `${screenX - Math.cos(headingAngle) * backOffset}px`;
-    options.overlayUi.spacecraftIconThrust.style.top = `${screenY - Math.sin(headingAngle) * backOffset}px`;
-    options.overlayUi.spacecraftIconThrust.style.transform = `translate(-50%, -50%) rotate(${headingAngle}rad)`;
   }
 };
 

@@ -13,6 +13,7 @@ import { gameConfig } from "../config/gameConfig";
 import { bindKeyboardShortcuts } from "../input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "../input/keyboardInput";
 import { bindPointerCameraInput } from "../input/pointerCameraInput";
+import { createSpacecraftPresentation } from "../presentation/spacecraftPresentation";
 import { createTrajectoryPresentation } from "../presentation/trajectoryPresentation";
 import { getTrajectoryPredictionConfig } from "../prediction/trajectoryPrediction";
 import { createRendererProfiler } from "../render/rendererProfiler";
@@ -168,11 +169,17 @@ export const createGameApp = (app: HTMLDivElement) => {
     overlayUi,
     physicsEngine,
     physicsEngineName: physicsEngine.name,
-    pointerCameraInput,
     rendererProfiler,
     ripples,
     runtime,
     runtimeActions,
+    spacecraftPresentation: createSpacecraftPresentation({
+      defaultViewport,
+      gameScene,
+      overlayUi,
+      pointerCameraInput,
+      spacecraftModelZoomThreshold,
+    }),
     shouldCaptureBurn,
     spacecraftModelZoomThreshold,
     timeWarps,

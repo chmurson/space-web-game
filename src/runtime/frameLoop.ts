@@ -2,17 +2,17 @@ import * as THREE from "three";
 
 import type { CaptureMetrics, CircularizePlan } from "../assist/orbitalAssist";
 import type { KeyboardInput } from "../input/keyboardInput";
-import type { PointerCameraInput } from "../input/pointerCameraInput";
 import type { TrajectoryPredictionConfig } from "../prediction/trajectoryPrediction";
+import type { SpacecraftPresentation } from "../presentation/spacecraftPresentation";
 import type { TrajectoryPresentation } from "../presentation/trajectoryPresentation";
-import { renderPosition, updateSpacecraftTrail, updateWorldVisuals } from "../render/sceneUpdates";
+import { renderPosition, updateBodyVisuals } from "../render/sceneUpdates";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import { getBodyInfluences } from "../simulation/bodyInfluence";
 import type { Body, ControlInput, PhysicsEngine, SimulationState } from "../simulation/types";
 import { length, sub } from "../simulation/vector";
 import type { OverlayUiRefs } from "../ui/createOverlayUi";
-import { type Ripple, updateBodyLabels, updateFpsIndicator, updateHud as updateOverlayHud, updateOffscreenIndicators, updateRipples, updateSpacecraftCallout } from "../ui/overlayUpdates";
+import { type Ripple, updateBodyLabels, updateFpsIndicator, updateHud as updateOverlayHud, updateOffscreenIndicators, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
 import type { RuntimeActions } from "./runtimeActions";
 import { stepSimulationFrame } from "./simulationStep";
@@ -31,11 +31,11 @@ export const createFrameLoop = (options: {
   overlayUi: OverlayUiRefs;
   physicsEngine: PhysicsEngine;
   physicsEngineName: string;
-  pointerCameraInput: PointerCameraInput;
   rendererProfiler: RendererProfiler;
   ripples: Ripple[];
   runtime: AppRuntimeState;
   runtimeActions: RuntimeActions;
+  spacecraftPresentation: SpacecraftPresentation;
   shouldCaptureBurn(target: Body): boolean;
   spacecraftModelZoomThreshold: number;
   timeWarps: number[];
@@ -120,32 +120,17 @@ export const createFrameLoop = (options: {
     options.runtimeActions.updateCamera();
     options.trajectoryPresentation.maybeRefreshPrediction(realDt);
 
-    updateWorldVisuals({
+    updateBodyVisuals({
       bodies: options.runtime.state.bodies,
-      defaultViewport: options.defaultViewport,
       gameScene: options.gameScene,
-      spacecraft: options.runtime.state.spacecraft,
-      spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
-      viewportSize: options.runtime.viewportSize,
     });
-    updateSpacecraftTrail({
-      gameScene: options.gameScene,
+    options.spacecraftPresentation.updateVisuals({
       isThrusting,
-      spacecraft: options.runtime.state.spacecraft,
-    });
-    options.trajectoryPresentation.updateVisuals();
-    updateSpacecraftCallout({
-      camera: options.gameScene.camera,
-      defaultViewport: options.defaultViewport,
-      isThrusting,
-      overlayUi: options.overlayUi,
-      pointerScreenPosition: options.pointerCameraInput.pointerScreenPosition,
-      renderPosition,
       spacecraft: options.runtime.state.spacecraft,
       spacecraftLabelIntroUntil: options.runtime.spacecraftLabelIntroUntil,
-      spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
       viewportSize: options.runtime.viewportSize,
     });
+    options.trajectoryPresentation.updateVisuals();
     updateOffscreenIndicators({
       bodies: options.runtime.state.bodies,
       camera: options.gameScene.camera,
@@ -172,18 +157,15 @@ export const createFrameLoop = (options: {
     refreshTrajectoryPrediction,
     start: () => {
       options.runtimeActions.updateCamera();
-      updateWorldVisuals({
+      updateBodyVisuals({
         bodies: options.runtime.state.bodies,
-        defaultViewport: options.defaultViewport,
         gameScene: options.gameScene,
-        spacecraft: options.runtime.state.spacecraft,
-        spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
-        viewportSize: options.runtime.viewportSize,
       });
-      updateSpacecraftTrail({
-        gameScene: options.gameScene,
+      options.spacecraftPresentation.updateVisuals({
         isThrusting: options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0,
         spacecraft: options.runtime.state.spacecraft,
+        spacecraftLabelIntroUntil: options.runtime.spacecraftLabelIntroUntil,
+        viewportSize: options.runtime.viewportSize,
       });
       updateHud();
       requestAnimationFrame(animate);
