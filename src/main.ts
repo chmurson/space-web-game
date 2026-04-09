@@ -26,6 +26,7 @@ import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "./simul
 import { idleControls } from "./simulation/state";
 import type { Body, ControlInput, SimulationState } from "./simulation/types";
 import { add, fromAngle, length, lengthSq, normalize, scale, sub } from "./simulation/vector";
+import { createDebugPanel } from "./ui/debugPanel";
 import { readUserSettings, updateUserSettings } from "./userSettingsStorage";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -324,50 +325,7 @@ hud.innerHTML = `
 `;
 app.appendChild(hud);
 
-const debugPanel = document.createElement("div");
-debugPanel.className = "debug-panel";
-let latestDebugJson = "";
-const debugPanelText = document.createElement("pre");
-debugPanelText.className = "debug-panel-text";
-const debugPanelJson = document.createElement("pre");
-debugPanelJson.className = "debug-panel-text debug-panel-json";
-debugPanelJson.style.display = "none";
-const debugPanelCopyButton = document.createElement("button");
-debugPanelCopyButton.type = "button";
-debugPanelCopyButton.className = "debug-panel-copy";
-debugPanelCopyButton.textContent = "Copy debug JSON";
-debugPanelCopyButton.style.display = "none";
-debugPanel.append(debugPanelText, debugPanelJson, debugPanelCopyButton);
-app.appendChild(debugPanel);
-const stopDebugPanelEventPropagation = (event: Event) => {
-  event.stopPropagation();
-};
-for (const eventName of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "auxclick", "dblclick", "wheel"]) {
-  debugPanel.addEventListener(eventName, stopDebugPanelEventPropagation);
-}
-debugPanelCopyButton.addEventListener("click", async (event) => {
-  event.stopPropagation();
-
-  try {
-    await navigator.clipboard.writeText(latestDebugJson);
-    debugPanelCopyButton.textContent = "Copied";
-    window.setTimeout(() => {
-      debugPanelCopyButton.textContent = "Copy debug JSON";
-    }, 1_200);
-  } catch {
-    debugPanelCopyButton.textContent = "Copy failed";
-    window.setTimeout(() => {
-      debugPanelCopyButton.textContent = "Copy debug JSON";
-    }, 1_800);
-  }
-});
-
-const setDebugPanelJson = (payload: unknown | null) => {
-  latestDebugJson = payload === null ? "" : JSON.stringify(payload, null, 2);
-  debugPanelJson.style.display = latestDebugJson ? "block" : "none";
-  debugPanelJson.textContent = latestDebugJson ? `\ndebug json:\n${latestDebugJson}` : "";
-  debugPanelCopyButton.style.display = latestDebugJson ? "block" : "none";
-};
+const debugPanel = createDebugPanel(app);
 
 const statEngine = hud.querySelector<HTMLElement>('[data-stat="engine"]');
 const statWarp = hud.querySelector<HTMLElement>('[data-stat="warp"]');
@@ -1189,8 +1147,8 @@ const updateHud = () => {
         ? `Impact ${predictedImpact.bodyName} in ${formatDuration(predictedImpact.time)}`
         : getCaptureGuidance(target);
   }
-  if (debugPanel) {
-    debugPanel.style.display = debugModeEnabled ? "block" : "none";
+  debugPanel.element.style.display = debugModeEnabled ? "block" : "none";
+  if (debugModeEnabled) {
     const debugLines = [
       `debug: [1] no-gravity ${debugNoGravityEnabled ? "on" : "off"} | [2] fps ${fpsIndicatorEnabled ? "on" : "off"} | [3] perf ${performanceDebugEnabled ? "on" : "off"}`,
       `coast horizon: [4]/2 [5]x2 => ${formatDuration(getCoastPredictionHorizonSeconds())}`,
@@ -1218,8 +1176,8 @@ const updateHud = () => {
       );
     }
 
-    debugPanelText.textContent = debugLines.join("\n");
-    setDebugPanelJson(null);
+    debugPanel.setText(debugLines.join("\n"));
+    debugPanel.setJson(null);
   }
 };
 
