@@ -2,7 +2,6 @@ import "./style.css";
 import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
-import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { appSettings } from "./appSettings";
 import { getAssistTargetForState } from "./assist/assistTarget";
 import {
@@ -26,6 +25,7 @@ import { createKeyboardInput } from "./input/keyboardInput";
 import { bindPointerCameraInput } from "./input/pointerCameraInput";
 import { getKeyboardShortcutAction, type KeyboardShortcutAction } from "./input/keyboardShortcuts";
 import { updateColoredLine2Geometry, updateLine2Geometry } from "./rendering/line2Geometry";
+import { createGameScene } from "./scene/createGameScene";
 import {
   createRequestedRuntimeScenario,
   createRuntimeScenarioState,
@@ -39,7 +39,7 @@ import { defaultPhysicsEngine, physicsEngines } from "./simulation/physics";
 import { idleControls } from "./simulation/state";
 import type { Body, ControlInput, SimulationState } from "./simulation/types";
 import { add, fromAngle, length, normalize, scale, sub } from "./simulation/vector";
-import { createDebugPanel } from "./ui/debugPanel";
+import { createOverlayUi } from "./ui/createOverlayUi";
 import { formatDistance } from "./ui/formatters";
 import { getDebugPanelLines, getGuidanceText } from "./ui/hudText";
 import { readUserSettings, updateUserSettings } from "./userSettingsStorage";
@@ -102,184 +102,46 @@ const gl = renderer.getContext() as WebGL2RenderingContext;
 const gpuTimerExtension = gl.getExtension("EXT_disjoint_timer_query_webgl2");
 const pendingGpuQueries: WebGLQuery[] = [];
 
-const scene = new THREE.Scene();
-
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000);
-const cameraTarget = new THREE.Vector3(0, 0, 0);
-
-const ambientLight = new THREE.AmbientLight(0x7f8fa6, 1.5);
-scene.add(ambientLight);
-
-const sunLight = new THREE.DirectionalLight(0xffffff, 3);
-sunLight.position.set(-1, 2, 1);
-scene.add(sunLight);
-
-const grid = new THREE.GridHelper(900, 36, 0x1d4ed8, 0x18253a);
-grid.position.y = -0.05;
-scene.add(grid);
-
-const bodyMeshes = new Map<string, THREE.Mesh>();
-
-for (const body of state.bodies) {
-  const geometry = new THREE.SphereGeometry(Math.max(body.radius * RENDER_SCALE, 1), 32, 16);
-  const material = new THREE.MeshStandardMaterial({
-    color: body.color,
-    roughness: 0.82,
-    metalness: 0.02,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = body.name;
-  bodyMeshes.set(body.id, mesh);
-  scene.add(mesh);
-}
-
-const spacecraftMesh = new THREE.Group();
-spacecraftMesh.scale.setScalar(1.5);
-const shipBody = new THREE.Mesh(
-  new THREE.ConeGeometry(0.08, 0.32, 4),
-  new THREE.MeshStandardMaterial({ color: "#e8eef8", roughness: 0.5 }),
-);
-shipBody.rotation.x = Math.PI / 2;
-spacecraftMesh.add(shipBody);
-
-const engineGlow = new THREE.Mesh(
-  new THREE.ConeGeometry(0.06, 0.16, 12),
-  new THREE.MeshBasicMaterial({ color: "#38bdf8", transparent: true, opacity: 0 }),
-);
-engineGlow.position.z = -0.24;
-engineGlow.rotation.x = -Math.PI / 2;
-spacecraftMesh.add(engineGlow);
-scene.add(spacecraftMesh);
-
-const spacecraftMarker = new THREE.Mesh(
-  new THREE.TorusGeometry(0.25, 0.015, 8, 32),
-  new THREE.MeshBasicMaterial({ color: "#67e8f9", transparent: true, opacity: 0.9 }),
-);
-spacecraftMarker.rotation.x = Math.PI / 2;
-scene.add(spacecraftMarker);
-
-const trailPoints: THREE.Vector3[] = [];
-const trailGeometry = new THREE.BufferGeometry();
-const trailMaterial = new THREE.LineBasicMaterial({ color: "#7dd3fc", transparent: true, opacity: 0.84 });
-const trail = new THREE.Line(trailGeometry, trailMaterial);
-scene.add(trail);
-
 let targetRelativePredictionPoints: { x: number; y: number }[] = [];
 let targetRelativeAssistedPoints: { x: number; y: number }[] = [];
 let targetRelativePredictionEnd: { x: number; y: number } | null = null;
-let predictionGeometry = new LineGeometry();
-const predictionDashPixels = gameConfig.trajectory.rendering.dashPixels;
-const predictionGapPixels = gameConfig.trajectory.rendering.gapPixels;
-// Replacing geometry avoids stale Line2 instanced buffers after trajectory length changes.
-// Whether reusing geometry is materially faster is still an open profiling question.
-const replacePredictionLineGeometryOnUpdate = gameConfig.trajectory.rendering.replaceLineGeometryOnUpdate;
-const predictionMaterial = new LineMaterial({
-  color: 0x67e8f9,
-  linewidth: 1.5,
-  transparent: true,
-  opacity: 0.69,
-  dashed: true,
-  dashSize: predictionDashPixels,
-  gapSize: predictionGapPixels,
-});
-const predictionLine = new Line2(predictionGeometry, predictionMaterial);
-scene.add(predictionLine);
-
-let impactGradientGeometry = new LineGeometry();
-const impactGradientMaterial = new LineMaterial({
-  color: 0xffffff,
-  linewidth: 1.8,
-  transparent: true,
-  opacity: 0.95,
-  dashed: true,
-  dashSize: predictionDashPixels,
-  gapSize: predictionGapPixels,
-  vertexColors: true,
-});
-const impactGradientLine = new Line2(impactGradientGeometry, impactGradientMaterial);
-impactGradientLine.visible = false;
-scene.add(impactGradientLine);
-
-const inertialPredictionGeometry = new LineGeometry();
-const inertialPredictionMaterial = new LineMaterial({
-  color: 0xdbeafe,
-  linewidth: 1,
-  transparent: true,
-  opacity: 0.46,
-  dashed: true,
-  dashSize: predictionDashPixels,
-  gapSize: predictionGapPixels,
-});
-const inertialPredictionLine = new Line2(inertialPredictionGeometry, inertialPredictionMaterial);
-scene.add(inertialPredictionLine);
-
-let assistedPredictionGeometry = new LineGeometry();
-const assistedPredictionMaterial = new LineMaterial({
-  color: 0xfacc15,
-  linewidth: 1.2,
-  transparent: true,
-  opacity: 0.7,
-  dashed: true,
-  dashSize: predictionDashPixels,
-  gapSize: predictionGapPixels,
-});
-const assistedPredictionLine = new Line2(assistedPredictionGeometry, assistedPredictionMaterial);
-assistedPredictionLine.visible = false;
-scene.add(assistedPredictionLine);
-
-const circularOrbitGeometry = new LineGeometry();
-const circularOrbitMaterial = new LineMaterial({
-  color: 0x67e8f9,
-  linewidth: 1,
-  transparent: true,
-  opacity: 0.28,
-});
-const circularOrbitLine = new Line2(circularOrbitGeometry, circularOrbitMaterial);
-circularOrbitLine.visible = false;
-scene.add(circularOrbitLine);
-
-const desiredVelocityGeometry = new LineGeometry();
-const desiredVelocityMaterial = new LineMaterial({
-  color: 0xfacc15,
-  linewidth: 1.5,
-  transparent: true,
-  opacity: 0.72,
-});
-const desiredVelocityLine = new Line2(desiredVelocityGeometry, desiredVelocityMaterial);
-desiredVelocityLine.visible = false;
-scene.add(desiredVelocityLine);
-
-const predictionEndMarkerRadius = gameConfig.trajectory.rendering.endMarkerRadius;
-const predictionEndMarkerMinScreenRadius = gameConfig.trajectory.rendering.endMarkerMinScreenRadius;
-const predictionEndMarker = new THREE.Group();
-const predictionEndMarkerBacking = new THREE.Mesh(
-  new THREE.CircleGeometry(1, 24),
-  new THREE.MeshBasicMaterial({
-    color: "#05070d",
-    depthTest: false,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-  }),
-);
-const predictionEndMarkerFill = new THREE.Mesh(
-  new THREE.CircleGeometry(1, 24),
-  new THREE.MeshBasicMaterial({
-    color: "#67e8f9",
-    opacity: 0.5,
-    transparent: true,
-    depthTest: false,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-  }),
-);
-predictionEndMarkerBacking.renderOrder = 10;
-predictionEndMarkerFill.renderOrder = 11;
-predictionEndMarkerBacking.scale.setScalar(1.25);
-predictionEndMarker.add(predictionEndMarkerBacking, predictionEndMarkerFill);
-predictionEndMarker.renderOrder = 10;
-scene.add(predictionEndMarker);
+const gameScene = createGameScene(state.bodies, gameConfig.trajectory.rendering);
+const {
+  assistedPredictionLine,
+  assistedPredictionMaterial,
+  bodyMeshes,
+  camera,
+  cameraTarget,
+  circularOrbitGeometry,
+  circularOrbitLine,
+  circularOrbitMaterial,
+  desiredVelocityGeometry,
+  desiredVelocityLine,
+  desiredVelocityMaterial,
+  engineGlow,
+  impactGradientLine,
+  impactGradientMaterial,
+  inertialPredictionGeometry,
+  inertialPredictionLine,
+  inertialPredictionMaterial,
+  predictionDashPixels,
+  predictionEndMarker,
+  predictionEndMarkerFill,
+  predictionEndMarkerMinScreenRadius,
+  predictionEndMarkerRadius,
+  predictionGapPixels,
+  predictionLine,
+  predictionMaterial,
+  replacePredictionLineGeometryOnUpdate,
+  scene,
+  spacecraftMarker,
+  spacecraftMesh,
+  trail,
+  trailPoints,
+} = gameScene;
+let predictionGeometry = gameScene.predictionGeometry;
+let impactGradientGeometry = gameScene.impactGradientGeometry;
+let assistedPredictionGeometry = gameScene.assistedPredictionGeometry;
 
 type Ripple = {
   element: HTMLElement;
@@ -289,77 +151,30 @@ type Ripple = {
 const ripples: Ripple[] = [];
 let targetHeading: number | null = null;
 
-const hud = document.createElement("section");
-hud.className = "hud";
-hud.innerHTML = `
-  <h1>${scenario.name}</h1>
-  <p>${scenario.description}</p>
-  <div class="stats">
-    <div class="stat"><span>Engine</span><strong data-stat="engine"></strong></div>
-    <div class="stat"><span>Time warp</span><strong data-stat="warp"></strong></div>
-    <div class="stat"><span>Speed</span><strong data-stat="speed"></strong></div>
-    <div class="stat"><span>Fuel used</span><strong data-stat="fuel"></strong></div>
-    <div class="stat"><span>Zoom</span><strong data-stat="zoom"></strong></div>
-    <div class="stat"><span>Target</span><strong data-stat="target"></strong></div>
-    <div class="stat"><span>Target speed</span><strong data-stat="target-speed"></strong></div>
-    <div class="stat"><span>Assist</span><strong data-stat="assist"></strong></div>
-    <div class="stat"><span>Guidance</span><strong data-stat="guidance"></strong></div>
-  </div>
-  <div class="controls">
-    <p><kbd>W</kbd> main engine <kbd>S</kbd> brake <kbd>Q</kbd>/<kbd>E</kbd> side thrusters</p>
-    <p><kbd>A</kbd>/<kbd>D</kbd> rotate <kbd>[</kbd>/<kbd>]</kbd> time warp <kbd>-</kbd>/<kbd>=</kbd> zoom <kbd>R</kbd> reset</p>
-    <p>${appSettings.assistTarget.autoDiscoverStrongestInfluence ? "" : "<kbd>T</kbd> target body "}<kbd>C</kbd> assist mode</p>
-    <p>Double-click the map to point the spacecraft toward that direction.</p>
-  </div>
-`;
-app.appendChild(hud);
-
-const debugPanel = createDebugPanel(app);
-
-const statEngine = hud.querySelector<HTMLElement>('[data-stat="engine"]');
-const statWarp = hud.querySelector<HTMLElement>('[data-stat="warp"]');
-const statSpeed = hud.querySelector<HTMLElement>('[data-stat="speed"]');
-const statFuel = hud.querySelector<HTMLElement>('[data-stat="fuel"]');
-const statZoom = hud.querySelector<HTMLElement>('[data-stat="zoom"]');
-const statTarget = hud.querySelector<HTMLElement>('[data-stat="target"]');
-const statTargetSpeed = hud.querySelector<HTMLElement>('[data-stat="target-speed"]');
-const statAssist = hud.querySelector<HTMLElement>('[data-stat="assist"]');
-const statGuidance = hud.querySelector<HTMLElement>('[data-stat="guidance"]');
-
-const fpsIndicator = document.createElement("div");
-fpsIndicator.className = "fps-indicator";
-fpsIndicator.style.display = "none";
-app.appendChild(fpsIndicator);
-
-const spacecraftCallout = document.createElement("div");
-spacecraftCallout.className = "spacecraft-callout";
-spacecraftCallout.innerHTML = "<span>Spacecraft</span>";
-app.appendChild(spacecraftCallout);
-const spacecraftCalloutLabel = spacecraftCallout.querySelector<HTMLSpanElement>("span");
-
-const spacecraftIconThrust = document.createElement("div");
-spacecraftIconThrust.className = "spacecraft-icon-thrust";
-spacecraftIconThrust.style.display = "none";
-app.appendChild(spacecraftIconThrust);
-
-const offscreenIndicators = new Map<string, HTMLElement>();
-const bodyLabels = new Map<string, HTMLElement>();
-
-for (const body of state.bodies) {
-  const indicator = document.createElement("div");
-  indicator.className = "offscreen-indicator";
-  indicator.innerHTML = `<div class="pointer"></div><div class="label"></div>`;
-  indicator.style.display = "none";
-  app.appendChild(indicator);
-  offscreenIndicators.set(body.id, indicator);
-
-  const label = document.createElement("div");
-  label.className = "body-label";
-  label.textContent = body.name;
-  label.style.display = "none";
-  app.appendChild(label);
-  bodyLabels.set(body.id, label);
-}
+const {
+  bodyLabels,
+  debugPanel,
+  fpsIndicator,
+  offscreenIndicators,
+  spacecraftCallout,
+  spacecraftCalloutLabel,
+  spacecraftIconThrust,
+  statAssist,
+  statEngine,
+  statFuel,
+  statGuidance,
+  statSpeed,
+  statTarget,
+  statTargetSpeed,
+  statWarp,
+  statZoom,
+} = createOverlayUi({
+  app,
+  bodies: state.bodies,
+  scenarioDescription: scenario.description,
+  scenarioName: scenario.name,
+  showCycleTargetHint: !appSettings.assistTarget.autoDiscoverStrongestInfluence,
+});
 
 const renderPosition = (x: number, y: number, lift = 0) => new THREE.Vector3(x * RENDER_SCALE, lift, y * RENDER_SCALE);
 
