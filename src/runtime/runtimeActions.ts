@@ -179,3 +179,5 @@ export const createRuntimeActions = (options: {
     zoomCamera,
   };
 };
+
+export type RuntimeActions = ReturnType<typeof createRuntimeActions>;

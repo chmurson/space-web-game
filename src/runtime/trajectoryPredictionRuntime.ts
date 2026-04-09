@@ -90,3 +90,5 @@ export const createTrajectoryPredictionRuntime = () => {
     refresh,
   };
 };
+
+export type TrajectoryPredictionRuntime = ReturnType<typeof createTrajectoryPredictionRuntime>;

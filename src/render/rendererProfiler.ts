@@ -58,3 +58,5 @@ export const createRendererProfiler = (renderer: THREE.WebGLRenderer) => {
     },
   };
 };
+
+export type RendererProfiler = ReturnType<typeof createRendererProfiler>;
