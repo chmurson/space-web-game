@@ -27,6 +27,8 @@ export type PredictedClosestApproach = {
 };
 
 export type TrajectoryPredictionResult = {
+  absoluteEndPoint: Vec2 | null;
+  absolutePoints: Vec2[];
   closestApproach: PredictedClosestApproach | null;
   impact: PredictedImpact | null;
   relativePoints: Vec2[];
@@ -72,6 +74,7 @@ export const predictCoastTrajectory = (
   allowLoopTrim: boolean,
 ): TrajectoryPredictionResult => {
   let predictedState = cloneSimulationState(state);
+  const absolutePoints: Vec2[] = [{ ...state.spacecraft.position }];
   const relativePoints: Vec2[] = [];
   const maxSteps = predictionConfig.horizonSeconds / predictionConfig.stepSeconds;
   const maxLoopAngularTravel = predictionConfig.maxLoopRevolutions * Math.PI * 2;
@@ -88,6 +91,7 @@ export const predictCoastTrajectory = (
     const predictionAngle = Math.atan2(relativePoint.y, relativePoint.x);
     predictionAngularTravel += Math.abs(normalizeAngle(predictionAngle - previousPredictionAngle));
     previousPredictionAngle = predictionAngle;
+    absolutePoints.push({ ...spacecraft.position });
     relativePoints.push(relativePoint);
 
     const predictedTarget = predictedState.bodies.find((body) => body.id === target.id);
@@ -118,6 +122,8 @@ export const predictCoastTrajectory = (
   }
 
   return {
+    absoluteEndPoint: relativePoints.length > 0 ? { ...predictedState.spacecraft.position } : null,
+    absolutePoints,
     closestApproach,
     impact,
     relativePoints,

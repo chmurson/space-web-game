@@ -1,4 +1,4 @@
-import { getAssistTargetForState } from "../assist/assistTarget";
+import { getAssistTargetDecisionForState, type AssistTargetDebugInfo } from "../assist/assistTarget";
 import {
   getAssistPredictionControlsForState,
   getAutopilotTurnForHeading,
@@ -10,9 +10,15 @@ import {
 } from "../assist/orbitalAssist";
 import { getTrajectoryPredictionConfig, type TrajectoryPredictionConfig, type TrajectoryPredictionSamplingConfig } from "../prediction/trajectoryPrediction";
 import type { Body, ControlInput, SimulationState } from "../simulation/types";
+import type { Vec2 } from "../simulation/vector";
 import type { AppRuntimeState } from "./appRuntimeState";
 
+export type AutoAssistTargetConfig = {
+  switchRangeMultiplier: number;
+};
+
 export type GameQueries = {
+  getAssistTargetDebug(): AssistTargetDebugInfo | null;
   getAssistPredictionControls(simulationState: SimulationState, targetId: string): ControlInput;
   getAssistTarget(): Body;
   getAutopilotTurn(desiredHeading: number): number;
@@ -24,21 +30,41 @@ export type GameQueries = {
 };
 
 export const createGameQueries = (options: {
-  autoDiscoverStrongestInfluence: boolean;
+  autoSelectNearestSurface: boolean;
+  autoSelectConfig: AutoAssistTargetConfig;
   autopilotRotationRate: number;
+  getPredictedTrajectoryEnd(): Vec2 | null;
+  getPredictedTrajectoryPoints(): Vec2[];
   maxPredictionLoopRevolutions: number;
   predictionSampling: TrajectoryPredictionSamplingConfig;
   runtime: AppRuntimeState;
 }): GameQueries => {
-  const getAssistTarget = () =>
-    getAssistTargetForState(options.runtime.state, {
-      autoDiscoverStrongestInfluence: options.autoDiscoverStrongestInfluence,
+  let currentAutoTargetId: string | null = null;
+  let lastAssistTargetDebug: AssistTargetDebugInfo | null = null;
+
+  const getAssistTarget = () => {
+    const decision = getAssistTargetDecisionForState(options.runtime.state, {
+      autoSelectNearestSurface: options.autoSelectNearestSurface,
+      autoSelectConfig: options.autoSelectConfig,
+      currentAutoTargetId,
+      predictedTrajectoryPoints: options.getPredictedTrajectoryPoints(),
+      predictedTrajectoryEnd: options.getPredictedTrajectoryEnd(),
       selectedIndex: options.runtime.assistTargetIndex,
     });
+    const target = decision.target;
+    lastAssistTargetDebug = decision.debug;
+
+    if (options.autoSelectNearestSurface) {
+      currentAutoTargetId = target.id;
+    }
+
+    return target;
+  };
 
   const getCaptureMetrics = (target: Body) => getCaptureMetricsForState(options.runtime.state, target);
 
   return {
+    getAssistTargetDebug: () => lastAssistTargetDebug,
     getAssistPredictionControls: (simulationState, targetId) =>
       getAssistPredictionControlsForState(simulationState, targetId, options.runtime.assistMode, options.autopilotRotationRate),
     getAssistTarget,

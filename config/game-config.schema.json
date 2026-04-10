@@ -4,6 +4,18 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "assistTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "autoSelectNearestSurface": {
+          "type": "boolean"
+        },
+        "switchRangeMultiplier": {
+          "type": "number"
+        }
+      }
+    },
     "tabTitleSuffix": {
       "type": "string",
       "description": "Optional text appended to the browser tab title."
