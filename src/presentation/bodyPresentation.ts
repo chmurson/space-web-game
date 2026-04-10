@@ -9,9 +9,16 @@ import type { OverlayUiRefs } from "../ui/createOverlayUi";
 import type { GameSceneRefs } from "../scene/createGameScene";
 
 const updateBodyWorldVisuals = (gameScene: GameSceneRefs, bodies: Body[]) => {
+  const visibleBodyIds = new Set(bodies.map((body) => body.id));
+
+  for (const [bodyId, mesh] of gameScene.bodyMeshes.entries()) {
+    mesh.visible = visibleBodyIds.has(bodyId);
+  }
+
   for (const body of bodies) {
     const mesh = gameScene.bodyMeshes.get(body.id);
     if (mesh) {
+      mesh.visible = true;
       mesh.position.copy(renderPosition(body.position.x, body.position.y));
     }
   }
@@ -74,6 +81,12 @@ const updateOffscreenIndicators = (options: {
     indicator.style.top = `${edgeY}px`;
     indicator.style.visibility = "visible";
   }
+
+  for (const [bodyId, indicator] of options.overlayUi.offscreenIndicators.entries()) {
+    if (!options.bodies.some((body) => body.id === bodyId)) {
+      indicator.style.display = "none";
+    }
+  }
 };
 
 const updateBodyLabels = (options: {
@@ -112,6 +125,12 @@ const updateBodyLabels = (options: {
     label.style.top = `${labelY}px`;
     label.style.visibility = "visible";
   }
+
+  for (const [bodyId, label] of options.overlayUi.bodyLabels.entries()) {
+    if (!options.bodies.some((body) => body.id === bodyId)) {
+      label.style.display = "none";
+    }
+  }
 };
 
 export const createBodyPresentation = (options: {
@@ -120,18 +139,21 @@ export const createBodyPresentation = (options: {
 }) => ({
   updateVisuals: (state: {
     bodies: Body[];
+    hiddenBodyIds: string[];
     spacecraftPosition: Vec2;
     viewportSize: number;
   }) => {
-    updateBodyWorldVisuals(options.gameScene, state.bodies);
+    const visibleBodies = state.bodies.filter((body) => !state.hiddenBodyIds.includes(body.id));
+
+    updateBodyWorldVisuals(options.gameScene, visibleBodies);
     updateOffscreenIndicators({
-      bodies: state.bodies,
+      bodies: visibleBodies,
       gameScene: options.gameScene,
       overlayUi: options.overlayUi,
       spacecraftPosition: state.spacecraftPosition,
     });
     updateBodyLabels({
-      bodies: state.bodies,
+      bodies: visibleBodies,
       gameScene: options.gameScene,
       overlayUi: options.overlayUi,
       viewportSize: state.viewportSize,

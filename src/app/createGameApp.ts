@@ -15,11 +15,12 @@ import { createFrameLoop } from "../runtime/frameLoop";
 import { createGameQueries } from "../runtime/gameQueries";
 import { createRuntimeActions } from "../runtime/runtimeActions";
 import { createTrajectoryPredictionRuntime } from "../runtime/trajectoryPredictionRuntime";
+import { createDefaultScenarioDirectives, syncRuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
 import {
   createRequestedRuntimeScenario,
   createRuntimeScenarioState,
   type RuntimeScenarioOptions,
-} from "../scenario/runtimeScenario";
+  } from "../scenario/runtimeScenario";
 import { createGameScene } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "../simulation/physics";
@@ -65,6 +66,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     debugSnapshotStatus: "",
     fpsIndicatorEnabled: false,
     performanceDebugEnabled: false,
+    scenarioDirectives: createDefaultScenarioDirectives(),
     scenarioSession: initialRuntimeScenarioState.scenarioSession,
     spacecraftLabelIntroUntil: performance.now() + 5_000,
     state: initialRuntimeScenarioState.state,
@@ -72,6 +74,13 @@ export const createGameApp = (app: HTMLDivElement) => {
     timeWarpIndex: 0,
     viewportSize: initialRuntimeScenarioState.viewportSize,
   };
+  const scenarioDirectiveLimits: ScenarioDirectiveLimits = {
+    maxCoastPredictionHorizonHours,
+    maxViewportSize: maxViewport,
+    minViewportSize: minViewport,
+    timeWarps,
+  };
+  syncRuntimeScenarioDirectives(runtime, scenarioDirectiveLimits);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -129,6 +138,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     requestedScenario,
     ripples,
     runtime,
+    scenarioDirectiveLimits,
     runtimeScenarioOptions,
     timeWarps,
     updateUserSettings,
@@ -157,6 +167,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     ripples,
     runtime,
     runtimeActions,
+    scenarioDirectiveLimits,
     bodyPresentation: createBodyPresentation({
       gameScene,
       overlayUi,

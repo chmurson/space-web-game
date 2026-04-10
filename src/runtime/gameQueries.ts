@@ -30,11 +30,20 @@ export const createGameQueries = (options: {
   predictionSampling: TrajectoryPredictionSamplingConfig;
   runtime: AppRuntimeState;
 }): GameQueries => {
-  const getAssistTarget = () =>
-    getAssistTargetForState(options.runtime.state, {
+  const getAssistTarget = () => {
+    const forcedTargetId = options.runtime.scenarioDirectives.forcedAssistTargetId;
+    if (forcedTargetId) {
+      const forcedTarget = options.runtime.state.bodies.find((body) => body.id === forcedTargetId);
+      if (forcedTarget) {
+        return forcedTarget;
+      }
+    }
+
+    return getAssistTargetForState(options.runtime.state, {
       autoDiscoverStrongestInfluence: options.autoDiscoverStrongestInfluence,
       selectedIndex: options.runtime.assistTargetIndex,
     });
+  };
 
   const getCaptureMetrics = (target: Body) => getCaptureMetricsForState(options.runtime.state, target);
 

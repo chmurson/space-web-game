@@ -25,6 +25,14 @@ const createRuntime = (bodies: AppRuntimeState["state"]["bodies"], coastPredicti
   debugSnapshotStatus: "",
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
+  scenarioDirectives: {
+    forcedAssistTargetId: null,
+    hiddenBodyIds: [],
+    maxCoastPredictionHorizonHours: null,
+    maxTimeWarp: null,
+    maxViewportSize: null,
+    minViewportSize: null,
+  },
   scenarioSession: createRuntimeScenarioSession("test"),
   spacecraftLabelIntroUntil: 0,
   state: {
@@ -118,5 +126,31 @@ describe("createGameQueries", () => {
       refreshInterval: 0.5,
       stepSeconds: 300,
     });
+  });
+
+  it("honors a scenario-forced assist target when present", () => {
+    const runtime = createRuntime(
+      [
+        createBody({ id: "earth", name: "Earth" }),
+        createBody({ id: "moon", name: "Moon" }),
+      ],
+      2,
+    );
+    runtime.assistTargetIndex = 0;
+    runtime.scenarioDirectives.forcedAssistTargetId = "moon";
+
+    const queries = createGameQueries({
+      autoDiscoverStrongestInfluence: false,
+      autopilotRotationRate: 0.1,
+      maxPredictionLoopRevolutions: 2,
+      predictionSampling: {
+        refreshInterval: 0.25,
+        stepOptionsSeconds: [10, 60, 300],
+        targetMaxSteps: 100,
+      },
+      runtime,
+    });
+
+    expect(queries.getAssistTarget().id).toBe("moon");
   });
 });

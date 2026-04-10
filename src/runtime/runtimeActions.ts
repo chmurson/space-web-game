@@ -2,6 +2,8 @@ import * as THREE from "three";
 
 import type { KeyboardShortcutAction } from "../input/keyboardShortcuts";
 import { updateCameraView } from "../render/sceneUpdates";
+import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
+import { getConstrainedTimeWarpIndex, syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { createRequestedRuntimeScenario, createRuntimeScenarioState, loadDebugRuntimeScenario, saveRuntimeDebugSnapshot, type RuntimeScenarioOptions } from "../scenario/runtimeScenario";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import type { AppRuntimeState } from "./appRuntimeState";
@@ -27,6 +29,7 @@ export const createRuntimeActions = (options: {
   requestedScenario: string;
   ripples: Ripple[];
   runtime: AppRuntimeState;
+  scenarioDirectiveLimits: ScenarioDirectiveLimits;
   runtimeScenarioOptions: RuntimeScenarioOptions;
   timeWarps: number[];
   updateUserSettings: (settings: { debugModeEnabled: boolean }) => void;
@@ -49,6 +52,7 @@ export const createRuntimeActions = (options: {
     options.runtime.coastPredictionHorizonHours = freshRuntimeScenarioState.coastPredictionHorizonHours;
     options.runtime.scenarioSession = freshRuntimeScenarioState.scenarioSession;
     clearTransientScenarioState();
+    syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
   };
 
   const saveDebugScenarioSnapshot = () => {
@@ -73,6 +77,7 @@ export const createRuntimeActions = (options: {
     options.runtime.coastPredictionHorizonHours = loadedDebugScenario.runtimeState.coastPredictionHorizonHours;
     options.runtime.scenarioSession = loadedDebugScenario.runtimeState.scenarioSession;
     clearTransientScenarioState();
+    syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
     options.runtime.assistTargetIndex = Math.min(
       options.runtime.assistTargetIndex,
       Math.max(0, options.runtime.state.bodies.length - 1),
@@ -92,18 +97,30 @@ export const createRuntimeActions = (options: {
     });
 
   const zoomCamera = (factor: number) => {
-    options.runtime.viewportSize = THREE.MathUtils.clamp(options.runtime.viewportSize * factor, options.minViewport, options.maxViewport);
+    options.runtime.viewportSize = THREE.MathUtils.clamp(
+      options.runtime.viewportSize * factor,
+      options.runtime.scenarioDirectives.minViewportSize ?? options.minViewport,
+      options.runtime.scenarioDirectives.maxViewportSize ?? options.maxViewport,
+    );
     updateCamera();
   };
 
   return {
     handleKeyboardShortcutAction: (action: KeyboardShortcutAction): RuntimeActionsResult => {
       if (action === "increaseTimeWarp") {
-        options.runtime.timeWarpIndex = Math.min(options.runtime.timeWarpIndex + 1, options.timeWarps.length - 1);
+        options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
+          options.runtime.timeWarpIndex + 1,
+          options.timeWarps,
+          options.runtime.scenarioDirectives.maxTimeWarp,
+        );
         return { refreshTrajectoryPrediction: false };
       }
       if (action === "decreaseTimeWarp") {
-        options.runtime.timeWarpIndex = Math.max(options.runtime.timeWarpIndex - 1, 0);
+        options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
+          Math.max(options.runtime.timeWarpIndex - 1, 0),
+          options.timeWarps,
+          options.runtime.scenarioDirectives.maxTimeWarp,
+        );
         return { refreshTrajectoryPrediction: false };
       }
       if (action === "resetScenario") {
@@ -146,7 +163,7 @@ export const createRuntimeActions = (options: {
       }
       if (action === "increaseCoastHorizon") {
         options.runtime.coastPredictionHorizonHours = Math.min(
-          options.maxCoastPredictionHorizonHours,
+          options.runtime.scenarioDirectives.maxCoastPredictionHorizonHours ?? options.maxCoastPredictionHorizonHours,
           options.runtime.coastPredictionHorizonHours * 2,
         );
         return { refreshTrajectoryPrediction: true };

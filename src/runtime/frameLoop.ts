@@ -12,6 +12,8 @@ import { type Ripple, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
 import type { GameQueries } from "./gameQueries";
 import type { RuntimeActions } from "./runtimeActions";
+import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
+import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { stepSimulationFrame } from "./simulationStep";
 
 export const createFrameLoop = (options: {
@@ -24,6 +26,7 @@ export const createFrameLoop = (options: {
   ripples: Ripple[];
   runtime: AppRuntimeState;
   runtimeActions: RuntimeActions;
+  scenarioDirectiveLimits: ScenarioDirectiveLimits;
   bodyPresentation: BodyPresentation;
   spacecraftPresentation: SpacecraftPresentation;
   timeWarps: number[];
@@ -42,6 +45,7 @@ export const createFrameLoop = (options: {
     const realDt = Math.min((time - lastTime) / 1000, 0.1);
     lastTime = time;
     smoothedFps = THREE.MathUtils.lerp(smoothedFps, 1 / Math.max(realDt, 1 / 240), 0.12);
+    syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
     const isThrusting = options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0;
 
     const simulationStep = stepSimulationFrame({
@@ -73,6 +77,7 @@ export const createFrameLoop = (options: {
 
     options.bodyPresentation.updateVisuals({
       bodies: options.runtime.state.bodies,
+      hiddenBodyIds: options.runtime.scenarioDirectives.hiddenBodyIds,
       spacecraftPosition: options.runtime.state.spacecraft.position,
       viewportSize: options.runtime.viewportSize,
     });
@@ -93,9 +98,11 @@ export const createFrameLoop = (options: {
   return {
     refreshTrajectoryPrediction,
     start: () => {
+      syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
       options.runtimeActions.updateCamera();
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.state.bodies,
+        hiddenBodyIds: options.runtime.scenarioDirectives.hiddenBodyIds,
         spacecraftPosition: options.runtime.state.spacecraft.position,
         viewportSize: options.runtime.viewportSize,
       });
