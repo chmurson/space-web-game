@@ -1,6 +1,5 @@
 import * as THREE from "three";
 
-import { appSettings } from "../appSettings";
 import { gameConfig } from "../config/gameConfig";
 import { bindKeyboardShortcuts } from "../input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "../input/keyboardInput";
@@ -37,6 +36,7 @@ export const createGameApp = (app: HTMLDivElement) => {
   const userSettings = readUserSettings();
   const keyboardInput = createKeyboardInput();
   const timeWarps = gameConfig.controls.timeWarps;
+  const autoSelectNearestSurface = gameConfig.assistTarget.autoSelectNearestSurface;
   const autopilotRotationRate = gameConfig.controls.autopilotRotationRate;
   const defaultCoastPredictionHorizonHours = gameConfig.trajectory.horizon.defaultHours;
   const minCoastPredictionHorizonHours = gameConfig.trajectory.horizon.minHours;
@@ -75,6 +75,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     viewportSize: initialRuntimeScenarioState.viewportSize,
   };
   const scenarioDirectiveLimits: ScenarioDirectiveLimits = {
+    defaultViewportSize: defaultViewport,
     maxCoastPredictionHorizonHours,
     maxViewportSize: maxViewport,
     minViewportSize: minViewport,
@@ -97,11 +98,16 @@ export const createGameApp = (app: HTMLDivElement) => {
     bodies: runtime.state.bodies,
     scenarioDescription: scenario.description,
     scenarioName: scenario.name,
-    showCycleTargetHint: !appSettings.assistTarget.autoDiscoverStrongestInfluence,
+    showCycleTargetHint: !autoSelectNearestSurface,
   });
   const queries = createGameQueries({
-    autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
+    autoSelectNearestSurface,
+    autoSelectConfig: {
+      switchRangeMultiplier: gameConfig.assistTarget.switchRangeMultiplier,
+    },
     autopilotRotationRate,
+    getPredictedTrajectoryEnd: () => trajectoryPredictionRuntime.getState().absolutePredictionEnd,
+    getPredictedTrajectoryPoints: () => trajectoryPredictionRuntime.getState().absolutePredictionPoints,
     maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
     predictionSampling: gameConfig.trajectory.sampling,
     runtime,
@@ -184,7 +190,7 @@ export const createGameApp = (app: HTMLDivElement) => {
   });
 
   bindKeyboardShortcuts({
-    autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
+    autoDiscoverStrongestInfluence: autoSelectNearestSurface,
     getDebugModeEnabled: () => runtime.debugModeEnabled,
     handleAction: (action) => {
       const result = runtimeActions.handleKeyboardShortcutAction(action);

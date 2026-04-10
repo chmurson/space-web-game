@@ -1,5 +1,6 @@
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { ScenarioSessionValue } from "./scenarioSession";
+import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
 
 export type RuntimeScenarioDirectives = {
   forcedAssistTargetId: string | null;
@@ -12,6 +13,7 @@ export type RuntimeScenarioDirectives = {
 
 export type ScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: number;
+  defaultViewportSize: number;
   maxViewportSize: number;
   minViewportSize: number;
   timeWarps: number[];
@@ -57,12 +59,14 @@ const genericDirectiveResolver: ScenarioDirectiveResolver = ({ runtime }) => ({
   hiddenBodyIds: getStringArrayValue(runtime.scenarioSession.state, "hiddenBodyIds"),
 });
 
-const scenarioDirectiveResolvers: Record<string, ScenarioDirectiveResolver> = {
-  tutorial: genericDirectiveResolver,
-};
-
 export const resolveRuntimeScenarioDirectives = (runtime: AppRuntimeState, limits: ScenarioDirectiveLimits): RuntimeScenarioDirectives => {
-  const resolver = scenarioDirectiveResolvers[runtime.scenarioSession.scenarioId] ?? genericDirectiveResolver;
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+
+  if (definition?.getDirectives && (!definition.isState || definition.isState(runtime.scenarioSession.state))) {
+    return definition.getDirectives(runtime.scenarioSession.state, limits);
+  }
+
+  const resolver: ScenarioDirectiveResolver = genericDirectiveResolver;
   return resolver({ limits, runtime });
 };
 

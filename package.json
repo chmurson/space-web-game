@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build --mode release",
-    "build:dev": "tsc && vite build --mode development",
+    "validate:config": "node scripts/validateGameConfig.mjs",
+    "build": "npm run validate:config && tsc && vite build --mode release",
+    "build:dev": "npm run validate:config && tsc && vite build --mode development",
     "preview": "vite preview",
     "test": "vitest run"
   },

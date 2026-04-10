@@ -5,3 +5,4 @@ debug
 
 # Local Netlify folder
 .netlify
+config/*.local.yml

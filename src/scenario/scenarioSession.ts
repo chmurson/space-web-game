@@ -26,10 +26,10 @@ export type RuntimeScenarioSession<TState extends ScenarioSessionValue = Scenari
   state: TState;
 };
 
-export const createRuntimeScenarioSession = (
+export const createRuntimeScenarioSession = <TState extends ScenarioSessionValue = ScenarioSessionValue>(
   scenarioId: string,
-  state: ScenarioSessionValue = null,
-): RuntimeScenarioSession => ({
+  state: TState = null as TState,
+): RuntimeScenarioSession<TState> => ({
   checkpoint: null,
   completed: false,
   scenarioId,

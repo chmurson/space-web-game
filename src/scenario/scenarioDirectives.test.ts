@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import { createRuntimeScenarioSession } from "./scenarioSession";
 import { applyRuntimeScenarioDirectiveConstraints, getConstrainedTimeWarpIndex, resolveRuntimeScenarioDirectives } from "./scenarioDirectives";
+import { createTutorialScenarioSession } from "./tutorialScenario";
 
 const createRuntime = (): AppRuntimeState => ({
   assistMode: "off",
@@ -49,8 +50,15 @@ const createRuntime = (): AppRuntimeState => ({
 
 describe("scenarioDirectives", () => {
   it("resolves generic forced target and hidden body directives from scenario state", () => {
-    const directives = resolveRuntimeScenarioDirectives(createRuntime(), {
+    const runtime = createRuntime();
+    runtime.scenarioSession = createRuntimeScenarioSession("custom", {
+      forcedAssistTargetId: "moon",
+      hiddenBodyIds: ["moon"],
+    });
+
+    const directives = resolveRuntimeScenarioDirectives(runtime, {
       maxCoastPredictionHorizonHours: 48,
+      defaultViewportSize: 520,
       maxViewportSize: 800,
       minViewportSize: 50,
       timeWarps: [1, 10, 100, 1000],
@@ -73,6 +81,7 @@ describe("scenarioDirectives", () => {
 
     applyRuntimeScenarioDirectiveConstraints(runtime, {
       maxCoastPredictionHorizonHours: 48,
+      defaultViewportSize: 520,
       maxViewportSize: 800,
       minViewportSize: 50,
       timeWarps: [1, 10, 100, 1000],
@@ -86,5 +95,27 @@ describe("scenarioDirectives", () => {
   it("keeps time warp index within the configured max warp cap", () => {
     expect(getConstrainedTimeWarpIndex(3, [1, 10, 100, 1000], 100)).toBe(2);
     expect(getConstrainedTimeWarpIndex(1, [1, 10, 100, 1000], null)).toBe(1);
+  });
+
+  it("derives tutorial phase-1 directives from tutorial scenario state", () => {
+    const runtime = createRuntime();
+    runtime.scenarioSession = createTutorialScenarioSession({ phase: "escape-earth" });
+
+    const directives = resolveRuntimeScenarioDirectives(runtime, {
+      maxCoastPredictionHorizonHours: 48,
+      defaultViewportSize: 520,
+      maxViewportSize: 800,
+      minViewportSize: 50,
+      timeWarps: [1, 10, 50, 100, 500, 2000],
+    });
+
+    expect(directives).toEqual({
+      forcedAssistTargetId: "earth",
+      hiddenBodyIds: ["moon"],
+      maxCoastPredictionHorizonHours: 2,
+      maxTimeWarp: 500,
+      maxViewportSize: 104,
+      minViewportSize: null,
+    });
   });
 });
