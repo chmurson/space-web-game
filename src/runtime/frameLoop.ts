@@ -8,6 +8,7 @@ import type { TrajectoryPresentation } from "../presentation/trajectoryPresentat
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
+import { advanceRuntimeScenario } from "../scenario/scenarioRegistry";
 import type { PhysicsEngine } from "../simulation/types";
 import { type Ripple, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
@@ -70,9 +71,11 @@ export const createFrameLoop = (options: {
     options.runtime.state = simulationStep.state;
     options.runtime.targetHeading = simulationStep.targetHeading;
     options.runtime.timeWarpIndex = simulationStep.timeWarpIndex;
+    advanceRuntimeScenario(options.runtime);
 
     updateRipples(options.ripples, realDt);
     options.runtimeActions.updateCamera();
+    syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
     options.trajectoryPresentation.maybeRefreshPrediction(realDt);
 
     options.bodyPresentation.updateVisuals({

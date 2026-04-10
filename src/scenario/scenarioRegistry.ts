@@ -1,10 +1,12 @@
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
+import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { RuntimeScenarioDirectives, ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
 import type { ScenarioSessionValue } from "./scenarioSession";
 import { registerTutorialScenario } from "./tutorialScenario";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
 
 export type RuntimeScenarioDefinition<TState extends ScenarioSessionValue = ScenarioSessionValue> = {
+  advance?(runtime: AppRuntimeState): void;
   createScenario(): RuntimeScenario;
   getDirectives?(state: TState, limits: ScenarioDirectiveLimits): RuntimeScenarioDirectives;
   id: string;
@@ -25,3 +27,8 @@ const runtimeScenarioDefinitions = {
 
 export const getRuntimeScenarioDefinition = (scenarioId: string): RuntimeScenarioDefinition | null =>
   runtimeScenarioDefinitions[scenarioId as keyof typeof runtimeScenarioDefinitions] ?? null;
+
+export const advanceRuntimeScenario = (runtime: AppRuntimeState) => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  definition?.advance?.(runtime);
+};
