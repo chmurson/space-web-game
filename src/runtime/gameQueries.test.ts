@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createRuntimeScenarioSession } from "../scenario/scenarioSession";
 import type { AppRuntimeState } from "./appRuntimeState";
 import { createGameQueries } from "./gameQueries";
 
@@ -24,6 +25,7 @@ const createRuntime = (bodies: AppRuntimeState["state"]["bodies"], coastPredicti
   debugSnapshotStatus: "",
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
+  scenarioSession: createRuntimeScenarioSession("test"),
   spacecraftLabelIntroUntil: 0,
   state: {
     elapsed: 0,

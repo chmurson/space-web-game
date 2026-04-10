@@ -47,12 +47,14 @@ export const createRuntimeActions = (options: {
     options.runtime.state = freshRuntimeScenarioState.state;
     options.runtime.viewportSize = freshRuntimeScenarioState.viewportSize;
     options.runtime.coastPredictionHorizonHours = freshRuntimeScenarioState.coastPredictionHorizonHours;
+    options.runtime.scenarioSession = freshRuntimeScenarioState.scenarioSession;
     clearTransientScenarioState();
   };
 
   const saveDebugScenarioSnapshot = () => {
     options.runtime.debugSnapshotStatus = saveRuntimeDebugSnapshot(options.runtime.state, {
       coastPredictionHorizonHours: options.runtime.coastPredictionHorizonHours,
+      scenarioSession: options.runtime.scenarioSession,
       viewportSize: options.runtime.viewportSize,
     })
       ? "snapshot saved; use [7] load or ?scenario=debug-snapshot"
@@ -69,6 +71,7 @@ export const createRuntimeActions = (options: {
     options.runtime.state = loadedDebugScenario.runtimeState.state;
     options.runtime.viewportSize = loadedDebugScenario.runtimeState.viewportSize;
     options.runtime.coastPredictionHorizonHours = loadedDebugScenario.runtimeState.coastPredictionHorizonHours;
+    options.runtime.scenarioSession = loadedDebugScenario.runtimeState.scenarioSession;
     clearTransientScenarioState();
     options.runtime.assistTargetIndex = Math.min(
       options.runtime.assistTargetIndex,

@@ -1,4 +1,5 @@
 import type { AssistMode } from "../assist/orbitalAssist";
+import type { RuntimeScenarioSession } from "../scenario/scenarioSession";
 import type { SimulationState } from "../simulation/types";
 
 export type AppRuntimeState = {
@@ -11,6 +12,7 @@ export type AppRuntimeState = {
   debugSnapshotStatus: string;
   fpsIndicatorEnabled: boolean;
   performanceDebugEnabled: boolean;
+  scenarioSession: RuntimeScenarioSession;
   spacecraftLabelIntroUntil: number;
   state: SimulationState;
   targetHeading: number | null;

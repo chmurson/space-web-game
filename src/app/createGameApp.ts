@@ -65,6 +65,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     debugSnapshotStatus: "",
     fpsIndicatorEnabled: false,
     performanceDebugEnabled: false,
+    scenarioSession: initialRuntimeScenarioState.scenarioSession,
     spacecraftLabelIntroUntil: performance.now() + 5_000,
     state: initialRuntimeScenarioState.state,
     targetHeading: null,

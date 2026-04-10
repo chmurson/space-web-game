@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createScenarioFromSnapshot } from "./debugScenarioSnapshot";
+import { createScenarioFromSnapshot, createSnapshotFromState } from "./debugScenarioSnapshot";
+import { createRuntimeScenarioSession } from "./scenario/scenarioSession";
+import { idleControls } from "./simulation/state";
 
 const snapshotBase = {
   version: 1 as const,
@@ -67,5 +69,40 @@ describe("createScenarioFromSnapshot", () => {
 
     expect(snapshotBase.bodies[0].position.x).toBe(1);
     expect(snapshotBase.spacecraft.position.y).toBe(6);
+  });
+
+  it("preserves scenario session metadata for version 2 snapshots", () => {
+    const snapshot = createSnapshotFromState(
+      {
+        elapsed: snapshotBase.elapsed,
+        bodies: snapshotBase.bodies,
+        spacecraft: snapshotBase.spacecraft,
+        controls: idleControls(),
+      },
+      {
+        coastPredictionHorizonHours: 12,
+        scenarioSession: {
+          ...createRuntimeScenarioSession("tutorial"),
+          completed: false,
+          state: { phase: "escape-earth" },
+        },
+        viewportSize: 320,
+      },
+    );
+    const scenario = createScenarioFromSnapshot(snapshot);
+
+    expect(scenario.scenarioSession).toEqual({
+      checkpoint: null,
+      completed: false,
+      scenarioId: "tutorial",
+      state: { phase: "escape-earth" },
+    });
+
+    if (!scenario.scenarioSession) {
+      throw new Error("Expected scenario session.");
+    }
+
+    (scenario.scenarioSession.state as { phase: string }).phase = "changed";
+    expect("runtimeScenario" in snapshot && (snapshot.runtimeScenario?.state as { phase: string }).phase).toBe("escape-earth");
   });
 });

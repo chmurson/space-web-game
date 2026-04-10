@@ -6,6 +6,7 @@ import {
   type DebugScenarioSnapshot,
   type RuntimeScenario,
 } from "../debugScenarioSnapshot";
+import { cloneRuntimeScenarioSession, createRuntimeScenarioSession } from "./scenarioSession";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
 import { idleControls } from "../simulation/state";
 import type { SimulationState } from "../simulation/types";
@@ -21,6 +22,7 @@ export type RuntimeScenarioOptions = {
 
 export type RuntimeScenarioState = {
   coastPredictionHorizonHours: number;
+  scenarioSession: ReturnType<typeof createRuntimeScenarioSession>;
   state: SimulationState;
   viewportSize: number;
 };
@@ -56,6 +58,7 @@ export const createRuntimeScenarioState = (
     options.minCoastPredictionHorizonHours,
     options.maxCoastPredictionHorizonHours,
   ),
+  scenarioSession: scenario.scenarioSession ? cloneRuntimeScenarioSession(scenario.scenarioSession) : createRuntimeScenarioSession(scenario.id),
   state: {
     elapsed: scenario.elapsed ?? 0,
     bodies: scenario.bodies,
@@ -67,7 +70,11 @@ export const createRuntimeScenarioState = (
 
 export const saveRuntimeDebugSnapshot = (
   state: SimulationState,
-  options: { coastPredictionHorizonHours: number; viewportSize: number },
+  options: {
+    coastPredictionHorizonHours: number;
+    scenarioSession: RuntimeScenarioState["scenarioSession"];
+    viewportSize: number;
+  },
 ) => {
   try {
     writeDebugScenarioSnapshot(createSnapshotFromState(state, options));

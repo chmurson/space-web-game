@@ -37,6 +37,12 @@ describe("createRuntimeScenarioState", () => {
     );
 
     expect(runtimeScenario.coastPredictionHorizonHours).toBe(48);
+    expect(runtimeScenario.scenarioSession).toEqual({
+      checkpoint: null,
+      completed: false,
+      scenarioId: "test",
+      state: null,
+    });
     expect(runtimeScenario.viewportSize).toBe(50);
     expect(runtimeScenario.state.elapsed).toBe(123);
     expect(runtimeScenario.state.controls).toEqual({ main: 0, reverse: 0, strafe: 0, turn: 0 });
@@ -66,5 +72,40 @@ describe("createRuntimeScenarioState", () => {
     expect(runtimeScenario.coastPredictionHorizonHours).toBe(1);
     expect(runtimeScenario.viewportSize).toBe(200);
     expect(runtimeScenario.state.elapsed).toBe(0);
+  });
+
+  it("preserves provided scenario session metadata", () => {
+    const runtimeScenario = createRuntimeScenarioState(
+      {
+        id: "debug-snapshot",
+        name: "Debug snapshot",
+        description: "Debug snapshot",
+        scenarioSession: {
+          checkpoint: null,
+          completed: false,
+          scenarioId: "tutorial",
+          state: { phase: "return-earth" },
+        },
+        bodies: [],
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
+      },
+      options,
+    );
+
+    expect(runtimeScenario.scenarioSession).toEqual({
+      checkpoint: null,
+      completed: false,
+      scenarioId: "tutorial",
+      state: { phase: "return-earth" },
+    });
   });
 });
