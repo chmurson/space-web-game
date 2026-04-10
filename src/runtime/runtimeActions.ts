@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 import type { KeyboardShortcutAction } from "../input/keyboardShortcuts";
 import { updateCameraView } from "../render/sceneUpdates";
-import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
+import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
 import { getConstrainedTimeWarpIndex, syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { createRequestedRuntimeScenario, createRuntimeScenarioState, loadDebugRuntimeScenario, saveRuntimeDebugSnapshot, type RuntimeScenarioOptions } from "../scenario/runtimeScenario";
 import type { GameSceneRefs } from "../scene/createGameScene";

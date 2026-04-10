@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createTutorialScenario, getTutorialScenarioDirectives, isTutorialScenarioState } from "./tutorialScenario";
+import { registerTutorialScenario } from "./tutorialScenario";
 
 describe("tutorialScenario", () => {
   it("creates a tutorial runtime scenario with phase-1 session state", () => {
-    const scenario = createTutorialScenario();
+    const tutorialScenario = registerTutorialScenario();
+    const scenario = tutorialScenario.createScenario();
 
     expect(scenario.id).toBe("tutorial");
     expect(scenario.coastPredictionHorizonHours).toBe(2);
@@ -16,15 +17,14 @@ describe("tutorialScenario", () => {
     });
   });
 
-  it("recognizes valid tutorial scenario state values", () => {
-    expect(isTutorialScenarioState({ phase: "escape-earth" })).toBe(true);
-    expect(isTutorialScenarioState({ phase: "unknown" })).toBe(false);
-    expect(isTutorialScenarioState(null)).toBe(false);
-  });
+  it("registers tutorial state validation and phase-1 directives", () => {
+    const tutorialScenario = registerTutorialScenario();
 
-  it("derives phase-1 directives from tutorial state", () => {
+    expect(tutorialScenario.isState?.({ phase: "escape-earth" })).toBe(true);
+    expect(tutorialScenario.isState?.({ phase: "unknown" })).toBe(false);
+    expect(tutorialScenario.isState?.(null)).toBe(false);
     expect(
-      getTutorialScenarioDirectives(
+      tutorialScenario.getDirectives?.(
         { phase: "escape-earth" },
         {
           maxCoastPredictionHorizonHours: 48,

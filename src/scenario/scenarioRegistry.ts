@@ -1,12 +1,7 @@
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
-import type { RuntimeScenarioDirectives, ScenarioDirectiveLimits } from "./scenarioDirectives";
+import type { RuntimeScenarioDirectives, ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
 import type { ScenarioSessionValue } from "./scenarioSession";
-import {
-  createTutorialScenario,
-  getTutorialScenarioDirectives,
-  isTutorialScenarioState,
-  type TutorialScenarioState,
-} from "./tutorialScenario";
+import { registerTutorialScenario } from "./tutorialScenario";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
 
 export type RuntimeScenarioDefinition<TState extends ScenarioSessionValue = ScenarioSessionValue> = {
@@ -25,12 +20,7 @@ const runtimeScenarioDefinitions = {
     id: "moon-capture-debug",
     createScenario: createMoonCaptureDebugScenario,
   },
-  tutorial: {
-    id: "tutorial",
-    createScenario: createTutorialScenario,
-    getDirectives: (state: TutorialScenarioState, limits: ScenarioDirectiveLimits) => getTutorialScenarioDirectives(state, limits),
-    isState: isTutorialScenarioState,
-  },
+  tutorial: registerTutorialScenario(),
 } satisfies Record<string, RuntimeScenarioDefinition>;
 
 export const getRuntimeScenarioDefinition = (scenarioId: string): RuntimeScenarioDefinition | null =>

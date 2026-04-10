@@ -14,7 +14,8 @@ import { createFrameLoop } from "../runtime/frameLoop";
 import { createGameQueries } from "../runtime/gameQueries";
 import { createRuntimeActions } from "../runtime/runtimeActions";
 import { createTrajectoryPredictionRuntime } from "../runtime/trajectoryPredictionRuntime";
-import { createDefaultScenarioDirectives, syncRuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
+import { createDefaultScenarioDirectives, type ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
+import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import {
   createRequestedRuntimeScenario,
   createRuntimeScenarioState,

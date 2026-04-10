@@ -7,12 +7,12 @@ import type { SpacecraftPresentation } from "../presentation/spacecraftPresentat
 import type { TrajectoryPresentation } from "../presentation/trajectoryPresentation";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { GameSceneRefs } from "../scene/createGameScene";
+import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
 import type { PhysicsEngine } from "../simulation/types";
 import { type Ripple, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
 import type { GameQueries } from "./gameQueries";
 import type { RuntimeActions } from "./runtimeActions";
-import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
 import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { stepSimulationFrame } from "./simulationStep";
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import { createRuntimeScenarioSession } from "./scenarioSession";
 import { applyRuntimeScenarioDirectiveConstraints, getConstrainedTimeWarpIndex, resolveRuntimeScenarioDirectives } from "./scenarioDirectives";
-import { createTutorialScenarioSession } from "./tutorialScenario";
+import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
 
 const createRuntime = (): AppRuntimeState => ({
   assistMode: "off",
@@ -99,7 +99,7 @@ describe("scenarioDirectives", () => {
 
   it("derives tutorial phase-1 directives from tutorial scenario state", () => {
     const runtime = createRuntime();
-    runtime.scenarioSession = createTutorialScenarioSession({ phase: "escape-earth" });
+    runtime.scenarioSession = getRuntimeScenarioDefinition("tutorial")?.createScenario().scenarioSession ?? runtime.scenarioSession;
 
     const directives = resolveRuntimeScenarioDirectives(runtime, {
       maxCoastPredictionHorizonHours: 48,
