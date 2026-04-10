@@ -75,6 +75,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     viewportSize: initialRuntimeScenarioState.viewportSize,
   };
   const scenarioDirectiveLimits: ScenarioDirectiveLimits = {
+    defaultViewportSize: defaultViewport,
     maxCoastPredictionHorizonHours,
     maxViewportSize: maxViewport,
     minViewportSize: minViewport,
