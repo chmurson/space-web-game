@@ -7,8 +7,7 @@ import {
   type RuntimeScenario,
 } from "../debugScenarioSnapshot";
 import { cloneRuntimeScenarioSession, createRuntimeScenarioSession } from "./scenarioSession";
-import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
-import { createTutorialScenario } from "./tutorialScenario";
+import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
 import { idleControls } from "../simulation/state";
 import type { SimulationState } from "../simulation/types";
 
@@ -36,12 +35,9 @@ export type LoadedDebugRuntimeScenario = {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export const createRequestedRuntimeScenario = (requestedScenario: string): RuntimeScenario => {
-  if (requestedScenario === "tutorial") {
-    return createTutorialScenario();
-  }
-
-  if (requestedScenario === "moon-capture-debug") {
-    return createMoonCaptureDebugScenario();
+  const definition = getRuntimeScenarioDefinition(requestedScenario);
+  if (definition) {
+    return definition.createScenario();
   }
 
   if (requestedScenario === "debug-snapshot") {
@@ -51,7 +47,7 @@ export const createRequestedRuntimeScenario = (requestedScenario: string): Runti
     }
   }
 
-  return createEarthMoonScenario();
+  return getRuntimeScenarioDefinition("earth-moon")!.createScenario();
 };
 
 export const createRuntimeScenarioState = (

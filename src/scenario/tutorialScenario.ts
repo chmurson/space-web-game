@@ -1,6 +1,7 @@
 import { createEarthMoonScenario } from "../simulation/scenarios/earthMoon";
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
 import { createRuntimeScenarioSession, type RuntimeScenarioSession } from "./scenarioSession";
+import { createDefaultScenarioDirectives, type RuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "./scenarioDirectives";
 
 export type TutorialScenarioPhase = "escape-earth" | "reach-moon" | "return-earth" | "complete";
 
@@ -29,4 +30,22 @@ export const createTutorialScenario = (): RuntimeScenario => {
     coastPredictionHorizonHours: 2,
     scenarioSession: createTutorialScenarioSession(),
   };
+};
+
+export const getTutorialScenarioDirectives = (
+  state: TutorialScenarioState,
+  limits: ScenarioDirectiveLimits,
+): RuntimeScenarioDirectives => {
+  if (state.phase === "escape-earth") {
+    return {
+      ...createDefaultScenarioDirectives(),
+      forcedAssistTargetId: "earth",
+      hiddenBodyIds: ["moon"],
+      maxCoastPredictionHorizonHours: 2,
+      maxTimeWarp: 500,
+      maxViewportSize: limits.defaultViewportSize / 5,
+    };
+  }
+
+  return createDefaultScenarioDirectives();
 };

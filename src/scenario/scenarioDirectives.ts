@@ -1,6 +1,6 @@
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { ScenarioSessionValue } from "./scenarioSession";
-import { isTutorialScenarioState } from "./tutorialScenario";
+import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
 
 export type RuntimeScenarioDirectives = {
   forcedAssistTargetId: string | null;
@@ -59,31 +59,14 @@ const genericDirectiveResolver: ScenarioDirectiveResolver = ({ runtime }) => ({
   hiddenBodyIds: getStringArrayValue(runtime.scenarioSession.state, "hiddenBodyIds"),
 });
 
-const tutorialDirectiveResolver: ScenarioDirectiveResolver = ({ limits, runtime }) => {
-  if (!isTutorialScenarioState(runtime.scenarioSession.state)) {
-    return createDefaultScenarioDirectives();
-  }
-
-  if (runtime.scenarioSession.state.phase === "escape-earth") {
-    return {
-      ...createDefaultScenarioDirectives(),
-      forcedAssistTargetId: "earth",
-      hiddenBodyIds: ["moon"],
-      maxCoastPredictionHorizonHours: 2,
-      maxTimeWarp: 500,
-      maxViewportSize: limits.defaultViewportSize / 5,
-    };
-  }
-
-  return createDefaultScenarioDirectives();
-};
-
-const scenarioDirectiveResolvers: Record<string, ScenarioDirectiveResolver> = {
-  tutorial: tutorialDirectiveResolver,
-};
-
 export const resolveRuntimeScenarioDirectives = (runtime: AppRuntimeState, limits: ScenarioDirectiveLimits): RuntimeScenarioDirectives => {
-  const resolver = scenarioDirectiveResolvers[runtime.scenarioSession.scenarioId] ?? genericDirectiveResolver;
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+
+  if (definition?.getDirectives && (!definition.isState || definition.isState(runtime.scenarioSession.state))) {
+    return definition.getDirectives(runtime.scenarioSession.state, limits);
+  }
+
+  const resolver: ScenarioDirectiveResolver = genericDirectiveResolver;
   return resolver({ limits, runtime });
 };
 
