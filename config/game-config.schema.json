@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Game Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "tabTitleSuffix": {
+      "type": "string",
+      "description": "Optional text appended to the browser tab title."
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "distance": {
+          "type": "number"
+        },
+        "elevationDegrees": {
+          "type": "number"
+        },
+        "viewport": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "default": {
+              "type": "number"
+            },
+            "minDivisor": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          }
+        },
+        "spacecraftModelZoomThreshold": {
+          "type": "number"
+        }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "autopilotRotationRate": {
+          "type": "number"
+        },
+        "timeWarps": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "trajectory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "horizon": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "defaultHours": {
+              "type": "number"
+            },
+            "minHours": {
+              "type": "number"
+            },
+            "maxHours": {
+              "type": "number"
+            }
+          }
+        },
+        "loopTrim": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxRevolutions": {
+              "type": "number"
+            }
+          }
+        },
+        "rendering": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dashPixels": {
+              "type": "number"
+            },
+            "gapPixels": {
+              "type": "number"
+            },
+            "replaceLineGeometryOnUpdate": {
+              "type": "boolean"
+            },
+            "endMarkerRadius": {
+              "type": "number"
+            },
+            "endMarkerMinScreenRadius": {
+              "type": "number"
+            }
+          }
+        },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "refreshInterval": {
+              "type": "number"
+            },
+            "targetMaxSteps": {
+              "type": "number"
+            },
+            "stepOptionsSeconds": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

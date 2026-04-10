@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=./game-config.schema.json
 camera:
   distance: 700
   elevationDegrees: 66

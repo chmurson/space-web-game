@@ -1,4 +1,5 @@
 export type GameConfig = {
+  tabTitleSuffix?: string;
   camera: {
     distance: number;
     elevationDegrees: number;

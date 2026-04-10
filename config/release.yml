@@ -1,2 +1,3 @@
+# yaml-language-server: $schema=./game-config.schema.json
 # Release-only overrides go here.
 {}
