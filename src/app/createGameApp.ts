@@ -6,6 +6,7 @@ import { bindKeyboardShortcuts } from "../input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "../input/keyboardInput";
 import { bindPointerCameraInput } from "../input/pointerCameraInput";
 import { createBodyPresentation } from "../presentation/bodyPresentation";
+import { createHudPresentation } from "../presentation/hudPresentation";
 import { createSpacecraftPresentation } from "../presentation/spacecraftPresentation";
 import { createTrajectoryPresentation } from "../presentation/trajectoryPresentation";
 import { createRendererProfiler } from "../render/rendererProfiler";
@@ -95,6 +96,23 @@ export const createGameApp = (app: HTMLDivElement) => {
     predictionSampling: gameConfig.trajectory.sampling,
     runtime,
   });
+  const trajectoryPresentation = createTrajectoryPresentation({
+    gameScene,
+    physicsEngine,
+    queries,
+    runtime,
+    trajectoryPredictionRuntime,
+  });
+  const hudPresentation = createHudPresentation({
+    defaultViewport,
+    overlayUi,
+    physicsEngineName: physicsEngine.name,
+    queries,
+    rendererProfiler,
+    runtime,
+    timeWarps,
+    trajectoryPresentation,
+  });
 
   const runtimeActions = createRuntimeActions({
     app,
@@ -129,12 +147,10 @@ export const createGameApp = (app: HTMLDivElement) => {
   });
 
   const frameLoop = createFrameLoop({
-    defaultViewport,
     gameScene,
+    hudPresentation,
     keyboardInput,
-    overlayUi,
     physicsEngine,
-    physicsEngineName: physicsEngine.name,
     queries,
     rendererProfiler,
     ripples,
@@ -152,13 +168,7 @@ export const createGameApp = (app: HTMLDivElement) => {
       spacecraftModelZoomThreshold,
     }),
     timeWarps,
-    trajectoryPresentation: createTrajectoryPresentation({
-      gameScene,
-      physicsEngine,
-      queries,
-      runtime,
-      trajectoryPredictionRuntime,
-    }),
+    trajectoryPresentation,
   });
 
   bindKeyboardShortcuts({
