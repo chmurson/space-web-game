@@ -1,3 +1,7 @@
+assistTarget:
+  autoSelectNearestSurface: true
+  switchRangeMultiplier: 1.2
+
 camera:
   distance: 700
   elevationDegrees: 66
@@ -25,6 +29,7 @@ trajectory:
     endMarkerRadius: 0.17
     endMarkerMinScreenRadius: 5.5
   sampling:
-    refreshInterval: 0.2
+    refreshInterval: 0.4
     targetMaxSteps: 1200
-    stepOptionsSeconds: [30, 45, 60, 90, 120, 180, 300, 450, 600, 900, 1200, 1800]
+    stepOptionsSeconds:
+      [30, 45, 60, 90, 120, 180, 300, 450, 600, 900, 1200, 1800]

@@ -92,7 +92,9 @@ export const createHudPresentation = (options: {
           targetName: target.name,
         }).join("\n"),
       );
-      options.overlayUi.debugPanel.setJson(null);
+      options.overlayUi.debugPanel.setJson({
+        assistTarget: options.queries.getAssistTargetDebug(),
+      });
     }
 
     const fpsIndicatorVisible = options.runtime.debugModeEnabled && options.runtime.fpsIndicatorEnabled;

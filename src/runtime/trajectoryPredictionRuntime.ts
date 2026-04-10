@@ -10,6 +10,8 @@ import type { Body, ControlInput, PhysicsEngine, SimulationState } from "../simu
 import type { Vec2 } from "../simulation/vector";
 
 export type TrajectoryPredictionState = {
+  absolutePredictionEnd: Vec2 | null;
+  absolutePredictionPoints: Vec2[];
   predictedImpact: PredictedImpact | null;
   predictedTargetClosestApproach: PredictedClosestApproach | null;
   targetRelativeAssistedPoints: Vec2[];
@@ -28,6 +30,8 @@ export type RefreshTrajectoryPredictionOptions = {
 };
 
 const emptyTrajectoryPredictionState = (): TrajectoryPredictionState => ({
+  absolutePredictionEnd: null,
+  absolutePredictionPoints: [],
   predictedImpact: null,
   predictedTargetClosestApproach: null,
   targetRelativeAssistedPoints: [],
@@ -47,6 +51,8 @@ export const createTrajectoryPredictionRuntime = () => {
     const targetRelativePredictionPoints = coastPrediction.relativePoints;
 
     predictionState = {
+      absolutePredictionEnd: coastPrediction.absoluteEndPoint,
+      absolutePredictionPoints: coastPrediction.absolutePoints,
       predictedImpact: coastPrediction.impact,
       predictedTargetClosestApproach: coastPrediction.closestApproach,
       targetRelativeAssistedPoints:

@@ -1,4 +1,9 @@
 export type GameConfig = {
+  assistTarget: {
+    autoSelectNearestSurface: boolean;
+    switchRangeMultiplier: number;
+  };
+  tabTitleSuffix?: string;
   camera: {
     distance: number;
     elevationDegrees: number;
