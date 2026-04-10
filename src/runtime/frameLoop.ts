@@ -1,16 +1,16 @@
 import * as THREE from "three";
 
 import type { KeyboardInput } from "../input/keyboardInput";
+import type { BodyPresentation } from "../presentation/bodyPresentation";
 import type { SpacecraftPresentation } from "../presentation/spacecraftPresentation";
 import type { TrajectoryPresentation } from "../presentation/trajectoryPresentation";
-import { renderPosition, updateBodyVisuals } from "../render/sceneUpdates";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import { getBodyInfluences } from "../simulation/bodyInfluence";
 import type { Body, PhysicsEngine } from "../simulation/types";
 import { length, sub } from "../simulation/vector";
 import type { OverlayUiRefs } from "../ui/createOverlayUi";
-import { type Ripple, updateBodyLabels, updateFpsIndicator, updateHud as updateOverlayHud, updateOffscreenIndicators, updateRipples } from "../ui/overlayUpdates";
+import { type Ripple, updateFpsIndicator, updateHud as updateOverlayHud, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
 import type { GameQueries } from "./gameQueries";
 import type { RuntimeActions } from "./runtimeActions";
@@ -28,6 +28,7 @@ export const createFrameLoop = (options: {
   ripples: Ripple[];
   runtime: AppRuntimeState;
   runtimeActions: RuntimeActions;
+  bodyPresentation: BodyPresentation;
   spacecraftPresentation: SpacecraftPresentation;
   timeWarps: number[];
   trajectoryPresentation: TrajectoryPresentation;
@@ -111,9 +112,10 @@ export const createFrameLoop = (options: {
     options.runtimeActions.updateCamera();
     options.trajectoryPresentation.maybeRefreshPrediction(realDt);
 
-    updateBodyVisuals({
+    options.bodyPresentation.updateVisuals({
       bodies: options.runtime.state.bodies,
-      gameScene: options.gameScene,
+      spacecraftPosition: options.runtime.state.spacecraft.position,
+      viewportSize: options.runtime.viewportSize,
     });
     options.spacecraftPresentation.updateVisuals({
       isThrusting,
@@ -122,20 +124,6 @@ export const createFrameLoop = (options: {
       viewportSize: options.runtime.viewportSize,
     });
     options.trajectoryPresentation.updateVisuals();
-    updateOffscreenIndicators({
-      bodies: options.runtime.state.bodies,
-      camera: options.gameScene.camera,
-      overlayUi: options.overlayUi,
-      renderPosition,
-      spacecraftPosition: options.runtime.state.spacecraft.position,
-    });
-    updateBodyLabels({
-      bodies: options.runtime.state.bodies,
-      camera: options.gameScene.camera,
-      overlayUi: options.overlayUi,
-      renderPosition,
-      viewportSize: options.runtime.viewportSize,
-    });
     updateHud();
     updateFpsIndicator(options.overlayUi, options.runtime.debugModeEnabled && options.runtime.fpsIndicatorEnabled, smoothedFps);
     options.rendererProfiler.render(options.gameScene.scene, options.gameScene.camera, options.runtime.performanceDebugEnabled);
@@ -148,9 +136,10 @@ export const createFrameLoop = (options: {
     refreshTrajectoryPrediction,
     start: () => {
       options.runtimeActions.updateCamera();
-      updateBodyVisuals({
+      options.bodyPresentation.updateVisuals({
         bodies: options.runtime.state.bodies,
-        gameScene: options.gameScene,
+        spacecraftPosition: options.runtime.state.spacecraft.position,
+        viewportSize: options.runtime.viewportSize,
       });
       options.spacecraftPresentation.updateVisuals({
         isThrusting: options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0,

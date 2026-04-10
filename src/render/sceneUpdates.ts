@@ -1,7 +1,6 @@
 import * as THREE from "three";
 
 import { RENDER_SCALE } from "../simulation/constants";
-import type { Body } from "../simulation/types";
 import type { Vec2 } from "../simulation/vector";
 import type { GameSceneRefs } from "../scene/createGameScene";
 
@@ -44,16 +43,4 @@ export const updateCameraView = (options: {
   options.gameScene.inertialPredictionMaterial.gapSize = renderUnitsPerPixel * options.gameScene.predictionGapPixels;
   options.gameScene.assistedPredictionMaterial.dashSize = renderUnitsPerPixel * options.gameScene.predictionDashPixels;
   options.gameScene.assistedPredictionMaterial.gapSize = renderUnitsPerPixel * options.gameScene.predictionGapPixels;
-};
-
-export const updateBodyVisuals = (options: {
-  bodies: Body[];
-  gameScene: GameSceneRefs;
-}) => {
-  for (const body of options.bodies) {
-    const mesh = options.gameScene.bodyMeshes.get(body.id);
-    if (mesh) {
-      mesh.position.copy(renderPosition(body.position.x, body.position.y));
-    }
-  }
 };

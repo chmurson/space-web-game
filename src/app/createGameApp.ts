@@ -5,6 +5,7 @@ import { gameConfig } from "../config/gameConfig";
 import { bindKeyboardShortcuts } from "../input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "../input/keyboardInput";
 import { bindPointerCameraInput } from "../input/pointerCameraInput";
+import { createBodyPresentation } from "../presentation/bodyPresentation";
 import { createSpacecraftPresentation } from "../presentation/spacecraftPresentation";
 import { createTrajectoryPresentation } from "../presentation/trajectoryPresentation";
 import { createRendererProfiler } from "../render/rendererProfiler";
@@ -139,6 +140,10 @@ export const createGameApp = (app: HTMLDivElement) => {
     ripples,
     runtime,
     runtimeActions,
+    bodyPresentation: createBodyPresentation({
+      gameScene,
+      overlayUi,
+    }),
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport,
       gameScene,
