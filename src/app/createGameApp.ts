@@ -1,24 +1,16 @@
 import * as THREE from "three";
 
 import { appSettings } from "../appSettings";
-import { getAssistTargetForState } from "../assist/assistTarget";
-import {
-  getAssistPredictionControlsForState,
-  getAutopilotTurnForHeading,
-  getCaptureMetricsForState,
-  getCircularizePlanForState,
-  shouldCaptureBurnForMetrics,
-} from "../assist/orbitalAssist";
 import { gameConfig } from "../config/gameConfig";
 import { bindKeyboardShortcuts } from "../input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "../input/keyboardInput";
 import { bindPointerCameraInput } from "../input/pointerCameraInput";
 import { createSpacecraftPresentation } from "../presentation/spacecraftPresentation";
 import { createTrajectoryPresentation } from "../presentation/trajectoryPresentation";
-import { getTrajectoryPredictionConfig } from "../prediction/trajectoryPrediction";
 import { createRendererProfiler } from "../render/rendererProfiler";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import { createFrameLoop } from "../runtime/frameLoop";
+import { createGameQueries } from "../runtime/gameQueries";
 import { createRuntimeActions } from "../runtime/runtimeActions";
 import { createTrajectoryPredictionRuntime } from "../runtime/trajectoryPredictionRuntime";
 import {
@@ -29,7 +21,6 @@ import {
 import { createGameScene } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "../simulation/physics";
-import type { Body, ControlInput, SimulationState } from "../simulation/types";
 import { createOverlayUi } from "../ui/createOverlayUi";
 import { createRipple, type Ripple } from "../ui/overlayUpdates";
 import { readUserSettings, updateUserSettings } from "../userSettingsStorage";
@@ -96,32 +87,13 @@ export const createGameApp = (app: HTMLDivElement) => {
     scenarioName: scenario.name,
     showCycleTargetHint: !appSettings.assistTarget.autoDiscoverStrongestInfluence,
   });
-
-  const getAssistTarget = () =>
-    getAssistTargetForState(runtime.state, {
-      autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
-      selectedIndex: runtime.assistTargetIndex,
-    });
-
-  const getAutopilotTurn = (desiredHeading: number) => getAutopilotTurnForHeading(runtime.state.spacecraft.heading, desiredHeading, autopilotRotationRate);
-
-  const getCaptureMetrics = (target: Body) => getCaptureMetricsForState(runtime.state, target);
-
-  const shouldCaptureBurn = (target: Body) => shouldCaptureBurnForMetrics(getCaptureMetrics(target));
-
-  const getCircularizePlan = (target: Body) => getCircularizePlanForState(runtime.state, target);
-
-  const getAssistPredictionControls = (simulationState: SimulationState, targetId: string): ControlInput =>
-    getAssistPredictionControlsForState(simulationState, targetId, runtime.assistMode, autopilotRotationRate);
-
-  const getCoastPredictionHorizonSeconds = () => runtime.coastPredictionHorizonHours * 60 * 60;
-
-  const getPredictionConfig = () =>
-    getTrajectoryPredictionConfig(
-      getCoastPredictionHorizonSeconds(),
-      gameConfig.trajectory.sampling,
-      gameConfig.trajectory.loopTrim.maxRevolutions,
-    );
+  const queries = createGameQueries({
+    autoDiscoverStrongestInfluence: appSettings.assistTarget.autoDiscoverStrongestInfluence,
+    autopilotRotationRate,
+    maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
+    predictionSampling: gameConfig.trajectory.sampling,
+    runtime,
+  });
 
   const runtimeActions = createRuntimeActions({
     app,
@@ -158,17 +130,11 @@ export const createGameApp = (app: HTMLDivElement) => {
   const frameLoop = createFrameLoop({
     defaultViewport,
     gameScene,
-    getAssistPredictionControls,
-    getAssistTarget,
-    getAutopilotTurn,
-    getCaptureMetrics,
-    getCircularizePlan,
-    getCoastPredictionHorizonSeconds,
-    getPredictionConfig,
     keyboardInput,
     overlayUi,
     physicsEngine,
     physicsEngineName: physicsEngine.name,
+    queries,
     rendererProfiler,
     ripples,
     runtime,
@@ -180,18 +146,11 @@ export const createGameApp = (app: HTMLDivElement) => {
       pointerCameraInput,
       spacecraftModelZoomThreshold,
     }),
-    shouldCaptureBurn,
-    spacecraftModelZoomThreshold,
     timeWarps,
     trajectoryPresentation: createTrajectoryPresentation({
       gameScene,
-      getAssistPredictionControls,
-      getAssistTarget,
-      getCaptureMetrics,
-      getCircularizePlan,
-      getCoastPredictionHorizonSeconds,
-      getPredictionConfig,
       physicsEngine,
+      queries,
       runtime,
       trajectoryPredictionRuntime,
     }),

@@ -1,14 +1,14 @@
 import * as THREE from "three";
 
-import type { CaptureMetrics, CircularizePlan } from "../assist/orbitalAssist";
-import type { TrajectoryPredictionConfig } from "../prediction/trajectoryPrediction";
+import type { CircularizePlan } from "../assist/orbitalAssist";
 import { updateColoredLine2Geometry, updateLine2Geometry } from "../rendering/line2Geometry";
 import { renderPosition } from "../render/sceneUpdates";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
+import type { GameQueries } from "../runtime/gameQueries";
 import type { TrajectoryPredictionRuntime } from "../runtime/trajectoryPredictionRuntime";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
-import type { Body, ControlInput, PhysicsEngine, SimulationState } from "../simulation/types";
+import type { Body, PhysicsEngine } from "../simulation/types";
 import { fromAngle, type Vec2 } from "../simulation/vector";
 
 const updateInertialPredictionVisual = (options: {
@@ -193,13 +193,8 @@ const updateCircularizationVisuals = (options: {
 
 export const createTrajectoryPresentation = (options: {
   gameScene: GameSceneRefs;
-  getAssistPredictionControls(simulationState: SimulationState, targetId: string): ControlInput;
-  getAssistTarget(): Body;
-  getCaptureMetrics(target: Body): CaptureMetrics;
-  getCircularizePlan(target: Body): CircularizePlan;
-  getCoastPredictionHorizonSeconds(): number;
-  getPredictionConfig(): TrajectoryPredictionConfig;
   physicsEngine: PhysicsEngine;
+  queries: GameQueries;
   runtime: AppRuntimeState;
   trajectoryPredictionRuntime: TrajectoryPredictionRuntime;
 }) => {
@@ -207,7 +202,7 @@ export const createTrajectoryPresentation = (options: {
     updateInertialPredictionVisual({
       enabled: options.runtime.debugModeEnabled && options.runtime.debugNoGravityEnabled,
       gameScene: options.gameScene,
-      predictionSeconds: Math.min(options.getCoastPredictionHorizonSeconds() * 0.3, 90 * 60),
+      predictionSeconds: Math.min(options.queries.getCoastPredictionHorizonSeconds() * 0.3, 90 * 60),
       spacecraftPosition: options.runtime.state.spacecraft.position,
       spacecraftVelocity: options.runtime.state.spacecraft.velocity,
     });
@@ -216,11 +211,11 @@ export const createTrajectoryPresentation = (options: {
   const refreshPrediction = () => {
     options.trajectoryPredictionRuntime.refresh({
       assistMode: options.runtime.assistMode,
-      getAssistPredictionControls: options.getAssistPredictionControls,
-      getAssistTarget: options.getAssistTarget,
-      getCaptureMetrics: options.getCaptureMetrics,
+      getAssistPredictionControls: options.queries.getAssistPredictionControls,
+      getAssistTarget: options.queries.getAssistTarget,
+      getCaptureMetrics: options.queries.getCaptureMetrics,
       physicsEngine: options.physicsEngine,
-      predictionConfig: options.getPredictionConfig(),
+      predictionConfig: options.queries.getPredictionConfig(),
       state: options.runtime.state,
     });
     syncInertialPredictionVisual();
@@ -231,11 +226,11 @@ export const createTrajectoryPresentation = (options: {
     maybeRefreshPrediction: (realDt: number) => {
       const refreshed = options.trajectoryPredictionRuntime.maybeRefresh(realDt, {
         assistMode: options.runtime.assistMode,
-        getAssistPredictionControls: options.getAssistPredictionControls,
-        getAssistTarget: options.getAssistTarget,
-        getCaptureMetrics: options.getCaptureMetrics,
+        getAssistPredictionControls: options.queries.getAssistPredictionControls,
+        getAssistTarget: options.queries.getAssistTarget,
+        getCaptureMetrics: options.queries.getCaptureMetrics,
         physicsEngine: options.physicsEngine,
-        predictionConfig: options.getPredictionConfig(),
+        predictionConfig: options.queries.getPredictionConfig(),
         state: options.runtime.state,
       });
 
@@ -246,7 +241,7 @@ export const createTrajectoryPresentation = (options: {
     refreshPrediction,
     updateVisuals: () => {
       const predictionState = options.trajectoryPredictionRuntime.getState();
-      const target = options.getAssistTarget();
+      const target = options.queries.getAssistTarget();
 
       if (options.runtime.assistMode !== "off") {
         options.gameScene.assistedPredictionMaterial.color.set(options.runtime.assistMode === "capture" ? 0xf59e0b : 0xfacc15);
@@ -264,7 +259,8 @@ export const createTrajectoryPresentation = (options: {
         viewportSize: options.runtime.viewportSize,
       });
       updateCircularizationVisuals({
-        circularizePlan: options.runtime.assistMode === "circularize" && !options.runtime.crashedBodyName ? options.getCircularizePlan(target) : null,
+        circularizePlan:
+          options.runtime.assistMode === "circularize" && !options.runtime.crashedBodyName ? options.queries.getCircularizePlan(target) : null,
         gameScene: options.gameScene,
         spacecraftPosition: options.runtime.state.spacecraft.position,
         target: options.runtime.assistMode === "circularize" && !options.runtime.crashedBodyName ? target : null,

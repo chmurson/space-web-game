@@ -1,43 +1,34 @@
 import * as THREE from "three";
 
-import type { CaptureMetrics, CircularizePlan } from "../assist/orbitalAssist";
 import type { KeyboardInput } from "../input/keyboardInput";
-import type { TrajectoryPredictionConfig } from "../prediction/trajectoryPrediction";
 import type { SpacecraftPresentation } from "../presentation/spacecraftPresentation";
 import type { TrajectoryPresentation } from "../presentation/trajectoryPresentation";
 import { renderPosition, updateBodyVisuals } from "../render/sceneUpdates";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import { getBodyInfluences } from "../simulation/bodyInfluence";
-import type { Body, ControlInput, PhysicsEngine, SimulationState } from "../simulation/types";
+import type { Body, PhysicsEngine } from "../simulation/types";
 import { length, sub } from "../simulation/vector";
 import type { OverlayUiRefs } from "../ui/createOverlayUi";
 import { type Ripple, updateBodyLabels, updateFpsIndicator, updateHud as updateOverlayHud, updateOffscreenIndicators, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
+import type { GameQueries } from "./gameQueries";
 import type { RuntimeActions } from "./runtimeActions";
 import { stepSimulationFrame } from "./simulationStep";
 
 export const createFrameLoop = (options: {
   defaultViewport: number;
   gameScene: GameSceneRefs;
-  getAssistPredictionControls(simulationState: SimulationState, targetId: string): ControlInput;
-  getAssistTarget(): Body;
-  getAutopilotTurn(desiredHeading: number): number;
-  getCaptureMetrics(target: Body): CaptureMetrics;
-  getCircularizePlan(target: Body): CircularizePlan;
-  getCoastPredictionHorizonSeconds(): number;
-  getPredictionConfig(): TrajectoryPredictionConfig;
   keyboardInput: KeyboardInput;
   overlayUi: OverlayUiRefs;
   physicsEngine: PhysicsEngine;
   physicsEngineName: string;
+  queries: GameQueries;
   rendererProfiler: RendererProfiler;
   ripples: Ripple[];
   runtime: AppRuntimeState;
   runtimeActions: RuntimeActions;
   spacecraftPresentation: SpacecraftPresentation;
-  shouldCaptureBurn(target: Body): boolean;
-  spacecraftModelZoomThreshold: number;
   timeWarps: number[];
   trajectoryPresentation: TrajectoryPresentation;
 }) => {
@@ -49,16 +40,16 @@ export const createFrameLoop = (options: {
     const earth = options.runtime.state.bodies.find((body) => body.id === "earth") as Body;
     const relativeVelocity = sub(options.runtime.state.spacecraft.velocity, earth.velocity);
     const speed = length(relativeVelocity);
-    const target = options.getAssistTarget();
-    const targetMetrics = options.getCaptureMetrics(target);
-    const circularizePlan = options.runtime.assistMode === "circularize" ? options.getCircularizePlan(target) : null;
+    const target = options.queries.getAssistTarget();
+    const targetMetrics = options.queries.getCaptureMetrics(target);
+    const circularizePlan = options.runtime.assistMode === "circularize" ? options.queries.getCircularizePlan(target) : null;
     const predictionState = options.trajectoryPresentation.getPredictionState();
 
     updateOverlayHud({
       assistMode: options.runtime.assistMode,
       bodyInfluences: getBodyInfluences(options.runtime.state),
       circularizePlan,
-      coastPredictionHorizonSeconds: options.getCoastPredictionHorizonSeconds(),
+      coastPredictionHorizonSeconds: options.queries.getCoastPredictionHorizonSeconds(),
       crashedBodyName: options.runtime.crashedBodyName,
       debugModeEnabled: options.runtime.debugModeEnabled,
       debugNoGravityEnabled: options.runtime.debugNoGravityEnabled,
@@ -71,7 +62,7 @@ export const createFrameLoop = (options: {
       physicsEngineName: options.physicsEngineName,
       predictedImpact: predictionState.predictedImpact,
       predictedTargetClosestApproach: predictionState.predictedTargetClosestApproach,
-      predictionStepSeconds: options.getPredictionConfig().stepSeconds,
+      predictionStepSeconds: options.queries.getPredictionConfig().stepSeconds,
       smoothedCpuMs,
       smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
       speed,
@@ -96,15 +87,15 @@ export const createFrameLoop = (options: {
     const simulationStep = stepSimulationFrame({
       assistMode: options.runtime.assistMode,
       crashedBodyName: options.runtime.crashedBodyName,
-      getAssistTarget: options.getAssistTarget,
-      getAutopilotTurn: options.getAutopilotTurn,
-      getCaptureMetrics: options.getCaptureMetrics,
-      getCircularizePlan: options.getCircularizePlan,
+      getAssistTarget: options.queries.getAssistTarget,
+      getAutopilotTurn: options.queries.getAutopilotTurn,
+      getCaptureMetrics: options.queries.getCaptureMetrics,
+      getCircularizePlan: options.queries.getCircularizePlan,
       keyboardInput: options.keyboardInput,
       maxControlWarp: 100,
       physicsEngine: options.physicsEngine,
       realDt,
-      shouldCaptureBurn: options.shouldCaptureBurn,
+      shouldCaptureBurn: options.queries.shouldCaptureBurn,
       state: options.runtime.state,
       targetHeading: options.runtime.targetHeading,
       timeWarpIndex: options.runtime.timeWarpIndex,

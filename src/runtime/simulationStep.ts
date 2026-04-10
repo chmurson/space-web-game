@@ -1,18 +1,19 @@
-import { shouldCircularizeBurn, type AssistMode, type CaptureMetrics, type CircularizePlan } from "../assist/orbitalAssist";
+import { shouldCircularizeBurn, type AssistMode } from "../assist/orbitalAssist";
 import type { KeyboardInput } from "../input/keyboardInput";
 import { idleControls } from "../simulation/state";
 import type { Body, PhysicsEngine, SimulationState } from "../simulation/types";
 import { add, fromAngle, length, normalize, scale, sub } from "../simulation/vector";
+import type { GameQueries } from "./gameQueries";
 
-type ResolveSimulationControlsOptions = {
+type SimulationStepQueries = Pick<
+  GameQueries,
+  "getAssistTarget" | "getAutopilotTurn" | "getCaptureMetrics" | "getCircularizePlan" | "shouldCaptureBurn"
+>;
+
+type ResolveSimulationControlsOptions = SimulationStepQueries & {
   assistMode: AssistMode;
   crashedBodyName: string | null;
-  getAssistTarget(): Body;
-  getAutopilotTurn(desiredHeading: number): number;
-  getCaptureMetrics(target: Body): CaptureMetrics;
-  getCircularizePlan(target: Body): CircularizePlan;
   keyboardInput: KeyboardInput;
-  shouldCaptureBurn(target: Body): boolean;
   state: SimulationState;
   targetHeading: number | null;
 };
@@ -23,10 +24,15 @@ type ResolvedSimulationControls = {
   targetHeading: number | null;
 };
 
-export type StepSimulationFrameOptions = ResolveSimulationControlsOptions & {
+export type StepSimulationFrameOptions = SimulationStepQueries & {
+  assistMode: AssistMode;
+  crashedBodyName: string | null;
+  keyboardInput: KeyboardInput;
   maxControlWarp: number;
   physicsEngine: PhysicsEngine;
   realDt: number;
+  state: SimulationState;
+  targetHeading: number | null;
   timeWarpIndex: number;
   timeWarps: number[];
 };
