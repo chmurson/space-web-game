@@ -6,9 +6,12 @@ import { getDebugPanelLines, getGuidanceText } from "../ui/hudText";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { GameQueries } from "../runtime/gameQueries";
+import { getRuntimeScenarioDefinition, getRuntimeScenarioPromptContent } from "../scenario/scenarioRegistry";
 import type { TrajectoryPresentation } from "./trajectoryPresentation";
 
 export const createHudPresentation = (options: {
+  defaultScenarioDescription: string;
+  defaultScenarioName: string;
   defaultViewport: number;
   overlayUi: OverlayUiRefs;
   physicsEngineName: string;
@@ -73,6 +76,29 @@ export const createHudPresentation = (options: {
       const targetMetrics = options.queries.getCaptureMetrics(target);
       const circularizePlan = options.runtime.assistMode === "circularize" ? options.queries.getCircularizePlan(target) : null;
       const predictionState = options.trajectoryPresentation.getPredictionState();
+      const scenarioDefinition = getRuntimeScenarioDefinition(options.runtime.scenarioSession.scenarioId);
+      const scenarioHudContent =
+        scenarioDefinition?.getHudContent && (!scenarioDefinition.isState || scenarioDefinition.isState(options.runtime.scenarioSession.state))
+          ? scenarioDefinition.getHudContent(options.runtime.scenarioSession.state)
+          : null;
+      const scenarioPromptContent = getRuntimeScenarioPromptContent(options.runtime);
+
+      if (options.overlayUi.hudTitle) {
+        options.overlayUi.hudTitle.textContent = scenarioHudContent?.title ?? options.defaultScenarioName;
+      }
+      if (options.overlayUi.hudDescription) {
+        options.overlayUi.hudDescription.textContent = scenarioHudContent?.description ?? options.defaultScenarioDescription;
+      }
+      options.overlayUi.scenarioPrompt.style.display = scenarioPromptContent ? "grid" : "none";
+      if (options.overlayUi.scenarioPromptTitle) {
+        options.overlayUi.scenarioPromptTitle.textContent = scenarioPromptContent?.title ?? "";
+      }
+      if (options.overlayUi.scenarioPromptDescription) {
+        options.overlayUi.scenarioPromptDescription.textContent = scenarioPromptContent?.description ?? "";
+      }
+      if (options.overlayUi.scenarioPromptConfirmButton) {
+        options.overlayUi.scenarioPromptConfirmButton.textContent = scenarioPromptContent?.confirmLabel ?? "";
+      }
 
       if (options.overlayUi.statEngine) {
         options.overlayUi.statEngine.textContent = options.physicsEngineName;

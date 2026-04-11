@@ -16,3 +16,8 @@
 - If the current branch is not `main`, do not deploy to the production environment.
 - On non-`main` branches, deploy only to a non-production Netlify preview when the user asks for a deploy or when a deploy is needed to share the result.
 - After any non-production deploy, share the preview URL with the user.
+
+## Code Quality
+
+- Do not widen module APIs only to make tests easier to write.
+- Prefer testing behavior through existing public functions instead of exporting internal helpers just for tests.

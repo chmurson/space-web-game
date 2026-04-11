@@ -14,7 +14,8 @@ import { createFrameLoop } from "../runtime/frameLoop";
 import { createGameQueries } from "../runtime/gameQueries";
 import { createRuntimeActions } from "../runtime/runtimeActions";
 import { createTrajectoryPredictionRuntime } from "../runtime/trajectoryPredictionRuntime";
-import { createDefaultScenarioDirectives, syncRuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
+import { createDefaultScenarioDirectives, type ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
+import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import {
   createRequestedRuntimeScenario,
   createRuntimeScenarioState,
@@ -168,6 +169,8 @@ export const createGameApp = (app: HTMLDivElement) => {
     onZoom: runtimeActions.zoomCamera,
   });
   const hudPresentation = createHudPresentation({
+    defaultScenarioDescription: scenario.description,
+    defaultScenarioName: scenario.name,
     defaultViewport,
     overlayUi,
     physicsEngineName: physicsEngine.name,
@@ -224,6 +227,11 @@ export const createGameApp = (app: HTMLDivElement) => {
     handleAction: dispatchRuntimeAction,
     keyboardInput,
     windowTarget: window,
+  });
+  overlayUi.scenarioPromptConfirmButton?.addEventListener("click", () => {
+    if (runtimeActions.acknowledgeScenarioPrompt()) {
+      frameLoop.refreshTrajectoryPrediction();
+    }
   });
 
   frameLoop.start();

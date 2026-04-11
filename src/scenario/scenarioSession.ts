@@ -26,6 +26,15 @@ export type RuntimeScenarioSession<TState extends ScenarioSessionValue = Scenari
   state: TState;
 };
 
+export type RuntimeScenarioCheckpointSource = {
+  assistMode: AssistMode;
+  assistTargetIndex: number;
+  coastPredictionHorizonHours: number;
+  targetHeading: number | null;
+  viewportSize: number;
+  world: SimulationState;
+};
+
 export const createRuntimeScenarioSession = <TState extends ScenarioSessionValue = ScenarioSessionValue>(
   scenarioId: string,
   state: TState = null as TState,
@@ -50,4 +59,13 @@ export const cloneRuntimeScenarioSession = <TState extends ScenarioSessionValue>
   completed: session.completed,
   scenarioId: session.scenarioId,
   state: cloneScenarioSessionValue(session.state),
+});
+
+export const createRuntimeScenarioCheckpoint = (source: RuntimeScenarioCheckpointSource): RuntimeScenarioCheckpoint => ({
+  assistMode: source.assistMode,
+  assistTargetIndex: source.assistTargetIndex,
+  coastPredictionHorizonHours: source.coastPredictionHorizonHours,
+  targetHeading: source.targetHeading,
+  viewportSize: source.viewportSize,
+  world: cloneSimulationState(source.world),
 });

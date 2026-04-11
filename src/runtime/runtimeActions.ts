@@ -2,11 +2,13 @@ import * as THREE from "three";
 
 import type { KeyboardShortcutAction } from "../input/keyboardShortcuts";
 import { updateCameraView } from "../render/sceneUpdates";
-import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectives";
+import { acknowledgeRuntimeScenarioPrompt } from "../scenario/scenarioRegistry";
+import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
 import { getConstrainedTimeWarpIndex, syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { createRequestedRuntimeScenario, createRuntimeScenarioState, loadDebugRuntimeScenario, saveRuntimeDebugSnapshot, type RuntimeScenarioOptions } from "../scenario/runtimeScenario";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import type { AppRuntimeState } from "./appRuntimeState";
+import { restoreRuntimeFromScenarioCheckpoint } from "./scenarioRecovery";
 import type { Ripple } from "../ui/overlayUpdates";
 
 type RippleCreator = (parent: HTMLElement, ripples: Ripple[], screenX: number, screenY: number) => void;
@@ -52,6 +54,7 @@ export const createRuntimeActions = (options: {
       createRequestedRuntimeScenario(options.requestedScenario),
       options.runtimeScenarioOptions,
     );
+    options.runtime.timeWarpIndex = 0;
     options.runtime.state = freshRuntimeScenarioState.state;
     options.runtime.viewportSize = freshRuntimeScenarioState.viewportSize;
     options.runtime.coastPredictionHorizonHours = freshRuntimeScenarioState.coastPredictionHorizonHours;
@@ -110,7 +113,21 @@ export const createRuntimeActions = (options: {
     updateCamera();
   };
 
+  const recoverScenarioAfterCrash = () => {
+    const recoveredFromCheckpoint = restoreRuntimeFromScenarioCheckpoint(options.runtime);
+    if (!recoveredFromCheckpoint) {
+      resetScenario();
+      return;
+    }
+
+    clearTransientScenarioState();
+    syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
+  };
+
+  const acknowledgeScenarioPrompt = () => acknowledgeRuntimeScenarioPrompt(options.runtime);
+
   return {
+    acknowledgeScenarioPrompt,
     handleKeyboardShortcutAction: (action: KeyboardShortcutAction): RuntimeActionsResult => {
       if (action === "increaseTimeWarp") {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
@@ -205,6 +222,7 @@ export const createRuntimeActions = (options: {
       options.runtime.targetHeading = normalizeAngle(baseHeading + deltaRadians);
       options.runtime.assistMode = "off";
     },
+    recoverScenarioAfterCrash,
     updateCamera,
     zoomCamera,
   };

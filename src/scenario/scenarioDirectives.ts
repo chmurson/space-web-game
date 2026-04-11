@@ -1,23 +1,11 @@
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { ScenarioSessionValue } from "./scenarioSession";
+import {
+  createDefaultScenarioDirectives,
+  type RuntimeScenarioDirectives,
+  type ScenarioDirectiveLimits,
+} from "./scenarioDirectiveTypes";
 import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
-
-export type RuntimeScenarioDirectives = {
-  forcedAssistTargetId: string | null;
-  hiddenBodyIds: string[];
-  maxCoastPredictionHorizonHours: number | null;
-  maxTimeWarp: number | null;
-  maxViewportSize: number | null;
-  minViewportSize: number | null;
-};
-
-export type ScenarioDirectiveLimits = {
-  maxCoastPredictionHorizonHours: number;
-  defaultViewportSize: number;
-  maxViewportSize: number;
-  minViewportSize: number;
-  timeWarps: number[];
-};
 
 type DirectiveContext = {
   limits: ScenarioDirectiveLimits;
@@ -25,15 +13,6 @@ type DirectiveContext = {
 };
 
 type ScenarioDirectiveResolver = (context: DirectiveContext) => RuntimeScenarioDirectives;
-
-export const createDefaultScenarioDirectives = (): RuntimeScenarioDirectives => ({
-  forcedAssistTargetId: null,
-  hiddenBodyIds: [],
-  maxCoastPredictionHorizonHours: null,
-  maxTimeWarp: null,
-  maxViewportSize: null,
-  minViewportSize: null,
-});
 
 const getStringValue = (value: ScenarioSessionValue, key: string): string | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {

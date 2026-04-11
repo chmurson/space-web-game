@@ -1,19 +1,26 @@
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
-import type { RuntimeScenarioDirectives, ScenarioDirectiveLimits } from "./scenarioDirectives";
+import type { AppRuntimeState } from "../runtime/appRuntimeState";
+import type { RuntimeScenarioDirectives, ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
 import type { ScenarioSessionValue } from "./scenarioSession";
-import {
-  createTutorialScenario,
-  getTutorialScenarioDirectives,
-  isTutorialScenarioState,
-  type TutorialScenarioState,
-} from "./tutorialScenario";
+import { registerTutorialScenario } from "./tutorialScenario";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
 
+export type ScenarioPromptContent = {
+  confirmLabel: string;
+  description: string;
+  title: string;
+};
+
 export type RuntimeScenarioDefinition<TState extends ScenarioSessionValue = ScenarioSessionValue> = {
+  acknowledgePrompt?(runtime: AppRuntimeState): boolean;
+  advance?(runtime: AppRuntimeState): void;
   createScenario(): RuntimeScenario;
   getDirectives?(state: TState, limits: ScenarioDirectiveLimits): RuntimeScenarioDirectives;
+  getHudContent?(state: TState): { description: string; title: string };
+  getPromptContent?(state: TState): ScenarioPromptContent | null;
   id: string;
   isState?(value: unknown): value is TState;
+  shouldAutoRestartOnCrash?(runtime: AppRuntimeState): boolean;
 };
 
 const runtimeScenarioDefinitions = {
@@ -25,13 +32,36 @@ const runtimeScenarioDefinitions = {
     id: "moon-capture-debug",
     createScenario: createMoonCaptureDebugScenario,
   },
-  tutorial: {
-    id: "tutorial",
-    createScenario: createTutorialScenario,
-    getDirectives: (state: TutorialScenarioState, limits: ScenarioDirectiveLimits) => getTutorialScenarioDirectives(state, limits),
-    isState: isTutorialScenarioState,
-  },
+  tutorial: registerTutorialScenario(),
 } satisfies Record<string, RuntimeScenarioDefinition>;
 
 export const getRuntimeScenarioDefinition = (scenarioId: string): RuntimeScenarioDefinition | null =>
   runtimeScenarioDefinitions[scenarioId as keyof typeof runtimeScenarioDefinitions] ?? null;
+
+export const advanceRuntimeScenario = (runtime: AppRuntimeState) => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  definition?.advance?.(runtime);
+};
+
+export const getRuntimeScenarioPromptContent = (runtime: AppRuntimeState): ScenarioPromptContent | null => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  if (!definition?.getPromptContent) {
+    return null;
+  }
+
+  if (definition.isState && !definition.isState(runtime.scenarioSession.state)) {
+    return null;
+  }
+
+  return definition.getPromptContent(runtime.scenarioSession.state);
+};
+
+export const acknowledgeRuntimeScenarioPrompt = (runtime: AppRuntimeState) => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  return definition?.acknowledgePrompt?.(runtime) ?? false;
+};
+
+export const shouldAutoRestartRuntimeScenarioOnCrash = (runtime: AppRuntimeState) => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  return definition?.shouldAutoRestartOnCrash?.(runtime) ?? false;
+};

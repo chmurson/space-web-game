@@ -531,6 +531,55 @@ canvas {
   pointer-events: none;
 }
 
+.scenario-prompt-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(5, 7, 13, 0.72);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.scenario-prompt {
+  display: grid;
+  gap: 12px;
+  width: min(460px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: rgba(8, 13, 24, 0.96);
+}
+
+.scenario-prompt h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.scenario-prompt p {
+  margin: 0;
+  color: #bac7d5;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.scenario-prompt button {
+  justify-self: start;
+  padding: 8px 12px;
+  border: 1px solid rgba(103, 232, 249, 0.38);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #f8fafc;
+  font: inherit;
+  cursor: pointer;
+}
+
+.scenario-prompt button:hover {
+  border-color: rgba(103, 232, 249, 0.72);
+}
+
 .spacecraft-callout {
   position: fixed;
   display: flex;

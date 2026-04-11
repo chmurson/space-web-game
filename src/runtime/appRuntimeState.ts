@@ -1,5 +1,5 @@
 import type { AssistMode } from "../assist/orbitalAssist";
-import type { RuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
+import type { RuntimeScenarioDirectives } from "../scenario/scenarioDirectiveTypes";
 import type { RuntimeScenarioSession } from "../scenario/scenarioSession";
 import type { SimulationState } from "../simulation/types";
 
