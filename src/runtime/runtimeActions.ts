@@ -36,6 +36,11 @@ export const createRuntimeActions = (options: {
   timeWarps: number[];
   updateUserSettings: (settings: { debugModeEnabled: boolean }) => void;
 }) => {
+  const normalizeAngle = (angle: number) => {
+    const wrapped = (angle + Math.PI) % (Math.PI * 2);
+    return wrapped < 0 ? wrapped + Math.PI : wrapped - Math.PI;
+  };
+
   const clearTransientScenarioState = () => {
     options.gameScene.trailPoints.length = 0;
     options.runtime.targetHeading = null;
@@ -211,6 +216,11 @@ export const createRuntimeActions = (options: {
       options.runtime.targetHeading = heading;
       options.runtime.assistMode = "off";
       options.createRipple(options.app, options.ripples, clientX, clientY);
+    },
+    nudgeTargetHeading: (deltaRadians: number) => {
+      const baseHeading = options.runtime.targetHeading ?? options.runtime.state.spacecraft.heading;
+      options.runtime.targetHeading = normalizeAngle(baseHeading + deltaRadians);
+      options.runtime.assistMode = "off";
     },
     recoverScenarioAfterCrash,
     updateCamera,

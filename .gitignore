@@ -2,4 +2,7 @@ node_modules
 dist
 .DS_Store
 debug
+
+# Local Netlify folder
+.netlify
 config/*.local.yml
