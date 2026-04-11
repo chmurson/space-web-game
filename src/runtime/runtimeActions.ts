@@ -48,6 +48,7 @@ export const createRuntimeActions = (options: {
       createRequestedRuntimeScenario(options.requestedScenario),
       options.runtimeScenarioOptions,
     );
+    options.runtime.timeWarpIndex = 0;
     options.runtime.state = freshRuntimeScenarioState.state;
     options.runtime.viewportSize = freshRuntimeScenarioState.viewportSize;
     options.runtime.coastPredictionHorizonHours = freshRuntimeScenarioState.coastPredictionHorizonHours;
