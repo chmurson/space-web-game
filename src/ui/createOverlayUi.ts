@@ -6,6 +6,8 @@ export type OverlayUiRefs = {
   debugPanel: DebugPanel;
   fpsIndicator: HTMLElement;
   hud: HTMLElement;
+  hudDescription: HTMLParagraphElement | null;
+  hudTitle: HTMLHeadingElement | null;
   offscreenIndicators: Map<string, HTMLElement>;
   spacecraftCallout: HTMLElement;
   spacecraftCalloutLabel: HTMLSpanElement | null;
@@ -97,6 +99,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     debugPanel,
     fpsIndicator,
     hud,
+    hudDescription: hud.querySelector<HTMLParagraphElement>("p"),
+    hudTitle: hud.querySelector<HTMLHeadingElement>("h1"),
     offscreenIndicators,
     spacecraftCallout,
     spacecraftCalloutLabel,

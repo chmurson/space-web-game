@@ -63,6 +63,34 @@ const getTutorialScenarioDirectives = (
   return createDefaultScenarioDirectives();
 };
 
+const getTutorialHudContent = (state: TutorialScenarioState) => {
+  if (state.phase === "escape-earth") {
+    return {
+      title: "Tutorial: Escape Earth",
+      description: "Build an outbound path and get at least five Earth radii away from the planet.",
+    };
+  }
+
+  if (state.phase === "reach-moon") {
+    return {
+      title: "Tutorial: Reach the Moon",
+      description: "Use your outbound trajectory to intercept the Moon and begin working toward lunar orbit.",
+    };
+  }
+
+  if (state.phase === "return-earth") {
+    return {
+      title: "Tutorial: Return to Earth",
+      description: "Leave the Moon behind and shape a return trajectory back toward Earth.",
+    };
+  }
+
+  return {
+    title: "Tutorial Complete",
+    description: "You reached the end of the current tutorial flow.",
+  };
+};
+
 const positionMoonForPhaseTwo = (runtime: AppRuntimeState) => {
   const earth = runtime.state.bodies.find((body) => body.id === "earth");
   const moon = runtime.state.bodies.find((body) => body.id === "moon");
@@ -124,5 +152,6 @@ export const registerTutorialScenario = (): RuntimeScenarioDefinition<TutorialSc
   id: "tutorial",
   createScenario: createTutorialScenario,
   getDirectives: getTutorialScenarioDirectives,
+  getHudContent: getTutorialHudContent,
   isState: isTutorialScenarioState,
 });

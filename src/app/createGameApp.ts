@@ -121,6 +121,8 @@ export const createGameApp = (app: HTMLDivElement) => {
     trajectoryPredictionRuntime,
   });
   const hudPresentation = createHudPresentation({
+    defaultScenarioDescription: scenario.description,
+    defaultScenarioName: scenario.name,
     defaultViewport,
     overlayUi,
     physicsEngineName: physicsEngine.name,

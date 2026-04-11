@@ -98,6 +98,10 @@ describe("tutorialScenario", () => {
       maxViewportSize: 104,
       minViewportSize: null,
     });
+    expect(tutorialScenario.getHudContent?.({ phase: "escape-earth" })).toEqual({
+      title: "Tutorial: Escape Earth",
+      description: "Build an outbound path and get at least five Earth radii away from the planet.",
+    });
   });
 
   it("advances from phase 1 to phase 2 and captures a checkpoint", () => {
@@ -131,6 +135,10 @@ describe("tutorialScenario", () => {
       maxTimeWarp: 2000,
       maxViewportSize: 1040,
       minViewportSize: null,
+    });
+    expect(tutorialScenario.getHudContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Tutorial: Reach the Moon",
+      description: "Use your outbound trajectory to intercept the Moon and begin working toward lunar orbit.",
     });
   });
 });

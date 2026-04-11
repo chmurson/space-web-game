@@ -9,6 +9,7 @@ export type RuntimeScenarioDefinition<TState extends ScenarioSessionValue = Scen
   advance?(runtime: AppRuntimeState): void;
   createScenario(): RuntimeScenario;
   getDirectives?(state: TState, limits: ScenarioDirectiveLimits): RuntimeScenarioDirectives;
+  getHudContent?(state: TState): { description: string; title: string };
   id: string;
   isState?(value: unknown): value is TState;
 };
