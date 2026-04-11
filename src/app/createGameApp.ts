@@ -204,6 +204,11 @@ export const createGameApp = (app: HTMLDivElement) => {
     keyboardInput,
     windowTarget: window,
   });
+  overlayUi.scenarioPromptConfirmButton?.addEventListener("click", () => {
+    if (runtimeActions.acknowledgeScenarioPrompt()) {
+      frameLoop.refreshTrajectoryPrediction();
+    }
+  });
 
   frameLoop.start();
 };

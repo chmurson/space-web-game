@@ -5,15 +5,16 @@ import { EARTH_MOON_DISTANCE, EARTH_RADIUS, G } from "../simulation/constants";
 import { add, length, normalize, scale, sub, vec } from "../simulation/vector";
 import { createRuntimeScenarioCheckpoint, createRuntimeScenarioSession } from "./scenarioSession";
 import { createDefaultScenarioDirectives, type RuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
-import type { RuntimeScenarioDefinition } from "./scenarioRegistry";
+import type { RuntimeScenarioDefinition, ScenarioPromptContent } from "./scenarioRegistry";
 
 type TutorialScenarioPhase = "escape-earth" | "reach-moon" | "return-earth" | "complete";
 
 type TutorialScenarioState = {
   phase: TutorialScenarioPhase;
+  pendingPrompt: "phase-one-intro" | "phase-two-intro" | null;
 };
 
-const createTutorialScenarioSession = (state: TutorialScenarioState = { phase: "escape-earth" }) =>
+const createTutorialScenarioSession = (state: TutorialScenarioState = { phase: "escape-earth", pendingPrompt: "phase-one-intro" }) =>
   createRuntimeScenarioSession("tutorial", state);
 
 const isTutorialScenarioState = (value: unknown): value is TutorialScenarioState =>
@@ -91,6 +92,26 @@ const getTutorialHudContent = (state: TutorialScenarioState) => {
   };
 };
 
+const getTutorialPromptContent = (state: TutorialScenarioState): ScenarioPromptContent | null => {
+  if (state.pendingPrompt === "phase-one-intro") {
+    return {
+      title: "Leave Earth Orbit",
+      description: "Use thrust, rotation, double-click heading, and the projected path. Get at least five Earth radii away from Earth to continue.",
+      confirmLabel: "Start",
+    };
+  }
+
+  if (state.pendingPrompt === "phase-two-intro") {
+    return {
+      title: "Reach the Moon",
+      description: "The Moon is now your target. Use the longer horizon and wider zoom range to shape an intercept toward lunar orbit.",
+      confirmLabel: "Continue",
+    };
+  }
+
+  return null;
+};
+
 const positionMoonForPhaseTwo = (runtime: AppRuntimeState) => {
   const earth = runtime.state.bodies.find((body) => body.id === "earth");
   const moon = runtime.state.bodies.find((body) => body.id === "moon");
@@ -143,16 +164,33 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
       viewportSize: runtime.viewportSize,
       world: runtime.state,
     }),
-    state: { phase: "reach-moon" },
+    state: { phase: "reach-moon", pendingPrompt: "phase-two-intro" },
   };
 };
 
+const acknowledgeTutorialPrompt = (runtime: AppRuntimeState) => {
+  if (!isTutorialScenarioState(runtime.scenarioSession.state) || runtime.scenarioSession.state.pendingPrompt === null) {
+    return false;
+  }
+
+  runtime.scenarioSession = {
+    ...runtime.scenarioSession,
+    state: {
+      ...runtime.scenarioSession.state,
+      pendingPrompt: null,
+    },
+  };
+  return true;
+};
+
 export const registerTutorialScenario = (): RuntimeScenarioDefinition<TutorialScenarioState> => ({
+  acknowledgePrompt: acknowledgeTutorialPrompt,
   advance: advanceTutorialScenario,
   id: "tutorial",
   createScenario: createTutorialScenario,
   getDirectives: getTutorialScenarioDirectives,
   getHudContent: getTutorialHudContent,
+  getPromptContent: getTutorialPromptContent,
   isState: isTutorialScenarioState,
   shouldAutoRestartOnCrash: () => true,
 });

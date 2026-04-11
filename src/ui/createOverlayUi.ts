@@ -9,6 +9,10 @@ export type OverlayUiRefs = {
   hudDescription: HTMLParagraphElement | null;
   hudTitle: HTMLHeadingElement | null;
   offscreenIndicators: Map<string, HTMLElement>;
+  scenarioPrompt: HTMLElement;
+  scenarioPromptConfirmButton: HTMLButtonElement | null;
+  scenarioPromptDescription: HTMLParagraphElement | null;
+  scenarioPromptTitle: HTMLHeadingElement | null;
   spacecraftCallout: HTMLElement;
   spacecraftCalloutLabel: HTMLSpanElement | null;
   spacecraftIconThrust: HTMLElement;
@@ -64,6 +68,18 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   fpsIndicator.style.display = "none";
   options.app.appendChild(fpsIndicator);
 
+  const scenarioPrompt = document.createElement("div");
+  scenarioPrompt.className = "scenario-prompt-backdrop";
+  scenarioPrompt.style.display = "none";
+  scenarioPrompt.innerHTML = `
+    <div class="scenario-prompt">
+      <h2></h2>
+      <p></p>
+      <button type="button"></button>
+    </div>
+  `;
+  options.app.appendChild(scenarioPrompt);
+
   const spacecraftCallout = document.createElement("div");
   spacecraftCallout.className = "spacecraft-callout";
   spacecraftCallout.innerHTML = "<span>Spacecraft</span>";
@@ -102,6 +118,10 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     hudDescription: hud.querySelector<HTMLParagraphElement>("p"),
     hudTitle: hud.querySelector<HTMLHeadingElement>("h1"),
     offscreenIndicators,
+    scenarioPrompt,
+    scenarioPromptConfirmButton: scenarioPrompt.querySelector<HTMLButtonElement>("button"),
+    scenarioPromptDescription: scenarioPrompt.querySelector<HTMLParagraphElement>("p"),
+    scenarioPromptTitle: scenarioPrompt.querySelector<HTMLHeadingElement>("h2"),
     spacecraftCallout,
     spacecraftCalloutLabel,
     spacecraftIconThrust,

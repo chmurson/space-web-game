@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import type { KeyboardShortcutAction } from "../input/keyboardShortcuts";
 import { updateCameraView } from "../render/sceneUpdates";
+import { acknowledgeRuntimeScenarioPrompt } from "../scenario/scenarioRegistry";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
 import { getConstrainedTimeWarpIndex, syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { createRequestedRuntimeScenario, createRuntimeScenarioState, loadDebugRuntimeScenario, saveRuntimeDebugSnapshot, type RuntimeScenarioOptions } from "../scenario/runtimeScenario";
@@ -118,7 +119,10 @@ export const createRuntimeActions = (options: {
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
   };
 
+  const acknowledgeScenarioPrompt = () => acknowledgeRuntimeScenarioPrompt(options.runtime);
+
   return {
+    acknowledgeScenarioPrompt,
     handleKeyboardShortcutAction: (action: KeyboardShortcutAction): RuntimeActionsResult => {
       if (action === "increaseTimeWarp") {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(

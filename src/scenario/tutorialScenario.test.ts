@@ -17,7 +17,7 @@ const createRuntime = (): AppRuntimeState => ({
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
   scenarioDirectives: createDefaultScenarioDirectives(),
-  scenarioSession: createRuntimeScenarioSession("tutorial", { phase: "escape-earth" }),
+  scenarioSession: createRuntimeScenarioSession("tutorial", { phase: "escape-earth", pendingPrompt: null }),
   spacecraftLabelIntroUntil: 0,
   state: {
     elapsed: 0,
@@ -69,7 +69,7 @@ describe("tutorialScenario", () => {
       checkpoint: null,
       completed: false,
       scenarioId: "tutorial",
-      state: { phase: "escape-earth" },
+      state: { phase: "escape-earth", pendingPrompt: "phase-one-intro" },
     });
   });
 
@@ -81,7 +81,7 @@ describe("tutorialScenario", () => {
     expect(tutorialScenario.isState?.(null)).toBe(false);
     expect(
       tutorialScenario.getDirectives?.(
-        { phase: "escape-earth" },
+        { phase: "escape-earth", pendingPrompt: "phase-one-intro" },
         {
           maxCoastPredictionHorizonHours: 48,
           defaultViewportSize: 520,
@@ -98,9 +98,14 @@ describe("tutorialScenario", () => {
       maxViewportSize: 104,
       minViewportSize: null,
     });
-    expect(tutorialScenario.getHudContent?.({ phase: "escape-earth" })).toEqual({
+    expect(tutorialScenario.getHudContent?.({ phase: "escape-earth", pendingPrompt: "phase-one-intro" })).toEqual({
       title: "Tutorial: Escape Earth",
       description: "Build an outbound path and get at least five Earth radii away from the planet.",
+    });
+    expect(tutorialScenario.getPromptContent?.({ phase: "escape-earth", pendingPrompt: "phase-one-intro" })).toEqual({
+      title: "Leave Earth Orbit",
+      description: "Use thrust, rotation, double-click heading, and the projected path. Get at least five Earth radii away from Earth to continue.",
+      confirmLabel: "Start",
     });
   });
 
@@ -110,7 +115,7 @@ describe("tutorialScenario", () => {
 
     tutorialScenario.advance?.(runtime);
 
-    expect(runtime.scenarioSession.state).toEqual({ phase: "reach-moon" });
+    expect(runtime.scenarioSession.state).toEqual({ phase: "reach-moon", pendingPrompt: "phase-two-intro" });
     expect(runtime.scenarioSession.checkpoint).not.toBeNull();
     expect(runtime.scenarioSession.checkpoint?.world).not.toBe(runtime.state);
     expect(runtime.scenarioSession.checkpoint?.world.spacecraft.position.x).toBe(runtime.state.spacecraft.position.x);
@@ -140,5 +145,12 @@ describe("tutorialScenario", () => {
       title: "Tutorial: Reach the Moon",
       description: "Use your outbound trajectory to intercept the Moon and begin working toward lunar orbit.",
     });
+    expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Reach the Moon",
+      description: "The Moon is now your target. Use the longer horizon and wider zoom range to shape an intercept toward lunar orbit.",
+      confirmLabel: "Continue",
+    });
+    expect(tutorialScenario.acknowledgePrompt?.(runtime)).toBe(true);
+    expect(runtime.scenarioSession.state).toEqual({ phase: "reach-moon", pendingPrompt: null });
   });
 });

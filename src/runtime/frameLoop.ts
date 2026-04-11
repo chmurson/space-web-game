@@ -8,7 +8,11 @@ import type { TrajectoryPresentation } from "../presentation/trajectoryPresentat
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
-import { advanceRuntimeScenario, shouldAutoRestartRuntimeScenarioOnCrash } from "../scenario/scenarioRegistry";
+import {
+  advanceRuntimeScenario,
+  getRuntimeScenarioPromptContent,
+  shouldAutoRestartRuntimeScenarioOnCrash,
+} from "../scenario/scenarioRegistry";
 import type { PhysicsEngine } from "../simulation/types";
 import { type Ripple, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
@@ -47,35 +51,38 @@ export const createFrameLoop = (options: {
     lastTime = time;
     smoothedFps = THREE.MathUtils.lerp(smoothedFps, 1 / Math.max(realDt, 1 / 240), 0.12);
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
+    const hasBlockingPrompt = Boolean(getRuntimeScenarioPromptContent(options.runtime));
     const isThrusting = options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0;
 
-    const simulationStep = stepSimulationFrame({
-      assistMode: options.runtime.assistMode,
-      crashedBodyName: options.runtime.crashedBodyName,
-      getAssistTarget: options.queries.getAssistTarget,
-      getAutopilotTurn: options.queries.getAutopilotTurn,
-      getCaptureMetrics: options.queries.getCaptureMetrics,
-      getCircularizePlan: options.queries.getCircularizePlan,
-      keyboardInput: options.keyboardInput,
-      maxControlWarp: 100,
-      physicsEngine: options.physicsEngine,
-      realDt,
-      shouldCaptureBurn: options.queries.shouldCaptureBurn,
-      state: options.runtime.state,
-      targetHeading: options.runtime.targetHeading,
-      timeWarpIndex: options.runtime.timeWarpIndex,
-      timeWarps: options.timeWarps,
-    });
-    options.runtime.assistMode = simulationStep.assistMode;
-    options.runtime.crashedBodyName = simulationStep.crashedBodyName;
-    options.runtime.state = simulationStep.state;
-    options.runtime.targetHeading = simulationStep.targetHeading;
-    options.runtime.timeWarpIndex = simulationStep.timeWarpIndex;
-    advanceRuntimeScenario(options.runtime);
+    if (!hasBlockingPrompt) {
+      const simulationStep = stepSimulationFrame({
+        assistMode: options.runtime.assistMode,
+        crashedBodyName: options.runtime.crashedBodyName,
+        getAssistTarget: options.queries.getAssistTarget,
+        getAutopilotTurn: options.queries.getAutopilotTurn,
+        getCaptureMetrics: options.queries.getCaptureMetrics,
+        getCircularizePlan: options.queries.getCircularizePlan,
+        keyboardInput: options.keyboardInput,
+        maxControlWarp: 100,
+        physicsEngine: options.physicsEngine,
+        realDt,
+        shouldCaptureBurn: options.queries.shouldCaptureBurn,
+        state: options.runtime.state,
+        targetHeading: options.runtime.targetHeading,
+        timeWarpIndex: options.runtime.timeWarpIndex,
+        timeWarps: options.timeWarps,
+      });
+      options.runtime.assistMode = simulationStep.assistMode;
+      options.runtime.crashedBodyName = simulationStep.crashedBodyName;
+      options.runtime.state = simulationStep.state;
+      options.runtime.targetHeading = simulationStep.targetHeading;
+      options.runtime.timeWarpIndex = simulationStep.timeWarpIndex;
+      advanceRuntimeScenario(options.runtime);
 
-    if (options.runtime.crashedBodyName && shouldAutoRestartRuntimeScenarioOnCrash(options.runtime)) {
-      options.runtimeActions.recoverScenarioAfterCrash();
-      options.trajectoryPresentation.refreshPrediction();
+      if (options.runtime.crashedBodyName && shouldAutoRestartRuntimeScenarioOnCrash(options.runtime)) {
+        options.runtimeActions.recoverScenarioAfterCrash();
+        options.trajectoryPresentation.refreshPrediction();
+      }
     }
 
     updateRipples(options.ripples, realDt);
