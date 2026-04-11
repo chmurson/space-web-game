@@ -2,6 +2,13 @@
   box-sizing: border-box;
 }
 
+:root {
+  --z-overlay-hud: 10;
+  --z-overlay-debug: 20;
+  --z-overlay-floating: 30;
+  --z-overlay-modal: 100;
+}
+
 html,
 body,
 #app {
@@ -32,6 +39,7 @@ canvas {
   border-radius: 8px;
   background: rgba(5, 7, 13, 0.82);
   backdrop-filter: blur(10px);
+  z-index: var(--z-overlay-hud);
 }
 
 .hud h1 {
@@ -110,6 +118,7 @@ canvas {
   font-size: 11px;
   line-height: 1.45;
   pointer-events: auto;
+  z-index: var(--z-overlay-debug);
 }
 
 .debug-panel-copy {
@@ -148,6 +157,7 @@ canvas {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   pointer-events: none;
+  z-index: var(--z-overlay-debug);
 }
 
 .scenario-prompt-backdrop {
@@ -159,6 +169,7 @@ canvas {
   background: rgba(5, 7, 13, 0.72);
   backdrop-filter: blur(8px);
   pointer-events: auto;
+  z-index: var(--z-overlay-modal);
 }
 
 .scenario-prompt {
@@ -208,6 +219,7 @@ canvas {
   color: #dbeafe;
   font-size: 11px;
   text-shadow: 0 0 8px rgba(56, 189, 248, 0.75);
+  z-index: var(--z-overlay-floating);
 }
 
 .spacecraft-callout::before {
@@ -239,6 +251,7 @@ canvas {
   filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.95));
   opacity: 0.9;
   pointer-events: none;
+  z-index: var(--z-overlay-floating);
 }
 
 .spacecraft-callout span {
@@ -254,6 +267,7 @@ canvas {
   height: 8px;
   pointer-events: none;
   transform: translate(-50%, -50%);
+  z-index: var(--z-overlay-floating);
 }
 
 .map-ripple span {
@@ -274,6 +288,7 @@ canvas {
   color: #e0f2fe;
   font-size: 11px;
   text-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+  z-index: var(--z-overlay-floating);
 }
 
 .offscreen-indicator .pointer {
@@ -305,4 +320,5 @@ canvas {
   text-shadow: 0 0 8px rgba(15, 23, 42, 0.9);
   transform: translateY(-50%);
   white-space: nowrap;
+  z-index: var(--z-overlay-floating);
 }
