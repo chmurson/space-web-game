@@ -1,8 +1,8 @@
 import { createEarthMoonScenario } from "../simulation/scenarios/earthMoon";
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
-import { EARTH_RADIUS } from "../simulation/constants";
-import { length, sub } from "../simulation/vector";
+import { EARTH_MOON_DISTANCE, EARTH_RADIUS, G } from "../simulation/constants";
+import { add, length, normalize, scale, sub, vec } from "../simulation/vector";
 import { createRuntimeScenarioCheckpoint, createRuntimeScenarioSession } from "./scenarioSession";
 import { createDefaultScenarioDirectives, type RuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
 import type { RuntimeScenarioDefinition } from "./scenarioRegistry";
@@ -63,6 +63,27 @@ const getTutorialScenarioDirectives = (
   return createDefaultScenarioDirectives();
 };
 
+const positionMoonForPhaseTwo = (runtime: AppRuntimeState) => {
+  const earth = runtime.state.bodies.find((body) => body.id === "earth");
+  const moon = runtime.state.bodies.find((body) => body.id === "moon");
+  if (!earth || !moon) {
+    return;
+  }
+
+  const spacecraftRelativeVelocity = sub(runtime.state.spacecraft.velocity, earth.velocity);
+  const outboundReference = length(spacecraftRelativeVelocity) > 1 ? spacecraftRelativeVelocity : sub(runtime.state.spacecraft.position, earth.position);
+  const outboundDirection = normalize(outboundReference);
+  const moonDirection = length(outboundDirection) > 0 ? outboundDirection : vec(1, 0);
+  const tangentialDirection = {
+    x: -moonDirection.y,
+    y: moonDirection.x,
+  };
+  const moonOrbitSpeed = Math.sqrt((G * earth.mass) / EARTH_MOON_DISTANCE);
+
+  moon.position = add(earth.position, scale(moonDirection, EARTH_MOON_DISTANCE));
+  moon.velocity = add(earth.velocity, scale(tangentialDirection, moonOrbitSpeed));
+};
+
 const advanceTutorialScenario = (runtime: AppRuntimeState) => {
   if (!isTutorialScenarioState(runtime.scenarioSession.state)) {
     return;
@@ -78,9 +99,11 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
   }
 
   const distanceFromEarth = length(sub(runtime.state.spacecraft.position, earth.position));
-  if (distanceFromEarth < EARTH_RADIUS * 3) {
+  if (distanceFromEarth < EARTH_RADIUS * 5) {
     return;
   }
+
+  positionMoonForPhaseTwo(runtime);
 
   runtime.scenarioSession = {
     ...runtime.scenarioSession,

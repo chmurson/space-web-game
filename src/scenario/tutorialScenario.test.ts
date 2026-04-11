@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
+import { EARTH_MOON_DISTANCE } from "../simulation/constants";
 import { createDefaultScenarioDirectives } from "./scenarioDirectiveTypes";
 import { createRuntimeScenarioSession } from "./scenarioSession";
 import { registerTutorialScenario } from "./tutorialScenario";
@@ -30,11 +31,20 @@ const createRuntime = (): AppRuntimeState => ({
         velocity: { x: 0, y: 0 },
         color: "#2f80ed",
       },
+      {
+        id: "moon",
+        name: "Moon",
+        mass: 7.342e22,
+        radius: 1_737_400,
+        position: { x: 384_400_000, y: 0 },
+        velocity: { x: 0, y: 1022 },
+        color: "#9aa0a6",
+      },
     ],
     controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
     spacecraft: {
-      position: { x: 6_371_000 * 3.2, y: 0 },
-      velocity: { x: 0, y: 0 },
+      position: { x: 6_371_000 * 5.2, y: 0 },
+      velocity: { x: 0, y: 500 },
       heading: 0,
       fuel: 1,
       fuelUsed: 0,
@@ -100,6 +110,8 @@ describe("tutorialScenario", () => {
     expect(runtime.scenarioSession.checkpoint).not.toBeNull();
     expect(runtime.scenarioSession.checkpoint?.world).not.toBe(runtime.state);
     expect(runtime.scenarioSession.checkpoint?.world.spacecraft.position.x).toBe(runtime.state.spacecraft.position.x);
+    expect(runtime.state.bodies.find((body) => body.id === "moon")?.position.x).toBeCloseTo(0, 6);
+    expect(runtime.state.bodies.find((body) => body.id === "moon")?.position.y).toBeCloseTo(EARTH_MOON_DISTANCE, 6);
     expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true);
     if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
       throw new Error("Expected tutorial scenario state.");
