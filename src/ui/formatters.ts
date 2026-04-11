@@ -58,3 +58,10 @@ export const formatBodyInfluences = (influences: BodyInfluence[]) =>
   influences
     .map((influence) => `${influence.body.name} ${formatAcceleration(influence.acceleration)} m/s^2 (${(influence.share * 100).toFixed(1)}%)`)
     .join(" | ");
+
+export const formatSpeed = (metersPerSecond: number) => {
+  if (Math.abs(metersPerSecond) >= 1_000) {
+    return `${(metersPerSecond / 1_000).toFixed(2)} km/s`;
+  }
+  return `${Math.round(metersPerSecond)} m/s`;
+};

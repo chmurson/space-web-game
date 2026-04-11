@@ -1,5 +1,5 @@
 import { getBodyInfluences } from "../simulation/bodyInfluence";
-import { formatCompactElapsed } from "../ui/formatters";
+import { formatCompactElapsed, formatSpeed } from "../ui/formatters";
 import type { OverlayUiRefs } from "../ui/createOverlayUi";
 import type { TouchControls } from "../ui/createTouchControls";
 import { getDebugPanelLines, getGuidanceText } from "../ui/hudText";
@@ -127,7 +127,7 @@ export const createHudPresentation = (options: {
         options.overlayUi.statWarp.textContent = "";
       }
       if (options.overlayUi.statSpeed) {
-        options.overlayUi.statSpeed.textContent = `${targetMetrics.relativeSpeed.toFixed(0)} m/s`;
+        options.overlayUi.statSpeed.textContent = formatSpeed(targetMetrics.relativeSpeed);
       }
       if (options.overlayUi.speedIcon) {
         const thrusting = options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0;

@@ -60,6 +60,7 @@ canvas {
 }
 
 .top-menu {
+  display: inline-flex;
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 12px);
   left: calc(env(safe-area-inset-left, 0px) + 12px);
@@ -94,7 +95,7 @@ canvas {
 
 .top-menu-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 4px);
   left: 0;
   display: grid;
   min-width: 176px;
@@ -146,7 +147,7 @@ canvas {
 
 @media (hover: hover) and (pointer: fine) {
   .top-menu-button:hover {
-    background: rgba(15, 23, 42, 0.46);
+    background: rgba(148, 163, 184, 0.12);
   }
 
   .top-menu-dropdown button:hover {
@@ -195,7 +196,7 @@ canvas {
   height: 14px;
   flex: 0 0 auto;
   overflow: visible;
-  transform: translateY(-2.5px);
+  transform: translateY(-0.5px);
 }
 
 .telemetry-time-icon-face {
@@ -259,6 +260,10 @@ canvas {
 
 .telemetry-pill-velocity {
   max-width: calc(100vw - 88px);
+}
+
+.telemetry-pill-time > span, .telemetry-pill-velocity > span {
+  padding-right: 2px;
 }
 
 .telemetry-pill-warp-bump {
