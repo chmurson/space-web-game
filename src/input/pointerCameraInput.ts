@@ -77,14 +77,29 @@ export const createScreenPointHeadingPicker = (
 export const bindPointerCameraInput = (options: PointerCameraInputOptions): PointerCameraInput => {
   const pointerScreenPosition: PointerScreenPosition = { x: 0, y: 0 };
   const pickHeadingFromScreenPoint = createScreenPointHeadingPicker(options.camera, options.rendererElement, options.renderScale);
+  let lastTouchTap:
+    | {
+        time: number;
+        x: number;
+        y: number;
+      }
+    | null = null;
 
   options.windowTarget.addEventListener("resize", () => {
     options.onResize();
   });
 
+  const updatePointerPosition = (clientX: number, clientY: number) => {
+    pointerScreenPosition.x = clientX;
+    pointerScreenPosition.y = clientY;
+  };
+
   options.windowTarget.addEventListener("mousemove", (event) => {
-    pointerScreenPosition.x = event.clientX;
-    pointerScreenPosition.y = event.clientY;
+    updatePointerPosition(event.clientX, event.clientY);
+  });
+
+  options.windowTarget.addEventListener("pointermove", (event) => {
+    updatePointerPosition(event.clientX, event.clientY);
   });
 
   options.windowTarget.addEventListener(
@@ -105,6 +120,39 @@ export const bindPointerCameraInput = (options: PointerCameraInputOptions): Poin
 
     options.onTargetHeadingSelected(heading, { x: event.clientX, y: event.clientY });
   });
+
+  options.rendererElement.addEventListener(
+    "touchend",
+    (event) => {
+      const touch = event.changedTouches[0];
+      if (!touch) {
+        return;
+      }
+
+      updatePointerPosition(touch.clientX, touch.clientY);
+      const now = performance.now();
+      const isDoubleTap =
+        lastTouchTap &&
+        now - lastTouchTap.time <= 320 &&
+        Math.hypot(touch.clientX - lastTouchTap.x, touch.clientY - lastTouchTap.y) <= 32;
+
+      if (!isDoubleTap) {
+        lastTouchTap = { time: now, x: touch.clientX, y: touch.clientY };
+        return;
+      }
+
+      event.preventDefault();
+      lastTouchTap = null;
+      const heading = pickHeadingFromScreenPoint(touch.clientX, touch.clientY, options.getSpacecraftPosition());
+
+      if (heading === null) {
+        return;
+      }
+
+      options.onTargetHeadingSelected(heading, { x: touch.clientX, y: touch.clientY });
+    },
+    { passive: false },
+  );
 
   return { pointerScreenPosition };
 };

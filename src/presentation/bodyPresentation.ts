@@ -33,6 +33,9 @@ const updateOffscreenIndicators = (options: {
   const edgePadding = 28;
   const screenCenterX = window.innerWidth * 0.5;
   const screenCenterY = window.innerHeight * 0.5;
+  const mobileViewport = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  const portraitViewport = window.innerWidth < window.innerHeight;
+  const visibleIndicators: Array<{ distance: number; indicator: HTMLElement; rect: DOMRect }> = [];
 
   for (const body of options.bodies) {
     const indicator = options.overlayUi.offscreenIndicators.get(body.id);
@@ -70,17 +73,58 @@ const updateOffscreenIndicators = (options: {
     indicator.style.display = "flex";
     indicator.style.visibility = "hidden";
     const bounds = indicator.getBoundingClientRect();
-    const edgeX = THREE.MathUtils.clamp(projectedX, bounds.width * 0.5 + edgePadding, window.innerWidth - bounds.width * 0.5 - edgePadding);
     const edgeY = THREE.MathUtils.clamp(
       projectedY,
       bounds.height * 0.5 + edgePadding,
       window.innerHeight - bounds.height * 0.5 - edgePadding,
     );
+    const shouldStackIndicator =
+      mobileViewport &&
+      portraitViewport &&
+      edgeY > window.innerHeight * 0.2 &&
+      edgeY < window.innerHeight * 0.8;
+    indicator.classList.toggle("offscreen-indicator-mobile-stack", shouldStackIndicator);
+    indicator.classList.toggle("offscreen-indicator-edge-left", projectedX < screenCenterX);
+    indicator.classList.toggle("offscreen-indicator-edge-right", projectedX >= screenCenterX);
+    const stackedBounds = indicator.getBoundingClientRect();
+    const stackedEdgeX = THREE.MathUtils.clamp(
+      projectedX,
+      stackedBounds.width * 0.5 + edgePadding,
+      window.innerWidth - stackedBounds.width * 0.5 - edgePadding,
+    );
+    const stackedEdgeY = THREE.MathUtils.clamp(
+      projectedY,
+      stackedBounds.height * 0.5 + edgePadding,
+      window.innerHeight - stackedBounds.height * 0.5 - edgePadding,
+    );
 
-    indicator.style.left = `${edgeX}px`;
-    indicator.style.top = `${edgeY}px`;
+    indicator.style.left = `${stackedEdgeX}px`;
+    indicator.style.top = `${stackedEdgeY}px`;
     indicator.style.visibility = "visible";
+    visibleIndicators.push({
+      distance,
+      indicator,
+      rect: indicator.getBoundingClientRect(),
+    });
   }
+
+  const overlapPadding = 6;
+  const keptRects: DOMRect[] = [];
+  const overlaps = (a: DOMRect, b: DOMRect) =>
+    a.left < b.right + overlapPadding &&
+    a.right > b.left - overlapPadding &&
+    a.top < b.bottom + overlapPadding &&
+    a.bottom > b.top - overlapPadding;
+
+  visibleIndicators
+    .sort((left, right) => left.distance - right.distance)
+    .forEach(({ indicator, rect }) => {
+      const collides = keptRects.some((keptRect) => overlaps(rect, keptRect));
+      indicator.style.display = collides ? "none" : "flex";
+      if (!collides) {
+        keptRects.push(rect);
+      }
+    });
 
   for (const [bodyId, indicator] of options.overlayUi.offscreenIndicators.entries()) {
     if (!options.bodies.some((body) => body.id === bodyId)) {
@@ -97,6 +141,9 @@ const updateBodyLabels = (options: {
 }) => {
   const labelRadiusThreshold = 24;
   const pixelsPerRenderUnit = window.innerHeight / options.viewportSize;
+  const telemetryStrip = document.querySelector<HTMLElement>(".telemetry-strip");
+  const reservedTop = telemetryStrip ? telemetryStrip.getBoundingClientRect().bottom + 12 : 8;
+  const mobileViewport = window.matchMedia("(hover: none), (pointer: coarse)").matches;
 
   for (const body of options.bodies) {
     const label = options.overlayUi.bodyLabels.get(body.id);
@@ -116,11 +163,17 @@ const updateBodyLabels = (options: {
 
     const screenX = (position.x * 0.5 + 0.5) * window.innerWidth;
     const screenY = (-position.y * 0.5 + 0.5) * window.innerHeight;
+    const shouldWrapLabel = mobileViewport && screenX > window.innerWidth * 0.22 && screenX < window.innerWidth * 0.78;
+    label.classList.toggle("body-label-mobile-wrap", shouldWrapLabel);
     label.style.display = "block";
     label.style.visibility = "hidden";
     const bounds = label.getBoundingClientRect();
     const labelX = THREE.MathUtils.clamp(screenX + 10, 8, window.innerWidth - bounds.width - 8);
-    const labelY = THREE.MathUtils.clamp(screenY, bounds.height * 0.5 + 8, window.innerHeight - bounds.height * 0.5 - 8);
+    const labelY = THREE.MathUtils.clamp(
+      screenY,
+      reservedTop + bounds.height * 0.5,
+      window.innerHeight - bounds.height * 0.5 - 8,
+    );
     label.style.left = `${labelX}px`;
     label.style.top = `${labelY}px`;
     label.style.visibility = "visible";

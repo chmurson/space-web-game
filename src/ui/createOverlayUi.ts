@@ -15,8 +15,12 @@ export type OverlayUiRefs = {
   statFuel: HTMLElement | null;
   statGuidance: HTMLElement | null;
   statSpeed: HTMLElement | null;
+  speedIcon: SVGSVGElement | null;
   statTarget: HTMLElement | null;
   statTargetSpeed: HTMLElement | null;
+  statTime: HTMLElement | null;
+  timeIcon: SVGSVGElement | null;
+  timeIconHand: SVGLineElement | null;
   statWarp: HTMLElement | null;
   statZoom: HTMLElement | null;
 };
@@ -31,26 +35,31 @@ export type OverlayUiOptions = {
 
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const hud = document.createElement("section");
-  hud.className = "hud";
+  hud.className = "hud hud-hidden";
   hud.innerHTML = `
-    <h1>${options.scenarioName}</h1>
-    <p>${options.scenarioDescription}</p>
-    <div class="stats">
-      <div class="stat"><span>Engine</span><strong data-stat="engine"></strong></div>
-      <div class="stat"><span>Time warp</span><strong data-stat="warp"></strong></div>
-      <div class="stat"><span>Speed</span><strong data-stat="speed"></strong></div>
-      <div class="stat"><span>Fuel used</span><strong data-stat="fuel"></strong></div>
-      <div class="stat"><span>Zoom</span><strong data-stat="zoom"></strong></div>
-      <div class="stat"><span>Target</span><strong data-stat="target"></strong></div>
-      <div class="stat"><span>Target speed</span><strong data-stat="target-speed"></strong></div>
-      <div class="stat"><span>Assist</span><strong data-stat="assist"></strong></div>
-      <div class="stat"><span>Guidance</span><strong data-stat="guidance"></strong></div>
-    </div>
-    <div class="controls">
-      <p><kbd>W</kbd> main engine <kbd>S</kbd> brake <kbd>Q</kbd>/<kbd>E</kbd> side thrusters</p>
-      <p><kbd>A</kbd>/<kbd>D</kbd> rotate <kbd>[</kbd>/<kbd>]</kbd> time warp <kbd>-</kbd>/<kbd>=</kbd> zoom <kbd>R</kbd> reset</p>
-      <p>${options.showCycleTargetHint ? "<kbd>T</kbd> target body " : ""}<kbd>C</kbd> assist mode</p>
-      <p>Double-click the map to point the spacecraft toward that direction.</p>
+    <div class="telemetry-strip">
+      <div class="telemetry-pill telemetry-pill-time">
+        <span class="telemetry-time-display">
+          <svg class="telemetry-time-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <circle class="telemetry-time-icon-face" cx="8" cy="8" r="6.25"></circle>
+            <line class="telemetry-time-icon-hand telemetry-time-icon-hand-minute" x1="8" y1="8" x2="8" y2="3.5"></line>
+            <circle class="telemetry-time-icon-center" cx="8" cy="8" r="0.9"></circle>
+          </svg>
+          <strong data-stat="time"></strong>
+        </span>
+      </div>
+      <div class="telemetry-pill telemetry-pill-velocity">
+        <span class="telemetry-speed-display">
+          <svg class="telemetry-speed-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path class="telemetry-speed-icon-body" d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"></path>
+            <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-left" d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"></path>
+            <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-right" d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"></path>
+            <circle class="telemetry-speed-icon-window" cx="8" cy="6.1" r="0.95"></circle>
+            <path class="telemetry-speed-icon-flame" d="M8 14.6 C8.9 13.6, 9.3 12.4, 8 11.1 C6.7 12.4, 7.1 13.6, 8 14.6 Z"></path>
+          </svg>
+          <strong data-stat="speed"></strong>
+        </span>
+      </div>
     </div>
   `;
   options.app.appendChild(hud);
@@ -101,14 +110,18 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     spacecraftCallout,
     spacecraftCalloutLabel,
     spacecraftIconThrust,
-    statAssist: hud.querySelector<HTMLElement>('[data-stat="assist"]'),
-    statEngine: hud.querySelector<HTMLElement>('[data-stat="engine"]'),
-    statFuel: hud.querySelector<HTMLElement>('[data-stat="fuel"]'),
-    statGuidance: hud.querySelector<HTMLElement>('[data-stat="guidance"]'),
+    statAssist: null,
+    statEngine: null,
+    statFuel: null,
+    statGuidance: null,
     statSpeed: hud.querySelector<HTMLElement>('[data-stat="speed"]'),
-    statTarget: hud.querySelector<HTMLElement>('[data-stat="target"]'),
-    statTargetSpeed: hud.querySelector<HTMLElement>('[data-stat="target-speed"]'),
-    statWarp: hud.querySelector<HTMLElement>('[data-stat="warp"]'),
-    statZoom: hud.querySelector<HTMLElement>('[data-stat="zoom"]'),
+    speedIcon: hud.querySelector<SVGSVGElement>(".telemetry-speed-icon"),
+    statTarget: null,
+    statTargetSpeed: null,
+    statTime: hud.querySelector<HTMLElement>('[data-stat="time"]'),
+    timeIcon: hud.querySelector<SVGSVGElement>(".telemetry-time-icon"),
+    timeIconHand: hud.querySelector<SVGLineElement>(".telemetry-time-icon-hand-minute"),
+    statWarp: null,
+    statZoom: null,
   };
 };

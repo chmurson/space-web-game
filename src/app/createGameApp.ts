@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { gameConfig } from "../config/gameConfig";
 import { bindKeyboardShortcuts } from "../input/bindKeyboardShortcuts";
 import { createKeyboardInput } from "../input/keyboardInput";
-import { bindPointerCameraInput } from "../input/pointerCameraInput";
+import { bindPointerCameraInput, createScreenPointHeadingPicker } from "../input/pointerCameraInput";
 import { createBodyPresentation } from "../presentation/bodyPresentation";
 import { createHudPresentation } from "../presentation/hudPresentation";
 import { createSpacecraftPresentation } from "../presentation/spacecraftPresentation";
@@ -24,6 +24,8 @@ import { createGameScene } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "../simulation/physics";
 import { createOverlayUi } from "../ui/createOverlayUi";
+import { createTouchControls } from "../ui/createTouchControls";
+import { createTopMenu } from "../ui/createTopMenu";
 import { createRipple, type Ripple } from "../ui/overlayUpdates";
 import { readUserSettings, updateUserSettings } from "../userSettingsStorage";
 
@@ -119,17 +121,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     runtime,
     trajectoryPredictionRuntime,
   });
-  const hudPresentation = createHudPresentation({
-    defaultViewport,
-    overlayUi,
-    physicsEngineName: physicsEngine.name,
-    queries,
-    rendererProfiler,
-    runtime,
-    timeWarps,
-    trajectoryPresentation,
-  });
-
+  const pickHeadingFromScreenPoint = createScreenPointHeadingPicker(gameScene.camera, renderer.domElement, RENDER_SCALE);
   const runtimeActions = createRuntimeActions({
     app,
     cameraDistance,
@@ -149,6 +141,43 @@ export const createGameApp = (app: HTMLDivElement) => {
     timeWarps,
     updateUserSettings,
   });
+  const dispatchRuntimeAction = (action: Parameters<typeof runtimeActions.handleKeyboardShortcutAction>[0]) => {
+    const result = runtimeActions.handleKeyboardShortcutAction(action);
+    if (result.refreshTrajectoryPrediction && frameLoop) {
+      frameLoop.refreshTrajectoryPrediction();
+    }
+  };
+  let frameLoop: ReturnType<typeof createFrameLoop> | null = null;
+  createTopMenu({
+    app,
+    onAction: dispatchRuntimeAction,
+  });
+  const touchControls = createTouchControls({
+    app,
+    keyboardInput,
+    nudgeTargetHeading: runtimeActions.nudgeTargetHeading,
+    onAction: dispatchRuntimeAction,
+    onTargetHeadingSelected: (screenX, screenY) => {
+      const heading = pickHeadingFromScreenPoint(screenX, screenY, runtime.state.spacecraft.position);
+      if (heading === null) {
+        return;
+      }
+
+      runtimeActions.setTargetHeading(heading, screenX, screenY);
+    },
+    onZoom: runtimeActions.zoomCamera,
+  });
+  const hudPresentation = createHudPresentation({
+    defaultViewport,
+    overlayUi,
+    physicsEngineName: physicsEngine.name,
+    queries,
+    rendererProfiler,
+    runtime,
+    timeWarps,
+    touchControls,
+    trajectoryPresentation,
+  });
 
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
@@ -163,7 +192,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     windowTarget: window,
   });
 
-  const frameLoop = createFrameLoop({
+  frameLoop = createFrameLoop({
     gameScene,
     hudPresentation,
     keyboardInput,
@@ -192,12 +221,7 @@ export const createGameApp = (app: HTMLDivElement) => {
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence: autoSelectNearestSurface,
     getDebugModeEnabled: () => runtime.debugModeEnabled,
-    handleAction: (action) => {
-      const result = runtimeActions.handleKeyboardShortcutAction(action);
-      if (result.refreshTrajectoryPrediction) {
-        frameLoop.refreshTrajectoryPrediction();
-      }
-    },
+    handleAction: dispatchRuntimeAction,
     keyboardInput,
     windowTarget: window,
   });

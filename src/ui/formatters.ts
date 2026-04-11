@@ -22,6 +22,25 @@ export const formatDuration = (seconds: number) => {
   return `${(seconds / 3600).toFixed(1)}h`;
 };
 
+export const formatCompactElapsed = (seconds: number) => {
+  const roundedSeconds = Math.max(0, Math.round(seconds));
+  const days = Math.floor(roundedSeconds / 86_400);
+  const hours = Math.floor((roundedSeconds % 86_400) / 3_600);
+  const minutes = Math.floor((roundedSeconds % 3_600) / 60);
+
+  if (days > 0) {
+    return `${days}d${hours}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+
+  return `${roundedSeconds}s`;
+};
+
 export const formatSpecificEnergy = (energy: number) => `${(energy / 1_000).toFixed(1)} kJ/kg`;
 
 export const formatAcceleration = (acceleration: number) => {
