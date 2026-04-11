@@ -7,6 +7,7 @@ import { getConstrainedTimeWarpIndex, syncRuntimeScenarioDirectives } from "../s
 import { createRequestedRuntimeScenario, createRuntimeScenarioState, loadDebugRuntimeScenario, saveRuntimeDebugSnapshot, type RuntimeScenarioOptions } from "../scenario/runtimeScenario";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import type { AppRuntimeState } from "./appRuntimeState";
+import { restoreRuntimeFromScenarioCheckpoint } from "./scenarioRecovery";
 import type { Ripple } from "../ui/overlayUpdates";
 
 type RippleCreator = (parent: HTMLElement, ripples: Ripple[], screenX: number, screenY: number) => void;
@@ -105,6 +106,17 @@ export const createRuntimeActions = (options: {
     updateCamera();
   };
 
+  const recoverScenarioAfterCrash = () => {
+    const recoveredFromCheckpoint = restoreRuntimeFromScenarioCheckpoint(options.runtime);
+    if (!recoveredFromCheckpoint) {
+      resetScenario();
+      return;
+    }
+
+    clearTransientScenarioState();
+    syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
+  };
+
   return {
     handleKeyboardShortcutAction: (action: KeyboardShortcutAction): RuntimeActionsResult => {
       if (action === "increaseTimeWarp") {
@@ -195,6 +207,7 @@ export const createRuntimeActions = (options: {
       options.runtime.assistMode = "off";
       options.createRipple(options.app, options.ripples, clientX, clientY);
     },
+    recoverScenarioAfterCrash,
     updateCamera,
     zoomCamera,
   };

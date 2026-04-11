@@ -12,6 +12,7 @@ export type RuntimeScenarioDefinition<TState extends ScenarioSessionValue = Scen
   getHudContent?(state: TState): { description: string; title: string };
   id: string;
   isState?(value: unknown): value is TState;
+  shouldAutoRestartOnCrash?(runtime: AppRuntimeState): boolean;
 };
 
 const runtimeScenarioDefinitions = {
@@ -32,4 +33,9 @@ export const getRuntimeScenarioDefinition = (scenarioId: string): RuntimeScenari
 export const advanceRuntimeScenario = (runtime: AppRuntimeState) => {
   const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
   definition?.advance?.(runtime);
+};
+
+export const shouldAutoRestartRuntimeScenarioOnCrash = (runtime: AppRuntimeState) => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  return definition?.shouldAutoRestartOnCrash?.(runtime) ?? false;
 };

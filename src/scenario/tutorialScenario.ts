@@ -154,4 +154,5 @@ export const registerTutorialScenario = (): RuntimeScenarioDefinition<TutorialSc
   getDirectives: getTutorialScenarioDirectives,
   getHudContent: getTutorialHudContent,
   isState: isTutorialScenarioState,
+  shouldAutoRestartOnCrash: () => true,
 });
