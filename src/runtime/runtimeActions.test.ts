@@ -93,7 +93,7 @@ describe("createRuntimeActions", () => {
       updateUserSettings: () => {},
     });
 
-    runtimeActions.handleKeyboardShortcutAction("resetScenario");
+    runtimeActions.handleUIUserAction("resetScenario");
 
     expect(runtime.timeWarpIndex).toBe(0);
   });

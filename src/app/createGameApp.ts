@@ -142,15 +142,20 @@ export const createGameApp = (app: HTMLDivElement) => {
     timeWarps,
     updateUserSettings,
   });
-  const dispatchRuntimeAction = (action: Parameters<typeof runtimeActions.handleKeyboardShortcutAction>[0]) => {
-    const result = runtimeActions.handleKeyboardShortcutAction(action);
+  let topMenu: ReturnType<typeof createTopMenu> | null = null;
+  const dispatchRuntimeAction = (action: Parameters<typeof runtimeActions.handleUIUserAction>[0]) => {
+    const result = runtimeActions.handleUIUserAction(action);
     if (result.refreshTrajectoryPrediction && frameLoop) {
       frameLoop.refreshTrajectoryPrediction();
     }
+    topMenu?.syncState();
   };
   let frameLoop: ReturnType<typeof createFrameLoop> | null = null;
-  createTopMenu({
+  topMenu = createTopMenu({
     app,
+    getCoastPredictionHorizonHours: () => runtime.coastPredictionHorizonHours,
+    getMaxCoastPredictionHorizonHours: () => runtime.scenarioDirectives.maxCoastPredictionHorizonHours ?? maxCoastPredictionHorizonHours,
+    getMinCoastPredictionHorizonHours: () => minCoastPredictionHorizonHours,
     onAction: dispatchRuntimeAction,
   });
   const touchControls = createTouchControls({
@@ -206,6 +211,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     runtime,
     runtimeActions,
     scenarioDirectiveLimits,
+    topMenu,
     bodyPresentation: createBodyPresentation({
       gameScene,
       overlayUi,

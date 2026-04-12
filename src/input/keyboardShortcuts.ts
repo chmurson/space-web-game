@@ -1,19 +1,4 @@
-export type KeyboardShortcutAction =
-  | "cycleAssistMode"
-  | "cycleAssistTarget"
-  | "decreaseCoastHorizon"
-  | "decreaseTimeWarp"
-  | "increaseCoastHorizon"
-  | "increaseTimeWarp"
-  | "loadDebugSnapshot"
-  | "resetScenario"
-  | "saveDebugSnapshot"
-  | "toggleDebugMode"
-  | "toggleFpsIndicator"
-  | "toggleNoGravityDebug"
-  | "togglePerformanceDebug"
-  | "zoomIn"
-  | "zoomOut";
+import { UIUserAction } from "./uiUserActions";
 
 export type KeyboardShortcutContext = {
   autoDiscoverStrongestInfluence: boolean;
@@ -25,7 +10,7 @@ type KeyboardShortcutEvent = Pick<KeyboardEvent, "code" | "ctrlKey" | "repeat">;
 export const getKeyboardShortcutAction = (
   event: KeyboardShortcutEvent,
   context: KeyboardShortcutContext,
-): KeyboardShortcutAction | null => {
+): UIUserAction | null => {
   if (event.code === "BracketRight") {
     return "increaseTimeWarp";
   }

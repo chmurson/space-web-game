@@ -1,6 +1,5 @@
 import * as THREE from "three";
 
-import type { KeyboardShortcutAction } from "../input/keyboardShortcuts";
 import { updateCameraView } from "../render/sceneUpdates";
 import { acknowledgeRuntimeScenarioPrompt } from "../scenario/scenarioRegistry";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
@@ -10,6 +9,7 @@ import type { GameSceneRefs } from "../scene/createGameScene";
 import type { AppRuntimeState } from "./appRuntimeState";
 import { restoreRuntimeFromScenarioCheckpoint } from "./scenarioRecovery";
 import type { Ripple } from "../ui/overlayUpdates";
+import { UIUserAction } from "../input/uiUserActions";
 
 type RippleCreator = (parent: HTMLElement, ripples: Ripple[], screenX: number, screenY: number) => void;
 
@@ -128,7 +128,7 @@ export const createRuntimeActions = (options: {
 
   return {
     acknowledgeScenarioPrompt,
-    handleKeyboardShortcutAction: (action: KeyboardShortcutAction): RuntimeActionsResult => {
+    handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === "increaseTimeWarp") {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
           options.runtime.timeWarpIndex + 1,

@@ -104,7 +104,7 @@ describe("tutorialScenario", () => {
     });
     expect(tutorialScenario.getPromptContent?.({ phase: "escape-earth", pendingPrompt: "phase-one-intro" })).toEqual({
       title: "Leave Earth Orbit",
-      description: "Use thrust, rotation, double-click heading, and the projected path. Get at least five Earth radii away from Earth to continue.",
+      description: "Use thrust, turning, double-click heading, and the projected path. Fly far enough away from Earth to move on.",
       confirmLabel: "Start",
     });
   });
@@ -147,7 +147,7 @@ describe("tutorialScenario", () => {
     });
     expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
       title: "Reach the Moon",
-      description: "The Moon is now your target. Use the longer horizon and wider zoom range to shape an intercept toward lunar orbit.",
+      description: "The Moon is now your target. You can zoom out more and look farther ahead. Use that to line up an approach.",
       confirmLabel: "Continue",
     });
     expect(tutorialScenario.acknowledgePrompt?.(runtime)).toBe(true);

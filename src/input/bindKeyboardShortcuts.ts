@@ -1,10 +1,11 @@
 import type { KeyboardInput } from "./keyboardInput";
-import { getKeyboardShortcutAction, type KeyboardShortcutAction } from "./keyboardShortcuts";
+import { getKeyboardShortcutAction   } from "./keyboardShortcuts";
+import { UIUserAction } from "./uiUserActions";
 
 export const bindKeyboardShortcuts = (options: {
   autoDiscoverStrongestInfluence: boolean;
   getDebugModeEnabled(): boolean;
-  handleAction(action: KeyboardShortcutAction): void;
+  handleAction(action: UIUserAction): void;
   keyboardInput: KeyboardInput;
   windowTarget: Pick<Window, "addEventListener">;
 }) => {

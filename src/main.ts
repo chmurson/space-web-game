@@ -1,4 +1,5 @@
 import "./style.css";
+
 import { createGameApp } from "./app/createGameApp";
 import { gameConfig } from "./config/gameConfig";
 

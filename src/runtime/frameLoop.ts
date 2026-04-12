@@ -32,6 +32,9 @@ export const createFrameLoop = (options: {
   runtime: AppRuntimeState;
   runtimeActions: RuntimeActions;
   scenarioDirectiveLimits: ScenarioDirectiveLimits;
+  topMenu?: {
+    syncState(): void;
+  };
   bodyPresentation: BodyPresentation;
   spacecraftPresentation: SpacecraftPresentation;
   timeWarps: number[];
@@ -104,6 +107,7 @@ export const createFrameLoop = (options: {
     });
     options.trajectoryPresentation.updateVisuals();
     options.hudPresentation.update({ smoothedCpuMs, smoothedFps });
+    options.topMenu?.syncState();
     options.rendererProfiler.render(options.gameScene.scene, options.gameScene.camera, options.runtime.performanceDebugEnabled);
 
     smoothedCpuMs = THREE.MathUtils.lerp(smoothedCpuMs, performance.now() - frameStart, 0.15);
@@ -128,6 +132,7 @@ export const createFrameLoop = (options: {
         viewportSize: options.runtime.viewportSize,
       });
       options.hudPresentation.update({ smoothedCpuMs, smoothedFps });
+      options.topMenu?.syncState();
       requestAnimationFrame(animate);
     },
   };

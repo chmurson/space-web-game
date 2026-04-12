@@ -1,6 +1,6 @@
 import type { AssistMode } from "../assist/orbitalAssist";
-import type { KeyboardShortcutAction } from "../input/keyboardShortcuts";
 import type { KeyboardInput } from "../input/keyboardInput";
+import { UIUserAction } from "../input/uiUserActions";
 
 export type TouchControls = {
   element: HTMLElement;
@@ -62,7 +62,7 @@ export const createTouchControls = (options: {
   app: HTMLElement;
   keyboardInput: KeyboardInput;
   nudgeTargetHeading(deltaRadians: number): void;
-  onAction(action: KeyboardShortcutAction): void;
+  onAction(action: UIUserAction): void;
   onTargetHeadingSelected(screenX: number, screenY: number): void;
   onZoom(factor: number): void;
 }): TouchControls => {

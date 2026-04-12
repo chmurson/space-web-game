@@ -1,0 +1,16 @@
+export type UIUserAction =
+  | "cycleAssistMode"
+  | "cycleAssistTarget"
+  | "decreaseCoastHorizon"
+  | "decreaseTimeWarp"
+  | "increaseCoastHorizon"
+  | "increaseTimeWarp"
+  | "loadDebugSnapshot"
+  | "resetScenario"
+  | "saveDebugSnapshot"
+  | "toggleDebugMode"
+  | "toggleFpsIndicator"
+  | "toggleNoGravityDebug"
+  | "togglePerformanceDebug"
+  | "zoomIn"
+  | "zoomOut";

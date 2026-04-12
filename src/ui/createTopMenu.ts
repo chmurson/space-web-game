@@ -1,16 +1,24 @@
 import { readDebugScenarioSnapshot } from "../debugScenarioSnapshot";
-import type { KeyboardShortcutAction } from "../input/keyboardShortcuts";
+import type { UIUserAction } from "../input/uiUserActions";
+import { formatDuration } from "./formatters";
 
 export type TopMenu = {
   close: () => void;
   element: HTMLElement;
+  syncState: () => void;
 };
 
 export const createTopMenu = (options: {
   app: HTMLElement;
-  onAction: (action: KeyboardShortcutAction) => void;
+  getCoastPredictionHorizonHours: () => number;
+  getMaxCoastPredictionHorizonHours: () => number;
+  getMinCoastPredictionHorizonHours: () => number;
+  onAction: (action: UIUserAction) => void;
 }): TopMenu => {
   const menuId = "top-menu-dropdown";
+  const debugSectionLabelId = `${menuId}-debug`;
+  const scenarioSectionLabelId = `${menuId}-scenario`;
+  const trajectorySectionLabelId = `${menuId}-trajectory`;
   const root = document.createElement("div");
   root.className = "top-menu";
   root.innerHTML = `
@@ -27,9 +35,34 @@ export const createTopMenu = (options: {
       <span></span>
     </button>
     <div class="top-menu-dropdown" id="${menuId}" role="menu" hidden>
-      <button type="button" role="menuitem" data-menu-action="saveDebugSnapshot">Save debug snapshot</button>
-      <button type="button" role="menuitem" data-menu-action="loadDebugSnapshot">Load debug snapshot</button>
-      <button type="button" role="menuitem" data-menu-action="resetScenario">Restart</button>
+      <section class="menu-section" aria-labelledby="${debugSectionLabelId}">
+        <div class="menu-section-label" id="${debugSectionLabelId}">Debug</div>
+        <button type="button" role="menuitem" data-menu-action="saveDebugSnapshot">Save debug snapshot</button>
+        <button type="button" role="menuitem" data-menu-action="loadDebugSnapshot">Load debug snapshot</button>
+      </section>
+
+      <hr class="menu-separator" />
+
+      <section class="menu-section" aria-labelledby="${scenarioSectionLabelId}">
+        <div class="menu-section-label" id="${scenarioSectionLabelId}">Scenario</div>
+        <button type="button" role="menuitem" data-menu-action="resetScenario">Restart</button>
+      </section>
+
+      <hr class="menu-separator" />
+
+      <section class="menu-section" aria-labelledby="${trajectorySectionLabelId}">
+        <div class="menu-section-label" id="${trajectorySectionLabelId}">Trajectory</div>
+        <div class="menu-stepper" role="group" aria-labelledby="${trajectorySectionLabelId}">
+          <div class="menu-stepper-copy">
+            <span class="menu-stepper-name">Prediction horizon</span>
+            <span class="menu-stepper-value" data-menu-coast-horizon aria-live="polite"></span>
+          </div>
+          <div class="menu-stepper-controls">
+            <button type="button" role="menuitem" class="menu-stepper-button" data-menu-action="decreaseCoastHorizon" aria-label="Decrease prediction horizon">−</button>
+            <button type="button" role="menuitem" class="menu-stepper-button" data-menu-action="increaseCoastHorizon" aria-label="Increase prediction horizon">+</button>
+          </div>
+        </div>
+      </section>
     </div>
   `;
   options.app.appendChild(root);
@@ -42,6 +75,12 @@ export const createTopMenu = (options: {
 
   const menuItems = Array.from(dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'));
   const loadSnapshotButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="loadDebugSnapshot"]');
+  const decreaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="decreaseCoastHorizon"]');
+  const increaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="increaseCoastHorizon"]');
+  const coastHorizonValue = dropdown.querySelector<HTMLElement>("[data-menu-coast-horizon]");
+  let lastCoastHorizonLabel = "";
+  let lastDecreaseDisabled: boolean | null = null;
+  let lastIncreaseDisabled: boolean | null = null;
   const focusItem = (index: number) => {
     menuItems.at(index)?.focus();
   };
@@ -52,10 +91,39 @@ export const createTopMenu = (options: {
 
     loadSnapshotButton.disabled = readDebugScenarioSnapshot() === null;
   };
+  const syncState = () => {
+    const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours();
+    const coastHorizonLabel = formatDuration(coastPredictionHorizonHours * 60 * 60);
+    const decreaseDisabled = coastPredictionHorizonHours <= options.getMinCoastPredictionHorizonHours();
+    const increaseDisabled = coastPredictionHorizonHours >= options.getMaxCoastPredictionHorizonHours();
+
+    if (coastHorizonValue) {
+      if (coastHorizonLabel !== lastCoastHorizonLabel) {
+        coastHorizonValue.textContent = coastHorizonLabel;
+        lastCoastHorizonLabel = coastHorizonLabel;
+      }
+    }
+    if (decreaseCoastHorizonButton) {
+      if (decreaseDisabled !== lastDecreaseDisabled) {
+        decreaseCoastHorizonButton.disabled = decreaseDisabled;
+        lastDecreaseDisabled = decreaseDisabled;
+      }
+    }
+    if (increaseCoastHorizonButton) {
+      if (increaseDisabled !== lastIncreaseDisabled) {
+        increaseCoastHorizonButton.disabled = increaseDisabled;
+        lastIncreaseDisabled = increaseDisabled;
+      }
+    }
+  };
+  const shouldKeepOpenAfterAction = (action: UIUserAction) => {
+    return action === "decreaseCoastHorizon" || action === "increaseCoastHorizon";
+  };
 
   const setOpen = (open: boolean, focusTarget: "button" | "first-item" | "none" = "none") => {
     if (open) {
       syncSnapshotAvailability();
+      syncState();
     }
     button.setAttribute("aria-expanded", String(open));
     dropdown.hidden = !open;
@@ -80,14 +148,19 @@ export const createTopMenu = (options: {
       return;
     }
 
-    const action = target.dataset.menuAction as KeyboardShortcutAction | undefined;
+    const action = target.dataset.menuAction as UIUserAction | undefined;
     if (!action) {
       return;
     }
 
     options.onAction(action);
-    syncSnapshotAvailability();
-    setOpen(false, "button");
+    if (action === "saveDebugSnapshot" || action === "loadDebugSnapshot") {
+      syncSnapshotAvailability();
+    }
+    syncState();
+    if (!shouldKeepOpenAfterAction(action)) {
+      setOpen(false, "button");
+    }
   });
 
   document.addEventListener("pointerdown", (event) => {
@@ -134,8 +207,11 @@ export const createTopMenu = (options: {
     }
   });
 
+  syncState();
+
   return {
     close: () => setOpen(false),
     element: root,
+    syncState,
   };
 };
