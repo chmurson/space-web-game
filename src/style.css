@@ -54,25 +54,9 @@ canvas {
   display: contents;
 }
 
-.telemetry-strip {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 16px);
-  left: 50%;
-  z-index: 3;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  justify-content: center;
-  pointer-events: none;
-  transform: translateX(-50%);
-}
 
 .top-menu {
   display: inline-flex;
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
-  left: calc(env(safe-area-inset-left, 0px) + 12px);
-  z-index: 4;
 }
 
 .top-menu-button {
@@ -660,8 +644,16 @@ canvas {
   line-height: 1.5;
 }
 
+.scenario-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .scenario-prompt button {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
   padding: 8px 12px;
   border: 1px solid rgba(103, 232, 249, 0.38);
   border-radius: 6px;
@@ -673,6 +665,27 @@ canvas {
 
 .scenario-prompt button:hover {
   border-color: rgba(103, 232, 249, 0.72);
+}
+
+.scenario-prompt-pill {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.56);
+  color: #dbeafe;
+  font: inherit;
+  font-size: 12px;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  z-index: var(--z-overlay-floating);
+}
+
+.scenario-prompt-pill:hover {
+  border-color: rgba(103, 232, 249, 0.62);
 }
 
 .spacecraft-callout {
@@ -861,18 +874,6 @@ canvas {
 }
 
 @media (max-width: 720px) {
-  .telemetry-strip {
-    top: calc(env(safe-area-inset-top, 0px) + 14px);
-    gap: 5px;
-    width: calc(100vw - 20px);
-    justify-content: center;
-  }
-
-  .top-menu {
-    top: calc(env(safe-area-inset-top, 0px) + 10px);
-    left: calc(env(safe-area-inset-left, 0px) + 10px);
-  }
-
   .top-menu-button {
     width: 32px;
     height: 32px;
@@ -932,5 +933,11 @@ canvas {
     left: 10px;
     width: auto;
     max-height: 30vh;
+  }
+
+  .scenario-prompt-pill {
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    right: calc(env(safe-area-inset-right, 0px) + 10px);
+    font-size: 11px;
   }
 }

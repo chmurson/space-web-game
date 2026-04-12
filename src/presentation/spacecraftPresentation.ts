@@ -4,7 +4,7 @@ import type { PointerCameraInput } from "../input/pointerCameraInput";
 import { renderPosition } from "../render/sceneUpdates";
 import type { GameSceneRefs } from "../scene/createGameScene";
 import type { Spacecraft } from "../simulation/types";
-import type { OverlayUiRefs } from "../ui/createOverlayUi";
+import type { OverlayUiRefs } from "../ui/overlayUI/createOverlayUi";
 
 const trailPointDistanceThreshold = 4;
 const maxTrailPoints = 450;

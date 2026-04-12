@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { updateCameraView } from "../render/sceneUpdates";
-import { acknowledgeRuntimeScenarioPrompt } from "../scenario/scenarioRegistry";
+import { acknowledgeRuntimeScenarioPrompt, reopenRuntimeScenarioPrompt } from "../scenario/scenarioRegistry";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
 import { getConstrainedTimeWarpIndex, syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { createRequestedRuntimeScenario, createRuntimeScenarioState, loadDebugRuntimeScenario, saveRuntimeDebugSnapshot, type RuntimeScenarioOptions } from "../scenario/runtimeScenario";
@@ -36,6 +36,7 @@ export const createRuntimeActions = (options: {
   timeWarps: number[];
   updateUserSettings: (settings: { debugModeEnabled: boolean }) => void;
 }) => {
+  let activeScenarioId = options.requestedScenario;
   const normalizeAngle = (angle: number) => {
     const wrapped = (angle + Math.PI) % (Math.PI * 2);
     return wrapped < 0 ? wrapped + Math.PI : wrapped - Math.PI;
@@ -49,9 +50,9 @@ export const createRuntimeActions = (options: {
     options.runtime.spacecraftLabelIntroUntil = performance.now() + 5_000;
   };
 
-  const resetScenario = () => {
+  const loadScenario = (scenarioId: string) => {
     const freshRuntimeScenarioState = createRuntimeScenarioState(
-      createRequestedRuntimeScenario(options.requestedScenario),
+      createRequestedRuntimeScenario(scenarioId),
       options.runtimeScenarioOptions,
     );
     options.runtime.timeWarpIndex = 0;
@@ -61,6 +62,10 @@ export const createRuntimeActions = (options: {
     options.runtime.scenarioSession = freshRuntimeScenarioState.scenarioSession;
     clearTransientScenarioState();
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
+  };
+
+  const resetScenario = () => {
+    loadScenario(activeScenarioId);
   };
 
   const saveDebugScenarioSnapshot = () => {
@@ -125,9 +130,15 @@ export const createRuntimeActions = (options: {
   };
 
   const acknowledgeScenarioPrompt = () => acknowledgeRuntimeScenarioPrompt(options.runtime);
+  const reopenScenarioPrompt = () => reopenRuntimeScenarioPrompt(options.runtime);
+  const exitTutorialToSandbox = () => {
+    activeScenarioId = "earth-moon";
+    loadScenario(activeScenarioId);
+  };
 
   return {
     acknowledgeScenarioPrompt,
+    exitTutorialToSandbox,
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === "increaseTimeWarp") {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
@@ -223,6 +234,7 @@ export const createRuntimeActions = (options: {
       options.runtime.assistMode = "off";
     },
     recoverScenarioAfterCrash,
+    reopenScenarioPrompt,
     updateCamera,
     zoomCamera,
   };

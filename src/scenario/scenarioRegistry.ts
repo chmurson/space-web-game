@@ -5,9 +5,13 @@ import type { ScenarioSessionValue } from "./scenarioSession";
 import { registerTutorialScenario } from "./tutorialScenario";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
 
+export type ScenarioPromptAction = "exit-tutorial";
+
 export type ScenarioPromptContent = {
   confirmLabel: string;
   description: string;
+  secondaryAction?: ScenarioPromptAction;
+  secondaryLabel?: string;
   title: string;
 };
 
@@ -18,8 +22,10 @@ export type RuntimeScenarioDefinition<TState extends ScenarioSessionValue = Scen
   getDirectives?(state: TState, limits: ScenarioDirectiveLimits): RuntimeScenarioDirectives;
   getHudContent?(state: TState): { description: string; title: string };
   getPromptContent?(state: TState): ScenarioPromptContent | null;
+  getReplayPromptContent?(state: TState): ScenarioPromptContent | null;
   id: string;
   isState?(value: unknown): value is TState;
+  reopenPrompt?(runtime: AppRuntimeState): boolean;
   shouldAutoRestartOnCrash?(runtime: AppRuntimeState): boolean;
 };
 
@@ -59,6 +65,24 @@ export const getRuntimeScenarioPromptContent = (runtime: AppRuntimeState): Scena
 export const acknowledgeRuntimeScenarioPrompt = (runtime: AppRuntimeState) => {
   const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
   return definition?.acknowledgePrompt?.(runtime) ?? false;
+};
+
+export const getRuntimeScenarioReplayPromptContent = (runtime: AppRuntimeState): ScenarioPromptContent | null => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  if (!definition?.getReplayPromptContent) {
+    return null;
+  }
+
+  if (definition.isState && !definition.isState(runtime.scenarioSession.state)) {
+    return null;
+  }
+
+  return definition.getReplayPromptContent(runtime.scenarioSession.state);
+};
+
+export const reopenRuntimeScenarioPrompt = (runtime: AppRuntimeState) => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+  return definition?.reopenPrompt?.(runtime) ?? false;
 };
 
 export const shouldAutoRestartRuntimeScenarioOnCrash = (runtime: AppRuntimeState) => {

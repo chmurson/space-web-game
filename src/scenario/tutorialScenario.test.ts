@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
-import { EARTH_MOON_DISTANCE } from "../simulation/constants";
+import { EARTH_MOON_DISTANCE, G } from "../simulation/constants";
 import { createDefaultScenarioDirectives } from "./scenarioDirectiveTypes";
 import { createRuntimeScenarioSession } from "./scenarioSession";
 import { registerTutorialScenario } from "./tutorialScenario";
@@ -58,6 +58,46 @@ const createRuntime = (): AppRuntimeState => ({
   viewportSize: 104,
 });
 
+const setMoonOrbitState = (runtime: AppRuntimeState, angle: number) => {
+  const moon = runtime.state.bodies.find((body) => body.id === "moon");
+  if (!moon) {
+    throw new Error("Expected moon body in runtime.");
+  }
+
+  const orbitalRadius = moon.radius + 2_000_000;
+  const orbitalSpeed = Math.sqrt((G * moon.mass) / orbitalRadius);
+  const tangent = { x: -Math.sin(angle), y: Math.cos(angle) };
+
+  runtime.state.spacecraft.position = {
+    x: moon.position.x + Math.cos(angle) * orbitalRadius,
+    y: moon.position.y + Math.sin(angle) * orbitalRadius,
+  };
+  runtime.state.spacecraft.velocity = {
+    x: moon.velocity.x + tangent.x * orbitalSpeed,
+    y: moon.velocity.y + tangent.y * orbitalSpeed,
+  };
+};
+
+const setEarthOrbitState = (runtime: AppRuntimeState, angle: number) => {
+  const earth = runtime.state.bodies.find((body) => body.id === "earth");
+  if (!earth) {
+    throw new Error("Expected earth body in runtime.");
+  }
+
+  const orbitalRadius = earth.radius + 2_000_000;
+  const orbitalSpeed = Math.sqrt((G * earth.mass) / orbitalRadius);
+  const tangent = { x: -Math.sin(angle), y: Math.cos(angle) };
+
+  runtime.state.spacecraft.position = {
+    x: earth.position.x + Math.cos(angle) * orbitalRadius,
+    y: earth.position.y + Math.sin(angle) * orbitalRadius,
+  };
+  runtime.state.spacecraft.velocity = {
+    x: earth.velocity.x + tangent.x * orbitalSpeed,
+    y: earth.velocity.y + tangent.y * orbitalSpeed,
+  };
+};
+
 describe("tutorialScenario", () => {
   it("creates a tutorial runtime scenario with phase-1 session state", () => {
     const tutorialScenario = registerTutorialScenario();
@@ -77,6 +117,8 @@ describe("tutorialScenario", () => {
     const tutorialScenario = registerTutorialScenario();
 
     expect(tutorialScenario.isState?.({ phase: "escape-earth" })).toBe(true);
+    expect(tutorialScenario.isState?.({ phase: "orbit-moon" })).toBe(true);
+    expect(tutorialScenario.isState?.({ phase: "orbit-earth" })).toBe(true);
     expect(tutorialScenario.isState?.({ phase: "unknown" })).toBe(false);
     expect(tutorialScenario.isState?.(null)).toBe(false);
     expect(
@@ -115,7 +157,12 @@ describe("tutorialScenario", () => {
 
     tutorialScenario.advance?.(runtime);
 
-    expect(runtime.scenarioSession.state).toEqual({ phase: "reach-moon", pendingPrompt: "phase-two-intro" });
+    expect(runtime.scenarioSession.state).toEqual({
+      phase: "reach-moon",
+      pendingPrompt: "phase-two-intro",
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
     expect(runtime.scenarioSession.checkpoint).not.toBeNull();
     expect(runtime.scenarioSession.checkpoint?.world).not.toBe(runtime.state);
     expect(runtime.scenarioSession.checkpoint?.world.spacecraft.position.x).toBe(runtime.state.spacecraft.position.x);
@@ -143,7 +190,7 @@ describe("tutorialScenario", () => {
     });
     expect(tutorialScenario.getHudContent?.(runtime.scenarioSession.state)).toEqual({
       title: "Tutorial: Reach the Moon",
-      description: "Use your outbound trajectory to intercept the Moon and begin working toward lunar orbit.",
+      description: "Approach the Moon and get close enough to begin the orbit phase.",
     });
     expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
       title: "Reach the Moon",
@@ -151,6 +198,196 @@ describe("tutorialScenario", () => {
       confirmLabel: "Continue",
     });
     expect(tutorialScenario.acknowledgePrompt?.(runtime)).toBe(true);
-    expect(runtime.scenarioSession.state).toEqual({ phase: "reach-moon", pendingPrompt: null });
+    expect(runtime.scenarioSession.state).toEqual({
+      phase: "reach-moon",
+      lastAcknowledgedPrompt: "phase-two-intro",
+      pendingPrompt: null,
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+  });
+
+  it("switches from moon approach to moon orbit when entering the close-range threshold", () => {
+    const tutorialScenario = registerTutorialScenario();
+    const runtime = createRuntime();
+    runtime.scenarioSession = createRuntimeScenarioSession("tutorial", {
+      phase: "reach-moon",
+      pendingPrompt: null,
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+
+    setMoonOrbitState(runtime, 0);
+
+    tutorialScenario.advance?.(runtime);
+
+    expect(runtime.scenarioSession.state).toEqual({
+      phase: "orbit-moon",
+      pendingPrompt: "orbit-moon-intro",
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true);
+    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+      throw new Error("Expected tutorial scenario state.");
+    }
+    expect(tutorialScenario.getHudContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Tutorial: Orbit the Moon",
+      description: "Stay captured and complete 3 turns around the Moon (0/3).",
+    });
+    expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Approach the Moon",
+      description: "You are close to the Moon. Orbit around it three times to complete the lunar phase of the tutorial.",
+      confirmLabel: "Continue",
+    });
+    expect(tutorialScenario.acknowledgePrompt?.(runtime)).toBe(true);
+    expect(runtime.scenarioSession.state).toEqual({
+      phase: "orbit-moon",
+      lastAcknowledgedPrompt: "orbit-moon-intro",
+      pendingPrompt: null,
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+  });
+
+  it("advances from moon orbit to return-earth after three lunar orbits", () => {
+    const tutorialScenario = registerTutorialScenario();
+    const runtime = createRuntime();
+    runtime.scenarioSession = createRuntimeScenarioSession("tutorial", {
+      phase: "orbit-moon",
+      pendingPrompt: null,
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+
+    const orbitAngles = [
+      0,
+      Math.PI / 2,
+      Math.PI,
+      -Math.PI / 2,
+      0,
+      Math.PI / 2,
+      Math.PI,
+      -Math.PI / 2,
+      0,
+      Math.PI / 2,
+      Math.PI,
+      -Math.PI / 2,
+      0,
+    ];
+
+    for (const angle of orbitAngles) {
+      setMoonOrbitState(runtime, angle);
+      tutorialScenario.advance?.(runtime);
+    }
+
+    expect(runtime.scenarioSession.state).toEqual({
+      phase: "return-earth",
+      pendingPrompt: "phase-three-intro",
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+    expect(runtime.scenarioSession.checkpoint).not.toBeNull();
+    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true);
+    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+      throw new Error("Expected tutorial scenario state.");
+    }
+    expect(tutorialScenario.getHudContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Tutorial: Return to Earth",
+      description: "Leave the Moon behind and get close enough to Earth to begin the final orbit phase.",
+    });
+    expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Return to Earth",
+      description: "You have completed three lunar orbits. The next goal is to head back toward Earth and get close enough to start the final orbit.",
+      confirmLabel: "Continue",
+    });
+  });
+
+  it("switches from earth return to earth orbit when re-entering Earth range", () => {
+    const tutorialScenario = registerTutorialScenario();
+    const runtime = createRuntime();
+    runtime.scenarioSession = createRuntimeScenarioSession("tutorial", {
+      phase: "return-earth",
+      pendingPrompt: null,
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+
+    setEarthOrbitState(runtime, 0);
+
+    tutorialScenario.advance?.(runtime);
+
+    expect(runtime.scenarioSession.state).toEqual({
+      phase: "orbit-earth",
+      pendingPrompt: "orbit-earth-intro",
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true);
+    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+      throw new Error("Expected tutorial scenario state.");
+    }
+    expect(tutorialScenario.getHudContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Tutorial: Orbit Earth",
+      description: "Stabilize your return and complete 3 turns around Earth (0/3).",
+    });
+    expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Back at Earth",
+      description: "You are back in Earth range. Stabilize and complete three Earth orbits to finish the tutorial.",
+      confirmLabel: "Continue",
+    });
+  });
+
+  it("advances from earth orbit to complete after three Earth orbits", () => {
+    const tutorialScenario = registerTutorialScenario();
+    const runtime = createRuntime();
+    runtime.scenarioSession = createRuntimeScenarioSession("tutorial", {
+      phase: "orbit-earth",
+      pendingPrompt: null,
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    });
+
+    const orbitAngles = [
+      0,
+      Math.PI / 2,
+      Math.PI,
+      -Math.PI / 2,
+      0,
+      Math.PI / 2,
+      Math.PI,
+      -Math.PI / 2,
+      0,
+      Math.PI / 2,
+      Math.PI,
+      -Math.PI / 2,
+      0,
+    ];
+
+    for (const angle of orbitAngles) {
+      setEarthOrbitState(runtime, angle);
+      tutorialScenario.advance?.(runtime);
+    }
+
+    expect(runtime.scenarioSession.completed).toBe(true);
+    expect(runtime.scenarioSession.state).toEqual({
+      phase: "complete",
+      pendingPrompt: "complete-intro",
+    });
+    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true);
+    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+      throw new Error("Expected tutorial scenario state.");
+    }
+    expect(tutorialScenario.getHudContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Tutorial Complete",
+      description: "You reached the end of the current tutorial flow.",
+    });
+    expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
+      title: "Tutorial Complete",
+      description: "You completed the Earth-Moon round trip. You can keep flying in this run or leave the tutorial and return to free flight.",
+      confirmLabel: "Continue flying",
+      secondaryAction: "exit-tutorial",
+      secondaryLabel: "Exit tutorial",
+    });
   });
 });

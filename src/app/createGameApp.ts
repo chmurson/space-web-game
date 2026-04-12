@@ -24,7 +24,7 @@ import {
 import { createGameScene } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "../simulation/physics";
-import { createOverlayUi } from "../ui/createOverlayUi";
+import { createOverlayUi } from "../ui/overlayUI/createOverlayUi";
 import { createTouchControls } from "../ui/createTouchControls";
 import { createTopMenu } from "../ui/createTopMenu";
 import { createRipple, type Ripple } from "../ui/overlayUpdates";
@@ -154,6 +154,7 @@ export const createGameApp = (app: HTMLDivElement) => {
   topMenu = createTopMenu({
     app,
     getCoastPredictionHorizonHours: () => runtime.coastPredictionHorizonHours,
+    getDebugModeEnabled: () => runtime.debugModeEnabled,
     getMaxCoastPredictionHorizonHours: () => runtime.scenarioDirectives.maxCoastPredictionHorizonHours ?? maxCoastPredictionHorizonHours,
     getMinCoastPredictionHorizonHours: () => minCoastPredictionHorizonHours,
     onAction: dispatchRuntimeAction,
@@ -236,6 +237,18 @@ export const createGameApp = (app: HTMLDivElement) => {
   });
   overlayUi.scenarioPromptConfirmButton?.addEventListener("click", () => {
     if (runtimeActions.acknowledgeScenarioPrompt()) {
+      frameLoop.refreshTrajectoryPrediction();
+    }
+  });
+  overlayUi.scenarioPromptSecondaryButton?.addEventListener("click", () => {
+    const promptAction = overlayUi.scenarioPromptSecondaryButton?.dataset.promptAction;
+    if (promptAction === "exit-tutorial") {
+      runtimeActions.exitTutorialToSandbox();
+      frameLoop.refreshTrajectoryPrediction();
+    }
+  });
+  overlayUi.scenarioPromptReplayButton.addEventListener("click", () => {
+    if (runtimeActions.reopenScenarioPrompt()) {
       frameLoop.refreshTrajectoryPrediction();
     }
   });

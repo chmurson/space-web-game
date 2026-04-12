@@ -1,5 +1,6 @@
-import type { Body } from "../simulation/types";
-import { createDebugPanel, type DebugPanel } from "./debugPanel";
+import type { Body } from "../../simulation/types";
+import { createDebugPanel, type DebugPanel } from "../debugPanel";
+import './overlayUIStyles.css'
 
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>;
@@ -12,6 +13,8 @@ export type OverlayUiRefs = {
   scenarioPrompt: HTMLElement;
   scenarioPromptConfirmButton: HTMLButtonElement | null;
   scenarioPromptDescription: HTMLParagraphElement | null;
+  scenarioPromptReplayButton: HTMLButtonElement;
+  scenarioPromptSecondaryButton: HTMLButtonElement | null;
   scenarioPromptTitle: HTMLHeadingElement | null;
   spacecraftCallout: HTMLElement;
   spacecraftCalloutLabel: HTMLSpanElement | null;
@@ -40,35 +43,42 @@ export type OverlayUiOptions = {
 };
 
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
+  const topBar = document.createElement("div");
+  topBar.className = "top-bar";
+  options.app.appendChild(topBar);
+
   const hud = document.createElement("section");
   hud.className = "hud hud-hidden";
-  hud.innerHTML = `
-    <div class="telemetry-strip">
-      <div class="telemetry-pill telemetry-pill-time">
-        <span class="telemetry-time-display">
-          <svg class="telemetry-time-icon" viewBox="0 0 16 16" aria-hidden="true">
-            <circle class="telemetry-time-icon-face" cx="8" cy="8" r="6.25"></circle>
-            <line class="telemetry-time-icon-hand telemetry-time-icon-hand-minute" x1="8" y1="8" x2="8" y2="3.5"></line>
-            <circle class="telemetry-time-icon-center" cx="8" cy="8" r="0.9"></circle>
-          </svg>
-          <strong data-stat="time"></strong>
-        </span>
-      </div>
-      <div class="telemetry-pill telemetry-pill-velocity">
-        <span class="telemetry-speed-display">
-          <svg class="telemetry-speed-icon" viewBox="0 0 16 16" aria-hidden="true">
-            <path class="telemetry-speed-icon-body" d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"></path>
-            <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-left" d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"></path>
-            <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-right" d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"></path>
-            <circle class="telemetry-speed-icon-window" cx="8" cy="6.1" r="0.95"></circle>
-            <path class="telemetry-speed-icon-flame" d="M8 14.6 C8.9 13.6, 9.3 12.4, 8 11.1 C6.7 12.4, 7.1 13.6, 8 14.6 Z"></path>
-          </svg>
-          <strong data-stat="speed"></strong>
-        </span>
-      </div>
+  options.app.appendChild(hud);
+
+  const telemetryStrip = document.createElement("div");
+  telemetryStrip.className = "telemetry-strip";
+
+  telemetryStrip.innerHTML = `
+    <div class="telemetry-pill telemetry-pill-time">
+      <span class="telemetry-time-display">
+        <svg class="telemetry-time-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <circle class="telemetry-time-icon-face" cx="8" cy="8" r="6.25"></circle>
+          <line class="telemetry-time-icon-hand telemetry-time-icon-hand-minute" x1="8" y1="8" x2="8" y2="3.5"></line>
+          <circle class="telemetry-time-icon-center" cx="8" cy="8" r="0.9"></circle>
+        </svg>
+        <strong data-stat="time"></strong>
+      </span>
+    </div>
+    <div class="telemetry-pill telemetry-pill-velocity">
+      <span class="telemetry-speed-display">
+        <svg class="telemetry-speed-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path class="telemetry-speed-icon-body" d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"></path>
+          <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-left" d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"></path>
+          <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-right" d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"></path>
+          <circle class="telemetry-speed-icon-window" cx="8" cy="6.1" r="0.95"></circle>
+          <path class="telemetry-speed-icon-flame" d="M8 14.6 C8.9 13.6, 9.3 12.4, 8 11.1 C6.7 12.4, 7.1 13.6, 8 14.6 Z"></path>
+        </svg>
+        <strong data-stat="speed"></strong>
+      </span>
     </div>
   `;
-  options.app.appendChild(hud);
+  topBar.appendChild(telemetryStrip);
 
   const debugPanel = createDebugPanel(options.app);
 
@@ -84,10 +94,19 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     <div class="scenario-prompt">
       <h2></h2>
       <p></p>
-      <button type="button"></button>
+      <div class="scenario-prompt-actions">
+        <button type="button" data-role="confirm"></button>
+        <button type="button" data-role="secondary"></button>
+      </div>
     </div>
   `;
   options.app.appendChild(scenarioPrompt);
+
+  const scenarioPromptReplayButton = document.createElement("button");
+  scenarioPromptReplayButton.type = "button";
+  scenarioPromptReplayButton.className = "scenario-prompt-pill";
+  scenarioPromptReplayButton.style.display = "none";
+  topBar.appendChild(scenarioPromptReplayButton);
 
   const spacecraftCallout = document.createElement("div");
   spacecraftCallout.className = "spacecraft-callout";
@@ -128,8 +147,10 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     hudTitle: hud.querySelector<HTMLHeadingElement>("h1"),
     offscreenIndicators,
     scenarioPrompt,
-    scenarioPromptConfirmButton: scenarioPrompt.querySelector<HTMLButtonElement>("button"),
+    scenarioPromptConfirmButton: scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="confirm"]'),
     scenarioPromptDescription: scenarioPrompt.querySelector<HTMLParagraphElement>("p"),
+    scenarioPromptReplayButton,
+    scenarioPromptSecondaryButton: scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="secondary"]'),
     scenarioPromptTitle: scenarioPrompt.querySelector<HTMLHeadingElement>("h2"),
     spacecraftCallout,
     spacecraftCalloutLabel,
@@ -138,13 +159,13 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     statEngine: null,
     statFuel: null,
     statGuidance: null,
-    statSpeed: hud.querySelector<HTMLElement>('[data-stat="speed"]'),
-    speedIcon: hud.querySelector<SVGSVGElement>(".telemetry-speed-icon"),
+    statSpeed: topBar.querySelector<HTMLElement>('[data-stat="speed"]'),
+    speedIcon: topBar.querySelector<SVGSVGElement>(".telemetry-speed-icon"),
     statTarget: null,
     statTargetSpeed: null,
-    statTime: hud.querySelector<HTMLElement>('[data-stat="time"]'),
-    timeIcon: hud.querySelector<SVGSVGElement>(".telemetry-time-icon"),
-    timeIconHand: hud.querySelector<SVGLineElement>(".telemetry-time-icon-hand-minute"),
+    statTime: topBar.querySelector<HTMLElement>('[data-stat="time"]'),
+    timeIcon: topBar.querySelector<SVGSVGElement>(".telemetry-time-icon"),
+    timeIconHand: topBar.querySelector<SVGLineElement>(".telemetry-time-icon-hand-minute"),
     statWarp: null,
     statZoom: null,
   };

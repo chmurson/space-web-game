@@ -1,18 +1,37 @@
 import { createEarthMoonScenario } from "../simulation/scenarios/earthMoon";
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
+import { getCaptureMetricsForState } from "../assist/orbitalAssist";
 import { EARTH_MOON_DISTANCE, EARTH_RADIUS, G } from "../simulation/constants";
 import { add, length, normalize, scale, sub, vec } from "../simulation/vector";
-import { createRuntimeScenarioCheckpoint, createRuntimeScenarioSession } from "./scenarioSession";
+import { createRuntimeScenarioCheckpoint, createRuntimeScenarioSession, type RuntimeScenarioCheckpoint } from "./scenarioSession";
 import { createDefaultScenarioDirectives, type RuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
 import type { RuntimeScenarioDefinition, ScenarioPromptContent } from "./scenarioRegistry";
 
-type TutorialScenarioPhase = "escape-earth" | "reach-moon" | "return-earth" | "complete";
+type TutorialScenarioPhase = "escape-earth" | "reach-moon" | "orbit-moon" | "return-earth" | "orbit-earth" | "complete";
+type TutorialScenarioPrompt =
+  | "phase-one-intro"
+  | "phase-two-intro"
+  | "orbit-moon-intro"
+  | "phase-three-intro"
+  | "orbit-earth-intro"
+  | "complete-intro"
+  | null;
 
-type TutorialScenarioState = {
+export type TutorialScenarioState = {
+  lastAcknowledgedPrompt?: Exclude<TutorialScenarioPrompt, null>;
+  orbitProgressRadians?: number;
+  orbitTurnsCompleted?: number;
+  previousOrbitAngle?: number;
   phase: TutorialScenarioPhase;
-  pendingPrompt: "phase-one-intro" | "phase-two-intro" | null;
+  pendingPrompt: TutorialScenarioPrompt;
 };
+
+const requiredMoonOrbitTurns = 3;
+const fullTurnRadians = Math.PI * 2;
+const earthOrbitPhaseThresholdRadiusMultiplier = 20;
+const moonOrbitPhaseThresholdRadiusMultiplier = 35;
+const normalizeAngleDelta = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
 
 const createTutorialScenarioSession = (state: TutorialScenarioState = { phase: "escape-earth", pendingPrompt: "phase-one-intro" }) =>
   createRuntimeScenarioSession("tutorial", state);
@@ -21,7 +40,12 @@ const isTutorialScenarioState = (value: unknown): value is TutorialScenarioState
   typeof value === "object" &&
   value !== null &&
   "phase" in value &&
-  (value.phase === "escape-earth" || value.phase === "reach-moon" || value.phase === "return-earth" || value.phase === "complete");
+  (value.phase === "escape-earth" ||
+    value.phase === "reach-moon" ||
+    value.phase === "orbit-moon" ||
+    value.phase === "orbit-earth" ||
+    value.phase === "return-earth" ||
+    value.phase === "complete");
 
 const createTutorialScenario = (): RuntimeScenario => {
   const scenario = createEarthMoonScenario();
@@ -51,10 +75,20 @@ const getTutorialScenarioDirectives = (
     };
   }
 
-  if (state.phase === "reach-moon") {
+  if (state.phase === "reach-moon" || state.phase === "orbit-moon") {
     return {
       ...createDefaultScenarioDirectives(),
       forcedAssistTargetId: "moon",
+      maxCoastPredictionHorizonHours: 24,
+      maxTimeWarp: 2000,
+      maxViewportSize: limits.defaultViewportSize / 0.5,
+    };
+  }
+
+  if (state.phase === "return-earth" || state.phase === "orbit-earth") {
+    return {
+      ...createDefaultScenarioDirectives(),
+      forcedAssistTargetId: "earth",
       maxCoastPredictionHorizonHours: 24,
       maxTimeWarp: 2000,
       maxViewportSize: limits.defaultViewportSize / 0.5,
@@ -75,14 +109,30 @@ const getTutorialHudContent = (state: TutorialScenarioState) => {
   if (state.phase === "reach-moon") {
     return {
       title: "Tutorial: Reach the Moon",
-      description: "Use your outbound trajectory to intercept the Moon and begin working toward lunar orbit.",
+      description: "Approach the Moon and get close enough to begin the orbit phase.",
+    };
+  }
+
+  if (state.phase === "orbit-moon") {
+    const completedTurns = Math.min(requiredMoonOrbitTurns, state.orbitTurnsCompleted ?? 0);
+    return {
+      title: "Tutorial: Orbit the Moon",
+      description: `Stay captured and complete ${requiredMoonOrbitTurns} turns around the Moon (${completedTurns}/${requiredMoonOrbitTurns}).`,
     };
   }
 
   if (state.phase === "return-earth") {
     return {
       title: "Tutorial: Return to Earth",
-      description: "Leave the Moon behind and shape a return trajectory back toward Earth.",
+      description: "Leave the Moon behind and get close enough to Earth to begin the final orbit phase.",
+    };
+  }
+
+  if (state.phase === "orbit-earth") {
+    const completedTurns = Math.min(requiredMoonOrbitTurns, state.orbitTurnsCompleted ?? 0);
+    return {
+      title: "Tutorial: Orbit Earth",
+      description: `Stabilize your return and complete ${requiredMoonOrbitTurns} turns around Earth (${completedTurns}/${requiredMoonOrbitTurns}).`,
     };
   }
 
@@ -93,7 +143,11 @@ const getTutorialHudContent = (state: TutorialScenarioState) => {
 };
 
 const getTutorialPromptContent = (state: TutorialScenarioState): ScenarioPromptContent | null => {
-  if (state.pendingPrompt === "phase-one-intro") {
+  return getTutorialPromptContentForPrompt(state.pendingPrompt);
+};
+
+const getTutorialPromptContentForPrompt = (prompt: TutorialScenarioPrompt): ScenarioPromptContent | null => {
+  if (prompt === "phase-one-intro") {
     return {
       title: "Leave Earth Orbit",
       description: "Use thrust, turning, double-click heading, and the projected path. Fly far enough away from Earth to move on.",
@@ -101,11 +155,45 @@ const getTutorialPromptContent = (state: TutorialScenarioState): ScenarioPromptC
     };
   }
 
-  if (state.pendingPrompt === "phase-two-intro") {
+  if (prompt === "phase-two-intro") {
     return {
       title: "Reach the Moon",
       description: "The Moon is now your target. You can zoom out more and look farther ahead. Use that to line up an approach.",
       confirmLabel: "Continue",
+    };
+  }
+
+  if (prompt === "phase-three-intro") {
+    return {
+      title: "Return to Earth",
+      description: "You have completed three lunar orbits. The next goal is to head back toward Earth and get close enough to start the final orbit.",
+      confirmLabel: "Continue",
+    };
+  }
+
+  if (prompt === "orbit-moon-intro") {
+    return {
+      title: "Approach the Moon",
+      description: "You are close to the Moon. Orbit around it three times to complete the lunar phase of the tutorial.",
+      confirmLabel: "Continue",
+    };
+  }
+
+  if (prompt === "orbit-earth-intro") {
+    return {
+      title: "Back at Earth",
+      description: "You are back in Earth range. Stabilize and complete three Earth orbits to finish the tutorial.",
+      confirmLabel: "Continue",
+    };
+  }
+
+  if (prompt === "complete-intro") {
+    return {
+      title: "Tutorial Complete",
+      description: "You completed the Earth-Moon round trip. You can keep flying in this run or leave the tutorial and return to free flight.",
+      confirmLabel: "Continue flying",
+      secondaryAction: "exit-tutorial",
+      secondaryLabel: "Exit tutorial",
     };
   }
 
@@ -133,39 +221,171 @@ const positionMoonForPhaseTwo = (runtime: AppRuntimeState) => {
   moon.velocity = add(earth.velocity, scale(tangentialDirection, moonOrbitSpeed));
 };
 
+const createDefaultRuntimeScenarioSession = (runtime: AppRuntimeState): RuntimeScenarioCheckpoint => {
+  return createRuntimeScenarioCheckpoint({
+    assistMode: runtime.assistMode,
+    assistTargetIndex: runtime.assistTargetIndex,
+    coastPredictionHorizonHours: runtime.coastPredictionHorizonHours,
+    targetHeading: runtime.targetHeading,
+    viewportSize: runtime.viewportSize,
+    world: runtime.state,
+  });
+};
+
+const createOrbitProgressState = (): Pick<TutorialScenarioState, "orbitProgressRadians" | "orbitTurnsCompleted"> => ({
+  orbitProgressRadians: 0,
+  orbitTurnsCompleted: 0,
+});
+
+const isWithinOrbitPhaseThreshold = (runtime: AppRuntimeState, targetId: "earth" | "moon") => {
+  const target = runtime.state.bodies.find((body) => body.id === targetId);
+  if (!target) {
+    return false;
+  }
+
+  const captureMetrics = getCaptureMetricsForState(runtime.state, target);
+  const radiusMultiplier = targetId === "earth" ? earthOrbitPhaseThresholdRadiusMultiplier : moonOrbitPhaseThresholdRadiusMultiplier;
+  return captureMetrics.distance < target.radius * radiusMultiplier;
+};
+
+const advanceOrbitPhase = (runtime: AppRuntimeState, state: TutorialScenarioState, targetId: "earth" | "moon") => {
+  const target = runtime.state.bodies.find((body) => body.id === targetId);
+  if (!target) {
+    return null;
+  }
+
+  const captureMetrics = getCaptureMetricsForState(runtime.state, target);
+  const orbitAngle = Math.atan2(
+    runtime.state.spacecraft.position.y - target.position.y,
+    runtime.state.spacecraft.position.x - target.position.x,
+  );
+  const previousOrbitAngle = state.previousOrbitAngle;
+
+  if (captureMetrics.specificEnergy >= 0) {
+    runtime.scenarioSession = {
+      ...runtime.scenarioSession,
+      state: {
+        ...state,
+        ...createOrbitProgressState(),
+        previousOrbitAngle: orbitAngle,
+      },
+    };
+    return { completed: false };
+  }
+
+  const additionalProgress = typeof previousOrbitAngle === "number" ? Math.abs(normalizeAngleDelta(orbitAngle - previousOrbitAngle)) : 0;
+  const orbitProgressRadians = (state.orbitProgressRadians ?? 0) + additionalProgress;
+  const orbitTurnsCompleted = Math.floor(orbitProgressRadians / fullTurnRadians);
+
+  runtime.scenarioSession = {
+    ...runtime.scenarioSession,
+    state: {
+      ...state,
+      orbitProgressRadians,
+      orbitTurnsCompleted,
+      previousOrbitAngle: orbitAngle,
+    },
+  };
+
+  return { completed: orbitTurnsCompleted >= requiredMoonOrbitTurns };
+};
+
 const advanceTutorialScenario = (runtime: AppRuntimeState) => {
   if (!isTutorialScenarioState(runtime.scenarioSession.state)) {
     return;
   }
 
-  if (runtime.scenarioSession.state.phase !== "escape-earth") {
+  if (runtime.scenarioSession.state.phase === "escape-earth") {
+    const earth = runtime.state.bodies.find((body) => body.id === "earth");
+    if (!earth) {
+      return;
+    }
+
+    const distanceFromEarth = length(sub(runtime.state.spacecraft.position, earth.position));
+    if (distanceFromEarth < EARTH_RADIUS * 5) {
+      return;
+    }
+
+    positionMoonForPhaseTwo(runtime);
+
+    runtime.scenarioSession = {
+      ...runtime.scenarioSession,
+      checkpoint: createDefaultRuntimeScenarioSession(runtime),
+      state: { phase: "reach-moon", pendingPrompt: "phase-two-intro", ...createOrbitProgressState() },
+    };
     return;
   }
 
-  const earth = runtime.state.bodies.find((body) => body.id === "earth");
-  if (!earth) {
+  if (runtime.scenarioSession.state.phase === "reach-moon") {
+    if (isWithinOrbitPhaseThreshold(runtime, "moon")) {
+      runtime.scenarioSession = {
+        ...runtime.scenarioSession,
+        checkpoint: createDefaultRuntimeScenarioSession(runtime),
+        state: {
+          ...runtime.scenarioSession.state,
+          ...createOrbitProgressState(),
+          phase: "orbit-moon",
+          pendingPrompt: "orbit-moon-intro",
+        },
+      };
+    }
+
     return;
   }
 
-  const distanceFromEarth = length(sub(runtime.state.spacecraft.position, earth.position));
-  if (distanceFromEarth < EARTH_RADIUS * 5) {
+  if (runtime.scenarioSession.state.phase === "orbit-moon") {
+    const orbitProgress = advanceOrbitPhase(runtime, runtime.scenarioSession.state, "moon");
+    if (!orbitProgress?.completed) {
+      return;
+    }
+
+    runtime.scenarioSession = {
+      ...runtime.scenarioSession,
+      checkpoint: createDefaultRuntimeScenarioSession(runtime),
+      state: {
+        phase: "return-earth",
+        pendingPrompt: "phase-three-intro",
+        ...createOrbitProgressState(),
+      },
+    };
     return;
   }
 
-  positionMoonForPhaseTwo(runtime);
+  if (runtime.scenarioSession.state.phase === "return-earth") {
+    if (isWithinOrbitPhaseThreshold(runtime, "earth")) {
+      runtime.scenarioSession = {
+        ...runtime.scenarioSession,
+        checkpoint: createDefaultRuntimeScenarioSession(runtime),
+        state: {
+          ...runtime.scenarioSession.state,
+          ...createOrbitProgressState(),
+          phase: "orbit-earth",
+          pendingPrompt: "orbit-earth-intro",
+        },
+      };
+    }
+    return;
+  }
 
-  runtime.scenarioSession = {
-    ...runtime.scenarioSession,
-    checkpoint: createRuntimeScenarioCheckpoint({
-      assistMode: runtime.assistMode,
-      assistTargetIndex: runtime.assistTargetIndex,
-      coastPredictionHorizonHours: runtime.coastPredictionHorizonHours,
-      targetHeading: runtime.targetHeading,
-      viewportSize: runtime.viewportSize,
-      world: runtime.state,
-    }),
-    state: { phase: "reach-moon", pendingPrompt: "phase-two-intro" },
-  };
+  if (runtime.scenarioSession.state.phase === "orbit-earth") {
+    const orbitProgress = advanceOrbitPhase(runtime, runtime.scenarioSession.state, "earth");
+    if (!orbitProgress?.completed) {
+      return;
+    }
+
+    runtime.scenarioSession = {
+      ...runtime.scenarioSession,
+      checkpoint: createDefaultRuntimeScenarioSession(runtime),
+      completed: true,
+      state: {
+        phase: "complete",
+        pendingPrompt: "complete-intro",
+      },
+    };
+    return;
+  }
+
+  return;
 };
 
 const acknowledgeTutorialPrompt = (runtime: AppRuntimeState) => {
@@ -173,11 +393,32 @@ const acknowledgeTutorialPrompt = (runtime: AppRuntimeState) => {
     return false;
   }
 
+  const acknowledgedPrompt = runtime.scenarioSession.state.pendingPrompt;
   runtime.scenarioSession = {
     ...runtime.scenarioSession,
     state: {
       ...runtime.scenarioSession.state,
+      lastAcknowledgedPrompt: acknowledgedPrompt,
       pendingPrompt: null,
+    },
+  };
+  return true;
+};
+
+const reopenTutorialPrompt = (runtime: AppRuntimeState) => {
+  if (
+    !isTutorialScenarioState(runtime.scenarioSession.state) ||
+    runtime.scenarioSession.state.pendingPrompt !== null ||
+    !runtime.scenarioSession.state.lastAcknowledgedPrompt
+  ) {
+    return false;
+  }
+
+  runtime.scenarioSession = {
+    ...runtime.scenarioSession,
+    state: {
+      ...runtime.scenarioSession.state,
+      pendingPrompt: runtime.scenarioSession.state.lastAcknowledgedPrompt,
     },
   };
   return true;
@@ -191,6 +432,8 @@ export const registerTutorialScenario = (): RuntimeScenarioDefinition<TutorialSc
   getDirectives: getTutorialScenarioDirectives,
   getHudContent: getTutorialHudContent,
   getPromptContent: getTutorialPromptContent,
+  getReplayPromptContent: (state) => getTutorialPromptContentForPrompt(state.lastAcknowledgedPrompt ?? null),
   isState: isTutorialScenarioState,
+  reopenPrompt: reopenTutorialPrompt,
   shouldAutoRestartOnCrash: () => true,
 });

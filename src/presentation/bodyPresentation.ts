@@ -5,7 +5,7 @@ import { RENDER_SCALE } from "../simulation/constants";
 import type { Body } from "../simulation/types";
 import type { Vec2 } from "../simulation/vector";
 import { formatDistance } from "../ui/formatters";
-import type { OverlayUiRefs } from "../ui/createOverlayUi";
+import type { OverlayUiRefs } from "../ui/overlayUI/createOverlayUi";
 import type { GameSceneRefs } from "../scene/createGameScene";
 
 const updateBodyWorldVisuals = (gameScene: GameSceneRefs, bodies: Body[]) => {
@@ -35,6 +35,16 @@ const updateOffscreenIndicators = (options: {
   const screenCenterY = window.innerHeight * 0.5;
   const mobileViewport = window.matchMedia("(hover: none), (pointer: coarse)").matches;
   const portraitViewport = window.innerWidth < window.innerHeight;
+
+  // Account for scenario prompt pill at the top
+  const scenarioPromptPill = document.querySelector<HTMLElement>(".scenario-prompt-pill");
+  const scenarioPromptPillBottom = (scenarioPromptPill?.style.display !== "none")
+    ? scenarioPromptPill?.getBoundingClientRect().bottom ?? 0
+    : 0;
+  const telemetryStrip = document.querySelector<HTMLElement>(".telemetry-strip");
+  const telemetryStripBottom = telemetryStrip?.getBoundingClientRect().bottom ?? 0;
+  const reservedTop = Math.max(telemetryStripBottom, scenarioPromptPillBottom) + 12;
+
   const visibleIndicators: Array<{ distance: number; indicator: HTMLElement; rect: DOMRect }> = [];
 
   for (const body of options.bodies) {
@@ -75,7 +85,7 @@ const updateOffscreenIndicators = (options: {
     const bounds = indicator.getBoundingClientRect();
     const edgeY = THREE.MathUtils.clamp(
       projectedY,
-      bounds.height * 0.5 + edgePadding,
+      bounds.height * 0.5 + Math.max(edgePadding, reservedTop),
       window.innerHeight - bounds.height * 0.5 - edgePadding,
     );
     const shouldStackIndicator =
@@ -94,7 +104,7 @@ const updateOffscreenIndicators = (options: {
     );
     const stackedEdgeY = THREE.MathUtils.clamp(
       projectedY,
-      stackedBounds.height * 0.5 + edgePadding,
+      stackedBounds.height * 0.5 + Math.max(edgePadding, reservedTop),
       window.innerHeight - stackedBounds.height * 0.5 - edgePadding,
     );
 

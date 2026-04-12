@@ -11,6 +11,7 @@ export type TopMenu = {
 export const createTopMenu = (options: {
   app: HTMLElement;
   getCoastPredictionHorizonHours: () => number;
+  getDebugModeEnabled: () => boolean;
   getMaxCoastPredictionHorizonHours: () => number;
   getMinCoastPredictionHorizonHours: () => number;
   onAction: (action: UIUserAction) => void;
@@ -37,6 +38,7 @@ export const createTopMenu = (options: {
     <div class="top-menu-dropdown" id="${menuId}" role="menu" hidden>
       <section class="menu-section" aria-labelledby="${debugSectionLabelId}">
         <div class="menu-section-label" id="${debugSectionLabelId}">Debug</div>
+        <button type="button" role="menuitem" data-menu-action="toggleDebugMode" data-menu-debug-toggle></button>
         <button type="button" role="menuitem" data-menu-action="saveDebugSnapshot">Save debug snapshot</button>
         <button type="button" role="menuitem" data-menu-action="loadDebugSnapshot">Load debug snapshot</button>
       </section>
@@ -65,7 +67,11 @@ export const createTopMenu = (options: {
       </section>
     </div>
   `;
-  options.app.appendChild(root);
+  const topBar = options.app.querySelector('.top-bar');
+  if (!topBar) {
+    throw new Error("Failed to find top bar");
+  }
+  topBar.prepend(root);
 
   const button = root.querySelector<HTMLButtonElement>(".top-menu-button");
   const dropdown = root.querySelector<HTMLDivElement>(".top-menu-dropdown");
@@ -75,10 +81,12 @@ export const createTopMenu = (options: {
 
   const menuItems = Array.from(dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'));
   const loadSnapshotButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="loadDebugSnapshot"]');
+  const debugToggleButton = dropdown.querySelector<HTMLButtonElement>("[data-menu-debug-toggle]");
   const decreaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="decreaseCoastHorizon"]');
   const increaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="increaseCoastHorizon"]');
   const coastHorizonValue = dropdown.querySelector<HTMLElement>("[data-menu-coast-horizon]");
   let lastCoastHorizonLabel = "";
+  let lastDebugToggleLabel = "";
   let lastDecreaseDisabled: boolean | null = null;
   let lastIncreaseDisabled: boolean | null = null;
   const focusItem = (index: number) => {
@@ -92,11 +100,18 @@ export const createTopMenu = (options: {
     loadSnapshotButton.disabled = readDebugScenarioSnapshot() === null;
   };
   const syncState = () => {
+    const debugToggleLabel = options.getDebugModeEnabled() ? "Hide debug window" : "Show debug window";
     const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours();
     const coastHorizonLabel = formatDuration(coastPredictionHorizonHours * 60 * 60);
     const decreaseDisabled = coastPredictionHorizonHours <= options.getMinCoastPredictionHorizonHours();
     const increaseDisabled = coastPredictionHorizonHours >= options.getMaxCoastPredictionHorizonHours();
 
+    if (debugToggleButton) {
+      if (debugToggleLabel !== lastDebugToggleLabel) {
+        debugToggleButton.textContent = debugToggleLabel;
+        lastDebugToggleLabel = debugToggleLabel;
+      }
+    }
     if (coastHorizonValue) {
       if (coastHorizonLabel !== lastCoastHorizonLabel) {
         coastHorizonValue.textContent = coastHorizonLabel;

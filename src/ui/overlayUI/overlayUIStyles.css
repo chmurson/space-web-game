@@ -1,0 +1,62 @@
+/* Top bar layout - contains menu, telemetry strip, and scenario prompt pill */
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  z-index: 4;
+  padding: 12px 12px 0;
+}
+
+/* Telemetry strip - centered in the top bar */
+.telemetry-strip {
+  display: inline-flex;
+  justify-content: center;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.telemetry-strip > .telemetry-pill{
+  flex-shrink: 0;
+}
+
+/* Scenario prompt pill - positioned absolutely on desktop */
+.scenario-prompt-pill {
+  padding: 6px 10px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.56);
+  color: #dbeafe;
+  font: inherit;
+  font-size: 12px;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+}
+
+.scenario-prompt-pill:hover {
+  border-color: rgba(103, 232, 249, 0.62);
+}
+
+/* Mobile adjustments */
+@media (max-width: 720px) {
+  .top-bar {
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 0;
+    gap: 8px;
+  }
+
+  .scenario-prompt-pill {
+    font-size: 11px;
+  }
+
+  .telemetry-pill {
+    padding: 5px 7px;
+  }
+
+  .telemetry-strip {
+    gap: 5px;
+  }
+}

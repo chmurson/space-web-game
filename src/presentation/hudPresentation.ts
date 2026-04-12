@@ -1,13 +1,15 @@
 import { getBodyInfluences } from "../simulation/bodyInfluence";
 import { formatCompactElapsed, formatSpeed } from "../ui/formatters";
-import type { OverlayUiRefs } from "../ui/createOverlayUi";
+import type { OverlayUiRefs } from "../ui/overlayUI/createOverlayUi";
 import type { TouchControls } from "../ui/createTouchControls";
 import { getDebugPanelLines, getGuidanceText } from "../ui/hudText";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { GameQueries } from "../runtime/gameQueries";
-import { getRuntimeScenarioDefinition, getRuntimeScenarioPromptContent } from "../scenario/scenarioRegistry";
+import { getRuntimeScenarioDefinition, getRuntimeScenarioPromptContent, getRuntimeScenarioReplayPromptContent } from "../scenario/scenarioRegistry";
 import type { TrajectoryPresentation } from "./trajectoryPresentation";
+import { RuntimeScenarioSession } from "../scenario/scenarioSession";
+import { TutorialScenarioState } from "../scenario/tutorialScenario";
 
 export const createHudPresentation = (options: {
   defaultScenarioDescription: string;
@@ -82,6 +84,7 @@ export const createHudPresentation = (options: {
           ? scenarioDefinition.getHudContent(options.runtime.scenarioSession.state)
           : null;
       const scenarioPromptContent = getRuntimeScenarioPromptContent(options.runtime);
+      const replayPromptContent = getRuntimeScenarioReplayPromptContent(options.runtime);
 
       if (options.overlayUi.hudTitle) {
         options.overlayUi.hudTitle.textContent = scenarioHudContent?.title ?? options.defaultScenarioName;
@@ -99,6 +102,14 @@ export const createHudPresentation = (options: {
       if (options.overlayUi.scenarioPromptConfirmButton) {
         options.overlayUi.scenarioPromptConfirmButton.textContent = scenarioPromptContent?.confirmLabel ?? "";
       }
+      if (options.overlayUi.scenarioPromptSecondaryButton) {
+        const secondaryButton = options.overlayUi.scenarioPromptSecondaryButton;
+        secondaryButton.style.display = scenarioPromptContent?.secondaryLabel ? "inline-flex" : "none";
+        secondaryButton.textContent = scenarioPromptContent?.secondaryLabel ?? "";
+        secondaryButton.dataset.promptAction = scenarioPromptContent?.secondaryAction ?? "";
+      }
+      options.overlayUi.scenarioPromptReplayButton.style.display = !scenarioPromptContent && replayPromptContent ? "inline-flex" : "none";
+      options.overlayUi.scenarioPromptReplayButton.textContent = replayPromptContent ? `Story: ${replayPromptContent.title}` : "";
 
       if (options.overlayUi.statEngine) {
         options.overlayUi.statEngine.textContent = options.physicsEngineName;
@@ -184,8 +195,19 @@ export const createHudPresentation = (options: {
             targetName: target.name,
           }).join("\n"),
         );
+        const { scenarioId, state } = options.runtime.scenarioSession as RuntimeScenarioSession<TutorialScenarioState>;
         options.overlayUi.debugPanel.setJson({
-          assistTarget: options.queries.getAssistTargetDebug(),
+          assistTarget: target.id,
+          captureMetrics: {
+            bound: targetMetrics.specificEnergy < 0,
+            circularSpeed: targetMetrics.circularSpeed,
+            distance: targetMetrics.distance,
+            relativeSpeed: targetMetrics.relativeSpeed,
+            specificEnergy: targetMetrics.specificEnergy,
+            surfaceDistance: targetMetrics.surfaceDistance,
+          },
+          scenarioId,
+          state,
         });
       }
 
