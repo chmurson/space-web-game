@@ -238,6 +238,11 @@ canvas {
   background: rgba(8, 13, 24, 0.32);
   backdrop-filter: blur(12px);
   transform-origin: center center;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
   will-change: transform;
 }
 
@@ -331,6 +336,14 @@ canvas {
 
 .telemetry-pill-velocity {
   max-width: calc(100vw - 88px);
+}
+
+.telemetry-pill-velocity.telemetry-pill-thrusting {
+  z-index: 1;
+  background: rgba(15, 23, 42, 0.62);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.14), 0 10px 24px rgba(245, 158, 11, 0.18);
+  filter: brightness(1.14);
+  transform: scale(1.16);
 }
 
 .telemetry-pill-time > span, .telemetry-pill-velocity > span {
@@ -858,6 +871,10 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   .telemetry-pill-warp-bump {
     animation: none;
+  }
+
+  .telemetry-pill {
+    transition: none;
   }
 
   .telemetry-time-icon-hand {
