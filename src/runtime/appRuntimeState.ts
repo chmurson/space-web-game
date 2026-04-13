@@ -16,6 +16,7 @@ export type AppRuntimeState = {
   scenarioDirectives: RuntimeScenarioDirectives;
   scenarioSession: RuntimeScenarioSession;
   spacecraftLabelIntroUntil: number;
+  targetHeadingSelectionEpoch: number;
   uiEffectEpoch: number;
   state: SimulationState;
   targetHeading: number | null;

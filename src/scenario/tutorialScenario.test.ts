@@ -19,6 +19,7 @@ const createRuntime = (): AppRuntimeState => ({
   scenarioDirectives: createDefaultScenarioDirectives(),
   scenarioSession: createRuntimeScenarioSession("tutorial", { phase: "escape-earth", pendingPrompt: null }),
   spacecraftLabelIntroUntil: 0,
+  targetHeadingSelectionEpoch: 0,
   uiEffectEpoch: 0,
   state: {
     elapsed: 0,
@@ -209,6 +210,36 @@ describe("tutorialScenario", () => {
       pendingPrompt: null,
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
+    });
+  });
+
+  it("starts onboarding after the phase-1 intro prompt and gates escape-earth progression", () => {
+    const tutorialScenario = registerTutorialScenario();
+    const runtime = createRuntime();
+    runtime.scenarioSession = createRuntimeScenarioSession("tutorial", {
+      phase: "escape-earth",
+      pendingPrompt: "phase-one-intro",
+    });
+
+    expect(tutorialScenario.acknowledgePrompt?.(runtime)).toBe(true);
+
+    expect(runtime.scenarioSession.state).toMatchObject({
+      phase: "escape-earth",
+      pendingPrompt: null,
+      onboarding: {
+        activeStepId: "intro-thrust",
+        gateActive: true,
+      },
+    });
+
+    tutorialScenario.advance?.(runtime);
+
+    expect(runtime.scenarioSession.state).toMatchObject({
+      phase: "escape-earth",
+      onboarding: {
+        activeStepId: "intro-thrust",
+        gateActive: true,
+      },
     });
   });
 

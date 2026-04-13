@@ -1,3 +1,4 @@
+import { gameConfig } from "../config/gameConfig";
 import { createEarthMoonScenario } from "../simulation/scenarios/earthMoon";
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
@@ -7,6 +8,12 @@ import { add, length, normalize, scale, sub, vec } from "../simulation/vector";
 import { createRuntimeScenarioCheckpoint, createRuntimeScenarioSession, type RuntimeScenarioCheckpoint } from "./scenarioSession";
 import { createDefaultScenarioDirectives, type RuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
 import type { RuntimeScenarioDefinition, ScenarioPromptContent } from "./scenarioRegistry";
+import {
+  acknowledgeTutorialOnboardingPrompt,
+  advanceTutorialOnboarding,
+  createTutorialOnboardingState,
+} from "./tutorialOnboarding/tutorialOnboardingProgress";
+import type { TutorialOnboardingState } from "./tutorialOnboarding/tutorialOnboardingTypes";
 
 type TutorialScenarioPhase = "escape-earth" | "reach-moon" | "orbit-moon" | "return-earth" | "orbit-earth" | "complete";
 type TutorialScenarioPrompt =
@@ -19,6 +26,7 @@ type TutorialScenarioPrompt =
   | null;
 
 export type TutorialScenarioState = {
+  onboarding?: TutorialOnboardingState;
   lastAcknowledgedPrompt?: Exclude<TutorialScenarioPrompt, null>;
   orbitProgressRadians?: number;
   orbitTurnsCompleted?: number;
@@ -31,6 +39,7 @@ const requiredMoonOrbitTurns = 3;
 const fullTurnRadians = Math.PI * 2;
 const earthOrbitPhaseThresholdRadiusMultiplier = 20;
 const moonOrbitPhaseThresholdRadiusMultiplier = 35;
+const tutorialTimeWarps = gameConfig.controls.timeWarps;
 const normalizeAngleDelta = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
 
 const createTutorialScenarioSession = (state: TutorialScenarioState = { phase: "escape-earth", pendingPrompt: "phase-one-intro" }) =>
@@ -297,6 +306,26 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
   }
 
   if (runtime.scenarioSession.state.phase === "escape-earth") {
+    const onboarding = runtime.scenarioSession.state.onboarding;
+    if (onboarding?.gateActive) {
+      const advancedOnboarding = advanceTutorialOnboarding(
+        runtime,
+        onboarding,
+        performance.now(),
+        tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
+      );
+      runtime.scenarioSession = {
+        ...runtime.scenarioSession,
+        state: {
+          ...runtime.scenarioSession.state,
+          onboarding: advancedOnboarding,
+        },
+      };
+      if (advancedOnboarding.gateActive) {
+        return;
+      }
+    }
+
     const earth = runtime.state.bodies.find((body) => body.id === "earth");
     if (!earth) {
       return;
@@ -390,16 +419,51 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
 };
 
 const acknowledgeTutorialPrompt = (runtime: AppRuntimeState) => {
-  if (!isTutorialScenarioState(runtime.scenarioSession.state) || runtime.scenarioSession.state.pendingPrompt === null) {
+  if (!isTutorialScenarioState(runtime.scenarioSession.state)) {
+    return false;
+  }
+
+  const activeOnboarding = runtime.scenarioSession.state.onboarding;
+  if (activeOnboarding?.gateActive) {
+    const acknowledgedOnboarding = acknowledgeTutorialOnboardingPrompt(
+      runtime,
+      activeOnboarding,
+      performance.now(),
+      tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
+    );
+    if (!acknowledgedOnboarding) {
+      return false;
+    }
+
+    runtime.scenarioSession = {
+      ...runtime.scenarioSession,
+      state: {
+        ...runtime.scenarioSession.state,
+        onboarding: acknowledgedOnboarding,
+      },
+    };
+    return true;
+  }
+
+  if (runtime.scenarioSession.state.pendingPrompt === null) {
     return false;
   }
 
   const acknowledgedPrompt = runtime.scenarioSession.state.pendingPrompt;
+  const nextOnboarding =
+    acknowledgedPrompt === "phase-one-intro"
+      ? createTutorialOnboardingState(
+          runtime,
+          performance.now(),
+          tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
+        )
+      : runtime.scenarioSession.state.onboarding;
   runtime.scenarioSession = {
     ...runtime.scenarioSession,
     state: {
       ...runtime.scenarioSession.state,
       lastAcknowledgedPrompt: acknowledgedPrompt,
+      ...(nextOnboarding ? { onboarding: nextOnboarding } : {}),
       pendingPrompt: null,
     },
   };

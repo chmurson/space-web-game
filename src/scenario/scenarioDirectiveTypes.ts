@@ -7,6 +7,18 @@ export type RuntimeScenarioDirectives = {
   maxTimeWarp: number | null;
   maxViewportSize: number | null;
   minViewportSize: number | null;
+  uiOverrides: {
+    overlay: {
+      topBar: {
+        hideTrustPill: boolean | null;
+        hideTimeWrapPill: boolean | null;
+        hideScenarioInfoButton: boolean | null;
+      };
+    };
+    gameVisuals: {
+      hideTrajectory: boolean | null;
+    },
+  };
 };
 
 export type ScenarioDirectiveLimits = {
@@ -26,4 +38,16 @@ export const createDefaultScenarioDirectives = (): RuntimeScenarioDirectives => 
   maxTimeWarp: null,
   maxViewportSize: null,
   minViewportSize: null,
+  uiOverrides: {
+    overlay: {
+      topBar: {
+        hideTrustPill: null,
+        hideTimeWrapPill: null,
+        hideScenarioInfoButton: null,
+      },
+    },
+    gameVisuals: {
+      hideTrajectory: null,
+    },
+  },
 });

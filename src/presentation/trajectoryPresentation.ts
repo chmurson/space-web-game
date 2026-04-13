@@ -11,6 +11,16 @@ import { RENDER_SCALE } from "../simulation/constants";
 import type { Body, PhysicsEngine } from "../simulation/types";
 import { fromAngle, type Vec2 } from "../simulation/vector";
 
+const hideTrajectoryVisuals = (gameScene: GameSceneRefs) => {
+  gameScene.assistedPredictionLine.visible = false;
+  gameScene.circularOrbitLine.visible = false;
+  gameScene.desiredVelocityLine.visible = false;
+  gameScene.impactGradientLine.visible = false;
+  gameScene.inertialPredictionLine.visible = false;
+  gameScene.predictionEndMarker.visible = false;
+  gameScene.predictionLine.visible = false;
+};
+
 const updateInertialPredictionVisual = (options: {
   enabled: boolean;
   gameScene: GameSceneRefs;
@@ -240,6 +250,32 @@ export const createTrajectoryPresentation = (options: {
     },
     refreshPrediction,
     updateVisuals: () => {
+      const tutorialState =
+        options.runtime.scenarioSession.scenarioId === "tutorial" &&
+        options.runtime.scenarioSession.state &&
+        typeof options.runtime.scenarioSession.state === "object" &&
+        !Array.isArray(options.runtime.scenarioSession.state)
+          ? options.runtime.scenarioSession.state
+          : null;
+      const tutorialOnboarding =
+        tutorialState && "onboarding" in tutorialState && tutorialState.onboarding && typeof tutorialState.onboarding === "object"
+          ? tutorialState.onboarding
+          : null;
+      if (
+        tutorialOnboarding &&
+        "activeStepId" in tutorialOnboarding &&
+        (
+          tutorialOnboarding.activeStepId === "intro-thrust" ||
+          tutorialOnboarding.activeStepId === "intro-turn" ||
+          tutorialOnboarding.activeStepId === "intro-point-and-turn" ||
+          tutorialOnboarding.activeStepId === "intro-timewarp" ||
+          tutorialOnboarding.activeStepId === "intro-timewarp-thrust"
+        )
+      ) {
+        hideTrajectoryVisuals(options.gameScene);
+        return;
+      }
+
       const predictionState = options.trajectoryPredictionRuntime.getState();
       const target = options.queries.getAssistTarget();
 

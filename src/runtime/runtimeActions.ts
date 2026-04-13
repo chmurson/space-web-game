@@ -267,6 +267,7 @@ export const createRuntimeActions = (options: {
     restartFromCheckpoint,
     setTargetHeading: (heading: number, clientX: number, clientY: number) => {
       options.runtime.targetHeading = heading;
+      options.runtime.targetHeadingSelectionEpoch += 1;
       options.runtime.assistMode = "off";
       options.createRipple(options.app, options.ripples, clientX, clientY);
     },

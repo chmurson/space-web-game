@@ -538,8 +538,27 @@ canvas {
   filter: brightness(1.08);
 }
 
+.telemetry-pill-thrust.telemetry-pill-thrust-guidance {
+  z-index: 1;
+  background: rgba(15, 23, 42, 0.68);
+  box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.14), 0 10px 24px rgba(14, 165, 233, 0.12);
+  color: rgba(219, 234, 254, 0.95);
+}
+
+.telemetry-pill-thrust.telemetry-pill-thrust-neutral {
+  color: rgba(219, 234, 254, 0.95);
+}
+
 .telemetry-pill-thrust.telemetry-pill-thrust-crashed .telemetry-crash-icon {
   filter: drop-shadow(0 0 5px rgba(251, 113, 133, 0.22));
+}
+
+.telemetry-pill-thrust.telemetry-pill-thrust-guidance .telemetry-crash-icon {
+  display: none;
+}
+
+.telemetry-pill-thrust.telemetry-pill-thrust-neutral .telemetry-crash-icon {
+  display: none;
 }
 
 .telemetry-pill-velocity.telemetry-pill-thrusting {
@@ -876,6 +895,15 @@ canvas {
   z-index: var(--z-overlay-modal);
 }
 
+.scenario-prompt-backdrop[data-prompt-mode="coach"] {
+  align-items: start;
+  justify-items: start;
+  padding: max(14px, min(10vh, 72px)) 0 0 max(14px, min(3vw, 26px));
+  background: none;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
 .scenario-prompt {
   display: grid;
   gap: 12px;
@@ -884,6 +912,21 @@ canvas {
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 8px;
   background: rgba(8, 13, 24, 0.96);
+}
+
+.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
+  width: min(380px, calc(100vw - 28px));
+  gap: 10px;
+  padding: 14px 16px 14px 18px;
+  border: 1px solid rgba(140, 199, 255, 0.16);
+  border-left: 3px solid rgba(103, 232, 249, 0.66);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(36, 56, 96, 0.16), rgba(12, 18, 31, 0) 40%),
+    rgba(7, 11, 20, 0.78);
+  box-shadow: 0 16px 38px rgba(2, 6, 18, 0.32);
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
 }
 
 .scenario-prompt h2 {
@@ -897,6 +940,17 @@ canvas {
   color: #bac7d5;
   font-size: 14px;
   line-height: 1.5;
+}
+
+.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt h2 {
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt p {
+  color: rgba(219, 234, 254, 0.82);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .scenario-prompt-actions {
@@ -920,6 +974,25 @@ canvas {
 
 .scenario-prompt button:hover {
   border-color: rgba(103, 232, 249, 0.72);
+}
+
+.tutorial-focus-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: calc(var(--z-overlay-modal) - 1);
+}
+
+.tutorial-focus-shade {
+  position: fixed;
+  background: rgba(5, 7, 13, 0.62);
+}
+
+.tutorial-focus-frame {
+  position: fixed;
+  border: 1px solid rgba(125, 211, 252, 0.44);
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(103, 232, 249, 0.14), 0 0 22px rgba(56, 189, 248, 0.18);
 }
 
 .scenario-prompt-pill {
@@ -1198,5 +1271,14 @@ canvas {
     top: calc(env(safe-area-inset-top, 0px) + 12px);
     right: calc(env(safe-area-inset-right, 0px) + 10px);
     font-size: 11px;
+  }
+
+  .scenario-prompt-backdrop[data-prompt-mode="coach"] {
+    justify-items: center;
+    padding: max(10px, min(9vh, 56px)) 10px 0;
+  }
+
+  .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
+    width: calc(100vw - 20px);
   }
 }

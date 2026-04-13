@@ -75,6 +75,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     scenarioDirectives: createDefaultScenarioDirectives(),
     scenarioSession: initialRuntimeScenarioState.scenarioSession,
     spacecraftLabelIntroUntil: performance.now() + 5_000,
+    targetHeadingSelectionEpoch: 0,
     uiEffectEpoch: 0,
     state: initialRuntimeScenarioState.state,
     targetHeading: null,

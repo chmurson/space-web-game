@@ -18,6 +18,7 @@ const createRuntime = (): AppRuntimeState => ({
   scenarioDirectives: createDefaultScenarioDirectives(),
   scenarioSession: createRuntimeScenarioSession("tutorial", { phase: "reach-moon" }),
   spacecraftLabelIntroUntil: 0,
+  targetHeadingSelectionEpoch: 0,
   uiEffectEpoch: 0,
   state: {
     elapsed: 100,

@@ -37,6 +37,7 @@ const createRuntime = (bodies: AppRuntimeState["state"]["bodies"], coastPredicti
   },
   scenarioSession: createRuntimeScenarioSession("test"),
   spacecraftLabelIntroUntil: 0,
+  targetHeadingSelectionEpoch: 0,
   uiEffectEpoch: 0,
   state: {
     elapsed: 0,
