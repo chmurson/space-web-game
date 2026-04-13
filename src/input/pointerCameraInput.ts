@@ -13,6 +13,7 @@ export type PointerCameraInput = {
 
 export type PointerCameraInputOptions = {
   camera: THREE.Camera;
+  getInteractionsEnabled: () => boolean;
   getSpacecraftPosition: () => Vec2;
   onResize: () => void;
   onTargetHeadingSelected: (heading: number, screenPosition: PointerScreenPosition) => void;
@@ -105,6 +106,10 @@ export const bindPointerCameraInput = (options: PointerCameraInputOptions): Poin
   options.windowTarget.addEventListener(
     "wheel",
     (event) => {
+      if (!options.getInteractionsEnabled()) {
+        return;
+      }
+
       event.preventDefault();
       options.onZoom(getWheelZoomFactor(event, options.windowTarget.innerHeight));
     },
@@ -112,6 +117,10 @@ export const bindPointerCameraInput = (options: PointerCameraInputOptions): Poin
   );
 
   options.rendererElement.addEventListener("dblclick", (event) => {
+    if (!options.getInteractionsEnabled()) {
+      return;
+    }
+
     const heading = pickHeadingFromScreenPoint(event.clientX, event.clientY, options.getSpacecraftPosition());
 
     if (heading === null) {
@@ -124,6 +133,10 @@ export const bindPointerCameraInput = (options: PointerCameraInputOptions): Poin
   options.rendererElement.addEventListener(
     "touchend",
     (event) => {
+      if (!options.getInteractionsEnabled()) {
+        return;
+      }
+
       const touch = event.changedTouches[0];
       if (!touch) {
         return;

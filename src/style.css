@@ -32,6 +32,124 @@ canvas {
   -webkit-user-drag: none;
 }
 
+#app.app-main-menu .top-bar,
+#app.app-main-menu .hud,
+#app.app-main-menu .touch-controls,
+#app.app-main-menu .scenario-prompt-backdrop,
+#app.app-main-menu .spacecraft-icon-thrust,
+#app.app-main-menu .offscreen-indicator,
+#app.app-main-menu .body-label,
+#app.app-main-menu .fps-indicator,
+#app.app-main-menu .debug-panel {
+  display: none !important;
+}
+
+.main-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 24px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  pointer-events: none;
+}
+
+.main-menu-panel {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.main-menu-copy {
+  display: grid;
+  gap: 8px;
+  padding: 0 8px;
+  text-align: center;
+  text-shadow: 0 12px 28px rgba(2, 6, 23, 0.45);
+}
+
+.main-menu-kicker {
+  color: rgba(191, 219, 254, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.main-menu-copy h1 {
+  margin: 0;
+  font-size: clamp(32px, 7vw, 52px);
+  line-height: 0.95;
+}
+
+.main-menu-copy p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.84);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.main-menu-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.main-menu-actions button {
+  width: 100%;
+  padding: 15px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(8, 13, 24, 0.78)),
+    rgba(8, 13, 24, 0.72);
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.28);
+  backdrop-filter: blur(16px);
+  color: #f0f9ff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.main-menu-actions button:disabled {
+  color: rgba(240, 249, 255, 0.42);
+}
+
+.main-menu-actions button:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.8);
+  outline-offset: 2px;
+}
+
+.main-menu-actions button:active {
+  transform: scale(0.985);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .main-menu-actions button:hover:not(:disabled) {
+    border-color: rgba(125, 211, 252, 0.42);
+    background:
+      linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(8, 13, 24, 0.82)),
+      rgba(8, 13, 24, 0.72);
+  }
+}
+
+@media (min-width: 721px) {
+  .main-menu {
+    align-items: center;
+    padding: 0 24px;
+  }
+
+  .main-menu-panel {
+    transform: translateY(12vh);
+  }
+}
+
 .hud {
   position: fixed;
   top: 16px;

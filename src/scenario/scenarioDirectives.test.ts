@@ -16,6 +16,8 @@ const createRuntime = (): AppRuntimeState => ({
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
   scenarioDirectives: {
+    cameraFollowBodyId: null,
+    cameraFollowOffset: { x: 0, y: 0 },
     forcedAssistTargetId: null,
     hiddenBodyIds: [],
     maxCoastPredictionHorizonHours: null,
@@ -71,6 +73,8 @@ describe("scenarioDirectives", () => {
   it("constrains runtime state to directive caps", () => {
     const runtime = createRuntime();
     runtime.scenarioDirectives = {
+      cameraFollowBodyId: null,
+      cameraFollowOffset: { x: 0, y: 0 },
       forcedAssistTargetId: null,
       hiddenBodyIds: [],
       maxCoastPredictionHorizonHours: 12,
@@ -110,6 +114,8 @@ describe("scenarioDirectives", () => {
     });
 
     expect(directives).toEqual({
+      cameraFollowBodyId: null,
+      cameraFollowOffset: { x: 0, y: 0 },
       forcedAssistTargetId: "earth",
       hiddenBodyIds: ["moon"],
       maxCoastPredictionHorizonHours: 2,

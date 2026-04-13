@@ -9,13 +9,13 @@ export const renderPosition = (x: number, y: number, lift = 0) => new THREE.Vect
 export const updateCameraView = (options: {
   cameraDistance: number;
   cameraElevation: number;
+  cameraTargetPosition: Vec2;
   gameScene: GameSceneRefs;
-  spacecraftPosition: Vec2;
   viewportHeight: number;
   viewportSize: number;
   viewportWidth: number;
 }) => {
-  const target = renderPosition(options.spacecraftPosition.x, options.spacecraftPosition.y);
+  const target = renderPosition(options.cameraTargetPosition.x, options.cameraTargetPosition.y);
   options.gameScene.cameraTarget.set(target.x, 0, target.z);
 
   options.gameScene.camera.left = -options.viewportSize * (options.viewportWidth / options.viewportHeight) * 0.5;

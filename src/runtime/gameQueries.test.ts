@@ -26,6 +26,8 @@ const createRuntime = (bodies: AppRuntimeState["state"]["bodies"], coastPredicti
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
   scenarioDirectives: {
+    cameraFollowBodyId: null,
+    cameraFollowOffset: { x: 0, y: 0 },
     forcedAssistTargetId: null,
     hiddenBodyIds: [],
     maxCoastPredictionHorizonHours: null,

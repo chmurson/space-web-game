@@ -190,10 +190,11 @@ const getTutorialPromptContentForPrompt = (prompt: TutorialScenarioPrompt): Scen
   if (prompt === "complete-intro") {
     return {
       title: "Tutorial Complete",
-      description: "You completed the Earth-Moon round trip. You can keep flying in this run or leave the tutorial and return to free flight.",
-      confirmLabel: "Continue flying",
-      secondaryAction: "exit-tutorial",
-      secondaryLabel: "Exit tutorial",
+      description: "You completed the Earth-Moon round trip. Start free roam immediately or return to the main menu.",
+      confirmAction: "start-free-roam",
+      confirmLabel: "Free roam",
+      secondaryAction: "exit-to-menu",
+      secondaryLabel: "Exit",
     };
   }
 

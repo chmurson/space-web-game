@@ -25,6 +25,7 @@ import { createGameScene } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "../simulation/physics";
 import { createOverlayUi } from "../ui/overlayUI/createOverlayUi";
+import { createMainMenu } from "../ui/createMainMenu";
 import { createTouchControls } from "../ui/createTouchControls";
 import { createTopMenu } from "../ui/createTopMenu";
 import { createRipple, type Ripple } from "../ui/overlayUpdates";
@@ -32,6 +33,7 @@ import { readUserSettings, updateUserSettings } from "../userSettingsStorage";
 
 export const createGameApp = (app: HTMLDivElement) => {
   const urlParams = new URLSearchParams(window.location.search);
+  let appMode: "menu" | "game" = urlParams.has("scenario") ? "game" : "menu";
   const requestedEngine = urlParams.get("engine") ?? "";
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine;
   const requestedScenario = urlParams.get("scenario") ?? "earth-moon";
@@ -144,6 +146,10 @@ export const createGameApp = (app: HTMLDivElement) => {
   });
   let topMenu: ReturnType<typeof createTopMenu> | null = null;
   const dispatchRuntimeAction = (action: Parameters<typeof runtimeActions.handleUIUserAction>[0]) => {
+    if (appMode !== "game") {
+      return;
+    }
+
     const result = runtimeActions.handleUIUserAction(action);
     if (result.refreshTrajectoryPrediction && frameLoop) {
       frameLoop.refreshTrajectoryPrediction();
@@ -190,6 +196,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
+    getInteractionsEnabled: () => appMode === "game",
     getSpacecraftPosition: () => runtime.state.spacecraft.position,
     onResize: runtimeActions.handleResize,
     onTargetHeadingSelected: (heading, screenPosition) => {
@@ -228,23 +235,78 @@ export const createGameApp = (app: HTMLDivElement) => {
     trajectoryPresentation,
   });
 
+  const mainMenu = createMainMenu({
+    app,
+    onFreeRoam: () => {
+      keyboardInput.clear();
+      runtimeActions.startFreeRoam();
+      appMode = "game";
+      app.classList.remove("app-main-menu");
+      mainMenu.setVisible(false);
+      frameLoop.refreshTrajectoryPrediction();
+    },
+    onLoadGame: () => {
+      keyboardInput.clear();
+      const loaded = runtimeActions.loadDebugSnapshot();
+      if (!loaded) {
+        mainMenu.syncState();
+        return;
+      }
+
+      appMode = "game";
+      app.classList.remove("app-main-menu");
+      mainMenu.setVisible(false);
+      frameLoop.refreshTrajectoryPrediction();
+    },
+    onTutorial: () => {
+      keyboardInput.clear();
+      runtimeActions.startTutorial();
+      appMode = "game";
+      app.classList.remove("app-main-menu");
+      mainMenu.setVisible(false);
+      frameLoop.refreshTrajectoryPrediction();
+    },
+  });
+
+  const enterMainMenu = () => {
+    keyboardInput.clear();
+    runtimeActions.enterMainMenuBackground();
+    appMode = "menu";
+    app.classList.add("app-main-menu");
+    mainMenu.syncState();
+    mainMenu.setVisible(true);
+    topMenu?.close();
+    frameLoop.refreshTrajectoryPrediction();
+  };
+
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence: autoSelectNearestSurface,
     getDebugModeEnabled: () => runtime.debugModeEnabled,
+    getInteractionsEnabled: () => appMode === "game",
     handleAction: dispatchRuntimeAction,
     keyboardInput,
     windowTarget: window,
   });
   overlayUi.scenarioPromptConfirmButton?.addEventListener("click", () => {
+    const promptAction = overlayUi.scenarioPromptConfirmButton?.dataset.promptAction;
+    if (promptAction === "start-free-roam") {
+      keyboardInput.clear();
+      runtimeActions.startFreeRoam();
+      appMode = "game";
+      app.classList.remove("app-main-menu");
+      mainMenu.setVisible(false);
+      frameLoop.refreshTrajectoryPrediction();
+      return;
+    }
+
     if (runtimeActions.acknowledgeScenarioPrompt()) {
       frameLoop.refreshTrajectoryPrediction();
     }
   });
   overlayUi.scenarioPromptSecondaryButton?.addEventListener("click", () => {
     const promptAction = overlayUi.scenarioPromptSecondaryButton?.dataset.promptAction;
-    if (promptAction === "exit-tutorial") {
-      runtimeActions.exitTutorialToSandbox();
-      frameLoop.refreshTrajectoryPrediction();
+    if (promptAction === "exit-to-menu") {
+      enterMainMenu();
     }
   });
   overlayUi.scenarioPromptReplayButton.addEventListener("click", () => {
@@ -252,6 +314,12 @@ export const createGameApp = (app: HTMLDivElement) => {
       frameLoop.refreshTrajectoryPrediction();
     }
   });
+
+  if (appMode === "menu") {
+    enterMainMenu();
+  } else {
+    mainMenu.setVisible(false);
+  }
 
   frameLoop.start();
 };

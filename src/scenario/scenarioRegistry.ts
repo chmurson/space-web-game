@@ -5,9 +5,10 @@ import type { ScenarioSessionValue } from "./scenarioSession";
 import { registerTutorialScenario } from "./tutorialScenario";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
 
-export type ScenarioPromptAction = "exit-tutorial";
+export type ScenarioPromptAction = "exit-to-menu" | "start-free-roam";
 
 export type ScenarioPromptContent = {
+  confirmAction?: ScenarioPromptAction;
   confirmLabel: string;
   description: string;
   secondaryAction?: ScenarioPromptAction;

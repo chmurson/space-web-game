@@ -1,4 +1,6 @@
 export type RuntimeScenarioDirectives = {
+  cameraFollowBodyId: string | null;
+  cameraFollowOffset: { x: number; y: number };
   forcedAssistTargetId: string | null;
   hiddenBodyIds: string[];
   maxCoastPredictionHorizonHours: number | null;
@@ -16,6 +18,8 @@ export type ScenarioDirectiveLimits = {
 };
 
 export const createDefaultScenarioDirectives = (): RuntimeScenarioDirectives => ({
+  cameraFollowBodyId: null,
+  cameraFollowOffset: { x: 0, y: 0 },
   forcedAssistTargetId: null,
   hiddenBodyIds: [],
   maxCoastPredictionHorizonHours: null,

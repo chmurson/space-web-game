@@ -101,6 +101,7 @@ export const createHudPresentation = (options: {
       }
       if (options.overlayUi.scenarioPromptConfirmButton) {
         options.overlayUi.scenarioPromptConfirmButton.textContent = scenarioPromptContent?.confirmLabel ?? "";
+        options.overlayUi.scenarioPromptConfirmButton.dataset.promptAction = scenarioPromptContent?.confirmAction ?? "";
       }
       if (options.overlayUi.scenarioPromptSecondaryButton) {
         const secondaryButton = options.overlayUi.scenarioPromptSecondaryButton;

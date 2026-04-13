@@ -9,6 +9,7 @@ export type VirtualControlKey =
   | "turnRight";
 
 export type KeyboardInput = {
+  clear(): void;
   getManualControls(): ControlInput;
   hasManualTurn(): boolean;
   press(code: string): void;
@@ -36,6 +37,12 @@ export const createKeyboardInput = (): KeyboardInput => {
   };
 
   return {
+    clear: () => {
+      pressedKeys.clear();
+      for (const control of Object.keys(virtualControls) as VirtualControlKey[]) {
+        virtualControls[control] = false;
+      }
+    },
     getManualControls: () => ({
       main: hasAny(pressedKeys, mainThrustKeys) || virtualControls.main ? 1 : 0,
       reverse: hasAny(pressedKeys, reverseThrustKeys) || virtualControls.reverse ? 1 : 0,

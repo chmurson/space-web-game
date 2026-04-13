@@ -32,8 +32,22 @@ const getStringArrayValue = (value: ScenarioSessionValue, key: string): string[]
   return Array.isArray(nestedValue) ? nestedValue.filter((entry): entry is string => typeof entry === "string") : [];
 };
 
+const getNumberValue = (value: ScenarioSessionValue, key: string): number | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const nestedValue = value[key];
+  return typeof nestedValue === "number" ? nestedValue : null;
+};
+
 const genericDirectiveResolver: ScenarioDirectiveResolver = ({ runtime }) => ({
   ...createDefaultScenarioDirectives(),
+  cameraFollowBodyId: getStringValue(runtime.scenarioSession.state, "cameraFollowBodyId"),
+  cameraFollowOffset: {
+    x: getNumberValue(runtime.scenarioSession.state, "cameraFollowOffsetX") ?? 0,
+    y: getNumberValue(runtime.scenarioSession.state, "cameraFollowOffsetY") ?? 0,
+  },
   forcedAssistTargetId: getStringValue(runtime.scenarioSession.state, "forcedAssistTargetId"),
   hiddenBodyIds: getStringArrayValue(runtime.scenarioSession.state, "hiddenBodyIds"),
 });

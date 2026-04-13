@@ -1,6 +1,8 @@
 import * as THREE from "three";
 
 import { updateCameraView } from "../render/sceneUpdates";
+import { G } from "../simulation/constants";
+import { add } from "../simulation/vector";
 import { acknowledgeRuntimeScenarioPrompt, reopenRuntimeScenarioPrompt } from "../scenario/scenarioRegistry";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
 import { getConstrainedTimeWarpIndex, syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
@@ -64,6 +66,11 @@ export const createRuntimeActions = (options: {
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
   };
 
+  const setTimeWarp = (warp: number) => {
+    const desiredIndex = options.timeWarps.indexOf(warp);
+    options.runtime.timeWarpIndex = desiredIndex >= 0 ? desiredIndex : 0;
+  };
+
   const resetScenario = () => {
     loadScenario(activeScenarioId);
   };
@@ -102,8 +109,15 @@ export const createRuntimeActions = (options: {
     updateCameraView({
       cameraDistance: options.cameraDistance,
       cameraElevation: options.cameraElevation,
+      cameraTargetPosition:
+        options.runtime.scenarioDirectives.cameraFollowBodyId === null
+          ? add(options.runtime.state.spacecraft.position, options.runtime.scenarioDirectives.cameraFollowOffset)
+          : add(
+              options.runtime.state.bodies.find((body) => body.id === options.runtime.scenarioDirectives.cameraFollowBodyId)?.position ??
+                options.runtime.state.spacecraft.position,
+              options.runtime.scenarioDirectives.cameraFollowOffset,
+            ),
       gameScene: options.gameScene,
-      spacecraftPosition: options.runtime.state.spacecraft.position,
       viewportHeight: window.innerHeight,
       viewportSize: options.runtime.viewportSize,
       viewportWidth: window.innerWidth,
@@ -131,14 +145,55 @@ export const createRuntimeActions = (options: {
 
   const acknowledgeScenarioPrompt = () => acknowledgeRuntimeScenarioPrompt(options.runtime);
   const reopenScenarioPrompt = () => reopenRuntimeScenarioPrompt(options.runtime);
-  const exitTutorialToSandbox = () => {
+  const startFreeRoam = () => {
     activeScenarioId = "earth-moon";
     loadScenario(activeScenarioId);
+  };
+  const startTutorial = () => {
+    activeScenarioId = "tutorial";
+    loadScenario(activeScenarioId);
+  };
+  const enterMainMenuBackground = () => {
+    activeScenarioId = "earth-moon";
+    loadScenario(activeScenarioId);
+    const earth = options.runtime.state.bodies.find((body) => body.id === "earth");
+    if (earth) {
+      const orbitRadius = earth.radius + 1_000_000;
+      const orbitSpeed = Math.sqrt((G * earth.mass) / orbitRadius) * 1.01;
+      options.runtime.state.spacecraft.position = {
+        x: earth.position.x + orbitRadius,
+        y: earth.position.y,
+      };
+      options.runtime.state.spacecraft.velocity = {
+        x: earth.velocity.x,
+        y: earth.velocity.y + orbitSpeed,
+      };
+      options.runtime.state.spacecraft.heading = Math.PI / 2;
+      options.runtime.scenarioSession = {
+        ...options.runtime.scenarioSession,
+        state: {
+          ...(options.runtime.scenarioSession.state && typeof options.runtime.scenarioSession.state === "object"
+            ? options.runtime.scenarioSession.state
+            : {}),
+          cameraFollowBodyId: "earth",
+          cameraFollowOffsetX: 4_000_000,
+          cameraFollowOffsetY: 4_000_000,
+        },
+      };
+      syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
+    }
+    options.runtime.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY;
+    options.runtime.viewportSize = THREE.MathUtils.clamp(
+      options.runtime.viewportSize / 16,
+      options.runtime.scenarioDirectives.minViewportSize ?? options.minViewport,
+      options.runtime.scenarioDirectives.maxViewportSize ?? options.maxViewport,
+    );
+    setTimeWarp(500);
   };
 
   return {
     acknowledgeScenarioPrompt,
-    exitTutorialToSandbox,
+    enterMainMenuBackground,
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === "increaseTimeWarp") {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
@@ -219,6 +274,11 @@ export const createRuntimeActions = (options: {
 
       return { refreshTrajectoryPrediction: false };
     },
+    loadDebugSnapshot: () => {
+      const previousStatus = options.runtime.debugSnapshotStatus;
+      loadDebugScenarioSnapshot();
+      return options.runtime.debugSnapshotStatus !== "no debug snapshot saved" || previousStatus !== options.runtime.debugSnapshotStatus;
+    },
     handleResize: () => {
       options.renderer.setSize(window.innerWidth, window.innerHeight);
       updateCamera();
@@ -235,6 +295,8 @@ export const createRuntimeActions = (options: {
     },
     recoverScenarioAfterCrash,
     reopenScenarioPrompt,
+    startFreeRoam,
+    startTutorial,
     updateCamera,
     zoomCamera,
   };

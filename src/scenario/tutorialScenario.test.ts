@@ -133,6 +133,8 @@ describe("tutorialScenario", () => {
         },
       ),
     ).toEqual({
+      cameraFollowBodyId: null,
+      cameraFollowOffset: { x: 0, y: 0 },
       forcedAssistTargetId: "earth",
       hiddenBodyIds: ["moon"],
       maxCoastPredictionHorizonHours: 2,
@@ -181,6 +183,8 @@ describe("tutorialScenario", () => {
         timeWarps: [1, 10, 50, 100, 500, 2000],
       }),
     ).toEqual({
+      cameraFollowBodyId: null,
+      cameraFollowOffset: { x: 0, y: 0 },
       forcedAssistTargetId: "moon",
       hiddenBodyIds: [],
       maxCoastPredictionHorizonHours: 24,
@@ -384,10 +388,11 @@ describe("tutorialScenario", () => {
     });
     expect(tutorialScenario.getPromptContent?.(runtime.scenarioSession.state)).toEqual({
       title: "Tutorial Complete",
-      description: "You completed the Earth-Moon round trip. You can keep flying in this run or leave the tutorial and return to free flight.",
-      confirmLabel: "Continue flying",
-      secondaryAction: "exit-tutorial",
-      secondaryLabel: "Exit tutorial",
+      description: "You completed the Earth-Moon round trip. Start free roam immediately or return to the main menu.",
+      confirmAction: "start-free-roam",
+      confirmLabel: "Free roam",
+      secondaryAction: "exit-to-menu",
+      secondaryLabel: "Exit",
     });
   });
 });
