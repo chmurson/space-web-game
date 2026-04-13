@@ -109,7 +109,9 @@ export const createHudPresentation = (options: {
         secondaryButton.dataset.promptAction = scenarioPromptContent?.secondaryAction ?? "";
       }
       options.overlayUi.scenarioPromptReplayButton.style.display = !scenarioPromptContent && replayPromptContent ? "inline-flex" : "none";
-      options.overlayUi.scenarioPromptReplayButton.textContent = replayPromptContent ? `Story: ${replayPromptContent.title}` : "";
+      if (options.overlayUi.scenarioPromptReplayButtonLabel) {
+        options.overlayUi.scenarioPromptReplayButtonLabel.textContent = replayPromptContent?.title ?? "";
+      }
 
       if (options.overlayUi.statEngine) {
         options.overlayUi.statEngine.textContent = options.physicsEngineName;

@@ -8,6 +8,7 @@ const STRAFE_THRUST = 25_000;
 const ROTATION_RATE = 0.9;
 const FUEL_FLOW = 7;
 const SOFTENING = 1_000;
+const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
 
 const gravityAt = (position: Vec2, bodies: Body[], ignoredBodyId?: string): Vec2 => {
   let acceleration = vec();
@@ -30,7 +31,7 @@ const gravityAt = (position: Vec2, bodies: Body[], ignoredBodyId?: string): Vec2
 const spacecraftThrustAcceleration = (spacecraft: Spacecraft, state: SimulationState, dt: number) => {
   const { controls } = state;
   const fuelAvailable = spacecraft.fuel > 0;
-  const heading = spacecraft.heading + controls.turn * ROTATION_RATE * dt;
+  const heading = normalizeAngle(spacecraft.heading + controls.turn * ROTATION_RATE * dt);
 
   const forward = fromAngle(heading);
   const right = { x: forward.y, y: -forward.x };
