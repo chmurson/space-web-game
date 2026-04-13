@@ -33,9 +33,6 @@ import { readUserSettings, updateUserSettings } from "../userSettingsStorage";
 export const createGameApp = (app: HTMLDivElement) => {
   const urlParams = new URLSearchParams(window.location.search);
   const requestedEngine = urlParams.get("engine") ?? "";
-  const requestedReplayIcon = urlParams.get("replayIcon");
-  const replayPromptIconVariant =
-    requestedReplayIcon === "v1" || requestedReplayIcon === "v3" || requestedReplayIcon === "v4" ? requestedReplayIcon : "v2";
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine;
   const requestedScenario = urlParams.get("scenario") ?? "earth-moon";
   const scenario = createRequestedRuntimeScenario(requestedScenario);
@@ -102,7 +99,6 @@ export const createGameApp = (app: HTMLDivElement) => {
   const overlayUi = createOverlayUi({
     app,
     bodies: runtime.state.bodies,
-    replayPromptIconVariant,
     scenarioDescription: scenario.description,
     scenarioName: scenario.name,
     showCycleTargetHint: !autoSelectNearestSurface,

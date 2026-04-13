@@ -2,47 +2,13 @@ import type { Body } from "../../simulation/types";
 import { createDebugPanel, type DebugPanel } from "../debugPanel";
 import './overlayUIStyles.css'
 
-type ReplayPromptIconVariant = "v1" | "v2" | "v3" | "v4";
-
-const getReplayPromptIconMarkup = (variant: ReplayPromptIconVariant) => {
-  if (variant === "v2") {
-    return `
-      <svg class="scenario-prompt-pill-icon scenario-prompt-pill-icon-v2" viewBox="0 0 20 20" aria-hidden="true">
-        <path d="M10 1.75 16.3 5.4v9.2L10 18.25 3.7 14.6V5.4Z"></path>
-        <path d="M10 5.15v5.35"></path>
-        <circle cx="10" cy="13.65" r="0.9"></circle>
-      </svg>
-    `;
-  }
-
-  if (variant === "v3") {
-    return `
-      <svg class="scenario-prompt-pill-icon scenario-prompt-pill-icon-v3" viewBox="0 0 20 20" aria-hidden="true">
-        <path d="M10 2.4c3.55 0 6.45 2.9 6.45 6.45 0 4.65-4.1 7.36-6.45 8.75-2.35-1.39-6.45-4.1-6.45-8.75C3.55 5.3 6.45 2.4 10 2.4Z"></path>
-        <path d="M10 5.3v4.75"></path>
-        <circle cx="10" cy="12.95" r="0.88"></circle>
-      </svg>
-    `;
-  }
-
-  if (variant === "v4") {
-    return `
-      <svg class="scenario-prompt-pill-icon scenario-prompt-pill-icon-v4" viewBox="0 0 20 20" aria-hidden="true">
-        <path d="M10 1.95 16 5.9v5.95c0 2.7-2.2 4.65-6 6.2-3.8-1.55-6-3.5-6-6.2V5.9Z"></path>
-        <path d="M10 4.95v5.15"></path>
-        <circle cx="10" cy="12.95" r="0.88"></circle>
-      </svg>
-    `;
-  }
-
-  return `
-    <svg class="scenario-prompt-pill-icon scenario-prompt-pill-icon-v1" viewBox="0 0 20 20" aria-hidden="true">
-      <path d="M10 1.8c2.85 0 5.15 2.3 5.15 5.15 0 3.55-2.7 6.25-5.15 9.3-2.45-3.05-5.15-5.75-5.15-9.3C4.85 4.1 7.15 1.8 10 1.8Z"></path>
-      <path d="M10 5.15v4.5"></path>
-      <circle cx="10" cy="12.3" r="0.88"></circle>
-    </svg>
-  `;
-};
+const replayPromptIconMarkup = `
+  <svg class="scenario-prompt-pill-icon" viewBox="0 0 20 20" aria-hidden="true">
+    <path d="M10 1.75 16.3 5.4v9.2L10 18.25 3.7 14.6V5.4Z"></path>
+    <path d="M10 5.15v5.35"></path>
+    <circle cx="10" cy="13.65" r="0.9"></circle>
+  </svg>
+`;
 
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>;
@@ -80,7 +46,6 @@ export type OverlayUiRefs = {
 export type OverlayUiOptions = {
   app: HTMLElement;
   bodies: Body[];
-  replayPromptIconVariant: ReplayPromptIconVariant;
   scenarioDescription: string;
   scenarioName: string;
   showCycleTargetHint: boolean;
@@ -151,7 +116,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   scenarioPromptReplayButton.className = "scenario-prompt-pill";
   scenarioPromptReplayButton.style.display = "none";
   scenarioPromptReplayButton.innerHTML = `
-    ${getReplayPromptIconMarkup(options.replayPromptIconVariant)}
+    ${replayPromptIconMarkup}
     <span class="scenario-prompt-pill-label"></span>
   `;
   topBar.appendChild(scenarioPromptReplayButton);

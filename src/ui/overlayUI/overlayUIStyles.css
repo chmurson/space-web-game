@@ -85,20 +85,8 @@
   opacity: 0.98;
 }
 
-.scenario-prompt-pill-icon-v1 {
-  filter: drop-shadow(0 0 5px rgba(103, 232, 249, 0.28));
-}
-
-.scenario-prompt-pill-icon-v2 {
+.scenario-prompt-pill-icon {
   filter: drop-shadow(0 0 5px rgba(125, 211, 252, 0.22));
-}
-
-.scenario-prompt-pill-icon-v3 {
-  filter: drop-shadow(0 0 6px rgba(191, 219, 254, 0.22));
-}
-
-.scenario-prompt-pill-icon-v4 {
-  filter: drop-shadow(0 0 5px rgba(147, 197, 253, 0.24));
 }
 
 .scenario-prompt-pill-label {
