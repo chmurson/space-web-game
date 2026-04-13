@@ -27,6 +27,7 @@ export const createHudPresentation = (options: {
   let lastTimeWarpIndex: number | null = null;
   let lastTimeIconUpdateAt: number | null = null;
   let timeIconAngle = 0;
+  let lastUiEffectEpoch = options.runtime.uiEffectEpoch;
   let lastWarpIncreaseAt = 0;
   let warpIncreaseStreak = 0;
   let warpFeedbackTimeoutId: number | null = null;
@@ -52,11 +53,29 @@ export const createHudPresentation = (options: {
     }, 1000);
   };
 
+  const resetTransientPillEffects = () => {
+    const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
+    timePill?.classList.remove("telemetry-pill-warp-bump");
+    if (warpFeedbackTimeoutId !== null) {
+      window.clearTimeout(warpFeedbackTimeoutId);
+      warpFeedbackTimeoutId = null;
+    }
+    lastTimeWarpIndex = options.runtime.timeWarpIndex;
+    lastTimeIconUpdateAt = performance.now();
+    lastWarpIncreaseAt = 0;
+    warpIncreaseStreak = 0;
+  };
+
   return {
     update: (metrics: { smoothedCpuMs: number; smoothedFps: number }) => {
       const earth = options.runtime.state.bodies.find((body) => body.id === "earth");
       if (!earth) {
         return;
+      }
+
+      if (options.runtime.uiEffectEpoch !== lastUiEffectEpoch) {
+        resetTransientPillEffects();
+        lastUiEffectEpoch = options.runtime.uiEffectEpoch;
       }
 
       if (lastTimeWarpIndex !== null) {

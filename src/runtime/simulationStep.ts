@@ -104,13 +104,11 @@ const resolveSimulationControls = (options: ResolveSimulationControlsOptions): R
 
 const capTimeWarpForActiveControls = (
   controls: SimulationState["controls"],
-  keyboardInput: KeyboardInput,
   timeWarpIndex: number,
   timeWarps: number[],
   maxControlWarp: number,
 ) => {
-  const usingManualTurn = keyboardInput.hasManualTurn();
-  const usingControls = controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0 || usingManualTurn;
+  const usingControls = controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0 || controls.turn !== 0;
   const maxControlWarpIndex = timeWarps.indexOf(maxControlWarp);
 
   if (usingControls && maxControlWarpIndex >= 0 && timeWarps[timeWarpIndex] > maxControlWarp) {
@@ -175,7 +173,6 @@ export const stepSimulationFrame = (options: StepSimulationFrameOptions): StepSi
   targetHeading = initialControls.targetHeading;
   const timeWarpIndex = capTimeWarpForActiveControls(
     initialControls.controls,
-    options.keyboardInput,
     options.timeWarpIndex,
     options.timeWarps,
     options.maxControlWarp,

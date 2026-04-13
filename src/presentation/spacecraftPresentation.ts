@@ -8,8 +8,12 @@ import type { OverlayUiRefs } from "../ui/overlayUI/createOverlayUi";
 
 const trailPointDistanceThreshold = 4;
 const maxTrailPoints = 450;
+const normalizeAngleDelta = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
+const unwrapAngle = (angle: number, previousAngle: number | null) =>
+  previousAngle === null ? angle : previousAngle + normalizeAngleDelta(angle - previousAngle);
 
 const updateSpacecraftWorldVisuals = (options: {
+  displayRotationY: number;
   defaultViewport: number;
   gameScene: GameSceneRefs;
   spacecraft: Spacecraft;
@@ -19,7 +23,7 @@ const updateSpacecraftWorldVisuals = (options: {
   const useSymbolicShip = options.viewportSize > options.defaultViewport / options.spacecraftModelZoomThreshold;
 
   options.gameScene.spacecraftMesh.position.copy(renderPosition(options.spacecraft.position.x, options.spacecraft.position.y, 1.2));
-  options.gameScene.spacecraftMesh.rotation.y = -options.spacecraft.heading + Math.PI / 2;
+  options.gameScene.spacecraftMesh.rotation.y = options.displayRotationY;
   options.gameScene.spacecraftMesh.visible = !useSymbolicShip;
   options.gameScene.spacecraftMarker.position.copy(renderPosition(options.spacecraft.position.x, options.spacecraft.position.y, 1.1));
   options.gameScene.spacecraftMarker.scale.setScalar(Math.max(1, options.viewportSize / 520));
@@ -47,6 +51,7 @@ const updateSpacecraftTrail = (options: {
 
 const updateSpacecraftCallout = (options: {
   defaultViewport: number;
+  displayHeadingAngle: number | null;
   gameScene: GameSceneRefs;
   isThrusting: boolean;
   overlayUi: OverlayUiRefs;
@@ -72,7 +77,7 @@ const updateSpacecraftCallout = (options: {
   if (!isVisible) {
     options.overlayUi.spacecraftCallout.style.display = "none";
     options.overlayUi.spacecraftIconThrust.style.display = "none";
-    return;
+    return options.displayHeadingAngle;
   }
 
   options.overlayUi.spacecraftCallout.style.display = useSymbolicShip || showLabel ? "flex" : "none";
@@ -94,7 +99,7 @@ const updateSpacecraftCallout = (options: {
   forwardPosition.project(options.gameScene.camera);
   const forwardX = (forwardPosition.x * 0.5 + 0.5) * window.innerWidth;
   const forwardY = (-forwardPosition.y * 0.5 + 0.5) * window.innerHeight;
-  const headingAngle = Math.atan2(forwardY - screenY, forwardX - screenX);
+  const headingAngle = unwrapAngle(Math.atan2(forwardY - screenY, forwardX - screenX), options.displayHeadingAngle);
 
   options.overlayUi.spacecraftCallout.style.setProperty("--ship-heading", `${headingAngle}rad`);
 
@@ -107,6 +112,8 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.spacecraftIconThrust.style.top = `${screenY - Math.sin(headingAngle) * backOffset}px`;
     options.overlayUi.spacecraftIconThrust.style.transform = `translate(-50%, -50%) rotate(${headingAngle}rad)`;
   }
+
+  return headingAngle;
 };
 
 export const createSpacecraftPresentation = (options: {
@@ -115,14 +122,23 @@ export const createSpacecraftPresentation = (options: {
   overlayUi: OverlayUiRefs;
   pointerCameraInput: PointerCameraInput;
   spacecraftModelZoomThreshold: number;
-}) => ({
-  updateVisuals: (state: {
-    isThrusting: boolean;
-    spacecraft: Spacecraft;
-    spacecraftLabelIntroUntil: number;
-    viewportSize: number;
-  }) => {
+}) => {
+  let lastMeshRotationY: number | null = null;
+  let lastHeadingAngle: number | null = null;
+
+  return {
+    updateVisuals: (state: {
+      isThrusting: boolean;
+      spacecraft: Spacecraft;
+      spacecraftLabelIntroUntil: number;
+      viewportSize: number;
+    }) => {
+      const rawMeshRotationY = -state.spacecraft.heading + Math.PI / 2;
+      const displayRotationY = unwrapAngle(rawMeshRotationY, lastMeshRotationY);
+      lastMeshRotationY = displayRotationY;
+
     updateSpacecraftWorldVisuals({
+      displayRotationY,
       defaultViewport: options.defaultViewport,
       gameScene: options.gameScene,
       spacecraft: state.spacecraft,
@@ -134,8 +150,9 @@ export const createSpacecraftPresentation = (options: {
       isThrusting: state.isThrusting,
       spacecraft: state.spacecraft,
     });
-    updateSpacecraftCallout({
+      lastHeadingAngle = updateSpacecraftCallout({
       defaultViewport: options.defaultViewport,
+      displayHeadingAngle: lastHeadingAngle,
       gameScene: options.gameScene,
       isThrusting: state.isThrusting,
       overlayUi: options.overlayUi,
@@ -145,7 +162,8 @@ export const createSpacecraftPresentation = (options: {
       spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
       viewportSize: state.viewportSize,
     });
-  },
-});
+    },
+  };
+};
 
 export type SpacecraftPresentation = ReturnType<typeof createSpacecraftPresentation>;

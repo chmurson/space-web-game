@@ -30,6 +30,7 @@ const createRuntime = (): AppRuntimeState => ({
     hiddenBodyIds: ["moon"],
   }),
   spacecraftLabelIntroUntil: 0,
+  uiEffectEpoch: 0,
   state: {
     elapsed: 0,
     bodies: [],

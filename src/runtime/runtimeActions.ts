@@ -61,6 +61,7 @@ export const createRuntimeActions = (options: {
     options.runtime.viewportSize = freshRuntimeScenarioState.viewportSize;
     options.runtime.coastPredictionHorizonHours = freshRuntimeScenarioState.coastPredictionHorizonHours;
     options.runtime.scenarioSession = freshRuntimeScenarioState.scenarioSession;
+    options.runtime.uiEffectEpoch += 1;
     clearTransientScenarioState();
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
   };
@@ -95,6 +96,7 @@ export const createRuntimeActions = (options: {
     options.runtime.viewportSize = loadedDebugScenario.runtimeState.viewportSize;
     options.runtime.coastPredictionHorizonHours = loadedDebugScenario.runtimeState.coastPredictionHorizonHours;
     options.runtime.scenarioSession = loadedDebugScenario.runtimeState.scenarioSession;
+    options.runtime.uiEffectEpoch += 1;
     clearTransientScenarioState();
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
     options.runtime.assistTargetIndex = Math.min(
