@@ -1,7 +1,6 @@
 import * as THREE from "three";
 
 import { updateCameraView } from "../render/sceneUpdates";
-import { G } from "../simulation/constants";
 import { add } from "../simulation/vector";
 import { acknowledgeRuntimeScenarioPrompt, reopenRuntimeScenarioPrompt } from "../scenario/scenarioRegistry";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
@@ -154,40 +153,9 @@ export const createRuntimeActions = (options: {
     loadScenario(activeScenarioId);
   };
   const enterMainMenuBackground = () => {
-    activeScenarioId = "earth-moon";
+    activeScenarioId = "menu-background";
     loadScenario(activeScenarioId);
-    const earth = options.runtime.state.bodies.find((body) => body.id === "earth");
-    if (earth) {
-      const orbitRadius = earth.radius + 1_000_000;
-      const orbitSpeed = Math.sqrt((G * earth.mass) / orbitRadius) * 1.01;
-      options.runtime.state.spacecraft.position = {
-        x: earth.position.x + orbitRadius,
-        y: earth.position.y,
-      };
-      options.runtime.state.spacecraft.velocity = {
-        x: earth.velocity.x,
-        y: earth.velocity.y + orbitSpeed,
-      };
-      options.runtime.state.spacecraft.heading = Math.PI / 2;
-      options.runtime.scenarioSession = {
-        ...options.runtime.scenarioSession,
-        state: {
-          ...(options.runtime.scenarioSession.state && typeof options.runtime.scenarioSession.state === "object"
-            ? options.runtime.scenarioSession.state
-            : {}),
-          cameraFollowBodyId: "earth",
-          cameraFollowOffsetX: 4_000_000,
-          cameraFollowOffsetY: 4_000_000,
-        },
-      };
-      syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
-    }
     options.runtime.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY;
-    options.runtime.viewportSize = THREE.MathUtils.clamp(
-      options.runtime.viewportSize / 16,
-      options.runtime.scenarioDirectives.minViewportSize ?? options.minViewport,
-      options.runtime.scenarioDirectives.maxViewportSize ?? options.maxViewport,
-    );
     setTimeWarp(500);
   };
 

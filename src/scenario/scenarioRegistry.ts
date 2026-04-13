@@ -1,6 +1,7 @@
 import type { RuntimeScenario } from "../debugScenarioSnapshot";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { RuntimeScenarioDirectives, ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
+import { registerMenuBackgroundScenario } from "./menuBackgroundScenario";
 import type { ScenarioSessionValue } from "./scenarioSession";
 import { registerTutorialScenario } from "./tutorialScenario";
 import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simulation/scenarios/earthMoon";
@@ -39,6 +40,7 @@ const runtimeScenarioDefinitions = {
     id: "moon-capture-debug",
     createScenario: createMoonCaptureDebugScenario,
   },
+  "menu-background": registerMenuBackgroundScenario(),
   tutorial: registerTutorialScenario(),
 } satisfies Record<string, RuntimeScenarioDefinition>;
 
