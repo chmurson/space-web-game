@@ -141,6 +141,16 @@ export const createRuntimeActions = (options: {
     clearTransientScenarioState();
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
   };
+  const restartFromCheckpoint = () => {
+    const recoveredFromCheckpoint = restoreRuntimeFromScenarioCheckpoint(options.runtime);
+    if (!recoveredFromCheckpoint) {
+      return false;
+    }
+
+    clearTransientScenarioState();
+    syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
+    return true;
+  };
 
   const acknowledgeScenarioPrompt = () => acknowledgeRuntimeScenarioPrompt(options.runtime);
   const reopenScenarioPrompt = () => reopenRuntimeScenarioPrompt(options.runtime);
@@ -251,6 +261,8 @@ export const createRuntimeActions = (options: {
       options.renderer.setSize(window.innerWidth, window.innerHeight);
       updateCamera();
     },
+    resetScenario,
+    restartFromCheckpoint,
     setTargetHeading: (heading: number, clientX: number, clientY: number) => {
       options.runtime.targetHeading = heading;
       options.runtime.assistMode = "off";

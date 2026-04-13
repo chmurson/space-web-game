@@ -25,6 +25,7 @@ import { createGameScene } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "../simulation/physics";
 import { createOverlayUi } from "../ui/overlayUI/createOverlayUi";
+import { createCrashMenu } from "../ui/createCrashMenu";
 import { createMainMenu } from "../ui/createMainMenu";
 import { createTouchControls } from "../ui/createTouchControls";
 import { createTopMenu } from "../ui/createTopMenu";
@@ -145,6 +146,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     updateUserSettings,
   });
   let topMenu: ReturnType<typeof createTopMenu> | null = null;
+  let crashMenu: ReturnType<typeof createCrashMenu> | null = null;
   const dispatchRuntimeAction = (action: Parameters<typeof runtimeActions.handleUIUserAction>[0]) => {
     if (appMode !== "game") {
       return;
@@ -154,6 +156,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     if (result.refreshTrajectoryPrediction && frameLoop) {
       frameLoop.refreshTrajectoryPrediction();
     }
+    crashMenu?.syncState({ hasCheckpoint: runtime.scenarioSession.checkpoint !== null });
     topMenu?.syncState();
   };
   let frameLoop: ReturnType<typeof createFrameLoop> | null = null;
@@ -209,6 +212,17 @@ export const createGameApp = (app: HTMLDivElement) => {
   });
 
   frameLoop = createFrameLoop({
+    bodyPresentation: createBodyPresentation({
+      gameScene,
+      overlayUi,
+    }),
+    crashMenu: {
+      syncState: () => {
+        const visible = appMode === "game" && runtime.crashedBodyName !== null;
+        crashMenu?.setVisible(visible);
+        crashMenu?.syncState({ hasCheckpoint: runtime.scenarioSession.checkpoint !== null });
+      },
+    },
     gameScene,
     hudPresentation,
     keyboardInput,
@@ -219,11 +233,6 @@ export const createGameApp = (app: HTMLDivElement) => {
     runtime,
     runtimeActions,
     scenarioDirectiveLimits,
-    topMenu,
-    bodyPresentation: createBodyPresentation({
-      gameScene,
-      overlayUi,
-    }),
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport,
       gameScene,
@@ -232,6 +241,7 @@ export const createGameApp = (app: HTMLDivElement) => {
       spacecraftModelZoomThreshold,
     }),
     timeWarps,
+    topMenu,
     trajectoryPresentation,
   });
 
@@ -268,11 +278,40 @@ export const createGameApp = (app: HTMLDivElement) => {
     },
   });
 
+  crashMenu = createCrashMenu({
+    app,
+    onExit: () => {
+      enterMainMenu();
+    },
+    onLoadGame: () => {
+      keyboardInput.clear();
+      const loaded = runtimeActions.loadDebugSnapshot();
+      if (!loaded) {
+        crashMenu?.syncState({ hasCheckpoint: runtime.scenarioSession.checkpoint !== null });
+        return;
+      }
+
+      frameLoop?.refreshTrajectoryPrediction();
+    },
+    onRestart: () => {
+      keyboardInput.clear();
+      runtimeActions.resetScenario();
+      frameLoop?.refreshTrajectoryPrediction();
+    },
+    onRestartFromCheckpoint: () => {
+      keyboardInput.clear();
+      if (runtimeActions.restartFromCheckpoint()) {
+        frameLoop?.refreshTrajectoryPrediction();
+      }
+    },
+  });
+
   const enterMainMenu = () => {
     keyboardInput.clear();
     runtimeActions.enterMainMenuBackground();
     appMode = "menu";
     app.classList.add("app-main-menu");
+    crashMenu?.setVisible(false);
     mainMenu.syncState();
     mainMenu.setVisible(true);
     topMenu?.close();
@@ -318,6 +357,7 @@ export const createGameApp = (app: HTMLDivElement) => {
   if (appMode === "menu") {
     enterMainMenu();
   } else {
+    crashMenu.setVisible(false);
     mainMenu.setVisible(false);
   }
 

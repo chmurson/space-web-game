@@ -11,7 +11,6 @@ import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes
 import {
   advanceRuntimeScenario,
   getRuntimeScenarioPromptContent,
-  shouldAutoRestartRuntimeScenarioOnCrash,
 } from "../scenario/scenarioRegistry";
 import type { PhysicsEngine } from "../simulation/types";
 import { type Ripple, updateRipples } from "../ui/overlayUpdates";
@@ -32,6 +31,9 @@ export const createFrameLoop = (options: {
   runtime: AppRuntimeState;
   runtimeActions: RuntimeActions;
   scenarioDirectiveLimits: ScenarioDirectiveLimits;
+  crashMenu?: {
+    syncState(): void;
+  };
   topMenu?: {
     syncState(): void;
   };
@@ -82,10 +84,6 @@ export const createFrameLoop = (options: {
       options.runtime.timeWarpIndex = simulationStep.timeWarpIndex;
       advanceRuntimeScenario(options.runtime);
 
-      if (options.runtime.crashedBodyName && shouldAutoRestartRuntimeScenarioOnCrash(options.runtime)) {
-        options.runtimeActions.recoverScenarioAfterCrash();
-        options.trajectoryPresentation.refreshPrediction();
-      }
     }
 
     updateRipples(options.ripples, realDt);
@@ -107,6 +105,7 @@ export const createFrameLoop = (options: {
     });
     options.trajectoryPresentation.updateVisuals();
     options.hudPresentation.update({ smoothedCpuMs, smoothedFps });
+    options.crashMenu?.syncState();
     options.topMenu?.syncState();
     options.rendererProfiler.render(options.gameScene.scene, options.gameScene.camera, options.runtime.performanceDebugEnabled);
 
@@ -132,6 +131,7 @@ export const createFrameLoop = (options: {
         viewportSize: options.runtime.viewportSize,
       });
       options.hudPresentation.update({ smoothedCpuMs, smoothedFps });
+      options.crashMenu?.syncState();
       options.topMenu?.syncState();
       requestAnimationFrame(animate);
     },

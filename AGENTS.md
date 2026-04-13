@@ -14,7 +14,9 @@
 - Local Netlify link state is stored in `.netlify/state.json`.
 - If the current branch is `main`, deploy to Netlify after each commit.
 - If the current branch is not `main`, do not deploy to the production environment.
-- On non-`main` branches, deploy only to a non-production Netlify preview when the user asks for a deploy or when a deploy is needed to share the result.
+- On non-`main` branches, deploy a non-production Netlify preview after each meaningful change unless there is a clear reason not to.
+- On non-`main` branches, always deploy to a non-production Netlify preview before handing work back to the user.
+- On non-`main` branches, never deploy to production.
 - After any non-production deploy, share the preview URL with the user.
 
 ## Code Quality

@@ -36,6 +36,7 @@ canvas {
 #app.app-main-menu .hud,
 #app.app-main-menu .touch-controls,
 #app.app-main-menu .scenario-prompt-backdrop,
+#app.app-main-menu .crash-menu,
 #app.app-main-menu .spacecraft-icon-thrust,
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,
@@ -94,6 +95,23 @@ canvas {
 .main-menu-actions {
   display: grid;
   gap: 10px;
+}
+
+.crash-menu {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  display: flex;
+  justify-content: center;
+  padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  pointer-events: none;
+}
+
+.crash-menu-actions {
+  width: min(100%, 420px);
+  pointer-events: auto;
 }
 
 .main-menu-actions button {
@@ -385,6 +403,12 @@ canvas {
   gap: 3px;
 }
 
+.telemetry-thrust-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .telemetry-time-icon {
   width: 14px;
   height: 14px;
@@ -419,6 +443,13 @@ canvas {
   overflow: visible;
 }
 
+.telemetry-crash-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
 .telemetry-speed-icon-body,
 .telemetry-speed-icon-wing {
   fill: rgba(224, 242, 254, 0.82);
@@ -426,6 +457,37 @@ canvas {
 
 .telemetry-speed-icon-window {
   fill: rgba(8, 13, 24, 0.72);
+}
+
+.telemetry-crash-icon path,
+.telemetry-crash-icon circle,
+.telemetry-crash-icon rect {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.telemetry-crash-icon-blast {
+  stroke: rgba(251, 113, 133, 0.82);
+  stroke-width: 1.4;
+}
+
+.telemetry-crash-icon-rocket {
+  transform-box: fill-box;
+  transform-origin: center center;
+  transform: scale(1.06) rotate(-10deg) translateY(0.1px);
+}
+
+.telemetry-crash-icon-rocket-body,
+.telemetry-crash-icon-rocket-wing {
+  fill: rgba(254, 205, 211, 0.94);
+  stroke: rgba(255, 228, 230, 0.38);
+  stroke-width: 0.55;
+}
+
+.telemetry-crash-icon-rocket-window {
+  fill: rgba(91, 33, 41, 0.88);
+  stroke: none;
 }
 
 .telemetry-speed-icon-flame {
@@ -452,8 +514,32 @@ canvas {
   max-width: calc(100vw - 220px);
 }
 
+.telemetry-pill-thrust {
+  max-width: calc(100vw - 176px);
+}
+
 .telemetry-pill-velocity {
   max-width: calc(100vw - 88px);
+}
+
+.telemetry-pill-thrust.telemetry-pill-thrust-active {
+  z-index: 1;
+  background: rgba(15, 23, 42, 0.62);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.14), 0 10px 24px rgba(245, 158, 11, 0.18);
+  filter: brightness(1.14);
+  transform: scale(1.12);
+}
+
+.telemetry-pill-thrust.telemetry-pill-thrust-crashed {
+  z-index: 1;
+  background: rgba(63, 18, 33, 0.64);
+  box-shadow: 0 0 0 1px rgba(244, 114, 182, 0.18), 0 10px 24px rgba(225, 29, 72, 0.2);
+  color: rgba(254, 205, 211, 0.95);
+  filter: brightness(1.08);
+}
+
+.telemetry-pill-thrust.telemetry-pill-thrust-crashed .telemetry-crash-icon {
+  filter: drop-shadow(0 0 5px rgba(251, 113, 133, 0.22));
 }
 
 .telemetry-pill-velocity.telemetry-pill-thrusting {

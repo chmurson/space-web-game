@@ -144,8 +144,21 @@ export const createHudPresentation = (options: {
         options.overlayUi.statSpeed.textContent = formatSpeed(targetMetrics.relativeSpeed);
       }
       {
-        const thrusting = options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0;
+        const crashed = options.runtime.crashedBodyName !== null;
+        const thrusting = !crashed && options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0;
         const speedPill = options.overlayUi.statSpeed?.closest<HTMLElement>(".telemetry-pill");
+        const thrustPill = options.overlayUi.statThrust?.closest<HTMLElement>(".telemetry-pill");
+        if (options.overlayUi.statThrust) {
+          options.overlayUi.statThrust.textContent = crashed ? "Crashed" : "";
+        }
+        if (speedPill) {
+          speedPill.style.display = crashed ? "none" : "inline-flex";
+        }
+        if (thrustPill) {
+          thrustPill.style.display = crashed ? "inline-flex" : "none";
+        }
+        thrustPill?.classList.remove("telemetry-pill-thrust-active");
+        thrustPill?.classList.toggle("telemetry-pill-thrust-crashed", crashed);
         speedPill?.classList.toggle("telemetry-pill-thrusting", thrusting);
         if (options.overlayUi.speedIcon) {
           options.overlayUi.speedIcon.classList.toggle("telemetry-speed-icon-thrusting", thrusting);

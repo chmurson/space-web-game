@@ -10,6 +10,18 @@ const replayPromptIconMarkup = `
   </svg>
 `;
 
+const crashIconMarkup = `
+  <svg class="telemetry-crash-icon telemetry-crash-icon-burst" viewBox="0 0 16 16" aria-hidden="true">
+    <path class="telemetry-crash-icon-blast" d="M8 1.1 9 4.5 12.6 3.2 10.9 6.1 14.4 7.3 11.2 8.8 12.3 12 9.2 11.1 8 13.9 6.9 11.2 3.6 12.3 4.8 9.1 1.6 7.9 4.6 6.4 3.2 3.4 6.5 4.6Z"></path>
+    <g class="telemetry-crash-icon-rocket">
+      <path class="telemetry-crash-icon-rocket-body" d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"></path>
+      <path class="telemetry-crash-icon-rocket-wing" d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"></path>
+      <path class="telemetry-crash-icon-rocket-wing" d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"></path>
+      <circle class="telemetry-crash-icon-rocket-window" cx="8" cy="6.1" r="0.95"></circle>
+    </g>
+  </svg>
+`;
+
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>;
   debugPanel: DebugPanel;
@@ -33,6 +45,7 @@ export type OverlayUiRefs = {
   statFuel: HTMLElement | null;
   statGuidance: HTMLElement | null;
   statSpeed: HTMLElement | null;
+  statThrust: HTMLElement | null;
   speedIcon: SVGSVGElement | null;
   statTarget: HTMLElement | null;
   statTargetSpeed: HTMLElement | null;
@@ -72,6 +85,12 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
           <circle class="telemetry-time-icon-center" cx="8" cy="8" r="0.9"></circle>
         </svg>
         <strong data-stat="time"></strong>
+      </span>
+    </div>
+    <div class="telemetry-pill telemetry-pill-thrust">
+      <span class="telemetry-thrust-display">
+        ${crashIconMarkup}
+        <strong data-stat="thrust"></strong>
       </span>
     </div>
     <div class="telemetry-pill telemetry-pill-velocity">
@@ -174,6 +193,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     statFuel: null,
     statGuidance: null,
     statSpeed: topBar.querySelector<HTMLElement>('[data-stat="speed"]'),
+    statThrust: topBar.querySelector<HTMLElement>('[data-stat="thrust"]'),
     speedIcon: topBar.querySelector<SVGSVGElement>(".telemetry-speed-icon"),
     statTarget: null,
     statTargetSpeed: null,
