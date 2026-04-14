@@ -103,27 +103,29 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
   let windowResizeTimeoutId: number | null = null;
   let anchorMutationObserver: MutationObserver | null = null;
 
-  const positionPromptDefault = (): void => {
-    // Default position: center horizontally, upper half of screen
-    refs.promptElement.style.position = 'fixed';
-    refs.promptElement.style.left = '50%';
-    refs.promptElement.style.top = '25%';
-    refs.promptElement.style.transform = 'translateX(-50%)';
-    refs.arrowElement.style.display = 'none';
-    delete refs.promptElement.dataset.arrowPlacement;
-  };
-
   const updatePromptPosition = async (): Promise<void> => {
     const anchorKey = refs.promptElement.dataset.anchor as AnchorKey | undefined;
 
     if (!anchorKey) {
-      positionPromptDefault();
+      // No anchor, use CSS default positioning
+      refs.promptElement.style.position = '';
+      refs.promptElement.style.left = '';
+      refs.promptElement.style.top = '';
+      refs.promptElement.style.transform = '';
+      refs.arrowElement.style.display = 'none';
+      delete refs.promptElement.dataset.arrowPlacement;
       return;
     }
 
     const anchorElement = getAnchorElement(anchorKey);
     if (!anchorElement || refs.backdropElement.style.display === 'none') {
-      positionPromptDefault();
+      // Anchor not found, use CSS default positioning
+      refs.promptElement.style.position = '';
+      refs.promptElement.style.left = '';
+      refs.promptElement.style.top = '';
+      refs.promptElement.style.transform = '';
+      refs.arrowElement.style.display = 'none';
+      delete refs.promptElement.dataset.arrowPlacement;
       return;
     }
 
@@ -150,6 +152,7 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       );
 
       // Position the prompt
+      // Override CSS defaults with anchor positioning
       refs.promptElement.style.position = 'fixed';
       refs.promptElement.style.left = `${x}px`;
       refs.promptElement.style.top = `${y}px`;
@@ -172,7 +175,12 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       refs.arrowElement.dataset.side = staticSide;
     } catch (error) {
       console.error('Failed to position prompt:', error);
-      positionPromptDefault();
+      // Fall back to CSS default positioning
+      refs.promptElement.style.position = '';
+      refs.promptElement.style.left = '';
+      refs.promptElement.style.top = '';
+      refs.promptElement.style.transform = '';
+      refs.arrowElement.style.display = 'none';
     }
   };
 
