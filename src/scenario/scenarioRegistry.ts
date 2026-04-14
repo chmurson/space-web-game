@@ -166,7 +166,9 @@ export const getRuntimeScenarioPromptContent = (
 	return definition.getPromptContent(runtime.scenarioSession.state);
 };
 
-export const acknowledgeRuntimeScenarioPrompt = (runtime: AppRuntimeState): PromptAcknowledgeResult => {
+export const acknowledgeRuntimeScenarioPrompt = (
+	runtime: AppRuntimeState,
+): PromptAcknowledgeResult => {
 	const definition = getRuntimeScenarioDefinition(
 		runtime.scenarioSession.scenarioId,
 	);

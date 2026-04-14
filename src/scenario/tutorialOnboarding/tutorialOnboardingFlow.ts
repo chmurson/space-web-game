@@ -36,8 +36,8 @@ export const getTutorialOnboardingPromptContent = (
 	if (stepId === "intro-keep-thrusting") {
 		return {
 			title: "Keep Thrusting",
-      description: `That's great. Keep thrusting for ${formatDuration(requiredIntroKeepThrustMs / 1000)}.`,
-			anchor: 'speed-pill'
+			description: `That's great. Keep thrusting for ${formatDuration(requiredIntroKeepThrustMs / 1000)}.`,
+			anchor: "speed-pill",
 		};
 	}
 
@@ -47,7 +47,7 @@ export const getTutorialOnboardingPromptContent = (
 			description: `That's great. Here you can see if your thrust is active. Also, your current speed is displayed.`,
 			confirmAction: "advance-step",
 			confirmLabel: "Continue",
-			anchor: 'speed-pill'
+			anchor: "speed-pill",
 		};
 	}
 
@@ -57,7 +57,7 @@ export const getTutorialOnboardingPromptContent = (
 			description:
 				inputMode === "mobile"
 					? "Drag sideways in the lower control area until you have turned a total of at least 90 degrees. You can do it in one direction or split it across both directions."
-					: "Press A or D, or Left/Right Arrow keys to turn the ship. Rotate at least 90 degrees in total, which you can do in one direction or split across both directions."
+					: "Press A or D, or Left/Right Arrow keys to turn the ship. Rotate at least 90 degrees in total, which you can do in one direction or split across both directions.",
 		};
 	}
 

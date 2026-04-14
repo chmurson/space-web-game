@@ -176,6 +176,7 @@ describe("tutorialOnboardingProgress", () => {
 
 		const acknowledgedComplete = acknowledgeTutorialOnboardingPrompt(
 			runtime,
+			// biome-ignore lint/style/noNonNullAssertion: acknowledgedTrajectory is guaranteed to exist after previous assertion
 			acknowledgedTrajectory!,
 			1_100,
 			100,

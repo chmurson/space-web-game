@@ -43,12 +43,15 @@ export const createHudPresentation = (options: {
 	const scenarioPromptRefs: ScenarioPromptUiRefs = {
 		backdropElement: options.overlayUi.scenarioPrompt,
 		promptElement:
+			// biome-ignore lint/style/noNonNullAssertion: Element is guaranteed to exist in DOM
 			options.overlayUi.scenarioPrompt.querySelector<HTMLElement>(
 				".scenario-prompt",
 			)!,
-		arrowElement: options.overlayUi.scenarioPrompt.querySelector<HTMLElement>(
-			".scenario-prompt-arrow",
-		)!,
+		arrowElement:
+			// biome-ignore lint/style/noNonNullAssertion: Element is guaranteed to exist in DOM
+			options.overlayUi.scenarioPrompt.querySelector<HTMLElement>(
+				".scenario-prompt-arrow",
+			)!,
 		titleElement: options.overlayUi.scenarioPromptTitle,
 		descriptionElement: options.overlayUi.scenarioPromptDescription,
 		confirmButton: options.overlayUi.scenarioPromptConfirmButton,

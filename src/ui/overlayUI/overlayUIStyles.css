@@ -33,6 +33,10 @@
 	order: 3;
 }
 
+.telemetry-pill {
+	padding: 5px 7px;
+}
+
 .telemetry-strip > .telemetry-pill {
 	flex-shrink: 0;
 }
@@ -117,10 +121,6 @@
 	.scenario-prompt-pill-icon {
 		width: 14px;
 		height: 14px;
-	}
-
-	.telemetry-pill {
-		padding: 5px 7px;
 	}
 
 	.telemetry-strip {

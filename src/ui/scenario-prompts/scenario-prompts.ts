@@ -75,8 +75,10 @@ export const createScenarioPromptUI = (
   `;
 	topBar.appendChild(replayButton);
 
+	// biome-ignore lint/style/noNonNullAssertion: Elements are guaranteed to exist in DOM
 	const promptElement =
 		backdropElement.querySelector<HTMLElement>(".scenario-prompt")!;
+	// biome-ignore lint/style/noNonNullAssertion: Elements are guaranteed to exist in DOM
 	const arrowElement = promptElement.querySelector<HTMLElement>(
 		".scenario-prompt-arrow",
 	)!;
@@ -275,7 +277,7 @@ export const createScenarioPromptUpdater = (
 			refs.arrowElement.style.position = "absolute";
 			refs.arrowElement.style.left = arrowX !== undefined ? `${arrowX}px` : "";
 			refs.arrowElement.style.top = arrowY !== undefined ? `${arrowY}px` : "";
-			refs.arrowElement.style[staticSide as any] = "-6px";
+			refs.arrowElement.style[staticSide as string] = "-6px";
 			refs.arrowElement.dataset.side = staticSide;
 		} catch (error) {
 			console.error("Failed to position prompt:", error);

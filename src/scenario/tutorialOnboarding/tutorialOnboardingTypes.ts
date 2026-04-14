@@ -1,4 +1,4 @@
-import { ScenarioPromptAnchor } from "../scenarioRegistry";
+import type { ScenarioPromptAnchor } from "../scenarioRegistry";
 
 export type TutorialOnboardingStepId =
 	| "intro-thrust"
@@ -15,8 +15,8 @@ export type TutorialOnboardingPromptContent = {
 	confirmAction?: "advance-step";
 	confirmLabel?: string;
 	description: string;
-  title: string;
-  anchor?: ScenarioPromptAnchor;
+	title: string;
+	anchor?: ScenarioPromptAnchor;
 };
 
 export type TutorialOnboardingStepProgress = {

@@ -42,7 +42,7 @@ canvas {
 #app.app-main-menu .body-label,
 #app.app-main-menu .fps-indicator,
 #app.app-main-menu .debug-panel {
-	display: none !important;
+	display: none;
 }
 
 .main-menu {
@@ -97,7 +97,7 @@ canvas {
 	gap: 10px;
 }
 
-.crash-menu {
+#app.app-main-menu .crash-menu {
 	position: fixed;
 	left: 0;
 	right: 0;
@@ -168,7 +168,7 @@ canvas {
 	}
 }
 
-.hud {
+#app.app-main-menu .hud {
 	position: fixed;
 	top: 16px;
 	left: 16px;
@@ -860,7 +860,7 @@ canvas {
 	text-align: center;
 }
 
-.touch-controls {
+#app.app-main-menu .touch-controls {
 	position: fixed;
 	inset: 0;
 	z-index: 2;
@@ -913,7 +913,7 @@ canvas {
 	);
 }
 
-.debug-panel {
+#app.app-main-menu .debug-panel {
 	position: fixed;
 	bottom: 16px;
 	left: 16px;
@@ -960,7 +960,7 @@ canvas {
 	white-space: pre-wrap;
 }
 
-.fps-indicator {
+#app.app-main-menu .fps-indicator {
 	position: fixed;
 	top: 16px;
 	right: 16px;
@@ -1050,7 +1050,7 @@ canvas {
 	margin-left: 12px;
 }
 
-.spacecraft-icon-thrust {
+#app.app-main-menu .spacecraft-icon-thrust {
 	position: fixed;
 	width: 0;
 	height: 0;
@@ -1087,7 +1087,7 @@ canvas {
 	box-shadow: 0 0 10px rgba(103, 232, 249, 0.9);
 }
 
-.offscreen-indicator {
+#app.app-main-menu .offscreen-indicator {
 	position: fixed;
 	display: flex;
 	align-items: center;
@@ -1113,6 +1113,10 @@ canvas {
 	align-items: flex-end;
 }
 
+.offscreen-indicator-mobile-stack .label {
+	text-align: inherit;
+}
+
 .offscreen-indicator-mobile-stack.offscreen-indicator-edge-left .label {
 	text-align: left;
 }
@@ -1130,7 +1134,7 @@ canvas {
 	filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.9));
 }
 
-.offscreen-indicator .label {
+#app.app-main-menu .offscreen-indicator .label {
 	padding: 3px 6px;
 	border: 1px solid rgba(56, 189, 248, 0.34);
 	border-radius: 4px;
@@ -1138,7 +1142,7 @@ canvas {
 	white-space: nowrap;
 }
 
-.body-label {
+#app.app-main-menu .body-label {
 	position: fixed;
 	padding: 2px 5px;
 	border: 1px solid rgba(148, 163, 184, 0.22);
@@ -1154,11 +1158,11 @@ canvas {
 }
 
 @media (hover: none), (pointer: coarse) {
-	.touch-controls {
+	#app.app-main-menu .touch-controls {
 		display: block;
 	}
 
-	.body-label {
+	#app.app-main-menu .body-label {
 		padding: 2px 4px;
 		border-radius: 3px;
 		font-size: 9px;
@@ -1172,17 +1176,13 @@ canvas {
 		overflow-wrap: anywhere;
 	}
 
-	.offscreen-indicator {
+	#app.app-main-menu .offscreen-indicator {
 		gap: 5px;
 		font-size: 9px;
 	}
 
-	.offscreen-indicator .label {
+	#app.app-main-menu .offscreen-indicator .label {
 		padding: 1px 4px;
-	}
-
-	.offscreen-indicator-mobile-stack .label {
-		text-align: inherit;
 	}
 }
 
@@ -1256,13 +1256,13 @@ canvas {
 		font-size: 11px;
 	}
 
-	.fps-indicator {
+	#app.app-main-menu .fps-indicator {
 		top: auto;
 		right: 10px;
 		bottom: 72px;
 	}
 
-	.debug-panel {
+	#app.app-main-menu .debug-panel {
 		right: 10px;
 		bottom: 72px;
 		left: 10px;

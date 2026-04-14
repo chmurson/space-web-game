@@ -598,9 +598,7 @@ const acknowledgeTutorialPrompt = (
 
 	const acknowledgedPrompt = runtime.scenarioSession.state.pendingPrompt;
 	const promptContent = getTutorialPromptContentForPrompt(acknowledgedPrompt);
-	const effect = promptContent?.confirmAction as
-		| PromptActionEffect
-		| undefined;
+	const effect = promptContent?.confirmAction as PromptActionEffect | undefined;
 	const nextOnboarding =
 		acknowledgedPrompt === "phase-one-intro"
 			? createTutorialOnboardingState(

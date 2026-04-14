@@ -53,7 +53,7 @@ export const createRequestedRuntimeScenario = (
 		}
 	}
 
-	return getRuntimeScenarioDefinition("earth-moon")!.createScenario();
+	return getRuntimeScenarioDefinition("earth-moon")?.createScenario();
 };
 
 export const createRuntimeScenarioState = (
