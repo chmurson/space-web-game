@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
+import { createDefaultScenarioDirectives } from "./scenarioDirectiveTypes";
 import { createRuntimeScenarioSession } from "./scenarioSession";
 import { applyRuntimeScenarioDirectiveConstraints, getConstrainedTimeWarpIndex, resolveRuntimeScenarioDirectives } from "./scenarioDirectives";
 import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
@@ -15,16 +16,7 @@ const createRuntime = (): AppRuntimeState => ({
   debugSnapshotStatus: "",
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
-  scenarioDirectives: {
-    cameraFollowBodyId: null,
-    cameraFollowOffset: { x: 0, y: 0 },
-    forcedAssistTargetId: null,
-    hiddenBodyIds: [],
-    maxCoastPredictionHorizonHours: null,
-    maxTimeWarp: null,
-    maxViewportSize: null,
-    minViewportSize: null,
-  },
+  scenarioDirectives: createDefaultScenarioDirectives(),
   scenarioSession: createRuntimeScenarioSession("tutorial", {
     forcedAssistTargetId: "moon",
     hiddenBodyIds: ["moon"],
@@ -75,10 +67,7 @@ describe("scenarioDirectives", () => {
   it("constrains runtime state to directive caps", () => {
     const runtime = createRuntime();
     runtime.scenarioDirectives = {
-      cameraFollowBodyId: null,
-      cameraFollowOffset: { x: 0, y: 0 },
-      forcedAssistTargetId: null,
-      hiddenBodyIds: [],
+      ...createDefaultScenarioDirectives(),
       maxCoastPredictionHorizonHours: 12,
       maxTimeWarp: 100,
       maxViewportSize: 400,
@@ -120,6 +109,7 @@ describe("scenarioDirectives", () => {
       cameraFollowOffset: { x: 0, y: 0 },
       forcedAssistTargetId: "earth",
       hiddenBodyIds: ["moon"],
+      hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 500,
       maxViewportSize: 104,

@@ -14,6 +14,7 @@ import {
   createTutorialOnboardingState,
 } from "./tutorialOnboarding/tutorialOnboardingProgress";
 import type { TutorialOnboardingState } from "./tutorialOnboarding/tutorialOnboardingTypes";
+import { getHiddenOnboardingUIElements } from "./tutorialOnboarding/tutorialOnboardingFlow";
 
 type TutorialScenarioPhase = "escape-earth" | "reach-moon" | "orbit-moon" | "return-earth" | "orbit-earth" | "complete";
 type TutorialScenarioPrompt =
@@ -81,6 +82,7 @@ const getTutorialScenarioDirectives = (
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 500,
       maxViewportSize: limits.defaultViewportSize / 5,
+      hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
     };
   }
 

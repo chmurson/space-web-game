@@ -1,3 +1,10 @@
+export type RuntimeScenarioHiddenUIElement =
+  | "scenarioInfoButton"
+  | "speedPill"
+  | "thrustPill"
+  | "timeWarpPill"
+  | "trajectory";
+
 export type RuntimeScenarioDirectives = {
   cameraFollowBodyId: string | null;
   cameraFollowOffset: { x: number; y: number };
@@ -7,18 +14,7 @@ export type RuntimeScenarioDirectives = {
   maxTimeWarp: number | null;
   maxViewportSize: number | null;
   minViewportSize: number | null;
-  uiOverrides: {
-    overlay: {
-      topBar: {
-        hideTrustPill: boolean | null;
-        hideTimeWrapPill: boolean | null;
-        hideScenarioInfoButton: boolean | null;
-      };
-    };
-    gameVisuals: {
-      hideTrajectory: boolean | null;
-    },
-  };
+  hiddenUIElements: Set<RuntimeScenarioHiddenUIElement>;
 };
 
 export type ScenarioDirectiveLimits = {
@@ -38,16 +34,5 @@ export const createDefaultScenarioDirectives = (): RuntimeScenarioDirectives => 
   maxTimeWarp: null,
   maxViewportSize: null,
   minViewportSize: null,
-  uiOverrides: {
-    overlay: {
-      topBar: {
-        hideTrustPill: null,
-        hideTimeWrapPill: null,
-        hideScenarioInfoButton: null,
-      },
-    },
-    gameVisuals: {
-      hideTrajectory: null,
-    },
-  },
+  hiddenUIElements: new Set(),
 });

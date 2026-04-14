@@ -11,7 +11,6 @@ import type { TrajectoryPresentation } from "./trajectoryPresentation";
 import { RuntimeScenarioSession } from "../scenario/scenarioSession";
 import { TutorialScenarioState } from "../scenario/tutorialScenario";
 import { getTutorialOnboardingDisplayPrompt } from "../scenario/tutorialOnboarding/tutorialOnboardingProgress";
-import type { TutorialOnboardingStepId } from "../scenario/tutorialOnboarding/tutorialOnboardingTypes";
 
 export const createHudPresentation = (options: {
   defaultScenarioDescription: string;
@@ -34,10 +33,6 @@ export const createHudPresentation = (options: {
   let warpIncreaseStreak = 0;
   let warpFeedbackTimeoutId: number | null = null;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const isTutorialTimeStep = (stepId: TutorialOnboardingStepId) =>
-    stepId === "intro-timewarp" || stepId === "intro-timewarp-thrust" || stepId === "intro-trajectory" || stepId === "intro-complete";
-  const isTutorialTelemetryStep = (stepId: TutorialOnboardingStepId) =>
-    stepId === "intro-trajectory" || stepId === "intro-complete";
 
   const triggerWarpFeedback = (variant: "v2" | "v4", strength = 1.18) => {
     const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
@@ -58,7 +53,7 @@ export const createHudPresentation = (options: {
       warpFeedbackTimeoutId = null;
     }, 1000);
   };
-rio
+
   const resetTransientPillEffects = () => {
     const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
     timePill?.classList.remove("telemetry-pill-warp-bump");
@@ -112,13 +107,17 @@ rio
         options.runtime.scenarioSession.scenarioId === "tutorial" && scenarioDefinition?.isState?.(options.runtime.scenarioSession.state)
           ? (options.runtime.scenarioSession.state as TutorialScenarioState)
           : null;
-      const tutorialOnboardingStepId = tutorialScenarioState?.onboarding?.activeStepId ?? null;
       const tutorialPromptContent = tutorialScenarioState?.onboarding
         ? getTutorialOnboardingDisplayPrompt(tutorialScenarioState.onboarding, options.touchControls ? "mobile" : "desktop")
         : null;
       const runtimePromptContent = getRuntimeScenarioPromptContent(options.runtime);
       const scenarioPromptContent = tutorialPromptContent ?? runtimePromptContent;
       const replayPromptContent = getRuntimeScenarioReplayPromptContent(options.runtime);
+      const hiddenUIElements = options.runtime.scenarioDirectives.hiddenUIElements;
+      const showScenarioInfoButton = !hiddenUIElements.has("scenarioInfoButton");
+      const showTimePill = !hiddenUIElements.has("timeWarpPill");
+      const showSpeedPill = !hiddenUIElements.has("speedPill");
+      const showThrustPill = !hiddenUIElements.has("thrustPill");
 
       if (options.overlayUi.hudTitle) {
         options.overlayUi.hudTitle.textContent = scenarioHudContent?.title ?? options.defaultScenarioName;
@@ -145,25 +144,17 @@ rio
         secondaryButton.textContent = runtimePromptContent?.secondaryLabel ?? "";
         secondaryButton.dataset.promptAction = runtimePromptContent?.secondaryAction ?? "";
       }
-      options.overlayUi.scenarioPromptReplayButton.style.display = !scenarioPromptContent && replayPromptContent ? "inline-flex" : "none";
+      options.overlayUi.scenarioPromptReplayButton.style.display =
+        showScenarioInfoButton && !scenarioPromptContent && replayPromptContent ? "inline-flex" : "none";
       if (options.overlayUi.scenarioPromptReplayButtonLabel) {
         options.overlayUi.scenarioPromptReplayButtonLabel.textContent = replayPromptContent?.title ?? "";
       }
       const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
       const speedPill = options.overlayUi.statSpeed?.closest<HTMLElement>(".telemetry-pill");
       const thrustPill = options.overlayUi.statThrust?.closest<HTMLElement>(".telemetry-pill");
-      const showTutorialVelocityPill =
-        tutorialOnboardingStepId === "intro-thrust" ||
-        tutorialOnboardingStepId === "intro-turn" ||
-        tutorialOnboardingStepId === "intro-point-and-turn" ||
-        tutorialOnboardingStepId === "intro-timewarp" ||
-        tutorialOnboardingStepId === "intro-timewarp-thrust" ||
-        tutorialScenarioState?.onboarding?.gateActive === false;
-      const showTimeTelemetry = tutorialOnboardingStepId === null || isTutorialTimeStep(tutorialOnboardingStepId);
-      const showFullTelemetry = tutorialOnboardingStepId === null || isTutorialTelemetryStep(tutorialOnboardingStepId);
 
       if (timePill) {
-        timePill.style.display = showTimeTelemetry ? "inline-flex" : "none";
+        timePill.style.display = showTimePill ? "inline-flex" : "none";
       }
 
       if (options.overlayUi.statEngine) {
@@ -202,10 +193,10 @@ rio
           options.overlayUi.statThrust.textContent = crashed ? "Crashed" : "";
         }
         if (speedPill) {
-          speedPill.style.display = !crashed && (showFullTelemetry || showTutorialVelocityPill) ? "inline-flex" : "none";
+          speedPill.style.display = !crashed && showSpeedPill ? "inline-flex" : "none";
         }
         if (thrustPill) {
-          thrustPill.style.display = crashed ? "inline-flex" : "none";
+          thrustPill.style.display = crashed && showThrustPill ? "inline-flex" : "none";
         }
         thrustPill?.classList.remove("telemetry-pill-thrust-active");
         thrustPill?.classList.toggle("telemetry-pill-thrust-crashed", crashed);

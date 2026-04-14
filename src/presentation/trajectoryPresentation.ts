@@ -250,28 +250,7 @@ export const createTrajectoryPresentation = (options: {
     },
     refreshPrediction,
     updateVisuals: () => {
-      const tutorialState =
-        options.runtime.scenarioSession.scenarioId === "tutorial" &&
-        options.runtime.scenarioSession.state &&
-        typeof options.runtime.scenarioSession.state === "object" &&
-        !Array.isArray(options.runtime.scenarioSession.state)
-          ? options.runtime.scenarioSession.state
-          : null;
-      const tutorialOnboarding =
-        tutorialState && "onboarding" in tutorialState && tutorialState.onboarding && typeof tutorialState.onboarding === "object"
-          ? tutorialState.onboarding
-          : null;
-      if (
-        tutorialOnboarding &&
-        "activeStepId" in tutorialOnboarding &&
-        (
-          tutorialOnboarding.activeStepId === "intro-thrust" ||
-          tutorialOnboarding.activeStepId === "intro-turn" ||
-          tutorialOnboarding.activeStepId === "intro-point-and-turn" ||
-          tutorialOnboarding.activeStepId === "intro-timewarp" ||
-          tutorialOnboarding.activeStepId === "intro-timewarp-thrust"
-        )
-      ) {
+      if (options.runtime.scenarioDirectives.hiddenUIElements.has("trajectory")) {
         hideTrajectoryVisuals(options.gameScene);
         return;
       }

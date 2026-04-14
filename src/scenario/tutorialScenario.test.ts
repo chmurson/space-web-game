@@ -139,6 +139,7 @@ describe("tutorialScenario", () => {
       cameraFollowOffset: { x: 0, y: 0 },
       forcedAssistTargetId: "earth",
       hiddenBodyIds: ["moon"],
+      hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 500,
       maxViewportSize: 104,
@@ -189,6 +190,7 @@ describe("tutorialScenario", () => {
       cameraFollowOffset: { x: 0, y: 0 },
       forcedAssistTargetId: "moon",
       hiddenBodyIds: [],
+      hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 24,
       maxTimeWarp: 2000,
       maxViewportSize: 1040,
@@ -231,6 +233,18 @@ describe("tutorialScenario", () => {
         gateActive: true,
       },
     });
+    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+      throw new Error("Expected tutorial scenario state.");
+    }
+    expect(
+      tutorialScenario.getDirectives?.(runtime.scenarioSession.state, {
+        maxCoastPredictionHorizonHours: 48,
+        defaultViewportSize: 520,
+        maxViewportSize: 800,
+        minViewportSize: 50,
+        timeWarps: [1, 10, 50, 100, 500, 2000],
+      }).hiddenUIElements,
+    ).toEqual(new Set(["scenarioInfoButton", "timeWarpPill", "trajectory"]));
 
     tutorialScenario.advance?.(runtime);
 

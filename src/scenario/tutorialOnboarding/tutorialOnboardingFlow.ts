@@ -1,6 +1,8 @@
+import type { RuntimeScenarioDirectives } from "../scenarioDirectiveTypes";
 import type {
   TutorialOnboardingFocusTarget,
   TutorialOnboardingPromptContent,
+  TutorialOnboardingState,
   TutorialOnboardingStepId,
 } from "./tutorialOnboardingTypes";
 
@@ -138,3 +140,23 @@ export const getTutorialOnboardingPromptContent = (
   stepId: TutorialOnboardingStepId,
   inputMode: "desktop" | "mobile",
 ): TutorialOnboardingPromptContent => (inputMode === "mobile" ? getMobilePromptContent(stepId) : getDesktopPromptContent(stepId));
+
+const emptyHiddenUIElements = new Set() as RuntimeScenarioDirectives['hiddenUIElements'];
+
+export const getHiddenOnboardingUIElements = (state?: TutorialOnboardingState): RuntimeScenarioDirectives['hiddenUIElements']  => {
+  if (!state) return emptyHiddenUIElements;
+
+  if (state.activeStepId === "intro-thrust" || state.activeStepId === "intro-turn" || state.activeStepId === "intro-point-and-turn") {
+    return new Set(["scenarioInfoButton", "timeWarpPill", "trajectory"]);
+  }
+
+  if (state.activeStepId === "intro-timewarp" || state.activeStepId === "intro-timewarp-thrust") {
+    return new Set(["scenarioInfoButton", "trajectory"]);
+  }
+
+  if (state.activeStepId === "intro-trajectory")  {
+    return new Set(["scenarioInfoButton"]);
+  }
+
+  return emptyHiddenUIElements;
+};
