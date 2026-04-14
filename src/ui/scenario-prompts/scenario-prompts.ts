@@ -103,29 +103,28 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
   let windowResizeTimeoutId: number | null = null;
   let anchorMutationObserver: MutationObserver | null = null;
 
+  const resetPromptToDefault = (): void => {
+    refs.promptElement.style.position = '';
+    refs.promptElement.style.left = '';
+    refs.promptElement.style.top = '';
+    refs.promptElement.style.transform = '';
+    refs.arrowElement.style.display = 'none';
+    delete refs.promptElement.dataset.arrowPlacement;
+  };
+
   const updatePromptPosition = async (): Promise<void> => {
     const anchorKey = refs.promptElement.dataset.anchor as AnchorKey | undefined;
 
     if (!anchorKey) {
       // No anchor, use CSS default positioning
-      refs.promptElement.style.position = '';
-      refs.promptElement.style.left = '';
-      refs.promptElement.style.top = '';
-      refs.promptElement.style.transform = '';
-      refs.arrowElement.style.display = 'none';
-      delete refs.promptElement.dataset.arrowPlacement;
+      resetPromptToDefault();
       return;
     }
 
     const anchorElement = getAnchorElement(anchorKey);
     if (!anchorElement || refs.backdropElement.style.display === 'none') {
       // Anchor not found, use CSS default positioning
-      refs.promptElement.style.position = '';
-      refs.promptElement.style.left = '';
-      refs.promptElement.style.top = '';
-      refs.promptElement.style.transform = '';
-      refs.arrowElement.style.display = 'none';
-      delete refs.promptElement.dataset.arrowPlacement;
+      resetPromptToDefault();
       return;
     }
 
@@ -176,11 +175,7 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
     } catch (error) {
       console.error('Failed to position prompt:', error);
       // Fall back to CSS default positioning
-      refs.promptElement.style.position = '';
-      refs.promptElement.style.left = '';
-      refs.promptElement.style.top = '';
-      refs.promptElement.style.transform = '';
-      refs.arrowElement.style.display = 'none';
+      resetPromptToDefault();
     }
   };
 
