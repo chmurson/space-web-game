@@ -102,6 +102,8 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
   let anchorResizeObserver: ResizeObserver | null = null;
   let windowResizeTimeoutId: number | null = null;
   let anchorMutationObserver: MutationObserver | null = null;
+  let lastAnchorKey: AnchorKey | undefined;
+  let lastPromptMode: 'coach' | 'modal' | undefined;
 
   const resetPromptToDefault = (): void => {
     refs.promptElement.style.position = '';
@@ -155,7 +157,7 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       refs.promptElement.style.position = 'fixed';
       refs.promptElement.style.left = `${x}px`;
       refs.promptElement.style.top = `${y}px`;
-      refs.promptElement.style.transform = '';
+      refs.promptElement.style.transform = 'none';
 
       // Position the arrow
       refs.arrowElement.style.display = '';
@@ -174,7 +176,6 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       refs.arrowElement.dataset.side = staticSide;
     } catch (error) {
       console.error('Failed to position prompt:', error);
-      // Fall back to CSS default positioning
       resetPromptToDefault();
     }
   };
@@ -227,24 +228,27 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       refs.backdropElement.style.display = activePrompt ? 'grid' : 'none';
 
       // Set prompt mode
-      refs.backdropElement.dataset.promptMode = activePrompt?.mode === 'coach' ? 'coach' : 'modal';
+      const promptMode = activePrompt?.mode === 'coach' ? 'coach' : 'modal';
+      refs.backdropElement.dataset.promptMode = promptMode;
 
       // Set anchor if present
-      if (activePrompt?.anchor) {
-        refs.promptElement.dataset.anchor = activePrompt.anchor;
+      const currentAnchorKey = activePrompt?.anchor as AnchorKey | undefined;
+      if (currentAnchorKey) {
+        refs.promptElement.dataset.anchor = currentAnchorKey;
       } else {
         delete refs.promptElement.dataset.anchor;
       }
 
-      // Update anchor positioning for coach prompts
-      if (activePrompt?.mode === 'coach' && activePrompt?.anchor) {
-        const anchorElement = getAnchorElement(activePrompt.anchor as AnchorKey);
-        if (anchorElement) {
-          setupAnchorObserver(anchorElement);
-          updatePromptPosition();
-        }
-      } else {
-        // Clean up observers for non-anchor prompts
+      // Track if mode or anchor changed
+      const modeChanged = lastPromptMode !== promptMode;
+      const anchorChanged = lastAnchorKey !== currentAnchorKey;
+      lastPromptMode = promptMode;
+      lastAnchorKey = currentAnchorKey;
+
+      // Reset to default when mode or anchor changes
+      if (modeChanged || anchorChanged) {
+        resetPromptToDefault();
+        // Clean up observers
         if (anchorResizeObserver) {
           anchorResizeObserver.disconnect();
           anchorResizeObserver = null;
@@ -253,15 +257,15 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
           anchorMutationObserver.disconnect();
           anchorMutationObserver = null;
         }
+      }
 
-        refs.promptElement.style.position = '';
-        refs.promptElement.style.left = '';
-        refs.promptElement.style.top = '';
-        refs.arrowElement.style.position = '';
-        refs.arrowElement.style.left = '';
-        refs.arrowElement.style.top = '';
-        refs.arrowElement.style.bottom = '';
-        refs.arrowElement.style.right = '';
+      // Update anchor positioning for coach prompts with anchors
+      if (promptMode === 'coach' && currentAnchorKey) {
+        const anchorElement = getAnchorElement(currentAnchorKey);
+        if (anchorElement) {
+          setupAnchorObserver(anchorElement);
+          updatePromptPosition();
+        }
       }
 
 
