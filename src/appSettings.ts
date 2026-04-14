@@ -1,5 +1,5 @@
 export const appSettings = {
-  assistTarget: {
-    autoDiscoverStrongestInfluence: true,
-  },
+	assistTarget: {
+		autoDiscoverStrongestInfluence: true,
+	},
 } as const;

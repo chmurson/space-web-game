@@ -5,212 +5,234 @@ import { createRuntimeScenarioSession } from "../scenario/scenarioSession";
 import type { AppRuntimeState } from "./appRuntimeState";
 import { createGameQueries } from "./gameQueries";
 
-const createBody = (overrides: Partial<AppRuntimeState["state"]["bodies"][number]> = {}) => ({
-  id: "body",
-  name: "Body",
-  mass: 1,
-  radius: 1,
-  position: { x: 0, y: 0 },
-  velocity: { x: 0, y: 0 },
-  color: "#fff",
-  ...overrides,
+const createBody = (
+	overrides: Partial<AppRuntimeState["state"]["bodies"][number]> = {},
+) => ({
+	id: "body",
+	name: "Body",
+	mass: 1,
+	radius: 1,
+	position: { x: 0, y: 0 },
+	velocity: { x: 0, y: 0 },
+	color: "#fff",
+	...overrides,
 });
 
-const createRuntime = (bodies: AppRuntimeState["state"]["bodies"], coastPredictionHorizonHours: number): AppRuntimeState => ({
-  assistMode: "off",
-  assistTargetIndex: 0,
-  coastPredictionHorizonHours,
-  crashedBodyName: null,
-  debugModeEnabled: false,
-  debugNoGravityEnabled: false,
-  debugSnapshotStatus: "",
-  fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
-  scenarioDirectives: createDefaultScenarioDirectives(),
-  scenarioSession: createRuntimeScenarioSession("test"),
-  spacecraftLabelIntroUntil: 0,
-  targetHeadingSelectionEpoch: 0,
-  uiEffectEpoch: 0,
-  state: {
-    elapsed: 0,
-    bodies,
-    controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
-    spacecraft: {
-      position: { x: 0, y: 0 },
-      velocity: { x: 0, y: 0 },
-      heading: 0,
-      fuel: 0,
-      fuelUsed: 0,
-      dryMass: 1,
-      fuelMass: 0,
-      fuelCapacity: 0,
-    },
-  },
-  targetHeading: null,
-  timeWarpIndex: 0,
-  viewportSize: 100,
+const createRuntime = (
+	bodies: AppRuntimeState["state"]["bodies"],
+	coastPredictionHorizonHours: number,
+): AppRuntimeState => ({
+	assistMode: "off",
+	assistTargetIndex: 0,
+	coastPredictionHorizonHours,
+	crashedBodyName: null,
+	debugModeEnabled: false,
+	debugNoGravityEnabled: false,
+	debugSnapshotStatus: "",
+	fpsIndicatorEnabled: false,
+	performanceDebugEnabled: false,
+	scenarioDirectives: createDefaultScenarioDirectives(),
+	scenarioSession: createRuntimeScenarioSession("test"),
+	spacecraftLabelIntroUntil: 0,
+	targetHeadingSelectionEpoch: 0,
+	uiEffectEpoch: 0,
+	state: {
+		elapsed: 0,
+		bodies,
+		controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+		spacecraft: {
+			position: { x: 0, y: 0 },
+			velocity: { x: 0, y: 0 },
+			heading: 0,
+			fuel: 0,
+			fuelUsed: 0,
+			dryMass: 1,
+			fuelMass: 0,
+			fuelCapacity: 0,
+		},
+	},
+	targetHeading: null,
+	timeWarpIndex: 0,
+	viewportSize: 100,
 });
 
 const createPredictedTrajectoryEnd = (x: number, y: number) => ({ x, y });
-const createPredictedTrajectoryPoints = (...points: Array<[number, number]>) => points.map(([x, y]) => ({ x, y }));
+const createPredictedTrajectoryPoints = (...points: Array<[number, number]>) =>
+	points.map(([x, y]) => ({ x, y }));
 
 describe("createGameQueries", () => {
-  it("selects the nearest body to the predicted trajectory midpoint when auto-selection is enabled", () => {
-    const runtime = createRuntime(
-      [
-        createBody({ id: "earth", name: "Earth", position: { x: 10_000_000, y: 0 } }),
-        createBody({ id: "moon", name: "Moon", position: { x: 4_000_000, y: 0 } }),
-      ],
-      2,
-    );
-    const queries = createGameQueries({
-      autoSelectNearestSurface: true,
-      autoSelectConfig: {
-        switchRangeMultiplier: 2,
-      },
-      autopilotRotationRate: 0.1,
-      getPredictedTrajectoryEnd: () => createPredictedTrajectoryEnd(8_000_000, 0),
-      getPredictedTrajectoryPoints: () => createPredictedTrajectoryPoints([0, 0], [4_000_000, 0], [8_000_000, 0]),
-      maxPredictionLoopRevolutions: 2,
-      predictionSampling: {
-        refreshInterval: 0.25,
-        stepOptionsSeconds: [10, 60, 300],
-        targetMaxSteps: 100,
-      },
-      runtime,
-    });
+	it("selects the nearest body to the predicted trajectory midpoint when auto-selection is enabled", () => {
+		const runtime = createRuntime(
+			[
+				createBody({
+					id: "earth",
+					name: "Earth",
+					position: { x: 10_000_000, y: 0 },
+				}),
+				createBody({
+					id: "moon",
+					name: "Moon",
+					position: { x: 4_000_000, y: 0 },
+				}),
+			],
+			2,
+		);
+		const queries = createGameQueries({
+			autoSelectNearestSurface: true,
+			autoSelectConfig: {
+				switchRangeMultiplier: 2,
+			},
+			autopilotRotationRate: 0.1,
+			getPredictedTrajectoryEnd: () =>
+				createPredictedTrajectoryEnd(8_000_000, 0),
+			getPredictedTrajectoryPoints: () =>
+				createPredictedTrajectoryPoints([0, 0], [4_000_000, 0], [8_000_000, 0]),
+			maxPredictionLoopRevolutions: 2,
+			predictionSampling: {
+				refreshInterval: 0.25,
+				stepOptionsSeconds: [10, 60, 300],
+				targetMaxSteps: 100,
+			},
+			runtime,
+		});
 
-    expect(queries.getAssistTarget().id).toBe("moon");
-  });
+		expect(queries.getAssistTarget().id).toBe("moon");
+	});
 
-  it("keeps the current auto target when another body is closer but not dominant enough", () => {
-    const runtime = createRuntime(
-      [
-        createBody({ id: "earth", name: "Earth", position: { x: 100, y: 0 } }),
-        createBody({ id: "moon", name: "Moon", position: { x: 260, y: 0 } }),
-      ],
-      2,
-    );
-    runtime.assistTargetIndex = 0;
+	it("keeps the current auto target when another body is closer but not dominant enough", () => {
+		const runtime = createRuntime(
+			[
+				createBody({ id: "earth", name: "Earth", position: { x: 100, y: 0 } }),
+				createBody({ id: "moon", name: "Moon", position: { x: 260, y: 0 } }),
+			],
+			2,
+		);
+		runtime.assistTargetIndex = 0;
 
-    const queries = createGameQueries({
-      autoSelectNearestSurface: true,
-      autoSelectConfig: {
-        switchRangeMultiplier: 2,
-      },
-      autopilotRotationRate: 0.1,
-      getPredictedTrajectoryEnd: () => (runtime.state.spacecraft.position.x >= 140 ? createPredictedTrajectoryEnd(320, 0) : createPredictedTrajectoryEnd(40, 0)),
-      getPredictedTrajectoryPoints: () =>
-        runtime.state.spacecraft.position.x >= 140
-          ? createPredictedTrajectoryPoints([160, 0], [240, 60], [320, 0])
-          : createPredictedTrajectoryPoints([0, 0], [20, 40], [40, 0]),
-      maxPredictionLoopRevolutions: 2,
-      predictionSampling: {
-        refreshInterval: 0.25,
-        stepOptionsSeconds: [10, 60, 300],
-        targetMaxSteps: 100,
-      },
-      runtime,
-    });
+		const queries = createGameQueries({
+			autoSelectNearestSurface: true,
+			autoSelectConfig: {
+				switchRangeMultiplier: 2,
+			},
+			autopilotRotationRate: 0.1,
+			getPredictedTrajectoryEnd: () =>
+				runtime.state.spacecraft.position.x >= 140
+					? createPredictedTrajectoryEnd(320, 0)
+					: createPredictedTrajectoryEnd(40, 0),
+			getPredictedTrajectoryPoints: () =>
+				runtime.state.spacecraft.position.x >= 140
+					? createPredictedTrajectoryPoints([160, 0], [240, 60], [320, 0])
+					: createPredictedTrajectoryPoints([0, 0], [20, 40], [40, 0]),
+			maxPredictionLoopRevolutions: 2,
+			predictionSampling: {
+				refreshInterval: 0.25,
+				stepOptionsSeconds: [10, 60, 300],
+				targetMaxSteps: 100,
+			},
+			runtime,
+		});
 
-    expect(queries.getAssistTarget().id).toBe("earth");
+		expect(queries.getAssistTarget().id).toBe("earth");
 
-    runtime.state.spacecraft.position = { x: 120, y: 0 };
+		runtime.state.spacecraft.position = { x: 120, y: 0 };
 
-    expect(queries.getAssistTarget().id).toBe("earth");
+		expect(queries.getAssistTarget().id).toBe("earth");
 
-    runtime.state.spacecraft.position = { x: 160, y: 0 };
+		runtime.state.spacecraft.position = { x: 160, y: 0 };
 
-    expect(queries.getAssistTarget().id).toBe("moon");
-  });
+		expect(queries.getAssistTarget().id).toBe("moon");
+	});
 
-  it("wraps the selected assist target index when auto-discovery is disabled", () => {
-    const runtime = createRuntime(
-      [
-        createBody({ id: "earth", name: "Earth" }),
-        createBody({ id: "moon", name: "Moon" }),
-        createBody({ id: "mars", name: "Mars" }),
-      ],
-      2,
-    );
-    runtime.assistTargetIndex = -1;
+	it("wraps the selected assist target index when auto-discovery is disabled", () => {
+		const runtime = createRuntime(
+			[
+				createBody({ id: "earth", name: "Earth" }),
+				createBody({ id: "moon", name: "Moon" }),
+				createBody({ id: "mars", name: "Mars" }),
+			],
+			2,
+		);
+		runtime.assistTargetIndex = -1;
 
-    const queries = createGameQueries({
-      autoSelectNearestSurface: false,
-      autoSelectConfig: {
-        switchRangeMultiplier: 2,
-      },
-      autopilotRotationRate: 0.1,
-      getPredictedTrajectoryEnd: () => null,
-      getPredictedTrajectoryPoints: () => [],
-      maxPredictionLoopRevolutions: 2,
-      predictionSampling: {
-        refreshInterval: 0.25,
-        stepOptionsSeconds: [10, 60, 300],
-        targetMaxSteps: 100,
-      },
-      runtime,
-    });
+		const queries = createGameQueries({
+			autoSelectNearestSurface: false,
+			autoSelectConfig: {
+				switchRangeMultiplier: 2,
+			},
+			autopilotRotationRate: 0.1,
+			getPredictedTrajectoryEnd: () => null,
+			getPredictedTrajectoryPoints: () => [],
+			maxPredictionLoopRevolutions: 2,
+			predictionSampling: {
+				refreshInterval: 0.25,
+				stepOptionsSeconds: [10, 60, 300],
+				targetMaxSteps: 100,
+			},
+			runtime,
+		});
 
-    expect(queries.getAssistTarget().id).toBe("mars");
-  });
+		expect(queries.getAssistTarget().id).toBe("mars");
+	});
 
-  it("derives prediction horizon seconds and step size from runtime horizon hours", () => {
-    const runtime = createRuntime([createBody({ id: "earth", name: "Earth" })], 6);
-    const queries = createGameQueries({
-      autoSelectNearestSurface: false,
-      autoSelectConfig: {
-        switchRangeMultiplier: 2,
-      },
-      autopilotRotationRate: 0.1,
-      getPredictedTrajectoryEnd: () => null,
-      getPredictedTrajectoryPoints: () => [],
-      maxPredictionLoopRevolutions: 3,
-      predictionSampling: {
-        refreshInterval: 0.5,
-        stepOptionsSeconds: [10, 60, 300, 1800],
-        targetMaxSteps: 100,
-      },
-      runtime,
-    });
+	it("derives prediction horizon seconds and step size from runtime horizon hours", () => {
+		const runtime = createRuntime(
+			[createBody({ id: "earth", name: "Earth" })],
+			6,
+		);
+		const queries = createGameQueries({
+			autoSelectNearestSurface: false,
+			autoSelectConfig: {
+				switchRangeMultiplier: 2,
+			},
+			autopilotRotationRate: 0.1,
+			getPredictedTrajectoryEnd: () => null,
+			getPredictedTrajectoryPoints: () => [],
+			maxPredictionLoopRevolutions: 3,
+			predictionSampling: {
+				refreshInterval: 0.5,
+				stepOptionsSeconds: [10, 60, 300, 1800],
+				targetMaxSteps: 100,
+			},
+			runtime,
+		});
 
-    expect(queries.getCoastPredictionHorizonSeconds()).toBe(21_600);
-    expect(queries.getPredictionConfig()).toEqual({
-      horizonSeconds: 21_600,
-      maxLoopRevolutions: 3,
-      refreshInterval: 0.5,
-      stepSeconds: 300,
-    });
-  });
+		expect(queries.getCoastPredictionHorizonSeconds()).toBe(21_600);
+		expect(queries.getPredictionConfig()).toEqual({
+			horizonSeconds: 21_600,
+			maxLoopRevolutions: 3,
+			refreshInterval: 0.5,
+			stepSeconds: 300,
+		});
+	});
 
-  it("honors a scenario-forced assist target when present", () => {
-    const runtime = createRuntime(
-      [
-        createBody({ id: "earth", name: "Earth" }),
-        createBody({ id: "moon", name: "Moon" }),
-      ],
-      2,
-    );
-    runtime.assistTargetIndex = 0;
-    runtime.scenarioDirectives.forcedAssistTargetId = "moon";
+	it("honors a scenario-forced assist target when present", () => {
+		const runtime = createRuntime(
+			[
+				createBody({ id: "earth", name: "Earth" }),
+				createBody({ id: "moon", name: "Moon" }),
+			],
+			2,
+		);
+		runtime.assistTargetIndex = 0;
+		runtime.scenarioDirectives.forcedAssistTargetId = "moon";
 
-    const queries = createGameQueries({
-      autoSelectNearestSurface: false,
-      autoSelectConfig: {
-        switchRangeMultiplier: 2,
-      },
-      autopilotRotationRate: 0.1,
-      getPredictedTrajectoryEnd: () => null,
-      getPredictedTrajectoryPoints: () => [],
-      maxPredictionLoopRevolutions: 2,
-      predictionSampling: {
-        refreshInterval: 0.25,
-        stepOptionsSeconds: [10, 60, 300],
-        targetMaxSteps: 100,
-      },
-      runtime,
-    });
+		const queries = createGameQueries({
+			autoSelectNearestSurface: false,
+			autoSelectConfig: {
+				switchRangeMultiplier: 2,
+			},
+			autopilotRotationRate: 0.1,
+			getPredictedTrajectoryEnd: () => null,
+			getPredictedTrajectoryPoints: () => [],
+			maxPredictionLoopRevolutions: 2,
+			predictionSampling: {
+				refreshInterval: 0.25,
+				stepOptionsSeconds: [10, 60, 300],
+				targetMaxSteps: 100,
+			},
+			runtime,
+		});
 
-    expect(queries.getAssistTarget().id).toBe("moon");
-  });
+		expect(queries.getAssistTarget().id).toBe("moon");
+	});
 });

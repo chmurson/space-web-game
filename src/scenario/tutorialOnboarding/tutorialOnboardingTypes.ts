@@ -1,35 +1,37 @@
-export type TutorialOnboardingStepId =
-  | "intro-thrust"
-  | "intro-keep-thrusting"
-  | "intro-turn"
-  | "intro-point-and-turn"
-  | "intro-timewarp"
-  | "intro-timewarp-thrust"
-  | "intro-trajectory"
-  | "intro-complete";
+import { ScenarioPromptAnchor } from "../scenarioRegistry";
 
-export type TutorialOnboardingFocusTarget = "playfield" | "timewarp-pill" | "touch-controls";
+export type TutorialOnboardingStepId =
+	| "intro-thrust"
+	| "intro-keep-thrusting"
+	| "intro-thrusting-complete"
+	| "intro-turn"
+	| "intro-point-and-turn"
+	| "intro-timewarp"
+	| "intro-timewarp-thrust"
+	| "intro-trajectory"
+	| "intro-complete";
 
 export type TutorialOnboardingPromptContent = {
-  confirmLabel?: string;
-  description: string;
-  focusTargets: TutorialOnboardingFocusTarget[];
+	confirmAction?: "advance-step";
+	confirmLabel?: string;
+	description: string;
   title: string;
+  anchor?: ScenarioPromptAnchor;
 };
 
 export type TutorialOnboardingStepProgress = {
-  accumulatedHeadingChangeRadians: number;
-  accumulatedMainThrustMs: number;
-  lastSampleHeading: number | null;
-  lastSampleAtMs: number | null;
-  stepStartHeading: number | null;
-  stepStartTargetHeadingSelectionEpoch: number;
-  stepStartTimeWarpMultiplier: number;
+	accumulatedHeadingChangeRadians: number;
+	accumulatedMainThrustMs: number;
+	lastSampleHeading: number | null;
+	lastSampleAtMs: number | null;
+	stepStartHeading: number | null;
+	stepStartTargetHeadingSelectionEpoch: number;
+	stepStartTimeWarpMultiplier: number;
 };
 
 export type TutorialOnboardingState = {
-  activeStepId: TutorialOnboardingStepId | null;
-  completedStepIds: TutorialOnboardingStepId[];
-  gateActive: boolean;
-  progress: TutorialOnboardingStepProgress;
+	activeStepId: TutorialOnboardingStepId | null;
+	completedStepIds: TutorialOnboardingStepId[];
+	gateActive: boolean;
+	progress: TutorialOnboardingStepProgress;
 };

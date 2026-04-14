@@ -9,6 +9,8 @@
     "build": "npm run validate:config && tsc && vite build --mode release",
     "build:dev": "npm run validate:config && tsc && vite build --mode development",
     "preview": "vite preview",
+    "lint": "biome lint --write src scripts",
+    "format": "biome format --write src scripts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -16,6 +18,7 @@
     "three": "^0.182.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
     "@types/three": "^0.182.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.4",

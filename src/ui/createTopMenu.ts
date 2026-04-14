@@ -3,26 +3,26 @@ import type { UIUserAction } from "../input/uiUserActions";
 import { formatDuration } from "./formatters";
 
 export type TopMenu = {
-  close: () => void;
-  element: HTMLElement;
-  syncState: () => void;
+	close: () => void;
+	element: HTMLElement;
+	syncState: () => void;
 };
 
 export const createTopMenu = (options: {
-  app: HTMLElement;
-  getCoastPredictionHorizonHours: () => number;
-  getDebugModeEnabled: () => boolean;
-  getMaxCoastPredictionHorizonHours: () => number;
-  getMinCoastPredictionHorizonHours: () => number;
-  onAction: (action: UIUserAction) => void;
+	app: HTMLElement;
+	getCoastPredictionHorizonHours: () => number;
+	getDebugModeEnabled: () => boolean;
+	getMaxCoastPredictionHorizonHours: () => number;
+	getMinCoastPredictionHorizonHours: () => number;
+	onAction: (action: UIUserAction) => void;
 }): TopMenu => {
-  const menuId = "top-menu-dropdown";
-  const debugSectionLabelId = `${menuId}-debug`;
-  const scenarioSectionLabelId = `${menuId}-scenario`;
-  const trajectorySectionLabelId = `${menuId}-trajectory`;
-  const root = document.createElement("div");
-  root.className = "top-menu";
-  root.innerHTML = `
+	const menuId = "top-menu-dropdown";
+	const debugSectionLabelId = `${menuId}-debug`;
+	const scenarioSectionLabelId = `${menuId}-scenario`;
+	const trajectorySectionLabelId = `${menuId}-trajectory`;
+	const root = document.createElement("div");
+	root.className = "top-menu";
+	root.innerHTML = `
     <button
       class="top-menu-button"
       type="button"
@@ -67,166 +67,194 @@ export const createTopMenu = (options: {
       </section>
     </div>
   `;
-  const topBar = options.app.querySelector('.top-bar');
-  if (!topBar) {
-    throw new Error("Failed to find top bar");
-  }
-  topBar.prepend(root);
+	const topBar = options.app.querySelector(".top-bar");
+	if (!topBar) {
+		throw new Error("Failed to find top bar");
+	}
+	topBar.prepend(root);
 
-  const button = root.querySelector<HTMLButtonElement>(".top-menu-button");
-  const dropdown = root.querySelector<HTMLDivElement>(".top-menu-dropdown");
-  if (!button || !dropdown) {
-    throw new Error("Failed to create top menu");
-  }
+	const button = root.querySelector<HTMLButtonElement>(".top-menu-button");
+	const dropdown = root.querySelector<HTMLDivElement>(".top-menu-dropdown");
+	if (!button || !dropdown) {
+		throw new Error("Failed to create top menu");
+	}
 
-  const menuItems = Array.from(dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'));
-  const loadSnapshotButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="loadDebugSnapshot"]');
-  const debugToggleButton = dropdown.querySelector<HTMLButtonElement>("[data-menu-debug-toggle]");
-  const decreaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="decreaseCoastHorizon"]');
-  const increaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>('[data-menu-action="increaseCoastHorizon"]');
-  const coastHorizonValue = dropdown.querySelector<HTMLElement>("[data-menu-coast-horizon]");
-  let lastCoastHorizonLabel = "";
-  let lastDebugToggleLabel = "";
-  let lastDecreaseDisabled: boolean | null = null;
-  let lastIncreaseDisabled: boolean | null = null;
-  const focusItem = (index: number) => {
-    menuItems.at(index)?.focus();
-  };
-  const syncSnapshotAvailability = () => {
-    if (!loadSnapshotButton) {
-      return;
-    }
+	const menuItems = Array.from(
+		dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'),
+	);
+	const loadSnapshotButton = dropdown.querySelector<HTMLButtonElement>(
+		'[data-menu-action="loadDebugSnapshot"]',
+	);
+	const debugToggleButton = dropdown.querySelector<HTMLButtonElement>(
+		"[data-menu-debug-toggle]",
+	);
+	const decreaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>(
+		'[data-menu-action="decreaseCoastHorizon"]',
+	);
+	const increaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>(
+		'[data-menu-action="increaseCoastHorizon"]',
+	);
+	const coastHorizonValue = dropdown.querySelector<HTMLElement>(
+		"[data-menu-coast-horizon]",
+	);
+	let lastCoastHorizonLabel = "";
+	let lastDebugToggleLabel = "";
+	let lastDecreaseDisabled: boolean | null = null;
+	let lastIncreaseDisabled: boolean | null = null;
+	const focusItem = (index: number) => {
+		menuItems.at(index)?.focus();
+	};
+	const syncSnapshotAvailability = () => {
+		if (!loadSnapshotButton) {
+			return;
+		}
 
-    loadSnapshotButton.disabled = readDebugScenarioSnapshot() === null;
-  };
-  const syncState = () => {
-    const debugToggleLabel = options.getDebugModeEnabled() ? "Hide debug window" : "Show debug window";
-    const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours();
-    const coastHorizonLabel = formatDuration(coastPredictionHorizonHours * 60 * 60);
-    const decreaseDisabled = coastPredictionHorizonHours <= options.getMinCoastPredictionHorizonHours();
-    const increaseDisabled = coastPredictionHorizonHours >= options.getMaxCoastPredictionHorizonHours();
+		loadSnapshotButton.disabled = readDebugScenarioSnapshot() === null;
+	};
+	const syncState = () => {
+		const debugToggleLabel = options.getDebugModeEnabled()
+			? "Hide debug window"
+			: "Show debug window";
+		const coastPredictionHorizonHours =
+			options.getCoastPredictionHorizonHours();
+		const coastHorizonLabel = formatDuration(
+			coastPredictionHorizonHours * 60 * 60,
+		);
+		const decreaseDisabled =
+			coastPredictionHorizonHours <=
+			options.getMinCoastPredictionHorizonHours();
+		const increaseDisabled =
+			coastPredictionHorizonHours >=
+			options.getMaxCoastPredictionHorizonHours();
 
-    if (debugToggleButton) {
-      if (debugToggleLabel !== lastDebugToggleLabel) {
-        debugToggleButton.textContent = debugToggleLabel;
-        lastDebugToggleLabel = debugToggleLabel;
-      }
-    }
-    if (coastHorizonValue) {
-      if (coastHorizonLabel !== lastCoastHorizonLabel) {
-        coastHorizonValue.textContent = coastHorizonLabel;
-        lastCoastHorizonLabel = coastHorizonLabel;
-      }
-    }
-    if (decreaseCoastHorizonButton) {
-      if (decreaseDisabled !== lastDecreaseDisabled) {
-        decreaseCoastHorizonButton.disabled = decreaseDisabled;
-        lastDecreaseDisabled = decreaseDisabled;
-      }
-    }
-    if (increaseCoastHorizonButton) {
-      if (increaseDisabled !== lastIncreaseDisabled) {
-        increaseCoastHorizonButton.disabled = increaseDisabled;
-        lastIncreaseDisabled = increaseDisabled;
-      }
-    }
-  };
-  const shouldKeepOpenAfterAction = (action: UIUserAction) => {
-    return action === "decreaseCoastHorizon" || action === "increaseCoastHorizon";
-  };
+		if (debugToggleButton) {
+			if (debugToggleLabel !== lastDebugToggleLabel) {
+				debugToggleButton.textContent = debugToggleLabel;
+				lastDebugToggleLabel = debugToggleLabel;
+			}
+		}
+		if (coastHorizonValue) {
+			if (coastHorizonLabel !== lastCoastHorizonLabel) {
+				coastHorizonValue.textContent = coastHorizonLabel;
+				lastCoastHorizonLabel = coastHorizonLabel;
+			}
+		}
+		if (decreaseCoastHorizonButton) {
+			if (decreaseDisabled !== lastDecreaseDisabled) {
+				decreaseCoastHorizonButton.disabled = decreaseDisabled;
+				lastDecreaseDisabled = decreaseDisabled;
+			}
+		}
+		if (increaseCoastHorizonButton) {
+			if (increaseDisabled !== lastIncreaseDisabled) {
+				increaseCoastHorizonButton.disabled = increaseDisabled;
+				lastIncreaseDisabled = increaseDisabled;
+			}
+		}
+	};
+	const shouldKeepOpenAfterAction = (action: UIUserAction) => {
+		return (
+			action === "decreaseCoastHorizon" || action === "increaseCoastHorizon"
+		);
+	};
 
-  const setOpen = (open: boolean, focusTarget: "button" | "first-item" | "none" = "none") => {
-    if (open) {
-      syncSnapshotAvailability();
-      syncState();
-    }
-    button.setAttribute("aria-expanded", String(open));
-    dropdown.hidden = !open;
-    root.classList.toggle("top-menu-open", open);
+	const setOpen = (
+		open: boolean,
+		focusTarget: "button" | "first-item" | "none" = "none",
+	) => {
+		if (open) {
+			syncSnapshotAvailability();
+			syncState();
+		}
+		button.setAttribute("aria-expanded", String(open));
+		dropdown.hidden = !open;
+		root.classList.toggle("top-menu-open", open);
 
-    if (open && focusTarget === "first-item") {
-      focusItem(0);
-    }
-    if (!open && focusTarget === "button") {
-      button.focus();
-    }
-  };
+		if (open && focusTarget === "first-item") {
+			focusItem(0);
+		}
+		if (!open && focusTarget === "button") {
+			button.focus();
+		}
+	};
 
-  button.addEventListener("click", (event) => {
-    event.stopPropagation();
-    setOpen(dropdown.hidden, dropdown.hidden ? "first-item" : "button");
-  });
+	button.addEventListener("click", (event) => {
+		event.stopPropagation();
+		setOpen(dropdown.hidden, dropdown.hidden ? "first-item" : "button");
+	});
 
-  dropdown.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLButtonElement)) {
-      return;
-    }
+	dropdown.addEventListener("click", (event) => {
+		const target = event.target;
+		if (!(target instanceof HTMLButtonElement)) {
+			return;
+		}
 
-    const action = target.dataset.menuAction as UIUserAction | undefined;
-    if (!action) {
-      return;
-    }
+		const action = target.dataset.menuAction as UIUserAction | undefined;
+		if (!action) {
+			return;
+		}
 
-    options.onAction(action);
-    if (action === "saveDebugSnapshot" || action === "loadDebugSnapshot") {
-      syncSnapshotAvailability();
-    }
-    syncState();
-    if (!shouldKeepOpenAfterAction(action)) {
-      setOpen(false, "button");
-    }
-  });
+		options.onAction(action);
+		if (action === "saveDebugSnapshot" || action === "loadDebugSnapshot") {
+			syncSnapshotAvailability();
+		}
+		syncState();
+		if (!shouldKeepOpenAfterAction(action)) {
+			setOpen(false, "button");
+		}
+	});
 
-  document.addEventListener("pointerdown", (event) => {
-    if (!root.contains(event.target as Node)) {
-      setOpen(false);
-    }
-  });
+	document.addEventListener("pointerdown", (event) => {
+		if (!root.contains(event.target as Node)) {
+			setOpen(false);
+		}
+	});
 
-  document.addEventListener("keydown", (event) => {
-    if (!root.classList.contains("top-menu-open")) {
-      return;
-    }
+	document.addEventListener("keydown", (event) => {
+		if (!root.classList.contains("top-menu-open")) {
+			return;
+		}
 
-    if (event.key === "Escape") {
-      event.preventDefault();
-      setOpen(false, "button");
-    }
-  });
+		if (event.key === "Escape") {
+			event.preventDefault();
+			setOpen(false, "button");
+		}
+	});
 
-  dropdown.addEventListener("keydown", (event) => {
-    const currentIndex = menuItems.findIndex((item) => item === document.activeElement);
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      focusItem((currentIndex + 1 + menuItems.length) % menuItems.length);
-      return;
-    }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      focusItem((currentIndex - 1 + menuItems.length) % menuItems.length);
-      return;
-    }
-    if (event.key === "Home") {
-      event.preventDefault();
-      focusItem(0);
-      return;
-    }
-    if (event.key === "End") {
-      event.preventDefault();
-      focusItem(menuItems.length - 1);
-      return;
-    }
-    if (event.key === "Tab") {
-      setOpen(false);
-    }
-  });
+	dropdown.addEventListener("keydown", (event) => {
+		const currentIndex = menuItems.findIndex(
+			(item) => item === document.activeElement,
+		);
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			focusItem((currentIndex + 1 + menuItems.length) % menuItems.length);
+			return;
+		}
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+			focusItem((currentIndex - 1 + menuItems.length) % menuItems.length);
+			return;
+		}
+		if (event.key === "Home") {
+			event.preventDefault();
+			focusItem(0);
+			return;
+		}
+		if (event.key === "End") {
+			event.preventDefault();
+			focusItem(menuItems.length - 1);
+			return;
+		}
+		if (event.key === "Tab") {
+			setOpen(false);
+		}
+	});
 
-  syncState();
+	syncState();
 
-  return {
-    close: () => setOpen(false),
-    element: root,
-    syncState,
-  };
+	return {
+		close: () => setOpen(false),
+		element: root,
+		syncState,
+	};
 };

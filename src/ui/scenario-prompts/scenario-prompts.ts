@@ -1,51 +1,53 @@
-import './scenario-prompts.css';
-import type { AppRuntimeState } from '../../runtime/appRuntimeState';
-import { getRuntimeActivePrompt, getRuntimeScenarioReplayPromptContent } from '../../scenario/scenarioRegistry';
+import "./scenario-prompts.css";
+import type { AppRuntimeState } from "../../runtime/appRuntimeState";
 import {
-  computePosition,
-  flip,
-  shift,
-  offset,
-  arrow,
-} from '@floating-ui/dom';
+	getRuntimeActivePrompt,
+	getRuntimeScenarioReplayPromptContent,
+} from "../../scenario/scenarioRegistry";
+import { computePosition, flip, shift, offset, arrow } from "@floating-ui/dom";
 
 export type ScenarioPromptUiRefs = {
-  backdropElement: HTMLElement;
-  promptElement: HTMLElement;
-  arrowElement: HTMLElement;
-  titleElement: HTMLHeadingElement | null;
-  descriptionElement: HTMLParagraphElement | null;
-  confirmButton: HTMLButtonElement | null;
-  secondaryButton: HTMLButtonElement | null;
-  replayButton: HTMLButtonElement;
-  replayButtonLabel: HTMLSpanElement | null;
+	backdropElement: HTMLElement;
+	promptElement: HTMLElement;
+	arrowElement: HTMLElement;
+	titleElement: HTMLHeadingElement | null;
+	descriptionElement: HTMLParagraphElement | null;
+	confirmButton: HTMLButtonElement | null;
+	secondaryButton: HTMLButtonElement | null;
+	replayButton: HTMLButtonElement;
+	replayButtonLabel: HTMLSpanElement | null;
 };
 
-type AnchorKey = 'speed-pill' | 'time-warp-pill' | 'trajectory';
+type AnchorKey = "speed-pill" | "time-warp-pill" | "trajectory";
 
 const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
-  if (anchor === 'speed-pill') {
-    // Find the thrust pill element
-    const statThrust = document.querySelector<HTMLElement>('[data-stat="speed"]');
-    return statThrust?.closest<HTMLElement>('.telemetry-pill') ?? null;
-  }
-  if (anchor === 'time-warp-pill') {
-    const statTime = document.querySelector<HTMLElement>('[data-stat="time"]');
-    return statTime?.closest<HTMLElement>('.telemetry-pill') ?? null;
-  }
-  return null;
+	if (anchor === "speed-pill") {
+		// Find the thrust pill element
+		const statThrust = document.querySelector<HTMLElement>(
+			'[data-stat="speed"]',
+		);
+		return statThrust?.closest<HTMLElement>(".telemetry-pill") ?? null;
+	}
+	if (anchor === "time-warp-pill") {
+		const statTime = document.querySelector<HTMLElement>('[data-stat="time"]');
+		return statTime?.closest<HTMLElement>(".telemetry-pill") ?? null;
+	}
+	return null;
 };
 
 /**
  * Creates the scenario prompt UI elements and returns references to them.
  * This includes the main prompt backdrop/modal and the replay button.
  */
-export const createScenarioPromptUI = (app: HTMLElement, topBar: HTMLElement): ScenarioPromptUiRefs => {
-  // Create the main prompt backdrop
-  const backdropElement = document.createElement('div');
-  backdropElement.className = 'scenario-prompt-backdrop';
-  backdropElement.style.display = 'none';
-  backdropElement.innerHTML = `
+export const createScenarioPromptUI = (
+	app: HTMLElement,
+	topBar: HTMLElement,
+): ScenarioPromptUiRefs => {
+	// Create the main prompt backdrop
+	const backdropElement = document.createElement("div");
+	backdropElement.className = "scenario-prompt-backdrop";
+	backdropElement.style.display = "none";
+	backdropElement.innerHTML = `
     <div class="scenario-prompt">
       <div class="scenario-prompt-arrow"></div>
       <h2></h2>
@@ -56,14 +58,14 @@ export const createScenarioPromptUI = (app: HTMLElement, topBar: HTMLElement): S
       </div>
     </div>
   `;
-  app.appendChild(backdropElement);
+	app.appendChild(backdropElement);
 
-  // Create the replay button pill
-  const replayButton = document.createElement('button');
-  replayButton.type = 'button';
-  replayButton.className = 'scenario-prompt-pill';
-  replayButton.style.display = 'none';
-  replayButton.innerHTML = `
+	// Create the replay button pill
+	const replayButton = document.createElement("button");
+	replayButton.type = "button";
+	replayButton.className = "scenario-prompt-pill";
+	replayButton.style.display = "none";
+	replayButton.innerHTML = `
     <svg class="scenario-prompt-pill-icon" viewBox="0 0 20 20" aria-hidden="true">
       <path d="M10 1.75 16.3 5.4v9.2L10 18.25 3.7 14.6V5.4Z"></path>
       <path d="M10 5.15v5.35"></path>
@@ -71,27 +73,41 @@ export const createScenarioPromptUI = (app: HTMLElement, topBar: HTMLElement): S
     </svg>
     <span class="scenario-prompt-pill-label"></span>
   `;
-  topBar.appendChild(replayButton);
+	topBar.appendChild(replayButton);
 
-  const promptElement = backdropElement.querySelector<HTMLElement>('.scenario-prompt')!;
-  const arrowElement = promptElement.querySelector<HTMLElement>('.scenario-prompt-arrow')!;
+	const promptElement =
+		backdropElement.querySelector<HTMLElement>(".scenario-prompt")!;
+	const arrowElement = promptElement.querySelector<HTMLElement>(
+		".scenario-prompt-arrow",
+	)!;
 
-  return {
-    backdropElement,
-    promptElement,
-    arrowElement,
-    titleElement: backdropElement.querySelector<HTMLHeadingElement>('h2'),
-    descriptionElement: backdropElement.querySelector<HTMLParagraphElement>('p'),
-    confirmButton: backdropElement.querySelector<HTMLButtonElement>('[data-role="confirm"]'),
-    secondaryButton: backdropElement.querySelector<HTMLButtonElement>('[data-role="secondary"]'),
-    replayButton,
-    replayButtonLabel: replayButton.querySelector<HTMLSpanElement>('.scenario-prompt-pill-label'),
-  };
+	return {
+		backdropElement,
+		promptElement,
+		arrowElement,
+		titleElement: backdropElement.querySelector<HTMLHeadingElement>("h2"),
+		descriptionElement:
+			backdropElement.querySelector<HTMLParagraphElement>("p"),
+		confirmButton: backdropElement.querySelector<HTMLButtonElement>(
+			'[data-role="confirm"]',
+		),
+		secondaryButton: backdropElement.querySelector<HTMLButtonElement>(
+			'[data-role="secondary"]',
+		),
+		replayButton,
+		replayButtonLabel: replayButton.querySelector<HTMLSpanElement>(
+			".scenario-prompt-pill-label",
+		),
+	};
 };
 
 export type ScenarioPromptUpdater = {
-  update: (runtime: AppRuntimeState, inputMode: 'desktop' | 'mobile', showScenarioInfoButton: boolean) => void;
-  cleanup: () => void;
+	update: (
+		runtime: AppRuntimeState,
+		inputMode: "desktop" | "mobile",
+		showScenarioInfoButton: boolean,
+	) => void;
+	cleanup: () => void;
 };
 
 /**
@@ -115,17 +131,17 @@ export type ScenarioPromptUpdater = {
  * - Keeps repositioning responsive (via ResizeObserver and window resize handler)
  */
 type PromptIdentity = {
-  activePromptTitle: string;
-  activePromptDescription: string;
-  activePromptMode: 'coach' | 'modal' | null;
-  activePromptAnchor: string | null;
-  activePromptConfirmButtonLabel: string;
-  activePromptConfirmButtonAction: string;
-  activePromptSecondaryButtonLabel: string;
-  activePromptSecondaryButtonAction: string;
-  replayPromptTitle: string;
-  showScenarioInfoButton: boolean;
-  inputMode: 'desktop' | 'mobile';
+	activePromptTitle: string;
+	activePromptDescription: string;
+	activePromptMode: "coach" | "modal" | null;
+	activePromptAnchor: string | null;
+	activePromptConfirmButtonLabel: string;
+	activePromptConfirmButtonAction: string;
+	activePromptSecondaryButtonLabel: string;
+	activePromptSecondaryButtonAction: string;
+	replayPromptTitle: string;
+	showScenarioInfoButton: boolean;
+	inputMode: "desktop" | "mobile";
 };
 
 /**
@@ -134,274 +150,304 @@ type PromptIdentity = {
  * reference equality of the runtime state object (which can change every frame during onboarding).
  */
 const computePromptIdentity = (
-  runtime: AppRuntimeState,
-  inputMode: 'desktop' | 'mobile',
-  showScenarioInfoButton: boolean,
+	runtime: AppRuntimeState,
+	inputMode: "desktop" | "mobile",
+	showScenarioInfoButton: boolean,
 ): PromptIdentity => {
-  const activePrompt = getRuntimeActivePrompt(runtime, inputMode);
-  const replayPromptContent = getRuntimeScenarioReplayPromptContent(runtime);
+	const activePrompt = getRuntimeActivePrompt(runtime, inputMode);
+	const replayPromptContent = getRuntimeScenarioReplayPromptContent(runtime);
 
-  return {
-    activePromptTitle: activePrompt?.title ?? '',
-    activePromptDescription: activePrompt?.description ?? '',
-    activePromptMode: activePrompt?.mode === 'coach' ? 'coach' : (activePrompt ? 'modal' : null),
-    activePromptAnchor: (activePrompt?.anchor as string) ?? null,
-    activePromptConfirmButtonLabel: activePrompt?.confirmButton?.label ?? '',
-    activePromptConfirmButtonAction: activePrompt?.confirmButton?.action ?? '',
-    activePromptSecondaryButtonLabel: activePrompt?.secondaryButton?.label ?? '',
-    activePromptSecondaryButtonAction: activePrompt?.secondaryButton?.action ?? '',
-    replayPromptTitle: replayPromptContent?.title ?? '',
-    showScenarioInfoButton,
-    inputMode,
-  };
+	return {
+		activePromptTitle: activePrompt?.title ?? "",
+		activePromptDescription: activePrompt?.description ?? "",
+		activePromptMode:
+			activePrompt?.mode === "coach" ? "coach" : activePrompt ? "modal" : null,
+		activePromptAnchor: (activePrompt?.anchor as string) ?? null,
+		activePromptConfirmButtonLabel: activePrompt?.confirmButton?.label ?? "",
+		activePromptConfirmButtonAction: activePrompt?.confirmButton?.action ?? "",
+		activePromptSecondaryButtonLabel:
+			activePrompt?.secondaryButton?.label ?? "",
+		activePromptSecondaryButtonAction:
+			activePrompt?.secondaryButton?.action ?? "",
+		replayPromptTitle: replayPromptContent?.title ?? "",
+		showScenarioInfoButton,
+		inputMode,
+	};
 };
 
 /**
  * Compares two prompt identities for equality.
  */
 const identitiesEqual = (a: PromptIdentity, b: PromptIdentity): boolean => {
-  return (
-    a.activePromptTitle === b.activePromptTitle &&
-    a.activePromptDescription === b.activePromptDescription &&
-    a.activePromptMode === b.activePromptMode &&
-    a.activePromptAnchor === b.activePromptAnchor &&
-    a.activePromptConfirmButtonLabel === b.activePromptConfirmButtonLabel &&
-    a.activePromptConfirmButtonAction === b.activePromptConfirmButtonAction &&
-    a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
-    a.activePromptSecondaryButtonAction === b.activePromptSecondaryButtonAction &&
-    a.replayPromptTitle === b.replayPromptTitle &&
-    a.showScenarioInfoButton === b.showScenarioInfoButton &&
-    a.inputMode === b.inputMode
-  );
+	return (
+		a.activePromptTitle === b.activePromptTitle &&
+		a.activePromptDescription === b.activePromptDescription &&
+		a.activePromptMode === b.activePromptMode &&
+		a.activePromptAnchor === b.activePromptAnchor &&
+		a.activePromptConfirmButtonLabel === b.activePromptConfirmButtonLabel &&
+		a.activePromptConfirmButtonAction === b.activePromptConfirmButtonAction &&
+		a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
+		a.activePromptSecondaryButtonAction ===
+			b.activePromptSecondaryButtonAction &&
+		a.replayPromptTitle === b.replayPromptTitle &&
+		a.showScenarioInfoButton === b.showScenarioInfoButton &&
+		a.inputMode === b.inputMode
+	);
 };
 
-export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): ScenarioPromptUpdater => {
-  let anchorResizeObserver: ResizeObserver | null = null;
-  let windowResizeTimeoutId: number | null = null;
-  let anchorMutationObserver: MutationObserver | null = null;
-  let lastAnchorKey: AnchorKey | undefined;
-  let lastPromptMode: 'coach' | 'modal' | null = null;
-  let lastPromptIdentity: PromptIdentity | null = null;
+export const createScenarioPromptUpdater = (
+	refs: ScenarioPromptUiRefs,
+): ScenarioPromptUpdater => {
+	let anchorResizeObserver: ResizeObserver | null = null;
+	let windowResizeTimeoutId: number | null = null;
+	let anchorMutationObserver: MutationObserver | null = null;
+	let lastAnchorKey: AnchorKey | undefined;
+	let lastPromptMode: "coach" | "modal" | null = null;
+	let lastPromptIdentity: PromptIdentity | null = null;
 
-  const resetPromptToDefault = (): void => {
-    refs.promptElement.style.position = '';
-    refs.promptElement.style.left = '';
-    refs.promptElement.style.top = '';
-    refs.promptElement.style.transform = '';
-    refs.arrowElement.style.display = 'none';
-    delete refs.promptElement.dataset.arrowPlacement;
-  };
+	const resetPromptToDefault = (): void => {
+		refs.promptElement.style.position = "";
+		refs.promptElement.style.left = "";
+		refs.promptElement.style.top = "";
+		refs.promptElement.style.transform = "";
+		refs.arrowElement.style.display = "none";
+		delete refs.promptElement.dataset.arrowPlacement;
+	};
 
-  const updatePromptPosition = async (): Promise<void> => {
-    const anchorKey = refs.promptElement.dataset.anchor as AnchorKey | undefined;
+	const updatePromptPosition = async (): Promise<void> => {
+		const anchorKey = refs.promptElement.dataset.anchor as
+			| AnchorKey
+			| undefined;
 
-    if (!anchorKey) {
-      // No anchor, use CSS default positioning
-      resetPromptToDefault();
-      return;
-    }
+		if (!anchorKey) {
+			// No anchor, use CSS default positioning
+			resetPromptToDefault();
+			return;
+		}
 
-    const anchorElement = getAnchorElement(anchorKey);
-    if (!anchorElement || refs.backdropElement.style.display === 'none') {
-      // Anchor not found, use CSS default positioning
-      resetPromptToDefault();
-      return;
-    }
+		const anchorElement = getAnchorElement(anchorKey);
+		if (!anchorElement || refs.backdropElement.style.display === "none") {
+			// Anchor not found, use CSS default positioning
+			resetPromptToDefault();
+			return;
+		}
 
-    try {
-      const { x, y, placement: finalPlacement, middlewareData } = await computePosition(
-        anchorElement,
-        refs.promptElement,
-        {
-          placement: 'top-end',
-          middleware: [
-            offset(12), // 12px gap from anchor
-            flip({
-              padding: 10,
-            }),
-            shift({
-              padding: 10,
-            }),
-            arrow({
-              element: refs.arrowElement,
-              padding: 8,
-            }),
-          ],
-        },
-      );
+		try {
+			const {
+				x,
+				y,
+				placement: finalPlacement,
+				middlewareData,
+			} = await computePosition(anchorElement, refs.promptElement, {
+				placement: "top-end",
+				middleware: [
+					offset(12), // 12px gap from anchor
+					flip({
+						padding: 10,
+					}),
+					shift({
+						padding: 10,
+					}),
+					arrow({
+						element: refs.arrowElement,
+						padding: 8,
+					}),
+				],
+			});
 
-      // Position the prompt
-      // Override CSS defaults with anchor positioning
-      refs.promptElement.style.position = 'fixed';
-      refs.promptElement.style.left = `${x}px`;
-      refs.promptElement.style.top = `${y}px`;
-      refs.promptElement.style.transform = 'none';
+			// Position the prompt
+			// Override CSS defaults with anchor positioning
+			refs.promptElement.style.position = "fixed";
+			refs.promptElement.style.left = `${x}px`;
+			refs.promptElement.style.top = `${y}px`;
+			refs.promptElement.style.transform = "none";
 
-      // Position the arrow
-      refs.arrowElement.style.display = '';
-      const { x: arrowX, y: arrowY } = middlewareData.arrow || {};
-      const staticSide = {
-        top: 'bottom',
-        right: 'left',
-        bottom: 'top',
-        left: 'right',
-      }[finalPlacement.split('-')[0]] as string;
+			// Position the arrow
+			refs.arrowElement.style.display = "";
+			const { x: arrowX, y: arrowY } = middlewareData.arrow || {};
+			const staticSide = {
+				top: "bottom",
+				right: "left",
+				bottom: "top",
+				left: "right",
+			}[finalPlacement.split("-")[0]] as string;
 
-      refs.arrowElement.style.position = 'absolute';
-      refs.arrowElement.style.left = arrowX !== undefined ? `${arrowX}px` : '';
-      refs.arrowElement.style.top = arrowY !== undefined ? `${arrowY}px` : '';
-      refs.arrowElement.style[staticSide as any] = '-6px';
-      refs.arrowElement.dataset.side = staticSide;
-    } catch (error) {
-      console.error('Failed to position prompt:', error);
-      resetPromptToDefault();
-    }
-  };
+			refs.arrowElement.style.position = "absolute";
+			refs.arrowElement.style.left = arrowX !== undefined ? `${arrowX}px` : "";
+			refs.arrowElement.style.top = arrowY !== undefined ? `${arrowY}px` : "";
+			refs.arrowElement.style[staticSide as any] = "-6px";
+			refs.arrowElement.dataset.side = staticSide;
+		} catch (error) {
+			console.error("Failed to position prompt:", error);
+			resetPromptToDefault();
+		}
+	};
 
-  const setupAnchorObserver = (anchorElement: HTMLElement): void => {
-    if (anchorResizeObserver) {
-      anchorResizeObserver.disconnect();
-    }
+	const setupAnchorObserver = (anchorElement: HTMLElement): void => {
+		if (anchorResizeObserver) {
+			anchorResizeObserver.disconnect();
+		}
 
-    anchorResizeObserver = new ResizeObserver(() => {
-      updatePromptPosition();
-    });
+		anchorResizeObserver = new ResizeObserver(() => {
+			updatePromptPosition();
+		});
 
-    anchorResizeObserver.observe(anchorElement);
+		anchorResizeObserver.observe(anchorElement);
 
-    // Also observe for DOM changes that might affect positioning
-    if (anchorMutationObserver) {
-      anchorMutationObserver.disconnect();
-    }
+		// Also observe for DOM changes that might affect positioning
+		if (anchorMutationObserver) {
+			anchorMutationObserver.disconnect();
+		}
 
-    anchorMutationObserver = new MutationObserver(() => {
-      updatePromptPosition();
-    });
+		anchorMutationObserver = new MutationObserver(() => {
+			updatePromptPosition();
+		});
 
-    anchorMutationObserver.observe(anchorElement, {
-      attributes: true,
-      attributeFilter: ['class', 'style'],
-      subtree: false,
-    });
-  };
+		anchorMutationObserver.observe(anchorElement, {
+			attributes: true,
+			attributeFilter: ["class", "style"],
+			subtree: false,
+		});
+	};
 
-  const handleWindowResize = () => {
-    if (windowResizeTimeoutId !== null) {
-      window.clearTimeout(windowResizeTimeoutId);
-    }
-    windowResizeTimeoutId = window.setTimeout(() => {
-      updatePromptPosition();
-      windowResizeTimeoutId = null;
-    }, 100);
-  };
+	const handleWindowResize = () => {
+		if (windowResizeTimeoutId !== null) {
+			window.clearTimeout(windowResizeTimeoutId);
+		}
+		windowResizeTimeoutId = window.setTimeout(() => {
+			updatePromptPosition();
+			windowResizeTimeoutId = null;
+		}, 100);
+	};
 
-  window.addEventListener('resize', handleWindowResize);
+	window.addEventListener("resize", handleWindowResize);
 
-  return {
-    update: (runtime: AppRuntimeState, inputMode: 'desktop' | 'mobile', showScenarioInfoButton: boolean) => {
-      // Compute the current prompt identity based on derived content, not runtime object references.
-      // This handles the case where onboarding creates a new runtime.scenarioSession object each frame
-      // even when the prompt content hasn't meaningfully changed.
-      const currentPromptIdentity = computePromptIdentity(runtime, inputMode, showScenarioInfoButton);
+	return {
+		update: (
+			runtime: AppRuntimeState,
+			inputMode: "desktop" | "mobile",
+			showScenarioInfoButton: boolean,
+		) => {
+			// Compute the current prompt identity based on derived content, not runtime object references.
+			// This handles the case where onboarding creates a new runtime.scenarioSession object each frame
+			// even when the prompt content hasn't meaningfully changed.
+			const currentPromptIdentity = computePromptIdentity(
+				runtime,
+				inputMode,
+				showScenarioInfoButton,
+			);
 
-      // Early exit if prompt identity hasn't changed.
-      // This prevents expensive DOM updates and Floating UI positioning calculations when
-      // the visible prompt content hasn't actually changed—which is common during onboarding
-      // when the runtime state object is recreated every frame despite stable content.
-      if (lastPromptIdentity !== null && identitiesEqual(lastPromptIdentity, currentPromptIdentity)) {
-        return;
-      }
+			// Early exit if prompt identity hasn't changed.
+			// This prevents expensive DOM updates and Floating UI positioning calculations when
+			// the visible prompt content hasn't actually changed—which is common during onboarding
+			// when the runtime state object is recreated every frame despite stable content.
+			if (
+				lastPromptIdentity !== null &&
+				identitiesEqual(lastPromptIdentity, currentPromptIdentity)
+			) {
+				return;
+			}
 
-      // Cache the current identity for next frame comparison
-      lastPromptIdentity = currentPromptIdentity;
+			// Cache the current identity for next frame comparison
+			lastPromptIdentity = currentPromptIdentity;
 
-      const activePrompt = getRuntimeActivePrompt(runtime, inputMode);
-      const replayPromptContent = getRuntimeScenarioReplayPromptContent(runtime);
+			const activePrompt = getRuntimeActivePrompt(runtime, inputMode);
+			const replayPromptContent =
+				getRuntimeScenarioReplayPromptContent(runtime);
 
-      // Show/hide backdrop
-      refs.backdropElement.style.display = activePrompt ? 'grid' : 'none';
+			// Show/hide backdrop
+			refs.backdropElement.style.display = activePrompt ? "grid" : "none";
 
-      // Set prompt mode
-      const promptMode = activePrompt?.mode === 'coach' ? 'coach' : 'modal';
-      refs.backdropElement.dataset.promptMode = promptMode;
+			// Set prompt mode
+			const promptMode = activePrompt?.mode === "coach" ? "coach" : "modal";
+			refs.backdropElement.dataset.promptMode = promptMode;
 
-      // Set anchor if present
-      const currentAnchorKey = activePrompt?.anchor as AnchorKey | undefined;
-      if (currentAnchorKey) {
-        refs.promptElement.dataset.anchor = currentAnchorKey;
-      } else {
-        delete refs.promptElement.dataset.anchor;
-      }
+			// Set anchor if present
+			const currentAnchorKey = activePrompt?.anchor as AnchorKey | undefined;
+			if (currentAnchorKey) {
+				refs.promptElement.dataset.anchor = currentAnchorKey;
+			} else {
+				delete refs.promptElement.dataset.anchor;
+			}
 
-      // Track if mode or anchor changed
-      const modeChanged = lastPromptMode !== promptMode;
-      const anchorChanged = lastAnchorKey !== currentAnchorKey;
-      lastPromptMode = promptMode;
-      lastAnchorKey = currentAnchorKey;
+			// Track if mode or anchor changed
+			const modeChanged = lastPromptMode !== promptMode;
+			const anchorChanged = lastAnchorKey !== currentAnchorKey;
+			lastPromptMode = promptMode;
+			lastAnchorKey = currentAnchorKey;
 
-      // Reset to default when mode or anchor changes
-      if (modeChanged || anchorChanged) {
-        resetPromptToDefault();
-        // Clean up observers
-        if (anchorResizeObserver) {
-          anchorResizeObserver.disconnect();
-          anchorResizeObserver = null;
-        }
-        if (anchorMutationObserver) {
-          anchorMutationObserver.disconnect();
-          anchorMutationObserver = null;
-        }
-      }
+			// Reset to default when mode or anchor changes
+			if (modeChanged || anchorChanged) {
+				resetPromptToDefault();
+				// Clean up observers
+				if (anchorResizeObserver) {
+					anchorResizeObserver.disconnect();
+					anchorResizeObserver = null;
+				}
+				if (anchorMutationObserver) {
+					anchorMutationObserver.disconnect();
+					anchorMutationObserver = null;
+				}
+			}
 
-      // Update anchor positioning for coach prompts with anchors
-      if (promptMode === 'coach' && currentAnchorKey) {
-        const anchorElement = getAnchorElement(currentAnchorKey);
-        if (anchorElement) {
-          setupAnchorObserver(anchorElement);
-          updatePromptPosition();
-        }
-      }
+			// Update anchor positioning for coach prompts with anchors
+			if (promptMode === "coach" && currentAnchorKey) {
+				const anchorElement = getAnchorElement(currentAnchorKey);
+				if (anchorElement) {
+					setupAnchorObserver(anchorElement);
+					updatePromptPosition();
+				}
+			}
 
+			// Update content
+			if (refs.titleElement) {
+				refs.titleElement.textContent = activePrompt?.title ?? "";
+			}
+			if (refs.descriptionElement) {
+				refs.descriptionElement.textContent = activePrompt?.description ?? "";
+			}
 
-      // Update content
-      if (refs.titleElement) {
-        refs.titleElement.textContent = activePrompt?.title ?? '';
-      }
-      if (refs.descriptionElement) {
-        refs.descriptionElement.textContent = activePrompt?.description ?? '';
-      }
+			// Update buttons
+			if (refs.confirmButton) {
+				refs.confirmButton.style.display = activePrompt?.confirmButton
+					? "inline-flex"
+					: "none";
+				refs.confirmButton.textContent =
+					activePrompt?.confirmButton?.label ?? "";
+				refs.confirmButton.dataset.promptAction =
+					activePrompt?.confirmButton?.action ?? "";
+			}
+			if (refs.secondaryButton) {
+				refs.secondaryButton.style.display = activePrompt?.secondaryButton
+					? "inline-flex"
+					: "none";
+				refs.secondaryButton.textContent =
+					activePrompt?.secondaryButton?.label ?? "";
+				refs.secondaryButton.dataset.promptAction =
+					activePrompt?.secondaryButton?.action ?? "";
+			}
 
-      // Update buttons
-      if (refs.confirmButton) {
-        refs.confirmButton.style.display = activePrompt?.confirmButton ? 'inline-flex' : 'none';
-        refs.confirmButton.textContent = activePrompt?.confirmButton?.label ?? '';
-        refs.confirmButton.dataset.promptAction = activePrompt?.confirmButton?.action ?? '';
-      }
-      if (refs.secondaryButton) {
-        refs.secondaryButton.style.display = activePrompt?.secondaryButton ? 'inline-flex' : 'none';
-        refs.secondaryButton.textContent = activePrompt?.secondaryButton?.label ?? '';
-        refs.secondaryButton.dataset.promptAction = activePrompt?.secondaryButton?.action ?? '';
-      }
+			// Update replay button
+			refs.replayButton.style.display =
+				showScenarioInfoButton && !activePrompt && replayPromptContent
+					? "inline-flex"
+					: "none";
+			if (refs.replayButtonLabel) {
+				refs.replayButtonLabel.textContent = replayPromptContent?.title ?? "";
+			}
+		},
 
-      // Update replay button
-      refs.replayButton.style.display =
-        showScenarioInfoButton && !activePrompt && replayPromptContent ? 'inline-flex' : 'none';
-      if (refs.replayButtonLabel) {
-        refs.replayButtonLabel.textContent = replayPromptContent?.title ?? '';
-      }
-    },
-
-    cleanup: () => {
-      if (anchorResizeObserver) {
-        anchorResizeObserver.disconnect();
-      }
-      if (anchorMutationObserver) {
-        anchorMutationObserver.disconnect();
-      }
-      if (windowResizeTimeoutId !== null) {
-        window.clearTimeout(windowResizeTimeoutId);
-      }
-      window.removeEventListener('resize', handleWindowResize);
-    },
-  };
+		cleanup: () => {
+			if (anchorResizeObserver) {
+				anchorResizeObserver.disconnect();
+			}
+			if (anchorMutationObserver) {
+				anchorMutationObserver.disconnect();
+			}
+			if (windowResizeTimeoutId !== null) {
+				window.clearTimeout(windowResizeTimeoutId);
+			}
+			window.removeEventListener("resize", handleWindowResize);
+		},
+	};
 };

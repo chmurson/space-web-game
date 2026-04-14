@@ -6,13 +6,13 @@ import { gameConfig } from "./config/gameConfig";
 const app = document.querySelector<HTMLDivElement>("#app");
 
 if (!app) {
-  throw new Error("Missing #app element");
+	throw new Error("Missing #app element");
 }
 
 const tabTitleSuffix = gameConfig.tabTitleSuffix?.trim();
 
 if (tabTitleSuffix) {
-  document.title = `${document.title} ${tabTitleSuffix}`;
+	document.title = `${document.title} ${tabTitleSuffix}`;
 }
 
 createGameApp(app);
