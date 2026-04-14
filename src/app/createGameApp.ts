@@ -244,6 +244,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     }),
     timeWarps,
     topMenu,
+    touchControls: Boolean(touchControls),
     trajectoryPresentation,
   });
 

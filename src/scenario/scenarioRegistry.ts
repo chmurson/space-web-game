@@ -8,6 +8,25 @@ import { createEarthMoonScenario, createMoonCaptureDebugScenario } from "../simu
 
 export type ScenarioPromptAction = "exit-to-menu" | "start-free-roam";
 
+export type ScenarioPromptMode = "blocking" | "coach";
+
+export type ScenarioPromptAnchor = "time-warp-pill" | "thrust-pill" | "trajectory";
+
+export type ScenarioPromptButton = {
+  action?: ScenarioPromptAction;
+  label: string;
+};
+
+export type RuntimePromptContent = {
+  anchor?: ScenarioPromptAnchor;
+  confirmButton?: ScenarioPromptButton;
+  description: string;
+  mode: ScenarioPromptMode;
+  secondaryButton?: ScenarioPromptButton;
+  title: string;
+};
+
+/** @deprecated Use RuntimePromptContent instead */
 export type ScenarioPromptContent = {
   confirmAction?: ScenarioPromptAction;
   confirmLabel: string;
@@ -21,8 +40,10 @@ export type RuntimeScenarioDefinition<TState extends ScenarioSessionValue = Scen
   acknowledgePrompt?(runtime: AppRuntimeState): boolean;
   advance?(runtime: AppRuntimeState): void;
   createScenario(): RuntimeScenario;
+  getActivePrompt?(runtime: AppRuntimeState, inputMode: "desktop" | "mobile"): RuntimePromptContent | null;
   getDirectives?(state: TState, limits: ScenarioDirectiveLimits): RuntimeScenarioDirectives;
   getHudContent?(state: TState): { description: string; title: string };
+  /** @deprecated Use getActivePrompt instead */
   getPromptContent?(state: TState): ScenarioPromptContent | null;
   getReplayPromptContent?(state: TState): ScenarioPromptContent | null;
   id: string;
@@ -50,6 +71,38 @@ export const getRuntimeScenarioDefinition = (scenarioId: string): RuntimeScenari
 export const advanceRuntimeScenario = (runtime: AppRuntimeState) => {
   const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
   definition?.advance?.(runtime);
+};
+
+export const getRuntimeActivePrompt = (
+  runtime: AppRuntimeState,
+  inputMode: "desktop" | "mobile",
+): RuntimePromptContent | null => {
+  const definition = getRuntimeScenarioDefinition(runtime.scenarioSession.scenarioId);
+
+  if (definition?.getActivePrompt) {
+    if (definition.isState && !definition.isState(runtime.scenarioSession.state)) {
+      return null;
+    }
+    return definition.getActivePrompt(runtime, inputMode);
+  }
+
+  // Fallback to legacy getPromptContent (blocking mode)
+  const legacyContent = getRuntimeScenarioPromptContent(runtime);
+  if (legacyContent) {
+    return {
+      mode: "blocking",
+      title: legacyContent.title,
+      description: legacyContent.description,
+      confirmButton: legacyContent.confirmLabel
+        ? { label: legacyContent.confirmLabel, action: legacyContent.confirmAction }
+        : undefined,
+      secondaryButton: legacyContent.secondaryLabel
+        ? { label: legacyContent.secondaryLabel, action: legacyContent.secondaryAction }
+        : undefined,
+    };
+  }
+
+  return null;
 };
 
 export const getRuntimeScenarioPromptContent = (runtime: AppRuntimeState): ScenarioPromptContent | null => {

@@ -7,7 +7,8 @@ import { EARTH_MOON_DISTANCE, EARTH_RADIUS, G } from "../simulation/constants";
 import { add, length, normalize, scale, sub, vec } from "../simulation/vector";
 import { createRuntimeScenarioCheckpoint, createRuntimeScenarioSession, type RuntimeScenarioCheckpoint } from "./scenarioSession";
 import { createDefaultScenarioDirectives, type RuntimeScenarioDirectives, type ScenarioDirectiveLimits } from "./scenarioDirectiveTypes";
-import type { RuntimeScenarioDefinition, ScenarioPromptContent } from "./scenarioRegistry";
+import type { RuntimePromptContent, RuntimeScenarioDefinition, ScenarioPromptContent } from "./scenarioRegistry";
+import { getTutorialOnboardingPromptContent } from "./tutorialOnboarding/tutorialOnboardingFlow";
 import {
   acknowledgeTutorialOnboardingPrompt,
   advanceTutorialOnboarding,
@@ -155,6 +156,42 @@ const getTutorialHudContent = (state: TutorialScenarioState) => {
 
 const getTutorialPromptContent = (state: TutorialScenarioState): ScenarioPromptContent | null => {
   return getTutorialPromptContentForPrompt(state.pendingPrompt);
+};
+
+const getActivePrompt = (
+  runtime: AppRuntimeState,
+  inputMode: "desktop" | "mobile",
+): RuntimePromptContent | null => {
+  const state = runtime.scenarioSession.state as TutorialScenarioState;
+
+  // Check onboarding (non-blocking coach tips) first
+  if (state.onboarding?.gateActive && state.onboarding.activeStepId) {
+    const onboardingContent = getTutorialOnboardingPromptContent(state.onboarding.activeStepId, inputMode);
+    return {
+      mode: "coach",
+      title: onboardingContent.title,
+      description: onboardingContent.description,
+      confirmButton: onboardingContent.confirmLabel ? { label: onboardingContent.confirmLabel } : undefined,
+    };
+  }
+
+  // Check phase prompts (blocking)
+  const phasePrompt = getTutorialPromptContentForPrompt(state.pendingPrompt);
+  if (phasePrompt) {
+    return {
+      mode: "blocking",
+      title: phasePrompt.title,
+      description: phasePrompt.description,
+      confirmButton: phasePrompt.confirmLabel
+        ? { label: phasePrompt.confirmLabel, action: phasePrompt.confirmAction }
+        : undefined,
+      secondaryButton: phasePrompt.secondaryLabel
+        ? { label: phasePrompt.secondaryLabel, action: phasePrompt.secondaryAction }
+        : undefined,
+    };
+  }
+
+  return null;
 };
 
 const getTutorialPromptContentForPrompt = (prompt: TutorialScenarioPrompt): ScenarioPromptContent | null => {
@@ -496,6 +533,7 @@ export const registerTutorialScenario = (): RuntimeScenarioDefinition<TutorialSc
   advance: advanceTutorialScenario,
   id: "tutorial",
   createScenario: createTutorialScenario,
+  getActivePrompt,
   getDirectives: getTutorialScenarioDirectives,
   getHudContent: getTutorialHudContent,
   getPromptContent: getTutorialPromptContent,

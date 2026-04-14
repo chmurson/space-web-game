@@ -6,11 +6,9 @@ import { getDebugPanelLines, getGuidanceText } from "../ui/hudText";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { GameQueries } from "../runtime/gameQueries";
-import { getRuntimeScenarioDefinition, getRuntimeScenarioPromptContent, getRuntimeScenarioReplayPromptContent } from "../scenario/scenarioRegistry";
+import { getRuntimeScenarioDefinition, getRuntimeActivePrompt, getRuntimeScenarioReplayPromptContent } from "../scenario/scenarioRegistry";
 import type { TrajectoryPresentation } from "./trajectoryPresentation";
 import { RuntimeScenarioSession } from "../scenario/scenarioSession";
-import { TutorialScenarioState } from "../scenario/tutorialScenario";
-import { getTutorialOnboardingDisplayPrompt } from "../scenario/tutorialOnboarding/tutorialOnboardingProgress";
 
 export const createHudPresentation = (options: {
   defaultScenarioDescription: string;
@@ -33,6 +31,7 @@ export const createHudPresentation = (options: {
   let warpIncreaseStreak = 0;
   let warpFeedbackTimeoutId: number | null = null;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const inputMode = options.touchControls ? "mobile" : "desktop";
 
   const triggerWarpFeedback = (variant: "v2" | "v4", strength = 1.18) => {
     const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
@@ -103,15 +102,8 @@ export const createHudPresentation = (options: {
         scenarioDefinition?.getHudContent && (!scenarioDefinition.isState || scenarioDefinition.isState(options.runtime.scenarioSession.state))
           ? scenarioDefinition.getHudContent(options.runtime.scenarioSession.state)
           : null;
-      const tutorialScenarioState =
-        options.runtime.scenarioSession.scenarioId === "tutorial" && scenarioDefinition?.isState?.(options.runtime.scenarioSession.state)
-          ? (options.runtime.scenarioSession.state as TutorialScenarioState)
-          : null;
-      const tutorialPromptContent = tutorialScenarioState?.onboarding
-        ? getTutorialOnboardingDisplayPrompt(tutorialScenarioState.onboarding, options.touchControls ? "mobile" : "desktop")
-        : null;
-      const runtimePromptContent = getRuntimeScenarioPromptContent(options.runtime);
-      const scenarioPromptContent = tutorialPromptContent ?? runtimePromptContent;
+
+      const activePrompt = getRuntimeActivePrompt(options.runtime, inputMode);
       const replayPromptContent = getRuntimeScenarioReplayPromptContent(options.runtime);
       const hiddenUIElements = options.runtime.scenarioDirectives.hiddenUIElements;
       const showScenarioInfoButton = !hiddenUIElements.has("scenarioInfoButton");
@@ -125,27 +117,31 @@ export const createHudPresentation = (options: {
       if (options.overlayUi.hudDescription) {
         options.overlayUi.hudDescription.textContent = scenarioHudContent?.description ?? options.defaultScenarioDescription;
       }
-      options.overlayUi.scenarioPrompt.style.display = scenarioPromptContent ? "grid" : "none";
-      options.overlayUi.scenarioPrompt.dataset.promptMode = tutorialPromptContent ? "coach" : "modal";
+      options.overlayUi.scenarioPrompt.style.display = activePrompt ? "grid" : "none";
+      options.overlayUi.scenarioPrompt.dataset.promptMode = activePrompt?.mode === "coach" ? "coach" : "modal";
+      if (activePrompt?.anchor) {
+        options.overlayUi.scenarioPrompt.dataset.anchor = activePrompt.anchor;
+      } else {
+        delete options.overlayUi.scenarioPrompt.dataset.anchor;
+      }
       if (options.overlayUi.scenarioPromptTitle) {
-        options.overlayUi.scenarioPromptTitle.textContent = scenarioPromptContent?.title ?? "";
+        options.overlayUi.scenarioPromptTitle.textContent = activePrompt?.title ?? "";
       }
       if (options.overlayUi.scenarioPromptDescription) {
-        options.overlayUi.scenarioPromptDescription.textContent = scenarioPromptContent?.description ?? "";
+        options.overlayUi.scenarioPromptDescription.textContent = activePrompt?.description ?? "";
       }
       if (options.overlayUi.scenarioPromptConfirmButton) {
-        options.overlayUi.scenarioPromptConfirmButton.style.display = scenarioPromptContent?.confirmLabel ? "inline-flex" : "none";
-        options.overlayUi.scenarioPromptConfirmButton.textContent = scenarioPromptContent?.confirmLabel ?? "";
-        options.overlayUi.scenarioPromptConfirmButton.dataset.promptAction = runtimePromptContent?.confirmAction ?? "";
+        options.overlayUi.scenarioPromptConfirmButton.style.display = activePrompt?.confirmButton ? "inline-flex" : "none";
+        options.overlayUi.scenarioPromptConfirmButton.textContent = activePrompt?.confirmButton?.label ?? "";
+        options.overlayUi.scenarioPromptConfirmButton.dataset.promptAction = activePrompt?.confirmButton?.action ?? "";
       }
       if (options.overlayUi.scenarioPromptSecondaryButton) {
-        const secondaryButton = options.overlayUi.scenarioPromptSecondaryButton;
-        secondaryButton.style.display = tutorialPromptContent ? "none" : runtimePromptContent?.secondaryLabel ? "inline-flex" : "none";
-        secondaryButton.textContent = runtimePromptContent?.secondaryLabel ?? "";
-        secondaryButton.dataset.promptAction = runtimePromptContent?.secondaryAction ?? "";
+        options.overlayUi.scenarioPromptSecondaryButton.style.display = activePrompt?.secondaryButton ? "inline-flex" : "none";
+        options.overlayUi.scenarioPromptSecondaryButton.textContent = activePrompt?.secondaryButton?.label ?? "";
+        options.overlayUi.scenarioPromptSecondaryButton.dataset.promptAction = activePrompt?.secondaryButton?.action ?? "";
       }
       options.overlayUi.scenarioPromptReplayButton.style.display =
-        showScenarioInfoButton && !scenarioPromptContent && replayPromptContent ? "inline-flex" : "none";
+        showScenarioInfoButton && !activePrompt && replayPromptContent ? "inline-flex" : "none";
       if (options.overlayUi.scenarioPromptReplayButtonLabel) {
         options.overlayUi.scenarioPromptReplayButtonLabel.textContent = replayPromptContent?.title ?? "";
       }
@@ -256,7 +252,7 @@ export const createHudPresentation = (options: {
             targetName: target.name,
           }).join("\n"),
         );
-        const { scenarioId, state } = options.runtime.scenarioSession as RuntimeScenarioSession<TutorialScenarioState>;
+        const { scenarioId, state } = options.runtime.scenarioSession as RuntimeScenarioSession;
         options.overlayUi.debugPanel.setJson({
           assistTarget: target.id,
           captureMetrics: {

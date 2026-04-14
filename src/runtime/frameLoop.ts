@@ -10,7 +10,7 @@ import type { GameSceneRefs } from "../scene/createGameScene";
 import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes";
 import {
   advanceRuntimeScenario,
-  getRuntimeScenarioPromptContent,
+  getRuntimeActivePrompt,
 } from "../scenario/scenarioRegistry";
 import type { PhysicsEngine } from "../simulation/types";
 import { type Ripple, updateRipples } from "../ui/overlayUpdates";
@@ -40,6 +40,7 @@ export const createFrameLoop = (options: {
   bodyPresentation: BodyPresentation;
   spacecraftPresentation: SpacecraftPresentation;
   timeWarps: number[];
+  touchControls?: boolean;
   trajectoryPresentation: TrajectoryPresentation;
 }) => {
   let lastTime = performance.now();
@@ -56,7 +57,8 @@ export const createFrameLoop = (options: {
     lastTime = time;
     smoothedFps = THREE.MathUtils.lerp(smoothedFps, 1 / Math.max(realDt, 1 / 240), 0.12);
     syncRuntimeScenarioDirectives(options.runtime, options.scenarioDirectiveLimits);
-    const hasBlockingPrompt = Boolean(getRuntimeScenarioPromptContent(options.runtime));
+    const activePrompt = getRuntimeActivePrompt(options.runtime, options.touchControls ? "mobile" : "desktop");
+    const hasBlockingPrompt = activePrompt?.mode === "blocking";
     const isThrusting = options.runtime.state.controls.main > 0 && options.runtime.state.spacecraft.fuel > 0;
 
     if (!hasBlockingPrompt) {
