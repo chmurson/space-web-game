@@ -38,10 +38,12 @@ const positionPromptNearAnchor = (
   // Preferred position: below and to the right of anchor
   let top = anchorRect.bottom + padding + arrowSize;
   let left = anchorRect.right + padding;
+  let arrowDirection: "left" | "right" = "left";
 
   // If it goes off-screen to the right, move to the left of anchor
   if (left + promptRect.width > window.innerWidth - padding) {
     left = anchorRect.left - promptRect.width - padding;
+    arrowDirection = "right";
   }
 
   // If it goes off-screen to the bottom, move above anchor
@@ -54,22 +56,22 @@ const positionPromptNearAnchor = (
   top = Math.max(padding, Math.min(top, window.innerHeight - promptRect.height - padding));
 
   // Store the arrow position relative to the prompt for CSS to use
-  const arrowLeft = anchorRect.left + anchorRect.width / 2 - left;
-  const arrowTop = anchorRect.top + anchorRect.height / 2 - top;
+  const anchorCenterY = anchorRect.top + anchorRect.height / 2;
+  const arrowY = Math.max(12, Math.min(anchorCenterY - top, promptRect.height - 12));
 
   promptElement.style.position = "fixed";
   promptElement.style.left = `${left}px`;
   promptElement.style.top = `${top}px`;
-  promptElement.style.setProperty("--arrow-x", `${arrowLeft}px`);
-  promptElement.style.setProperty("--arrow-y", `${arrowTop}px`);
+  promptElement.style.setProperty("--arrow-y", `${arrowY}px`);
+  promptElement.dataset.arrowDirection = arrowDirection;
 };
 
 const resetPromptPosition = (promptElement: HTMLElement): void => {
   promptElement.style.position = "";
   promptElement.style.left = "";
   promptElement.style.top = "";
-  promptElement.style.removeProperty("--arrow-x");
   promptElement.style.removeProperty("--arrow-y");
+  delete promptElement.dataset.arrowDirection;
 };
 
 export const createHudPresentation = (options: {
