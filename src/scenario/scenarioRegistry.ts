@@ -10,7 +10,7 @@ export type ScenarioPromptAction = "exit-to-menu" | "start-free-roam";
 
 export type ScenarioPromptMode = "blocking" | "coach";
 
-export type ScenarioPromptAnchor = "time-warp-pill" | "thrust-pill" | "trajectory";
+export type ScenarioPromptAnchor = "time-warp-pill" | "speed-pill" | "trajectory";
 
 export type ScenarioPromptButton = {
   action?: ScenarioPromptAction;

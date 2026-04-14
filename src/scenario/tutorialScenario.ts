@@ -176,7 +176,7 @@ const getActivePrompt = (
 
     // Add anchor for intro-keep-thrusting
     if (state.onboarding.activeStepId === "intro-keep-thrusting") {
-      prompt.anchor = "thrust-pill";
+      prompt.anchor = "speed-pill";
     }
 
     return prompt;

@@ -7,7 +7,6 @@ import {
   shift,
   offset,
   arrow,
-  type Placement,
 } from '@floating-ui/dom';
 
 export type ScenarioPromptUiRefs = {
@@ -22,12 +21,12 @@ export type ScenarioPromptUiRefs = {
   replayButtonLabel: HTMLSpanElement | null;
 };
 
-type AnchorKey = 'thrust-pill' | 'time-warp-pill' | 'trajectory';
+type AnchorKey = 'speed-pill' | 'time-warp-pill' | 'trajectory';
 
 const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
-  if (anchor === 'thrust-pill') {
+  if (anchor === 'speed-pill') {
     // Find the thrust pill element
-    const statThrust = document.querySelector<HTMLElement>('[data-stat="thrust"]');
+    const statThrust = document.querySelector<HTMLElement>('[data-stat="speed"]');
     return statThrust?.closest<HTMLElement>('.telemetry-pill') ?? null;
   }
   if (anchor === 'time-warp-pill') {
@@ -112,30 +111,16 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
 
     const anchorElement = getAnchorElement(anchorKey);
     if (!anchorElement || refs.backdropElement.style.display === 'none') {
+      debugger;
       return;
     }
 
     try {
-      // Determine placement based on viewport
-      let placement: Placement = 'bottom-start';
-      const anchorRect = anchorElement.getBoundingClientRect();
-
-      // Prefer right side if there's space, otherwise left
-      if (anchorRect.right + 400 < window.innerWidth) {
-        placement = 'right-start';
-      } else if (anchorRect.left > 400) {
-        placement = 'left-start';
-      } else if (anchorRect.top > 300) {
-        placement = 'top-start';
-      } else {
-        placement = 'bottom-start';
-      }
-
       const { x, y, placement: finalPlacement, middlewareData } = await computePosition(
         anchorElement,
         refs.promptElement,
         {
-          placement,
+          placement: 'top-end',
           middleware: [
             offset(12), // 12px gap from anchor
             flip({

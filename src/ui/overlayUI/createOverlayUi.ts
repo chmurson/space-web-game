@@ -120,6 +120,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   scenarioPrompt.style.display = "none";
   scenarioPrompt.innerHTML = `
     <div class="scenario-prompt">
+      <div class="scenario-prompt-arrow"></div>
       <h2></h2>
       <p></p>
       <div class="scenario-prompt-actions">
