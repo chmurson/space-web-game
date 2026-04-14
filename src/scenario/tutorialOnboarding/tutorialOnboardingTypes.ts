@@ -1,5 +1,6 @@
 export type TutorialOnboardingStepId =
   | "intro-thrust"
+  | "intro-keep-thrusting"
   | "intro-turn"
   | "intro-point-and-turn"
   | "intro-timewarp"

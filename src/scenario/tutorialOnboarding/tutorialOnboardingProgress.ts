@@ -148,6 +148,14 @@ export const advanceTutorialOnboarding = (
       : { ...onboarding, progress: nextProgress };
   }
 
+  if (onboarding.activeStepId === "intro-keep-thrusting") {
+    nextProgress.accumulatedMainThrustMs =
+      runtime.state.controls.main > 0 ? onboarding.progress.accumulatedMainThrustMs + deltaMs : 0;
+    return nextProgress.accumulatedMainThrustMs >= requiredIntroThrustMs
+      ? advanceToNextStep(runtime, { ...onboarding, progress: nextProgress }, nowMs, timeWarpMultiplier)
+      : { ...onboarding, progress: nextProgress };
+  }
+
   if (onboarding.activeStepId === "intro-turn") {
     nextProgress.accumulatedHeadingChangeRadians =
       onboarding.progress.accumulatedHeadingChangeRadians +

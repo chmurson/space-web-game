@@ -167,12 +167,19 @@ const getActivePrompt = (
   // Check onboarding (non-blocking coach tips) first
   if (state.onboarding?.gateActive && state.onboarding.activeStepId) {
     const onboardingContent = getTutorialOnboardingPromptContent(state.onboarding.activeStepId, inputMode);
-    return {
+    const prompt: RuntimePromptContent = {
       mode: "coach",
       title: onboardingContent.title,
       description: onboardingContent.description,
       confirmButton: onboardingContent.confirmLabel ? { label: onboardingContent.confirmLabel } : undefined,
     };
+
+    // Add anchor for intro-keep-thrusting
+    if (state.onboarding.activeStepId === "intro-keep-thrusting") {
+      prompt.anchor = "thrust-pill";
+    }
+
+    return prompt;
   }
 
   // Check phase prompts (blocking)

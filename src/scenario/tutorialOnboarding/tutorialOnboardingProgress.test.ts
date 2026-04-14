@@ -64,14 +64,14 @@ const createRuntime = (): AppRuntimeState => ({
 });
 
 describe("tutorialOnboardingProgress", () => {
-  it("advances from thrust to turn after sustained main thrust", () => {
+  it("advances from thrust to keep-thrusting after sustained main thrust", () => {
     const runtime = createRuntime();
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1);
 
     runtime.state.controls.main = 1;
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_050, 1);
 
-    expect(onboarding.activeStepId).toBe("intro-turn");
+    expect(onboarding.activeStepId).toBe("intro-keep-thrusting");
     expect(onboarding.completedStepIds).toEqual(["intro-thrust"]);
   });
 
@@ -81,7 +81,7 @@ describe("tutorialOnboardingProgress", () => {
     onboarding = {
       ...onboarding,
       activeStepId: "intro-turn",
-      completedStepIds: ["intro-thrust"],
+      completedStepIds: ["intro-thrust", "intro-keep-thrusting"],
     };
 
     runtime.state.spacecraft.heading = Math.PI / 4;
@@ -107,7 +107,7 @@ describe("tutorialOnboardingProgress", () => {
     expect(onboarding.activeStepId).toBe("intro-thrust");
 
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 4_500, 1);
-    expect(onboarding.activeStepId).toBe("intro-turn");
+    expect(onboarding.activeStepId).toBe("intro-keep-thrusting");
   });
 
   it("uses direct heading selection, time warp, and high-warp thrust to reach trajectory explanation", () => {
@@ -117,7 +117,7 @@ describe("tutorialOnboardingProgress", () => {
     onboarding = {
       ...onboarding,
       activeStepId: "intro-point-and-turn",
-      completedStepIds: ["intro-thrust", "intro-turn"],
+      completedStepIds: ["intro-thrust", "intro-keep-thrusting", "intro-turn"],
     };
     runtime.targetHeadingSelectionEpoch = 1;
     runtime.targetHeading = Math.PI / 2;
@@ -137,7 +137,7 @@ describe("tutorialOnboardingProgress", () => {
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_250, 100);
 
     expect(onboarding.activeStepId).toBe("intro-trajectory");
-    expect(onboarding.completedStepIds).toEqual(["intro-thrust", "intro-turn", "intro-point-and-turn", "intro-timewarp", "intro-timewarp-thrust"]);
+    expect(onboarding.completedStepIds).toEqual(["intro-thrust", "intro-keep-thrusting", "intro-turn", "intro-point-and-turn", "intro-timewarp", "intro-timewarp-thrust"]);
   });
 
   it("requires acknowledgement for the trajectory and completion explanation steps", () => {
@@ -146,7 +146,7 @@ describe("tutorialOnboardingProgress", () => {
     onboarding = {
       ...onboarding,
       activeStepId: "intro-trajectory",
-      completedStepIds: ["intro-thrust", "intro-turn", "intro-point-and-turn", "intro-timewarp", "intro-timewarp-thrust"],
+      completedStepIds: ["intro-thrust", "intro-keep-thrusting", "intro-turn", "intro-point-and-turn", "intro-timewarp", "intro-timewarp-thrust"],
     };
 
     const acknowledgedTrajectory = acknowledgeTutorialOnboardingPrompt(runtime, onboarding, 1_050, 100);

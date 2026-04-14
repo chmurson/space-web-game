@@ -9,6 +9,7 @@ import type {
 const emptyFocusTargets: TutorialOnboardingFocusTarget[] = [];
 export const tutorialOnboardingStepOrder: TutorialOnboardingStepId[] = [
   "intro-thrust",
+  "intro-keep-thrusting",
   "intro-turn",
   "intro-point-and-turn",
   "intro-timewarp",
@@ -22,6 +23,14 @@ const getDesktopPromptContent = (stepId: TutorialOnboardingStepId): TutorialOnbo
     return {
       title: "Use Thrust",
       description: "Hold W or Up Arrow for about 2 seconds to fire the main engine and start changing your path.",
+      focusTargets: emptyFocusTargets,
+    };
+  }
+
+  if (stepId === "intro-keep-thrusting") {
+    return {
+      title: "Keep Thrusting",
+      description: "That's great. Here you can see if your thrust is active and your current speed. Keep thrusting for 2 seconds.",
       focusTargets: emptyFocusTargets,
     };
   }
@@ -82,6 +91,14 @@ const getMobilePromptContent = (stepId: TutorialOnboardingStepId): TutorialOnboa
       title: "Use Thrust",
       description: "Press and hold in the lower control area for about 2 seconds to fire the main engine and start changing your path.",
       focusTargets: ["touch-controls"],
+    };
+  }
+
+  if (stepId === "intro-keep-thrusting") {
+    return {
+      title: "Keep Thrusting",
+      description: "That's great. Here you can see if your thrust is active and your current speed. Keep thrusting for 2 seconds.",
+      focusTargets: emptyFocusTargets,
     };
   }
 
@@ -146,7 +163,7 @@ const emptyHiddenUIElements = new Set() as RuntimeScenarioDirectives['hiddenUIEl
 export const getHiddenOnboardingUIElements = (state?: TutorialOnboardingState): RuntimeScenarioDirectives['hiddenUIElements']  => {
   if (!state) return emptyHiddenUIElements;
 
-  if (state.activeStepId === "intro-thrust" || state.activeStepId === "intro-turn" || state.activeStepId === "intro-point-and-turn") {
+  if (state.activeStepId === "intro-thrust" || state.activeStepId === "intro-keep-thrusting" || state.activeStepId === "intro-turn" || state.activeStepId === "intro-point-and-turn") {
     return new Set(["scenarioInfoButton", "timeWarpPill", "trajectory"]);
   }
 
