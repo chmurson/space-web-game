@@ -6,73 +6,10 @@ import { getDebugPanelLines, getGuidanceText } from "../ui/hudText";
 import type { RendererProfiler } from "../render/rendererProfiler";
 import type { AppRuntimeState } from "../runtime/appRuntimeState";
 import type { GameQueries } from "../runtime/gameQueries";
-import { getRuntimeScenarioDefinition, getRuntimeActivePrompt, getRuntimeScenarioReplayPromptContent } from "../scenario/scenarioRegistry";
+import { getRuntimeScenarioDefinition } from "../scenario/scenarioRegistry";
 import type { TrajectoryPresentation } from "./trajectoryPresentation";
 import { RuntimeScenarioSession } from "../scenario/scenarioSession";
-
-type AnchorKey = "thrust-pill" | "time-warp-pill" | "trajectory";
-
-const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
-  if (anchor === "thrust-pill") {
-    // Find the thrust pill element
-    const statThrust = document.querySelector<HTMLElement>('[data-stat="thrust"]');
-    return statThrust?.closest<HTMLElement>(".telemetry-pill") ?? null;
-  }
-  if (anchor === "time-warp-pill") {
-    const statTime = document.querySelector<HTMLElement>('[data-stat="time"]');
-    return statTime?.closest<HTMLElement>(".telemetry-pill") ?? null;
-  }
-  return null;
-};
-
-const positionPromptNearAnchor = (
-  promptElement: HTMLElement,
-  anchorElement: HTMLElement,
-): void => {
-  const anchorRect = anchorElement.getBoundingClientRect();
-  const promptRect = promptElement.getBoundingClientRect();
-
-  const padding = 12;
-  const arrowSize = 8;
-
-  // Preferred position: below and to the right of anchor
-  let top = anchorRect.bottom + padding + arrowSize;
-  let left = anchorRect.right + padding;
-  let arrowDirection: "left" | "right" = "left";
-
-  // If it goes off-screen to the right, move to the left of anchor
-  if (left + promptRect.width > window.innerWidth - padding) {
-    left = anchorRect.left - promptRect.width - padding;
-    arrowDirection = "right";
-  }
-
-  // If it goes off-screen to the bottom, move above anchor
-  if (top + promptRect.height > window.innerHeight - padding) {
-    top = anchorRect.top - promptRect.height - padding - arrowSize;
-  }
-
-  // Clamp to viewport bounds
-  left = Math.max(padding, Math.min(left, window.innerWidth - promptRect.width - padding));
-  top = Math.max(padding, Math.min(top, window.innerHeight - promptRect.height - padding));
-
-  // Store the arrow position relative to the prompt for CSS to use
-  const anchorCenterY = anchorRect.top + anchorRect.height / 2;
-  const arrowY = Math.max(12, Math.min(anchorCenterY - top, promptRect.height - 12));
-
-  promptElement.style.position = "fixed";
-  promptElement.style.left = `${left}px`;
-  promptElement.style.top = `${top}px`;
-  promptElement.style.setProperty("--arrow-y", `${arrowY}px`);
-  promptElement.dataset.arrowDirection = arrowDirection;
-};
-
-const resetPromptPosition = (promptElement: HTMLElement): void => {
-  promptElement.style.position = "";
-  promptElement.style.left = "";
-  promptElement.style.top = "";
-  promptElement.style.removeProperty("--arrow-y");
-  delete promptElement.dataset.arrowDirection;
-};
+import { createScenarioPromptUpdater, type ScenarioPromptUiRefs } from "../ui/scenario-prompts/ScenarioPromptUI";
 
 export const createHudPresentation = (options: {
   defaultScenarioDescription: string;
@@ -94,46 +31,21 @@ export const createHudPresentation = (options: {
   let lastWarpIncreaseAt = 0;
   let warpIncreaseStreak = 0;
   let warpFeedbackTimeoutId: number | null = null;
-  let anchorResizeObserver: ResizeObserver | null = null;
-  let windowResizeTimeoutId: number | null = null;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const inputMode = options.touchControls ? "mobile" : "desktop";
 
-  const setupAnchorObserver = (anchorElement: HTMLElement): void => {
-    if (anchorResizeObserver) {
-      anchorResizeObserver.disconnect();
-    }
-
-    anchorResizeObserver = new ResizeObserver(() => {
-      const anchorKey = options.overlayUi.scenarioPrompt.dataset.anchor as AnchorKey | undefined;
-      if (anchorKey) {
-        const anchor = getAnchorElement(anchorKey);
-        if (anchor) {
-          positionPromptNearAnchor(options.overlayUi.scenarioPrompt, anchor);
-        }
-      }
-    });
-
-    anchorResizeObserver.observe(anchorElement);
+  // Create scenario prompt updater using existing UI elements from overlayUi
+  const scenarioPromptRefs: ScenarioPromptUiRefs = {
+    backdropElement: options.overlayUi.scenarioPrompt,
+    promptElement: options.overlayUi.scenarioPrompt.querySelector<HTMLElement>('.scenario-prompt')!,
+    titleElement: options.overlayUi.scenarioPromptTitle,
+    descriptionElement: options.overlayUi.scenarioPromptDescription,
+    confirmButton: options.overlayUi.scenarioPromptConfirmButton,
+    secondaryButton: options.overlayUi.scenarioPromptSecondaryButton,
+    replayButton: options.overlayUi.scenarioPromptReplayButton,
+    replayButtonLabel: options.overlayUi.scenarioPromptReplayButtonLabel,
   };
-
-  const updateAnchorPosition = (): void => {
-    const anchorKey = options.overlayUi.scenarioPrompt.dataset.anchor as AnchorKey | undefined;
-    if (!anchorKey) {
-      resetPromptPosition(options.overlayUi.scenarioPrompt);
-      if (anchorResizeObserver) {
-        anchorResizeObserver.disconnect();
-        anchorResizeObserver = null;
-      }
-      return;
-    }
-
-    const anchorElement = getAnchorElement(anchorKey);
-    if (anchorElement) {
-      positionPromptNearAnchor(options.overlayUi.scenarioPrompt, anchorElement);
-      setupAnchorObserver(anchorElement);
-    }
-  };
+  const scenarioPromptUpdater = createScenarioPromptUpdater(scenarioPromptRefs);
 
   const triggerWarpFeedback = (variant: "v2" | "v4", strength = 1.18) => {
     const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
@@ -167,19 +79,6 @@ export const createHudPresentation = (options: {
     lastWarpIncreaseAt = 0;
     warpIncreaseStreak = 0;
   };
-
-  // Setup window resize listener for prompt repositioning
-  const handleWindowResize = () => {
-    if (windowResizeTimeoutId !== null) {
-      window.clearTimeout(windowResizeTimeoutId);
-    }
-    windowResizeTimeoutId = window.setTimeout(() => {
-      updateAnchorPosition();
-      windowResizeTimeoutId = null;
-    }, 100);
-  };
-
-  window.addEventListener("resize", handleWindowResize);
 
   return {
     update: (metrics: { smoothedCpuMs: number; smoothedFps: number }) => {
@@ -218,8 +117,6 @@ export const createHudPresentation = (options: {
           ? scenarioDefinition.getHudContent(options.runtime.scenarioSession.state)
           : null;
 
-      const activePrompt = getRuntimeActivePrompt(options.runtime, inputMode);
-      const replayPromptContent = getRuntimeScenarioReplayPromptContent(options.runtime);
       const hiddenUIElements = options.runtime.scenarioDirectives.hiddenUIElements;
       const showScenarioInfoButton = !hiddenUIElements.has("scenarioInfoButton");
       const showTimePill = !hiddenUIElements.has("timeWarpPill");
@@ -232,39 +129,9 @@ export const createHudPresentation = (options: {
       if (options.overlayUi.hudDescription) {
         options.overlayUi.hudDescription.textContent = scenarioHudContent?.description ?? options.defaultScenarioDescription;
       }
-      options.overlayUi.scenarioPrompt.style.display = activePrompt ? "grid" : "none";
-      options.overlayUi.scenarioPrompt.dataset.promptMode = activePrompt?.mode === "coach" ? "coach" : "modal";
-      if (activePrompt?.anchor) {
-        options.overlayUi.scenarioPrompt.dataset.anchor = activePrompt.anchor;
-      } else {
-        delete options.overlayUi.scenarioPrompt.dataset.anchor;
-      }
 
-      // Update anchor positioning for coach prompts
-      if (activePrompt?.mode === "coach") {
-        updateAnchorPosition();
-      }
-      if (options.overlayUi.scenarioPromptTitle) {
-        options.overlayUi.scenarioPromptTitle.textContent = activePrompt?.title ?? "";
-      }
-      if (options.overlayUi.scenarioPromptDescription) {
-        options.overlayUi.scenarioPromptDescription.textContent = activePrompt?.description ?? "";
-      }
-      if (options.overlayUi.scenarioPromptConfirmButton) {
-        options.overlayUi.scenarioPromptConfirmButton.style.display = activePrompt?.confirmButton ? "inline-flex" : "none";
-        options.overlayUi.scenarioPromptConfirmButton.textContent = activePrompt?.confirmButton?.label ?? "";
-        options.overlayUi.scenarioPromptConfirmButton.dataset.promptAction = activePrompt?.confirmButton?.action ?? "";
-      }
-      if (options.overlayUi.scenarioPromptSecondaryButton) {
-        options.overlayUi.scenarioPromptSecondaryButton.style.display = activePrompt?.secondaryButton ? "inline-flex" : "none";
-        options.overlayUi.scenarioPromptSecondaryButton.textContent = activePrompt?.secondaryButton?.label ?? "";
-        options.overlayUi.scenarioPromptSecondaryButton.dataset.promptAction = activePrompt?.secondaryButton?.action ?? "";
-      }
-      options.overlayUi.scenarioPromptReplayButton.style.display =
-        showScenarioInfoButton && !activePrompt && replayPromptContent ? "inline-flex" : "none";
-      if (options.overlayUi.scenarioPromptReplayButtonLabel) {
-        options.overlayUi.scenarioPromptReplayButtonLabel.textContent = replayPromptContent?.title ?? "";
-      }
+      // Update scenario prompt UI
+      scenarioPromptUpdater.update(options.runtime, inputMode, showScenarioInfoButton);
       const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
       const speedPill = options.overlayUi.statSpeed?.closest<HTMLElement>(".telemetry-pill");
       const thrustPill = options.overlayUi.statThrust?.closest<HTMLElement>(".telemetry-pill");
