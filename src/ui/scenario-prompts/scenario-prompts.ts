@@ -103,15 +103,27 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
   let windowResizeTimeoutId: number | null = null;
   let anchorMutationObserver: MutationObserver | null = null;
 
+  const positionPromptDefault = (): void => {
+    // Default position: center horizontally, upper half of screen
+    refs.promptElement.style.position = 'fixed';
+    refs.promptElement.style.left = '50%';
+    refs.promptElement.style.top = '25%';
+    refs.promptElement.style.transform = 'translateX(-50%)';
+    refs.arrowElement.style.display = 'none';
+    delete refs.promptElement.dataset.arrowPlacement;
+  };
+
   const updatePromptPosition = async (): Promise<void> => {
     const anchorKey = refs.promptElement.dataset.anchor as AnchorKey | undefined;
+
     if (!anchorKey) {
+      positionPromptDefault();
       return;
     }
 
     const anchorElement = getAnchorElement(anchorKey);
     if (!anchorElement || refs.backdropElement.style.display === 'none') {
-      debugger;
+      positionPromptDefault();
       return;
     }
 
@@ -141,8 +153,10 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       refs.promptElement.style.position = 'fixed';
       refs.promptElement.style.left = `${x}px`;
       refs.promptElement.style.top = `${y}px`;
+      refs.promptElement.style.transform = '';
 
       // Position the arrow
+      refs.arrowElement.style.display = '';
       const { x: arrowX, y: arrowY } = middlewareData.arrow || {};
       const staticSide = {
         top: 'bottom',
@@ -158,6 +172,7 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       refs.arrowElement.dataset.side = staticSide;
     } catch (error) {
       console.error('Failed to position prompt:', error);
+      positionPromptDefault();
     }
   };
 
@@ -235,7 +250,17 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
           anchorMutationObserver.disconnect();
           anchorMutationObserver = null;
         }
+
+        refs.promptElement.style.position = '';
+        refs.promptElement.style.left = '';
+        refs.promptElement.style.top = '';
+        refs.arrowElement.style.position = '';
+        refs.arrowElement.style.left = '';
+        refs.arrowElement.style.top = '';
+        refs.arrowElement.style.bottom = '';
+        refs.arrowElement.style.right = '';
       }
+
 
       // Update content
       if (refs.titleElement) {
