@@ -13,7 +13,7 @@
 .scenario-prompt-backdrop[data-prompt-mode="coach"] {
   align-items: start;
   justify-items: start;
-  padding: max(10px, min(8vh, 56px)) 0 0 max(10px, min(2.5vw, 20px));
+  padding: 0;
   background: none;
   backdrop-filter: none;
   pointer-events: none;
@@ -30,8 +30,8 @@
 }
 
 .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
-  position: relative;
-  width: min(380px, calc(100vw - 28px));
+  position: fixed;
+  width: min(320px, calc(100vw - 28px));
   gap: 7px;
   padding: 11px 13px 11px 14px;
   border: 1px solid rgba(140, 199, 255, 0.16);
@@ -43,6 +43,7 @@
   box-shadow: 0 16px 38px rgba(2, 6, 18, 0.32);
   pointer-events: auto;
   backdrop-filter: blur(10px);
+  margin: 0;
 }
 
 .scenario-prompt h2 {
@@ -69,31 +70,23 @@
   line-height: 1.4;
 }
 
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt::before {
-  content: "";
+/* Arrow for coach prompts */
+.scenario-prompt-arrow {
   position: absolute;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  pointer-events: none;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  transform: rotate(45deg);
+  border-top: 1px solid rgba(140, 199, 255, 0.16);
+  border-left: 1px solid rgba(140, 199, 255, 0.16);
 }
 
-/* Arrow pointing right (anchor on left side of prompt) */
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt[data-arrow-direction="right"]::before {
-  right: 100%;
-  top: var(--arrow-y);
-  transform: translateY(-50%);
-  border-width: 6px 8px 6px 0;
-  border-color: transparent rgba(7, 11, 20, 0.78) transparent transparent;
+.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt-arrow {
+  display: block;
 }
 
-/* Arrow pointing left (anchor on right side of prompt) */
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt[data-arrow-direction="left"]::before {
-  left: 100%;
-  top: var(--arrow-y);
-  transform: translateY(-50%);
-  border-width: 6px 0 6px 8px;
-  border-color: transparent transparent transparent rgba(7, 11, 20, 0.78);
+.scenario-prompt-backdrop[data-prompt-mode="modal"] .scenario-prompt-arrow {
+  display: none;
 }
 
 .scenario-prompt-actions {
@@ -121,12 +114,8 @@
 
 /* Responsive: Mobile adjustments */
 @media (max-width: 720px) {
-  .scenario-prompt-backdrop[data-prompt-mode="coach"] {
-    justify-items: center;
-    padding: max(10px, min(9vh, 56px)) 10px 0;
-  }
-
   .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
     width: calc(100vw - 20px);
+    max-width: 360px;
   }
 }

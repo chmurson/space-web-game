@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.6",
     "three": "^0.182.0"
   },
   "devDependencies": {

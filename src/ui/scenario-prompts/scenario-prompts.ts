@@ -1,10 +1,19 @@
 import './scenario-prompts.css';
 import type { AppRuntimeState } from '../../runtime/appRuntimeState';
 import { getRuntimeActivePrompt, getRuntimeScenarioReplayPromptContent } from '../../scenario/scenarioRegistry';
+import {
+  computePosition,
+  flip,
+  shift,
+  offset,
+  arrow,
+  type Placement,
+} from '@floating-ui/dom';
 
 export type ScenarioPromptUiRefs = {
   backdropElement: HTMLElement;
   promptElement: HTMLElement;
+  arrowElement: HTMLElement;
   titleElement: HTMLHeadingElement | null;
   descriptionElement: HTMLParagraphElement | null;
   confirmButton: HTMLButtonElement | null;
@@ -28,52 +37,6 @@ const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
   return null;
 };
 
-const positionPromptNearAnchor = (
-  promptElement: HTMLElement,
-  anchorElement: HTMLElement,
-): void => {
-  const anchorRect = anchorElement.getBoundingClientRect();
-  const promptRect = promptElement.getBoundingClientRect();
-
-  const padding = 12;
-  const arrowSize = 8;
-
-  // Preferred position: to the right of anchor
-  let top = anchorRect.top + anchorRect.height / 2;
-  let left = anchorRect.right + padding + arrowSize;
-  let arrowDirection: 'left' | 'right' = 'left';
-
-  // If it goes off-screen to the right, move to the left of anchor
-  if (left + promptRect.width > window.innerWidth - padding) {
-    left = anchorRect.left - promptRect.width - padding - arrowSize;
-    arrowDirection = 'right';
-  }
-
-  // Adjust vertical position to keep prompt in bounds
-  top = Math.max(padding, Math.min(top - promptRect.height / 2, window.innerHeight - promptRect.height - padding));
-
-  // Clamp horizontal position to viewport bounds
-  left = Math.max(padding, Math.min(left, window.innerWidth - promptRect.width - padding));
-
-  // Store the arrow Y position relative to the prompt for CSS to use
-  const anchorCenterY = anchorRect.top + anchorRect.height / 2;
-  const arrowY = Math.max(12, Math.min(anchorCenterY - top, promptRect.height - 12));
-
-  promptElement.style.position = 'fixed';
-  promptElement.style.left = `${left}px`;
-  promptElement.style.top = `${top}px`;
-  promptElement.style.setProperty('--arrow-y', `${arrowY}px`);
-  promptElement.dataset.arrowDirection = arrowDirection;
-};
-
-const resetPromptPosition = (promptElement: HTMLElement): void => {
-  promptElement.style.position = '';
-  promptElement.style.left = '';
-  promptElement.style.top = '';
-  promptElement.style.removeProperty('--arrow-y');
-  delete promptElement.dataset.arrowDirection;
-};
-
 /**
  * Creates the scenario prompt UI elements and returns references to them.
  * This includes the main prompt backdrop/modal and the replay button.
@@ -85,6 +48,7 @@ export const createScenarioPromptUI = (app: HTMLElement, topBar: HTMLElement): S
   backdropElement.style.display = 'none';
   backdropElement.innerHTML = `
     <div class="scenario-prompt">
+      <div class="scenario-prompt-arrow"></div>
       <h2></h2>
       <p></p>
       <div class="scenario-prompt-actions">
@@ -110,9 +74,13 @@ export const createScenarioPromptUI = (app: HTMLElement, topBar: HTMLElement): S
   `;
   topBar.appendChild(replayButton);
 
+  const promptElement = backdropElement.querySelector<HTMLElement>('.scenario-prompt')!;
+  const arrowElement = promptElement.querySelector<HTMLElement>('.scenario-prompt-arrow')!;
+
   return {
     backdropElement,
-    promptElement: backdropElement.querySelector<HTMLElement>('.scenario-prompt')!,
+    promptElement,
+    arrowElement,
     titleElement: backdropElement.querySelector<HTMLHeadingElement>('h2'),
     descriptionElement: backdropElement.querySelector<HTMLParagraphElement>('p'),
     confirmButton: backdropElement.querySelector<HTMLButtonElement>('[data-role="confirm"]'),
@@ -129,11 +97,84 @@ export type ScenarioPromptUpdater = {
 
 /**
  * Creates an updater that handles all scenario prompt state updates and positioning logic.
- * Encapsulates anchor positioning, resize observers, and window resize handling.
+ * Uses Floating UI for automatic positioning relative to anchor elements.
  */
 export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): ScenarioPromptUpdater => {
   let anchorResizeObserver: ResizeObserver | null = null;
   let windowResizeTimeoutId: number | null = null;
+  let anchorMutationObserver: MutationObserver | null = null;
+
+  const updatePromptPosition = async (): Promise<void> => {
+    const anchorKey = refs.promptElement.dataset.anchor as AnchorKey | undefined;
+    if (!anchorKey) {
+      return;
+    }
+
+    const anchorElement = getAnchorElement(anchorKey);
+    if (!anchorElement || refs.backdropElement.style.display === 'none') {
+      return;
+    }
+
+    try {
+      // Determine placement based on viewport
+      let placement: Placement = 'bottom-start';
+      const anchorRect = anchorElement.getBoundingClientRect();
+
+      // Prefer right side if there's space, otherwise left
+      if (anchorRect.right + 400 < window.innerWidth) {
+        placement = 'right-start';
+      } else if (anchorRect.left > 400) {
+        placement = 'left-start';
+      } else if (anchorRect.top > 300) {
+        placement = 'top-start';
+      } else {
+        placement = 'bottom-start';
+      }
+
+      const { x, y, placement: finalPlacement, middlewareData } = await computePosition(
+        anchorElement,
+        refs.promptElement,
+        {
+          placement,
+          middleware: [
+            offset(12), // 12px gap from anchor
+            flip({
+              padding: 10,
+            }),
+            shift({
+              padding: 10,
+            }),
+            arrow({
+              element: refs.arrowElement,
+              padding: 8,
+            }),
+          ],
+        },
+      );
+
+      // Position the prompt
+      refs.promptElement.style.position = 'fixed';
+      refs.promptElement.style.left = `${x}px`;
+      refs.promptElement.style.top = `${y}px`;
+
+      // Position the arrow
+      const { x: arrowX, y: arrowY } = middlewareData.arrow || {};
+      const staticSide = {
+        top: 'bottom',
+        right: 'left',
+        bottom: 'top',
+        left: 'right',
+      }[finalPlacement.split('-')[0]] as string;
+
+      refs.arrowElement.style.position = 'absolute';
+      refs.arrowElement.style.left = arrowX !== undefined ? `${arrowX}px` : '';
+      refs.arrowElement.style.top = arrowY !== undefined ? `${arrowY}px` : '';
+      refs.arrowElement.style[staticSide as any] = '-6px';
+      refs.arrowElement.dataset.side = staticSide;
+    } catch (error) {
+      console.error('Failed to position prompt:', error);
+    }
+  };
 
   const setupAnchorObserver = (anchorElement: HTMLElement): void => {
     if (anchorResizeObserver) {
@@ -141,34 +182,25 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
     }
 
     anchorResizeObserver = new ResizeObserver(() => {
-      const anchorKey = refs.promptElement.dataset.anchor as AnchorKey | undefined;
-      if (anchorKey) {
-        const anchor = getAnchorElement(anchorKey);
-        if (anchor) {
-          positionPromptNearAnchor(refs.promptElement, anchor);
-        }
-      }
+      updatePromptPosition();
     });
 
     anchorResizeObserver.observe(anchorElement);
-  };
 
-  const updateAnchorPosition = (): void => {
-    const anchorKey = refs.promptElement.dataset.anchor as AnchorKey | undefined;
-    if (!anchorKey) {
-      resetPromptPosition(refs.promptElement);
-      if (anchorResizeObserver) {
-        anchorResizeObserver.disconnect();
-        anchorResizeObserver = null;
-      }
-      return;
+    // Also observe for DOM changes that might affect positioning
+    if (anchorMutationObserver) {
+      anchorMutationObserver.disconnect();
     }
 
-    const anchorElement = getAnchorElement(anchorKey);
-    if (anchorElement) {
-      positionPromptNearAnchor(refs.promptElement, anchorElement);
-      setupAnchorObserver(anchorElement);
-    }
+    anchorMutationObserver = new MutationObserver(() => {
+      updatePromptPosition();
+    });
+
+    anchorMutationObserver.observe(anchorElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+      subtree: false,
+    });
   };
 
   const handleWindowResize = () => {
@@ -176,7 +208,7 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       window.clearTimeout(windowResizeTimeoutId);
     }
     windowResizeTimeoutId = window.setTimeout(() => {
-      updateAnchorPosition();
+      updatePromptPosition();
       windowResizeTimeoutId = null;
     }, 100);
   };
@@ -202,8 +234,22 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
       }
 
       // Update anchor positioning for coach prompts
-      if (activePrompt?.mode === 'coach') {
-        updateAnchorPosition();
+      if (activePrompt?.mode === 'coach' && activePrompt?.anchor) {
+        const anchorElement = getAnchorElement(activePrompt.anchor as AnchorKey);
+        if (anchorElement) {
+          setupAnchorObserver(anchorElement);
+          updatePromptPosition();
+        }
+      } else {
+        // Clean up observers for non-anchor prompts
+        if (anchorResizeObserver) {
+          anchorResizeObserver.disconnect();
+          anchorResizeObserver = null;
+        }
+        if (anchorMutationObserver) {
+          anchorMutationObserver.disconnect();
+          anchorMutationObserver = null;
+        }
       }
 
       // Update content
@@ -237,6 +283,9 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
     cleanup: () => {
       if (anchorResizeObserver) {
         anchorResizeObserver.disconnect();
+      }
+      if (anchorMutationObserver) {
+        anchorMutationObserver.disconnect();
       }
       if (windowResizeTimeoutId !== null) {
         window.clearTimeout(windowResizeTimeoutId);

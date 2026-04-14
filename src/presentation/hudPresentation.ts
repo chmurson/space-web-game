@@ -9,7 +9,7 @@ import type { GameQueries } from "../runtime/gameQueries";
 import { getRuntimeScenarioDefinition } from "../scenario/scenarioRegistry";
 import type { TrajectoryPresentation } from "./trajectoryPresentation";
 import { RuntimeScenarioSession } from "../scenario/scenarioSession";
-import { createScenarioPromptUpdater, type ScenarioPromptUiRefs } from "../ui/scenario-prompts/ScenarioPromptUI";
+import { createScenarioPromptUpdater, type ScenarioPromptUiRefs } from "../ui/scenario-prompts/scenario-prompts";
 
 export const createHudPresentation = (options: {
   defaultScenarioDescription: string;
@@ -38,6 +38,7 @@ export const createHudPresentation = (options: {
   const scenarioPromptRefs: ScenarioPromptUiRefs = {
     backdropElement: options.overlayUi.scenarioPrompt,
     promptElement: options.overlayUi.scenarioPrompt.querySelector<HTMLElement>('.scenario-prompt')!,
+    arrowElement: options.overlayUi.scenarioPrompt.querySelector<HTMLElement>('.scenario-prompt-arrow')!,
     titleElement: options.overlayUi.scenarioPromptTitle,
     descriptionElement: options.overlayUi.scenarioPromptDescription,
     confirmButton: options.overlayUi.scenarioPromptConfirmButton,
