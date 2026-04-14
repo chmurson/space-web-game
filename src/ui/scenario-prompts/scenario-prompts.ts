@@ -95,15 +95,93 @@ export type ScenarioPromptUpdater = {
 };
 
 /**
- * Creates an updater that handles all scenario prompt state updates and positioning logic.
- * Uses Floating UI for automatic positioning relative to anchor elements.
+ * Represents the content identity of a prompt.
+ * Used for change detection to avoid unnecessary DOM updates when content hasn't meaningfully changed.
+ *
+ * DESIGN NOTE: Content-Based Change Detection
+ * ============================================
+ * During onboarding, the runtime.scenarioSession object is replaced every frame even when
+ * the prompt content hasn't meaningfully changed. This makes reference equality checks
+ * unreliable for detecting actual changes.
+ *
+ * Instead, we compute a PromptIdentity that captures the essential prompt content
+ * (title, description, mode, anchor, button labels, etc.) and compare identities frame-to-frame.
+ * If the identity hasn't changed, we skip DOM updates and positioning computations.
+ *
+ * This approach:
+ * - Avoids unnecessary DOM writes every frame
+ * - Avoids expensive Floating UI computePosition calls when content is stable
+ * - Maintains correctness even when runtime objects are recreated
+ * - Keeps repositioning responsive (via ResizeObserver and window resize handler)
  */
+type PromptIdentity = {
+  activePromptTitle: string;
+  activePromptDescription: string;
+  activePromptMode: 'coach' | 'modal' | null;
+  activePromptAnchor: string | null;
+  activePromptConfirmButtonLabel: string;
+  activePromptConfirmButtonAction: string;
+  activePromptSecondaryButtonLabel: string;
+  activePromptSecondaryButtonAction: string;
+  replayPromptTitle: string;
+  showScenarioInfoButton: boolean;
+  inputMode: 'desktop' | 'mobile';
+};
+
+/**
+ * Computes a compact identity key from the current runtime state.
+ * This is used to detect meaningful changes in prompt content without relying on
+ * reference equality of the runtime state object (which can change every frame during onboarding).
+ */
+const computePromptIdentity = (
+  runtime: AppRuntimeState,
+  inputMode: 'desktop' | 'mobile',
+  showScenarioInfoButton: boolean,
+): PromptIdentity => {
+  const activePrompt = getRuntimeActivePrompt(runtime, inputMode);
+  const replayPromptContent = getRuntimeScenarioReplayPromptContent(runtime);
+
+  return {
+    activePromptTitle: activePrompt?.title ?? '',
+    activePromptDescription: activePrompt?.description ?? '',
+    activePromptMode: activePrompt?.mode === 'coach' ? 'coach' : (activePrompt ? 'modal' : null),
+    activePromptAnchor: (activePrompt?.anchor as string) ?? null,
+    activePromptConfirmButtonLabel: activePrompt?.confirmButton?.label ?? '',
+    activePromptConfirmButtonAction: activePrompt?.confirmButton?.action ?? '',
+    activePromptSecondaryButtonLabel: activePrompt?.secondaryButton?.label ?? '',
+    activePromptSecondaryButtonAction: activePrompt?.secondaryButton?.action ?? '',
+    replayPromptTitle: replayPromptContent?.title ?? '',
+    showScenarioInfoButton,
+    inputMode,
+  };
+};
+
+/**
+ * Compares two prompt identities for equality.
+ */
+const identitiesEqual = (a: PromptIdentity, b: PromptIdentity): boolean => {
+  return (
+    a.activePromptTitle === b.activePromptTitle &&
+    a.activePromptDescription === b.activePromptDescription &&
+    a.activePromptMode === b.activePromptMode &&
+    a.activePromptAnchor === b.activePromptAnchor &&
+    a.activePromptConfirmButtonLabel === b.activePromptConfirmButtonLabel &&
+    a.activePromptConfirmButtonAction === b.activePromptConfirmButtonAction &&
+    a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
+    a.activePromptSecondaryButtonAction === b.activePromptSecondaryButtonAction &&
+    a.replayPromptTitle === b.replayPromptTitle &&
+    a.showScenarioInfoButton === b.showScenarioInfoButton &&
+    a.inputMode === b.inputMode
+  );
+};
+
 export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): ScenarioPromptUpdater => {
   let anchorResizeObserver: ResizeObserver | null = null;
   let windowResizeTimeoutId: number | null = null;
   let anchorMutationObserver: MutationObserver | null = null;
   let lastAnchorKey: AnchorKey | undefined;
-  let lastPromptMode: 'coach' | 'modal' | undefined;
+  let lastPromptMode: 'coach' | 'modal' | null = null;
+  let lastPromptIdentity: PromptIdentity | null = null;
 
   const resetPromptToDefault = (): void => {
     refs.promptElement.style.position = '';
@@ -221,6 +299,22 @@ export const createScenarioPromptUpdater = (refs: ScenarioPromptUiRefs): Scenari
 
   return {
     update: (runtime: AppRuntimeState, inputMode: 'desktop' | 'mobile', showScenarioInfoButton: boolean) => {
+      // Compute the current prompt identity based on derived content, not runtime object references.
+      // This handles the case where onboarding creates a new runtime.scenarioSession object each frame
+      // even when the prompt content hasn't meaningfully changed.
+      const currentPromptIdentity = computePromptIdentity(runtime, inputMode, showScenarioInfoButton);
+
+      // Early exit if prompt identity hasn't changed.
+      // This prevents expensive DOM updates and Floating UI positioning calculations when
+      // the visible prompt content hasn't actually changed—which is common during onboarding
+      // when the runtime state object is recreated every frame despite stable content.
+      if (lastPromptIdentity !== null && identitiesEqual(lastPromptIdentity, currentPromptIdentity)) {
+        return;
+      }
+
+      // Cache the current identity for next frame comparison
+      lastPromptIdentity = currentPromptIdentity;
+
       const activePrompt = getRuntimeActivePrompt(runtime, inputMode);
       const replayPromptContent = getRuntimeScenarioReplayPromptContent(runtime);
 
