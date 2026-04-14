@@ -10,6 +10,68 @@ import { getRuntimeScenarioDefinition, getRuntimeActivePrompt, getRuntimeScenari
 import type { TrajectoryPresentation } from "./trajectoryPresentation";
 import { RuntimeScenarioSession } from "../scenario/scenarioSession";
 
+type AnchorKey = "thrust-pill" | "time-warp-pill" | "trajectory";
+
+const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
+  if (anchor === "thrust-pill") {
+    // Find the thrust pill element
+    const statThrust = document.querySelector<HTMLElement>('[data-stat="thrust"]');
+    return statThrust?.closest<HTMLElement>(".telemetry-pill") ?? null;
+  }
+  if (anchor === "time-warp-pill") {
+    const statTime = document.querySelector<HTMLElement>('[data-stat="time"]');
+    return statTime?.closest<HTMLElement>(".telemetry-pill") ?? null;
+  }
+  return null;
+};
+
+const positionPromptNearAnchor = (
+  promptElement: HTMLElement,
+  anchorElement: HTMLElement,
+): void => {
+  const anchorRect = anchorElement.getBoundingClientRect();
+  const promptRect = promptElement.getBoundingClientRect();
+
+  const padding = 12;
+  const arrowSize = 8;
+
+  // Preferred position: below and to the right of anchor
+  let top = anchorRect.bottom + padding + arrowSize;
+  let left = anchorRect.right + padding;
+
+  // If it goes off-screen to the right, move to the left of anchor
+  if (left + promptRect.width > window.innerWidth - padding) {
+    left = anchorRect.left - promptRect.width - padding;
+  }
+
+  // If it goes off-screen to the bottom, move above anchor
+  if (top + promptRect.height > window.innerHeight - padding) {
+    top = anchorRect.top - promptRect.height - padding - arrowSize;
+  }
+
+  // Clamp to viewport bounds
+  left = Math.max(padding, Math.min(left, window.innerWidth - promptRect.width - padding));
+  top = Math.max(padding, Math.min(top, window.innerHeight - promptRect.height - padding));
+
+  // Store the arrow position relative to the prompt for CSS to use
+  const arrowLeft = anchorRect.left + anchorRect.width / 2 - left;
+  const arrowTop = anchorRect.top + anchorRect.height / 2 - top;
+
+  promptElement.style.position = "fixed";
+  promptElement.style.left = `${left}px`;
+  promptElement.style.top = `${top}px`;
+  promptElement.style.setProperty("--arrow-x", `${arrowLeft}px`);
+  promptElement.style.setProperty("--arrow-y", `${arrowTop}px`);
+};
+
+const resetPromptPosition = (promptElement: HTMLElement): void => {
+  promptElement.style.position = "";
+  promptElement.style.left = "";
+  promptElement.style.top = "";
+  promptElement.style.removeProperty("--arrow-x");
+  promptElement.style.removeProperty("--arrow-y");
+};
+
 export const createHudPresentation = (options: {
   defaultScenarioDescription: string;
   defaultScenarioName: string;
@@ -30,8 +92,46 @@ export const createHudPresentation = (options: {
   let lastWarpIncreaseAt = 0;
   let warpIncreaseStreak = 0;
   let warpFeedbackTimeoutId: number | null = null;
+  let anchorResizeObserver: ResizeObserver | null = null;
+  let windowResizeTimeoutId: number | null = null;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const inputMode = options.touchControls ? "mobile" : "desktop";
+
+  const setupAnchorObserver = (anchorElement: HTMLElement): void => {
+    if (anchorResizeObserver) {
+      anchorResizeObserver.disconnect();
+    }
+
+    anchorResizeObserver = new ResizeObserver(() => {
+      const anchorKey = options.overlayUi.scenarioPrompt.dataset.anchor as AnchorKey | undefined;
+      if (anchorKey) {
+        const anchor = getAnchorElement(anchorKey);
+        if (anchor) {
+          positionPromptNearAnchor(options.overlayUi.scenarioPrompt, anchor);
+        }
+      }
+    });
+
+    anchorResizeObserver.observe(anchorElement);
+  };
+
+  const updateAnchorPosition = (): void => {
+    const anchorKey = options.overlayUi.scenarioPrompt.dataset.anchor as AnchorKey | undefined;
+    if (!anchorKey) {
+      resetPromptPosition(options.overlayUi.scenarioPrompt);
+      if (anchorResizeObserver) {
+        anchorResizeObserver.disconnect();
+        anchorResizeObserver = null;
+      }
+      return;
+    }
+
+    const anchorElement = getAnchorElement(anchorKey);
+    if (anchorElement) {
+      positionPromptNearAnchor(options.overlayUi.scenarioPrompt, anchorElement);
+      setupAnchorObserver(anchorElement);
+    }
+  };
 
   const triggerWarpFeedback = (variant: "v2" | "v4", strength = 1.18) => {
     const timePill = options.overlayUi.statTime?.closest<HTMLElement>(".telemetry-pill");
@@ -65,6 +165,19 @@ export const createHudPresentation = (options: {
     lastWarpIncreaseAt = 0;
     warpIncreaseStreak = 0;
   };
+
+  // Setup window resize listener for prompt repositioning
+  const handleWindowResize = () => {
+    if (windowResizeTimeoutId !== null) {
+      window.clearTimeout(windowResizeTimeoutId);
+    }
+    windowResizeTimeoutId = window.setTimeout(() => {
+      updateAnchorPosition();
+      windowResizeTimeoutId = null;
+    }, 100);
+  };
+
+  window.addEventListener("resize", handleWindowResize);
 
   return {
     update: (metrics: { smoothedCpuMs: number; smoothedFps: number }) => {
@@ -123,6 +236,11 @@ export const createHudPresentation = (options: {
         options.overlayUi.scenarioPrompt.dataset.anchor = activePrompt.anchor;
       } else {
         delete options.overlayUi.scenarioPrompt.dataset.anchor;
+      }
+
+      // Update anchor positioning for coach prompts
+      if (activePrompt?.mode === "coach") {
+        updateAnchorPosition();
       }
       if (options.overlayUi.scenarioPromptTitle) {
         options.overlayUi.scenarioPromptTitle.textContent = activePrompt?.title ?? "";

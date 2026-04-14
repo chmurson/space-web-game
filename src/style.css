@@ -898,7 +898,7 @@ canvas {
 .scenario-prompt-backdrop[data-prompt-mode="coach"] {
   align-items: start;
   justify-items: start;
-  padding: max(14px, min(10vh, 72px)) 0 0 max(14px, min(3vw, 26px));
+  padding: max(10px, min(8vh, 56px)) 0 0 max(10px, min(2.5vw, 20px));
   background: none;
   backdrop-filter: none;
   pointer-events: none;
@@ -915,9 +915,10 @@ canvas {
 }
 
 .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
+  position: relative;
   width: min(380px, calc(100vw - 28px));
-  gap: 10px;
-  padding: 14px 16px 14px 18px;
+  gap: 7px;
+  padding: 11px 13px 11px 14px;
   border: 1px solid rgba(140, 199, 255, 0.16);
   border-left: 3px solid rgba(103, 232, 249, 0.66);
   border-radius: 14px;
@@ -943,14 +944,41 @@ canvas {
 }
 
 .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt h2 {
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 0.02em;
 }
 
 .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt p {
   color: rgba(219, 234, 254, 0.82);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt::before {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  pointer-events: none;
+}
+
+/* Arrow pointing right (anchor on left side of prompt) */
+.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt[data-arrow-direction="right"]::before {
+  right: 100%;
+  top: var(--arrow-y);
+  transform: translateY(-50%);
+  border-width: 6px 8px 6px 0;
+  border-color: transparent rgba(7, 11, 20, 0.78) transparent transparent;
+}
+
+/* Arrow pointing left (anchor on right side of prompt) */
+.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt[data-arrow-direction="left"]::before {
+  left: 100%;
+  top: var(--arrow-y);
+  transform: translateY(-50%);
+  border-width: 6px 0 6px 8px;
+  border-color: transparent transparent transparent rgba(7, 11, 20, 0.78);
 }
 
 .scenario-prompt-actions {
