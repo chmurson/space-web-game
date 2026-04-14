@@ -2,6 +2,8 @@
   box-sizing: border-box;
 }
 
+@import "./scenario-prompt.css";
+
 :root {
   --z-overlay-hud: 10;
   --z-overlay-debug: 20;
@@ -883,126 +885,7 @@ canvas {
   z-index: var(--z-overlay-debug);
 }
 
-.scenario-prompt-backdrop {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: rgba(5, 7, 13, 0.72);
-  backdrop-filter: blur(8px);
-  pointer-events: auto;
-  z-index: var(--z-overlay-modal);
-}
 
-.scenario-prompt-backdrop[data-prompt-mode="coach"] {
-  align-items: start;
-  justify-items: start;
-  padding: max(10px, min(8vh, 56px)) 0 0 max(10px, min(2.5vw, 20px));
-  background: none;
-  backdrop-filter: none;
-  pointer-events: none;
-}
-
-.scenario-prompt {
-  display: grid;
-  gap: 12px;
-  width: min(460px, calc(100vw - 32px));
-  padding: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 8px;
-  background: rgba(8, 13, 24, 0.96);
-}
-
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
-  position: relative;
-  width: min(380px, calc(100vw - 28px));
-  gap: 7px;
-  padding: 11px 13px 11px 14px;
-  border: 1px solid rgba(140, 199, 255, 0.16);
-  border-left: 3px solid rgba(103, 232, 249, 0.66);
-  border-radius: 14px;
-  background:
-    linear-gradient(135deg, rgba(36, 56, 96, 0.16), rgba(12, 18, 31, 0) 40%),
-    rgba(7, 11, 20, 0.78);
-  box-shadow: 0 16px 38px rgba(2, 6, 18, 0.32);
-  pointer-events: auto;
-  backdrop-filter: blur(10px);
-}
-
-.scenario-prompt h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.2;
-}
-
-.scenario-prompt p {
-  margin: 0;
-  color: #bac7d5;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt h2 {
-  font-size: 15px;
-  letter-spacing: 0.02em;
-}
-
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt p {
-  color: rgba(219, 234, 254, 0.82);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt::before {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  pointer-events: none;
-}
-
-/* Arrow pointing right (anchor on left side of prompt) */
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt[data-arrow-direction="right"]::before {
-  right: 100%;
-  top: var(--arrow-y);
-  transform: translateY(-50%);
-  border-width: 6px 8px 6px 0;
-  border-color: transparent rgba(7, 11, 20, 0.78) transparent transparent;
-}
-
-/* Arrow pointing left (anchor on right side of prompt) */
-.scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt[data-arrow-direction="left"]::before {
-  left: 100%;
-  top: var(--arrow-y);
-  transform: translateY(-50%);
-  border-width: 6px 0 6px 8px;
-  border-color: transparent transparent transparent rgba(7, 11, 20, 0.78);
-}
-
-.scenario-prompt-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.scenario-prompt button {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 12px;
-  border: 1px solid rgba(103, 232, 249, 0.38);
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.96);
-  color: #f8fafc;
-  font: inherit;
-  cursor: pointer;
-}
-
-.scenario-prompt button:hover {
-  border-color: rgba(103, 232, 249, 0.72);
-}
 
 .tutorial-focus-overlay {
   position: fixed;
