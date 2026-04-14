@@ -118,3 +118,15 @@
 .scenario-prompt button:hover {
   border-color: rgba(103, 232, 249, 0.72);
 }
+
+/* Responsive: Mobile adjustments */
+@media (max-width: 720px) {
+  .scenario-prompt-backdrop[data-prompt-mode="coach"] {
+    justify-items: center;
+    padding: max(10px, min(9vh, 56px)) 10px 0;
+  }
+
+  .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
+    width: calc(100vw - 20px);
+  }
+}

@@ -1184,12 +1184,5 @@ canvas {
     font-size: 11px;
   }
 
-  .scenario-prompt-backdrop[data-prompt-mode="coach"] {
-    justify-items: center;
-    padding: max(10px, min(9vh, 56px)) 10px 0;
-  }
 
-  .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
-    width: calc(100vw - 20px);
-  }
 }
