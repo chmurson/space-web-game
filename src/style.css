@@ -2,8 +2,6 @@
   box-sizing: border-box;
 }
 
-@import "./scenario-prompt.css";
-
 :root {
   --z-overlay-hud: 10;
   --z-overlay-debug: 20;
