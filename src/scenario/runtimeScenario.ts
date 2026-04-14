@@ -53,7 +53,12 @@ export const createRequestedRuntimeScenario = (
 		}
 	}
 
-	return getRuntimeScenarioDefinition("earth-moon")?.createScenario();
+	const earthMoonScenario =
+		getRuntimeScenarioDefinition("earth-moon")?.createScenario();
+	if (!earthMoonScenario) {
+		throw new Error("earth-moon scenario not found");
+	}
+	return earthMoonScenario;
 };
 
 export const createRuntimeScenarioState = (

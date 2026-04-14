@@ -35,6 +35,7 @@ const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
 	return null;
 };
 
+const emptyElement = document.createElement("div");
 /**
  * Creates the scenario prompt UI elements and returns references to them.
  * This includes the main prompt backdrop/modal and the replay button.
@@ -75,18 +76,18 @@ export const createScenarioPromptUI = (
   `;
 	topBar.appendChild(replayButton);
 
-	// biome-ignore lint/style/noNonNullAssertion: Elements are guaranteed to exist in DOM
 	const promptElement =
-		backdropElement.querySelector<HTMLElement>(".scenario-prompt")!;
-	// biome-ignore lint/style/noNonNullAssertion: Elements are guaranteed to exist in DOM
-	const arrowElement = promptElement.querySelector<HTMLElement>(
+    backdropElement.querySelector<HTMLElement>(".scenario-prompt");
+
+	const arrowElement = promptElement?.querySelector<HTMLElement>(
 		".scenario-prompt-arrow",
-	)!;
+  );
+
 
 	return {
 		backdropElement,
-		promptElement,
-		arrowElement,
+		promptElement: promptElement ?? emptyElement,
+		arrowElement: arrowElement ?? emptyElement,
 		titleElement: backdropElement.querySelector<HTMLHeadingElement>("h2"),
 		descriptionElement:
 			backdropElement.querySelector<HTMLParagraphElement>("p"),
@@ -277,7 +278,8 @@ export const createScenarioPromptUpdater = (
 			refs.arrowElement.style.position = "absolute";
 			refs.arrowElement.style.left = arrowX !== undefined ? `${arrowX}px` : "";
 			refs.arrowElement.style.top = arrowY !== undefined ? `${arrowY}px` : "";
-			refs.arrowElement.style[staticSide as string] = "-6px";
+			// biome-ignore lint/suspicious/noExplicitAny: Assigning CSS property dynamically
+			(refs.arrowElement.style as any)[staticSide] = "-6px";
 			refs.arrowElement.dataset.side = staticSide;
 		} catch (error) {
 			console.error("Failed to position prompt:", error);

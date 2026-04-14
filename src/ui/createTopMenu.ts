@@ -222,7 +222,9 @@ export const createTopMenu = (options: {
 	});
 
 	dropdown.addEventListener("keydown", (event) => {
-		const currentIndex = menuItems.indexOf(document.activeElement as Element);
+		const currentIndex = menuItems.indexOf(
+			document.activeElement as HTMLButtonElement,
+		);
 		if (event.key === "ArrowDown") {
 			event.preventDefault();
 			focusItem((currentIndex + 1 + menuItems.length) % menuItems.length);
