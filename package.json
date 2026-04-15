@@ -10,6 +10,7 @@
     "build:dev": "npm run validate:config && tsc && vite build --mode development",
     "preview": "vite preview",
     "lint": "biome lint --write src scripts",
+    "commitlint": "commitlint --edit $1",
     "format": "biome format --write src scripts",
     "test": "vitest run"
   },
@@ -19,6 +20,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@types/three": "^0.182.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.4",

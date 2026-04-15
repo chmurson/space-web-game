@@ -1,35 +1,35 @@
 assistTarget:
-  autoSelectNearestSurface: true
-  switchRangeMultiplier: 1.2
+    autoSelectNearestSurface: true
+    switchRangeMultiplier: 1.2
 
 camera:
-  distance: 700
-  elevationDegrees: 66
-  viewport:
-    default: 520
-    minDivisor: 30
-    max: 2500
-  spacecraftModelZoomThreshold: 15
+    distance: 700
+    elevationDegrees: 66
+    viewport:
+        default: 100
+        minDivisor: 30
+        max: 2500
+    spacecraftModelZoomThreshold: 15
 
 controls:
-  autopilotRotationRate: 0.9
-  timeWarps: [1, 10, 50, 100, 500, 2000, 8000]
+    autopilotRotationRate: 0.9
+    timeWarps: [1, 10, 50, 100, 500, 2000, 8000]
 
 trajectory:
-  horizon:
-    defaultHours: 1
-    minHours: 0.5
-    maxHours: 768
-  loopTrim:
-    maxRevolutions: 2.5
-  rendering:
-    dashPixels: 12
-    gapPixels: 8
-    replaceLineGeometryOnUpdate: true
-    endMarkerRadius: 0.17
-    endMarkerMinScreenRadius: 5.5
-  sampling:
-    refreshInterval: 0.4
-    targetMaxSteps: 1200
-    stepOptionsSeconds:
-      [30, 45, 60, 90, 120, 180, 300, 450, 600, 900, 1200, 1800]
+    horizon:
+        defaultHours: 1
+        minHours: 0.5
+        maxHours: 768
+    loopTrim:
+        maxRevolutions: 2.5
+    rendering:
+        dashPixels: 12
+        gapPixels: 8
+        replaceLineGeometryOnUpdate: true
+        endMarkerRadius: 0.17
+        endMarkerMinScreenRadius: 5.5
+    sampling:
+        refreshInterval: 0.4
+        targetMaxSteps: 1200
+        stepOptionsSeconds:
+            [30, 45, 60, 90, 120, 180, 300, 450, 600, 900, 1200, 1800]
