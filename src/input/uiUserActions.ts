@@ -6,6 +6,7 @@ export type UIUserAction =
 	| "increaseCoastHorizon"
 	| "increaseTimeWarp"
 	| "loadDebugSnapshot"
+	| "promptConfirm"
 	| "resetScenario"
 	| "saveDebugSnapshot"
 	| "toggleDebugMode"

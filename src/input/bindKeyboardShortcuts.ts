@@ -21,10 +21,12 @@ export const bindKeyboardShortcuts = (options: {
 			autoDiscoverStrongestInfluence: options.autoDiscoverStrongestInfluence,
 			debugModeEnabled: options.getDebugModeEnabled(),
 		});
+
 		if (shortcutAction) {
 			options.handleAction(shortcutAction);
 		}
 	});
+
 
 	options.windowTarget.addEventListener("keyup", (event) => {
 		if (!options.getInteractionsEnabled()) {

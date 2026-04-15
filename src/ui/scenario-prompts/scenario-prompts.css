@@ -17,6 +17,7 @@
 	background: none;
 	backdrop-filter: none;
 	pointer-events: none;
+	z-index: var(--z-coach-prompt);
 }
 
 .scenario-prompt {

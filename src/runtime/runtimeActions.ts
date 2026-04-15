@@ -23,6 +23,7 @@ import type { AppRuntimeState } from "./appRuntimeState";
 import { restoreRuntimeFromScenarioCheckpoint } from "./scenarioRecovery";
 import type { Ripple } from "../ui/overlayUpdates";
 import type { UIUserAction } from "../input/uiUserActions";
+import { GameHighLevelActions } from "../app/types";
 
 type RippleCreator = (
 	parent: HTMLElement,
@@ -53,6 +54,7 @@ export const createRuntimeActions = (options: {
 	runtimeScenarioOptions: RuntimeScenarioOptions;
 	timeWarps: number[];
 	updateUserSettings: (settings: { debugModeEnabled: boolean }) => void;
+	gameHighLevelActions: GameHighLevelActions;
 }) => {
 	let activeScenarioId = options.requestedScenario;
 	const normalizeAngle = (angle: number) => {
@@ -314,6 +316,11 @@ export const createRuntimeActions = (options: {
 			if (action === "zoomOut") {
 				zoomCamera(1.22);
 			}
+      if (action === "promptConfirm") {
+        acknowledgeScenarioPrompt();
+      }
+
+			//here let's call handlePromptConfirm or something
 
 			return { refreshTrajectoryPrediction: false };
 		},

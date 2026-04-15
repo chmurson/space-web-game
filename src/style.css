@@ -3,10 +3,16 @@
 }
 
 :root {
-	--z-overlay-hud: 10;
-	--z-overlay-debug: 20;
-	--z-overlay-floating: 30;
+     /*base z-index values*/
+    --z-in-game-elements: 10;
+    --z-overlay-floating: 20;
+	--z-overlay-hud: 30;
+	--z-overlay-debug: 40;
 	--z-overlay-modal: 100;
+	--z-overlay-modal-menu: 500;
+
+	/* specific z-index values */
+	--z-coach-prompt: calc(var(--z-overlay-floating) - 1 );
 }
 
 html,
@@ -34,7 +40,6 @@ canvas {
 
 #app.app-main-menu .top-bar,
 #app.app-main-menu .hud,
-#app.app-main-menu .touch-controls,
 #app.app-main-menu .scenario-prompt-backdrop,
 #app.app-main-menu .crash-menu,
 #app.app-main-menu .spacecraft-icon-thrust,
@@ -48,12 +53,12 @@ canvas {
 .main-menu {
 	position: fixed;
 	inset: 0;
-	z-index: 60;
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;
 	padding: 24px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
 	pointer-events: none;
+	z-index: var(--z-overlay-modal-menu);
 }
 
 .main-menu-panel {
@@ -97,16 +102,16 @@ canvas {
 	gap: 10px;
 }
 
-#app.app-main-menu .crash-menu {
+#app .crash-menu {
 	position: fixed;
 	left: 0;
 	right: 0;
 	bottom: 0;
-	z-index: 55;
 	display: flex;
 	justify-content: center;
 	padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
 	pointer-events: none;
+	z-index: var(--z-overlay-modal-menu);
 }
 
 .crash-menu-actions {
@@ -166,24 +171,6 @@ canvas {
 	.main-menu-panel {
 		transform: translateY(12vh);
 	}
-}
-
-#app.app-main-menu .hud {
-	position: fixed;
-	top: 16px;
-	left: 16px;
-	display: grid;
-	gap: 12px;
-	width: min(380px, calc(100vw - 32px));
-	padding: 16px;
-	border: 1px solid rgba(148, 163, 184, 0.22);
-	border-radius: 16px;
-	background:
-		linear-gradient(180deg, rgba(12, 20, 34, 0.94), rgba(5, 7, 13, 0.86)),
-		rgba(5, 7, 13, 0.82);
-	box-shadow: 0 18px 50px rgba(2, 6, 23, 0.35);
-	backdrop-filter: blur(16px);
-	z-index: var(--z-overlay-hud);
 }
 
 .hud-hidden {
@@ -860,10 +847,11 @@ canvas {
 	text-align: center;
 }
 
-#app.app-main-menu .touch-controls {
+.touch-controls {
+    display: none;
 	position: fixed;
 	inset: 0;
-	z-index: 2;
+	z-index: var(--z-in-game-elements);
 	display: none;
 	pointer-events: auto;
 	touch-action: none;
@@ -1087,7 +1075,7 @@ canvas {
 	box-shadow: 0 0 10px rgba(103, 232, 249, 0.9);
 }
 
-#app.app-main-menu .offscreen-indicator {
+#app .offscreen-indicator {
 	position: fixed;
 	display: flex;
 	align-items: center;
@@ -1134,7 +1122,7 @@ canvas {
 	filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.9));
 }
 
-#app.app-main-menu .offscreen-indicator .label {
+#app .offscreen-indicator .label {
 	padding: 3px 6px;
 	border: 1px solid rgba(56, 189, 248, 0.34);
 	border-radius: 4px;
@@ -1142,7 +1130,7 @@ canvas {
 	white-space: nowrap;
 }
 
-#app.app-main-menu .body-label {
+#app .body-label {
 	position: fixed;
 	padding: 2px 5px;
 	border: 1px solid rgba(148, 163, 184, 0.22);
@@ -1158,11 +1146,11 @@ canvas {
 }
 
 @media (hover: none), (pointer: coarse) {
-	#app.app-main-menu .touch-controls {
+	#app .touch-controls {
 		display: block;
 	}
 
-	#app.app-main-menu .body-label {
+	#app .body-label {
 		padding: 2px 4px;
 		border-radius: 3px;
 		font-size: 9px;
@@ -1176,12 +1164,12 @@ canvas {
 		overflow-wrap: anywhere;
 	}
 
-	#app.app-main-menu .offscreen-indicator {
+	#app .offscreen-indicator {
 		gap: 5px;
 		font-size: 9px;
 	}
 
-	#app.app-main-menu .offscreen-indicator .label {
+	#app .offscreen-indicator .label {
 		padding: 1px 4px;
 	}
 }
@@ -1256,13 +1244,13 @@ canvas {
 		font-size: 11px;
 	}
 
-	#app.app-main-menu .fps-indicator {
+	.fps-indicator {
 		top: auto;
 		right: 10px;
 		bottom: 72px;
 	}
 
-	#app.app-main-menu .debug-panel {
+	.debug-panel {
 		right: 10px;
 		bottom: 72px;
 		left: 10px;

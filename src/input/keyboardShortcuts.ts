@@ -60,6 +60,9 @@ export const getKeyboardShortcutAction = (
 	if (event.code === "Minus" || event.code === "NumpadSubtract") {
 		return "zoomOut";
 	}
+	if (event.code === "Enter" || event.code === "Space") {
+		return "promptConfirm";
+	}
 
 	return null;
 };

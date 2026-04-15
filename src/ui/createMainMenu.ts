@@ -39,21 +39,32 @@ export const createMainMenu = (options: {
 		'[data-main-menu-action="free-roam"]',
 	);
 
+	const setVisible = (visible: boolean) => {
+		root.style.display = visible ? "flex" : "none";
+	};
+
+	const handleActionThatClosesMenu = (action: () => void) => {
+		setVisible(false);
+		action();
+	};
+
 	loadGameButton?.addEventListener("click", () => {
 		if (loadGameButton.disabled) {
 			return;
 		}
 
-		options.onLoadGame();
+		handleActionThatClosesMenu(options.onLoadGame);
 	});
-	tutorialButton?.addEventListener("click", options.onTutorial);
-	freeRoamButton?.addEventListener("click", options.onFreeRoam);
+	tutorialButton?.addEventListener("click", () => {
+		handleActionThatClosesMenu(options.onTutorial);
+	});
+	freeRoamButton?.addEventListener("click", () => {
+		handleActionThatClosesMenu(options.onFreeRoam);
+	});
 
 	return {
 		element: root,
-		setVisible: (visible) => {
-			root.style.display = visible ? "flex" : "none";
-		},
+		setVisible,
 		syncState: () => {
 			if (!loadGameButton) {
 				return;
