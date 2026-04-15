@@ -1,4 +1,4 @@
-import type { ScenarioPromptAnchor } from "../scenarioRegistry";
+import type { ScenarioPromptAnchor } from "../../../scenarioRegistry";
 
 export type TutorialOnboardingStepId =
 	| "intro-thrust"

@@ -10,7 +10,7 @@ import type { ScenarioDirectiveLimits } from "../scenario/scenarioDirectiveTypes
 import {
 	getConstrainedTimeWarpIndex,
 	syncRuntimeScenarioDirectives,
-} from "../scenario/tutorialOnboarding/scenarioDirectives";
+} from "../scenario/scenarioDirectives";
 import {
 	createRequestedRuntimeScenario,
 	createRuntimeScenarioState,

@@ -1,11 +1,11 @@
-import type { AppRuntimeState } from "../../runtime/appRuntimeState";
-import type { ScenarioSessionValue } from "../scenarioSession";
+import type { AppRuntimeState } from "../runtime/appRuntimeState";
+import type { ScenarioSessionValue } from "./scenarioSession";
 import {
 	createDefaultScenarioDirectives,
 	type RuntimeScenarioDirectives,
 	type ScenarioDirectiveLimits,
-} from "../scenarioDirectiveTypes";
-import { getRuntimeScenarioDefinition } from "../scenarioRegistry";
+} from "./scenarioDirectiveTypes";
+import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
 
 type DirectiveContext = {
 	limits: ScenarioDirectiveLimits;

@@ -1,27 +1,27 @@
-import { gameConfig } from "../config/gameConfig";
-import { createEarthMoonScenario } from "../simulation/scenarios/earthMoon";
-import type { RuntimeScenario } from "../debugScenarioSnapshot";
-import type { AppRuntimeState } from "../runtime/appRuntimeState";
-import { getCaptureMetricsForState } from "../assist/orbitalAssist";
-import { EARTH_MOON_DISTANCE, EARTH_RADIUS, G } from "../simulation/constants";
-import { add, length, normalize, scale, sub, vec } from "../simulation/vector";
+import { gameConfig } from "../../../config/gameConfig";
+import { createEarthMoonScenario } from "../../../simulation/scenarios/earthMoon";
+import type { RuntimeScenario } from "../../../debugScenarioSnapshot";
+import type { AppRuntimeState } from "../../../runtime/appRuntimeState";
+import { getCaptureMetricsForState } from "../../../assist/orbitalAssist";
+import { EARTH_MOON_DISTANCE, EARTH_RADIUS, G } from "../../../simulation/constants";
+import { add, length, normalize, scale, sub, vec } from "../../../simulation/vector";
 import {
 	createRuntimeScenarioCheckpoint,
 	createRuntimeScenarioSession,
 	type RuntimeScenarioCheckpoint,
-} from "./scenarioSession";
+} from "../../scenarioSession";
 import {
 	createDefaultScenarioDirectives,
 	type RuntimeScenarioDirectives,
 	type ScenarioDirectiveLimits,
-} from "./scenarioDirectiveTypes";
+} from "../../scenarioDirectiveTypes";
 import type {
 	PromptAcknowledgeResult,
 	PromptActionEffect,
 	RuntimePromptContent,
 	RuntimeScenarioDefinition,
 	ScenarioPromptContent,
-} from "./scenarioRegistry";
+} from "../../scenarioRegistry";
 import { getTutorialOnboardingPromptContent } from "./tutorialOnboarding/tutorialOnboardingFlow";
 import {
 	acknowledgeTutorialOnboardingPrompt,

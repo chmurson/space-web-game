@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { AppRuntimeState } from "../../runtime/appRuntimeState";
-import { createDefaultScenarioDirectives } from "../scenarioDirectiveTypes";
-import { createRuntimeScenarioSession } from "../scenarioSession";
+import type { AppRuntimeState } from "../../../../runtime/appRuntimeState";
+import { createDefaultScenarioDirectives } from "../../../scenarioDirectiveTypes";
+import { createRuntimeScenarioSession } from "../../../scenarioSession";
 import {
 	advanceTutorialOnboarding,
 	acknowledgeTutorialOnboardingPrompt,

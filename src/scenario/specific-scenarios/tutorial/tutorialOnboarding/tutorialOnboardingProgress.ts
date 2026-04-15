@@ -1,6 +1,6 @@
-import type { AppRuntimeState } from "../../runtime/appRuntimeState";
-import { length, normalize, sub, vec } from "../../simulation/vector";
-import type { Body } from "../../simulation/types";
+import type { AppRuntimeState } from "../../../../runtime/appRuntimeState";
+import { length, normalize, sub, vec } from "../../../../simulation/vector";
+import type { Body } from "../../../../simulation/types";
 import {
 	getTutorialOnboardingPromptContent,
 	tutorialOnboardingStepOrder,

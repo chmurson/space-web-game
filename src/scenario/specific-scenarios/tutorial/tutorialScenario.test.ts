@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { AppRuntimeState } from "../runtime/appRuntimeState";
-import { EARTH_MOON_DISTANCE, G } from "../simulation/constants";
-import { createDefaultScenarioDirectives } from "./scenarioDirectiveTypes";
-import { createRuntimeScenarioSession } from "./scenarioSession";
+import type { AppRuntimeState } from "../../../runtime/appRuntimeState";
+import { EARTH_MOON_DISTANCE, G } from "../../../simulation/constants";
+import { createDefaultScenarioDirectives } from "../../scenarioDirectiveTypes";
+import { createRuntimeScenarioSession } from "../../scenarioSession";
 import { registerTutorialScenario } from "./tutorialScenario";
 
 const createRuntime = (): AppRuntimeState => ({

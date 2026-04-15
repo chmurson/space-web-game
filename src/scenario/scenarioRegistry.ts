@@ -4,9 +4,9 @@ import type {
 	RuntimeScenarioDirectives,
 	ScenarioDirectiveLimits,
 } from "./scenarioDirectiveTypes";
-import { registerMenuBackgroundScenario } from "./menuBackgroundScenario";
+import { registerMenuBackgroundScenario } from "./specific-scenarios/menuBackgroundScenario";
 import type { ScenarioSessionValue } from "./scenarioSession";
-import { registerTutorialScenario } from "./tutorialScenario";
+import { registerTutorialScenario } from "./specific-scenarios/tutorial/tutorialScenario";
 import {
 	createEarthMoonScenario,
 	createMoonCaptureDebugScenario,

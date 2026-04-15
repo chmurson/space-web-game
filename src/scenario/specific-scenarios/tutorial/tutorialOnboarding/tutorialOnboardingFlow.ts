@@ -1,5 +1,5 @@
-import { formatDuration } from "../../ui/formatters";
-import type { RuntimeScenarioDirectives } from "../scenarioDirectiveTypes";
+import { formatDuration } from "../../../../ui/formatters";
+import type { RuntimeScenarioDirectives } from "../../../scenarioDirectiveTypes";
 import { requiredIntroKeepThrustMs } from "./config";
 import type {
 	TutorialOnboardingPromptContent,

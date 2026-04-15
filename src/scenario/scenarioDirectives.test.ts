@@ -7,7 +7,7 @@ import {
 	applyRuntimeScenarioDirectiveConstraints,
 	getConstrainedTimeWarpIndex,
 	resolveRuntimeScenarioDirectives,
-} from "./tutorialOnboarding/scenarioDirectives";
+} from "./scenarioDirectives";
 import { getRuntimeScenarioDefinition } from "./scenarioRegistry";
 
 const createRuntime = (): AppRuntimeState => ({

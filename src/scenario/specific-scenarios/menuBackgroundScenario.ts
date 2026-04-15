@@ -1,10 +1,10 @@
 import {
 	createRuntimeScenarioSession,
 	type ScenarioSessionValue,
-} from "./scenarioSession";
-import type { RuntimeScenarioDefinition } from "./scenarioRegistry";
-import { createEarthMoonScenario } from "../simulation/scenarios/earthMoon";
-import { G } from "../simulation/constants";
+} from "../scenarioSession";
+import type { RuntimeScenarioDefinition } from "../scenarioRegistry";
+import { createEarthMoonScenario } from "../../simulation/scenarios/earthMoon";
+import { G } from "../../simulation/constants";
 
 type MenuBackgroundScenarioState = ScenarioSessionValue & {
 	cameraFollowBodyId: "earth";

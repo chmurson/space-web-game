@@ -17,7 +17,7 @@ import { type Ripple, updateRipples } from "../ui/overlayUpdates";
 import type { AppRuntimeState } from "./appRuntimeState";
 import type { GameQueries } from "./gameQueries";
 import type { RuntimeActions } from "./runtimeActions";
-import { syncRuntimeScenarioDirectives } from "../scenario/tutorialOnboarding/scenarioDirectives";
+import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import { stepSimulationFrame } from "./simulationStep";
 
 export const createFrameLoop = (options: {

@@ -21,7 +21,7 @@ import {
 	createDefaultScenarioDirectives,
 	type ScenarioDirectiveLimits,
 } from "../scenario/scenarioDirectiveTypes";
-import { syncRuntimeScenarioDirectives } from "../scenario/tutorialOnboarding/scenarioDirectives";
+import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
 import {
 	createRequestedRuntimeScenario,
 	createRuntimeScenarioState,
