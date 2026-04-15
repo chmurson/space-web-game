@@ -9,7 +9,7 @@
 	align-items: center;
 	gap: 12px;
 	padding: 12px 12px 0;
-	z-index: var(--z-overlay-hud)
+	z-index: var(--z-overlay-hud);
 }
 
 /* Telemetry strip - centered in the top bar */

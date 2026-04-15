@@ -3,16 +3,16 @@
 }
 
 :root {
-     /*base z-index values*/
-    --z-in-game-elements: 10;
-    --z-overlay-floating: 20;
+	/*base z-index values*/
+	--z-in-game-elements: 10;
+	--z-overlay-floating: 20;
 	--z-overlay-hud: 30;
 	--z-overlay-debug: 40;
 	--z-overlay-modal: 100;
 	--z-overlay-modal-menu: 500;
 
 	/* specific z-index values */
-	--z-coach-prompt: calc(var(--z-overlay-floating) - 1 );
+	--z-coach-prompt: calc(var(--z-overlay-floating) - 1);
 }
 
 html,
@@ -38,17 +38,6 @@ canvas {
 	-webkit-user-drag: none;
 }
 
-#app.app-main-menu .top-bar,
-#app.app-main-menu .hud,
-#app.app-main-menu .scenario-prompt-backdrop,
-#app.app-main-menu .crash-menu,
-#app.app-main-menu .spacecraft-icon-thrust,
-#app.app-main-menu .offscreen-indicator,
-#app.app-main-menu .body-label,
-#app.app-main-menu .fps-indicator,
-#app.app-main-menu .debug-panel {
-	display: none;
-}
 
 .main-menu {
 	position: fixed;
@@ -848,11 +837,10 @@ canvas {
 }
 
 .touch-controls {
-    display: none;
+	display: none;
 	position: fixed;
 	inset: 0;
 	z-index: var(--z-in-game-elements);
-	display: none;
 	pointer-events: auto;
 	touch-action: none;
 }
@@ -901,7 +889,7 @@ canvas {
 	);
 }
 
-#app.app-main-menu .debug-panel {
+#app .debug-panel {
 	position: fixed;
 	bottom: 16px;
 	left: 16px;
@@ -912,7 +900,7 @@ canvas {
 	padding: 8px;
 	border: 1px solid rgba(56, 189, 248, 0.18);
 	border-radius: 6px;
-	background: rgba(8, 13, 24, 0.68);
+	background: rgba(8, 13, 24, 20.68);
 	backdrop-filter: blur(10px);
 	color: #a7c7dd;
 	font-family:
@@ -948,7 +936,7 @@ canvas {
 	white-space: pre-wrap;
 }
 
-#app.app-main-menu .fps-indicator {
+#app fps-indicator {
 	position: fixed;
 	top: 16px;
 	right: 16px;
@@ -1038,7 +1026,7 @@ canvas {
 	margin-left: 12px;
 }
 
-#app.app-main-menu .spacecraft-icon-thrust {
+#app .spacecraft-icon-thrust {
 	position: fixed;
 	width: 0;
 	height: 0;
@@ -1244,13 +1232,13 @@ canvas {
 		font-size: 11px;
 	}
 
-	.fps-indicator {
+	#app .fps-indicator {
 		top: auto;
 		right: 10px;
 		bottom: 72px;
 	}
 
-	.debug-panel {
+	#app .debug-panel {
 		right: 10px;
 		bottom: 72px;
 		left: 10px;
@@ -1263,4 +1251,16 @@ canvas {
 		right: calc(env(safe-area-inset-right, 0px) + 10px);
 		font-size: 11px;
 	}
+}
+
+#app.app-main-menu .top-bar,
+#app.app-main-menu .hud,
+#app.app-main-menu .scenario-prompt-backdrop,
+#app.app-main-menu .crash-menu,
+#app.app-main-menu .spacecraft-icon-thrust,
+#app.app-main-menu .offscreen-indicator,
+#app.app-main-menu .body-label,
+#app.app-main-menu .fps-indicator,
+#app.app-main-menu .debug-panel {
+	display: none;
 }

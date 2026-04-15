@@ -1,6 +1,6 @@
 export type GameHighLevelActions = {
-  startFreeRoam: () => void;
-  loadLastGame: () => void;
-  startTutorial: () => void;
-  confirmPrompt: () => void;
+	startFreeRoam: () => void;
+	loadLastGame: () => void;
+	startTutorial: () => void;
+	confirmPrompt: () => void;
 };

@@ -98,6 +98,12 @@ describe("createRuntimeActions", () => {
 			},
 			timeWarps: [1, 10, 50, 100, 500, 2000],
 			updateUserSettings: () => {},
+			gameHighLevelActions: {
+				confirmPrompt: () => {},
+				loadLastGame: () => {},
+				startFreeRoam: () => {},
+				startTutorial: () => {},
+			},
 		});
 
 		runtimeActions.handleUIUserAction("resetScenario");
@@ -170,6 +176,12 @@ describe("createRuntimeActions", () => {
 			},
 			timeWarps: [1, 10, 50, 100, 500, 2000],
 			updateUserSettings: () => {},
+			gameHighLevelActions: {
+				confirmPrompt: () => {},
+				loadLastGame: () => {},
+				startFreeRoam: () => {},
+				startTutorial: () => {},
+			},
 		});
 
 		expect(runtimeActions.restartFromCheckpoint()).toBe(true);

@@ -27,7 +27,6 @@ export const bindKeyboardShortcuts = (options: {
 		}
 	});
 
-
 	options.windowTarget.addEventListener("keyup", (event) => {
 		if (!options.getInteractionsEnabled()) {
 			return;

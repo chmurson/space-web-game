@@ -77,12 +77,11 @@ export const createScenarioPromptUI = (
 	topBar.appendChild(replayButton);
 
 	const promptElement =
-    backdropElement.querySelector<HTMLElement>(".scenario-prompt");
+		backdropElement.querySelector<HTMLElement>(".scenario-prompt");
 
 	const arrowElement = promptElement?.querySelector<HTMLElement>(
 		".scenario-prompt-arrow",
-  );
-
+	);
 
 	return {
 		backdropElement,

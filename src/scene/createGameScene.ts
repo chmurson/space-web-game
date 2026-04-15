@@ -97,7 +97,7 @@ export const createGameScene = (
 	const engineGlow = new THREE.Mesh(
 		new THREE.ConeGeometry(0.06, 0.16, 12),
 		new THREE.MeshBasicMaterial({
-			color: "#38bdf8",
+			color: "#f59e0b",
 			transparent: true,
 			opacity: 0,
 		}),

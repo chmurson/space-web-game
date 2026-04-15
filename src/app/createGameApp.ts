@@ -37,7 +37,7 @@ import { createTouchControls } from "../ui/createTouchControls";
 import { createTopMenu } from "../ui/createTopMenu";
 import { createRipple, type Ripple } from "../ui/overlayUpdates";
 import { readUserSettings, updateUserSettings } from "../userSettingsStorage";
-import { GameHighLevelActions } from "./types";
+import type { GameHighLevelActions } from "./types";
 
 export const createGameApp = (app: HTMLDivElement) => {
 	const urlParams = new URLSearchParams(window.location.search);
@@ -154,7 +154,6 @@ export const createGameApp = (app: HTMLDivElement) => {
 		RENDER_SCALE,
 	);
 
-
 	const voidFn = () => {};
 
 	const gameHighLevelActions: GameHighLevelActions = {
@@ -162,7 +161,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		loadLastGame: voidFn,
 		startTutorial: voidFn,
 		confirmPrompt: voidFn,
-	}
+	};
 
 	const runtimeActions = createRuntimeActions({
 		app,
@@ -183,8 +182,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		runtimeScenarioOptions,
 		timeWarps,
 		updateUserSettings,
-  });
-
+	});
 
 	let topMenu: ReturnType<typeof createTopMenu> | null = null;
 	let crashMenu: ReturnType<typeof createCrashMenu> | null = null;
@@ -209,7 +207,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		topMenu?.syncState();
 	};
 
-  let frameLoop: ReturnType<typeof createFrameLoop> | null = null;
+	let frameLoop: ReturnType<typeof createFrameLoop> | null = null;
 
 	topMenu = createTopMenu({
 		app,
@@ -220,7 +218,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 			maxCoastPredictionHorizonHours,
 		getMinCoastPredictionHorizonHours: () => minCoastPredictionHorizonHours,
 		onAction: dispatchRuntimeAction,
-  });
+	});
 
 	const touchControls = createTouchControls({
 		app,
@@ -311,32 +309,32 @@ export const createGameApp = (app: HTMLDivElement) => {
 	});
 
 	gameHighLevelActions.startFreeRoam = () => {
-    keyboardInput.clear();
-    runtimeActions.startFreeRoam();
-    appMode = "game";
-    app.classList.remove("app-main-menu");
-    frameLoop.refreshTrajectoryPrediction();
-  };
+		keyboardInput.clear();
+		runtimeActions.startFreeRoam();
+		appMode = "game";
+		app.classList.remove("app-main-menu");
+		frameLoop.refreshTrajectoryPrediction();
+	};
 
-  gameHighLevelActions.loadLastGame = () => {
-    keyboardInput.clear();
-    const loaded = runtimeActions.loadDebugSnapshot();
-    if (!loaded) {
-      mainMenu.syncState();
-      return;
-    }
-    appMode = "game";
-    app.classList.remove("app-main-menu");
-    frameLoop.refreshTrajectoryPrediction();
-  };
+	gameHighLevelActions.loadLastGame = () => {
+		keyboardInput.clear();
+		const loaded = runtimeActions.loadDebugSnapshot();
+		if (!loaded) {
+			mainMenu.syncState();
+			return;
+		}
+		appMode = "game";
+		app.classList.remove("app-main-menu");
+		frameLoop.refreshTrajectoryPrediction();
+	};
 
-  gameHighLevelActions.startTutorial = () => {
-    keyboardInput.clear();
-    runtimeActions.startTutorial();
-    appMode = "game";
-    app.classList.remove("app-main-menu");
-    frameLoop.refreshTrajectoryPrediction();
-  };
+	gameHighLevelActions.startTutorial = () => {
+		keyboardInput.clear();
+		runtimeActions.startTutorial();
+		appMode = "game";
+		app.classList.remove("app-main-menu");
+		frameLoop.refreshTrajectoryPrediction();
+	};
 
 	const mainMenu = createMainMenu({
 		app,
@@ -403,7 +401,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		}
 
 		if (result.effect === "start-free-roam") {
-		  gameHighLevelActions.startFreeRoam();
+			gameHighLevelActions.startFreeRoam();
 		}
 
 		//todo: think why we need to refresh trajectory prediction here
