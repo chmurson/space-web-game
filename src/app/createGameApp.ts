@@ -105,6 +105,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		minViewportSize: minViewport,
 		timeWarps,
 	};
+
 	syncRuntimeScenarioDirectives(runtime, scenarioDirectiveLimits);
 
 	const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -117,16 +118,19 @@ export const createGameApp = (app: HTMLDivElement) => {
 	const gameScene = createGameScene(
 		runtime.state.bodies,
 		gameConfig.trajectory.rendering,
-	);
+  );
+
 	const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime();
-	const ripples: Ripple[] = [];
+  const ripples: Ripple[] = [];
+
 	const overlayUi = createOverlayUi({
 		app,
 		bodies: runtime.state.bodies,
 		scenarioDescription: scenario.description,
 		scenarioName: scenario.name,
 		showCycleTargetHint: !autoSelectNearestSurface,
-	});
+  });
+
 	const queries = createGameQueries({
 		autoSelectNearestSurface,
 		autoSelectConfig: {
@@ -140,14 +144,16 @@ export const createGameApp = (app: HTMLDivElement) => {
 		maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
 		predictionSampling: gameConfig.trajectory.sampling,
 		runtime,
-	});
+  });
+
 	const trajectoryPresentation = createTrajectoryPresentation({
 		gameScene,
 		physicsEngine,
 		queries,
 		runtime,
-		trajectoryPredictionRuntime,
-	});
+    trajectoryPredictionRuntime,
+  });
+
 	const pickHeadingFromScreenPoint = createScreenPointHeadingPicker(
 		gameScene.camera,
 		renderer.domElement,
@@ -155,6 +161,8 @@ export const createGameApp = (app: HTMLDivElement) => {
 	);
 
 	const voidFn = () => {};
+
+	const dispatchHighLevelAction = (action: )
 
 	const gameHighLevelActions: GameHighLevelActions = {
 		startFreeRoam: voidFn,
@@ -239,6 +247,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		},
 		onZoom: runtimeActions.zoomCamera,
 	});
+
 	const hudPresentation = createHudPresentation({
 		defaultScenarioDescription: scenario.description,
 		defaultScenarioName: scenario.name,

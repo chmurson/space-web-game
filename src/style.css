@@ -5,6 +5,7 @@
 :root {
 	/*base z-index values*/
 	--z-in-game-elements: 10;
+	--z-in-game-floating-elements: 15;
 	--z-overlay-floating: 20;
 	--z-overlay-hud: 30;
 	--z-overlay-debug: 40;
@@ -13,6 +14,7 @@
 
 	/* specific z-index values */
 	--z-coach-prompt: calc(var(--z-overlay-floating) - 1);
+	--z-coach-prompt: calc(var())
 }
 
 html,
@@ -988,7 +990,7 @@ canvas {
 	font-size: 12px;
 	backdrop-filter: blur(12px);
 	cursor: pointer;
-	z-index: var(--z-overlay-floating);
+	z-index: var(--z-overlay-hud);
 }
 
 .scenario-prompt-pill:hover {
@@ -1004,7 +1006,7 @@ canvas {
 	color: #dbeafe;
 	font-size: 11px;
 	text-shadow: 0 0 8px rgba(56, 189, 248, 0.75);
-	z-index: var(--z-overlay-floating);
+	z-index: var(--z-in-game-elements);
 }
 
 .spacecraft-callout::before {
@@ -1036,7 +1038,7 @@ canvas {
 	filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.95));
 	opacity: 0.9;
 	pointer-events: none;
-	z-index: var(--z-overlay-floating);
+	z-index: var(--z-in-game-elements);
 }
 
 .spacecraft-callout span {
@@ -1052,7 +1054,7 @@ canvas {
 	height: 8px;
 	pointer-events: none;
 	transform: translate(-50%, -50%);
-	z-index: var(--z-overlay-floating);
+	z-index: var(--z-in-game-elements);
 }
 
 .map-ripple span {
@@ -1073,7 +1075,7 @@ canvas {
 	color: #e0f2fe;
 	font-size: 11px;
 	text-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
-	z-index: var(--z-overlay-floating);
+	z-index: var(--z-in-game-floating-elements);
 }
 
 .offscreen-indicator-mobile-stack {
@@ -1130,7 +1132,7 @@ canvas {
 	text-shadow: 0 0 8px rgba(15, 23, 42, 0.9);
 	transform: translateY(-50%);
 	white-space: nowrap;
-	z-index: var(--z-overlay-floating);
+	z-index: var(--z-in-game-floating-elements);
 }
 
 @media (hover: none), (pointer: coarse) {
