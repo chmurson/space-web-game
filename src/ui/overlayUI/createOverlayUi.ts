@@ -1,6 +1,6 @@
-import type { Body } from "../../simulation/types";
-import { createDebugPanel, type DebugPanel } from "../debugPanel";
-import "./overlayUIStyles.css";
+import type { Body } from '../../simulation/types'
+import { createDebugPanel, type DebugPanel } from '../debugPanel'
+import './overlayUIStyles.css'
 
 const replayPromptIconMarkup = `
   <svg class="scenario-prompt-pill-icon" viewBox="0 0 20 20" aria-hidden="true">
@@ -8,7 +8,7 @@ const replayPromptIconMarkup = `
     <path d="M10 5.15v5.35"></path>
     <circle cx="10" cy="13.65" r="0.9"></circle>
   </svg>
-`;
+`
 
 const crashIconMarkup = `
   <svg class="telemetry-crash-icon telemetry-crash-icon-burst" viewBox="0 0 16 16" aria-hidden="true">
@@ -20,63 +20,63 @@ const crashIconMarkup = `
       <circle class="telemetry-crash-icon-rocket-window" cx="8" cy="6.1" r="0.95"></circle>
     </g>
   </svg>
-`;
+`
 
 export type OverlayUiRefs = {
-	bodyLabels: Map<string, HTMLElement>;
-	debugPanel: DebugPanel;
-	fpsIndicator: HTMLElement;
-	hud: HTMLElement;
-	hudDescription: HTMLParagraphElement | null;
-	hudTitle: HTMLHeadingElement | null;
-	offscreenIndicators: Map<string, HTMLElement>;
-	scenarioPrompt: HTMLElement;
-	scenarioPromptConfirmButton: HTMLButtonElement | null;
-	scenarioPromptDescription: HTMLParagraphElement | null;
-	scenarioPromptReplayButton: HTMLButtonElement;
-	scenarioPromptReplayButtonLabel: HTMLSpanElement | null;
-	scenarioPromptSecondaryButton: HTMLButtonElement | null;
-	scenarioPromptTitle: HTMLHeadingElement | null;
-	spacecraftCallout: HTMLElement;
-	spacecraftCalloutLabel: HTMLSpanElement | null;
-	spacecraftIconThrust: HTMLElement;
-	statAssist: HTMLElement | null;
-	statEngine: HTMLElement | null;
-	statFuel: HTMLElement | null;
-	statGuidance: HTMLElement | null;
-	statSpeed: HTMLElement | null;
-	statThrust: HTMLElement | null;
-	speedIcon: SVGSVGElement | null;
-	statTarget: HTMLElement | null;
-	statTargetSpeed: HTMLElement | null;
-	statTime: HTMLElement | null;
-	timeIcon: SVGSVGElement | null;
-	timeIconHand: SVGLineElement | null;
-	statWarp: HTMLElement | null;
-	statZoom: HTMLElement | null;
-};
+  bodyLabels: Map<string, HTMLElement>
+  debugPanel: DebugPanel
+  fpsIndicator: HTMLElement
+  hud: HTMLElement
+  hudDescription: HTMLParagraphElement | null
+  hudTitle: HTMLHeadingElement | null
+  offscreenIndicators: Map<string, HTMLElement>
+  scenarioPrompt: HTMLElement
+  scenarioPromptConfirmButton: HTMLButtonElement | null
+  scenarioPromptDescription: HTMLParagraphElement | null
+  scenarioPromptReplayButton: HTMLButtonElement
+  scenarioPromptReplayButtonLabel: HTMLSpanElement | null
+  scenarioPromptSecondaryButton: HTMLButtonElement | null
+  scenarioPromptTitle: HTMLHeadingElement | null
+  spacecraftCallout: HTMLElement
+  spacecraftCalloutLabel: HTMLSpanElement | null
+  spacecraftIconThrust: HTMLElement
+  statAssist: HTMLElement | null
+  statEngine: HTMLElement | null
+  statFuel: HTMLElement | null
+  statGuidance: HTMLElement | null
+  statSpeed: HTMLElement | null
+  statThrust: HTMLElement | null
+  speedIcon: SVGSVGElement | null
+  statTarget: HTMLElement | null
+  statTargetSpeed: HTMLElement | null
+  statTime: HTMLElement | null
+  timeIcon: SVGSVGElement | null
+  timeIconHand: SVGLineElement | null
+  statWarp: HTMLElement | null
+  statZoom: HTMLElement | null
+}
 
 export type OverlayUiOptions = {
-	app: HTMLElement;
-	bodies: Body[];
-	scenarioDescription: string;
-	scenarioName: string;
-	showCycleTargetHint: boolean;
-};
+  app: HTMLElement
+  bodies: Body[]
+  scenarioDescription: string
+  scenarioName: string
+  showCycleTargetHint: boolean
+}
 
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
-	const topBar = document.createElement("div");
-	topBar.className = "top-bar";
-	options.app.appendChild(topBar);
+  const topBar = document.createElement('div')
+  topBar.className = 'top-bar'
+  options.app.appendChild(topBar)
 
-	const hud = document.createElement("section");
-	hud.className = "hud hud-hidden";
-	options.app.appendChild(hud);
+  const hud = document.createElement('section')
+  hud.className = 'hud hud-hidden'
+  options.app.appendChild(hud)
 
-	const telemetryStrip = document.createElement("div");
-	telemetryStrip.className = "telemetry-strip";
+  const telemetryStrip = document.createElement('div')
+  telemetryStrip.className = 'telemetry-strip'
 
-	telemetryStrip.innerHTML = `
+  telemetryStrip.innerHTML = `
     <div class="telemetry-pill telemetry-pill-time">
       <span class="telemetry-time-display">
         <svg class="telemetry-time-icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -105,20 +105,20 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
         <strong data-stat="speed"></strong>
       </span>
     </div>
-  `;
-	topBar.appendChild(telemetryStrip);
+  `
+  topBar.appendChild(telemetryStrip)
 
-	const debugPanel = createDebugPanel(options.app);
+  const debugPanel = createDebugPanel(options.app)
 
-	const fpsIndicator = document.createElement("div");
-	fpsIndicator.className = "fps-indicator";
-	fpsIndicator.style.display = "none";
-	options.app.appendChild(fpsIndicator);
+  const fpsIndicator = document.createElement('div')
+  fpsIndicator.className = 'fps-indicator'
+  fpsIndicator.style.display = 'none'
+  options.app.appendChild(fpsIndicator)
 
-	const scenarioPrompt = document.createElement("div");
-	scenarioPrompt.className = "scenario-prompt-backdrop";
-	scenarioPrompt.style.display = "none";
-	scenarioPrompt.innerHTML = `
+  const scenarioPrompt = document.createElement('div')
+  scenarioPrompt.className = 'scenario-prompt-backdrop'
+  scenarioPrompt.style.display = 'none'
+  scenarioPrompt.innerHTML = `
     <div class="scenario-prompt">
       <div class="scenario-prompt-arrow"></div>
       <h2></h2>
@@ -128,91 +128,91 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
         <button type="button" data-role="secondary"></button>
       </div>
     </div>
-  `;
-	options.app.appendChild(scenarioPrompt);
+  `
+  options.app.appendChild(scenarioPrompt)
 
-	const scenarioPromptReplayButton = document.createElement("button");
-	scenarioPromptReplayButton.type = "button";
-	scenarioPromptReplayButton.className = "scenario-prompt-pill";
-	scenarioPromptReplayButton.style.display = "none";
-	scenarioPromptReplayButton.innerHTML = `
+  const scenarioPromptReplayButton = document.createElement('button')
+  scenarioPromptReplayButton.type = 'button'
+  scenarioPromptReplayButton.className = 'scenario-prompt-pill'
+  scenarioPromptReplayButton.style.display = 'none'
+  scenarioPromptReplayButton.innerHTML = `
     ${replayPromptIconMarkup}
     <span class="scenario-prompt-pill-label"></span>
-  `;
-	topBar.appendChild(scenarioPromptReplayButton);
+  `
+  topBar.appendChild(scenarioPromptReplayButton)
 
-	const spacecraftCallout = document.createElement("div");
-	spacecraftCallout.className = "spacecraft-callout";
-	spacecraftCallout.innerHTML = "<span>Spacecraft</span>";
-	options.app.appendChild(spacecraftCallout);
-	const spacecraftCalloutLabel =
-		spacecraftCallout.querySelector<HTMLSpanElement>("span");
+  const spacecraftCallout = document.createElement('div')
+  spacecraftCallout.className = 'spacecraft-callout'
+  spacecraftCallout.innerHTML = '<span>Spacecraft</span>'
+  options.app.appendChild(spacecraftCallout)
+  const spacecraftCalloutLabel =
+    spacecraftCallout.querySelector<HTMLSpanElement>('span')
 
-	const spacecraftIconThrust = document.createElement("div");
-	spacecraftIconThrust.className = "spacecraft-icon-thrust";
-	spacecraftIconThrust.style.display = "none";
-	options.app.appendChild(spacecraftIconThrust);
+  const spacecraftIconThrust = document.createElement('div')
+  spacecraftIconThrust.className = 'spacecraft-icon-thrust'
+  spacecraftIconThrust.style.display = 'none'
+  options.app.appendChild(spacecraftIconThrust)
 
-	const offscreenIndicators = new Map<string, HTMLElement>();
-	const bodyLabels = new Map<string, HTMLElement>();
+  const offscreenIndicators = new Map<string, HTMLElement>()
+  const bodyLabels = new Map<string, HTMLElement>()
 
-	for (const body of options.bodies) {
-		const indicator = document.createElement("div");
-		indicator.className = "offscreen-indicator";
-		indicator.innerHTML = `<div class="pointer"></div><div class="label"></div>`;
-		indicator.style.display = "none";
-		options.app.appendChild(indicator);
-		offscreenIndicators.set(body.id, indicator);
+  for (const body of options.bodies) {
+    const indicator = document.createElement('div')
+    indicator.className = 'offscreen-indicator'
+    indicator.innerHTML = `<div class="pointer"></div><div class="label"></div>`
+    indicator.style.display = 'none'
+    options.app.appendChild(indicator)
+    offscreenIndicators.set(body.id, indicator)
 
-		const label = document.createElement("div");
-		label.className = "body-label";
-		label.textContent = body.name;
-		label.style.display = "none";
-		options.app.appendChild(label);
-		bodyLabels.set(body.id, label);
-	}
+    const label = document.createElement('div')
+    label.className = 'body-label'
+    label.textContent = body.name
+    label.style.display = 'none'
+    options.app.appendChild(label)
+    bodyLabels.set(body.id, label)
+  }
 
-	return {
-		bodyLabels,
-		debugPanel,
-		fpsIndicator,
-		hud,
-		hudDescription: hud.querySelector<HTMLParagraphElement>("p"),
-		hudTitle: hud.querySelector<HTMLHeadingElement>("h1"),
-		offscreenIndicators,
-		scenarioPrompt,
-		scenarioPromptConfirmButton:
-			scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="confirm"]'),
-		scenarioPromptDescription:
-			scenarioPrompt.querySelector<HTMLParagraphElement>("p"),
-		scenarioPromptReplayButton,
-		scenarioPromptReplayButtonLabel:
-			scenarioPromptReplayButton.querySelector<HTMLSpanElement>(
-				".scenario-prompt-pill-label",
-			),
-		scenarioPromptSecondaryButton:
-			scenarioPrompt.querySelector<HTMLButtonElement>(
-				'[data-role="secondary"]',
-			),
-		scenarioPromptTitle: scenarioPrompt.querySelector<HTMLHeadingElement>("h2"),
-		spacecraftCallout,
-		spacecraftCalloutLabel,
-		spacecraftIconThrust,
-		statAssist: null,
-		statEngine: null,
-		statFuel: null,
-		statGuidance: null,
-		statSpeed: topBar.querySelector<HTMLElement>('[data-stat="speed"]'),
-		statThrust: topBar.querySelector<HTMLElement>('[data-stat="thrust"]'),
-		speedIcon: topBar.querySelector<SVGSVGElement>(".telemetry-speed-icon"),
-		statTarget: null,
-		statTargetSpeed: null,
-		statTime: topBar.querySelector<HTMLElement>('[data-stat="time"]'),
-		timeIcon: topBar.querySelector<SVGSVGElement>(".telemetry-time-icon"),
-		timeIconHand: topBar.querySelector<SVGLineElement>(
-			".telemetry-time-icon-hand-minute",
-		),
-		statWarp: null,
-		statZoom: null,
-	};
-};
+  return {
+    bodyLabels,
+    debugPanel,
+    fpsIndicator,
+    hud,
+    hudDescription: hud.querySelector<HTMLParagraphElement>('p'),
+    hudTitle: hud.querySelector<HTMLHeadingElement>('h1'),
+    offscreenIndicators,
+    scenarioPrompt,
+    scenarioPromptConfirmButton:
+      scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="confirm"]'),
+    scenarioPromptDescription:
+      scenarioPrompt.querySelector<HTMLParagraphElement>('p'),
+    scenarioPromptReplayButton,
+    scenarioPromptReplayButtonLabel:
+      scenarioPromptReplayButton.querySelector<HTMLSpanElement>(
+        '.scenario-prompt-pill-label',
+      ),
+    scenarioPromptSecondaryButton:
+      scenarioPrompt.querySelector<HTMLButtonElement>(
+        '[data-role="secondary"]',
+      ),
+    scenarioPromptTitle: scenarioPrompt.querySelector<HTMLHeadingElement>('h2'),
+    spacecraftCallout,
+    spacecraftCalloutLabel,
+    spacecraftIconThrust,
+    statAssist: null,
+    statEngine: null,
+    statFuel: null,
+    statGuidance: null,
+    statSpeed: topBar.querySelector<HTMLElement>('[data-stat="speed"]'),
+    statThrust: topBar.querySelector<HTMLElement>('[data-stat="thrust"]'),
+    speedIcon: topBar.querySelector<SVGSVGElement>('.telemetry-speed-icon'),
+    statTarget: null,
+    statTargetSpeed: null,
+    statTime: topBar.querySelector<HTMLElement>('[data-stat="time"]'),
+    timeIcon: topBar.querySelector<SVGSVGElement>('.telemetry-time-icon'),
+    timeIconHand: topBar.querySelector<SVGLineElement>(
+      '.telemetry-time-icon-hand-minute',
+    ),
+    statWarp: null,
+    statZoom: null,
+  }
+}

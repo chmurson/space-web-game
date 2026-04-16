@@ -1,129 +1,129 @@
 /* Top bar layout - contains menu, telemetry strip, and scenario prompt pill */
 .top-bar {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	display: flex;
-	justify-content: flex-start;
-	align-items: center;
-	gap: 12px;
-	padding: 12px 12px 0;
-	z-index: var(--z-overlay-hud);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 0;
+  z-index: var(--z-overlay-hud);
 }
 
 /* Telemetry strip - centered in the top bar */
 .telemetry-strip {
-	display: inline-flex;
-	justify-content: center;
-	pointer-events: none;
-	flex-shrink: 0;
-	margin-left: auto;
+  display: inline-flex;
+  justify-content: center;
+  pointer-events: none;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .top-menu {
-	order: 1;
+  order: 1;
 }
 
 .scenario-prompt-pill {
-	order: 2;
+  order: 2;
 }
 
 .telemetry-strip {
-	order: 3;
+  order: 3;
 }
 
 .telemetry-pill {
-	padding: 5px 7px;
+  padding: 5px 7px;
 }
 
 .telemetry-strip > .telemetry-pill {
-	flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 /* Scenario prompt pill - positioned absolutely on desktop */
 .scenario-prompt-pill {
-	display: inline-flex;
-	align-items: center;
-	gap: 7px;
-	flex: 0 1 auto;
-	min-width: 0;
-	max-width: min(240px, calc(100vw - 140px));
-	padding: 6px 10px;
-	border: 1px solid rgba(103, 232, 249, 0.28);
-	border-radius: 999px;
-	background: rgba(8, 13, 24, 0.56);
-	color: #dbeafe;
-	font: inherit;
-	font-size: 12px;
-	backdrop-filter: blur(12px);
-	cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(240px, calc(100vw - 140px));
+  padding: 6px 10px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.56);
+  color: #dbeafe;
+  font: inherit;
+  font-size: 12px;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
 }
 
 .scenario-prompt-pill-icon {
-	width: 16px;
-	height: 16px;
-	flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .scenario-prompt-pill-icon path,
 .scenario-prompt-pill-icon circle {
-	fill: none;
-	stroke: currentColor;
-	stroke-linecap: round;
-	stroke-linejoin: round;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .scenario-prompt-pill-icon path:first-child {
-	stroke-width: 1.45;
-	opacity: 0.92;
+  stroke-width: 1.45;
+  opacity: 0.92;
 }
 
 .scenario-prompt-pill-icon path:not(:first-child) {
-	stroke-width: 1.8;
+  stroke-width: 1.8;
 }
 
 .scenario-prompt-pill-icon circle {
-	fill: currentColor;
-	stroke: none;
-	opacity: 0.98;
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.98;
 }
 
 .scenario-prompt-pill-icon {
-	filter: drop-shadow(0 0 5px rgba(125, 211, 252, 0.22));
+  filter: drop-shadow(0 0 5px rgba(125, 211, 252, 0.22));
 }
 
 .scenario-prompt-pill-label {
-	display: block;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .scenario-prompt-pill:hover {
-	border-color: rgba(103, 232, 249, 0.62);
+  border-color: rgba(103, 232, 249, 0.62);
 }
 
 /* Mobile adjustments */
 @media (max-width: 720px) {
-	.top-bar {
-		padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 0;
-		gap: 8px;
-	}
+  .top-bar {
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 0;
+    gap: 8px;
+  }
 
-	.scenario-prompt-pill {
-		max-width: min(180px, calc(100vw - 108px));
-		gap: 6px;
-		font-size: 11px;
-	}
+  .scenario-prompt-pill {
+    max-width: min(180px, calc(100vw - 108px));
+    gap: 6px;
+    font-size: 11px;
+  }
 
-	.scenario-prompt-pill-icon {
-		width: 14px;
-		height: 14px;
-	}
+  .scenario-prompt-pill-icon {
+    width: 14px;
+    height: 14px;
+  }
 
-	.telemetry-strip {
-		gap: 5px;
-	}
+  .telemetry-strip {
+    gap: 5px;
+  }
 }
