@@ -11,7 +11,9 @@ export type GameHighLevelActionPayloads = {
 	confirmPrompt: { actionToTrigger?: string };
 };
 
-export type GameHighLevelAction<T extends GameHighLevelActionType = GameHighLevelActionType> = {
+export type GameHighLevelAction<
+	T extends GameHighLevelActionType = GameHighLevelActionType,
+> = {
 	type: T;
 	payload?: GameHighLevelActionPayloads[T];
 };
@@ -24,12 +26,14 @@ export class GameMediator {
 
 	registerAction<T extends GameHighLevelActionType>(
 		type: T,
-		handler: (payload: GameHighLevelActionPayloads[T]) => void
+		handler: (payload: GameHighLevelActionPayloads[T]) => void,
 	) {
 		this.actionHandlers.set(type, handler as (payload: unknown) => void);
 	}
 
-	dispatch<T extends GameHighLevelActionType>(action: GameHighLevelAction<T>): void {
+	dispatch<T extends GameHighLevelActionType>(
+		action: GameHighLevelAction<T>,
+	): void {
 		const handler = this.actionHandlers.get(action.type);
 		if (handler) {
 			handler(action.payload as GameHighLevelActionPayloads[T]);

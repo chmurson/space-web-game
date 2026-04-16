@@ -12,7 +12,8 @@
     "lint": "biome lint --write src scripts",
     "commitlint": "commitlint --edit $1",
     "format": "biome format --write src scripts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "husky"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.6",
@@ -23,6 +24,7 @@
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@types/three": "^0.182.0",
+    "husky": "^9.1.7",
     "typescript": "^5.9.3",
     "vite": "^7.2.4",
     "vitest": "^4.1.4",

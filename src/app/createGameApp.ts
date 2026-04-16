@@ -18,27 +18,27 @@ import { createGameQueries } from "../runtime/gameQueries";
 import { createRuntimeActions } from "../runtime/runtimeActions";
 import { createTrajectoryPredictionRuntime } from "../runtime/trajectoryPredictionRuntime";
 import {
-	createDefaultScenarioDirectives,
-	type ScenarioDirectiveLimits,
-} from "../scenario/scenarioDirectiveTypes";
-import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
-import {
 	createRequestedRuntimeScenario,
 	createRuntimeScenarioState,
 	type RuntimeScenarioOptions,
 } from "../scenario/runtimeScenario";
+import { syncRuntimeScenarioDirectives } from "../scenario/scenarioDirectives";
+import {
+	createDefaultScenarioDirectives,
+	type ScenarioDirectiveLimits,
+} from "../scenario/scenarioDirectiveTypes";
 import { createGameScene } from "../scene/createGameScene";
 import { RENDER_SCALE } from "../simulation/constants";
 import { defaultPhysicsEngine, physicsEngines } from "../simulation/physics";
-import { createOverlayUi } from "../ui/overlayUI/createOverlayUi";
 import { createCrashMenu } from "../ui/createCrashMenu";
 import { createMainMenu } from "../ui/createMainMenu";
-import { createTouchControls } from "../ui/createTouchControls";
 import { createTopMenu } from "../ui/createTopMenu";
+import { createTouchControls } from "../ui/createTouchControls";
+import { createOverlayUi } from "../ui/overlayUI/createOverlayUi";
 import { createRipple, type Ripple } from "../ui/overlayUpdates";
 import { readUserSettings, updateUserSettings } from "../userSettingsStorage";
-import { createGameHighLevelActions } from "./types";
 import { gameMediator } from "./gameHighLevelActionDispatcher";
+import { createGameHighLevelActions } from "./types";
 
 export const createGameApp = (app: HTMLDivElement) => {
 	const urlParams = new URLSearchParams(window.location.search);
@@ -290,7 +290,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		mainMenu.syncState();
 		mainMenu.setVisible(true);
 		topMenu?.close();
-		frameLoop!.refreshTrajectoryPrediction();
+		frameLoop?.refreshTrajectoryPrediction();
 	};
 
 	// Create main menu with dispatch functions
@@ -345,7 +345,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		runtimeActions.startFreeRoam();
 		appMode = "game";
 		app.classList.remove("app-main-menu");
-		frameLoop!.refreshTrajectoryPrediction();
+		frameLoop?.refreshTrajectoryPrediction();
 	});
 
 	gameMediator.registerAction("loadLastGame", () => {
@@ -357,7 +357,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 		}
 		appMode = "game";
 		app.classList.remove("app-main-menu");
-		frameLoop!.refreshTrajectoryPrediction();
+		frameLoop?.refreshTrajectoryPrediction();
 	});
 
 	gameMediator.registerAction("startTutorial", () => {
@@ -365,10 +365,11 @@ export const createGameApp = (app: HTMLDivElement) => {
 		runtimeActions.startTutorial();
 		appMode = "game";
 		app.classList.remove("app-main-menu");
-		frameLoop!.refreshTrajectoryPrediction();
+		frameLoop?.refreshTrajectoryPrediction();
 	});
 
 	gameMediator.registerAction("confirmPrompt", (payload) => {
+		// biome-ignore lint/suspicious/noExplicitAny: A quick fix for the type error; improve it later
 		const actionToTrigger = (payload as any)?.actionToTrigger;
 		if (actionToTrigger === "exit-to-menu") {
 			enterMainMenu();
@@ -426,7 +427,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 			gameHighLevelActions.startFreeRoam();
 		}
 
-		frameLoop!.refreshTrajectoryPrediction();
+		frameLoop?.refreshTrajectoryPrediction();
 	});
 
 	overlayUi.scenarioPromptSecondaryButton?.addEventListener("click", () => {
@@ -439,7 +440,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 
 	overlayUi.scenarioPromptReplayButton.addEventListener("click", () => {
 		if (runtimeActions.reopenScenarioPrompt()) {
-			frameLoop!.refreshTrajectoryPrediction();
+			frameLoop?.refreshTrajectoryPrediction();
 		}
 	});
 

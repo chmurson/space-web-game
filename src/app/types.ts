@@ -8,16 +8,22 @@ export type GameHighLevelActions = {
 };
 
 export const createGameHighLevelActions = (
-	mediator: GameMediator
+	mediator: GameMediator,
 ): GameHighLevelActions => ({
 	startFreeRoam: () => {
-		mediator.dispatch({ type: "startFreeRoam", payload: { difficulty: "medium" } });
+		mediator.dispatch({
+			type: "startFreeRoam",
+			payload: { difficulty: "medium" },
+		});
 	},
 	loadLastGame: () => {
 		mediator.dispatch({ type: "loadLastGame" });
 	},
 	startTutorial: () => {
-		mediator.dispatch({ type: "startTutorial", payload: { scenarioId: "tutorial" } });
+		mediator.dispatch({
+			type: "startTutorial",
+			payload: { scenarioId: "tutorial" },
+		});
 	},
 	confirmPrompt: (payload) => {
 		mediator.dispatch({ type: "confirmPrompt", payload });

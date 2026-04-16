@@ -3,8 +3,19 @@ import { createEarthMoonScenario } from "../../../simulation/scenarios/earthMoon
 import type { RuntimeScenario } from "../../../debugScenarioSnapshot";
 import type { AppRuntimeState } from "../../../runtime/appRuntimeState";
 import { getCaptureMetricsForState } from "../../../assist/orbitalAssist";
-import { EARTH_MOON_DISTANCE, EARTH_RADIUS, G } from "../../../simulation/constants";
-import { add, length, normalize, scale, sub, vec } from "../../../simulation/vector";
+import {
+	EARTH_MOON_DISTANCE,
+	EARTH_RADIUS,
+	G,
+} from "../../../simulation/constants";
+import {
+	add,
+	length,
+	normalize,
+	scale,
+	sub,
+	vec,
+} from "../../../simulation/vector";
 import {
 	createRuntimeScenarioCheckpoint,
 	createRuntimeScenarioSession,

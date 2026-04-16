@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Get list of staged files that Biome should process (only src and scripts)
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js|json)$' | grep -E '^(src/|scripts/)' || true)
+
+if [ -z "$staged_files" ]; then
+  exit 0
+fi
+
+# Lint staged files
+echo "Linting staged files..."
+lint_result=0
+for file in $staged_files; do
+  npx biome lint --write "$file" || lint_result=$?
+done
+
+if [ $lint_result -ne 0 ]; then
+  echo "Linting failed. Please fix the issues and try again."
+  exit 1
+fi
+
+# Format staged files
+echo "Formatting staged files..."
+format_result=0
+for file in $staged_files; do
+  npx biome format --write "$file" || format_result=$?
+done
+
+if [ $format_result -ne 0 ]; then
+  echo "Formatting failed. Please fix the issues and try again."
+  exit 1
+fi
+
+# Add formatted files back to staging
+git add $staged_files
+
+exit 0
