@@ -1,14 +1,14 @@
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import type { ScenarioSessionValue } from './scenarioSession'
 import {
   createDefaultScenarioDirectives,
   type RuntimeScenarioDirectives,
-  type ScenarioDirectiveLimits,
+  type GlobalScenarioDirectiveLimits,
 } from './scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
+import type { ScenarioSessionValue } from './scenarioSession'
 
 type DirectiveContext = {
-  limits: ScenarioDirectiveLimits
+  limits: GlobalScenarioDirectiveLimits
   runtime: AppRuntimeState
 }
 
@@ -78,21 +78,27 @@ const genericDirectiveResolver: ScenarioDirectiveResolver = ({ runtime }) => ({
 
 export const resolveRuntimeScenarioDirectives = (
   runtime: AppRuntimeState,
-  limits: ScenarioDirectiveLimits,
+  limits: GlobalScenarioDirectiveLimits,
 ): RuntimeScenarioDirectives => {
+  const baseDirectives = genericDirectiveResolver({ limits, runtime })
   const definition = getRuntimeScenarioDefinition(
     runtime.scenarioSession.scenarioId,
   )
 
   if (
-    definition?.getDirectives &&
+    definition?.getDirectiveOverrides &&
     (!definition.isState || definition.isState(runtime.scenarioSession.state))
   ) {
-    return definition.getDirectives(runtime.scenarioSession.state, limits)
+    return {
+      ...baseDirectives,
+      ...definition.getDirectiveOverrides(
+        runtime.scenarioSession.state,
+        limits,
+      ),
+    }
   }
 
-  const resolver: ScenarioDirectiveResolver = genericDirectiveResolver
-  return resolver({ limits, runtime })
+  return baseDirectives
 }
 
 export const getConstrainedTimeWarpIndex = (
@@ -119,7 +125,7 @@ export const getConstrainedTimeWarpIndex = (
 
 export const applyRuntimeScenarioDirectiveConstraints = (
   runtime: AppRuntimeState,
-  limits: ScenarioDirectiveLimits,
+  limits: GlobalScenarioDirectiveLimits,
 ) => {
   runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
     runtime.timeWarpIndex,
@@ -142,7 +148,7 @@ export const applyRuntimeScenarioDirectiveConstraints = (
 
 export const syncRuntimeScenarioDirectives = (
   runtime: AppRuntimeState,
-  limits: ScenarioDirectiveLimits,
+  limits: GlobalScenarioDirectiveLimits,
 ) => {
   runtime.scenarioDirectives = resolveRuntimeScenarioDirectives(runtime, limits)
   applyRuntimeScenarioDirectiveConstraints(runtime, limits)

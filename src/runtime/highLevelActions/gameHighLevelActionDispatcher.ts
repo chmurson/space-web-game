@@ -3,20 +3,27 @@ export type GameHighLevelActionType =
   | 'loadLastGame'
   | 'startTutorial'
   | 'confirmPrompt'
+  | 'enterMainMenu'
+  | 'restartScenario'
+  | 'restartFromCheckpoint'
 
 export type GameHighLevelActionPayloads = {
-  startFreeRoam: { difficulty: 'easy' | 'medium' | 'hard' }
-  loadLastGame: undefined
+  startFreeRoam: undefined
+  loadLastGame: { fromMenu: 'crashMenu' | 'mainMenu' }
   startTutorial: { scenarioId: string }
   confirmPrompt: { actionToTrigger?: string }
+  enterMainMenu: undefined
+  restartScenario: undefined
+  restartFromCheckpoint: undefined
 }
 
 export type GameHighLevelAction<
   T extends GameHighLevelActionType = GameHighLevelActionType,
-> = {
-  type: T
-  payload?: GameHighLevelActionPayloads[T]
-}
+> = T extends GameHighLevelActionType
+  ? GameHighLevelActionPayloads[T] extends undefined
+    ? { type: T }
+    : { type: T; payload: GameHighLevelActionPayloads[T] }
+  : never
 
 export class GameHighLevelActionsMediator {
   private actionHandlers = new Map<
@@ -31,13 +38,18 @@ export class GameHighLevelActionsMediator {
     this.actionHandlers.set(type, handler as (payload: unknown) => void)
   }
 
-  dispatch<T extends GameHighLevelActionType>(
-    action: GameHighLevelAction<T>,
-  ): void {
+  dispatch(action: GameHighLevelAction): void {
     const handler = this.actionHandlers.get(action.type)
-    if (handler) {
-      handler(action.payload as GameHighLevelActionPayloads[T])
+    if (!handler) {
+      return
     }
+
+    if ('payload' in action) {
+      handler(action.payload)
+      return
+    }
+
+    handler(undefined)
   }
 }
 

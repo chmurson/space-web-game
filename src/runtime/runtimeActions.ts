@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import type { GameHighLevelActions } from '../app/gameHighLevelActions'
 import type { UIUserAction } from '../input/uiUserActions'
 import { updateCameraView } from '../render/sceneUpdates'
 import {
@@ -13,7 +12,7 @@ import {
   getConstrainedTimeWarpIndex,
   syncRuntimeScenarioDirectives,
 } from '../scenario/scenarioDirectives'
-import type { ScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import {
   acknowledgeRuntimeScenarioPrompt,
   reopenRuntimeScenarioPrompt,
@@ -22,6 +21,7 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { add } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
+import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
 import { restoreRuntimeFromScenarioCheckpoint } from './scenarioRecovery'
 
 type RippleCreator = (
@@ -49,11 +49,11 @@ export const createRuntimeActions = (options: {
   requestedScenario: string
   ripples: Ripple[]
   runtime: AppRuntimeState
-  scenarioDirectiveLimits: ScenarioDirectiveLimits
+  globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
   runtimeScenarioOptions: RuntimeScenarioOptions
   timeWarps: number[]
   updateUserSettings: (settings: { debugModeEnabled: boolean }) => void
-  gameHighLevelActions: GameHighLevelActions
+  gameHighLevelActions: GameHighLevelActionsMediator
 }) => {
   let activeScenarioId = options.requestedScenario
   const normalizeAngle = (angle: number) => {
@@ -84,7 +84,7 @@ export const createRuntimeActions = (options: {
     clearTransientScenarioState()
     syncRuntimeScenarioDirectives(
       options.runtime,
-      options.scenarioDirectiveLimits,
+      options.globalScenarioDirectiveLimits,
     )
   }
 
@@ -130,13 +130,14 @@ export const createRuntimeActions = (options: {
     clearTransientScenarioState()
     syncRuntimeScenarioDirectives(
       options.runtime,
-      options.scenarioDirectiveLimits,
+      options.globalScenarioDirectiveLimits,
     )
     options.runtime.assistTargetIndex = Math.min(
       options.runtime.assistTargetIndex,
       Math.max(0, options.runtime.state.bodies.length - 1),
     )
     options.runtime.debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`
+    setTimeWarp(1)
   }
 
   const updateCamera = () =>
@@ -184,7 +185,7 @@ export const createRuntimeActions = (options: {
     clearTransientScenarioState()
     syncRuntimeScenarioDirectives(
       options.runtime,
-      options.scenarioDirectiveLimits,
+      options.globalScenarioDirectiveLimits,
     )
   }
   const restartFromCheckpoint = () => {
@@ -198,7 +199,7 @@ export const createRuntimeActions = (options: {
     clearTransientScenarioState()
     syncRuntimeScenarioDirectives(
       options.runtime,
-      options.scenarioDirectiveLimits,
+      options.globalScenarioDirectiveLimits,
     )
     return true
   }
@@ -207,14 +208,17 @@ export const createRuntimeActions = (options: {
     acknowledgeRuntimeScenarioPrompt(options.runtime)
   const reopenScenarioPrompt = () =>
     reopenRuntimeScenarioPrompt(options.runtime)
+
   const startFreeRoam = () => {
     activeScenarioId = 'earth-moon'
     loadScenario(activeScenarioId)
   }
+
   const startTutorial = () => {
     activeScenarioId = 'tutorial'
     loadScenario(activeScenarioId)
   }
+
   const enterMainMenuBackground = () => {
     activeScenarioId = 'menu-background'
     loadScenario(activeScenarioId)

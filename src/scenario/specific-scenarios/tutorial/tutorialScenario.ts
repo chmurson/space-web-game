@@ -1,13 +1,17 @@
-import { gameConfig } from '../../../config/gameConfig'
-import { createEarthMoonScenario } from '../../../simulation/scenarios/earthMoon'
-import type { RuntimeScenario } from '../../../debugScenarioSnapshot'
-import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
 import { getCaptureMetricsForState } from '../../../assist/orbitalAssist'
+import { gameConfig } from '../../../config/gameConfig'
+import type { RuntimeScenario } from '../../../debugScenarioSnapshot'
+import {
+  EARTH_MOON_VIEWPORT_SIZE,
+  EARTH_VIEWPORT_SIZE,
+} from '../../../domain/viewportPresets'
+import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
 import {
   EARTH_MOON_DISTANCE,
   EARTH_RADIUS,
   G,
 } from '../../../simulation/constants'
+import { createEarthMoonScenario } from '../../../simulation/scenarios/earthMoon'
 import {
   add,
   length,
@@ -17,14 +21,9 @@ import {
   vec,
 } from '../../../simulation/vector'
 import {
-  createRuntimeScenarioCheckpoint,
-  createRuntimeScenarioSession,
-  type RuntimeScenarioCheckpoint,
-} from '../../scenarioSession'
-import {
   createDefaultScenarioDirectives,
   type RuntimeScenarioDirectives,
-  type ScenarioDirectiveLimits,
+  type GlobalScenarioDirectiveLimits,
 } from '../../scenarioDirectiveTypes'
 import type {
   PromptAcknowledgeResult,
@@ -33,14 +32,21 @@ import type {
   RuntimeScenarioDefinition,
   ScenarioPromptContent,
 } from '../../scenarioRegistry'
-import { getTutorialOnboardingPromptContent } from './tutorialOnboarding/tutorialOnboardingFlow'
+import {
+  createRuntimeScenarioCheckpoint,
+  createRuntimeScenarioSession,
+  type RuntimeScenarioCheckpoint,
+} from '../../scenarioSession'
+import {
+  getHiddenOnboardingUIElements,
+  getTutorialOnboardingPromptContent,
+} from './tutorialOnboarding/tutorialOnboardingFlow'
 import {
   acknowledgeTutorialOnboardingPrompt,
   advanceTutorialOnboarding,
   createTutorialOnboardingState,
 } from './tutorialOnboarding/tutorialOnboardingProgress'
 import type { TutorialOnboardingState } from './tutorialOnboarding/tutorialOnboardingTypes'
-import { getHiddenOnboardingUIElements } from './tutorialOnboarding/tutorialOnboardingFlow'
 
 type TutorialScenarioPhase =
   | 'escape-earth'
@@ -111,7 +117,7 @@ const createTutorialScenario = (): RuntimeScenario => {
 
 const getTutorialScenarioDirectives = (
   state: TutorialScenarioState,
-  limits: ScenarioDirectiveLimits,
+  _limits: GlobalScenarioDirectiveLimits,
 ): RuntimeScenarioDirectives => {
   if (state.phase === 'escape-earth') {
     return {
@@ -120,7 +126,7 @@ const getTutorialScenarioDirectives = (
       hiddenBodyIds: ['moon'],
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 500,
-      maxViewportSize: limits.defaultViewportSize / 5,
+      maxViewportSize: EARTH_VIEWPORT_SIZE,
       hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
     }
   }
@@ -131,7 +137,7 @@ const getTutorialScenarioDirectives = (
       forcedAssistTargetId: 'moon',
       maxCoastPredictionHorizonHours: 24,
       maxTimeWarp: 2000,
-      maxViewportSize: limits.defaultViewportSize / 0.5,
+      maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
     }
   }
 
@@ -141,7 +147,7 @@ const getTutorialScenarioDirectives = (
       forcedAssistTargetId: 'earth',
       maxCoastPredictionHorizonHours: 24,
       maxTimeWarp: 2000,
-      maxViewportSize: limits.defaultViewportSize / 0.5,
+      maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
     }
   }
 
@@ -651,7 +657,7 @@ export const registerTutorialScenario =
     id: 'tutorial',
     createScenario: createTutorialScenario,
     getActivePrompt,
-    getDirectives: getTutorialScenarioDirectives,
+    getDirectiveOverrides: getTutorialScenarioDirectives,
     getHudContent: getTutorialHudContent,
     getPromptContent: getTutorialPromptContent,
     getReplayPromptContent: (state) =>

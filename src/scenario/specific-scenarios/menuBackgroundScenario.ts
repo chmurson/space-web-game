@@ -1,10 +1,11 @@
+import { EARTH_VIEWPORT_SIZE } from '../../domain/viewportPresets'
+import { G } from '../../simulation/constants'
+import { createEarthMoonScenario } from '../../simulation/scenarios/earthMoon'
+import type { RuntimeScenarioDefinition } from '../scenarioRegistry'
 import {
   createRuntimeScenarioSession,
   type ScenarioSessionValue,
 } from '../scenarioSession'
-import type { RuntimeScenarioDefinition } from '../scenarioRegistry'
-import { createEarthMoonScenario } from '../../simulation/scenarios/earthMoon'
-import { G } from '../../simulation/constants'
 
 type MenuBackgroundScenarioState = ScenarioSessionValue & {
   cameraFollowBodyId: 'earth'
@@ -36,7 +37,7 @@ export const registerMenuBackgroundScenario =
         ...scenario,
         id: 'menu-background',
         name: 'Menu background',
-        viewportSize: 50,
+        viewportSize: EARTH_VIEWPORT_SIZE,
         scenarioSession: createRuntimeScenarioSession('menu-background', {
           cameraFollowBodyId: 'earth',
           cameraFollowOffsetX: 4_000_000,

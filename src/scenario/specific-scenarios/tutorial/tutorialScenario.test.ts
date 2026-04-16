@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
+import {
+  EARTH_MOON_VIEWPORT_SIZE,
+  EARTH_VIEWPORT_SIZE,
+} from '../../../domain/viewportPresets'
 import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
 import { EARTH_MOON_DISTANCE, G } from '../../../simulation/constants'
+import { resolveRuntimeScenarioDirectives } from '../../scenarioDirectives'
 import { createDefaultScenarioDirectives } from '../../scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '../../scenarioSession'
 import { registerTutorialScenario } from './tutorialScenario'
@@ -127,13 +132,13 @@ describe('tutorialScenario', () => {
     expect(tutorialScenario.isState?.({ phase: 'unknown' })).toBe(false)
     expect(tutorialScenario.isState?.(null)).toBe(false)
     expect(
-      tutorialScenario.getDirectives?.(
+      tutorialScenario.getDirectiveOverrides?.(
         { phase: 'escape-earth', pendingPrompt: 'phase-one-intro' },
         {
           maxCoastPredictionHorizonHours: 48,
           defaultViewportSize: 520,
           maxViewportSize: 800,
-          minViewportSize: 50,
+          minViewportSize: EARTH_VIEWPORT_SIZE,
           timeWarps: [1, 10, 50, 100, 500, 2000],
         },
       ),
@@ -145,7 +150,7 @@ describe('tutorialScenario', () => {
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 500,
-      maxViewportSize: 104,
+      maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })
     expect(
@@ -199,11 +204,11 @@ describe('tutorialScenario', () => {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getDirectives?.(runtime.scenarioSession.state, {
+      tutorialScenario.getDirectiveOverrides?.(runtime.scenarioSession.state, {
         maxCoastPredictionHorizonHours: 48,
         defaultViewportSize: 520,
         maxViewportSize: 800,
-        minViewportSize: 50,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
         timeWarps: [1, 10, 50, 100, 500, 2000],
       }),
     ).toEqual({
@@ -214,7 +219,7 @@ describe('tutorialScenario', () => {
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 24,
       maxTimeWarp: 2000,
-      maxViewportSize: 1040,
+      maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
       minViewportSize: null,
     })
     expect(
@@ -270,11 +275,11 @@ describe('tutorialScenario', () => {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getDirectives?.(runtime.scenarioSession.state, {
+      resolveRuntimeScenarioDirectives(runtime, {
         maxCoastPredictionHorizonHours: 48,
         defaultViewportSize: 520,
         maxViewportSize: 800,
-        minViewportSize: 50,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
         timeWarps: [1, 10, 50, 100, 500, 2000],
       }).hiddenUIElements,
     ).toEqual(new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']))

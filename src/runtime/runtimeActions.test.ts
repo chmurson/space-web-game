@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
+import {
+  EARTH_MOON_VIEWPORT_SIZE,
+  EARTH_VIEWPORT_SIZE,
+} from '../domain/viewportPresets'
 import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
 } from '../scenario/scenarioSession'
 import type { AppRuntimeState } from './appRuntimeState'
+import { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
 import { createRuntimeActions } from './runtimeActions'
 
 const createRuntime = (): AppRuntimeState => ({
@@ -74,36 +79,31 @@ describe('createRuntimeActions', () => {
       createRipple: () => {},
       gameScene: { trailPoints: [] } as never,
       maxCoastPredictionHorizonHours: 48,
-      maxViewport: 2500,
+      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
       minCoastPredictionHorizonHours: 0.5,
-      minViewport: 50,
+      minViewport: EARTH_VIEWPORT_SIZE,
       renderer: { setSize: () => {} },
       requestedScenario: 'tutorial',
       ripples: [],
       runtime,
-      scenarioDirectiveLimits: {
+      globalScenarioDirectiveLimits: {
         defaultViewportSize: 520,
         maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: 2500,
-        minViewportSize: 50,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
         timeWarps: [1, 10, 50, 100, 500, 2000],
       },
       runtimeScenarioOptions: {
         defaultCoastPredictionHorizonHours: 1,
         defaultViewportSize: 520,
         maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: 2500,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
         minCoastPredictionHorizonHours: 0.5,
-        minViewportSize: 50,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
       },
       timeWarps: [1, 10, 50, 100, 500, 2000],
       updateUserSettings: () => {},
-      gameHighLevelActions: {
-        confirmPrompt: () => {},
-        loadLastGame: () => {},
-        startFreeRoam: () => {},
-        startTutorial: () => {},
-      },
+      gameHighLevelActions: new GameHighLevelActionsMediator(),
     })
 
     runtimeActions.handleUIUserAction('resetScenario')
@@ -152,36 +152,31 @@ describe('createRuntimeActions', () => {
       createRipple: () => {},
       gameScene: { trailPoints: [] } as never,
       maxCoastPredictionHorizonHours: 48,
-      maxViewport: 2500,
+      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
       minCoastPredictionHorizonHours: 0.5,
-      minViewport: 50,
+      minViewport: EARTH_VIEWPORT_SIZE,
       renderer: { setSize: () => {} },
       requestedScenario: 'tutorial',
       ripples: [],
       runtime,
-      scenarioDirectiveLimits: {
+      globalScenarioDirectiveLimits: {
         defaultViewportSize: 520,
         maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: 2500,
-        minViewportSize: 50,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
         timeWarps: [1, 10, 50, 100, 500, 2000],
       },
       runtimeScenarioOptions: {
         defaultCoastPredictionHorizonHours: 1,
         defaultViewportSize: 520,
         maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: 2500,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
         minCoastPredictionHorizonHours: 0.5,
-        minViewportSize: 50,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
       },
       timeWarps: [1, 10, 50, 100, 500, 2000],
       updateUserSettings: () => {},
-      gameHighLevelActions: {
-        confirmPrompt: () => {},
-        loadLastGame: () => {},
-        startFreeRoam: () => {},
-        startTutorial: () => {},
-      },
+      gameHighLevelActions: new GameHighLevelActionsMediator(),
     })
 
     expect(runtimeActions.restartFromCheckpoint()).toBe(true)

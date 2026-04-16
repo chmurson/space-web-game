@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { EARTH_VIEWPORT_SIZE } from '../domain/viewportPresets'
 import {
   createRuntimeScenarioState,
   type RuntimeScenarioOptions,
@@ -11,7 +12,7 @@ const options: RuntimeScenarioOptions = {
   maxCoastPredictionHorizonHours: 48,
   maxViewportSize: 800,
   minCoastPredictionHorizonHours: 0.5,
-  minViewportSize: 50,
+  minViewportSize: EARTH_VIEWPORT_SIZE,
 }
 
 describe('createRuntimeScenarioState', () => {
@@ -46,7 +47,7 @@ describe('createRuntimeScenarioState', () => {
       scenarioId: 'test',
       state: null,
     })
-    expect(runtimeScenario.viewportSize).toBe(50)
+    expect(runtimeScenario.viewportSize).toBe(EARTH_VIEWPORT_SIZE)
     expect(runtimeScenario.state.elapsed).toBe(123)
     expect(runtimeScenario.state.controls).toEqual({
       main: 0,

@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
+import {
+  EARTH_MOON_VIEWPORT_SIZE,
+  EARTH_VIEWPORT_SIZE,
+} from '../domain/viewportPresets'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import { createDefaultScenarioDirectives } from './scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from './scenarioSession'
 import {
   applyRuntimeScenarioDirectiveConstraints,
   getConstrainedTimeWarpIndex,
   resolveRuntimeScenarioDirectives,
 } from './scenarioDirectives'
+import { createDefaultScenarioDirectives } from './scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
+import { createRuntimeScenarioSession } from './scenarioSession'
 
 const createRuntime = (): AppRuntimeState => ({
   assistMode: 'off',
@@ -60,12 +64,32 @@ describe('scenarioDirectives', () => {
       maxCoastPredictionHorizonHours: 48,
       defaultViewportSize: 520,
       maxViewportSize: 800,
-      minViewportSize: 50,
+      minViewportSize: EARTH_VIEWPORT_SIZE,
       timeWarps: [1, 10, 100, 1000],
     })
 
     expect(directives.forcedAssistTargetId).toBe('moon')
     expect(directives.hiddenBodyIds).toEqual(['moon'])
+  })
+
+  it('merges earth-moon directive overrides with generic scenario state directives', () => {
+    const runtime = createRuntime()
+    runtime.scenarioSession = createRuntimeScenarioSession('earth-moon', {
+      forcedAssistTargetId: 'moon',
+      hiddenBodyIds: ['earth'],
+    })
+
+    const directives = resolveRuntimeScenarioDirectives(runtime, {
+      maxCoastPredictionHorizonHours: 48,
+      defaultViewportSize: 520,
+      maxViewportSize: 800,
+      minViewportSize: EARTH_VIEWPORT_SIZE,
+      timeWarps: [1, 10, 100, 1000],
+    })
+
+    expect(directives.forcedAssistTargetId).toBe('moon')
+    expect(directives.hiddenBodyIds).toEqual(['earth'])
+    expect(directives.maxViewportSize).toBe(EARTH_MOON_VIEWPORT_SIZE)
   })
 
   it('constrains runtime state to directive caps', () => {
@@ -82,7 +106,7 @@ describe('scenarioDirectives', () => {
       maxCoastPredictionHorizonHours: 48,
       defaultViewportSize: 520,
       maxViewportSize: 800,
-      minViewportSize: 50,
+      minViewportSize: EARTH_VIEWPORT_SIZE,
       timeWarps: [1, 10, 100, 1000],
     })
 
@@ -106,7 +130,7 @@ describe('scenarioDirectives', () => {
       maxCoastPredictionHorizonHours: 48,
       defaultViewportSize: 520,
       maxViewportSize: 800,
-      minViewportSize: 50,
+      minViewportSize: EARTH_VIEWPORT_SIZE,
       timeWarps: [1, 10, 50, 100, 500, 2000],
     })
 
@@ -118,7 +142,7 @@ describe('scenarioDirectives', () => {
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 500,
-      maxViewportSize: 104,
+      maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })
   })

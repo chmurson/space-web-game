@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-
 import { gameConfig } from '../config/gameConfig'
 import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '../input/keyboardInput'
@@ -15,6 +14,8 @@ import { createRendererProfiler } from '../render/rendererProfiler'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import { createFrameLoop } from '../runtime/frameLoop'
 import { createGameQueries } from '../runtime/gameQueries'
+import { GameHighLevelActionsMediator } from '../runtime/highLevelActions/gameHighLevelActionDispatcher'
+import { registerHighLevelActions } from '../runtime/highLevelActions/registerHighLevelActions'
 import { createRuntimeActions } from '../runtime/runtimeActions'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import {
@@ -25,7 +26,7 @@ import {
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import {
   createDefaultScenarioDirectives,
-  type ScenarioDirectiveLimits,
+  type GlobalScenarioDirectiveLimits,
 } from '../scenario/scenarioDirectiveTypes'
 import { createGameScene } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
@@ -37,12 +38,15 @@ import { createTouchControls } from '../ui/createTouchControls'
 import { createOverlayUi } from '../ui/overlayUI/createOverlayUi'
 import { createRipple, type Ripple } from '../ui/overlayUpdates'
 import { readUserSettings, updateUserSettings } from '../userSettingsStorage'
-import { gameMediator } from './gameHighLevelActionDispatcher'
-import { createGameHighLevelActions } from './gameHighLevelActions'
+
+type AppMode = 'menu' | 'game'
 
 export const createGameApp = (app: HTMLDivElement) => {
   const urlParams = new URLSearchParams(window.location.search)
   let appMode: 'menu' | 'game' = urlParams.has('scenario') ? 'game' : 'menu'
+  const setAppMode = (newAppMode: AppMode) => {
+    appMode = newAppMode
+  }
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const requestedScenario = urlParams.get('scenario') ?? 'earth-moon'
@@ -66,6 +70,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     gameConfig.camera.spacecraftModelZoomThreshold
   const minViewport = defaultViewport / gameConfig.camera.viewport.minDivisor
   const maxViewport = gameConfig.camera.viewport.max
+
   const runtimeScenarioOptions: RuntimeScenarioOptions = {
     defaultCoastPredictionHorizonHours,
     defaultViewportSize: defaultViewport,
@@ -99,7 +104,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     timeWarpIndex: 0,
     viewportSize: initialRuntimeScenarioState.viewportSize,
   }
-  const scenarioDirectiveLimits: ScenarioDirectiveLimits = {
+  const globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits = {
     defaultViewportSize: defaultViewport,
     maxCoastPredictionHorizonHours,
     maxViewportSize: maxViewport,
@@ -107,7 +112,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     timeWarps,
   }
 
-  syncRuntimeScenarioDirectives(runtime, scenarioDirectiveLimits)
+  syncRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -162,19 +167,11 @@ export const createGameApp = (app: HTMLDivElement) => {
   )
 
   // Create game high-level actions using the mediator
-  const gameHighLevelActions = createGameHighLevelActions(gameMediator)
-
-  // Temporary implementation for runtimeActions - will be replaced with mediator handlers
-  const tempGameHighLevelActions = {
-    startFreeRoam: () => {},
-    loadLastGame: () => {},
-    startTutorial: () => {},
-    confirmPrompt: () => {},
-  }
+  const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
 
   const runtimeActions = createRuntimeActions({
     app,
-    gameHighLevelActions: tempGameHighLevelActions,
+    gameHighLevelActions: gameHighLevelActionsMediator,
     cameraDistance,
     cameraElevation,
     createRipple,
@@ -187,7 +184,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     requestedScenario,
     ripples,
     runtime,
-    scenarioDirectiveLimits,
+    globalScenarioDirectiveLimits,
     runtimeScenarioOptions,
     timeWarps,
     updateUserSettings,
@@ -280,25 +277,20 @@ export const createGameApp = (app: HTMLDivElement) => {
     windowTarget: window,
   })
 
-  // Helper function to enter main menu
-  const enterMainMenu = () => {
-    keyboardInput.clear()
-    runtimeActions.enterMainMenuBackground()
-    appMode = 'menu'
-    app.classList.add('app-main-menu')
-    crashMenu?.setVisible(false)
-    mainMenu.syncState()
-    mainMenu.setVisible(true)
-    topMenu?.close()
-    frameLoop?.refreshTrajectoryPrediction()
-  }
-
-  // Create main menu with dispatch functions
   const mainMenu = createMainMenu({
     app,
-    onFreeRoam: () => gameHighLevelActions.startFreeRoam(),
-    onLoadGame: () => gameHighLevelActions.loadLastGame(),
-    onTutorial: () => gameHighLevelActions.startTutorial(),
+    onFreeRoam: () =>
+      gameHighLevelActionsMediator.dispatch({ type: 'startFreeRoam' }),
+    onLoadGame: () =>
+      gameHighLevelActionsMediator.dispatch({
+        type: 'loadLastGame',
+        payload: { fromMenu: 'mainMenu' },
+      }),
+    onTutorial: () =>
+      gameHighLevelActionsMediator.dispatch({
+        type: 'startTutorial',
+        payload: { scenarioId: '' },
+      }),
   })
 
   // Create frameLoop early so handlers can reference it
@@ -325,7 +317,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     ripples,
     runtime,
     runtimeActions,
-    scenarioDirectiveLimits,
+    globalScenarioDirectiveLimits,
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport,
       gameScene,
@@ -339,72 +331,30 @@ export const createGameApp = (app: HTMLDivElement) => {
     trajectoryPresentation,
   })
 
-  // Register action handlers with the mediator
-  gameMediator.registerAction('startFreeRoam', () => {
-    keyboardInput.clear()
-    runtimeActions.startFreeRoam()
-    appMode = 'game'
-    app.classList.remove('app-main-menu')
-    frameLoop?.refreshTrajectoryPrediction()
-  })
-
-  gameMediator.registerAction('loadLastGame', () => {
-    keyboardInput.clear()
-    const loaded = runtimeActions.loadDebugSnapshot()
-    if (!loaded) {
-      mainMenu.syncState()
-      return
-    }
-    appMode = 'game'
-    app.classList.remove('app-main-menu')
-    frameLoop?.refreshTrajectoryPrediction()
-  })
-
-  gameMediator.registerAction('startTutorial', () => {
-    keyboardInput.clear()
-    runtimeActions.startTutorial()
-    appMode = 'game'
-    app.classList.remove('app-main-menu')
-    frameLoop?.refreshTrajectoryPrediction()
-  })
-
-  gameMediator.registerAction('confirmPrompt', (payload) => {
-    // biome-ignore lint/suspicious/noExplicitAny: A quick fix for the type error; improve it later
-    const actionToTrigger = (payload as any)?.actionToTrigger
-    if (actionToTrigger === 'exit-to-menu') {
-      enterMainMenu()
-    } else if (actionToTrigger === 'start-free-roam') {
-      gameHighLevelActions.startFreeRoam()
-    }
-  })
-
   crashMenu = createCrashMenu({
     app,
     onExit: () => {
-      enterMainMenu()
+      gameHighLevelActionsMediator.dispatch({
+        type: 'enterMainMenu',
+      })
     },
     onLoadGame: () => {
-      keyboardInput.clear()
-      const loaded = runtimeActions.loadDebugSnapshot()
-      if (!loaded) {
-        crashMenu?.syncState({
-          hasCheckpoint: runtime.scenarioSession.checkpoint !== null,
-        })
-        return
-      }
-
-      frameLoop?.refreshTrajectoryPrediction()
+      gameHighLevelActionsMediator.dispatch({
+        type: 'loadLastGame',
+        payload: {
+          fromMenu: 'crashMenu',
+        },
+      })
     },
     onRestart: () => {
-      keyboardInput.clear()
-      runtimeActions.resetScenario()
-      frameLoop?.refreshTrajectoryPrediction()
+      gameHighLevelActionsMediator.dispatch({
+        type: 'restartScenario',
+      })
     },
     onRestartFromCheckpoint: () => {
-      keyboardInput.clear()
-      if (runtimeActions.restartFromCheckpoint()) {
-        frameLoop?.refreshTrajectoryPrediction()
-      }
+      gameHighLevelActionsMediator.dispatch({
+        type: 'restartFromCheckpoint',
+      })
     },
   })
 
@@ -424,7 +374,9 @@ export const createGameApp = (app: HTMLDivElement) => {
     }
 
     if (result.effect === 'start-free-roam') {
-      gameHighLevelActions.startFreeRoam()
+      gameHighLevelActionsMediator.dispatch({
+        type: 'startFreeRoam',
+      })
     }
 
     frameLoop?.refreshTrajectoryPrediction()
@@ -434,7 +386,9 @@ export const createGameApp = (app: HTMLDivElement) => {
     const promptAction =
       overlayUi.scenarioPromptSecondaryButton?.dataset.promptAction
     if (promptAction === 'exit-to-menu') {
-      enterMainMenu()
+      gameHighLevelActionsMediator.dispatch({
+        type: 'enterMainMenu',
+      })
     }
   })
 
@@ -444,8 +398,23 @@ export const createGameApp = (app: HTMLDivElement) => {
     }
   })
 
+  registerHighLevelActions({
+    gameMediator: gameHighLevelActionsMediator,
+    keyboardInput,
+    app,
+    setAppMode,
+    frameLoop,
+    runtimeActions,
+    mainMenu,
+    crashMenu,
+    topMenu,
+    runtime,
+  })
+
   if (appMode === 'menu') {
-    enterMainMenu()
+    gameHighLevelActionsMediator.dispatch({
+      type: 'enterMainMenu',
+    })
   } else {
     crashMenu.setVisible(false)
     mainMenu.setVisible(false)

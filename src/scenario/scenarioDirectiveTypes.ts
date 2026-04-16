@@ -17,7 +17,7 @@ export type RuntimeScenarioDirectives = {
   hiddenUIElements: Set<RuntimeScenarioHiddenUIElement>
 }
 
-export type ScenarioDirectiveLimits = {
+export type GlobalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: number
   defaultViewportSize: number
   maxViewportSize: number

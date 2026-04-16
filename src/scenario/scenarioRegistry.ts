@@ -1,16 +1,17 @@
 import type { RuntimeScenario } from '../debugScenarioSnapshot'
+import { EARTH_MOON_VIEWPORT_SIZE } from '../domain/viewportPresets'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import type {
-  RuntimeScenarioDirectives,
-  ScenarioDirectiveLimits,
-} from './scenarioDirectiveTypes'
-import { registerMenuBackgroundScenario } from './specific-scenarios/menuBackgroundScenario'
-import type { ScenarioSessionValue } from './scenarioSession'
-import { registerTutorialScenario } from './specific-scenarios/tutorial/tutorialScenario'
 import {
   createEarthMoonScenario,
   createMoonCaptureDebugScenario,
 } from '../simulation/scenarios/earthMoon'
+import type {
+  RuntimeScenarioDirectives,
+  GlobalScenarioDirectiveLimits,
+} from './scenarioDirectiveTypes'
+import type { ScenarioSessionValue } from './scenarioSession'
+import { registerMenuBackgroundScenario } from './specific-scenarios/menuBackgroundScenario'
+import { registerTutorialScenario } from './specific-scenarios/tutorial/tutorialScenario'
 
 export type ScenarioPromptAction = 'exit-to-menu' | 'start-free-roam'
 
@@ -62,10 +63,10 @@ export type RuntimeScenarioDefinition<
     runtime: AppRuntimeState,
     inputMode: 'desktop' | 'mobile',
   ): RuntimePromptContent | null
-  getDirectives?(
+  getDirectiveOverrides?(
     state: TState,
-    limits: ScenarioDirectiveLimits,
-  ): RuntimeScenarioDirectives
+    limits: GlobalScenarioDirectiveLimits,
+  ): Partial<RuntimeScenarioDirectives>
   getHudContent?(state: TState): { description: string; title: string }
   /** @deprecated Use getActivePrompt instead */
   getPromptContent?(state: TState): ScenarioPromptContent | null
@@ -80,10 +81,16 @@ const runtimeScenarioDefinitions = {
   'earth-moon': {
     id: 'earth-moon',
     createScenario: createEarthMoonScenario,
+    getDirectiveOverrides: () => ({
+      maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+    }),
   },
   'moon-capture-debug': {
     id: 'moon-capture-debug',
     createScenario: createMoonCaptureDebugScenario,
+    getDirectiveOverrides: () => ({
+      maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+    }),
   },
   'menu-background': registerMenuBackgroundScenario(),
   tutorial: registerTutorialScenario(),

@@ -7,7 +7,7 @@ import type { SpacecraftPresentation } from '../presentation/spacecraftPresentat
 import type { TrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import type { RendererProfiler } from '../render/rendererProfiler'
 import type { GameSceneRefs } from '../scene/createGameScene'
-import type { ScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import {
   advanceRuntimeScenario,
   getRuntimeActivePrompt,
@@ -30,7 +30,7 @@ export const createFrameLoop = (options: {
   ripples: Ripple[]
   runtime: AppRuntimeState
   runtimeActions: RuntimeActions
-  scenarioDirectiveLimits: ScenarioDirectiveLimits
+  globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
   crashMenu?: {
     syncState(): void
   }
@@ -62,7 +62,7 @@ export const createFrameLoop = (options: {
     )
     syncRuntimeScenarioDirectives(
       options.runtime,
-      options.scenarioDirectiveLimits,
+      options.globalScenarioDirectiveLimits,
     )
     const activePrompt = getRuntimeActivePrompt(
       options.runtime,
@@ -103,7 +103,7 @@ export const createFrameLoop = (options: {
     options.runtimeActions.updateCamera()
     syncRuntimeScenarioDirectives(
       options.runtime,
-      options.scenarioDirectiveLimits,
+      options.globalScenarioDirectiveLimits,
     )
     options.trajectoryPresentation.maybeRefreshPrediction(realDt)
 
@@ -142,7 +142,7 @@ export const createFrameLoop = (options: {
     start: () => {
       syncRuntimeScenarioDirectives(
         options.runtime,
-        options.scenarioDirectiveLimits,
+        options.globalScenarioDirectiveLimits,
       )
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
