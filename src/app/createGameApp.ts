@@ -83,7 +83,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     scenario,
     runtimeScenarioOptions,
   )
-  const runtime: AppRuntimeState = {
+  const runtimeState: AppRuntimeState = {
     assistMode: 'off',
     assistTargetIndex: 1,
     coastPredictionHorizonHours:
@@ -112,7 +112,8 @@ export const createGameApp = (app: HTMLDivElement) => {
     timeWarps,
   }
 
-  syncRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
+  // todo: shouldn't we move this into frameLoop ?
+  syncRuntimeScenarioDirectives(runtimeState, globalScenarioDirectiveLimits)
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -122,7 +123,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 
   const rendererProfiler = createRendererProfiler(renderer)
   const gameScene = createGameScene(
-    runtime.state.bodies,
+    runtimeState.state.bodies,
     gameConfig.trajectory.rendering,
   )
 
@@ -131,7 +132,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 
   const overlayUi = createOverlayUi({
     app,
-    bodies: runtime.state.bodies,
+    bodies: runtimeState.state.bodies,
     scenarioDescription: scenario.description,
     scenarioName: scenario.name,
     showCycleTargetHint: !autoSelectNearestSurface,
@@ -149,14 +150,14 @@ export const createGameApp = (app: HTMLDivElement) => {
       trajectoryPredictionRuntime.getState().absolutePredictionPoints,
     maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
     predictionSampling: gameConfig.trajectory.sampling,
-    runtime,
+    runtime: runtimeState,
   })
 
   const trajectoryPresentation = createTrajectoryPresentation({
     gameScene,
     physicsEngine,
     queries,
-    runtime,
+    runtime: runtimeState,
     trajectoryPredictionRuntime,
   })
 
@@ -183,7 +184,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     renderer,
     requestedScenario,
     ripples,
-    runtime,
+    runtime: runtimeState,
     globalScenarioDirectiveLimits,
     runtimeScenarioOptions,
     timeWarps,
@@ -208,7 +209,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     }
 
     crashMenu?.syncState({
-      hasCheckpoint: runtime.scenarioSession.checkpoint !== null,
+      hasCheckpoint: runtimeState.scenarioSession.checkpoint !== null,
     })
 
     topMenu?.syncState()
@@ -216,10 +217,11 @@ export const createGameApp = (app: HTMLDivElement) => {
 
   topMenu = createTopMenu({
     app,
-    getCoastPredictionHorizonHours: () => runtime.coastPredictionHorizonHours,
-    getDebugModeEnabled: () => runtime.debugModeEnabled,
+    getCoastPredictionHorizonHours: () =>
+      runtimeState.coastPredictionHorizonHours,
+    getDebugModeEnabled: () => runtimeState.debugModeEnabled,
     getMaxCoastPredictionHorizonHours: () =>
-      runtime.scenarioDirectives.maxCoastPredictionHorizonHours ??
+      runtimeState.scenarioDirectives.maxCoastPredictionHorizonHours ??
       maxCoastPredictionHorizonHours,
     getMinCoastPredictionHorizonHours: () => minCoastPredictionHorizonHours,
     onAction: dispatchRuntimeAction,
@@ -234,7 +236,7 @@ export const createGameApp = (app: HTMLDivElement) => {
       const heading = pickHeadingFromScreenPoint(
         screenX,
         screenY,
-        runtime.state.spacecraft.position,
+        runtimeState.state.spacecraft.position,
       )
       if (heading === null) {
         return
@@ -253,7 +255,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     physicsEngineName: physicsEngine.name,
     queries,
     rendererProfiler,
-    runtime,
+    runtime: runtimeState,
     timeWarps,
     touchControls,
     trajectoryPresentation,
@@ -262,7 +264,7 @@ export const createGameApp = (app: HTMLDivElement) => {
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
     getInteractionsEnabled: () => appMode === 'game',
-    getSpacecraftPosition: () => runtime.state.spacecraft.position,
+    getSpacecraftPosition: () => runtimeState.state.spacecraft.position,
     onResize: runtimeActions.handleResize,
     onTargetHeadingSelected: (heading, screenPosition) => {
       runtimeActions.setTargetHeading(
@@ -301,10 +303,11 @@ export const createGameApp = (app: HTMLDivElement) => {
     }),
     crashMenu: {
       syncState: () => {
-        const visible = appMode === 'game' && runtime.crashedBodyName !== null
+        const visible =
+          appMode === 'game' && runtimeState.crashedBodyName !== null
         crashMenu?.setVisible(visible)
         crashMenu?.syncState({
-          hasCheckpoint: runtime.scenarioSession.checkpoint !== null,
+          hasCheckpoint: runtimeState.scenarioSession.checkpoint !== null,
         })
       },
     },
@@ -315,7 +318,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     queries,
     rendererProfiler,
     ripples,
-    runtime,
+    runtime: runtimeState,
     runtimeActions,
     globalScenarioDirectiveLimits,
     spacecraftPresentation: createSpacecraftPresentation({
@@ -360,7 +363,7 @@ export const createGameApp = (app: HTMLDivElement) => {
 
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence: autoSelectNearestSurface,
-    getDebugModeEnabled: () => runtime.debugModeEnabled,
+    getDebugModeEnabled: () => runtimeState.debugModeEnabled,
     getInteractionsEnabled: () => appMode === 'game',
     handleAction: dispatchRuntimeAction,
     keyboardInput,
@@ -408,7 +411,7 @@ export const createGameApp = (app: HTMLDivElement) => {
     mainMenu,
     crashMenu,
     topMenu,
-    runtime,
+    runtime: runtimeState,
   })
 
   if (appMode === 'menu') {
