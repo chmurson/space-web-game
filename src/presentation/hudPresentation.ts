@@ -18,8 +18,6 @@ import {
 } from '../ui/scenario-prompts/scenario-prompts'
 
 export const createHudPresentation = (options: {
-  defaultScenarioDescription: string
-  defaultScenarioName: string
   defaultViewport: number
   overlayUi: OverlayUiRefs
   physicsEngineName: string
@@ -162,11 +160,12 @@ export const createHudPresentation = (options: {
 
       if (options.overlayUi.hudTitle) {
         options.overlayUi.hudTitle.textContent =
-          scenarioHudContent?.title ?? options.defaultScenarioName
+          scenarioHudContent?.title ?? options.runtime.activeScenarioTitle
       }
       if (options.overlayUi.hudDescription) {
         options.overlayUi.hudDescription.textContent =
-          scenarioHudContent?.description ?? options.defaultScenarioDescription
+          scenarioHudContent?.description ??
+          options.runtime.activeScenarioDescription
       }
 
       // Update scenario prompt UI

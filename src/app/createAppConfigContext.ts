@@ -1,15 +1,11 @@
 import * as THREE from 'three'
 import { gameConfig } from '../config/gameConfig'
 import type { TrajectoryPredictionSamplingConfig } from '../prediction/trajectoryPrediction'
-import {
-  createRequestedRuntimeScenario,
-  type RuntimeScenarioOptions,
-} from '../scenario/runtimeScenario'
+import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { defaultPhysicsEngine, physicsEngines } from '../simulation/physics'
 import type { PhysicsEngine } from '../simulation/types'
 import { readUserSettings, type UserSettings } from '../userSettingsStorage'
-import type { RuntimeScenario } from '../debugScenarioSnapshot'
 
 export type AppMode = 'menu' | 'game'
 
@@ -18,7 +14,6 @@ export type AppConfigContext = {
   requestedEngine: string
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
-  initialScenario: RuntimeScenario
   userSettings: UserSettings
   controls: {
     timeWarps: number[]
@@ -68,7 +63,6 @@ export const createAppConfigContext = (): AppConfigContext => {
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const requestedScenarioId = urlParams.get('scenario') ?? 'earth-moon'
-  const initialScenario = createRequestedRuntimeScenario(requestedScenarioId)
   const userSettings = readUserSettings()
   const defaultViewport = gameConfig.camera.viewport.default
   const minViewport = defaultViewport / gameConfig.camera.viewport.minDivisor
@@ -126,7 +120,6 @@ export const createAppConfigContext = (): AppConfigContext => {
     requestedEngine,
     physicsEngine,
     requestedScenarioId,
-    initialScenario,
     userSettings: { ...userSettings },
     controls,
     assistTarget,

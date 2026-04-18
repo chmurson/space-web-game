@@ -11,6 +11,8 @@ import {
 } from './tutorialOnboardingProgress'
 
 const createRuntime = (): AppRuntimeState => ({
+  activeScenarioDescription: 'Tutorial description',
+  activeScenarioTitle: 'Tutorial',
   assistMode: 'capture',
   assistTargetIndex: 0,
   coastPredictionHorizonHours: 2,
@@ -20,6 +22,11 @@ const createRuntime = (): AppRuntimeState => ({
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
+  resetScenario: {
+    description: 'Tutorial description',
+    scenarioId: 'tutorial',
+    title: 'Tutorial',
+  },
   scenarioDirectives: createDefaultScenarioDirectives(),
   scenarioSession: createRuntimeScenarioSession('tutorial', {
     phase: 'escape-earth',

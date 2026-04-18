@@ -14,6 +14,8 @@ import { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelAc
 import { createRuntimeActions } from './runtimeActions'
 
 const createRuntime = (): AppRuntimeState => ({
+  activeScenarioDescription: 'Tutorial description',
+  activeScenarioTitle: 'Tutorial',
   assistMode: 'capture',
   assistTargetIndex: 1,
   coastPredictionHorizonHours: 24,
@@ -23,6 +25,11 @@ const createRuntime = (): AppRuntimeState => ({
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
+  resetScenario: {
+    description: 'Tutorial description',
+    scenarioId: 'tutorial',
+    title: 'Tutorial',
+  },
   scenarioDirectives: createDefaultScenarioDirectives(),
   scenarioSession: createRuntimeScenarioSession('tutorial', {
     phase: 'reach-moon',
@@ -83,7 +90,6 @@ describe('createRuntimeActions', () => {
       minCoastPredictionHorizonHours: 0.5,
       minViewport: EARTH_VIEWPORT_SIZE,
       renderer: { setSize: () => {} },
-      requestedScenario: 'tutorial',
       ripples: [],
       runtime,
       globalScenarioDirectiveLimits: {
@@ -156,7 +162,6 @@ describe('createRuntimeActions', () => {
       minCoastPredictionHorizonHours: 0.5,
       minViewport: EARTH_VIEWPORT_SIZE,
       renderer: { setSize: () => {} },
-      requestedScenario: 'tutorial',
       ripples: [],
       runtime,
       globalScenarioDirectiveLimits: {
@@ -184,5 +189,96 @@ describe('createRuntimeActions', () => {
     expect(runtime.timeWarpIndex).toBe(0)
     expect(runtime.state.elapsed).toBe(42)
     expect(runtime.viewportSize).toBe(320)
+  })
+
+  it('updates the reset target when free roam starts', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createRuntimeActions({
+      app: {} as HTMLDivElement,
+      cameraDistance: 700,
+      cameraElevation: 1,
+      createRipple: () => {},
+      gameScene: { trailPoints: [] } as never,
+      maxCoastPredictionHorizonHours: 48,
+      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
+      minCoastPredictionHorizonHours: 0.5,
+      minViewport: EARTH_VIEWPORT_SIZE,
+      renderer: { setSize: () => {} },
+      ripples: [],
+      runtime,
+      globalScenarioDirectiveLimits: {
+        defaultViewportSize: 520,
+        maxCoastPredictionHorizonHours: 48,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
+        timeWarps: [1, 10, 50, 100, 500, 2000],
+      },
+      runtimeScenarioOptions: {
+        defaultCoastPredictionHorizonHours: 1,
+        defaultViewportSize: 520,
+        maxCoastPredictionHorizonHours: 48,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+        minCoastPredictionHorizonHours: 0.5,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
+      },
+      timeWarps: [1, 10, 50, 100, 500, 2000],
+      updateUserSettings: () => {},
+      gameHighLevelActions: new GameHighLevelActionsMediator(),
+    })
+
+    runtimeActions.startFreeRoam()
+
+    expect(runtime.resetScenario.scenarioId).toBe('earth-moon')
+    expect(runtime.activeScenarioTitle).toBe('Earth-Moon sandbox')
+
+    runtime.timeWarpIndex = 4
+    runtimeActions.resetScenario()
+
+    expect(runtime.timeWarpIndex).toBe(0)
+    expect(runtime.resetScenario.scenarioId).toBe('earth-moon')
+    expect(runtime.scenarioSession.scenarioId).toBe('earth-moon')
+  })
+
+  it('switches to the menu background scenario and menu-only overrides', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createRuntimeActions({
+      app: {} as HTMLDivElement,
+      cameraDistance: 700,
+      cameraElevation: 1,
+      createRipple: () => {},
+      gameScene: { trailPoints: [] } as never,
+      maxCoastPredictionHorizonHours: 48,
+      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
+      minCoastPredictionHorizonHours: 0.5,
+      minViewport: EARTH_VIEWPORT_SIZE,
+      renderer: { setSize: () => {} },
+      ripples: [],
+      runtime,
+      globalScenarioDirectiveLimits: {
+        defaultViewportSize: 520,
+        maxCoastPredictionHorizonHours: 48,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
+        timeWarps: [1, 10, 50, 100, 500, 2000],
+      },
+      runtimeScenarioOptions: {
+        defaultCoastPredictionHorizonHours: 1,
+        defaultViewportSize: 520,
+        maxCoastPredictionHorizonHours: 48,
+        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+        minCoastPredictionHorizonHours: 0.5,
+        minViewportSize: EARTH_VIEWPORT_SIZE,
+      },
+      timeWarps: [1, 10, 50, 100, 500, 2000],
+      updateUserSettings: () => {},
+      gameHighLevelActions: new GameHighLevelActionsMediator(),
+    })
+
+    runtimeActions.enterMainMenuBackground()
+
+    expect(runtime.resetScenario.scenarioId).toBe('menu-background')
+    expect(runtime.scenarioSession.scenarioId).toBe('menu-background')
+    expect(runtime.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
+    expect(runtime.timeWarpIndex).toBe(4)
   })
 })

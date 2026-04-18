@@ -9,6 +9,8 @@ import type { AppRuntimeState } from './appRuntimeState'
 import { restoreRuntimeFromScenarioCheckpoint } from './scenarioRecovery'
 
 const createRuntime = (): AppRuntimeState => ({
+  activeScenarioDescription: 'Tutorial description',
+  activeScenarioTitle: 'Tutorial',
   assistMode: 'capture',
   assistTargetIndex: 1,
   coastPredictionHorizonHours: 24,
@@ -18,6 +20,11 @@ const createRuntime = (): AppRuntimeState => ({
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
+  resetScenario: {
+    description: 'Tutorial description',
+    scenarioId: 'tutorial',
+    title: 'Tutorial',
+  },
   scenarioDirectives: createDefaultScenarioDirectives(),
   scenarioSession: createRuntimeScenarioSession('tutorial', {
     phase: 'reach-moon',

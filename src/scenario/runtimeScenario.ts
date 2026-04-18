@@ -31,6 +31,7 @@ export type RuntimeScenarioState = {
 }
 
 export type LoadedDebugRuntimeScenario = {
+  scenario: RuntimeScenario
   runtimeState: RuntimeScenarioState
   snapshot: DebugScenarioSnapshot
 }
@@ -61,6 +62,15 @@ export const createRequestedRuntimeScenario = (
   }
   return earthMoonScenario
 }
+
+export const createRuntimeScenarioStateFromId = (
+  scenarioId: string,
+  options: RuntimeScenarioOptions,
+): RuntimeScenarioState =>
+  createRuntimeScenarioState(
+    createRequestedRuntimeScenario(scenarioId),
+    options,
+  )
 
 export const createRuntimeScenarioState = (
   scenario: RuntimeScenario,
@@ -112,11 +122,11 @@ export const loadDebugRuntimeScenario = (
     return null
   }
 
+  const scenario = createScenarioFromSnapshot(snapshot)
+
   return {
-    runtimeState: createRuntimeScenarioState(
-      createScenarioFromSnapshot(snapshot),
-      options,
-    ),
+    scenario,
+    runtimeState: createRuntimeScenarioState(scenario, options),
     snapshot,
   }
 }

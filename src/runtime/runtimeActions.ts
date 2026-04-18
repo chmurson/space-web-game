@@ -2,16 +2,10 @@ import * as THREE from 'three'
 import type { UIUserAction } from '../input/uiUserActions'
 import { updateCameraView } from '../render/sceneUpdates'
 import {
-  createRequestedRuntimeScenario,
-  createRuntimeScenarioState,
-  loadDebugRuntimeScenario,
   type RuntimeScenarioOptions,
   saveRuntimeDebugSnapshot,
 } from '../scenario/runtimeScenario'
-import {
-  getConstrainedTimeWarpIndex,
-  syncRuntimeScenarioDirectives,
-} from '../scenario/scenarioDirectives'
+import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import {
   acknowledgeRuntimeScenarioPrompt,
@@ -21,8 +15,8 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { add } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
+import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
-import { restoreRuntimeFromScenarioCheckpoint } from './scenarioRecovery'
 
 type RippleCreator = (
   parent: HTMLElement,
@@ -46,7 +40,6 @@ export const createRuntimeActions = (options: {
   minCoastPredictionHorizonHours: number
   minViewport: number
   renderer: Pick<THREE.WebGLRenderer, 'setSize'>
-  requestedScenario: string
   ripples: Ripple[]
   runtime: AppRuntimeState
   globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
@@ -55,7 +48,6 @@ export const createRuntimeActions = (options: {
   updateUserSettings: (settings: { debugModeEnabled: boolean }) => void
   gameHighLevelActions: GameHighLevelActionsMediator
 }) => {
-  let activeScenarioId = options.requestedScenario
   const normalizeAngle = (angle: number) => {
     const wrapped = (angle + Math.PI) % (Math.PI * 2)
     return wrapped < 0 ? wrapped + Math.PI : wrapped - Math.PI
@@ -69,33 +61,17 @@ export const createRuntimeActions = (options: {
     options.runtime.spacecraftLabelIntroUntil = performance.now() + 5_000
   }
 
-  const loadScenario = (scenarioId: string) => {
-    const freshRuntimeScenarioState = createRuntimeScenarioState(
-      createRequestedRuntimeScenario(scenarioId),
-      options.runtimeScenarioOptions,
-    )
-    options.runtime.timeWarpIndex = 0
-    options.runtime.state = freshRuntimeScenarioState.state
-    options.runtime.viewportSize = freshRuntimeScenarioState.viewportSize
-    options.runtime.coastPredictionHorizonHours =
-      freshRuntimeScenarioState.coastPredictionHorizonHours
-    options.runtime.scenarioSession = freshRuntimeScenarioState.scenarioSession
-    options.runtime.uiEffectEpoch += 1
-    clearTransientScenarioState()
-    syncRuntimeScenarioDirectives(
-      options.runtime,
-      options.globalScenarioDirectiveLimits,
-    )
-  }
-
   const setTimeWarp = (warp: number) => {
     const desiredIndex = options.timeWarps.indexOf(warp)
     options.runtime.timeWarpIndex = desiredIndex >= 0 ? desiredIndex : 0
   }
-
-  const resetScenario = () => {
-    loadScenario(activeScenarioId)
-  }
+  const scenarioRuntimeController = createScenarioRuntimeController({
+    clearTransientScenarioState,
+    globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+    runtime: options.runtime,
+    runtimeScenarioOptions: options.runtimeScenarioOptions,
+    setTimeWarp,
+  })
 
   const saveDebugScenarioSnapshot = () => {
     options.runtime.debugSnapshotStatus = saveRuntimeDebugSnapshot(
@@ -109,35 +85,6 @@ export const createRuntimeActions = (options: {
     )
       ? 'snapshot saved; use [7] load or ?scenario=debug-snapshot'
       : 'snapshot save failed'
-  }
-
-  const loadDebugScenarioSnapshot = () => {
-    const loadedDebugScenario = loadDebugRuntimeScenario(
-      options.runtimeScenarioOptions,
-    )
-    if (!loadedDebugScenario) {
-      options.runtime.debugSnapshotStatus = 'no debug snapshot saved'
-      return
-    }
-
-    options.runtime.state = loadedDebugScenario.runtimeState.state
-    options.runtime.viewportSize = loadedDebugScenario.runtimeState.viewportSize
-    options.runtime.coastPredictionHorizonHours =
-      loadedDebugScenario.runtimeState.coastPredictionHorizonHours
-    options.runtime.scenarioSession =
-      loadedDebugScenario.runtimeState.scenarioSession
-    options.runtime.uiEffectEpoch += 1
-    clearTransientScenarioState()
-    syncRuntimeScenarioDirectives(
-      options.runtime,
-      options.globalScenarioDirectiveLimits,
-    )
-    options.runtime.assistTargetIndex = Math.min(
-      options.runtime.assistTargetIndex,
-      Math.max(0, options.runtime.state.bodies.length - 1),
-    )
-    options.runtime.debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`
-    setTimeWarp(1)
   }
 
   const updateCamera = () =>
@@ -174,34 +121,12 @@ export const createRuntimeActions = (options: {
   }
 
   const recoverScenarioAfterCrash = () => {
-    const recoveredFromCheckpoint = restoreRuntimeFromScenarioCheckpoint(
-      options.runtime,
-    )
+    const recoveredFromCheckpoint =
+      scenarioRuntimeController.restartFromCheckpoint()
     if (!recoveredFromCheckpoint) {
-      resetScenario()
+      scenarioRuntimeController.resetScenario()
       return
     }
-
-    clearTransientScenarioState()
-    syncRuntimeScenarioDirectives(
-      options.runtime,
-      options.globalScenarioDirectiveLimits,
-    )
-  }
-  const restartFromCheckpoint = () => {
-    const recoveredFromCheckpoint = restoreRuntimeFromScenarioCheckpoint(
-      options.runtime,
-    )
-    if (!recoveredFromCheckpoint) {
-      return false
-    }
-
-    clearTransientScenarioState()
-    syncRuntimeScenarioDirectives(
-      options.runtime,
-      options.globalScenarioDirectiveLimits,
-    )
-    return true
   }
 
   const acknowledgeScenarioPrompt = () =>
@@ -209,26 +134,9 @@ export const createRuntimeActions = (options: {
   const reopenScenarioPrompt = () =>
     reopenRuntimeScenarioPrompt(options.runtime)
 
-  const startFreeRoam = () => {
-    activeScenarioId = 'earth-moon'
-    loadScenario(activeScenarioId)
-  }
-
-  const startTutorial = () => {
-    activeScenarioId = 'tutorial'
-    loadScenario(activeScenarioId)
-  }
-
-  const enterMainMenuBackground = () => {
-    activeScenarioId = 'menu-background'
-    loadScenario(activeScenarioId)
-    options.runtime.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
-    setTimeWarp(500)
-  }
-
   return {
     acknowledgeScenarioPrompt,
-    enterMainMenuBackground,
+    enterMainMenuBackground: scenarioRuntimeController.enterMainMenuBackground,
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === 'increaseTimeWarp') {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
@@ -247,7 +155,7 @@ export const createRuntimeActions = (options: {
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'resetScenario') {
-        resetScenario()
+        scenarioRuntimeController.resetScenario()
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'cycleAssistTarget') {
@@ -308,7 +216,7 @@ export const createRuntimeActions = (options: {
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'loadDebugSnapshot') {
-        loadDebugScenarioSnapshot()
+        scenarioRuntimeController.loadDebugSnapshot()
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'zoomIn') {
@@ -328,7 +236,7 @@ export const createRuntimeActions = (options: {
     },
     loadDebugSnapshot: () => {
       const previousStatus = options.runtime.debugSnapshotStatus
-      loadDebugScenarioSnapshot()
+      scenarioRuntimeController.loadDebugSnapshot()
       return (
         options.runtime.debugSnapshotStatus !== 'no debug snapshot saved' ||
         previousStatus !== options.runtime.debugSnapshotStatus
@@ -338,8 +246,8 @@ export const createRuntimeActions = (options: {
       options.renderer.setSize(window.innerWidth, window.innerHeight)
       updateCamera()
     },
-    resetScenario,
-    restartFromCheckpoint,
+    resetScenario: scenarioRuntimeController.resetScenario,
+    restartFromCheckpoint: scenarioRuntimeController.restartFromCheckpoint,
     setTargetHeading: (heading: number, clientX: number, clientY: number) => {
       options.runtime.targetHeading = heading
       options.runtime.targetHeadingSelectionEpoch += 1
@@ -355,8 +263,8 @@ export const createRuntimeActions = (options: {
     },
     recoverScenarioAfterCrash,
     reopenScenarioPrompt,
-    startFreeRoam,
-    startTutorial,
+    startFreeRoam: scenarioRuntimeController.startFreeRoam,
+    startTutorial: scenarioRuntimeController.startTutorial,
     updateCamera,
     zoomCamera,
   }

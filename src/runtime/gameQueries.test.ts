@@ -22,6 +22,8 @@ const createRuntime = (
   bodies: AppRuntimeState['state']['bodies'],
   coastPredictionHorizonHours: number,
 ): AppRuntimeState => ({
+  activeScenarioDescription: 'Test scenario description',
+  activeScenarioTitle: 'Test scenario',
   assistMode: 'off',
   assistTargetIndex: 0,
   coastPredictionHorizonHours,
@@ -31,6 +33,11 @@ const createRuntime = (
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
+  resetScenario: {
+    description: 'Test scenario description',
+    scenarioId: 'test',
+    title: 'Test scenario',
+  },
   scenarioDirectives: createDefaultScenarioDirectives(),
   scenarioSession: createRuntimeScenarioSession('test'),
   spacecraftLabelIntroUntil: 0,

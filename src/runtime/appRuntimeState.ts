@@ -4,6 +4,8 @@ import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState } from '../simulation/types'
 
 export type AppRuntimeState = {
+  activeScenarioDescription: string
+  activeScenarioTitle: string
   assistMode: AssistMode
   assistTargetIndex: number
   coastPredictionHorizonHours: number
@@ -13,6 +15,11 @@ export type AppRuntimeState = {
   debugSnapshotStatus: string
   fpsIndicatorEnabled: boolean
   performanceDebugEnabled: boolean
+  resetScenario: {
+    description: string
+    scenarioId: string
+    title: string
+  }
   scenarioDirectives: RuntimeScenarioDirectives
   scenarioSession: RuntimeScenarioSession
   spacecraftLabelIntroUntil: number

@@ -104,9 +104,12 @@ const createRuntimeCoordinator = (options: {
     getAppMode: () => appMode,
     initialize: () => {
       if (appMode === 'menu') {
-        options.gameHighLevelActionsMediator.dispatch({
-          type: 'enterMainMenu',
-        })
+        options.app.classList.add('app-main-menu')
+        options.crashMenu.setVisible(false)
+        options.mainMenu.syncState()
+        options.mainMenu.setVisible(true)
+        options.topMenu.close()
+        options.frameLoop.refreshTrajectoryPrediction()
         return
       }
 
@@ -138,8 +141,6 @@ export const createAppComponents = (options: {
   const overlayUi = createOverlayUi({
     app: options.app,
     bodies: options.runtimeState.state.bodies,
-    scenarioDescription: options.config.initialScenario.description,
-    scenarioName: options.config.initialScenario.name,
     showCycleTargetHint: !options.config.assistTarget.autoSelectNearestSurface,
   })
   const queries = createGameQueries({
@@ -185,7 +186,6 @@ export const createAppComponents = (options: {
       options.config.trajectory.minCoastPredictionHorizonHours,
     minViewport: options.config.camera.minViewport,
     renderer,
-    requestedScenario: options.config.requestedScenarioId,
     ripples,
     runtime: options.runtimeState,
     globalScenarioDirectiveLimits: options.config.globalScenarioDirectiveLimits,
@@ -226,8 +226,6 @@ export const createAppComponents = (options: {
     onZoom: runtimeActions.zoomCamera,
   })
   const hudPresentation = createHudPresentation({
-    defaultScenarioDescription: options.config.initialScenario.description,
-    defaultScenarioName: options.config.initialScenario.name,
     defaultViewport: options.config.camera.defaultViewport,
     overlayUi,
     physicsEngineName: options.config.physicsEngine.name,

@@ -395,4 +395,8 @@ Once phases 1-3 are done, the next safe cleanup steps are:
 
 ## Status
 
-Promising
+Resolved.
+
+The main refactor described here has landed. `createGameApp` now acts as a small orchestrator over config creation, initial runtime state creation, component construction, initialization, and start.
+
+Some cleanup opportunities still remain, but they are follow-up improvements rather than open work for this refactor plan.

@@ -59,8 +59,6 @@ export type OverlayUiRefs = {
 export type OverlayUiOptions = {
   app: HTMLElement
   bodies: Body[]
-  scenarioDescription: string
-  scenarioName: string
   showCycleTargetHint: boolean
 }
 
