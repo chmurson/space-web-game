@@ -57,21 +57,23 @@ const getNumberValue = (
 const genericDirectiveResolver: ScenarioDirectiveResolver = ({ runtime }) => ({
   ...createDefaultScenarioDirectives(),
   cameraFollowBodyId: getStringValue(
-    runtime.scenarioSession.state,
+    runtime.scenario.session.state,
     'cameraFollowBodyId',
   ),
   cameraFollowOffset: {
     x:
-      getNumberValue(runtime.scenarioSession.state, 'cameraFollowOffsetX') ?? 0,
+      getNumberValue(runtime.scenario.session.state, 'cameraFollowOffsetX') ??
+      0,
     y:
-      getNumberValue(runtime.scenarioSession.state, 'cameraFollowOffsetY') ?? 0,
+      getNumberValue(runtime.scenario.session.state, 'cameraFollowOffsetY') ??
+      0,
   },
   forcedAssistTargetId: getStringValue(
-    runtime.scenarioSession.state,
+    runtime.scenario.session.state,
     'forcedAssistTargetId',
   ),
   hiddenBodyIds: getStringArrayValue(
-    runtime.scenarioSession.state,
+    runtime.scenario.session.state,
     'hiddenBodyIds',
   ),
 })
@@ -82,17 +84,17 @@ export const resolveRuntimeScenarioDirectives = (
 ): RuntimeScenarioDirectives => {
   const baseDirectives = genericDirectiveResolver({ limits, runtime })
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
 
   if (
     definition?.getDirectiveOverrides &&
-    (!definition.isState || definition.isState(runtime.scenarioSession.state))
+    (!definition.isState || definition.isState(runtime.scenario.session.state))
   ) {
     return {
       ...baseDirectives,
       ...definition.getDirectiveOverrides(
-        runtime.scenarioSession.state,
+        runtime.scenario.session.state,
         limits,
       ),
     }
@@ -130,17 +132,17 @@ export const applyRuntimeScenarioDirectiveConstraints = (
   runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
     runtime.timeWarpIndex,
     limits.timeWarps,
-    runtime.scenarioDirectives.maxTimeWarp,
+    runtime.scenario.directives.maxTimeWarp,
   )
   runtime.viewportSize = Math.min(
-    runtime.scenarioDirectives.maxViewportSize ?? limits.maxViewportSize,
+    runtime.scenario.directives.maxViewportSize ?? limits.maxViewportSize,
     Math.max(
-      runtime.scenarioDirectives.minViewportSize ?? limits.minViewportSize,
+      runtime.scenario.directives.minViewportSize ?? limits.minViewportSize,
       runtime.viewportSize,
     ),
   )
   runtime.coastPredictionHorizonHours = Math.min(
-    runtime.scenarioDirectives.maxCoastPredictionHorizonHours ??
+    runtime.scenario.directives.maxCoastPredictionHorizonHours ??
       limits.maxCoastPredictionHorizonHours,
     runtime.coastPredictionHorizonHours,
   )
@@ -150,6 +152,9 @@ export const syncRuntimeScenarioDirectives = (
   runtime: AppRuntimeState,
   limits: GlobalScenarioDirectiveLimits,
 ) => {
-  runtime.scenarioDirectives = resolveRuntimeScenarioDirectives(runtime, limits)
+  runtime.scenario.directives = resolveRuntimeScenarioDirectives(
+    runtime,
+    limits,
+  )
   applyRuntimeScenarioDirectiveConstraints(runtime, limits)
 }

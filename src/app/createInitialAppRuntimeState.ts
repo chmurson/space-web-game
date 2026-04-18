@@ -18,9 +18,6 @@ export const createInitialAppRuntimeState = (
     config.runtimeScenarioOptions,
   )
   const runtimeState: AppRuntimeState = {
-    activeScenarioDescription:
-      initialScenarioTransition.activeScenarioDescription,
-    activeScenarioTitle: initialScenarioTransition.activeScenarioTitle,
     assistMode: 'off',
     assistTargetIndex: 1,
     coastPredictionHorizonHours:
@@ -31,9 +28,12 @@ export const createInitialAppRuntimeState = (
     debugSnapshotStatus: '',
     fpsIndicatorEnabled: false,
     performanceDebugEnabled: false,
-    resetScenario: initialScenarioTransition.resetScenario,
-    scenarioDirectives: createDefaultScenarioDirectives(),
-    scenarioSession: initialScenarioTransition.scenarioSession,
+    scenario: {
+      activeDescription: initialScenarioTransition.scenario.activeDescription,
+      activeTitle: initialScenarioTransition.scenario.activeTitle,
+      directives: createDefaultScenarioDirectives(),
+      session: initialScenarioTransition.scenario.session,
+    },
     spacecraftLabelIntroUntil: performance.now() + 5_000,
     targetHeadingSelectionEpoch: 0,
     uiEffectEpoch: 0,

@@ -54,7 +54,7 @@ export const createGameQueries = (options: {
 
   const getAssistTarget = () => {
     const forcedTargetId =
-      options.runtime.scenarioDirectives.forcedAssistTargetId
+      options.runtime.scenario.directives.forcedAssistTargetId
     if (forcedTargetId) {
       const forcedTarget = options.runtime.state.bodies.find(
         (body) => body.id === forcedTargetId,

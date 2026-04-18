@@ -69,6 +69,7 @@ export const createFrameLoop = (options: {
       options.touchControls ? 'mobile' : 'desktop',
     )
     const hasBlockingPrompt = activePrompt?.mode === 'blocking'
+
     const isThrusting =
       options.runtime.state.controls.main > 0 &&
       options.runtime.state.spacecraft.fuel > 0
@@ -82,6 +83,7 @@ export const createFrameLoop = (options: {
         getCaptureMetrics: options.queries.getCaptureMetrics,
         getCircularizePlan: options.queries.getCircularizePlan,
         keyboardInput: options.keyboardInput,
+        //todo: why it's hardocded to 100 ?
         maxControlWarp: 100,
         physicsEngine: options.physicsEngine,
         realDt,
@@ -96,29 +98,35 @@ export const createFrameLoop = (options: {
       options.runtime.state = simulationStep.state
       options.runtime.targetHeading = simulationStep.targetHeading
       options.runtime.timeWarpIndex = simulationStep.timeWarpIndex
+
+      //todo: merge advanceRuntime scenario with directives;
       advanceRuntimeScenario(options.runtime)
     }
 
     updateRipples(options.ripples, realDt)
     options.runtimeActions.updateCamera()
+    //todo: why this run twice in the animae ?
     syncRuntimeScenarioDirectives(
       options.runtime,
       options.globalScenarioDirectiveLimits,
     )
     options.trajectoryPresentation.maybeRefreshPrediction(realDt)
 
+    //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
     options.bodyPresentation.updateVisuals({
       bodies: options.runtime.state.bodies,
-      hiddenBodyIds: options.runtime.scenarioDirectives.hiddenBodyIds,
+      hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
       spacecraftPosition: options.runtime.state.spacecraft.position,
       viewportSize: options.runtime.viewportSize,
     })
+
     options.spacecraftPresentation.updateVisuals({
       isThrusting,
       spacecraft: options.runtime.state.spacecraft,
       spacecraftLabelIntroUntil: options.runtime.spacecraftLabelIntroUntil,
       viewportSize: options.runtime.viewportSize,
     })
+
     options.trajectoryPresentation.updateVisuals()
     options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
     options.crashMenu?.syncState()
@@ -147,7 +155,7 @@ export const createFrameLoop = (options: {
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.state.bodies,
-        hiddenBodyIds: options.runtime.scenarioDirectives.hiddenBodyIds,
+        hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
         spacecraftPosition: options.runtime.state.spacecraft.position,
         viewportSize: options.runtime.viewportSize,
       })

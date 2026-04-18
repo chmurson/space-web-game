@@ -217,7 +217,7 @@ const getActivePrompt = (
   runtime: AppRuntimeState,
   inputMode: 'desktop' | 'mobile',
 ): RuntimePromptContent | null => {
-  const state = runtime.scenarioSession.state as TutorialScenarioState
+  const state = runtime.scenario.session.state as TutorialScenarioState
 
   // Check onboarding (non-blocking coach tips) first
   if (state.onboarding?.gateActive && state.onboarding.activeStepId) {
@@ -411,8 +411,8 @@ const advanceOrbitPhase = (
   const previousOrbitAngle = state.previousOrbitAngle
 
   if (captureMetrics.specificEnergy >= 0) {
-    runtime.scenarioSession = {
-      ...runtime.scenarioSession,
+    runtime.scenario.session = {
+      ...runtime.scenario.session,
       state: {
         ...state,
         ...createOrbitProgressState(),
@@ -430,8 +430,8 @@ const advanceOrbitPhase = (
     (state.orbitProgressRadians ?? 0) + additionalProgress
   const orbitTurnsCompleted = Math.floor(orbitProgressRadians / fullTurnRadians)
 
-  runtime.scenarioSession = {
-    ...runtime.scenarioSession,
+  runtime.scenario.session = {
+    ...runtime.scenario.session,
     state: {
       ...state,
       orbitProgressRadians,
@@ -444,12 +444,12 @@ const advanceOrbitPhase = (
 }
 
 const advanceTutorialScenario = (runtime: AppRuntimeState) => {
-  if (!isTutorialScenarioState(runtime.scenarioSession.state)) {
+  if (!isTutorialScenarioState(runtime.scenario.session.state)) {
     return
   }
 
-  if (runtime.scenarioSession.state.phase === 'escape-earth') {
-    const onboarding = runtime.scenarioSession.state.onboarding
+  if (runtime.scenario.session.state.phase === 'escape-earth') {
+    const onboarding = runtime.scenario.session.state.onboarding
     if (onboarding?.gateActive) {
       const advancedOnboarding = advanceTutorialOnboarding(
         runtime,
@@ -457,10 +457,10 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
         performance.now(),
         tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
       )
-      runtime.scenarioSession = {
-        ...runtime.scenarioSession,
+      runtime.scenario.session = {
+        ...runtime.scenario.session,
         state: {
-          ...runtime.scenarioSession.state,
+          ...runtime.scenario.session.state,
           onboarding: advancedOnboarding,
         },
       }
@@ -483,8 +483,8 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
 
     positionMoonForPhaseTwo(runtime)
 
-    runtime.scenarioSession = {
-      ...runtime.scenarioSession,
+    runtime.scenario.session = {
+      ...runtime.scenario.session,
       checkpoint: createDefaultRuntimeScenarioSession(runtime),
       state: {
         phase: 'reach-moon',
@@ -495,13 +495,13 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
     return
   }
 
-  if (runtime.scenarioSession.state.phase === 'reach-moon') {
+  if (runtime.scenario.session.state.phase === 'reach-moon') {
     if (isWithinOrbitPhaseThreshold(runtime, 'moon')) {
-      runtime.scenarioSession = {
-        ...runtime.scenarioSession,
+      runtime.scenario.session = {
+        ...runtime.scenario.session,
         checkpoint: createDefaultRuntimeScenarioSession(runtime),
         state: {
-          ...runtime.scenarioSession.state,
+          ...runtime.scenario.session.state,
           ...createOrbitProgressState(),
           phase: 'orbit-moon',
           pendingPrompt: 'orbit-moon-intro',
@@ -512,18 +512,18 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
     return
   }
 
-  if (runtime.scenarioSession.state.phase === 'orbit-moon') {
+  if (runtime.scenario.session.state.phase === 'orbit-moon') {
     const orbitProgress = advanceOrbitPhase(
       runtime,
-      runtime.scenarioSession.state,
+      runtime.scenario.session.state,
       'moon',
     )
     if (!orbitProgress?.completed) {
       return
     }
 
-    runtime.scenarioSession = {
-      ...runtime.scenarioSession,
+    runtime.scenario.session = {
+      ...runtime.scenario.session,
       checkpoint: createDefaultRuntimeScenarioSession(runtime),
       state: {
         phase: 'return-earth',
@@ -534,13 +534,13 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
     return
   }
 
-  if (runtime.scenarioSession.state.phase === 'return-earth') {
+  if (runtime.scenario.session.state.phase === 'return-earth') {
     if (isWithinOrbitPhaseThreshold(runtime, 'earth')) {
-      runtime.scenarioSession = {
-        ...runtime.scenarioSession,
+      runtime.scenario.session = {
+        ...runtime.scenario.session,
         checkpoint: createDefaultRuntimeScenarioSession(runtime),
         state: {
-          ...runtime.scenarioSession.state,
+          ...runtime.scenario.session.state,
           ...createOrbitProgressState(),
           phase: 'orbit-earth',
           pendingPrompt: 'orbit-earth-intro',
@@ -550,18 +550,18 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
     return
   }
 
-  if (runtime.scenarioSession.state.phase === 'orbit-earth') {
+  if (runtime.scenario.session.state.phase === 'orbit-earth') {
     const orbitProgress = advanceOrbitPhase(
       runtime,
-      runtime.scenarioSession.state,
+      runtime.scenario.session.state,
       'earth',
     )
     if (!orbitProgress?.completed) {
       return
     }
 
-    runtime.scenarioSession = {
-      ...runtime.scenarioSession,
+    runtime.scenario.session = {
+      ...runtime.scenario.session,
       checkpoint: createDefaultRuntimeScenarioSession(runtime),
       completed: true,
       state: {
@@ -578,11 +578,11 @@ const advanceTutorialScenario = (runtime: AppRuntimeState) => {
 const acknowledgeTutorialPrompt = (
   runtime: AppRuntimeState,
 ): PromptAcknowledgeResult => {
-  if (!isTutorialScenarioState(runtime.scenarioSession.state)) {
+  if (!isTutorialScenarioState(runtime.scenario.session.state)) {
     return { acknowledged: false }
   }
 
-  const activeOnboarding = runtime.scenarioSession.state.onboarding
+  const activeOnboarding = runtime.scenario.session.state.onboarding
   if (activeOnboarding?.gateActive) {
     const acknowledgedOnboarding = acknowledgeTutorialOnboardingPrompt(
       runtime,
@@ -595,21 +595,21 @@ const acknowledgeTutorialPrompt = (
       return { acknowledged: false }
     }
 
-    runtime.scenarioSession = {
-      ...runtime.scenarioSession,
+    runtime.scenario.session = {
+      ...runtime.scenario.session,
       state: {
-        ...runtime.scenarioSession.state,
+        ...runtime.scenario.session.state,
         onboarding: acknowledgedOnboarding,
       },
     }
     return { acknowledged: true }
   }
 
-  if (runtime.scenarioSession.state.pendingPrompt === null) {
+  if (runtime.scenario.session.state.pendingPrompt === null) {
     return { acknowledged: false }
   }
 
-  const acknowledgedPrompt = runtime.scenarioSession.state.pendingPrompt
+  const acknowledgedPrompt = runtime.scenario.session.state.pendingPrompt
   const promptContent = getTutorialPromptContentForPrompt(acknowledgedPrompt)
   const effect = promptContent?.confirmAction as PromptActionEffect | undefined
   const nextOnboarding =
@@ -619,11 +619,11 @@ const acknowledgeTutorialPrompt = (
           performance.now(),
           tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
         )
-      : runtime.scenarioSession.state.onboarding
-  runtime.scenarioSession = {
-    ...runtime.scenarioSession,
+      : runtime.scenario.session.state.onboarding
+  runtime.scenario.session = {
+    ...runtime.scenario.session,
     state: {
-      ...runtime.scenarioSession.state,
+      ...runtime.scenario.session.state,
       lastAcknowledgedPrompt: acknowledgedPrompt,
       ...(nextOnboarding ? { onboarding: nextOnboarding } : {}),
       pendingPrompt: null,
@@ -634,18 +634,18 @@ const acknowledgeTutorialPrompt = (
 
 const reopenTutorialPrompt = (runtime: AppRuntimeState) => {
   if (
-    !isTutorialScenarioState(runtime.scenarioSession.state) ||
-    runtime.scenarioSession.state.pendingPrompt !== null ||
-    !runtime.scenarioSession.state.lastAcknowledgedPrompt
+    !isTutorialScenarioState(runtime.scenario.session.state) ||
+    runtime.scenario.session.state.pendingPrompt !== null ||
+    !runtime.scenario.session.state.lastAcknowledgedPrompt
   ) {
     return false
   }
 
-  runtime.scenarioSession = {
-    ...runtime.scenarioSession,
+  runtime.scenario.session = {
+    ...runtime.scenario.session,
     state: {
-      ...runtime.scenarioSession.state,
-      pendingPrompt: runtime.scenarioSession.state.lastAcknowledgedPrompt,
+      ...runtime.scenario.session.state,
+      pendingPrompt: runtime.scenario.session.state.lastAcknowledgedPrompt,
     },
   }
   return true

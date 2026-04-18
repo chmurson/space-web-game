@@ -108,7 +108,7 @@ export const getRuntimeScenarioDefinition = (
 
 export const advanceRuntimeScenario = (runtime: AppRuntimeState) => {
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
   definition?.advance?.(runtime)
 }
@@ -118,13 +118,13 @@ export const getRuntimeActivePrompt = (
   inputMode: 'desktop' | 'mobile',
 ): RuntimePromptContent | null => {
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
 
   if (definition?.getActivePrompt) {
     if (
       definition.isState &&
-      !definition.isState(runtime.scenarioSession.state)
+      !definition.isState(runtime.scenario.session.state)
     ) {
       return null
     }
@@ -160,7 +160,7 @@ export const getRuntimeScenarioPromptContent = (
   runtime: AppRuntimeState,
 ): ScenarioPromptContent | null => {
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
   if (!definition?.getPromptContent) {
     return null
@@ -168,19 +168,19 @@ export const getRuntimeScenarioPromptContent = (
 
   if (
     definition.isState &&
-    !definition.isState(runtime.scenarioSession.state)
+    !definition.isState(runtime.scenario.session.state)
   ) {
     return null
   }
 
-  return definition.getPromptContent(runtime.scenarioSession.state)
+  return definition.getPromptContent(runtime.scenario.session.state)
 }
 
 export const acknowledgeRuntimeScenarioPrompt = (
   runtime: AppRuntimeState,
 ): PromptAcknowledgeResult => {
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
   return definition?.acknowledgePrompt?.(runtime) ?? { acknowledged: false }
 }
@@ -189,7 +189,7 @@ export const getRuntimeScenarioReplayPromptContent = (
   runtime: AppRuntimeState,
 ): ScenarioPromptContent | null => {
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
   if (!definition?.getReplayPromptContent) {
     return null
@@ -197,17 +197,17 @@ export const getRuntimeScenarioReplayPromptContent = (
 
   if (
     definition.isState &&
-    !definition.isState(runtime.scenarioSession.state)
+    !definition.isState(runtime.scenario.session.state)
   ) {
     return null
   }
 
-  return definition.getReplayPromptContent(runtime.scenarioSession.state)
+  return definition.getReplayPromptContent(runtime.scenario.session.state)
 }
 
 export const reopenRuntimeScenarioPrompt = (runtime: AppRuntimeState) => {
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
   return definition?.reopenPrompt?.(runtime) ?? false
 }
@@ -216,7 +216,7 @@ export const shouldAutoRestartRuntimeScenarioOnCrash = (
   runtime: AppRuntimeState,
 ) => {
   const definition = getRuntimeScenarioDefinition(
-    runtime.scenarioSession.scenarioId,
+    runtime.scenario.session.scenarioId,
   )
   return definition?.shouldAutoRestartOnCrash?.(runtime) ?? false
 }

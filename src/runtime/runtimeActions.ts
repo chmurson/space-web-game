@@ -79,7 +79,7 @@ export const createRuntimeActions = (options: {
       {
         coastPredictionHorizonHours:
           options.runtime.coastPredictionHorizonHours,
-        scenarioSession: options.runtime.scenarioSession,
+        scenarioSession: options.runtime.scenario.session,
         viewportSize: options.runtime.viewportSize,
       },
     )
@@ -92,18 +92,18 @@ export const createRuntimeActions = (options: {
       cameraDistance: options.cameraDistance,
       cameraElevation: options.cameraElevation,
       cameraTargetPosition:
-        options.runtime.scenarioDirectives.cameraFollowBodyId === null
+        options.runtime.scenario.directives.cameraFollowBodyId === null
           ? add(
               options.runtime.state.spacecraft.position,
-              options.runtime.scenarioDirectives.cameraFollowOffset,
+              options.runtime.scenario.directives.cameraFollowOffset,
             )
           : add(
               options.runtime.state.bodies.find(
                 (body) =>
                   body.id ===
-                  options.runtime.scenarioDirectives.cameraFollowBodyId,
+                  options.runtime.scenario.directives.cameraFollowBodyId,
               )?.position ?? options.runtime.state.spacecraft.position,
-              options.runtime.scenarioDirectives.cameraFollowOffset,
+              options.runtime.scenario.directives.cameraFollowOffset,
             ),
       gameScene: options.gameScene,
       viewportHeight: window.innerHeight,
@@ -114,8 +114,10 @@ export const createRuntimeActions = (options: {
   const zoomCamera = (factor: number) => {
     options.runtime.viewportSize = THREE.MathUtils.clamp(
       options.runtime.viewportSize * factor,
-      options.runtime.scenarioDirectives.minViewportSize ?? options.minViewport,
-      options.runtime.scenarioDirectives.maxViewportSize ?? options.maxViewport,
+      options.runtime.scenario.directives.minViewportSize ??
+        options.minViewport,
+      options.runtime.scenario.directives.maxViewportSize ??
+        options.maxViewport,
     )
     updateCamera()
   }
@@ -142,7 +144,7 @@ export const createRuntimeActions = (options: {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
           options.runtime.timeWarpIndex + 1,
           options.timeWarps,
-          options.runtime.scenarioDirectives.maxTimeWarp,
+          options.runtime.scenario.directives.maxTimeWarp,
         )
         return { refreshTrajectoryPrediction: false }
       }
@@ -150,7 +152,7 @@ export const createRuntimeActions = (options: {
         options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
           Math.max(options.runtime.timeWarpIndex - 1, 0),
           options.timeWarps,
-          options.runtime.scenarioDirectives.maxTimeWarp,
+          options.runtime.scenario.directives.maxTimeWarp,
         )
         return { refreshTrajectoryPrediction: false }
       }
@@ -205,7 +207,7 @@ export const createRuntimeActions = (options: {
       }
       if (action === 'increaseCoastHorizon') {
         options.runtime.coastPredictionHorizonHours = Math.min(
-          options.runtime.scenarioDirectives.maxCoastPredictionHorizonHours ??
+          options.runtime.scenario.directives.maxCoastPredictionHorizonHours ??
             options.maxCoastPredictionHorizonHours,
           options.runtime.coastPredictionHorizonHours * 2,
         )

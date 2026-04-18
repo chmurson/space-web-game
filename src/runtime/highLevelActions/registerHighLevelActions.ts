@@ -46,7 +46,7 @@ export const registerHighLevelActions = ({
     if (!loaded) {
       if (fromMenu === 'crashMenu') {
         crashMenu.syncState({
-          hasCheckpoint: runtime.scenarioSession.checkpoint !== null,
+          hasCheckpoint: runtime.scenario.session.checkpoint !== null,
         })
       } else if (fromMenu === 'mainMenu') {
         mainMenu.syncState()

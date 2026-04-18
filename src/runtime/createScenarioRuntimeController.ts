@@ -9,14 +9,12 @@ import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiv
 import type { AppRuntimeState } from './appRuntimeState'
 import { restoreRuntimeFromScenarioCheckpoint } from './scenarioRecovery'
 
-export type RuntimeScenarioResetTarget = AppRuntimeState['resetScenario']
-
 export type ScenarioRuntimeTransition = {
-  activeScenarioDescription: string
-  activeScenarioTitle: string
   coastPredictionHorizonHours: number
-  resetScenario: RuntimeScenarioResetTarget
-  scenarioSession: AppRuntimeState['scenarioSession']
+  scenario: Pick<
+    AppRuntimeState['scenario'],
+    'activeDescription' | 'activeTitle' | 'session'
+  >
   state: AppRuntimeState['state']
   viewportSize: number
 }
@@ -29,18 +27,6 @@ export const resolveStartupScenarioId = (options: {
     ? 'menu-background'
     : options.requestedScenarioId
 
-const createResetScenarioTarget = (
-  scenarioId: string,
-): RuntimeScenarioResetTarget => {
-  const scenario = createRequestedRuntimeScenario(scenarioId)
-
-  return {
-    description: scenario.description,
-    scenarioId,
-    title: scenario.name,
-  }
-}
-
 export const createScenarioRuntimeTransition = (
   scenarioId: string,
   runtimeScenarioOptions: RuntimeScenarioOptions,
@@ -52,16 +38,13 @@ export const createScenarioRuntimeTransition = (
   )
 
   return {
-    activeScenarioDescription: scenario.description,
-    activeScenarioTitle: scenario.name,
     coastPredictionHorizonHours:
       runtimeScenarioState.coastPredictionHorizonHours,
-    resetScenario: {
-      description: scenario.description,
-      scenarioId,
-      title: scenario.name,
+    scenario: {
+      activeDescription: scenario.description,
+      activeTitle: scenario.name,
+      session: runtimeScenarioState.scenarioSession,
     },
-    scenarioSession: runtimeScenarioState.scenarioSession,
     state: runtimeScenarioState.state,
     viewportSize: runtimeScenarioState.viewportSize,
   }
@@ -90,16 +73,15 @@ export const createScenarioRuntimeController = (options: {
   const applyRuntimeScenarioTransition = (
     transition: ScenarioRuntimeTransition,
   ) => {
-    options.runtime.resetScenario = transition.resetScenario
-    options.runtime.activeScenarioTitle = transition.activeScenarioTitle
-    options.runtime.activeScenarioDescription =
-      transition.activeScenarioDescription
+    options.runtime.scenario.activeTitle = transition.scenario.activeTitle
+    options.runtime.scenario.activeDescription =
+      transition.scenario.activeDescription
     options.runtime.timeWarpIndex = 0
     options.runtime.state = transition.state
     options.runtime.viewportSize = transition.viewportSize
     options.runtime.coastPredictionHorizonHours =
       transition.coastPredictionHorizonHours
-    options.runtime.scenarioSession = transition.scenarioSession
+    options.runtime.scenario.session = transition.scenario.session
     options.runtime.uiEffectEpoch += 1
     options.clearTransientScenarioState()
     syncRuntimeScenarioDirectives(
@@ -145,14 +127,13 @@ export const createScenarioRuntimeController = (options: {
       }
 
       applyRuntimeScenarioTransition({
-        activeScenarioDescription: loadedDebugScenario.scenario.description,
-        activeScenarioTitle: loadedDebugScenario.scenario.name,
         coastPredictionHorizonHours:
           loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
-        resetScenario: createResetScenarioTarget(
-          loadedDebugScenario.runtimeState.scenarioSession.scenarioId,
-        ),
-        scenarioSession: loadedDebugScenario.runtimeState.scenarioSession,
+        scenario: {
+          activeDescription: loadedDebugScenario.scenario.description,
+          activeTitle: loadedDebugScenario.scenario.name,
+          session: loadedDebugScenario.runtimeState.scenarioSession,
+        },
         state: loadedDebugScenario.runtimeState.state,
         viewportSize: loadedDebugScenario.runtimeState.viewportSize,
       })
@@ -167,7 +148,7 @@ export const createScenarioRuntimeController = (options: {
     resetScenario: () => {
       applyRuntimeScenarioTransition(
         createScenarioRuntimeTransition(
-          options.runtime.resetScenario.scenarioId,
+          options.runtime.scenario.session.scenarioId,
           options.runtimeScenarioOptions,
         ),
       )

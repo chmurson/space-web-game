@@ -315,7 +315,7 @@ export const createTrajectoryPresentation = (options: {
     refreshPrediction,
     updateVisuals: () => {
       if (
-        options.runtime.scenarioDirectives.hiddenUIElements.has('trajectory')
+        options.runtime.scenario.directives.hiddenUIElements.has('trajectory')
       ) {
         hideTrajectoryVisuals(options.gameScene)
         return

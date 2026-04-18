@@ -12,8 +12,6 @@ import { createRuntimeScenarioSession } from '../../scenarioSession'
 import { registerTutorialScenario } from './tutorialScenario'
 
 const createRuntime = (): AppRuntimeState => ({
-  activeScenarioDescription: 'Tutorial description',
-  activeScenarioTitle: 'Tutorial',
   assistMode: 'off',
   assistTargetIndex: 0,
   coastPredictionHorizonHours: 2,
@@ -23,16 +21,15 @@ const createRuntime = (): AppRuntimeState => ({
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
-  resetScenario: {
-    description: 'Tutorial description',
-    scenarioId: 'tutorial',
-    title: 'Tutorial',
+  scenario: {
+    activeDescription: 'Tutorial description',
+    activeTitle: 'Tutorial',
+    directives: createDefaultScenarioDirectives(),
+    session: createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      pendingPrompt: null,
+    }),
   },
-  scenarioDirectives: createDefaultScenarioDirectives(),
-  scenarioSession: createRuntimeScenarioSession('tutorial', {
-    phase: 'escape-earth',
-    pendingPrompt: null,
-  }),
   spacecraftLabelIntroUntil: 0,
   targetHeadingSelectionEpoch: 0,
   uiEffectEpoch: 0,
@@ -189,16 +186,16 @@ describe('tutorialScenario', () => {
 
     tutorialScenario.advance?.(runtime)
 
-    expect(runtime.scenarioSession.state).toEqual({
+    expect(runtime.scenario.session.state).toEqual({
       phase: 'reach-moon',
       pendingPrompt: 'phase-two-intro',
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
-    expect(runtime.scenarioSession.checkpoint).not.toBeNull()
-    expect(runtime.scenarioSession.checkpoint?.world).not.toBe(runtime.state)
+    expect(runtime.scenario.session.checkpoint).not.toBeNull()
+    expect(runtime.scenario.session.checkpoint?.world).not.toBe(runtime.state)
     expect(
-      runtime.scenarioSession.checkpoint?.world.spacecraft.position.x,
+      runtime.scenario.session.checkpoint?.world.spacecraft.position.x,
     ).toBe(runtime.state.spacecraft.position.x)
     expect(
       runtime.state.bodies.find((body) => body.id === 'moon')?.position.x,
@@ -206,12 +203,14 @@ describe('tutorialScenario', () => {
     expect(
       runtime.state.bodies.find((body) => body.id === 'moon')?.position.y,
     ).toBeCloseTo(EARTH_MOON_DISTANCE, 6)
-    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true)
-    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+    expect(tutorialScenario.isState?.(runtime.scenario.session.state)).toBe(
+      true,
+    )
+    if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getDirectiveOverrides?.(runtime.scenarioSession.state, {
+      tutorialScenario.getDirectiveOverrides?.(runtime.scenario.session.state, {
         maxCoastPredictionHorizonHours: 48,
         defaultViewportSize: 520,
         maxViewportSize: 800,
@@ -230,14 +229,14 @@ describe('tutorialScenario', () => {
       minViewportSize: null,
     })
     expect(
-      tutorialScenario.getHudContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getHudContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Tutorial: Reach the Moon',
       description:
         'Approach the Moon and get close enough to begin the orbit phase.',
     })
     expect(
-      tutorialScenario.getPromptContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getPromptContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Reach the Moon',
       description:
@@ -248,7 +247,7 @@ describe('tutorialScenario', () => {
       acknowledged: true,
       effect: undefined,
     })
-    expect(runtime.scenarioSession.state).toEqual({
+    expect(runtime.scenario.session.state).toEqual({
       phase: 'reach-moon',
       lastAcknowledgedPrompt: 'phase-two-intro',
       pendingPrompt: null,
@@ -260,7 +259,7 @@ describe('tutorialScenario', () => {
   it('starts onboarding after the phase-1 intro prompt and gates escape-earth progression', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('tutorial', {
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'escape-earth',
       pendingPrompt: 'phase-one-intro',
     })
@@ -270,7 +269,7 @@ describe('tutorialScenario', () => {
       effect: undefined,
     })
 
-    expect(runtime.scenarioSession.state).toMatchObject({
+    expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
       pendingPrompt: null,
       onboarding: {
@@ -278,7 +277,7 @@ describe('tutorialScenario', () => {
         gateActive: true,
       },
     })
-    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+    if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
@@ -293,7 +292,7 @@ describe('tutorialScenario', () => {
 
     tutorialScenario.advance?.(runtime)
 
-    expect(runtime.scenarioSession.state).toMatchObject({
+    expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
       onboarding: {
         activeStepId: 'intro-thrust',
@@ -305,7 +304,7 @@ describe('tutorialScenario', () => {
   it('includes a mobile touch hint target in the active onboarding prompt', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('tutorial', {
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'escape-earth',
       pendingPrompt: null,
       onboarding: {
@@ -339,7 +338,7 @@ describe('tutorialScenario', () => {
   it('switches from moon approach to moon orbit when entering the close-range threshold', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('tutorial', {
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'reach-moon',
       pendingPrompt: null,
       orbitProgressRadians: 0,
@@ -350,24 +349,26 @@ describe('tutorialScenario', () => {
 
     tutorialScenario.advance?.(runtime)
 
-    expect(runtime.scenarioSession.state).toEqual({
+    expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-moon',
       pendingPrompt: 'orbit-moon-intro',
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
-    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true)
-    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+    expect(tutorialScenario.isState?.(runtime.scenario.session.state)).toBe(
+      true,
+    )
+    if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getHudContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getHudContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Tutorial: Orbit the Moon',
       description: 'Stay captured and complete 3 turns around the Moon (0/3).',
     })
     expect(
-      tutorialScenario.getPromptContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getPromptContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Approach the Moon',
       description:
@@ -378,7 +379,7 @@ describe('tutorialScenario', () => {
       acknowledged: true,
       effect: undefined,
     })
-    expect(runtime.scenarioSession.state).toEqual({
+    expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-moon',
       lastAcknowledgedPrompt: 'orbit-moon-intro',
       pendingPrompt: null,
@@ -390,7 +391,7 @@ describe('tutorialScenario', () => {
   it('advances from moon orbit to return-earth after three lunar orbits', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('tutorial', {
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'orbit-moon',
       pendingPrompt: null,
       orbitProgressRadians: 0,
@@ -418,26 +419,28 @@ describe('tutorialScenario', () => {
       tutorialScenario.advance?.(runtime)
     }
 
-    expect(runtime.scenarioSession.state).toEqual({
+    expect(runtime.scenario.session.state).toEqual({
       phase: 'return-earth',
       pendingPrompt: 'phase-three-intro',
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
-    expect(runtime.scenarioSession.checkpoint).not.toBeNull()
-    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true)
-    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+    expect(runtime.scenario.session.checkpoint).not.toBeNull()
+    expect(tutorialScenario.isState?.(runtime.scenario.session.state)).toBe(
+      true,
+    )
+    if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getHudContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getHudContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Tutorial: Return to Earth',
       description:
         'Leave the Moon behind and get close enough to Earth to begin the final orbit phase.',
     })
     expect(
-      tutorialScenario.getPromptContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getPromptContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Return to Earth',
       description:
@@ -449,7 +452,7 @@ describe('tutorialScenario', () => {
   it('switches from earth return to earth orbit when re-entering Earth range', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('tutorial', {
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'return-earth',
       pendingPrompt: null,
       orbitProgressRadians: 0,
@@ -460,25 +463,27 @@ describe('tutorialScenario', () => {
 
     tutorialScenario.advance?.(runtime)
 
-    expect(runtime.scenarioSession.state).toEqual({
+    expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-earth',
       pendingPrompt: 'orbit-earth-intro',
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
-    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true)
-    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+    expect(tutorialScenario.isState?.(runtime.scenario.session.state)).toBe(
+      true,
+    )
+    if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getHudContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getHudContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Tutorial: Orbit Earth',
       description:
         'Stabilize your return and complete 3 turns around Earth (0/3).',
     })
     expect(
-      tutorialScenario.getPromptContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getPromptContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Back at Earth',
       description:
@@ -490,7 +495,7 @@ describe('tutorialScenario', () => {
   it('advances from earth orbit to complete after three Earth orbits', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('tutorial', {
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'orbit-earth',
       pendingPrompt: null,
       orbitProgressRadians: 0,
@@ -518,23 +523,25 @@ describe('tutorialScenario', () => {
       tutorialScenario.advance?.(runtime)
     }
 
-    expect(runtime.scenarioSession.completed).toBe(true)
-    expect(runtime.scenarioSession.state).toEqual({
+    expect(runtime.scenario.session.completed).toBe(true)
+    expect(runtime.scenario.session.state).toEqual({
       phase: 'complete',
       pendingPrompt: 'complete-intro',
     })
-    expect(tutorialScenario.isState?.(runtime.scenarioSession.state)).toBe(true)
-    if (!tutorialScenario.isState?.(runtime.scenarioSession.state)) {
+    expect(tutorialScenario.isState?.(runtime.scenario.session.state)).toBe(
+      true,
+    )
+    if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getHudContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getHudContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Tutorial Complete',
       description: 'You reached the end of the current tutorial flow.',
     })
     expect(
-      tutorialScenario.getPromptContent?.(runtime.scenarioSession.state),
+      tutorialScenario.getPromptContent?.(runtime.scenario.session.state),
     ).toEqual({
       title: 'Tutorial Complete',
       description:

@@ -81,7 +81,7 @@ const createRuntimeCoordinator = (options: {
     }
 
     options.crashMenu.syncState({
-      hasCheckpoint: options.runtimeState.scenarioSession.checkpoint !== null,
+      hasCheckpoint: options.runtimeState.scenario.session.checkpoint !== null,
     })
     options.topMenu.syncState()
   }
@@ -200,7 +200,7 @@ export const createAppComponents = (options: {
       options.runtimeState.coastPredictionHorizonHours,
     getDebugModeEnabled: () => options.runtimeState.debugModeEnabled,
     getMaxCoastPredictionHorizonHours: () =>
-      options.runtimeState.scenarioDirectives.maxCoastPredictionHorizonHours ??
+      options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
       options.config.trajectory.maxCoastPredictionHorizonHours,
     getMinCoastPredictionHorizonHours: () =>
       options.config.trajectory.minCoastPredictionHorizonHours,
@@ -294,6 +294,7 @@ export const createAppComponents = (options: {
       })
     },
   })
+
   const frameLoop = createFrameLoop({
     bodyPresentation: createBodyPresentation({
       gameScene,
@@ -307,7 +308,7 @@ export const createAppComponents = (options: {
         crashMenu.setVisible(visible)
         crashMenu.syncState({
           hasCheckpoint:
-            options.runtimeState.scenarioSession.checkpoint !== null,
+            options.runtimeState.scenario.session.checkpoint !== null,
         })
       },
     },

@@ -15,8 +15,6 @@ import { getRuntimeScenarioDefinition } from './scenarioRegistry'
 import { createRuntimeScenarioSession } from './scenarioSession'
 
 const createRuntime = (): AppRuntimeState => ({
-  activeScenarioDescription: 'Tutorial description',
-  activeScenarioTitle: 'Tutorial',
   assistMode: 'off',
   assistTargetIndex: 0,
   coastPredictionHorizonHours: 24,
@@ -26,16 +24,15 @@ const createRuntime = (): AppRuntimeState => ({
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
-  resetScenario: {
-    description: 'Tutorial description',
-    scenarioId: 'tutorial',
-    title: 'Tutorial',
+  scenario: {
+    activeDescription: 'Tutorial description',
+    activeTitle: 'Tutorial',
+    directives: createDefaultScenarioDirectives(),
+    session: createRuntimeScenarioSession('tutorial', {
+      forcedAssistTargetId: 'moon',
+      hiddenBodyIds: ['moon'],
+    }),
   },
-  scenarioDirectives: createDefaultScenarioDirectives(),
-  scenarioSession: createRuntimeScenarioSession('tutorial', {
-    forcedAssistTargetId: 'moon',
-    hiddenBodyIds: ['moon'],
-  }),
   spacecraftLabelIntroUntil: 0,
   targetHeadingSelectionEpoch: 0,
   uiEffectEpoch: 0,
@@ -62,7 +59,7 @@ const createRuntime = (): AppRuntimeState => ({
 describe('scenarioDirectives', () => {
   it('resolves generic forced target and hidden body directives from scenario state', () => {
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('custom', {
+    runtime.scenario.session = createRuntimeScenarioSession('custom', {
       forcedAssistTargetId: 'moon',
       hiddenBodyIds: ['moon'],
     })
@@ -81,7 +78,7 @@ describe('scenarioDirectives', () => {
 
   it('merges earth-moon directive overrides with generic scenario state directives', () => {
     const runtime = createRuntime()
-    runtime.scenarioSession = createRuntimeScenarioSession('earth-moon', {
+    runtime.scenario.session = createRuntimeScenarioSession('earth-moon', {
       forcedAssistTargetId: 'moon',
       hiddenBodyIds: ['earth'],
     })
@@ -101,7 +98,7 @@ describe('scenarioDirectives', () => {
 
   it('constrains runtime state to directive caps', () => {
     const runtime = createRuntime()
-    runtime.scenarioDirectives = {
+    runtime.scenario.directives = {
       ...createDefaultScenarioDirectives(),
       maxCoastPredictionHorizonHours: 12,
       maxTimeWarp: 100,
@@ -129,9 +126,9 @@ describe('scenarioDirectives', () => {
 
   it('derives tutorial phase-1 directives from tutorial scenario state', () => {
     const runtime = createRuntime()
-    runtime.scenarioSession =
+    runtime.scenario.session =
       getRuntimeScenarioDefinition('tutorial')?.createScenario()
-        .scenarioSession ?? runtime.scenarioSession
+        .scenarioSession ?? runtime.scenario.session
 
     const directives = resolveRuntimeScenarioDirectives(runtime, {
       maxCoastPredictionHorizonHours: 48,

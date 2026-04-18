@@ -14,8 +14,6 @@ import { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelAc
 import { createRuntimeActions } from './runtimeActions'
 
 const createRuntime = (): AppRuntimeState => ({
-  activeScenarioDescription: 'Tutorial description',
-  activeScenarioTitle: 'Tutorial',
   assistMode: 'capture',
   assistTargetIndex: 1,
   coastPredictionHorizonHours: 24,
@@ -25,15 +23,14 @@ const createRuntime = (): AppRuntimeState => ({
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
-  resetScenario: {
-    description: 'Tutorial description',
-    scenarioId: 'tutorial',
-    title: 'Tutorial',
+  scenario: {
+    activeDescription: 'Tutorial description',
+    activeTitle: 'Tutorial',
+    directives: createDefaultScenarioDirectives(),
+    session: createRuntimeScenarioSession('tutorial', {
+      phase: 'reach-moon',
+    }),
   },
-  scenarioDirectives: createDefaultScenarioDirectives(),
-  scenarioSession: createRuntimeScenarioSession('tutorial', {
-    phase: 'reach-moon',
-  }),
   spacecraftLabelIntroUntil: 0,
   targetHeadingSelectionEpoch: 0,
   uiEffectEpoch: 0,
@@ -119,7 +116,7 @@ describe('createRuntimeActions', () => {
 
   it('restores the active checkpoint when requested explicitly', () => {
     const runtime = createRuntime()
-    runtime.scenarioSession.checkpoint = createRuntimeScenarioCheckpoint({
+    runtime.scenario.session.checkpoint = createRuntimeScenarioCheckpoint({
       assistMode: 'off',
       assistTargetIndex: 0,
       coastPredictionHorizonHours: 12,
@@ -228,15 +225,14 @@ describe('createRuntimeActions', () => {
 
     runtimeActions.startFreeRoam()
 
-    expect(runtime.resetScenario.scenarioId).toBe('earth-moon')
-    expect(runtime.activeScenarioTitle).toBe('Earth-Moon sandbox')
+    expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
+    expect(runtime.scenario.activeTitle).toBe('Earth-Moon sandbox')
 
     runtime.timeWarpIndex = 4
     runtimeActions.resetScenario()
 
     expect(runtime.timeWarpIndex).toBe(0)
-    expect(runtime.resetScenario.scenarioId).toBe('earth-moon')
-    expect(runtime.scenarioSession.scenarioId).toBe('earth-moon')
+    expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
   })
 
   it('switches to the menu background scenario and menu-only overrides', () => {
@@ -276,8 +272,7 @@ describe('createRuntimeActions', () => {
 
     runtimeActions.enterMainMenuBackground()
 
-    expect(runtime.resetScenario.scenarioId).toBe('menu-background')
-    expect(runtime.scenarioSession.scenarioId).toBe('menu-background')
+    expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
     expect(runtime.timeWarpIndex).toBe(4)
   })

@@ -139,20 +139,20 @@ export const createHudPresentation = (options: {
       const predictionState =
         options.trajectoryPresentation.getPredictionState()
       const scenarioDefinition = getRuntimeScenarioDefinition(
-        options.runtime.scenarioSession.scenarioId,
+        options.runtime.scenario.session.scenarioId,
       )
       const activePrompt = getRuntimeActivePrompt(options.runtime, inputMode)
       const scenarioHudContent =
         scenarioDefinition?.getHudContent &&
         (!scenarioDefinition.isState ||
-          scenarioDefinition.isState(options.runtime.scenarioSession.state))
+          scenarioDefinition.isState(options.runtime.scenario.session.state))
           ? scenarioDefinition.getHudContent(
-              options.runtime.scenarioSession.state,
+              options.runtime.scenario.session.state,
             )
           : null
 
       const hiddenUIElements =
-        options.runtime.scenarioDirectives.hiddenUIElements
+        options.runtime.scenario.directives.hiddenUIElements
       const showScenarioInfoButton = !hiddenUIElements.has('scenarioInfoButton')
       const showTimePill = !hiddenUIElements.has('timeWarpPill')
       const showSpeedPill = !hiddenUIElements.has('speedPill')
@@ -160,12 +160,12 @@ export const createHudPresentation = (options: {
 
       if (options.overlayUi.hudTitle) {
         options.overlayUi.hudTitle.textContent =
-          scenarioHudContent?.title ?? options.runtime.activeScenarioTitle
+          scenarioHudContent?.title ?? options.runtime.scenario.activeTitle
       }
       if (options.overlayUi.hudDescription) {
         options.overlayUi.hudDescription.textContent =
           scenarioHudContent?.description ??
-          options.runtime.activeScenarioDescription
+          options.runtime.scenario.activeDescription
       }
 
       // Update scenario prompt UI
@@ -308,8 +308,8 @@ export const createHudPresentation = (options: {
             targetName: target.name,
           }).join('\n'),
         )
-        const { scenarioId, state } = options.runtime
-          .scenarioSession as RuntimeScenarioSession
+        const { scenarioId, state } = options.runtime.scenario
+          .session as RuntimeScenarioSession
         options.overlayUi.debugPanel.setJson({
           assistTarget: target.id,
           captureMetrics: {

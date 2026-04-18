@@ -15,13 +15,20 @@
 - Shared staging site for non-`main` branches: `fanciful-bunny-d77b4b`
 - Shared staging site ID for non-`main` branches: `e0d8dda6-9340-4d3c-9e78-941ccbb63d5f`
 - Deploy scripts use explicit `--site` selection and do not rely on `.netlify/state.json`.
-- If the current branch is `main`, deploy to Netlify after each commit.
-- If the current branch is not `main`, deploy to the shared staging site after each meaningful change unless there is a clear reason not to.
-- On non-`main` branches, always deploy to the shared staging site before handing work back to the user.
+- If the current branch is `main`, deploy to Netlify after each commit that changes executable app code, runtime behavior, or user-visible site output.
+- If the current branch is not `main`, deploy to the shared staging site after each meaningful code change unless there is a clear reason not to.
+- On non-`main` branches, deploy to the shared staging site before handing work back to the user when the work changed executable app code, runtime behavior, or user-visible site output.
+- Planning-only, docs-only, and repository-instruction-only edits do not require Netlify deploys.
 - Do not deploy non-`main` branches to the `main` production site.
 - Use `npm run deploy:netlify` for branch-aware deploys.
 - Use `npm run deploy:netlify:production` or `npm run deploy:netlify:staging` only when an explicit override is needed.
 - After any staging deploy, share the staging URL with the user.
+
+## Verification
+
+- Run relevant tests, build checks, and validation commands when the change affects executable code, behavior, configuration, or shipped assets.
+- Planning-only, docs-only, and repository-instruction-only edits do not require test runs, build runs, or deploys unless the user explicitly asks for them.
+- When verification is skipped because the change is non-executable, say so briefly in the response.
 
 ## Code Quality
 

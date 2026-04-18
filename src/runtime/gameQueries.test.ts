@@ -22,8 +22,6 @@ const createRuntime = (
   bodies: AppRuntimeState['state']['bodies'],
   coastPredictionHorizonHours: number,
 ): AppRuntimeState => ({
-  activeScenarioDescription: 'Test scenario description',
-  activeScenarioTitle: 'Test scenario',
   assistMode: 'off',
   assistTargetIndex: 0,
   coastPredictionHorizonHours,
@@ -33,13 +31,12 @@ const createRuntime = (
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
   performanceDebugEnabled: false,
-  resetScenario: {
-    description: 'Test scenario description',
-    scenarioId: 'test',
-    title: 'Test scenario',
+  scenario: {
+    activeDescription: 'Test scenario description',
+    activeTitle: 'Test scenario',
+    directives: createDefaultScenarioDirectives(),
+    session: createRuntimeScenarioSession('test'),
   },
-  scenarioDirectives: createDefaultScenarioDirectives(),
-  scenarioSession: createRuntimeScenarioSession('test'),
   spacecraftLabelIntroUntil: 0,
   targetHeadingSelectionEpoch: 0,
   uiEffectEpoch: 0,
@@ -221,7 +218,7 @@ describe('createGameQueries', () => {
       2,
     )
     runtime.assistTargetIndex = 0
-    runtime.scenarioDirectives.forcedAssistTargetId = 'moon'
+    runtime.scenario.directives.forcedAssistTargetId = 'moon'
 
     const queries = createGameQueries({
       autoSelectNearestSurface: false,

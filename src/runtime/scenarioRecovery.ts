@@ -4,7 +4,7 @@ import type { AppRuntimeState } from './appRuntimeState'
 export const restoreRuntimeFromScenarioCheckpoint = (
   runtime: AppRuntimeState,
 ) => {
-  const checkpoint = runtime.scenarioSession.checkpoint
+  const checkpoint = runtime.scenario.session.checkpoint
   if (!checkpoint) {
     return false
   }
