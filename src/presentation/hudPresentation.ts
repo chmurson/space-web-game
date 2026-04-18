@@ -1,7 +1,7 @@
 import { getBodyInfluences } from '../simulation/bodyInfluence'
 import { formatCompactElapsed, formatSpeed } from '../ui/formatters'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
-import type { TouchControls } from '../ui/createTouchControls'
+import type { TouchControls } from '../ui/touchControls/createTouchControls'
 import { getDebugPanelLines, getGuidanceText } from '../ui/hudText'
 import type { RendererProfiler } from '../render/rendererProfiler'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'

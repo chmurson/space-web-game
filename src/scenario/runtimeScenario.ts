@@ -55,6 +55,7 @@ export const createRequestedRuntimeScenario = (
 
   const earthMoonScenario =
     getRuntimeScenarioDefinition('earth-moon')?.createScenario()
+
   if (!earthMoonScenario) {
     throw new Error('earth-moon scenario not found')
   }
