@@ -1,4 +1,7 @@
-import type { ScenarioPromptAnchor } from '../../../scenarioRegistry'
+import type {
+  ScenarioPromptAnchor,
+  ScenarioTouchHintTarget,
+} from '../../../scenarioRegistry'
 
 export type TutorialOnboardingStepId =
   | 'intro-thrust'
@@ -17,6 +20,7 @@ export type TutorialOnboardingPromptContent = {
   description: string
   title: string
   anchor?: ScenarioPromptAnchor
+  touchHintTarget?: ScenarioTouchHintTarget
 }
 
 export type TutorialOnboardingStepProgress = {

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { AppRuntimeState } from '../../../../runtime/appRuntimeState'
 import { createDefaultScenarioDirectives } from '../../../scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '../../../scenarioSession'
+import { getTutorialOnboardingPromptContent } from './tutorialOnboardingFlow'
 import {
   advanceTutorialOnboarding,
   acknowledgeTutorialOnboardingPrompt,
@@ -67,6 +68,25 @@ const createRuntime = (): AppRuntimeState => ({
 })
 
 describe('tutorialOnboardingProgress', () => {
+  it('exposes a mobile thrust-zone hint for thrust-focused onboarding steps', () => {
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrust', 'mobile')
+        .touchHintTarget,
+    ).toBe('thrust-zone')
+    expect(
+      getTutorialOnboardingPromptContent('intro-keep-thrusting', 'mobile')
+        .touchHintTarget,
+    ).toBe('thrust-zone')
+    expect(
+      getTutorialOnboardingPromptContent('intro-timewarp-thrust', 'mobile')
+        .touchHintTarget,
+    ).toBe('thrust-zone')
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrust', 'desktop')
+        .touchHintTarget,
+    ).toBeUndefined()
+  })
+
   it('advances from thrust to keep-thrusting after sustained main thrust', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
@@ -101,11 +121,11 @@ describe('tutorialOnboardingProgress', () => {
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
     runtime.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_400, 1)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_300, 1)
     runtime.state.controls.main = 0
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_450, 1)
     runtime.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_100, 1)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_750, 1)
 
     expect(onboarding.activeStepId).toBe('intro-thrust')
 

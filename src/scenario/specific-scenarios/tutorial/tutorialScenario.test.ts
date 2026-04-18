@@ -295,6 +295,40 @@ describe('tutorialScenario', () => {
     })
   })
 
+  it('includes a mobile touch hint target in the active onboarding prompt', () => {
+    const tutorialScenario = registerTutorialScenario()
+    const runtime = createRuntime()
+    runtime.scenarioSession = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      pendingPrompt: null,
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        completedStepIds: [],
+        gateActive: true,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 0,
+          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleAtMs: 1_000,
+          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 1,
+        },
+      },
+    })
+
+    expect(tutorialScenario.getActivePrompt?.(runtime, 'mobile')).toMatchObject(
+      {
+        mode: 'coach',
+        title: 'Use Thrust',
+        touchHintTarget: 'thrust-zone',
+      },
+    )
+    expect(
+      tutorialScenario.getActivePrompt?.(runtime, 'desktop')?.touchHintTarget,
+    ).toBeUndefined()
+  })
+
   it('switches from moon approach to moon orbit when entering the close-range threshold', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()

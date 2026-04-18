@@ -22,8 +22,8 @@ import {
 } from '../../../simulation/vector'
 import {
   createDefaultScenarioDirectives,
-  type RuntimeScenarioDirectives,
   type GlobalScenarioDirectiveLimits,
+  type RuntimeScenarioDirectives,
 } from '../../scenarioDirectiveTypes'
 import type {
   PromptAcknowledgeResult,
@@ -233,6 +233,7 @@ const getActivePrompt = (
         ? { label: onboardingContent.confirmLabel }
         : undefined,
       anchor: onboardingContent.anchor,
+      touchHintTarget: onboardingContent.touchHintTarget,
     }
 
     return prompt

@@ -1,6 +1,14 @@
 import type { AppRuntimeState } from '../../../../runtime/appRuntimeState'
-import { length, normalize, sub, vec } from '../../../../simulation/vector'
 import type { Body } from '../../../../simulation/types'
+import { length, normalize, sub, vec } from '../../../../simulation/vector'
+import {
+  outwardHeadingToleranceRadians,
+  requiredHighWarpMultiplier,
+  requiredHighWarpThrustMs,
+  requiredIntroKeepThrustMs,
+  requiredIntroThrustMs,
+  requiredTurnRadians,
+} from './config'
 import {
   getTutorialOnboardingPromptContent,
   tutorialOnboardingStepOrder,
@@ -10,14 +18,6 @@ import type {
   TutorialOnboardingStepId,
   TutorialOnboardingStepProgress,
 } from './tutorialOnboardingTypes'
-import {
-  outwardHeadingToleranceRadians,
-  requiredHighWarpMultiplier,
-  requiredHighWarpThrustMs,
-  requiredIntroKeepThrustMs,
-  requiredIntroThrustMs,
-  requiredTurnRadians,
-} from './config'
 
 const normalizeAngleDelta = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
@@ -230,8 +230,6 @@ export const advanceTutorialOnboarding = (
       runtime.state.controls.main > 0
         ? onboarding.progress.accumulatedMainThrustMs + deltaMs
         : Math.max(0, onboarding.progress.accumulatedMainThrustMs - deltaMs * 2)
-
-    console.log(nextProgress.accumulatedMainThrustMs)
 
     if (
       nextProgress.accumulatedMainThrustMs === 0 &&

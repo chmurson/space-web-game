@@ -22,6 +22,8 @@ export type ScenarioPromptAnchor =
   | 'speed-pill'
   | 'trajectory'
 
+export type ScenarioTouchHintTarget = 'thrust-zone'
+
 export type ScenarioPromptButton = {
   action?: ScenarioPromptAction
   label: string
@@ -40,6 +42,7 @@ export type RuntimePromptContent = {
   description: string
   mode: ScenarioPromptMode
   secondaryButton?: ScenarioPromptButton
+  touchHintTarget?: ScenarioTouchHintTarget
   title: string
 }
 

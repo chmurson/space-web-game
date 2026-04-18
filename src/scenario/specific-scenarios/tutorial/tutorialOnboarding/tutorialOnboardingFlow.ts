@@ -30,6 +30,7 @@ export const getTutorialOnboardingPromptContent = (
         inputMode === 'mobile'
           ? `Press and hold in the lower control area for about ${formatDuration(requiredIntroKeepThrustMs / 1000)} to fire the main engine and start changing your path.`
           : 'Hold W or Up Arrow for about 2 seconds to fire the main engine and start changing your path.',
+      touchHintTarget: inputMode === 'mobile' ? 'thrust-zone' : undefined,
     }
   }
 
@@ -38,6 +39,7 @@ export const getTutorialOnboardingPromptContent = (
       title: 'Keep Thrusting',
       description: `That's great. Keep thrusting for ${formatDuration(requiredIntroKeepThrustMs / 1000)}.`,
       anchor: 'speed-pill',
+      touchHintTarget: inputMode === 'mobile' ? 'thrust-zone' : undefined,
     }
   }
 
@@ -82,6 +84,7 @@ export const getTutorialOnboardingPromptContent = (
       title: 'Burn At 100x',
       description:
         'The tutorial is turning you outward from the nearest body. Keep time warp at 100x or higher, then hold thrust in the lower control area for 2 seconds.',
+      touchHintTarget: inputMode === 'mobile' ? 'thrust-zone' : undefined,
     }
   }
 

@@ -1,9 +1,13 @@
-import type { AssistMode } from '../assist/orbitalAssist'
-import type { KeyboardInput } from '../input/keyboardInput'
-import type { UIUserAction } from '../input/uiUserActions'
+import type { AssistMode } from '../../assist/orbitalAssist'
+import type { KeyboardInput } from '../../input/keyboardInput'
+import type { UIUserAction } from '../../input/uiUserActions'
+import type { ScenarioTouchHintTarget } from '../../scenario/scenarioRegistry'
+import './touchControls.css'
+import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 
 export type TouchControls = {
   element: HTMLElement
+  setTutorialHintTarget(target: ScenarioTouchHintTarget | null): void
   updateAssistMode(mode: AssistMode): void
 }
 
@@ -71,6 +75,8 @@ export const createTouchControls = (options: {
 }): TouchControls => {
   const panel = document.createElement('section')
   panel.className = 'touch-controls'
+  const tutorialHint = createTouchControlsTutorialHint()
+  panel.appendChild(tutorialHint.element)
 
   const tapTouches = new Map<number, TapState>()
   const gesturePointers = new Map<number, DragState>()
@@ -443,6 +449,11 @@ export const createTouchControls = (options: {
 
   return {
     element: panel,
+    setTutorialHintTarget: (target) => {
+      const showThrustHint = target === 'thrust-zone'
+      tutorialHint.setVisible(showThrustHint)
+      tutorialHint.element.dataset.target = target ?? ''
+    },
     updateAssistMode: (_mode) => {},
   }
 }
