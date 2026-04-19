@@ -244,6 +244,10 @@ If camera-follow and hidden-body data are common runtime concepts, they likely b
 
 Scenario code should compute what changed. Runtime code should commit it.
 
+Detailed handoff:
+
+- see `ideas/2026-04-19-runtime-state-phase-4-transition-producers-handoff.md`
+
 ### Current direction
 
 There is already partial movement toward transition-based scenario updates. This phase should finish that ownership model and make it the default.
