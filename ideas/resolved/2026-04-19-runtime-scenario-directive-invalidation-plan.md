@@ -2,7 +2,7 @@
 
 ## Context
 
-`ideas/resolved/runtime-scenario-advance-directive-merge-plan.md` already improved ownership by moving scenario advancement and directive syncing behind `updateRuntimeScenario(...)`.
+`ideas/resolved/2026-04-19-runtime-scenario-advance-directive-merge-plan.md` already improved ownership by moving scenario advancement and directive syncing behind `updateRuntimeScenario(...)`.
 
 That cleanup helped, but one deeper structural issue remains:
 
@@ -308,7 +308,7 @@ To keep this healthy:
 
 ## Status
 
-Promising
+Implemented.
 
 ## Plain-language summary
 

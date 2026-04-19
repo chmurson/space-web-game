@@ -14,7 +14,7 @@ What color should it be ? how dimmed it should be ? Let's test multiple examples
 
 ## Relations
 
-Related to ideas/target-line.md. If we get rid of dashed line, maybe target line should be dashed instead ?
+Related to `ideas/2026-04-09-target-line.md`. If we get rid of dashed line, maybe target line should be dashed instead ?
 
 ## Status
 

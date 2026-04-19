@@ -1,10 +1,19 @@
+
 # Ideas
 
 This folder is for rough gameplay, physics, UI, scenario, and tuning ideas.
 
 Rough notes live in `ideas/rough/` so early concepts stay grouped together.
 
+Active top-level notes in `ideas/` track ideas that are beyond rough capture but not resolved yet.
+
 Resolved notes live in `ideas/resolved/` so completed investigations remain searchable without looking active.
+
+Prefix idea note filenames with a `YYYY-MM-DD-` date:
+
+- use the creation date for notes in `ideas/rough/`
+- use the proposal/ready date for active top-level notes in `ideas/`
+- use the date the note was marked resolved for notes in `ideas/resolved/`
 
 Suggested format for new notes:
 

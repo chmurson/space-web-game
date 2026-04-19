@@ -16,7 +16,7 @@ What stylign technique we should use. Trajectory is already dashed with cyan mai
 
 ## Relations
 
-Touches the way trajectory line is renderd: ideas/expermient-with-other-ways-of-preseting-trajectory-line.md
+Touches the way trajectory line is renderd: `ideas/2026-04-09-expermient-with-other-ways-of-preseting-trajectory-line.md`
 
 ## Status
 
