@@ -8,16 +8,16 @@ import type { TrajectoryPresentation } from '../presentation/trajectoryPresentat
 import type { RendererProfiler } from '../render/rendererProfiler'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import { getRuntimeActivePrompt } from '../scenario/scenarioRegistry'
 import {
-  advanceRuntimeScenario,
-  getRuntimeActivePrompt,
-} from '../scenario/scenarioRegistry'
+  syncRuntimeScenarioDirectives,
+  updateRuntimeScenario,
+} from '../scenario/scenarioDirectives'
 import type { PhysicsEngine } from '../simulation/types'
 import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import type { GameQueries } from './gameQueries'
 import type { RuntimeActions } from './runtimeActions'
-import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import { stepSimulationFrame } from './simulationStep'
 
 export const createFrameLoop = (options: {
@@ -60,10 +60,6 @@ export const createFrameLoop = (options: {
       1 / Math.max(realDt, 1 / 240),
       0.12,
     )
-    syncRuntimeScenarioDirectives(
-      options.runtime,
-      options.globalScenarioDirectiveLimits,
-    )
     const activePrompt = getRuntimeActivePrompt(
       options.runtime,
       options.touchControls ? 'mobile' : 'desktop',
@@ -98,18 +94,15 @@ export const createFrameLoop = (options: {
       options.runtime.state = simulationStep.state
       options.runtime.targetHeading = simulationStep.targetHeading
       options.runtime.timeWarpIndex = simulationStep.timeWarpIndex
-
-      //todo: merge advanceRuntime scenario with directives;
-      advanceRuntimeScenario(options.runtime)
     }
 
-    updateRipples(options.ripples, realDt)
-    options.runtimeActions.updateCamera()
-    //todo: why this run twice in the animae ?
-    syncRuntimeScenarioDirectives(
+    updateRuntimeScenario(
       options.runtime,
       options.globalScenarioDirectiveLimits,
+      { shouldAdvance: !hasBlockingPrompt },
     )
+    updateRipples(options.ripples, realDt)
+    options.runtimeActions.updateCamera()
     options.trajectoryPresentation.maybeRefreshPrediction(realDt)
 
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)

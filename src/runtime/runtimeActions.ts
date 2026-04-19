@@ -5,7 +5,10 @@ import {
   type RuntimeScenarioOptions,
   saveRuntimeDebugSnapshot,
 } from '../scenario/runtimeScenario'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
+import {
+  getConstrainedTimeWarpIndex,
+  syncRuntimeScenarioDirectives,
+} from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import {
   acknowledgeRuntimeScenarioPrompt,
@@ -131,10 +134,26 @@ export const createRuntimeActions = (options: {
     }
   }
 
-  const acknowledgeScenarioPrompt = () =>
-    acknowledgeRuntimeScenarioPrompt(options.runtime)
-  const reopenScenarioPrompt = () =>
-    reopenRuntimeScenarioPrompt(options.runtime)
+  const acknowledgeScenarioPrompt = () => {
+    const result = acknowledgeRuntimeScenarioPrompt(options.runtime)
+    if (result.acknowledged) {
+      syncRuntimeScenarioDirectives(
+        options.runtime,
+        options.globalScenarioDirectiveLimits,
+      )
+    }
+    return result
+  }
+  const reopenScenarioPrompt = () => {
+    const reopened = reopenRuntimeScenarioPrompt(options.runtime)
+    if (reopened) {
+      syncRuntimeScenarioDirectives(
+        options.runtime,
+        options.globalScenarioDirectiveLimits,
+      )
+    }
+    return reopened
+  }
 
   return {
     acknowledgeScenarioPrompt,

@@ -7,6 +7,10 @@ import {
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
 import type { ScenarioSessionValue } from './scenarioSession'
 
+type UpdateRuntimeScenarioOptions = {
+  shouldAdvance?: boolean
+}
+
 type DirectiveContext = {
   limits: GlobalScenarioDirectiveLimits
   runtime: AppRuntimeState
@@ -157,4 +161,18 @@ export const syncRuntimeScenarioDirectives = (
     limits,
   )
   applyRuntimeScenarioDirectiveConstraints(runtime, limits)
+}
+
+export const updateRuntimeScenario = (
+  runtime: AppRuntimeState,
+  limits: GlobalScenarioDirectiveLimits,
+  options: UpdateRuntimeScenarioOptions = {},
+) => {
+  if (options.shouldAdvance ?? true) {
+    getRuntimeScenarioDefinition(
+      runtime.scenario.session.scenarioId,
+    )?.advance?.(runtime)
+  }
+
+  syncRuntimeScenarioDirectives(runtime, limits)
 }

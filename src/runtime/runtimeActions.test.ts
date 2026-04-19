@@ -13,6 +13,23 @@ import type { AppRuntimeState } from './appRuntimeState'
 import { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
 import { createRuntimeActions } from './runtimeActions'
 
+const globalScenarioDirectiveLimits = {
+  defaultViewportSize: 520,
+  maxCoastPredictionHorizonHours: 48,
+  maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+  minViewportSize: EARTH_VIEWPORT_SIZE,
+  timeWarps: [1, 10, 50, 100, 500, 2000],
+}
+
+const runtimeScenarioOptions = {
+  defaultCoastPredictionHorizonHours: 1,
+  defaultViewportSize: 520,
+  maxCoastPredictionHorizonHours: 48,
+  maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+  minCoastPredictionHorizonHours: 0.5,
+  minViewportSize: EARTH_VIEWPORT_SIZE,
+}
+
 const createRuntime = (): AppRuntimeState => ({
   assistMode: 'capture',
   assistTargetIndex: 1,
@@ -73,41 +90,31 @@ const createRuntime = (): AppRuntimeState => ({
   viewportSize: 600,
 })
 
+const createTestRuntimeActions = (runtime: AppRuntimeState) =>
+  createRuntimeActions({
+    app: {} as HTMLDivElement,
+    cameraDistance: 700,
+    cameraElevation: 1,
+    createRipple: () => {},
+    gameScene: { trailPoints: [] } as never,
+    maxCoastPredictionHorizonHours: 48,
+    maxViewport: EARTH_MOON_VIEWPORT_SIZE,
+    minCoastPredictionHorizonHours: 0.5,
+    minViewport: EARTH_VIEWPORT_SIZE,
+    renderer: { setSize: () => {} },
+    ripples: [],
+    runtime,
+    globalScenarioDirectiveLimits,
+    runtimeScenarioOptions,
+    timeWarps: [1, 10, 50, 100, 500, 2000],
+    updateUserSettings: () => {},
+    gameHighLevelActions: new GameHighLevelActionsMediator(),
+  })
+
 describe('createRuntimeActions', () => {
   it('resets time warp to the initial index when resetting the scenario', () => {
     const runtime = createRuntime()
-    const runtimeActions = createRuntimeActions({
-      app: {} as HTMLDivElement,
-      cameraDistance: 700,
-      cameraElevation: 1,
-      createRipple: () => {},
-      gameScene: { trailPoints: [] } as never,
-      maxCoastPredictionHorizonHours: 48,
-      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
-      minCoastPredictionHorizonHours: 0.5,
-      minViewport: EARTH_VIEWPORT_SIZE,
-      renderer: { setSize: () => {} },
-      ripples: [],
-      runtime,
-      globalScenarioDirectiveLimits: {
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-        timeWarps: [1, 10, 50, 100, 500, 2000],
-      },
-      runtimeScenarioOptions: {
-        defaultCoastPredictionHorizonHours: 1,
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minCoastPredictionHorizonHours: 0.5,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-      },
-      timeWarps: [1, 10, 50, 100, 500, 2000],
-      updateUserSettings: () => {},
-      gameHighLevelActions: new GameHighLevelActionsMediator(),
-    })
+    const runtimeActions = createTestRuntimeActions(runtime)
 
     runtimeActions.handleUIUserAction('resetScenario')
 
@@ -148,38 +155,7 @@ describe('createRuntimeActions', () => {
         },
       },
     })
-    const runtimeActions = createRuntimeActions({
-      app: {} as HTMLDivElement,
-      cameraDistance: 700,
-      cameraElevation: 1,
-      createRipple: () => {},
-      gameScene: { trailPoints: [] } as never,
-      maxCoastPredictionHorizonHours: 48,
-      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
-      minCoastPredictionHorizonHours: 0.5,
-      minViewport: EARTH_VIEWPORT_SIZE,
-      renderer: { setSize: () => {} },
-      ripples: [],
-      runtime,
-      globalScenarioDirectiveLimits: {
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-        timeWarps: [1, 10, 50, 100, 500, 2000],
-      },
-      runtimeScenarioOptions: {
-        defaultCoastPredictionHorizonHours: 1,
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minCoastPredictionHorizonHours: 0.5,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-      },
-      timeWarps: [1, 10, 50, 100, 500, 2000],
-      updateUserSettings: () => {},
-      gameHighLevelActions: new GameHighLevelActionsMediator(),
-    })
+    const runtimeActions = createTestRuntimeActions(runtime)
 
     expect(runtimeActions.restartFromCheckpoint()).toBe(true)
     expect(runtime.crashedBodyName).toBeNull()
@@ -190,38 +166,7 @@ describe('createRuntimeActions', () => {
 
   it('updates the reset target when free roam starts', () => {
     const runtime = createRuntime()
-    const runtimeActions = createRuntimeActions({
-      app: {} as HTMLDivElement,
-      cameraDistance: 700,
-      cameraElevation: 1,
-      createRipple: () => {},
-      gameScene: { trailPoints: [] } as never,
-      maxCoastPredictionHorizonHours: 48,
-      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
-      minCoastPredictionHorizonHours: 0.5,
-      minViewport: EARTH_VIEWPORT_SIZE,
-      renderer: { setSize: () => {} },
-      ripples: [],
-      runtime,
-      globalScenarioDirectiveLimits: {
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-        timeWarps: [1, 10, 50, 100, 500, 2000],
-      },
-      runtimeScenarioOptions: {
-        defaultCoastPredictionHorizonHours: 1,
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minCoastPredictionHorizonHours: 0.5,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-      },
-      timeWarps: [1, 10, 50, 100, 500, 2000],
-      updateUserSettings: () => {},
-      gameHighLevelActions: new GameHighLevelActionsMediator(),
-    })
+    const runtimeActions = createTestRuntimeActions(runtime)
 
     runtimeActions.startFreeRoam()
 
@@ -237,43 +182,69 @@ describe('createRuntimeActions', () => {
 
   it('switches to the menu background scenario and menu-only overrides', () => {
     const runtime = createRuntime()
-    const runtimeActions = createRuntimeActions({
-      app: {} as HTMLDivElement,
-      cameraDistance: 700,
-      cameraElevation: 1,
-      createRipple: () => {},
-      gameScene: { trailPoints: [] } as never,
-      maxCoastPredictionHorizonHours: 48,
-      maxViewport: EARTH_MOON_VIEWPORT_SIZE,
-      minCoastPredictionHorizonHours: 0.5,
-      minViewport: EARTH_VIEWPORT_SIZE,
-      renderer: { setSize: () => {} },
-      ripples: [],
-      runtime,
-      globalScenarioDirectiveLimits: {
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-        timeWarps: [1, 10, 50, 100, 500, 2000],
-      },
-      runtimeScenarioOptions: {
-        defaultCoastPredictionHorizonHours: 1,
-        defaultViewportSize: 520,
-        maxCoastPredictionHorizonHours: 48,
-        maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-        minCoastPredictionHorizonHours: 0.5,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-      },
-      timeWarps: [1, 10, 50, 100, 500, 2000],
-      updateUserSettings: () => {},
-      gameHighLevelActions: new GameHighLevelActionsMediator(),
-    })
+    const runtimeActions = createTestRuntimeActions(runtime)
 
     runtimeActions.enterMainMenuBackground()
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
     expect(runtime.timeWarpIndex).toBe(4)
+  })
+
+  it('syncs directives immediately after acknowledging the tutorial intro prompt', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      pendingPrompt: 'phase-one-intro',
+    })
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    const result = runtimeActions.acknowledgeScenarioPrompt()
+
+    expect(result).toEqual({ acknowledged: true, effect: undefined })
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'escape-earth',
+      pendingPrompt: null,
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        gateActive: true,
+      },
+    })
+    expect(runtime.scenario.directives.hiddenUIElements).toEqual(
+      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+    )
+  })
+
+  it('syncs directives immediately after reopening the tutorial intro prompt', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      lastAcknowledgedPrompt: 'phase-one-intro',
+      pendingPrompt: null,
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        completedStepIds: [],
+        gateActive: true,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 0,
+          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleAtMs: 1_000,
+          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 1,
+        },
+      },
+    })
+    const runtimeActions = createTestRuntimeActions(runtime)
+    runtime.scenario.directives = createDefaultScenarioDirectives()
+
+    expect(runtimeActions.reopenScenarioPrompt()).toBe(true)
+    expect(runtime.scenario.session.state).toMatchObject({
+      pendingPrompt: 'phase-one-intro',
+    })
+    expect(runtime.scenario.directives.hiddenUIElements).toEqual(
+      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+    )
   })
 })

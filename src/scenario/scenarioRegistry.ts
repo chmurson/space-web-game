@@ -106,13 +106,6 @@ export const getRuntimeScenarioDefinition = (
     scenarioId as keyof typeof runtimeScenarioDefinitions
   ] ?? null
 
-export const advanceRuntimeScenario = (runtime: AppRuntimeState) => {
-  const definition = getRuntimeScenarioDefinition(
-    runtime.scenario.session.scenarioId,
-  )
-  definition?.advance?.(runtime)
-}
-
 export const getRuntimeActivePrompt = (
   runtime: AppRuntimeState,
   inputMode: 'desktop' | 'mobile',

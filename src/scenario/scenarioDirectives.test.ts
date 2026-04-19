@@ -9,10 +9,19 @@ import {
   applyRuntimeScenarioDirectiveConstraints,
   getConstrainedTimeWarpIndex,
   resolveRuntimeScenarioDirectives,
+  updateRuntimeScenario,
 } from './scenarioDirectives'
 import { createDefaultScenarioDirectives } from './scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
 import { createRuntimeScenarioSession } from './scenarioSession'
+
+const globalScenarioDirectiveLimits = {
+  maxCoastPredictionHorizonHours: 48,
+  defaultViewportSize: 520,
+  maxViewportSize: 800,
+  minViewportSize: EARTH_VIEWPORT_SIZE,
+  timeWarps: [1, 10, 50, 100, 500, 2000],
+}
 
 const createRuntime = (): AppRuntimeState => ({
   assistMode: 'off',
@@ -130,13 +139,10 @@ describe('scenarioDirectives', () => {
       getRuntimeScenarioDefinition('tutorial')?.createScenario()
         .scenarioSession ?? runtime.scenario.session
 
-    const directives = resolveRuntimeScenarioDirectives(runtime, {
-      maxCoastPredictionHorizonHours: 48,
-      defaultViewportSize: 520,
-      maxViewportSize: 800,
-      minViewportSize: EARTH_VIEWPORT_SIZE,
-      timeWarps: [1, 10, 50, 100, 500, 2000],
-    })
+    const directives = resolveRuntimeScenarioDirectives(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
 
     expect(directives).toEqual({
       cameraFollowBodyId: null,
@@ -149,5 +155,80 @@ describe('scenarioDirectives', () => {
       maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })
+  })
+
+  it('syncs directives without advancing when advancement is disabled', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      pendingPrompt: null,
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        completedStepIds: [],
+        gateActive: true,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 0,
+          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleAtMs: 1_000,
+          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 1,
+        },
+      },
+    })
+
+    updateRuntimeScenario(runtime, globalScenarioDirectiveLimits, {
+      shouldAdvance: false,
+    })
+
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'escape-earth',
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        gateActive: true,
+      },
+    })
+    expect(runtime.scenario.directives.hiddenUIElements).toEqual(
+      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+    )
+  })
+
+  it('advances tutorial state and syncs directives in one call', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      pendingPrompt: null,
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        completedStepIds: [],
+        gateActive: true,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 1_100,
+          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleAtMs: performance.now() - 1_100,
+          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 1,
+        },
+      },
+    })
+    runtime.state.controls.main = 1
+    runtime.state.spacecraft.fuel = 1
+    runtime.timeWarpIndex = 0
+
+    updateRuntimeScenario(runtime, globalScenarioDirectiveLimits)
+
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'escape-earth',
+      onboarding: {
+        activeStepId: 'intro-keep-thrusting',
+        gateActive: true,
+      },
+    })
+    expect(runtime.scenario.directives.hiddenUIElements).toEqual(
+      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+    )
   })
 })
