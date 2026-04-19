@@ -293,6 +293,10 @@ It is the richest case and the one most likely to benefit from improved readabil
 
 Make sure user-facing scenario metadata comes from the active runtime scenario path, not from stale bootstrap assumptions.
 
+Detailed handoff:
+
+- see `ideas/2026-04-19-runtime-state-phase-5-metadata-ownership-handoff.md`
+
 ### Why include this
 
 This is not the biggest risk, but it is part of the same ownership problem. If scenario runtime ownership becomes explicit, display metadata should follow that ownership too.
