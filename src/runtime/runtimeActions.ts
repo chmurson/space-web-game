@@ -20,6 +20,7 @@ import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
+import { clearTransientScenarioRuntimeState } from './runtimeStateTransitions'
 
 type RippleCreator = (
   parent: HTMLElement,
@@ -56,13 +57,10 @@ export const createRuntimeActions = (options: {
     return wrapped < 0 ? wrapped + Math.PI : wrapped - Math.PI
   }
 
-  const clearTransientScenarioState = () => {
-    options.gameScene.trailPoints.length = 0
-    options.runtime.targetHeading = null
-    options.runtime.assistMode = 'off'
-    options.runtime.crashedBodyName = null
-    options.runtime.spacecraftLabelIntroUntil = performance.now() + 5_000
-  }
+  const clearTransientScenarioState = () =>
+    clearTransientScenarioRuntimeState(options.runtime, () => {
+      options.gameScene.trailPoints.length = 0
+    })
 
   const setTimeWarp = (warp: number) => {
     const desiredIndex = options.timeWarps.indexOf(warp)

@@ -2,12 +2,9 @@ import { EARTH_VIEWPORT_SIZE } from '../../domain/viewportPresets'
 import { G } from '../../simulation/constants'
 import { createEarthMoonScenario } from '../../simulation/scenarios/earthMoon'
 import type { RuntimeScenarioDefinition } from '../scenarioRegistry'
-import {
-  createRuntimeScenarioSession,
-  type ScenarioSessionValue,
-} from '../scenarioSession'
+import { createRuntimeScenarioSession } from '../scenarioSession'
 
-type MenuBackgroundScenarioState = ScenarioSessionValue & {
+type MenuBackgroundScenarioState = {
   cameraFollowBodyId: 'earth'
   cameraFollowOffsetX: number
   cameraFollowOffsetY: number

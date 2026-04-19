@@ -21,66 +21,69 @@ type ScenarioDirectiveResolver = (
   context: DirectiveContext,
 ) => RuntimeScenarioDirectives
 
-const getStringValue = (
+type CommonScenarioDirectiveState = {
+  cameraFollowBodyId?: string
+  cameraFollowOffsetX?: number
+  cameraFollowOffsetY?: number
+  forcedAssistTargetId?: string
+  hiddenBodyIds?: string[]
+}
+
+const getCommonScenarioDirectiveState = (
   value: ScenarioSessionValue,
-  key: string,
-): string | null => {
+): CommonScenarioDirectiveState | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null
   }
 
-  const nestedValue = value[key]
-  return typeof nestedValue === 'string' ? nestedValue : null
+  return value
 }
 
-const getStringArrayValue = (
-  value: ScenarioSessionValue,
-  key: string,
-): string[] => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return []
-  }
-
-  const nestedValue = value[key]
-  return Array.isArray(nestedValue)
-    ? nestedValue.filter((entry): entry is string => typeof entry === 'string')
+const getStringArrayValue = (value: string[] | undefined): string[] =>
+  Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string')
     : []
-}
 
-const getNumberValue = (
-  value: ScenarioSessionValue,
-  key: string,
-): number | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null
+const getNumberValue = (value: number | undefined): number | null =>
+  typeof value === 'number' ? value : null
+
+const getStringValue = (value: string | undefined): string | null =>
+  typeof value === 'string' ? value : null
+
+const resolveBaseScenarioDirectives = (
+  state: ScenarioSessionValue,
+): Pick<
+  RuntimeScenarioDirectives,
+  | 'cameraFollowBodyId'
+  | 'cameraFollowOffset'
+  | 'forcedAssistTargetId'
+  | 'hiddenBodyIds'
+> => {
+  const commonState = getCommonScenarioDirectiveState(state)
+
+  if (!commonState) {
+    return {
+      cameraFollowBodyId: null,
+      cameraFollowOffset: { x: 0, y: 0 },
+      forcedAssistTargetId: null,
+      hiddenBodyIds: [],
+    }
   }
 
-  const nestedValue = value[key]
-  return typeof nestedValue === 'number' ? nestedValue : null
+  return {
+    cameraFollowBodyId: getStringValue(commonState.cameraFollowBodyId),
+    cameraFollowOffset: {
+      x: getNumberValue(commonState.cameraFollowOffsetX) ?? 0,
+      y: getNumberValue(commonState.cameraFollowOffsetY) ?? 0,
+    },
+    forcedAssistTargetId: getStringValue(commonState.forcedAssistTargetId),
+    hiddenBodyIds: getStringArrayValue(commonState.hiddenBodyIds),
+  }
 }
 
 const genericDirectiveResolver: ScenarioDirectiveResolver = ({ runtime }) => ({
   ...createDefaultScenarioDirectives(),
-  cameraFollowBodyId: getStringValue(
-    runtime.scenario.session.state,
-    'cameraFollowBodyId',
-  ),
-  cameraFollowOffset: {
-    x:
-      getNumberValue(runtime.scenario.session.state, 'cameraFollowOffsetX') ??
-      0,
-    y:
-      getNumberValue(runtime.scenario.session.state, 'cameraFollowOffsetY') ??
-      0,
-  },
-  forcedAssistTargetId: getStringValue(
-    runtime.scenario.session.state,
-    'forcedAssistTargetId',
-  ),
-  hiddenBodyIds: getStringArrayValue(
-    runtime.scenario.session.state,
-    'hiddenBodyIds',
-  ),
+  ...resolveBaseScenarioDirectives(runtime.scenario.session.state),
 })
 
 export const resolveRuntimeScenarioDirectives = (

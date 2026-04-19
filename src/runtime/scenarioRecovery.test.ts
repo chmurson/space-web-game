@@ -6,7 +6,7 @@ import {
   createRuntimeScenarioSession,
 } from '../scenario/scenarioSession'
 import type { AppRuntimeState } from './appRuntimeState'
-import { restoreRuntimeFromScenarioCheckpoint } from './scenarioRecovery'
+import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 
 const createRuntime = (): AppRuntimeState => ({
   assistMode: 'capture',
@@ -59,8 +59,8 @@ const createRuntime = (): AppRuntimeState => ({
   viewportSize: 600,
 })
 
-describe('restoreRuntimeFromScenarioCheckpoint', () => {
-  it('restores runtime state from the active scenario checkpoint', () => {
+describe('createRuntimeCheckpointRestoreTransition', () => {
+  it('creates a checkpoint restore transition from the active scenario checkpoint', () => {
     const runtime = createRuntime()
     runtime.scenario.session.checkpoint = createRuntimeScenarioCheckpoint({
       assistMode: 'off',
@@ -95,22 +95,28 @@ describe('restoreRuntimeFromScenarioCheckpoint', () => {
       },
     })
 
-    expect(restoreRuntimeFromScenarioCheckpoint(runtime)).toBe(true)
-    expect(runtime.assistMode).toBe('off')
-    expect(runtime.assistTargetIndex).toBe(0)
-    expect(runtime.coastPredictionHorizonHours).toBe(12)
-    expect(runtime.targetHeading).toBeNull()
-    expect(runtime.timeWarpIndex).toBe(0)
-    expect(runtime.viewportSize).toBe(320)
-    expect(runtime.state.elapsed).toBe(42)
-    expect(runtime.state.spacecraft.position).toEqual({ x: 5, y: 6 })
-    expect(runtime.state).not.toBe(runtime.scenario.session.checkpoint?.world)
+    const transition = createRuntimeCheckpointRestoreTransition(runtime)
+
+    expect(transition).not.toBeNull()
+    expect(transition).toMatchObject({
+      assistMode: 'off',
+      assistTargetIndex: 0,
+      coastPredictionHorizonHours: 12,
+      targetHeading: null,
+      timeWarpIndex: 0,
+      viewportSize: 320,
+    })
+    expect(transition?.state.elapsed).toBe(42)
+    expect(transition?.state.spacecraft.position).toEqual({ x: 5, y: 6 })
+    expect(transition?.state).not.toBe(
+      runtime.scenario.session.checkpoint?.world,
+    )
   })
 
-  it('returns false when no checkpoint exists', () => {
+  it('returns null when no checkpoint exists', () => {
     const runtime = createRuntime()
     runtime.scenario.session.checkpoint = null
 
-    expect(restoreRuntimeFromScenarioCheckpoint(runtime)).toBe(false)
+    expect(createRuntimeCheckpointRestoreTransition(runtime)).toBeNull()
   })
 })

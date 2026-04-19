@@ -4,10 +4,13 @@ import {
   loadDebugRuntimeScenario,
   type RuntimeScenarioOptions,
 } from '../scenario/runtimeScenario'
-import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import type { AppRuntimeState } from './appRuntimeState'
-import { restoreRuntimeFromScenarioCheckpoint } from './scenarioRecovery'
+import {
+  applyCheckpointRestoreTransition,
+  applyScenarioLoadTransition,
+} from './runtimeStateTransitions'
+import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 
 export type ScenarioRuntimeTransition = {
   coastPredictionHorizonHours: number
@@ -70,32 +73,17 @@ export const createScenarioRuntimeController = (options: {
   setTimeWarp: (warp: number) => void
   clearTransientScenarioState: () => void
 }) => {
-  const applyRuntimeScenarioTransition = (
-    transition: ScenarioRuntimeTransition,
-  ) => {
-    options.runtime.scenario.activeTitle = transition.scenario.activeTitle
-    options.runtime.scenario.activeDescription =
-      transition.scenario.activeDescription
-    options.runtime.timeWarpIndex = 0
-    options.runtime.state = transition.state
-    options.runtime.viewportSize = transition.viewportSize
-    options.runtime.coastPredictionHorizonHours =
-      transition.coastPredictionHorizonHours
-    options.runtime.scenario.session = transition.scenario.session
-    options.runtime.uiEffectEpoch += 1
-    options.clearTransientScenarioState()
-    syncRuntimeScenarioDirectives(
-      options.runtime,
-      options.globalScenarioDirectiveLimits,
-    )
-  }
-
   const loadScenarioById = (scenarioId: string) => {
-    applyRuntimeScenarioTransition(
+    applyScenarioLoadTransition(
+      options.runtime,
       createScenarioRuntimeTransition(
         scenarioId,
         options.runtimeScenarioOptions,
       ),
+      {
+        clearTransientScenarioState: options.clearTransientScenarioState,
+        globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+      },
     )
   }
 
@@ -126,17 +114,24 @@ export const createScenarioRuntimeController = (options: {
         return false
       }
 
-      applyRuntimeScenarioTransition({
-        coastPredictionHorizonHours:
-          loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
-        scenario: {
-          activeDescription: loadedDebugScenario.scenario.description,
-          activeTitle: loadedDebugScenario.scenario.name,
-          session: loadedDebugScenario.runtimeState.scenarioSession,
+      applyScenarioLoadTransition(
+        options.runtime,
+        {
+          coastPredictionHorizonHours:
+            loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
+          scenario: {
+            activeDescription: loadedDebugScenario.scenario.description,
+            activeTitle: loadedDebugScenario.scenario.name,
+            session: loadedDebugScenario.runtimeState.scenarioSession,
+          },
+          state: loadedDebugScenario.runtimeState.state,
+          viewportSize: loadedDebugScenario.runtimeState.viewportSize,
         },
-        state: loadedDebugScenario.runtimeState.state,
-        viewportSize: loadedDebugScenario.runtimeState.viewportSize,
-      })
+        {
+          clearTransientScenarioState: options.clearTransientScenarioState,
+          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+        },
+      )
       options.runtime.assistTargetIndex = Math.min(
         options.runtime.assistTargetIndex,
         Math.max(0, options.runtime.state.bodies.length - 1),
@@ -146,42 +141,52 @@ export const createScenarioRuntimeController = (options: {
       return true
     },
     resetScenario: () => {
-      applyRuntimeScenarioTransition(
+      applyScenarioLoadTransition(
+        options.runtime,
         createScenarioRuntimeTransition(
           options.runtime.scenario.session.scenarioId,
           options.runtimeScenarioOptions,
         ),
+        {
+          clearTransientScenarioState: options.clearTransientScenarioState,
+          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+        },
       )
     },
     restartFromCheckpoint: () => {
-      const recoveredFromCheckpoint = restoreRuntimeFromScenarioCheckpoint(
+      return applyCheckpointRestoreTransition(
         options.runtime,
+        createRuntimeCheckpointRestoreTransition(options.runtime),
+        {
+          clearTransientScenarioState: options.clearTransientScenarioState,
+          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+        },
       )
-      if (!recoveredFromCheckpoint) {
-        return false
-      }
-
-      options.clearTransientScenarioState()
-      syncRuntimeScenarioDirectives(
-        options.runtime,
-        options.globalScenarioDirectiveLimits,
-      )
-      return true
     },
     startFreeRoam: () => {
-      applyRuntimeScenarioTransition(
+      applyScenarioLoadTransition(
+        options.runtime,
         createScenarioRuntimeTransition(
           'earth-moon',
           options.runtimeScenarioOptions,
         ),
+        {
+          clearTransientScenarioState: options.clearTransientScenarioState,
+          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+        },
       )
     },
     startTutorial: () => {
-      applyRuntimeScenarioTransition(
+      applyScenarioLoadTransition(
+        options.runtime,
         createScenarioRuntimeTransition(
           'tutorial',
           options.runtimeScenarioOptions,
         ),
+        {
+          clearTransientScenarioState: options.clearTransientScenarioState,
+          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+        },
       )
     },
   }
