@@ -9,15 +9,40 @@ import type { AppRuntimeState } from './appRuntimeState'
 import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 
 const createRuntime = (): AppRuntimeState => ({
-  assistMode: 'capture',
-  assistTargetIndex: 1,
-  coastPredictionHorizonHours: 24,
-  crashedBodyName: 'Earth',
-  debugModeEnabled: false,
-  debugNoGravityEnabled: false,
-  debugSnapshotStatus: '',
-  fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
+  simulation: {
+    assistMode: 'capture',
+    assistTargetIndex: 1,
+    coastPredictionHorizonHours: 24,
+    crashedBodyName: 'Earth',
+    state: {
+      elapsed: 100,
+      bodies: [
+        {
+          id: 'earth',
+          name: 'Earth',
+          mass: 1,
+          radius: 1,
+          position: { x: 10, y: 20 },
+          velocity: { x: 30, y: 40 },
+          color: '#2f80ed',
+        },
+      ],
+      controls: { main: 1, reverse: 0, strafe: 0, turn: 1 },
+      spacecraft: {
+        position: { x: 50, y: 60 },
+        velocity: { x: 70, y: 80 },
+        heading: 0.4,
+        fuel: 1,
+        fuelUsed: 2,
+        dryMass: 3,
+        fuelMass: 4,
+        fuelCapacity: 5,
+      },
+    },
+    targetHeading: 1,
+    timeWarpIndex: 4,
+    viewportSize: 600,
+  },
   scenario: {
     activeDescription: 'Tutorial description',
     activeTitle: 'Tutorial',
@@ -26,37 +51,18 @@ const createRuntime = (): AppRuntimeState => ({
       phase: 'reach-moon',
     }),
   },
-  spacecraftLabelIntroUntil: 0,
-  targetHeadingSelectionEpoch: 0,
-  uiEffectEpoch: 0,
-  state: {
-    elapsed: 100,
-    bodies: [
-      {
-        id: 'earth',
-        name: 'Earth',
-        mass: 1,
-        radius: 1,
-        position: { x: 10, y: 20 },
-        velocity: { x: 30, y: 40 },
-        color: '#2f80ed',
-      },
-    ],
-    controls: { main: 1, reverse: 0, strafe: 0, turn: 1 },
-    spacecraft: {
-      position: { x: 50, y: 60 },
-      velocity: { x: 70, y: 80 },
-      heading: 0.4,
-      fuel: 1,
-      fuelUsed: 2,
-      dryMass: 3,
-      fuelMass: 4,
-      fuelCapacity: 5,
-    },
+  ui: {
+    spacecraftLabelIntroUntil: 0,
+    targetHeadingSelectionEpoch: 0,
+    uiEffectEpoch: 0,
   },
-  targetHeading: 1,
-  timeWarpIndex: 4,
-  viewportSize: 600,
+  debug: {
+    debugModeEnabled: false,
+    debugNoGravityEnabled: false,
+    debugSnapshotStatus: '',
+    fpsIndicatorEnabled: false,
+    performanceDebugEnabled: false,
+  },
 })
 
 describe('createRuntimeCheckpointRestoreTransition', () => {

@@ -29,10 +29,10 @@ const createStepProgress = (
 ): TutorialOnboardingStepProgress => ({
   accumulatedHeadingChangeRadians: 0,
   accumulatedMainThrustMs: 0,
-  lastSampleHeading: runtime.state.spacecraft.heading,
+  lastSampleHeading: runtime.simulation.state.spacecraft.heading,
   lastSampleAtMs: nowMs,
-  stepStartHeading: runtime.state.spacecraft.heading,
-  stepStartTargetHeadingSelectionEpoch: runtime.targetHeadingSelectionEpoch,
+  stepStartHeading: runtime.simulation.state.spacecraft.heading,
+  stepStartTargetHeadingSelectionEpoch: runtime.ui.targetHeadingSelectionEpoch,
   stepStartTimeWarpMultiplier: timeWarpMultiplier,
 })
 
@@ -62,10 +62,10 @@ const getNearestBody = (runtime: AppRuntimeState): Body | null => {
   let nearestBody: Body | null = null
   let nearestSurfaceDistance = Number.POSITIVE_INFINITY
 
-  for (const body of runtime.state.bodies) {
+  for (const body of runtime.simulation.state.bodies) {
     const surfaceDistance = Math.max(
       0,
-      length(sub(runtime.state.spacecraft.position, body.position)) -
+      length(sub(runtime.simulation.state.spacecraft.position, body.position)) -
         body.radius,
     )
     if (surfaceDistance < nearestSurfaceDistance) {
@@ -82,11 +82,11 @@ const getOutwardHeading = (
   nearestBody: Body | null,
 ) => {
   if (!nearestBody) {
-    return runtime.state.spacecraft.heading
+    return runtime.simulation.state.spacecraft.heading
   }
 
   const radialDirection = normalize(
-    sub(runtime.state.spacecraft.position, nearestBody.position),
+    sub(runtime.simulation.state.spacecraft.position, nearestBody.position),
   )
   const safeDirection =
     length(radialDirection) > 0 ? radialDirection : vec(1, 0)
@@ -104,7 +104,9 @@ const isHeadingOutwardFromNearestBody = (
   const outwardHeading = getOutwardHeading(runtime, nearestBody)
   return (
     Math.abs(
-      normalizeAngleDelta(runtime.state.spacecraft.heading - outwardHeading),
+      normalizeAngleDelta(
+        runtime.simulation.state.spacecraft.heading - outwardHeading,
+      ),
     ) <= outwardHeadingToleranceRadians
   )
 }
@@ -127,8 +129,8 @@ const setStepId = (
 
   if (nextStepId === 'intro-timewarp-thrust') {
     const nearestBody = getNearestBody(runtime)
-    runtime.targetHeading = getOutwardHeading(runtime, nearestBody)
-    runtime.assistMode = 'off'
+    runtime.simulation.targetHeading = getOutwardHeading(runtime, nearestBody)
+    runtime.simulation.assistMode = 'off'
   }
 
   return {
@@ -212,7 +214,7 @@ export const advanceTutorialOnboarding = (
 
   if (onboarding.activeStepId === 'intro-thrust') {
     nextProgress.accumulatedMainThrustMs =
-      runtime.state.controls.main > 0
+      runtime.simulation.state.controls.main > 0
         ? onboarding.progress.accumulatedMainThrustMs + deltaMs
         : 0
     return nextProgress.accumulatedMainThrustMs >= requiredIntroThrustMs
@@ -227,7 +229,7 @@ export const advanceTutorialOnboarding = (
 
   if (onboarding.activeStepId === 'intro-keep-thrusting') {
     nextProgress.accumulatedMainThrustMs =
-      runtime.state.controls.main > 0
+      runtime.simulation.state.controls.main > 0
         ? onboarding.progress.accumulatedMainThrustMs + deltaMs
         : Math.max(0, onboarding.progress.accumulatedMainThrustMs - deltaMs * 2)
 
@@ -258,12 +260,12 @@ export const advanceTutorialOnboarding = (
       onboarding.progress.accumulatedHeadingChangeRadians +
       Math.abs(
         normalizeAngleDelta(
-          runtime.state.spacecraft.heading -
+          runtime.simulation.state.spacecraft.heading -
             (onboarding.progress.lastSampleHeading ??
-              runtime.state.spacecraft.heading),
+              runtime.simulation.state.spacecraft.heading),
         ),
       )
-    nextProgress.lastSampleHeading = runtime.state.spacecraft.heading
+    nextProgress.lastSampleHeading = runtime.simulation.state.spacecraft.heading
     return nextProgress.accumulatedHeadingChangeRadians >= requiredTurnRadians
       ? advanceToNextStep(
           runtime,
@@ -275,9 +277,9 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-point-and-turn') {
-    return runtime.targetHeadingSelectionEpoch >
+    return runtime.ui.targetHeadingSelectionEpoch >
       onboarding.progress.stepStartTargetHeadingSelectionEpoch &&
-      runtime.targetHeading === null
+      runtime.simulation.targetHeading === null
       ? advanceToNextStep(runtime, onboarding, nowMs, timeWarpMultiplier)
       : { ...onboarding, progress: nextProgress }
   }
@@ -311,7 +313,7 @@ export const advanceTutorialOnboarding = (
     nextProgress.accumulatedMainThrustMs =
       outwardAligned &&
       timeWarpMultiplier >= requiredHighWarpMultiplier &&
-      runtime.state.controls.main > 0
+      runtime.simulation.state.controls.main > 0
         ? onboarding.progress.accumulatedMainThrustMs + deltaMs
         : 0
     return nextProgress.accumulatedMainThrustMs >= requiredHighWarpThrustMs

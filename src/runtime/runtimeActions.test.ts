@@ -31,15 +31,49 @@ const runtimeScenarioOptions = {
 }
 
 const createRuntime = (): AppRuntimeState => ({
-  assistMode: 'capture',
-  assistTargetIndex: 1,
-  coastPredictionHorizonHours: 24,
-  crashedBodyName: 'Earth',
-  debugModeEnabled: false,
-  debugNoGravityEnabled: false,
-  debugSnapshotStatus: '',
-  fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
+  simulation: {
+    assistMode: 'capture',
+    assistTargetIndex: 1,
+    coastPredictionHorizonHours: 24,
+    crashedBodyName: 'Earth',
+    state: {
+      elapsed: 100,
+      bodies: [
+        {
+          id: 'earth',
+          name: 'Earth',
+          mass: 1,
+          radius: 1,
+          position: { x: 10, y: 20 },
+          velocity: { x: 30, y: 40 },
+          color: '#2f80ed',
+        },
+        {
+          id: 'moon',
+          name: 'Moon',
+          mass: 1,
+          radius: 1,
+          position: { x: 50, y: 60 },
+          velocity: { x: 70, y: 80 },
+          color: '#9aa0a6',
+        },
+      ],
+      controls: { main: 1, reverse: 0, strafe: 0, turn: 1 },
+      spacecraft: {
+        position: { x: 50, y: 60 },
+        velocity: { x: 70, y: 80 },
+        heading: 0.4,
+        fuel: 1,
+        fuelUsed: 2,
+        dryMass: 3,
+        fuelMass: 4,
+        fuelCapacity: 5,
+      },
+    },
+    targetHeading: 1,
+    timeWarpIndex: 4,
+    viewportSize: 600,
+  },
   scenario: {
     activeDescription: 'Tutorial description',
     activeTitle: 'Tutorial',
@@ -48,46 +82,18 @@ const createRuntime = (): AppRuntimeState => ({
       phase: 'reach-moon',
     }),
   },
-  spacecraftLabelIntroUntil: 0,
-  targetHeadingSelectionEpoch: 0,
-  uiEffectEpoch: 0,
-  state: {
-    elapsed: 100,
-    bodies: [
-      {
-        id: 'earth',
-        name: 'Earth',
-        mass: 1,
-        radius: 1,
-        position: { x: 10, y: 20 },
-        velocity: { x: 30, y: 40 },
-        color: '#2f80ed',
-      },
-      {
-        id: 'moon',
-        name: 'Moon',
-        mass: 1,
-        radius: 1,
-        position: { x: 50, y: 60 },
-        velocity: { x: 70, y: 80 },
-        color: '#9aa0a6',
-      },
-    ],
-    controls: { main: 1, reverse: 0, strafe: 0, turn: 1 },
-    spacecraft: {
-      position: { x: 50, y: 60 },
-      velocity: { x: 70, y: 80 },
-      heading: 0.4,
-      fuel: 1,
-      fuelUsed: 2,
-      dryMass: 3,
-      fuelMass: 4,
-      fuelCapacity: 5,
-    },
+  ui: {
+    spacecraftLabelIntroUntil: 0,
+    targetHeadingSelectionEpoch: 0,
+    uiEffectEpoch: 0,
   },
-  targetHeading: 1,
-  timeWarpIndex: 4,
-  viewportSize: 600,
+  debug: {
+    debugModeEnabled: false,
+    debugNoGravityEnabled: false,
+    debugSnapshotStatus: '',
+    fpsIndicatorEnabled: false,
+    performanceDebugEnabled: false,
+  },
 })
 
 const createTestRuntimeActions = (runtime: AppRuntimeState) =>
@@ -118,7 +124,7 @@ describe('createRuntimeActions', () => {
 
     runtimeActions.handleUIUserAction('resetScenario')
 
-    expect(runtime.timeWarpIndex).toBe(0)
+    expect(runtime.simulation.timeWarpIndex).toBe(0)
   })
 
   it('restores the active checkpoint when requested explicitly', () => {
@@ -158,10 +164,10 @@ describe('createRuntimeActions', () => {
     const runtimeActions = createTestRuntimeActions(runtime)
 
     expect(runtimeActions.restartFromCheckpoint()).toBe(true)
-    expect(runtime.crashedBodyName).toBeNull()
-    expect(runtime.timeWarpIndex).toBe(0)
-    expect(runtime.state.elapsed).toBe(42)
-    expect(runtime.viewportSize).toBe(320)
+    expect(runtime.simulation.crashedBodyName).toBeNull()
+    expect(runtime.simulation.timeWarpIndex).toBe(0)
+    expect(runtime.simulation.state.elapsed).toBe(42)
+    expect(runtime.simulation.viewportSize).toBe(320)
   })
 
   it('updates the reset target when free roam starts', () => {
@@ -173,10 +179,10 @@ describe('createRuntimeActions', () => {
     expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
     expect(runtime.scenario.activeTitle).toBe('Earth-Moon sandbox')
 
-    runtime.timeWarpIndex = 4
+    runtime.simulation.timeWarpIndex = 4
     runtimeActions.resetScenario()
 
-    expect(runtime.timeWarpIndex).toBe(0)
+    expect(runtime.simulation.timeWarpIndex).toBe(0)
     expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
   })
 
@@ -187,8 +193,8 @@ describe('createRuntimeActions', () => {
     runtimeActions.enterMainMenuBackground()
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
-    expect(runtime.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
-    expect(runtime.timeWarpIndex).toBe(4)
+    expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
+    expect(runtime.simulation.timeWarpIndex).toBe(4)
   })
 
   it('syncs directives immediately after acknowledging the tutorial intro prompt', () => {
@@ -228,9 +234,9 @@ describe('createRuntimeActions', () => {
         progress: {
           accumulatedHeadingChangeRadians: 0,
           accumulatedMainThrustMs: 0,
-          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleHeading: runtime.simulation.state.spacecraft.heading,
           lastSampleAtMs: 1_000,
-          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartHeading: runtime.simulation.state.spacecraft.heading,
           stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },

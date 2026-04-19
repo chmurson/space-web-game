@@ -5,7 +5,11 @@ import {
   type RuntimeScenarioOptions,
 } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import type { AppRuntimeState } from './appRuntimeState'
+import type {
+  AppRuntimeScenarioSlice,
+  AppRuntimeSimulationSlice,
+  AppRuntimeState,
+} from './appRuntimeState'
 import {
   applyCheckpointRestoreTransition,
   applyScenarioLoadTransition,
@@ -15,10 +19,10 @@ import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 export type ScenarioRuntimeTransition = {
   coastPredictionHorizonHours: number
   scenario: Pick<
-    AppRuntimeState['scenario'],
+    AppRuntimeScenarioSlice,
     'activeDescription' | 'activeTitle' | 'session'
   >
-  state: AppRuntimeState['state']
+  state: AppRuntimeSimulationSlice['state']
   viewportSize: number
 }
 
@@ -90,7 +94,7 @@ export const createScenarioRuntimeController = (options: {
   return {
     enterMainMenuBackground: () => {
       loadScenarioById('menu-background')
-      options.runtime.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
+      options.runtime.ui.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
       options.setTimeWarp(500)
     },
     initializeFromStartup: (startupOptions: {
@@ -102,7 +106,7 @@ export const createScenarioRuntimeController = (options: {
         return
       }
 
-      options.runtime.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
+      options.runtime.ui.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
       options.setTimeWarp(500)
     },
     loadDebugSnapshot: () => {
@@ -110,7 +114,7 @@ export const createScenarioRuntimeController = (options: {
         options.runtimeScenarioOptions,
       )
       if (!loadedDebugScenario) {
-        options.runtime.debugSnapshotStatus = 'no debug snapshot saved'
+        options.runtime.debug.debugSnapshotStatus = 'no debug snapshot saved'
         return false
       }
 
@@ -132,11 +136,11 @@ export const createScenarioRuntimeController = (options: {
           globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
         },
       )
-      options.runtime.assistTargetIndex = Math.min(
-        options.runtime.assistTargetIndex,
-        Math.max(0, options.runtime.state.bodies.length - 1),
+      options.runtime.simulation.assistTargetIndex = Math.min(
+        options.runtime.simulation.assistTargetIndex,
+        Math.max(0, options.runtime.simulation.state.bodies.length - 1),
       )
-      options.runtime.debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`
+      options.runtime.debug.debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`
       options.setTimeWarp(1)
       return true
     },

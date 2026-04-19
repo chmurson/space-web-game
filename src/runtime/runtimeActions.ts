@@ -64,7 +64,8 @@ export const createRuntimeActions = (options: {
 
   const setTimeWarp = (warp: number) => {
     const desiredIndex = options.timeWarps.indexOf(warp)
-    options.runtime.timeWarpIndex = desiredIndex >= 0 ? desiredIndex : 0
+    options.runtime.simulation.timeWarpIndex =
+      desiredIndex >= 0 ? desiredIndex : 0
   }
   const scenarioRuntimeController = createScenarioRuntimeController({
     clearTransientScenarioState,
@@ -75,13 +76,13 @@ export const createRuntimeActions = (options: {
   })
 
   const saveDebugScenarioSnapshot = () => {
-    options.runtime.debugSnapshotStatus = saveRuntimeDebugSnapshot(
-      options.runtime.state,
+    options.runtime.debug.debugSnapshotStatus = saveRuntimeDebugSnapshot(
+      options.runtime.simulation.state,
       {
         coastPredictionHorizonHours:
-          options.runtime.coastPredictionHorizonHours,
+          options.runtime.simulation.coastPredictionHorizonHours,
         scenarioSession: options.runtime.scenario.session,
-        viewportSize: options.runtime.viewportSize,
+        viewportSize: options.runtime.simulation.viewportSize,
       },
     )
       ? 'snapshot saved; use [7] load or ?scenario=debug-snapshot'
@@ -95,26 +96,27 @@ export const createRuntimeActions = (options: {
       cameraTargetPosition:
         options.runtime.scenario.directives.cameraFollowBodyId === null
           ? add(
-              options.runtime.state.spacecraft.position,
+              options.runtime.simulation.state.spacecraft.position,
               options.runtime.scenario.directives.cameraFollowOffset,
             )
           : add(
-              options.runtime.state.bodies.find(
+              options.runtime.simulation.state.bodies.find(
                 (body) =>
                   body.id ===
                   options.runtime.scenario.directives.cameraFollowBodyId,
-              )?.position ?? options.runtime.state.spacecraft.position,
+              )?.position ??
+                options.runtime.simulation.state.spacecraft.position,
               options.runtime.scenario.directives.cameraFollowOffset,
             ),
       gameScene: options.gameScene,
       viewportHeight: window.innerHeight,
-      viewportSize: options.runtime.viewportSize,
+      viewportSize: options.runtime.simulation.viewportSize,
       viewportWidth: window.innerWidth,
     })
 
   const zoomCamera = (factor: number) => {
-    options.runtime.viewportSize = THREE.MathUtils.clamp(
-      options.runtime.viewportSize * factor,
+    options.runtime.simulation.viewportSize = THREE.MathUtils.clamp(
+      options.runtime.simulation.viewportSize * factor,
       options.runtime.scenario.directives.minViewportSize ??
         options.minViewport,
       options.runtime.scenario.directives.maxViewportSize ??
@@ -154,16 +156,16 @@ export const createRuntimeActions = (options: {
     enterMainMenuBackground: scenarioRuntimeController.enterMainMenuBackground,
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === 'increaseTimeWarp') {
-        options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
-          options.runtime.timeWarpIndex + 1,
+        options.runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
+          options.runtime.simulation.timeWarpIndex + 1,
           options.timeWarps,
           options.runtime.scenario.directives.maxTimeWarp,
         )
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'decreaseTimeWarp') {
-        options.runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
-          Math.max(options.runtime.timeWarpIndex - 1, 0),
+        options.runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
+          Math.max(options.runtime.simulation.timeWarpIndex - 1, 0),
           options.timeWarps,
           options.runtime.scenario.directives.maxTimeWarp,
         )
@@ -174,55 +176,56 @@ export const createRuntimeActions = (options: {
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'cycleAssistTarget') {
-        options.runtime.assistTargetIndex =
-          (options.runtime.assistTargetIndex + 1) %
-          options.runtime.state.bodies.length
+        options.runtime.simulation.assistTargetIndex =
+          (options.runtime.simulation.assistTargetIndex + 1) %
+          options.runtime.simulation.state.bodies.length
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'cycleAssistMode') {
-        options.runtime.assistMode =
-          options.runtime.assistMode === 'off'
+        options.runtime.simulation.assistMode =
+          options.runtime.simulation.assistMode === 'off'
             ? 'capture'
-            : options.runtime.assistMode === 'capture'
+            : options.runtime.simulation.assistMode === 'capture'
               ? 'circularize'
               : 'off'
-        options.runtime.targetHeading = null
+        options.runtime.simulation.targetHeading = null
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'toggleDebugMode') {
-        options.runtime.debugModeEnabled = !options.runtime.debugModeEnabled
+        options.runtime.debug.debugModeEnabled =
+          !options.runtime.debug.debugModeEnabled
         options.updateUserSettings({
-          debugModeEnabled: options.runtime.debugModeEnabled,
+          debugModeEnabled: options.runtime.debug.debugModeEnabled,
         })
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'toggleNoGravityDebug') {
-        options.runtime.debugNoGravityEnabled =
-          !options.runtime.debugNoGravityEnabled
+        options.runtime.debug.debugNoGravityEnabled =
+          !options.runtime.debug.debugNoGravityEnabled
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'toggleFpsIndicator') {
-        options.runtime.fpsIndicatorEnabled =
-          !options.runtime.fpsIndicatorEnabled
+        options.runtime.debug.fpsIndicatorEnabled =
+          !options.runtime.debug.fpsIndicatorEnabled
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'togglePerformanceDebug') {
-        options.runtime.performanceDebugEnabled =
-          !options.runtime.performanceDebugEnabled
+        options.runtime.debug.performanceDebugEnabled =
+          !options.runtime.debug.performanceDebugEnabled
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'decreaseCoastHorizon') {
-        options.runtime.coastPredictionHorizonHours = Math.max(
+        options.runtime.simulation.coastPredictionHorizonHours = Math.max(
           options.minCoastPredictionHorizonHours,
-          options.runtime.coastPredictionHorizonHours / 2,
+          options.runtime.simulation.coastPredictionHorizonHours / 2,
         )
         return { refreshTrajectoryPrediction: true }
       }
       if (action === 'increaseCoastHorizon') {
-        options.runtime.coastPredictionHorizonHours = Math.min(
+        options.runtime.simulation.coastPredictionHorizonHours = Math.min(
           options.runtime.scenario.directives.maxCoastPredictionHorizonHours ??
             options.maxCoastPredictionHorizonHours,
-          options.runtime.coastPredictionHorizonHours * 2,
+          options.runtime.simulation.coastPredictionHorizonHours * 2,
         )
         return { refreshTrajectoryPrediction: true }
       }
@@ -250,11 +253,12 @@ export const createRuntimeActions = (options: {
       return { refreshTrajectoryPrediction: false }
     },
     loadDebugSnapshot: () => {
-      const previousStatus = options.runtime.debugSnapshotStatus
+      const previousStatus = options.runtime.debug.debugSnapshotStatus
       scenarioRuntimeController.loadDebugSnapshot()
       return (
-        options.runtime.debugSnapshotStatus !== 'no debug snapshot saved' ||
-        previousStatus !== options.runtime.debugSnapshotStatus
+        options.runtime.debug.debugSnapshotStatus !==
+          'no debug snapshot saved' ||
+        previousStatus !== options.runtime.debug.debugSnapshotStatus
       )
     },
     handleResize: () => {
@@ -264,17 +268,19 @@ export const createRuntimeActions = (options: {
     resetScenario: scenarioRuntimeController.resetScenario,
     restartFromCheckpoint: scenarioRuntimeController.restartFromCheckpoint,
     setTargetHeading: (heading: number, clientX: number, clientY: number) => {
-      options.runtime.targetHeading = heading
-      options.runtime.targetHeadingSelectionEpoch += 1
-      options.runtime.assistMode = 'off'
+      options.runtime.simulation.targetHeading = heading
+      options.runtime.ui.targetHeadingSelectionEpoch += 1
+      options.runtime.simulation.assistMode = 'off'
       options.createRipple(options.app, options.ripples, clientX, clientY)
     },
     nudgeTargetHeading: (deltaRadians: number) => {
       const baseHeading =
-        options.runtime.targetHeading ??
-        options.runtime.state.spacecraft.heading
-      options.runtime.targetHeading = normalizeAngle(baseHeading + deltaRadians)
-      options.runtime.assistMode = 'off'
+        options.runtime.simulation.targetHeading ??
+        options.runtime.simulation.state.spacecraft.heading
+      options.runtime.simulation.targetHeading = normalizeAngle(
+        baseHeading + deltaRadians,
+      )
+      options.runtime.simulation.assistMode = 'off'
     },
     recoverScenarioAfterCrash,
     reopenScenarioPrompt,

@@ -31,7 +31,7 @@ export const createHudPresentation = (options: {
   let lastTimeWarpIndex: number | null = null
   let lastTimeIconUpdateAt: number | null = null
   let timeIconAngle = 0
-  let lastUiEffectEpoch = options.runtime.uiEffectEpoch
+  let lastUiEffectEpoch = options.runtime.ui.uiEffectEpoch
   let lastWarpIncreaseAt = 0
   let warpIncreaseStreak = 0
   let warpFeedbackTimeoutId: number | null = null
@@ -91,7 +91,7 @@ export const createHudPresentation = (options: {
       window.clearTimeout(warpFeedbackTimeoutId)
       warpFeedbackTimeoutId = null
     }
-    lastTimeWarpIndex = options.runtime.timeWarpIndex
+    lastTimeWarpIndex = options.runtime.simulation.timeWarpIndex
     lastTimeIconUpdateAt = performance.now()
     lastWarpIncreaseAt = 0
     warpIncreaseStreak = 0
@@ -99,20 +99,20 @@ export const createHudPresentation = (options: {
 
   return {
     update: (metrics: { smoothedCpuMs: number; smoothedFps: number }) => {
-      const earth = options.runtime.state.bodies.find(
+      const earth = options.runtime.simulation.state.bodies.find(
         (body) => body.id === 'earth',
       )
       if (!earth) {
         return
       }
 
-      if (options.runtime.uiEffectEpoch !== lastUiEffectEpoch) {
+      if (options.runtime.ui.uiEffectEpoch !== lastUiEffectEpoch) {
         resetTransientPillEffects()
-        lastUiEffectEpoch = options.runtime.uiEffectEpoch
+        lastUiEffectEpoch = options.runtime.ui.uiEffectEpoch
       }
 
       if (lastTimeWarpIndex !== null) {
-        if (options.runtime.timeWarpIndex > lastTimeWarpIndex) {
+        if (options.runtime.simulation.timeWarpIndex > lastTimeWarpIndex) {
           const now = performance.now()
           warpIncreaseStreak =
             now - lastWarpIncreaseAt <= 700 ? warpIncreaseStreak + 1 : 1
@@ -123,17 +123,17 @@ export const createHudPresentation = (options: {
           )
           triggerWarpFeedback('v2', strength)
         }
-        if (options.runtime.timeWarpIndex < lastTimeWarpIndex) {
+        if (options.runtime.simulation.timeWarpIndex < lastTimeWarpIndex) {
           warpIncreaseStreak = 0
           triggerWarpFeedback('v4')
         }
       }
-      lastTimeWarpIndex = options.runtime.timeWarpIndex
+      lastTimeWarpIndex = options.runtime.simulation.timeWarpIndex
 
       const target = options.queries.getAssistTarget()
       const targetMetrics = options.queries.getCaptureMetrics(target)
       const circularizePlan =
-        options.runtime.assistMode === 'circularize'
+        options.runtime.simulation.assistMode === 'circularize'
           ? options.queries.getCircularizePlan(target)
           : null
       const predictionState =
@@ -189,15 +189,15 @@ export const createHudPresentation = (options: {
         options.overlayUi.statEngine.textContent = options.physicsEngineName
       }
       if (options.overlayUi.statTime) {
-        options.overlayUi.statTime.textContent = `${formatCompactElapsed(options.runtime.state.elapsed)} · ${
-          options.timeWarps[options.runtime.timeWarpIndex] ?? 1
+        options.overlayUi.statTime.textContent = `${formatCompactElapsed(options.runtime.simulation.state.elapsed)} · ${
+          options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1
         }x`
       }
       if (options.overlayUi.timeIcon) {
         const maxWarpIndex = Math.max(0, options.timeWarps.length - 1)
         const stepsFromMax = Math.max(
           0,
-          maxWarpIndex - options.runtime.timeWarpIndex,
+          maxWarpIndex - options.runtime.simulation.timeWarpIndex,
         )
         const iconDurationSeconds = 0.25 * 2 ** stepsFromMax
         const now = performance.now()
@@ -221,11 +221,11 @@ export const createHudPresentation = (options: {
         )
       }
       {
-        const crashed = options.runtime.crashedBodyName !== null
+        const crashed = options.runtime.simulation.crashedBodyName !== null
         const thrusting =
           !crashed &&
-          options.runtime.state.controls.main > 0 &&
-          options.runtime.state.spacecraft.fuel > 0
+          options.runtime.simulation.state.controls.main > 0 &&
+          options.runtime.simulation.state.spacecraft.fuel > 0
         if (options.overlayUi.statThrust) {
           options.overlayUi.statThrust.textContent = crashed ? 'Crashed' : ''
         }
@@ -248,33 +248,35 @@ export const createHudPresentation = (options: {
         }
       }
       if (options.overlayUi.statFuel) {
-        options.overlayUi.statFuel.textContent = `${options.runtime.state.spacecraft.fuelUsed.toFixed(1)} kg`
+        options.overlayUi.statFuel.textContent = `${options.runtime.simulation.state.spacecraft.fuelUsed.toFixed(1)} kg`
       }
       if (options.overlayUi.statZoom) {
-        options.overlayUi.statZoom.textContent = `${(options.defaultViewport / options.runtime.viewportSize).toFixed(1)}x`
+        options.overlayUi.statZoom.textContent = `${(options.defaultViewport / options.runtime.simulation.viewportSize).toFixed(1)}x`
       }
       if (options.overlayUi.statTarget) {
         options.overlayUi.statTarget.textContent = target.name
       }
       if (options.overlayUi.statAssist) {
-        options.overlayUi.statAssist.textContent = options.runtime
+        options.overlayUi.statAssist.textContent = options.runtime.simulation
           .crashedBodyName
           ? 'Crashed'
-          : options.runtime.assistMode === 'capture'
+          : options.runtime.simulation.assistMode === 'capture'
             ? 'Capture'
-            : options.runtime.assistMode === 'circularize'
+            : options.runtime.simulation.assistMode === 'circularize'
               ? 'Circularize'
               : 'Off'
       }
-      options.touchControls?.updateAssistMode(options.runtime.assistMode)
+      options.touchControls?.updateAssistMode(
+        options.runtime.simulation.assistMode,
+      )
       options.touchControls?.setTutorialHintTarget(
         activePrompt?.touchHintTarget ?? null,
       )
       if (options.overlayUi.statGuidance) {
         options.overlayUi.statGuidance.textContent = getGuidanceText({
-          assistMode: options.runtime.assistMode,
+          assistMode: options.runtime.simulation.assistMode,
           circularizePlan,
-          crashedBodyName: options.runtime.crashedBodyName,
+          crashedBodyName: options.runtime.simulation.crashedBodyName,
           predictedImpact: predictionState.predictedImpact,
           predictedTargetClosestApproach:
             predictionState.predictedTargetClosestApproach,
@@ -282,21 +284,22 @@ export const createHudPresentation = (options: {
         })
       }
 
-      options.overlayUi.debugPanel.element.style.display = options.runtime
+      options.overlayUi.debugPanel.element.style.display = options.runtime.debug
         .debugModeEnabled
         ? 'block'
         : 'none'
-      if (options.runtime.debugModeEnabled) {
+      if (options.runtime.debug.debugModeEnabled) {
         options.overlayUi.debugPanel.setText(
           getDebugPanelLines({
-            assistMode: options.runtime.assistMode,
-            bodyInfluences: getBodyInfluences(options.runtime.state),
+            assistMode: options.runtime.simulation.assistMode,
+            bodyInfluences: getBodyInfluences(options.runtime.simulation.state),
             coastPredictionHorizonSeconds:
               options.queries.getCoastPredictionHorizonSeconds(),
-            debugNoGravityEnabled: options.runtime.debugNoGravityEnabled,
-            debugSnapshotStatus: options.runtime.debugSnapshotStatus,
-            fpsIndicatorEnabled: options.runtime.fpsIndicatorEnabled,
-            performanceDebugEnabled: options.runtime.performanceDebugEnabled,
+            debugNoGravityEnabled: options.runtime.debug.debugNoGravityEnabled,
+            debugSnapshotStatus: options.runtime.debug.debugSnapshotStatus,
+            fpsIndicatorEnabled: options.runtime.debug.fpsIndicatorEnabled,
+            performanceDebugEnabled:
+              options.runtime.debug.performanceDebugEnabled,
             predictionStepSeconds:
               options.queries.getPredictionConfig().stepSeconds,
             predictedImpact: predictionState.predictedImpact,
@@ -326,7 +329,8 @@ export const createHudPresentation = (options: {
       }
 
       const fpsIndicatorVisible =
-        options.runtime.debugModeEnabled && options.runtime.fpsIndicatorEnabled
+        options.runtime.debug.debugModeEnabled &&
+        options.runtime.debug.fpsIndicatorEnabled
       options.overlayUi.fpsIndicator.style.display = fpsIndicatorVisible
         ? 'block'
         : 'none'

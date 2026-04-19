@@ -6,7 +6,9 @@ import type { AppRuntimeState } from './appRuntimeState'
 import { createGameQueries } from './gameQueries'
 
 const createBody = (
-  overrides: Partial<AppRuntimeState['state']['bodies'][number]> = {},
+  overrides: Partial<
+    AppRuntimeState['simulation']['state']['bodies'][number]
+  > = {},
 ) => ({
   id: 'body',
   name: 'Body',
@@ -19,45 +21,51 @@ const createBody = (
 })
 
 const createRuntime = (
-  bodies: AppRuntimeState['state']['bodies'],
+  bodies: AppRuntimeState['simulation']['state']['bodies'],
   coastPredictionHorizonHours: number,
 ): AppRuntimeState => ({
-  assistMode: 'off',
-  assistTargetIndex: 0,
-  coastPredictionHorizonHours,
-  crashedBodyName: null,
-  debugModeEnabled: false,
-  debugNoGravityEnabled: false,
-  debugSnapshotStatus: '',
-  fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
+  simulation: {
+    assistMode: 'off',
+    assistTargetIndex: 0,
+    coastPredictionHorizonHours,
+    crashedBodyName: null,
+    state: {
+      elapsed: 0,
+      bodies,
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 0,
+        fuelUsed: 0,
+        dryMass: 1,
+        fuelMass: 0,
+        fuelCapacity: 0,
+      },
+    },
+    targetHeading: null,
+    timeWarpIndex: 0,
+    viewportSize: 100,
+  },
   scenario: {
     activeDescription: 'Test scenario description',
     activeTitle: 'Test scenario',
     directives: createDefaultScenarioDirectives(),
     session: createRuntimeScenarioSession('test'),
   },
-  spacecraftLabelIntroUntil: 0,
-  targetHeadingSelectionEpoch: 0,
-  uiEffectEpoch: 0,
-  state: {
-    elapsed: 0,
-    bodies,
-    controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
-    spacecraft: {
-      position: { x: 0, y: 0 },
-      velocity: { x: 0, y: 0 },
-      heading: 0,
-      fuel: 0,
-      fuelUsed: 0,
-      dryMass: 1,
-      fuelMass: 0,
-      fuelCapacity: 0,
-    },
+  ui: {
+    spacecraftLabelIntroUntil: 0,
+    targetHeadingSelectionEpoch: 0,
+    uiEffectEpoch: 0,
   },
-  targetHeading: null,
-  timeWarpIndex: 0,
-  viewportSize: 100,
+  debug: {
+    debugModeEnabled: false,
+    debugNoGravityEnabled: false,
+    debugSnapshotStatus: '',
+    fpsIndicatorEnabled: false,
+    performanceDebugEnabled: false,
+  },
 })
 
 const createPredictedTrajectoryEnd = (x: number, y: number) => ({ x, y })
@@ -111,7 +119,7 @@ describe('createGameQueries', () => {
       ],
       2,
     )
-    runtime.assistTargetIndex = 0
+    runtime.simulation.assistTargetIndex = 0
 
     const queries = createGameQueries({
       autoSelectNearestSurface: true,
@@ -120,11 +128,11 @@ describe('createGameQueries', () => {
       },
       autopilotRotationRate: 0.1,
       getPredictedTrajectoryEnd: () =>
-        runtime.state.spacecraft.position.x >= 140
+        runtime.simulation.state.spacecraft.position.x >= 140
           ? createPredictedTrajectoryEnd(320, 0)
           : createPredictedTrajectoryEnd(40, 0),
       getPredictedTrajectoryPoints: () =>
-        runtime.state.spacecraft.position.x >= 140
+        runtime.simulation.state.spacecraft.position.x >= 140
           ? createPredictedTrajectoryPoints([160, 0], [240, 60], [320, 0])
           : createPredictedTrajectoryPoints([0, 0], [20, 40], [40, 0]),
       maxPredictionLoopRevolutions: 2,
@@ -138,11 +146,11 @@ describe('createGameQueries', () => {
 
     expect(queries.getAssistTarget().id).toBe('earth')
 
-    runtime.state.spacecraft.position = { x: 120, y: 0 }
+    runtime.simulation.state.spacecraft.position = { x: 120, y: 0 }
 
     expect(queries.getAssistTarget().id).toBe('earth')
 
-    runtime.state.spacecraft.position = { x: 160, y: 0 }
+    runtime.simulation.state.spacecraft.position = { x: 160, y: 0 }
 
     expect(queries.getAssistTarget().id).toBe('moon')
   })
@@ -156,7 +164,7 @@ describe('createGameQueries', () => {
       ],
       2,
     )
-    runtime.assistTargetIndex = -1
+    runtime.simulation.assistTargetIndex = -1
 
     const queries = createGameQueries({
       autoSelectNearestSurface: false,
@@ -217,7 +225,7 @@ describe('createGameQueries', () => {
       ],
       2,
     )
-    runtime.assistTargetIndex = 0
+    runtime.simulation.assistTargetIndex = 0
     runtime.scenario.directives.forcedAssistTargetId = 'moon'
 
     const queries = createGameQueries({

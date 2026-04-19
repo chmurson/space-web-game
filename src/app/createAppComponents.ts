@@ -133,14 +133,14 @@ export const createAppComponents = (options: {
   const keyboardInput = createKeyboardInput()
   const rendererProfiler = createRendererProfiler(renderer)
   const gameScene = createGameScene(
-    options.runtimeState.state.bodies,
+    options.runtimeState.simulation.state.bodies,
     options.config.trajectory.rendering,
   )
   const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime()
   const ripples: Ripple[] = []
   const overlayUi = createOverlayUi({
     app: options.app,
-    bodies: options.runtimeState.state.bodies,
+    bodies: options.runtimeState.simulation.state.bodies,
     showCycleTargetHint: !options.config.assistTarget.autoSelectNearestSurface,
   })
   const queries = createGameQueries({
@@ -197,8 +197,8 @@ export const createAppComponents = (options: {
   const topMenu = createTopMenu({
     app: options.app,
     getCoastPredictionHorizonHours: () =>
-      options.runtimeState.coastPredictionHorizonHours,
-    getDebugModeEnabled: () => options.runtimeState.debugModeEnabled,
+      options.runtimeState.simulation.coastPredictionHorizonHours,
+    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
     getMaxCoastPredictionHorizonHours: () =>
       options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
       options.config.trajectory.maxCoastPredictionHorizonHours,
@@ -215,7 +215,7 @@ export const createAppComponents = (options: {
       const heading = pickHeadingFromScreenPoint(
         screenX,
         screenY,
-        options.runtimeState.state.spacecraft.position,
+        options.runtimeState.simulation.state.spacecraft.position,
       )
       if (heading === null) {
         return
@@ -239,7 +239,8 @@ export const createAppComponents = (options: {
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
     getInteractionsEnabled: () => coordinator.getAppMode() === 'game',
-    getSpacecraftPosition: () => options.runtimeState.state.spacecraft.position,
+    getSpacecraftPosition: () =>
+      options.runtimeState.simulation.state.spacecraft.position,
     onResize: runtimeActions.handleResize,
     onTargetHeadingSelected: (heading, screenPosition) => {
       runtimeActions.setTargetHeading(
@@ -304,7 +305,7 @@ export const createAppComponents = (options: {
       syncState: () => {
         const visible =
           coordinator.getAppMode() === 'game' &&
-          options.runtimeState.crashedBodyName !== null
+          options.runtimeState.simulation.crashedBodyName !== null
         crashMenu.setVisible(visible)
         crashMenu.syncState({
           hasCheckpoint:
@@ -352,7 +353,7 @@ export const createAppComponents = (options: {
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence:
       options.config.assistTarget.autoSelectNearestSurface,
-    getDebugModeEnabled: () => options.runtimeState.debugModeEnabled,
+    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
     getInteractionsEnabled: () => coordinator.getAppMode() === 'game',
     handleAction: dispatchRuntimeAction,
     keyboardInput,

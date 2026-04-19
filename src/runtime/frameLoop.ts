@@ -68,13 +68,13 @@ export const createFrameLoop = (options: {
     const hasBlockingPrompt = activePrompt?.mode === 'blocking'
 
     const isThrusting =
-      options.runtime.state.controls.main > 0 &&
-      options.runtime.state.spacecraft.fuel > 0
+      options.runtime.simulation.state.controls.main > 0 &&
+      options.runtime.simulation.state.spacecraft.fuel > 0
 
     if (!hasBlockingPrompt) {
       const simulationStep = stepSimulationFrame({
-        assistMode: options.runtime.assistMode,
-        crashedBodyName: options.runtime.crashedBodyName,
+        assistMode: options.runtime.simulation.assistMode,
+        crashedBodyName: options.runtime.simulation.crashedBodyName,
         getAssistTarget: options.queries.getAssistTarget,
         getAutopilotTurn: options.queries.getAutopilotTurn,
         getCaptureMetrics: options.queries.getCaptureMetrics,
@@ -85,9 +85,9 @@ export const createFrameLoop = (options: {
         physicsEngine: options.physicsEngine,
         realDt,
         shouldCaptureBurn: options.queries.shouldCaptureBurn,
-        state: options.runtime.state,
-        targetHeading: options.runtime.targetHeading,
-        timeWarpIndex: options.runtime.timeWarpIndex,
+        state: options.runtime.simulation.state,
+        targetHeading: options.runtime.simulation.targetHeading,
+        timeWarpIndex: options.runtime.simulation.timeWarpIndex,
         timeWarps: options.timeWarps,
       })
       applySimulationFrameResult(options.runtime, simulationStep)
@@ -104,17 +104,17 @@ export const createFrameLoop = (options: {
 
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
     options.bodyPresentation.updateVisuals({
-      bodies: options.runtime.state.bodies,
+      bodies: options.runtime.simulation.state.bodies,
       hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
-      spacecraftPosition: options.runtime.state.spacecraft.position,
-      viewportSize: options.runtime.viewportSize,
+      spacecraftPosition: options.runtime.simulation.state.spacecraft.position,
+      viewportSize: options.runtime.simulation.viewportSize,
     })
 
     options.spacecraftPresentation.updateVisuals({
       isThrusting,
-      spacecraft: options.runtime.state.spacecraft,
-      spacecraftLabelIntroUntil: options.runtime.spacecraftLabelIntroUntil,
-      viewportSize: options.runtime.viewportSize,
+      spacecraft: options.runtime.simulation.state.spacecraft,
+      spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+      viewportSize: options.runtime.simulation.viewportSize,
     })
 
     options.trajectoryPresentation.updateVisuals()
@@ -124,7 +124,7 @@ export const createFrameLoop = (options: {
     options.rendererProfiler.render(
       options.gameScene.scene,
       options.gameScene.camera,
-      options.runtime.performanceDebugEnabled,
+      options.runtime.debug.performanceDebugEnabled,
     )
 
     smoothedCpuMs = THREE.MathUtils.lerp(
@@ -144,18 +144,19 @@ export const createFrameLoop = (options: {
       )
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
-        bodies: options.runtime.state.bodies,
+        bodies: options.runtime.simulation.state.bodies,
         hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
-        spacecraftPosition: options.runtime.state.spacecraft.position,
-        viewportSize: options.runtime.viewportSize,
+        spacecraftPosition:
+          options.runtime.simulation.state.spacecraft.position,
+        viewportSize: options.runtime.simulation.viewportSize,
       })
       options.spacecraftPresentation.updateVisuals({
         isThrusting:
-          options.runtime.state.controls.main > 0 &&
-          options.runtime.state.spacecraft.fuel > 0,
-        spacecraft: options.runtime.state.spacecraft,
-        spacecraftLabelIntroUntil: options.runtime.spacecraftLabelIntroUntil,
-        viewportSize: options.runtime.viewportSize,
+          options.runtime.simulation.state.controls.main > 0 &&
+          options.runtime.simulation.state.spacecraft.fuel > 0,
+        spacecraft: options.runtime.simulation.state.spacecraft,
+        spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+        viewportSize: options.runtime.simulation.viewportSize,
       })
       options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
       options.crashMenu?.syncState()

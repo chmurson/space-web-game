@@ -266,27 +266,27 @@ export const createTrajectoryPresentation = (options: {
   const syncInertialPredictionVisual = () => {
     updateInertialPredictionVisual({
       enabled:
-        options.runtime.debugModeEnabled &&
-        options.runtime.debugNoGravityEnabled,
+        options.runtime.debug.debugModeEnabled &&
+        options.runtime.debug.debugNoGravityEnabled,
       gameScene: options.gameScene,
       predictionSeconds: Math.min(
         options.queries.getCoastPredictionHorizonSeconds() * 0.3,
         90 * 60,
       ),
-      spacecraftPosition: options.runtime.state.spacecraft.position,
-      spacecraftVelocity: options.runtime.state.spacecraft.velocity,
+      spacecraftPosition: options.runtime.simulation.state.spacecraft.position,
+      spacecraftVelocity: options.runtime.simulation.state.spacecraft.velocity,
     })
   }
 
   const refreshPrediction = () => {
     options.trajectoryPredictionRuntime.refresh({
-      assistMode: options.runtime.assistMode,
+      assistMode: options.runtime.simulation.assistMode,
       getAssistPredictionControls: options.queries.getAssistPredictionControls,
       getAssistTarget: options.queries.getAssistTarget,
       getCaptureMetrics: options.queries.getCaptureMetrics,
       physicsEngine: options.physicsEngine,
       predictionConfig: options.queries.getPredictionConfig(),
-      state: options.runtime.state,
+      state: options.runtime.simulation.state,
     })
     syncInertialPredictionVisual()
   }
@@ -297,14 +297,14 @@ export const createTrajectoryPresentation = (options: {
       const refreshed = options.trajectoryPredictionRuntime.maybeRefresh(
         realDt,
         {
-          assistMode: options.runtime.assistMode,
+          assistMode: options.runtime.simulation.assistMode,
           getAssistPredictionControls:
             options.queries.getAssistPredictionControls,
           getAssistTarget: options.queries.getAssistTarget,
           getCaptureMetrics: options.queries.getCaptureMetrics,
           physicsEngine: options.physicsEngine,
           predictionConfig: options.queries.getPredictionConfig(),
-          state: options.runtime.state,
+          state: options.runtime.simulation.state,
         },
       )
 
@@ -324,14 +324,16 @@ export const createTrajectoryPresentation = (options: {
       const predictionState = options.trajectoryPredictionRuntime.getState()
       const target = options.queries.getAssistTarget()
 
-      if (options.runtime.assistMode !== 'off') {
+      if (options.runtime.simulation.assistMode !== 'off') {
         options.gameScene.assistedPredictionMaterial.color.set(
-          options.runtime.assistMode === 'capture' ? 0xf59e0b : 0xfacc15,
+          options.runtime.simulation.assistMode === 'capture'
+            ? 0xf59e0b
+            : 0xfacc15,
         )
       }
 
       updateTargetRelativePredictionVisuals({
-        debugModeEnabled: options.runtime.debugModeEnabled,
+        debugModeEnabled: options.runtime.debug.debugModeEnabled,
         gameScene: options.gameScene,
         predictedImpact: predictionState.predictedImpact,
         target,
@@ -342,22 +344,23 @@ export const createTrajectoryPresentation = (options: {
         targetRelativePredictionPoints:
           predictionState.targetRelativePredictionPoints,
         viewportHeight: window.innerHeight,
-        viewportSize: options.runtime.viewportSize,
+        viewportSize: options.runtime.simulation.viewportSize,
       })
       updateCircularizationVisuals({
         circularizePlan:
-          options.runtime.assistMode === 'circularize' &&
-          !options.runtime.crashedBodyName
+          options.runtime.simulation.assistMode === 'circularize' &&
+          !options.runtime.simulation.crashedBodyName
             ? options.queries.getCircularizePlan(target)
             : null,
         gameScene: options.gameScene,
-        spacecraftPosition: options.runtime.state.spacecraft.position,
+        spacecraftPosition:
+          options.runtime.simulation.state.spacecraft.position,
         target:
-          options.runtime.assistMode === 'circularize' &&
-          !options.runtime.crashedBodyName
+          options.runtime.simulation.assistMode === 'circularize' &&
+          !options.runtime.simulation.crashedBodyName
             ? target
             : null,
-        viewportSize: options.runtime.viewportSize,
+        viewportSize: options.runtime.simulation.viewportSize,
       })
     },
   }

@@ -11,15 +11,49 @@ import {
 } from './tutorialOnboardingProgress'
 
 const createRuntime = (): AppRuntimeState => ({
-  assistMode: 'capture',
-  assistTargetIndex: 0,
-  coastPredictionHorizonHours: 2,
-  crashedBodyName: null,
-  debugModeEnabled: false,
-  debugNoGravityEnabled: false,
-  debugSnapshotStatus: '',
-  fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
+  simulation: {
+    assistMode: 'capture',
+    assistTargetIndex: 0,
+    coastPredictionHorizonHours: 2,
+    crashedBodyName: null,
+    state: {
+      elapsed: 0,
+      bodies: [
+        {
+          id: 'earth',
+          name: 'Earth',
+          mass: 5.9722e24,
+          radius: 6_371_000,
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          color: '#2f80ed',
+        },
+        {
+          id: 'moon',
+          name: 'Moon',
+          mass: 7.342e22,
+          radius: 1_737_400,
+          position: { x: 384_400_000, y: 0 },
+          velocity: { x: 0, y: 1022 },
+          color: '#9aa0a6',
+        },
+      ],
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+      spacecraft: {
+        position: { x: 6_371_000 + 500_000, y: 0 },
+        velocity: { x: 0, y: 7_500 },
+        heading: 0,
+        fuel: 1,
+        fuelUsed: 0,
+        dryMass: 10_000,
+        fuelMass: 8_000,
+        fuelCapacity: 32_000,
+      },
+    },
+    targetHeading: null,
+    timeWarpIndex: 0,
+    viewportSize: 104,
+  },
   scenario: {
     activeDescription: 'Tutorial description',
     activeTitle: 'Tutorial',
@@ -29,46 +63,18 @@ const createRuntime = (): AppRuntimeState => ({
       pendingPrompt: null,
     }),
   },
-  spacecraftLabelIntroUntil: 0,
-  targetHeadingSelectionEpoch: 0,
-  uiEffectEpoch: 0,
-  state: {
-    elapsed: 0,
-    bodies: [
-      {
-        id: 'earth',
-        name: 'Earth',
-        mass: 5.9722e24,
-        radius: 6_371_000,
-        position: { x: 0, y: 0 },
-        velocity: { x: 0, y: 0 },
-        color: '#2f80ed',
-      },
-      {
-        id: 'moon',
-        name: 'Moon',
-        mass: 7.342e22,
-        radius: 1_737_400,
-        position: { x: 384_400_000, y: 0 },
-        velocity: { x: 0, y: 1022 },
-        color: '#9aa0a6',
-      },
-    ],
-    controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
-    spacecraft: {
-      position: { x: 6_371_000 + 500_000, y: 0 },
-      velocity: { x: 0, y: 7_500 },
-      heading: 0,
-      fuel: 1,
-      fuelUsed: 0,
-      dryMass: 10_000,
-      fuelMass: 8_000,
-      fuelCapacity: 32_000,
-    },
+  ui: {
+    spacecraftLabelIntroUntil: 0,
+    targetHeadingSelectionEpoch: 0,
+    uiEffectEpoch: 0,
   },
-  targetHeading: null,
-  timeWarpIndex: 0,
-  viewportSize: 104,
+  debug: {
+    debugModeEnabled: false,
+    debugNoGravityEnabled: false,
+    debugSnapshotStatus: '',
+    fpsIndicatorEnabled: false,
+    performanceDebugEnabled: false,
+  },
 })
 
 describe('tutorialOnboardingProgress', () => {
@@ -95,7 +101,7 @@ describe('tutorialOnboardingProgress', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
-    runtime.state.controls.main = 1
+    runtime.simulation.state.controls.main = 1
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_050, 1)
 
     expect(onboarding.activeStepId).toBe('intro-keep-thrusting')
@@ -111,11 +117,11 @@ describe('tutorialOnboardingProgress', () => {
       completedStepIds: ['intro-thrust', 'intro-keep-thrusting'],
     }
 
-    runtime.state.spacecraft.heading = Math.PI / 4
+    runtime.simulation.state.spacecraft.heading = Math.PI / 4
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
     expect(onboarding.activeStepId).toBe('intro-turn')
 
-    runtime.state.spacecraft.heading = 0
+    runtime.simulation.state.spacecraft.heading = 0
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 1)
     expect(onboarding.activeStepId).toBe('intro-point-and-turn')
   })
@@ -124,11 +130,11 @@ describe('tutorialOnboardingProgress', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
-    runtime.state.controls.main = 1
+    runtime.simulation.state.controls.main = 1
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_300, 1)
-    runtime.state.controls.main = 0
+    runtime.simulation.state.controls.main = 0
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_450, 1)
-    runtime.state.controls.main = 1
+    runtime.simulation.state.controls.main = 1
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_750, 1)
 
     expect(onboarding.activeStepId).toBe('intro-thrust')
@@ -146,21 +152,21 @@ describe('tutorialOnboardingProgress', () => {
       activeStepId: 'intro-point-and-turn',
       completedStepIds: ['intro-thrust', 'intro-keep-thrusting', 'intro-turn'],
     }
-    runtime.targetHeadingSelectionEpoch = 1
-    runtime.targetHeading = Math.PI / 2
+    runtime.ui.targetHeadingSelectionEpoch = 1
+    runtime.simulation.targetHeading = Math.PI / 2
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
     expect(onboarding.activeStepId).toBe('intro-point-and-turn')
 
-    runtime.targetHeading = null
+    runtime.simulation.targetHeading = null
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_150, 1)
     expect(onboarding.activeStepId).toBe('intro-timewarp')
 
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 100)
     expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
-    expect(runtime.targetHeading).toBeCloseTo(0, 6)
+    expect(runtime.simulation.targetHeading).toBeCloseTo(0, 6)
 
-    runtime.state.spacecraft.heading = 0
-    runtime.state.controls.main = 1
+    runtime.simulation.state.spacecraft.heading = 0
+    runtime.simulation.state.controls.main = 1
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_250, 100)
 
     expect(onboarding.activeStepId).toBe('intro-trajectory')

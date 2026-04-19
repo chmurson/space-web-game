@@ -74,8 +74,8 @@ describe('createInitialAppRuntimeState', () => {
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.scenario.activeTitle).toBe('Menu background')
-    expect(runtime.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
-    expect(runtime.timeWarpIndex).toBe(3)
+    expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
+    expect(runtime.simulation.timeWarpIndex).toBe(3)
   })
 
   it('boots the requested scenario in game mode', () => {

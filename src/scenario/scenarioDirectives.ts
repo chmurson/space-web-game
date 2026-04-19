@@ -137,22 +137,22 @@ export const applyRuntimeScenarioDirectiveConstraints = (
   runtime: AppRuntimeState,
   limits: GlobalScenarioDirectiveLimits,
 ) => {
-  runtime.timeWarpIndex = getConstrainedTimeWarpIndex(
-    runtime.timeWarpIndex,
+  runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
+    runtime.simulation.timeWarpIndex,
     limits.timeWarps,
     runtime.scenario.directives.maxTimeWarp,
   )
-  runtime.viewportSize = Math.min(
+  runtime.simulation.viewportSize = Math.min(
     runtime.scenario.directives.maxViewportSize ?? limits.maxViewportSize,
     Math.max(
       runtime.scenario.directives.minViewportSize ?? limits.minViewportSize,
-      runtime.viewportSize,
+      runtime.simulation.viewportSize,
     ),
   )
-  runtime.coastPredictionHorizonHours = Math.min(
+  runtime.simulation.coastPredictionHorizonHours = Math.min(
     runtime.scenario.directives.maxCoastPredictionHorizonHours ??
       limits.maxCoastPredictionHorizonHours,
-    runtime.coastPredictionHorizonHours,
+    runtime.simulation.coastPredictionHorizonHours,
   )
 }
 

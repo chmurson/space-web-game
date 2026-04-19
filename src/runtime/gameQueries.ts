@@ -56,7 +56,7 @@ export const createGameQueries = (options: {
     const forcedTargetId =
       options.runtime.scenario.directives.forcedAssistTargetId
     if (forcedTargetId) {
-      const forcedTarget = options.runtime.state.bodies.find(
+      const forcedTarget = options.runtime.simulation.state.bodies.find(
         (body) => body.id === forcedTargetId,
       )
       if (forcedTarget) {
@@ -64,14 +64,17 @@ export const createGameQueries = (options: {
       }
     }
 
-    const decision = getAssistTargetDecisionForState(options.runtime.state, {
-      autoSelectNearestSurface: options.autoSelectNearestSurface,
-      autoSelectConfig: options.autoSelectConfig,
-      currentAutoTargetId,
-      predictedTrajectoryPoints: options.getPredictedTrajectoryPoints(),
-      predictedTrajectoryEnd: options.getPredictedTrajectoryEnd(),
-      selectedIndex: options.runtime.assistTargetIndex,
-    })
+    const decision = getAssistTargetDecisionForState(
+      options.runtime.simulation.state,
+      {
+        autoSelectNearestSurface: options.autoSelectNearestSurface,
+        autoSelectConfig: options.autoSelectConfig,
+        currentAutoTargetId,
+        predictedTrajectoryPoints: options.getPredictedTrajectoryPoints(),
+        predictedTrajectoryEnd: options.getPredictedTrajectoryEnd(),
+        selectedIndex: options.runtime.simulation.assistTargetIndex,
+      },
+    )
     const target = decision.target
     lastAssistTargetDebug = decision.debug
 
@@ -83,7 +86,7 @@ export const createGameQueries = (options: {
   }
 
   const getCaptureMetrics = (target: Body) =>
-    getCaptureMetricsForState(options.runtime.state, target)
+    getCaptureMetricsForState(options.runtime.simulation.state, target)
 
   return {
     getAssistTargetDebug: () => lastAssistTargetDebug,
@@ -91,24 +94,24 @@ export const createGameQueries = (options: {
       getAssistPredictionControlsForState(
         simulationState,
         targetId,
-        options.runtime.assistMode,
+        options.runtime.simulation.assistMode,
         options.autopilotRotationRate,
       ),
     getAssistTarget,
     getAutopilotTurn: (desiredHeading) =>
       getAutopilotTurnForHeading(
-        options.runtime.state.spacecraft.heading,
+        options.runtime.simulation.state.spacecraft.heading,
         desiredHeading,
         options.autopilotRotationRate,
       ),
     getCaptureMetrics,
     getCircularizePlan: (target) =>
-      getCircularizePlanForState(options.runtime.state, target),
+      getCircularizePlanForState(options.runtime.simulation.state, target),
     getCoastPredictionHorizonSeconds: () =>
-      options.runtime.coastPredictionHorizonHours * 60 * 60,
+      options.runtime.simulation.coastPredictionHorizonHours * 60 * 60,
     getPredictionConfig: () =>
       getTrajectoryPredictionConfig(
-        options.runtime.coastPredictionHorizonHours * 60 * 60,
+        options.runtime.simulation.coastPredictionHorizonHours * 60 * 60,
         options.predictionSampling,
         options.maxPredictionLoopRevolutions,
       ),

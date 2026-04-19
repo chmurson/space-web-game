@@ -25,15 +25,30 @@ const globalScenarioDirectiveLimits = {
 }
 
 const createRuntime = (): AppRuntimeState => ({
-  assistMode: 'off',
-  assistTargetIndex: 0,
-  coastPredictionHorizonHours: 24,
-  crashedBodyName: null,
-  debugModeEnabled: false,
-  debugNoGravityEnabled: false,
-  debugSnapshotStatus: '',
-  fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
+  simulation: {
+    assistMode: 'off',
+    assistTargetIndex: 0,
+    coastPredictionHorizonHours: 24,
+    crashedBodyName: null,
+    state: {
+      elapsed: 0,
+      bodies: [],
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 0,
+        fuelUsed: 0,
+        dryMass: 1,
+        fuelMass: 0,
+        fuelCapacity: 0,
+      },
+    },
+    targetHeading: null,
+    timeWarpIndex: 3,
+    viewportSize: 900,
+  },
   scenario: {
     activeDescription: 'Tutorial description',
     activeTitle: 'Tutorial',
@@ -43,27 +58,18 @@ const createRuntime = (): AppRuntimeState => ({
       hiddenBodyIds: ['moon'],
     }),
   },
-  spacecraftLabelIntroUntil: 0,
-  targetHeadingSelectionEpoch: 0,
-  uiEffectEpoch: 0,
-  state: {
-    elapsed: 0,
-    bodies: [],
-    controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
-    spacecraft: {
-      position: { x: 0, y: 0 },
-      velocity: { x: 0, y: 0 },
-      heading: 0,
-      fuel: 0,
-      fuelUsed: 0,
-      dryMass: 1,
-      fuelMass: 0,
-      fuelCapacity: 0,
-    },
+  ui: {
+    spacecraftLabelIntroUntil: 0,
+    targetHeadingSelectionEpoch: 0,
+    uiEffectEpoch: 0,
   },
-  targetHeading: null,
-  timeWarpIndex: 3,
-  viewportSize: 900,
+  debug: {
+    debugModeEnabled: false,
+    debugNoGravityEnabled: false,
+    debugSnapshotStatus: '',
+    fpsIndicatorEnabled: false,
+    performanceDebugEnabled: false,
+  },
 })
 
 describe('scenarioDirectives', () => {
@@ -124,9 +130,9 @@ describe('scenarioDirectives', () => {
       timeWarps: [1, 10, 100, 1000],
     })
 
-    expect(runtime.coastPredictionHorizonHours).toBe(12)
-    expect(runtime.timeWarpIndex).toBe(2)
-    expect(runtime.viewportSize).toBe(400)
+    expect(runtime.simulation.coastPredictionHorizonHours).toBe(12)
+    expect(runtime.simulation.timeWarpIndex).toBe(2)
+    expect(runtime.simulation.viewportSize).toBe(400)
   })
 
   it('keeps time warp index within the configured max warp cap', () => {
@@ -170,9 +176,9 @@ describe('scenarioDirectives', () => {
         progress: {
           accumulatedHeadingChangeRadians: 0,
           accumulatedMainThrustMs: 0,
-          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleHeading: runtime.simulation.state.spacecraft.heading,
           lastSampleAtMs: 1_000,
-          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartHeading: runtime.simulation.state.spacecraft.heading,
           stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },
@@ -247,17 +253,17 @@ describe('scenarioDirectives', () => {
         progress: {
           accumulatedHeadingChangeRadians: 0,
           accumulatedMainThrustMs: 1_100,
-          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleHeading: runtime.simulation.state.spacecraft.heading,
           lastSampleAtMs: performance.now() - 1_100,
-          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartHeading: runtime.simulation.state.spacecraft.heading,
           stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },
       },
     })
-    runtime.state.controls.main = 1
-    runtime.state.spacecraft.fuel = 1
-    runtime.timeWarpIndex = 0
+    runtime.simulation.state.controls.main = 1
+    runtime.simulation.state.spacecraft.fuel = 1
+    runtime.simulation.timeWarpIndex = 0
 
     updateRuntimeScenario(runtime, globalScenarioDirectiveLimits)
 

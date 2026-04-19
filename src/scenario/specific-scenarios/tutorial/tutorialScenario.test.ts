@@ -23,15 +23,49 @@ const globalScenarioDirectiveLimits = {
 }
 
 const createRuntime = (): AppRuntimeState => ({
-  assistMode: 'off',
-  assistTargetIndex: 0,
-  coastPredictionHorizonHours: 2,
-  crashedBodyName: null,
-  debugModeEnabled: false,
-  debugNoGravityEnabled: false,
-  debugSnapshotStatus: '',
-  fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
+  simulation: {
+    assistMode: 'off',
+    assistTargetIndex: 0,
+    coastPredictionHorizonHours: 2,
+    crashedBodyName: null,
+    state: {
+      elapsed: 0,
+      bodies: [
+        {
+          id: 'earth',
+          name: 'Earth',
+          mass: 5.9722e24,
+          radius: 6_371_000,
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          color: '#2f80ed',
+        },
+        {
+          id: 'moon',
+          name: 'Moon',
+          mass: 7.342e22,
+          radius: 1_737_400,
+          position: { x: 384_400_000, y: 0 },
+          velocity: { x: 0, y: 1022 },
+          color: '#9aa0a6',
+        },
+      ],
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+      spacecraft: {
+        position: { x: 6_371_000 * 5.2, y: 0 },
+        velocity: { x: 0, y: 500 },
+        heading: 0,
+        fuel: 1,
+        fuelUsed: 0,
+        dryMass: 10_000,
+        fuelMass: 8_000,
+        fuelCapacity: 32_000,
+      },
+    },
+    targetHeading: null,
+    timeWarpIndex: 0,
+    viewportSize: 104,
+  },
   scenario: {
     activeDescription: 'Tutorial description',
     activeTitle: 'Tutorial',
@@ -41,50 +75,24 @@ const createRuntime = (): AppRuntimeState => ({
       pendingPrompt: null,
     }),
   },
-  spacecraftLabelIntroUntil: 0,
-  targetHeadingSelectionEpoch: 0,
-  uiEffectEpoch: 0,
-  state: {
-    elapsed: 0,
-    bodies: [
-      {
-        id: 'earth',
-        name: 'Earth',
-        mass: 5.9722e24,
-        radius: 6_371_000,
-        position: { x: 0, y: 0 },
-        velocity: { x: 0, y: 0 },
-        color: '#2f80ed',
-      },
-      {
-        id: 'moon',
-        name: 'Moon',
-        mass: 7.342e22,
-        radius: 1_737_400,
-        position: { x: 384_400_000, y: 0 },
-        velocity: { x: 0, y: 1022 },
-        color: '#9aa0a6',
-      },
-    ],
-    controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
-    spacecraft: {
-      position: { x: 6_371_000 * 5.2, y: 0 },
-      velocity: { x: 0, y: 500 },
-      heading: 0,
-      fuel: 1,
-      fuelUsed: 0,
-      dryMass: 10_000,
-      fuelMass: 8_000,
-      fuelCapacity: 32_000,
-    },
+  ui: {
+    spacecraftLabelIntroUntil: 0,
+    targetHeadingSelectionEpoch: 0,
+    uiEffectEpoch: 0,
   },
-  targetHeading: null,
-  timeWarpIndex: 0,
-  viewportSize: 104,
+  debug: {
+    debugModeEnabled: false,
+    debugNoGravityEnabled: false,
+    debugSnapshotStatus: '',
+    fpsIndicatorEnabled: false,
+    performanceDebugEnabled: false,
+  },
 })
 
 const setMoonOrbitState = (runtime: AppRuntimeState, angle: number) => {
-  const moon = runtime.state.bodies.find((body) => body.id === 'moon')
+  const moon = runtime.simulation.state.bodies.find(
+    (body) => body.id === 'moon',
+  )
   if (!moon) {
     throw new Error('Expected moon body in runtime.')
   }
@@ -93,18 +101,20 @@ const setMoonOrbitState = (runtime: AppRuntimeState, angle: number) => {
   const orbitalSpeed = Math.sqrt((G * moon.mass) / orbitalRadius)
   const tangent = { x: -Math.sin(angle), y: Math.cos(angle) }
 
-  runtime.state.spacecraft.position = {
+  runtime.simulation.state.spacecraft.position = {
     x: moon.position.x + Math.cos(angle) * orbitalRadius,
     y: moon.position.y + Math.sin(angle) * orbitalRadius,
   }
-  runtime.state.spacecraft.velocity = {
+  runtime.simulation.state.spacecraft.velocity = {
     x: moon.velocity.x + tangent.x * orbitalSpeed,
     y: moon.velocity.y + tangent.y * orbitalSpeed,
   }
 }
 
 const setEarthOrbitState = (runtime: AppRuntimeState, angle: number) => {
-  const earth = runtime.state.bodies.find((body) => body.id === 'earth')
+  const earth = runtime.simulation.state.bodies.find(
+    (body) => body.id === 'earth',
+  )
   if (!earth) {
     throw new Error('Expected earth body in runtime.')
   }
@@ -113,11 +123,11 @@ const setEarthOrbitState = (runtime: AppRuntimeState, angle: number) => {
   const orbitalSpeed = Math.sqrt((G * earth.mass) / orbitalRadius)
   const tangent = { x: -Math.sin(angle), y: Math.cos(angle) }
 
-  runtime.state.spacecraft.position = {
+  runtime.simulation.state.spacecraft.position = {
     x: earth.position.x + Math.cos(angle) * orbitalRadius,
     y: earth.position.y + Math.sin(angle) * orbitalRadius,
   }
-  runtime.state.spacecraft.velocity = {
+  runtime.simulation.state.spacecraft.velocity = {
     x: earth.velocity.x + tangent.x * orbitalSpeed,
     y: earth.velocity.y + tangent.y * orbitalSpeed,
   }
@@ -219,15 +229,19 @@ describe('tutorialScenario', () => {
       orbitTurnsCompleted: 0,
     })
     expect(runtime.scenario.session.checkpoint).not.toBeNull()
-    expect(runtime.scenario.session.checkpoint?.world).not.toBe(runtime.state)
+    expect(runtime.scenario.session.checkpoint?.world).not.toBe(
+      runtime.simulation.state,
+    )
     expect(
       runtime.scenario.session.checkpoint?.world.spacecraft.position.x,
-    ).toBe(runtime.state.spacecraft.position.x)
+    ).toBe(runtime.simulation.state.spacecraft.position.x)
     expect(
-      runtime.state.bodies.find((body) => body.id === 'moon')?.position.x,
+      runtime.simulation.state.bodies.find((body) => body.id === 'moon')
+        ?.position.x,
     ).toBeCloseTo(0, 6)
     expect(
-      runtime.state.bodies.find((body) => body.id === 'moon')?.position.y,
+      runtime.simulation.state.bodies.find((body) => body.id === 'moon')
+        ?.position.y,
     ).toBeCloseTo(EARTH_MOON_DISTANCE, 6)
     expect(tutorialScenario.isState?.(runtime.scenario.session.state)).toBe(
       true,
@@ -352,9 +366,9 @@ describe('tutorialScenario', () => {
         progress: {
           accumulatedHeadingChangeRadians: 0,
           accumulatedMainThrustMs: 0,
-          lastSampleHeading: runtime.state.spacecraft.heading,
+          lastSampleHeading: runtime.simulation.state.spacecraft.heading,
           lastSampleAtMs: 1_000,
-          stepStartHeading: runtime.state.spacecraft.heading,
+          stepStartHeading: runtime.simulation.state.spacecraft.heading,
           stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },

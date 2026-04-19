@@ -1,14 +1,17 @@
 import { cloneSimulationState } from '../simulation/state'
-import type { AppRuntimeState } from './appRuntimeState'
+import type {
+  AppRuntimeSimulationSlice,
+  AppRuntimeState,
+} from './appRuntimeState'
 
 export type RuntimeCheckpointRestoreTransition = {
-  assistMode: AppRuntimeState['assistMode']
-  assistTargetIndex: AppRuntimeState['assistTargetIndex']
-  coastPredictionHorizonHours: AppRuntimeState['coastPredictionHorizonHours']
-  state: AppRuntimeState['state']
-  targetHeading: AppRuntimeState['targetHeading']
-  timeWarpIndex: AppRuntimeState['timeWarpIndex']
-  viewportSize: AppRuntimeState['viewportSize']
+  assistMode: AppRuntimeSimulationSlice['assistMode']
+  assistTargetIndex: AppRuntimeSimulationSlice['assistTargetIndex']
+  coastPredictionHorizonHours: AppRuntimeSimulationSlice['coastPredictionHorizonHours']
+  state: AppRuntimeSimulationSlice['state']
+  targetHeading: AppRuntimeSimulationSlice['targetHeading']
+  timeWarpIndex: AppRuntimeSimulationSlice['timeWarpIndex']
+  viewportSize: AppRuntimeSimulationSlice['viewportSize']
 }
 
 export const createRuntimeCheckpointRestoreTransition = (

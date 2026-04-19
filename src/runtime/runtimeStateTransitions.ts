@@ -12,21 +12,21 @@ export const clearTransientScenarioRuntimeState = (
   clearTrailPoints?: () => void,
 ) => {
   clearTrailPoints?.()
-  runtime.targetHeading = null
-  runtime.assistMode = 'off'
-  runtime.crashedBodyName = null
-  runtime.spacecraftLabelIntroUntil = performance.now() + 5_000
+  runtime.simulation.targetHeading = null
+  runtime.simulation.assistMode = 'off'
+  runtime.simulation.crashedBodyName = null
+  runtime.ui.spacecraftLabelIntroUntil = performance.now() + 5_000
 }
 
 export const applySimulationFrameResult = (
   runtime: AppRuntimeState,
   frameResult: StepSimulationFrameResult,
 ) => {
-  runtime.assistMode = frameResult.assistMode
-  runtime.crashedBodyName = frameResult.crashedBodyName
-  runtime.state = frameResult.state
-  runtime.targetHeading = frameResult.targetHeading
-  runtime.timeWarpIndex = frameResult.timeWarpIndex
+  runtime.simulation.assistMode = frameResult.assistMode
+  runtime.simulation.crashedBodyName = frameResult.crashedBodyName
+  runtime.simulation.state = frameResult.state
+  runtime.simulation.targetHeading = frameResult.targetHeading
+  runtime.simulation.timeWarpIndex = frameResult.timeWarpIndex
 }
 
 export const applyScenarioLoadTransition = (
@@ -39,12 +39,13 @@ export const applyScenarioLoadTransition = (
 ) => {
   runtime.scenario.activeTitle = transition.scenario.activeTitle
   runtime.scenario.activeDescription = transition.scenario.activeDescription
-  runtime.timeWarpIndex = 0
-  runtime.state = transition.state
-  runtime.viewportSize = transition.viewportSize
-  runtime.coastPredictionHorizonHours = transition.coastPredictionHorizonHours
+  runtime.simulation.timeWarpIndex = 0
+  runtime.simulation.state = transition.state
+  runtime.simulation.viewportSize = transition.viewportSize
+  runtime.simulation.coastPredictionHorizonHours =
+    transition.coastPredictionHorizonHours
   runtime.scenario.session = transition.scenario.session
-  runtime.uiEffectEpoch += 1
+  runtime.ui.uiEffectEpoch += 1
   options.clearTransientScenarioState()
   syncRuntimeScenarioDirectives(runtime, options.globalScenarioDirectiveLimits)
 }
@@ -61,13 +62,14 @@ export const applyCheckpointRestoreTransition = (
     return false
   }
 
-  runtime.assistMode = transition.assistMode
-  runtime.assistTargetIndex = transition.assistTargetIndex
-  runtime.coastPredictionHorizonHours = transition.coastPredictionHorizonHours
-  runtime.state = transition.state
-  runtime.targetHeading = transition.targetHeading
-  runtime.timeWarpIndex = transition.timeWarpIndex
-  runtime.viewportSize = transition.viewportSize
+  runtime.simulation.assistMode = transition.assistMode
+  runtime.simulation.assistTargetIndex = transition.assistTargetIndex
+  runtime.simulation.coastPredictionHorizonHours =
+    transition.coastPredictionHorizonHours
+  runtime.simulation.state = transition.state
+  runtime.simulation.targetHeading = transition.targetHeading
+  runtime.simulation.timeWarpIndex = transition.timeWarpIndex
+  runtime.simulation.viewportSize = transition.viewportSize
   options.clearTransientScenarioState()
   syncRuntimeScenarioDirectives(runtime, options.globalScenarioDirectiveLimits)
   return true

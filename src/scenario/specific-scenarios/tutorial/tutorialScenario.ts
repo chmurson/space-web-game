@@ -336,20 +336,24 @@ const getTutorialPromptContentForPrompt = (
 }
 
 const positionMoonForPhaseTwo = (runtime: AppRuntimeState) => {
-  const earth = runtime.state.bodies.find((body) => body.id === 'earth')
-  const moon = runtime.state.bodies.find((body) => body.id === 'moon')
+  const earth = runtime.simulation.state.bodies.find(
+    (body) => body.id === 'earth',
+  )
+  const moon = runtime.simulation.state.bodies.find(
+    (body) => body.id === 'moon',
+  )
   if (!earth || !moon) {
     return
   }
 
   const spacecraftRelativeVelocity = sub(
-    runtime.state.spacecraft.velocity,
+    runtime.simulation.state.spacecraft.velocity,
     earth.velocity,
   )
   const outboundReference =
     length(spacecraftRelativeVelocity) > 1
       ? spacecraftRelativeVelocity
-      : sub(runtime.state.spacecraft.position, earth.position)
+      : sub(runtime.simulation.state.spacecraft.position, earth.position)
   const outboundDirection = normalize(outboundReference)
   const moonDirection =
     length(outboundDirection) > 0 ? outboundDirection : vec(1, 0)
@@ -370,12 +374,12 @@ const createDefaultRuntimeScenarioSession = (
   runtime: AppRuntimeState,
 ): RuntimeScenarioCheckpoint => {
   return createRuntimeScenarioCheckpoint({
-    assistMode: runtime.assistMode,
-    assistTargetIndex: runtime.assistTargetIndex,
-    coastPredictionHorizonHours: runtime.coastPredictionHorizonHours,
-    targetHeading: runtime.targetHeading,
-    viewportSize: runtime.viewportSize,
-    world: runtime.state,
+    assistMode: runtime.simulation.assistMode,
+    assistTargetIndex: runtime.simulation.assistTargetIndex,
+    coastPredictionHorizonHours: runtime.simulation.coastPredictionHorizonHours,
+    targetHeading: runtime.simulation.targetHeading,
+    viewportSize: runtime.simulation.viewportSize,
+    world: runtime.simulation.state,
   })
 }
 
@@ -403,12 +407,17 @@ const isWithinOrbitPhaseThreshold = (
   runtime: AppRuntimeState,
   targetId: 'earth' | 'moon',
 ) => {
-  const target = runtime.state.bodies.find((body) => body.id === targetId)
+  const target = runtime.simulation.state.bodies.find(
+    (body) => body.id === targetId,
+  )
   if (!target) {
     return false
   }
 
-  const captureMetrics = getCaptureMetricsForState(runtime.state, target)
+  const captureMetrics = getCaptureMetricsForState(
+    runtime.simulation.state,
+    target,
+  )
   const radiusMultiplier =
     targetId === 'earth'
       ? earthOrbitPhaseThresholdRadiusMultiplier
@@ -421,15 +430,20 @@ const advanceOrbitPhase = (
   state: TutorialScenarioState,
   targetId: 'earth' | 'moon',
 ): ScenarioRuntimeTransition<TutorialScenarioState> | null => {
-  const target = runtime.state.bodies.find((body) => body.id === targetId)
+  const target = runtime.simulation.state.bodies.find(
+    (body) => body.id === targetId,
+  )
   if (!target) {
     return null
   }
 
-  const captureMetrics = getCaptureMetricsForState(runtime.state, target)
+  const captureMetrics = getCaptureMetricsForState(
+    runtime.simulation.state,
+    target,
+  )
   const orbitAngle = Math.atan2(
-    runtime.state.spacecraft.position.y - target.position.y,
-    runtime.state.spacecraft.position.x - target.position.x,
+    runtime.simulation.state.spacecraft.position.y - target.position.y,
+    runtime.simulation.state.spacecraft.position.x - target.position.x,
   )
   const previousOrbitAngle = state.previousOrbitAngle
 
@@ -477,7 +491,9 @@ const advanceTutorialScenario = (
         runtime,
         onboarding,
         performance.now(),
-        tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
+        tutorialTimeWarps[runtime.simulation.timeWarpIndex] ??
+          tutorialTimeWarps[0] ??
+          1,
       )
       nextState = {
         ...nextState,
@@ -488,13 +504,15 @@ const advanceTutorialScenario = (
       }
     }
 
-    const earth = runtime.state.bodies.find((body) => body.id === 'earth')
+    const earth = runtime.simulation.state.bodies.find(
+      (body) => body.id === 'earth',
+    )
     if (!earth) {
       return null
     }
 
     const distanceFromEarth = length(
-      sub(runtime.state.spacecraft.position, earth.position),
+      sub(runtime.simulation.state.spacecraft.position, earth.position),
     )
     if (distanceFromEarth < EARTH_RADIUS * 5) {
       return null
@@ -594,7 +612,9 @@ const acknowledgeTutorialPrompt = (
       runtime,
       activeOnboarding,
       performance.now(),
-      tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
+      tutorialTimeWarps[runtime.simulation.timeWarpIndex] ??
+        tutorialTimeWarps[0] ??
+        1,
     )
 
     if (!acknowledgedOnboarding) {
@@ -622,7 +642,9 @@ const acknowledgeTutorialPrompt = (
       ? createTutorialOnboardingState(
           runtime,
           performance.now(),
-          tutorialTimeWarps[runtime.timeWarpIndex] ?? tutorialTimeWarps[0] ?? 1,
+          tutorialTimeWarps[runtime.simulation.timeWarpIndex] ??
+            tutorialTimeWarps[0] ??
+            1,
         )
       : state.onboarding
   return {

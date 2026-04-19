@@ -18,29 +18,35 @@ export const createInitialAppRuntimeState = (
     config.runtimeScenarioOptions,
   )
   const runtimeState: AppRuntimeState = {
-    assistMode: 'off',
-    assistTargetIndex: 1,
-    coastPredictionHorizonHours:
-      initialScenarioTransition.coastPredictionHorizonHours,
-    crashedBodyName: null,
-    debugModeEnabled: config.userSettings.debugModeEnabled,
-    debugNoGravityEnabled: false,
-    debugSnapshotStatus: '',
-    fpsIndicatorEnabled: false,
-    performanceDebugEnabled: false,
+    simulation: {
+      assistMode: 'off',
+      assistTargetIndex: 1,
+      coastPredictionHorizonHours:
+        initialScenarioTransition.coastPredictionHorizonHours,
+      crashedBodyName: null,
+      state: initialScenarioTransition.state,
+      targetHeading: null,
+      timeWarpIndex: 0,
+      viewportSize: initialScenarioTransition.viewportSize,
+    },
     scenario: {
       activeDescription: initialScenarioTransition.scenario.activeDescription,
       activeTitle: initialScenarioTransition.scenario.activeTitle,
       directives: createDefaultScenarioDirectives(),
       session: initialScenarioTransition.scenario.session,
     },
-    spacecraftLabelIntroUntil: performance.now() + 5_000,
-    targetHeadingSelectionEpoch: 0,
-    uiEffectEpoch: 0,
-    state: initialScenarioTransition.state,
-    targetHeading: null,
-    timeWarpIndex: 0,
-    viewportSize: initialScenarioTransition.viewportSize,
+    ui: {
+      spacecraftLabelIntroUntil: performance.now() + 5_000,
+      targetHeadingSelectionEpoch: 0,
+      uiEffectEpoch: 0,
+    },
+    debug: {
+      debugModeEnabled: config.userSettings.debugModeEnabled,
+      debugNoGravityEnabled: false,
+      debugSnapshotStatus: '',
+      fpsIndicatorEnabled: false,
+      performanceDebugEnabled: false,
+    },
   }
 
   syncRuntimeScenarioDirectives(
@@ -49,9 +55,10 @@ export const createInitialAppRuntimeState = (
   )
 
   if (config.initialAppMode === 'menu') {
-    runtimeState.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
+    runtimeState.ui.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
     const menuTimeWarpIndex = config.controls.timeWarps.indexOf(500)
-    runtimeState.timeWarpIndex = menuTimeWarpIndex >= 0 ? menuTimeWarpIndex : 0
+    runtimeState.simulation.timeWarpIndex =
+      menuTimeWarpIndex >= 0 ? menuTimeWarpIndex : 0
   }
 
   return runtimeState

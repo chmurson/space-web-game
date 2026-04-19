@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { AppRuntimeState } from './appRuntimeState'
 import { stepSimulationFrame } from './simulationStep'
 
-const createRuntimeState = (): AppRuntimeState['state'] => ({
+const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
   elapsed: 0,
   bodies: [
     {
