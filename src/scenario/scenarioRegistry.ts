@@ -110,6 +110,26 @@ const runtimeScenarioDefinitions = {
   tutorial: registerTutorialScenario(),
 } satisfies Record<string, RuntimeScenarioDefinition>
 
+const getRuntimeScenarioPromptContent = (
+  runtime: AppRuntimeState,
+): ScenarioPromptContent | null => {
+  const definition = getRuntimeScenarioDefinition(
+    runtime.scenario.session.scenarioId,
+  )
+  if (!definition?.getPromptContent) {
+    return null
+  }
+
+  if (
+    definition.isState &&
+    !definition.isState(runtime.scenario.session.state)
+  ) {
+    return null
+  }
+
+  return definition.getPromptContent(runtime.scenario.session.state)
+}
+
 export const getRuntimeScenarioDefinition = (
   scenarioId: string,
 ): RuntimeScenarioDefinition | null =>
@@ -158,26 +178,6 @@ export const getRuntimeActivePrompt = (
   }
 
   return null
-}
-
-export const getRuntimeScenarioPromptContent = (
-  runtime: AppRuntimeState,
-): ScenarioPromptContent | null => {
-  const definition = getRuntimeScenarioDefinition(
-    runtime.scenario.session.scenarioId,
-  )
-  if (!definition?.getPromptContent) {
-    return null
-  }
-
-  if (
-    definition.isState &&
-    !definition.isState(runtime.scenario.session.state)
-  ) {
-    return null
-  }
-
-  return definition.getPromptContent(runtime.scenario.session.state)
 }
 
 export const acknowledgeRuntimeScenarioPrompt = (
