@@ -537,4 +537,4 @@ Then fix remaining compiler and test failures mechanically.
 
 ## Status
 
-Updated for the current codebase shape.
+Implemented.
