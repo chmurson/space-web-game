@@ -227,3 +227,6 @@ Verify:
 ## Plain-language summary
 
 The cleanup should move scenario advancement and directive syncing under one small helper so the frame loop stops orchestrating both pieces separately. The only extra care point is prompt actions: if a prompt changes scenario state, directive-derived UI state should be synced right there instead of relying on another per-frame repair pass.
+
+## Status
+Implemented
