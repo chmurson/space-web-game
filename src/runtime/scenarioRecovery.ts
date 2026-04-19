@@ -1,23 +1,31 @@
 import { cloneSimulationState } from '../simulation/state'
 import type { AppRuntimeState } from './appRuntimeState'
 
-export const restoreRuntimeFromScenarioCheckpoint = (
+export type RuntimeCheckpointRestoreTransition = {
+  assistMode: AppRuntimeState['assistMode']
+  assistTargetIndex: AppRuntimeState['assistTargetIndex']
+  coastPredictionHorizonHours: AppRuntimeState['coastPredictionHorizonHours']
+  state: AppRuntimeState['state']
+  targetHeading: AppRuntimeState['targetHeading']
+  timeWarpIndex: AppRuntimeState['timeWarpIndex']
+  viewportSize: AppRuntimeState['viewportSize']
+}
+
+export const createRuntimeCheckpointRestoreTransition = (
   runtime: AppRuntimeState,
-) => {
+): RuntimeCheckpointRestoreTransition | null => {
   const checkpoint = runtime.scenario.session.checkpoint
   if (!checkpoint) {
-    return false
+    return null
   }
 
-  runtime.assistMode = checkpoint.assistMode
-  runtime.assistTargetIndex = checkpoint.assistTargetIndex
-  runtime.coastPredictionHorizonHours = checkpoint.coastPredictionHorizonHours
-  runtime.state = cloneSimulationState(
-    checkpoint.world,
-    checkpoint.world.controls,
-  )
-  runtime.targetHeading = checkpoint.targetHeading
-  runtime.timeWarpIndex = 0
-  runtime.viewportSize = checkpoint.viewportSize
-  return true
+  return {
+    assistMode: checkpoint.assistMode,
+    assistTargetIndex: checkpoint.assistTargetIndex,
+    coastPredictionHorizonHours: checkpoint.coastPredictionHorizonHours,
+    state: cloneSimulationState(checkpoint.world, checkpoint.world.controls),
+    targetHeading: checkpoint.targetHeading,
+    timeWarpIndex: 0,
+    viewportSize: checkpoint.viewportSize,
+  }
 }

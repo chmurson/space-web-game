@@ -17,6 +17,7 @@ import type { PhysicsEngine } from '../simulation/types'
 import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import type { GameQueries } from './gameQueries'
+import { applySimulationFrameResult } from './runtimeStateTransitions'
 import type { RuntimeActions } from './runtimeActions'
 import { stepSimulationFrame } from './simulationStep'
 
@@ -89,11 +90,7 @@ export const createFrameLoop = (options: {
         timeWarpIndex: options.runtime.timeWarpIndex,
         timeWarps: options.timeWarps,
       })
-      options.runtime.assistMode = simulationStep.assistMode
-      options.runtime.crashedBodyName = simulationStep.crashedBodyName
-      options.runtime.state = simulationStep.state
-      options.runtime.targetHeading = simulationStep.targetHeading
-      options.runtime.timeWarpIndex = simulationStep.timeWarpIndex
+      applySimulationFrameResult(options.runtime, simulationStep)
     }
 
     updateRuntimeScenario(
