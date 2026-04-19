@@ -203,6 +203,10 @@ Do this as a compatibility refactor:
 
 Stop treating active scenario state as generic JSON during core runtime execution.
 
+Detailed handoff:
+
+- see `ideas/2026-04-19-runtime-state-phase-3-scenario-typing-handoff.md`
+
 ### Main rule
 
 Keep `ScenarioSessionValue` only where generic persistence or cloning truly needs it. Active scenario APIs should use typed scenario state.
