@@ -6,10 +6,21 @@ import {
 } from '../../../domain/viewportPresets'
 import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
 import { EARTH_MOON_DISTANCE, G } from '../../../simulation/constants'
-import { resolveRuntimeScenarioDirectives } from '../../scenarioDirectives'
+import {
+  applyScenarioRuntimeTransition,
+  resolveRuntimeScenarioDirectives,
+} from '../../scenarioDirectives'
 import { createDefaultScenarioDirectives } from '../../scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '../../scenarioSession'
 import { registerTutorialScenario } from './tutorialScenario'
+
+const globalScenarioDirectiveLimits = {
+  maxCoastPredictionHorizonHours: 48,
+  defaultViewportSize: 520,
+  maxViewportSize: 800,
+  minViewportSize: EARTH_VIEWPORT_SIZE,
+  timeWarps: [1, 10, 50, 100, 500, 2000],
+}
 
 const createRuntime = (): AppRuntimeState => ({
   assistMode: 'off',
@@ -184,7 +195,22 @@ describe('tutorialScenario', () => {
     const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
 
-    tutorialScenario.advance?.(runtime)
+    const transition = tutorialScenario.advance?.(runtime) ?? null
+
+    expect(transition).toMatchObject({
+      nextState: {
+        phase: 'reach-moon',
+        pendingPrompt: 'phase-two-intro',
+        orbitProgressRadians: 0,
+        orbitTurnsCompleted: 0,
+      },
+    })
+    expect(transition?.checkpoint).not.toBeNull()
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      transition,
+    )
 
     expect(runtime.scenario.session.state).toEqual({
       phase: 'reach-moon',
@@ -210,13 +236,10 @@ describe('tutorialScenario', () => {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      tutorialScenario.getDirectiveOverrides?.(runtime.scenario.session.state, {
-        maxCoastPredictionHorizonHours: 48,
-        defaultViewportSize: 520,
-        maxViewportSize: 800,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-        timeWarps: [1, 10, 50, 100, 500, 2000],
-      }),
+      tutorialScenario.getDirectiveOverrides?.(
+        runtime.scenario.session.state,
+        globalScenarioDirectiveLimits,
+      ),
     ).toEqual({
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
@@ -243,10 +266,18 @@ describe('tutorialScenario', () => {
         'The Moon is now your target. You can zoom out more and look farther ahead. Use that to line up an approach.',
       confirmLabel: 'Continue',
     })
-    expect(tutorialScenario.acknowledgePrompt?.(runtime)).toEqual({
+    const acknowledgeResult = tutorialScenario.acknowledgePrompt?.(runtime) ?? {
+      acknowledged: false,
+    }
+    expect(acknowledgeResult).toMatchObject({
       acknowledged: true,
       effect: undefined,
     })
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      acknowledgeResult.transition,
+    )
     expect(runtime.scenario.session.state).toEqual({
       phase: 'reach-moon',
       lastAcknowledgedPrompt: 'phase-two-intro',
@@ -264,10 +295,18 @@ describe('tutorialScenario', () => {
       pendingPrompt: 'phase-one-intro',
     })
 
-    expect(tutorialScenario.acknowledgePrompt?.(runtime)).toEqual({
+    const acknowledgeResult = tutorialScenario.acknowledgePrompt?.(runtime) ?? {
+      acknowledged: false,
+    }
+    expect(acknowledgeResult).toMatchObject({
       acknowledged: true,
       effect: undefined,
     })
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      acknowledgeResult.transition,
+    )
 
     expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
@@ -281,16 +320,15 @@ describe('tutorialScenario', () => {
       throw new Error('Expected tutorial scenario state.')
     }
     expect(
-      resolveRuntimeScenarioDirectives(runtime, {
-        maxCoastPredictionHorizonHours: 48,
-        defaultViewportSize: 520,
-        maxViewportSize: 800,
-        minViewportSize: EARTH_VIEWPORT_SIZE,
-        timeWarps: [1, 10, 50, 100, 500, 2000],
-      }).hiddenUIElements,
+      resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
+        .hiddenUIElements,
     ).toEqual(new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']))
 
-    tutorialScenario.advance?.(runtime)
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      tutorialScenario.advance?.(runtime) ?? null,
+    )
 
     expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
@@ -347,7 +385,11 @@ describe('tutorialScenario', () => {
 
     setMoonOrbitState(runtime, 0)
 
-    tutorialScenario.advance?.(runtime)
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      tutorialScenario.advance?.(runtime) ?? null,
+    )
 
     expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-moon',
@@ -375,10 +417,18 @@ describe('tutorialScenario', () => {
         'You are close to the Moon. Orbit around it three times to complete the lunar phase of the tutorial.',
       confirmLabel: 'Continue',
     })
-    expect(tutorialScenario.acknowledgePrompt?.(runtime)).toEqual({
+    const acknowledgeResult = tutorialScenario.acknowledgePrompt?.(runtime) ?? {
+      acknowledged: false,
+    }
+    expect(acknowledgeResult).toMatchObject({
       acknowledged: true,
       effect: undefined,
     })
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      acknowledgeResult.transition,
+    )
     expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-moon',
       lastAcknowledgedPrompt: 'orbit-moon-intro',
@@ -416,7 +466,11 @@ describe('tutorialScenario', () => {
 
     for (const angle of orbitAngles) {
       setMoonOrbitState(runtime, angle)
-      tutorialScenario.advance?.(runtime)
+      applyScenarioRuntimeTransition(
+        runtime,
+        globalScenarioDirectiveLimits,
+        tutorialScenario.advance?.(runtime) ?? null,
+      )
     }
 
     expect(runtime.scenario.session.state).toEqual({
@@ -461,7 +515,11 @@ describe('tutorialScenario', () => {
 
     setEarthOrbitState(runtime, 0)
 
-    tutorialScenario.advance?.(runtime)
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      tutorialScenario.advance?.(runtime) ?? null,
+    )
 
     expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-earth',
@@ -520,7 +578,11 @@ describe('tutorialScenario', () => {
 
     for (const angle of orbitAngles) {
       setEarthOrbitState(runtime, angle)
-      tutorialScenario.advance?.(runtime)
+      applyScenarioRuntimeTransition(
+        runtime,
+        globalScenarioDirectiveLimits,
+        tutorialScenario.advance?.(runtime) ?? null,
+      )
     }
 
     expect(runtime.scenario.session.completed).toBe(true)

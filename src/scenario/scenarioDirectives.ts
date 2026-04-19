@@ -5,6 +5,7 @@ import {
   type GlobalScenarioDirectiveLimits,
 } from './scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
+import type { ScenarioRuntimeTransition } from './scenarioRuntimeTransition'
 import type { ScenarioSessionValue } from './scenarioSession'
 
 type UpdateRuntimeScenarioOptions = {
@@ -163,16 +164,47 @@ export const syncRuntimeScenarioDirectives = (
   applyRuntimeScenarioDirectiveConstraints(runtime, limits)
 }
 
+export const applyScenarioRuntimeTransition = (
+  runtime: AppRuntimeState,
+  limits: GlobalScenarioDirectiveLimits,
+  transition: ScenarioRuntimeTransition | null | undefined,
+) => {
+  if (!transition) {
+    return false
+  }
+
+  runtime.scenario.session = {
+    ...runtime.scenario.session,
+    checkpoint:
+      transition.checkpoint === undefined
+        ? runtime.scenario.session.checkpoint
+        : transition.checkpoint,
+    completed:
+      transition.completed === undefined
+        ? runtime.scenario.session.completed
+        : transition.completed,
+    state:
+      transition.nextState === undefined
+        ? runtime.scenario.session.state
+        : transition.nextState,
+  }
+  syncRuntimeScenarioDirectives(runtime, limits)
+  return true
+}
+
 export const updateRuntimeScenario = (
   runtime: AppRuntimeState,
   limits: GlobalScenarioDirectiveLimits,
   options: UpdateRuntimeScenarioOptions = {},
 ) => {
-  if (options.shouldAdvance ?? true) {
-    getRuntimeScenarioDefinition(
-      runtime.scenario.session.scenarioId,
-    )?.advance?.(runtime)
-  }
+  const transition =
+    (options.shouldAdvance ?? true)
+      ? (getRuntimeScenarioDefinition(
+          runtime.scenario.session.scenarioId,
+        )?.advance?.(runtime) ?? null)
+      : null
 
-  syncRuntimeScenarioDirectives(runtime, limits)
+  if (!applyScenarioRuntimeTransition(runtime, limits, transition)) {
+    syncRuntimeScenarioDirectives(runtime, limits)
+  }
 }

@@ -9,6 +9,7 @@ import type {
   RuntimeScenarioDirectives,
   GlobalScenarioDirectiveLimits,
 } from './scenarioDirectiveTypes'
+import type { ScenarioRuntimeTransition } from './scenarioRuntimeTransition'
 import type { ScenarioSessionValue } from './scenarioSession'
 import { registerMenuBackgroundScenario } from './specific-scenarios/menuBackgroundScenario'
 import { registerTutorialScenario } from './specific-scenarios/tutorial/tutorialScenario'
@@ -36,6 +37,12 @@ export type PromptAcknowledgeResult = {
   effect?: PromptActionEffect
 }
 
+export type ScenarioPromptAcknowledgeResult<
+  TState extends ScenarioSessionValue = ScenarioSessionValue,
+> = PromptAcknowledgeResult & {
+  transition?: ScenarioRuntimeTransition<TState> | null
+}
+
 export type RuntimePromptContent = {
   anchor?: ScenarioPromptAnchor
   confirmButton?: ScenarioPromptButton
@@ -59,8 +66,10 @@ export type ScenarioPromptContent = {
 export type RuntimeScenarioDefinition<
   TState extends ScenarioSessionValue = ScenarioSessionValue,
 > = {
-  acknowledgePrompt?(runtime: AppRuntimeState): PromptAcknowledgeResult
-  advance?(runtime: AppRuntimeState): void
+  acknowledgePrompt?(
+    runtime: AppRuntimeState,
+  ): ScenarioPromptAcknowledgeResult<TState>
+  advance?(runtime: AppRuntimeState): ScenarioRuntimeTransition<TState> | null
   createScenario(): RuntimeScenario
   getActivePrompt?(
     runtime: AppRuntimeState,
@@ -76,7 +85,9 @@ export type RuntimeScenarioDefinition<
   getReplayPromptContent?(state: TState): ScenarioPromptContent | null
   id: string
   isState?(value: unknown): value is TState
-  reopenPrompt?(runtime: AppRuntimeState): boolean
+  reopenPrompt?(
+    runtime: AppRuntimeState,
+  ): ScenarioRuntimeTransition<TState> | null
   shouldAutoRestartOnCrash?(runtime: AppRuntimeState): boolean
 }
 
@@ -171,7 +182,7 @@ export const getRuntimeScenarioPromptContent = (
 
 export const acknowledgeRuntimeScenarioPrompt = (
   runtime: AppRuntimeState,
-): PromptAcknowledgeResult => {
+): ScenarioPromptAcknowledgeResult => {
   const definition = getRuntimeScenarioDefinition(
     runtime.scenario.session.scenarioId,
   )
@@ -202,7 +213,7 @@ export const reopenRuntimeScenarioPrompt = (runtime: AppRuntimeState) => {
   const definition = getRuntimeScenarioDefinition(
     runtime.scenario.session.scenarioId,
   )
-  return definition?.reopenPrompt?.(runtime) ?? false
+  return definition?.reopenPrompt?.(runtime) ?? null
 }
 
 export const shouldAutoRestartRuntimeScenarioOnCrash = (

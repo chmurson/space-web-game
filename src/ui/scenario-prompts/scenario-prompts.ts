@@ -265,18 +265,22 @@ export const createScenarioPromptUpdater = (
       // Position the arrow
       refs.arrowElement.style.display = ''
       const { x: arrowX, y: arrowY } = middlewareData.arrow || {}
+      const placementSide = finalPlacement.split('-')[0] as
+        | 'top'
+        | 'right'
+        | 'bottom'
+        | 'left'
       const staticSide = {
         top: 'bottom',
         right: 'left',
         bottom: 'top',
         left: 'right',
-      }[finalPlacement.split('-')[0]] as string
+      }[placementSide]
 
       refs.arrowElement.style.position = 'absolute'
       refs.arrowElement.style.left = arrowX !== undefined ? `${arrowX}px` : ''
       refs.arrowElement.style.top = arrowY !== undefined ? `${arrowY}px` : ''
-      // biome-ignore lint/suspicious/noExplicitAny: Assigning CSS property dynamically
-      ;(refs.arrowElement.style as any)[staticSide] = '-6px'
+      refs.arrowElement.style.setProperty(staticSide, '-6px')
       refs.arrowElement.dataset.side = staticSide
     } catch (error) {
       console.error('Failed to position prompt:', error)

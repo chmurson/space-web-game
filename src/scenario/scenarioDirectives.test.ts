@@ -6,6 +6,7 @@ import {
 } from '../domain/viewportPresets'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import {
+  applyScenarioRuntimeTransition,
   applyRuntimeScenarioDirectiveConstraints,
   getConstrainedTimeWarpIndex,
   resolveRuntimeScenarioDirectives,
@@ -184,6 +185,46 @@ describe('scenarioDirectives', () => {
 
     expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        gateActive: true,
+      },
+    })
+    expect(runtime.scenario.directives.hiddenUIElements).toEqual(
+      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+    )
+  })
+
+  it('applies returned transitions and syncs directives centrally', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      pendingPrompt: 'phase-one-intro',
+    })
+
+    const result =
+      getRuntimeScenarioDefinition('tutorial')?.acknowledgePrompt?.(runtime) ??
+      null
+
+    expect(result).toMatchObject({
+      acknowledged: true,
+      transition: {
+        nextState: {
+          phase: 'escape-earth',
+          pendingPrompt: null,
+        },
+      },
+    })
+
+    applyScenarioRuntimeTransition(
+      runtime,
+      globalScenarioDirectiveLimits,
+      result?.transition,
+    )
+
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'escape-earth',
+      pendingPrompt: null,
       onboarding: {
         activeStepId: 'intro-thrust',
         gateActive: true,
