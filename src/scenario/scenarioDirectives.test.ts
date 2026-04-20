@@ -50,9 +50,11 @@ const createRuntime = (): AppRuntimeState => ({
     viewportSize: 900,
   },
   scenario: {
-    activeDescription: 'Tutorial description',
-    activeTitle: 'Tutorial',
     directives: createDefaultScenarioDirectives(),
+    metadata: {
+      description: 'Tutorial description',
+      title: 'Tutorial',
+    },
     session: createRuntimeScenarioSession('tutorial', {
       forcedAssistTargetId: 'moon',
       hiddenBodyIds: ['moon'],

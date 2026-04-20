@@ -14,10 +14,14 @@ export type AppRuntimeSimulationSlice = {
   viewportSize: number
 }
 
+export type RuntimeScenarioMetadata = {
+  description: string
+  title: string
+}
+
 export type AppRuntimeScenarioSlice = {
-  activeDescription: string
-  activeTitle: string
   directives: RuntimeScenarioDirectives
+  metadata: RuntimeScenarioMetadata
   session: RuntimeScenarioSession
 }
 

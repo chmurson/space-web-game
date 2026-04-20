@@ -44,9 +44,11 @@ const createRuntime = (): AppRuntimeState => ({
     viewportSize: 600,
   },
   scenario: {
-    activeDescription: 'Tutorial description',
-    activeTitle: 'Tutorial',
     directives: createDefaultScenarioDirectives(),
+    metadata: {
+      description: 'Tutorial description',
+      title: 'Tutorial',
+    },
     session: createRuntimeScenarioSession('tutorial', {
       phase: 'reach-moon',
     }),

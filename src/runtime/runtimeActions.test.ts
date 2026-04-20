@@ -75,9 +75,11 @@ const createRuntime = (): AppRuntimeState => ({
     viewportSize: 600,
   },
   scenario: {
-    activeDescription: 'Tutorial description',
-    activeTitle: 'Tutorial',
     directives: createDefaultScenarioDirectives(),
+    metadata: {
+      description: 'Tutorial description',
+      title: 'Tutorial',
+    },
     session: createRuntimeScenarioSession('tutorial', {
       phase: 'reach-moon',
     }),
@@ -177,7 +179,7 @@ describe('createRuntimeActions', () => {
     runtimeActions.startFreeRoam()
 
     expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
-    expect(runtime.scenario.activeTitle).toBe('Earth-Moon sandbox')
+    expect(runtime.scenario.metadata.title).toBe('Earth-Moon sandbox')
 
     runtime.simulation.timeWarpIndex = 4
     runtimeActions.resetScenario()

@@ -160,12 +160,12 @@ export const createHudPresentation = (options: {
 
       if (options.overlayUi.hudTitle) {
         options.overlayUi.hudTitle.textContent =
-          scenarioHudContent?.title ?? options.runtime.scenario.activeTitle
+          scenarioHudContent?.title ?? options.runtime.scenario.metadata.title
       }
       if (options.overlayUi.hudDescription) {
         options.overlayUi.hudDescription.textContent =
           scenarioHudContent?.description ??
-          options.runtime.scenario.activeDescription
+          options.runtime.scenario.metadata.description
       }
 
       // Update scenario prompt UI

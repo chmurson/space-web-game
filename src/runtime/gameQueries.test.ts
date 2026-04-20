@@ -49,9 +49,11 @@ const createRuntime = (
     viewportSize: 100,
   },
   scenario: {
-    activeDescription: 'Test scenario description',
-    activeTitle: 'Test scenario',
     directives: createDefaultScenarioDirectives(),
+    metadata: {
+      description: 'Test scenario description',
+      title: 'Test scenario',
+    },
     session: createRuntimeScenarioSession('test'),
   },
   ui: {

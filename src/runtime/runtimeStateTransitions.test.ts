@@ -65,9 +65,11 @@ const createRuntime = (): AppRuntimeState => ({
     viewportSize: 600,
   },
   scenario: {
-    activeDescription: 'Tutorial description',
-    activeTitle: 'Tutorial',
     directives: createDefaultScenarioDirectives(),
+    metadata: {
+      description: 'Tutorial description',
+      title: 'Tutorial',
+    },
     session: createRuntimeScenarioSession('tutorial', {
       phase: 'reach-moon',
     }),
@@ -96,8 +98,10 @@ describe('runtimeStateTransitions', () => {
       {
         coastPredictionHorizonHours: 2,
         scenario: {
-          activeDescription: 'Menu background description',
-          activeTitle: 'Menu background',
+          metadata: {
+            description: 'Menu background description',
+            title: 'Menu background',
+          },
           session: createRuntimeScenarioSession('menu-background', {
             cameraFollowBodyId: 'earth',
             cameraFollowOffsetX: 4_000_000,
@@ -125,10 +129,10 @@ describe('runtimeStateTransitions', () => {
     )
 
     expect(clearTransientCalls).toBe(1)
-    expect(runtime.scenario.activeTitle).toBe('Menu background')
-    expect(runtime.scenario.activeDescription).toBe(
-      'Menu background description',
-    )
+    expect(runtime.scenario.metadata).toEqual({
+      description: 'Menu background description',
+      title: 'Menu background',
+    })
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.ui.uiEffectEpoch).toBe(1)
     expect(runtime.simulation.assistMode).toBe('off')

@@ -37,8 +37,7 @@ export const applyScenarioLoadTransition = (
     globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
   },
 ) => {
-  runtime.scenario.activeTitle = transition.scenario.activeTitle
-  runtime.scenario.activeDescription = transition.scenario.activeDescription
+  runtime.scenario.metadata = transition.scenario.metadata
   runtime.simulation.timeWarpIndex = 0
   runtime.simulation.state = transition.state
   runtime.simulation.viewportSize = transition.viewportSize

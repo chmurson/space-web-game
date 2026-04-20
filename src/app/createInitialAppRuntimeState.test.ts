@@ -73,7 +73,7 @@ describe('createInitialAppRuntimeState', () => {
     )
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
-    expect(runtime.scenario.activeTitle).toBe('Menu background')
+    expect(runtime.scenario.metadata.title).toBe('Menu background')
     expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
     expect(runtime.simulation.timeWarpIndex).toBe(3)
   })
@@ -87,6 +87,6 @@ describe('createInitialAppRuntimeState', () => {
     )
 
     expect(runtime.scenario.session.scenarioId).toBe('tutorial')
-    expect(runtime.scenario.activeTitle).toBe('Tutorial: Escape Earth')
+    expect(runtime.scenario.metadata.title).toBe('Tutorial: Escape Earth')
   })
 })

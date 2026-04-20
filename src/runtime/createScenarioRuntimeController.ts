@@ -9,6 +9,7 @@ import type {
   AppRuntimeScenarioSlice,
   AppRuntimeSimulationSlice,
   AppRuntimeState,
+  RuntimeScenarioMetadata,
 } from './appRuntimeState'
 import {
   applyCheckpointRestoreTransition,
@@ -18,10 +19,7 @@ import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 
 export type ScenarioRuntimeTransition = {
   coastPredictionHorizonHours: number
-  scenario: Pick<
-    AppRuntimeScenarioSlice,
-    'activeDescription' | 'activeTitle' | 'session'
-  >
+  scenario: Pick<AppRuntimeScenarioSlice, 'metadata' | 'session'>
   state: AppRuntimeSimulationSlice['state']
   viewportSize: number
 }
@@ -48,8 +46,10 @@ export const createScenarioRuntimeTransition = (
     coastPredictionHorizonHours:
       runtimeScenarioState.coastPredictionHorizonHours,
     scenario: {
-      activeDescription: scenario.description,
-      activeTitle: scenario.name,
+      metadata: {
+        description: scenario.description,
+        title: scenario.name,
+      } satisfies RuntimeScenarioMetadata,
       session: runtimeScenarioState.scenarioSession,
     },
     state: runtimeScenarioState.state,
@@ -124,8 +124,10 @@ export const createScenarioRuntimeController = (options: {
           coastPredictionHorizonHours:
             loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
           scenario: {
-            activeDescription: loadedDebugScenario.scenario.description,
-            activeTitle: loadedDebugScenario.scenario.name,
+            metadata: {
+              description: loadedDebugScenario.scenario.description,
+              title: loadedDebugScenario.scenario.name,
+            },
             session: loadedDebugScenario.runtimeState.scenarioSession,
           },
           state: loadedDebugScenario.runtimeState.state,

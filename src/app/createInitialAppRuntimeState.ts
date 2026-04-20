@@ -30,9 +30,8 @@ export const createInitialAppRuntimeState = (
       viewportSize: initialScenarioTransition.viewportSize,
     },
     scenario: {
-      activeDescription: initialScenarioTransition.scenario.activeDescription,
-      activeTitle: initialScenarioTransition.scenario.activeTitle,
       directives: createDefaultScenarioDirectives(),
+      metadata: initialScenarioTransition.scenario.metadata,
       session: initialScenarioTransition.scenario.session,
     },
     ui: {
