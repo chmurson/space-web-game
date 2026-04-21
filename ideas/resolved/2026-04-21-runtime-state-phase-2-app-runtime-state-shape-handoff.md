@@ -473,3 +473,9 @@ Phase 2 is done when:
 ## Plain-language summary
 
 This phase is mainly a labeling and organization pass for runtime state. The point is to make it obvious which values belong to simulation, scenario, UI, or debug behavior, while keeping the game working exactly the same as before.
+
+## Status
+
+Resolved on 2026-04-21.
+
+Moved to `ideas/resolved/` because the runtime-state shape refactor landed and this note no longer tracks active work.

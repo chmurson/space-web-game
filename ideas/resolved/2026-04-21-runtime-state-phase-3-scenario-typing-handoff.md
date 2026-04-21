@@ -342,4 +342,6 @@ Run:
 
 ## Status
 
-Planned.
+Resolved on 2026-04-21.
+
+Moved to `ideas/resolved/` because the scenario typing follow-up landed and this handoff no longer represents active work.

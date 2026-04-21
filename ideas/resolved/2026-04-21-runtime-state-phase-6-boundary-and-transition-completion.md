@@ -155,4 +155,6 @@ npm run build
 
 ## Status
 
-Planned.
+Resolved on 2026-04-21.
+
+Moved to `ideas/resolved/` because the runtime-state completion pass landed and this note no longer tracks active follow-up work.

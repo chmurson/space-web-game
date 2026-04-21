@@ -434,4 +434,6 @@ The big cleanup is to stop letting many parts of the app change runtime state in
 
 ## Status
 
-Promising
+Resolved on 2026-04-21.
+
+Moved to `ideas/resolved/` because the runtime-state ownership refactor work landed and this handoff no longer represents active follow-up.
