@@ -7,6 +7,17 @@ import type { GameConfig } from '../config/types'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
 
+export type SpacecraftTrailPoint = {
+  elapsed: number
+  position: THREE.Vector3
+}
+
+export type ScreenSpaceDashPattern = {
+  dashPixels: number
+  gapPixels: number
+  material: LineMaterial | THREE.LineDashedMaterial
+}
+
 export type GameSceneRefs = {
   assistedPredictionGeometry: LineGeometry
   assistedPredictionLine: Line2
@@ -27,7 +38,6 @@ export type GameSceneRefs = {
   inertialPredictionGeometry: LineGeometry
   inertialPredictionLine: Line2
   inertialPredictionMaterial: LineMaterial
-  predictionDashPixels: number
   predictionEndMarker: THREE.Group
   predictionEndMarkerFill: THREE.Mesh<
     THREE.CircleGeometry,
@@ -35,16 +45,16 @@ export type GameSceneRefs = {
   >
   predictionEndMarkerMinScreenRadius: number
   predictionEndMarkerRadius: number
-  predictionGapPixels: number
   predictionGeometry: LineGeometry
   predictionLine: Line2
   predictionMaterial: LineMaterial
   replacePredictionLineGeometryOnUpdate: boolean
   scene: THREE.Scene
+  screenSpaceDashPatterns: ScreenSpaceDashPattern[]
   spacecraftMarker: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>
   spacecraftMesh: THREE.Group
   trail: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
-  trailPoints: THREE.Vector3[]
+  trailPoints: SpacecraftTrailPoint[]
 }
 
 export const createGameScene = (
@@ -97,7 +107,7 @@ export const createGameScene = (
   const engineGlow = new THREE.Mesh(
     new THREE.ConeGeometry(0.06, 0.16, 12),
     new THREE.MeshBasicMaterial({
-      color: '#f59e0b',
+      color: '#38bdf8',
       transparent: true,
       opacity: 0,
     }),
@@ -118,43 +128,49 @@ export const createGameScene = (
   spacecraftMarker.rotation.x = Math.PI / 2
   scene.add(spacecraftMarker)
 
-  const trailPoints: THREE.Vector3[] = []
+  const trailPoints: SpacecraftTrailPoint[] = []
   const trailGeometry = new THREE.BufferGeometry()
   const trailMaterial = new THREE.LineBasicMaterial({
-    color: '#7dd3fc',
+    vertexColors: true,
     transparent: true,
-    opacity: 0.84,
+    opacity: 0.96,
   })
   const trail = new THREE.Line(trailGeometry, trailMaterial)
   scene.add(trail)
 
-  const predictionDashPixels = trajectoryRenderingConfig.dashPixels
-  const predictionGapPixels = trajectoryRenderingConfig.gapPixels
   const replacePredictionLineGeometryOnUpdate =
     trajectoryRenderingConfig.replaceLineGeometryOnUpdate
+  const screenSpaceDashPatterns: ScreenSpaceDashPattern[] = []
 
+  const predictionLineWidth = 0.8
   const predictionGeometry = new LineGeometry()
   const predictionMaterial = new LineMaterial({
-    color: 0x67e8f9,
-    linewidth: 1.5,
+    color: 0x7dd3fc,
+    linewidth: predictionLineWidth,
     transparent: true,
-    opacity: 0.69,
-    dashed: true,
-    dashSize: predictionDashPixels,
-    gapSize: predictionGapPixels,
+    opacity: 1,
+    vertexColors: true,
   })
+  predictionMaterial.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'gl_FragColor = vec4( diffuseColor.rgb, alpha );',
+      [
+        'float fadeBrightness = clamp( ( vColor.r + vColor.g + vColor.b ) / 3.0, 0.0, 1.0 );',
+        'float fadeAlphaMultiplier = mix( 0.55, 1.0, fadeBrightness );',
+        'gl_FragColor = vec4( diffuseColor.rgb, alpha * fadeAlphaMultiplier );',
+      ].join('\n'),
+    )
+  }
+  predictionMaterial.customProgramCacheKey = () =>
+    'prediction-line-alpha-fade-v1'
   const predictionLine = new Line2(predictionGeometry, predictionMaterial)
   scene.add(predictionLine)
 
   const impactGradientGeometry = new LineGeometry()
   const impactGradientMaterial = new LineMaterial({
     color: 0xffffff,
-    linewidth: 1.8,
-    transparent: true,
-    opacity: 0.95,
-    dashed: true,
-    dashSize: predictionDashPixels,
-    gapSize: predictionGapPixels,
+    linewidth: predictionLineWidth,
+    transparent: false,
     vertexColors: true,
   })
   const impactGradientLine = new Line2(
@@ -166,13 +182,9 @@ export const createGameScene = (
 
   const inertialPredictionGeometry = new LineGeometry()
   const inertialPredictionMaterial = new LineMaterial({
-    color: 0xdbeafe,
+    color: 0xb7c7d6,
     linewidth: 1,
-    transparent: true,
-    opacity: 0.46,
-    dashed: true,
-    dashSize: predictionDashPixels,
-    gapSize: predictionGapPixels,
+    transparent: false,
   })
   const inertialPredictionLine = new Line2(
     inertialPredictionGeometry,
@@ -182,13 +194,9 @@ export const createGameScene = (
 
   const assistedPredictionGeometry = new LineGeometry()
   const assistedPredictionMaterial = new LineMaterial({
-    color: 0xfacc15,
+    color: 0xd6bc62,
     linewidth: 1.2,
-    transparent: true,
-    opacity: 0.7,
-    dashed: true,
-    dashSize: predictionDashPixels,
-    gapSize: predictionGapPixels,
+    transparent: false,
   })
   const assistedPredictionLine = new Line2(
     assistedPredictionGeometry,
@@ -278,17 +286,16 @@ export const createGameScene = (
     inertialPredictionGeometry,
     inertialPredictionLine,
     inertialPredictionMaterial,
-    predictionDashPixels,
     predictionEndMarker,
     predictionEndMarkerFill,
     predictionEndMarkerMinScreenRadius,
     predictionEndMarkerRadius,
-    predictionGapPixels,
     predictionGeometry,
     predictionLine,
     predictionMaterial,
     replacePredictionLineGeometryOnUpdate,
     scene,
+    screenSpaceDashPatterns,
     spacecraftMarker,
     spacecraftMesh,
     trail,

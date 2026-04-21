@@ -111,6 +111,7 @@ export const createFrameLoop = (options: {
     })
 
     options.spacecraftPresentation.updateVisuals({
+      elapsed: options.runtime.simulation.state.elapsed,
       isThrusting,
       spacecraft: options.runtime.simulation.state.spacecraft,
       spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
@@ -151,6 +152,7 @@ export const createFrameLoop = (options: {
         viewportSize: options.runtime.simulation.viewportSize,
       })
       options.spacecraftPresentation.updateVisuals({
+        elapsed: options.runtime.simulation.state.elapsed,
         isThrusting:
           options.runtime.simulation.state.controls.main > 0 &&
           options.runtime.simulation.state.spacecraft.fuel > 0,

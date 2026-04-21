@@ -6,6 +6,7 @@ import {
   updateLine2Geometry,
 } from '../rendering/line2Geometry'
 import { renderPosition } from '../render/sceneUpdates'
+import { getCoastPredictionFadeColors } from './predictionLineFade'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { GameQueries } from '../runtime/gameQueries'
 import type { TrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
@@ -59,6 +60,7 @@ const applyTargetRelativePredictionLine = (
   lineKey: 'predictionLine' | 'assistedPredictionLine',
   lift: number,
   target: Body,
+  colors?: number[],
 ) => {
   const line = gameScene[lineKey]
 
@@ -78,6 +80,20 @@ const applyTargetRelativePredictionLine = (
     positions.push(renderedPoint.x, renderedPoint.y, renderedPoint.z)
   }
 
+  if (colors) {
+    gameScene[geometryKey] = updateColoredLine2Geometry(
+      line,
+      gameScene[geometryKey],
+      positions,
+      colors,
+      {
+        replaceGeometryOnUpdate:
+          gameScene.replacePredictionLineGeometryOnUpdate,
+      },
+    )
+    return
+  }
+
   gameScene[geometryKey] = updateLine2Geometry(
     line,
     gameScene[geometryKey],
@@ -89,6 +105,7 @@ const applyTargetRelativePredictionLine = (
 }
 
 const updateTargetRelativePredictionVisuals = (options: {
+  coastPredictionHorizonSeconds: number
   debugModeEnabled: boolean
   gameScene: GameSceneRefs
   predictedImpact: { bodyName: string; time: number } | null
@@ -106,6 +123,16 @@ const updateTargetRelativePredictionVisuals = (options: {
   const hasImpactGradient =
     Boolean(options.predictedImpact) &&
     options.targetRelativePredictionPoints.length >= 3
+  const predictionPositions: number[] = []
+
+  for (const point of options.targetRelativePredictionPoints) {
+    const renderedPoint = renderPosition(
+      options.target.position.x + point.x,
+      options.target.position.y + point.y,
+      0.18,
+    )
+    predictionPositions.push(renderedPoint.x, renderedPoint.y, renderedPoint.z)
+  }
 
   applyTargetRelativePredictionLine(
     options.gameScene,
@@ -114,6 +141,10 @@ const updateTargetRelativePredictionVisuals = (options: {
     'predictionLine',
     0.18,
     options.target,
+    getCoastPredictionFadeColors(
+      predictionPositions,
+      options.coastPredictionHorizonSeconds,
+    ),
   )
   applyTargetRelativePredictionLine(
     options.gameScene,
@@ -333,6 +364,8 @@ export const createTrajectoryPresentation = (options: {
       }
 
       updateTargetRelativePredictionVisuals({
+        coastPredictionHorizonSeconds:
+          options.queries.getCoastPredictionHorizonSeconds(),
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
         gameScene: options.gameScene,
         predictedImpact: predictionState.predictedImpact,

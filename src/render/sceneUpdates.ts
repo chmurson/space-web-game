@@ -1,11 +1,22 @@
 import * as THREE from 'three'
 
+import type {
+  GameSceneRefs,
+  ScreenSpaceDashPattern,
+} from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Vec2 } from '../simulation/vector'
-import type { GameSceneRefs } from '../scene/createGameScene'
 
 export const renderPosition = (x: number, y: number, lift = 0) =>
   new THREE.Vector3(x * RENDER_SCALE, lift, y * RENDER_SCALE)
+
+const updateScreenSpaceDashPattern = (
+  pattern: ScreenSpaceDashPattern,
+  renderUnitsPerPixel: number,
+) => {
+  pattern.material.dashSize = renderUnitsPerPixel * pattern.dashPixels
+  pattern.material.gapSize = renderUnitsPerPixel * pattern.gapPixels
+}
 
 export const updateCameraView = (options: {
   cameraDistance: number
@@ -67,20 +78,7 @@ export const updateCameraView = (options: {
     options.viewportHeight,
   )
   const renderUnitsPerPixel = options.viewportSize / options.viewportHeight
-  options.gameScene.predictionMaterial.dashSize =
-    renderUnitsPerPixel * options.gameScene.predictionDashPixels
-  options.gameScene.predictionMaterial.gapSize =
-    renderUnitsPerPixel * options.gameScene.predictionGapPixels
-  options.gameScene.impactGradientMaterial.dashSize =
-    renderUnitsPerPixel * options.gameScene.predictionDashPixels
-  options.gameScene.impactGradientMaterial.gapSize =
-    renderUnitsPerPixel * options.gameScene.predictionGapPixels
-  options.gameScene.inertialPredictionMaterial.dashSize =
-    renderUnitsPerPixel * options.gameScene.predictionDashPixels
-  options.gameScene.inertialPredictionMaterial.gapSize =
-    renderUnitsPerPixel * options.gameScene.predictionGapPixels
-  options.gameScene.assistedPredictionMaterial.dashSize =
-    renderUnitsPerPixel * options.gameScene.predictionDashPixels
-  options.gameScene.assistedPredictionMaterial.gapSize =
-    renderUnitsPerPixel * options.gameScene.predictionGapPixels
+  for (const pattern of options.gameScene.screenSpaceDashPatterns) {
+    updateScreenSpaceDashPattern(pattern, renderUnitsPerPixel)
+  }
 }
