@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   EARTH_MOON_VIEWPORT_SIZE,
@@ -6,10 +6,13 @@ import {
 } from '../domain/viewportPresets'
 import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '../scenario/scenarioSession'
+import * as scenarioDirectives from '../scenario/scenarioDirectives'
 import type { AppRuntimeState } from './appRuntimeState'
 import {
+  advanceRuntimeScenario,
   applyCheckpointRestoreTransition,
   applyScenarioLoadTransition,
+  shouldSyncDirectivesForScenarioTransition,
 } from './runtimeStateTransitions'
 
 const globalScenarioDirectiveLimits = {
@@ -89,7 +92,7 @@ const createRuntime = (): AppRuntimeState => ({
 })
 
 describe('runtimeStateTransitions', () => {
-  it('applies scenario loads through one runtime-owned path', () => {
+  it('syncs directives for full scenario load transitions', () => {
     const runtime = createRuntime()
     let clearTransientCalls = 0
 
@@ -141,7 +144,7 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.scenario.directives.hiddenBodyIds).toEqual(['moon'])
   })
 
-  it('applies checkpoint restores and re-syncs directives centrally', () => {
+  it('always syncs directives for checkpoint restores', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'escape-earth',
@@ -197,5 +200,88 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
       new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
     )
+  })
+
+  it('returns false for null or undefined scenario transitions', () => {
+    expect(shouldSyncDirectivesForScenarioTransition(null)).toBe(false)
+    expect(shouldSyncDirectivesForScenarioTransition(undefined)).toBe(false)
+  })
+
+  it('returns false for checkpoint-only transitions', () => {
+    expect(
+      shouldSyncDirectivesForScenarioTransition({ checkpoint: null }),
+    ).toBe(false)
+  })
+
+  it('returns false for completed-only transitions', () => {
+    expect(shouldSyncDirectivesForScenarioTransition({ completed: true })).toBe(
+      false,
+    )
+  })
+
+  it('returns false for runtimePatch-only transitions', () => {
+    expect(shouldSyncDirectivesForScenarioTransition({})).toBe(false)
+  })
+
+  it('returns true when the transition includes nextState', () => {
+    expect(
+      shouldSyncDirectivesForScenarioTransition({
+        nextState: { phase: 'escape-earth' },
+      }),
+    ).toBe(true)
+  })
+
+  it('does not sync directives when scenario advance produces no state transition', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('custom', {
+      hiddenBodyIds: ['moon'],
+    })
+    const syncSpy = vi.spyOn(
+      scenarioDirectives,
+      'syncRuntimeScenarioDirectives',
+    )
+
+    advanceRuntimeScenario(runtime, globalScenarioDirectiveLimits)
+
+    expect(syncSpy).not.toHaveBeenCalled()
+  })
+
+  it('syncs directives when scenario advance includes nextState', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      pendingPrompt: null,
+      onboarding: {
+        activeStepId: 'intro-thrust',
+        completedStepIds: [],
+        gateActive: true,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 1_100,
+          lastSampleHeading: runtime.simulation.state.spacecraft.heading,
+          lastSampleAtMs: performance.now() - 1_100,
+          stepStartHeading: runtime.simulation.state.spacecraft.heading,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 1,
+        },
+      },
+    })
+    runtime.simulation.state.controls.main = 1
+    runtime.simulation.state.spacecraft.fuel = 1
+    runtime.simulation.timeWarpIndex = 0
+    const syncSpy = vi.spyOn(
+      scenarioDirectives,
+      'syncRuntimeScenarioDirectives',
+    )
+
+    advanceRuntimeScenario(runtime, globalScenarioDirectiveLimits)
+
+    expect(syncSpy).toHaveBeenCalledOnce()
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'escape-earth',
+      onboarding: {
+        activeStepId: 'intro-keep-thrusting',
+      },
+    })
   })
 })

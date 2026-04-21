@@ -6,12 +6,10 @@ import {
 } from '../../../domain/viewportPresets'
 import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
 import { EARTH_MOON_DISTANCE, G } from '../../../simulation/constants'
-import {
-  applyScenarioRuntimeTransition,
-  resolveRuntimeScenarioDirectives,
-} from '../../scenarioDirectives'
+import { resolveRuntimeScenarioDirectives } from '../../scenarioDirectives'
 import { createDefaultScenarioDirectives } from '../../scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '../../scenarioSession'
+import { applyScenarioRuntimeTransition } from '../../../runtime/runtimeStateTransitions'
 import { registerTutorialScenario } from './tutorialScenario'
 
 const globalScenarioDirectiveLimits = {
@@ -218,11 +216,7 @@ describe('tutorialScenario', () => {
       },
     })
     expect(transition?.checkpoint).not.toBeNull()
-    applyScenarioRuntimeTransition(
-      runtime,
-      globalScenarioDirectiveLimits,
-      transition,
-    )
+    applyScenarioRuntimeTransition(runtime, transition)
 
     expect(runtime.scenario.session.state).toEqual({
       phase: 'reach-moon',
@@ -289,11 +283,7 @@ describe('tutorialScenario', () => {
       acknowledged: true,
       effect: undefined,
     })
-    applyScenarioRuntimeTransition(
-      runtime,
-      globalScenarioDirectiveLimits,
-      acknowledgeResult.transition,
-    )
+    applyScenarioRuntimeTransition(runtime, acknowledgeResult.transition)
     expect(runtime.scenario.session.state).toEqual({
       phase: 'reach-moon',
       lastAcknowledgedPrompt: 'phase-two-intro',
@@ -318,11 +308,7 @@ describe('tutorialScenario', () => {
       acknowledged: true,
       effect: undefined,
     })
-    applyScenarioRuntimeTransition(
-      runtime,
-      globalScenarioDirectiveLimits,
-      acknowledgeResult.transition,
-    )
+    applyScenarioRuntimeTransition(runtime, acknowledgeResult.transition)
 
     expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
@@ -342,7 +328,6 @@ describe('tutorialScenario', () => {
 
     applyScenarioRuntimeTransition(
       runtime,
-      globalScenarioDirectiveLimits,
       tutorialScenario.advance?.(runtime) ?? null,
     )
 
@@ -403,7 +388,6 @@ describe('tutorialScenario', () => {
 
     applyScenarioRuntimeTransition(
       runtime,
-      globalScenarioDirectiveLimits,
       tutorialScenario.advance?.(runtime) ?? null,
     )
 
@@ -440,11 +424,7 @@ describe('tutorialScenario', () => {
       acknowledged: true,
       effect: undefined,
     })
-    applyScenarioRuntimeTransition(
-      runtime,
-      globalScenarioDirectiveLimits,
-      acknowledgeResult.transition,
-    )
+    applyScenarioRuntimeTransition(runtime, acknowledgeResult.transition)
     expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-moon',
       lastAcknowledgedPrompt: 'orbit-moon-intro',
@@ -484,7 +464,6 @@ describe('tutorialScenario', () => {
       setMoonOrbitState(runtime, angle)
       applyScenarioRuntimeTransition(
         runtime,
-        globalScenarioDirectiveLimits,
         tutorialScenario.advance?.(runtime) ?? null,
       )
     }
@@ -533,7 +512,6 @@ describe('tutorialScenario', () => {
 
     applyScenarioRuntimeTransition(
       runtime,
-      globalScenarioDirectiveLimits,
       tutorialScenario.advance?.(runtime) ?? null,
     )
 
@@ -596,7 +574,6 @@ describe('tutorialScenario', () => {
       setEarthOrbitState(runtime, angle)
       applyScenarioRuntimeTransition(
         runtime,
-        globalScenarioDirectiveLimits,
         tutorialScenario.advance?.(runtime) ?? null,
       )
     }

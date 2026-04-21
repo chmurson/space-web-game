@@ -5,22 +5,19 @@ import {
   type RuntimeScenarioOptions,
   saveRuntimeDebugSnapshot,
 } from '../scenario/runtimeScenario'
-import {
-  applyScenarioRuntimeTransition,
-  getConstrainedTimeWarpIndex,
-} from '../scenario/scenarioDirectives'
+import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import {
-  acknowledgeRuntimeScenarioPrompt,
-  reopenRuntimeScenarioPrompt,
-} from '../scenario/scenarioRegistry'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { add } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
-import { clearTransientScenarioRuntimeState } from './runtimeStateTransitions'
+import {
+  acknowledgeRuntimeScenarioPrompt,
+  clearTransientScenarioRuntimeState,
+  reopenRuntimeScenarioPrompt,
+} from './runtimeStateTransitions'
 
 type RippleCreator = (
   parent: HTMLElement,
@@ -135,19 +132,15 @@ export const createRuntimeActions = (options: {
   }
 
   const acknowledgeScenarioPrompt = () => {
-    const result = acknowledgeRuntimeScenarioPrompt(options.runtime)
-    applyScenarioRuntimeTransition(
+    return acknowledgeRuntimeScenarioPrompt(
       options.runtime,
       options.globalScenarioDirectiveLimits,
-      result.transition,
     )
-    return { acknowledged: result.acknowledged, effect: result.effect }
   }
   const reopenScenarioPrompt = () => {
-    return applyScenarioRuntimeTransition(
+    return reopenRuntimeScenarioPrompt(
       options.runtime,
       options.globalScenarioDirectiveLimits,
-      reopenRuntimeScenarioPrompt(options.runtime),
     )
   }
 

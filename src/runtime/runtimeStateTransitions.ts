@@ -1,5 +1,11 @@
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import {
+  acknowledgeRuntimeScenarioPrompt as acknowledgeScenarioPromptTransition,
+  getRuntimeScenarioDefinition,
+  reopenRuntimeScenarioPrompt as reopenScenarioPromptTransition,
+} from '../scenario/scenarioRegistry'
+import type { ScenarioRuntimeTransition as ScenarioSessionTransition } from '../scenario/scenarioRuntimeTransition'
 import type { StepSimulationFrameResult } from './simulationStep'
 import type { AppRuntimeState } from './appRuntimeState'
 import type { ScenarioRuntimeTransition } from './createScenarioRuntimeController'
@@ -72,4 +78,76 @@ export const applyCheckpointRestoreTransition = (
   options.clearTransientScenarioState()
   syncRuntimeScenarioDirectives(runtime, options.globalScenarioDirectiveLimits)
   return true
+}
+
+export const shouldSyncDirectivesForScenarioTransition = (
+  transition: ScenarioSessionTransition | null | undefined,
+) => transition?.nextState !== undefined
+
+export const applyScenarioRuntimeTransition = (
+  runtime: AppRuntimeState,
+  transition: ScenarioSessionTransition | null | undefined,
+) => {
+  if (!transition) {
+    return false
+  }
+
+  runtime.scenario.session = {
+    ...runtime.scenario.session,
+    checkpoint:
+      transition.checkpoint === undefined
+        ? runtime.scenario.session.checkpoint
+        : transition.checkpoint,
+    completed:
+      transition.completed === undefined
+        ? runtime.scenario.session.completed
+        : transition.completed,
+    state:
+      transition.nextState === undefined
+        ? runtime.scenario.session.state
+        : transition.nextState,
+  }
+  return true
+}
+
+export const advanceRuntimeScenario = (
+  runtime: AppRuntimeState,
+  limits: GlobalScenarioDirectiveLimits,
+  options: { shouldAdvance?: boolean } = {},
+) => {
+  const transition =
+    (options.shouldAdvance ?? true)
+      ? (getRuntimeScenarioDefinition(
+          runtime.scenario.session.scenarioId,
+        )?.advance?.(runtime) ?? null)
+      : null
+
+  applyScenarioRuntimeTransition(runtime, transition)
+  if (shouldSyncDirectivesForScenarioTransition(transition)) {
+    syncRuntimeScenarioDirectives(runtime, limits)
+  }
+}
+
+export const acknowledgeRuntimeScenarioPrompt = (
+  runtime: AppRuntimeState,
+  limits: GlobalScenarioDirectiveLimits,
+) => {
+  const result = acknowledgeScenarioPromptTransition(runtime)
+  applyScenarioRuntimeTransition(runtime, result.transition)
+  if (shouldSyncDirectivesForScenarioTransition(result.transition)) {
+    syncRuntimeScenarioDirectives(runtime, limits)
+  }
+  return { acknowledged: result.acknowledged, effect: result.effect }
+}
+
+export const reopenRuntimeScenarioPrompt = (
+  runtime: AppRuntimeState,
+  limits: GlobalScenarioDirectiveLimits,
+) => {
+  const transition = reopenScenarioPromptTransition(runtime)
+  applyScenarioRuntimeTransition(runtime, transition)
+  if (shouldSyncDirectivesForScenarioTransition(transition)) {
+    syncRuntimeScenarioDirectives(runtime, limits)
+  }
+  return transition !== null && transition !== undefined
 }

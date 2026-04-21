@@ -9,15 +9,15 @@ import type { RendererProfiler } from '../render/rendererProfiler'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { getRuntimeActivePrompt } from '../scenario/scenarioRegistry'
-import {
-  syncRuntimeScenarioDirectives,
-  updateRuntimeScenario,
-} from '../scenario/scenarioDirectives'
+import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import type { PhysicsEngine } from '../simulation/types'
 import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import type { GameQueries } from './gameQueries'
-import { applySimulationFrameResult } from './runtimeStateTransitions'
+import {
+  advanceRuntimeScenario,
+  applySimulationFrameResult,
+} from './runtimeStateTransitions'
 import type { RuntimeActions } from './runtimeActions'
 import { stepSimulationFrame } from './simulationStep'
 
@@ -93,7 +93,7 @@ export const createFrameLoop = (options: {
       applySimulationFrameResult(options.runtime, simulationStep)
     }
 
-    updateRuntimeScenario(
+    advanceRuntimeScenario(
       options.runtime,
       options.globalScenarioDirectiveLimits,
       { shouldAdvance: !hasBlockingPrompt },
