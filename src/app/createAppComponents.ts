@@ -16,9 +16,12 @@ import { createGameQueries } from '../runtime/gameQueries'
 import { GameHighLevelActionsMediator } from '../runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { registerHighLevelActions } from '../runtime/highLevelActions/registerHighLevelActions'
 import { createRuntimeActions } from '../runtime/runtimeActions'
+import {
+  defaultMaxControlWarp,
+  getSimulationTimeWarpPreview,
+} from '../runtime/simulationStep'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import { createGameScene } from '../scene/createGameScene'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import { RENDER_SCALE } from '../simulation/constants'
 import { createCrashMenu, type CrashMenu } from '../ui/createCrashMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
@@ -213,18 +216,23 @@ export const createAppComponents = (options: {
       dispatchRuntimeAction(action)
     },
     getTimeWarpPreview: (action) => {
-      const direction = action === 'increaseTimeWarp' ? 1 : -1
-      const currentIndex = options.runtimeState.simulation.timeWarpIndex
-      const nextIndex = getConstrainedTimeWarpIndex(
-        currentIndex + direction,
-        options.config.controls.timeWarps,
-        options.runtimeState.scenario.directives.maxTimeWarp,
-      )
-
-      return {
-        canCommit: nextIndex !== currentIndex,
-        value: options.config.controls.timeWarps[nextIndex] ?? 1,
-      }
+      return getSimulationTimeWarpPreview({
+        action,
+        assistMode: options.runtimeState.simulation.assistMode,
+        crashedBodyName: options.runtimeState.simulation.crashedBodyName,
+        currentTimeWarpIndex: options.runtimeState.simulation.timeWarpIndex,
+        getAssistTarget: queries.getAssistTarget,
+        getAutopilotTurn: queries.getAutopilotTurn,
+        getCaptureMetrics: queries.getCaptureMetrics,
+        getCircularizePlan: queries.getCircularizePlan,
+        keyboardInput,
+        maxControlWarp: defaultMaxControlWarp,
+        maxTimeWarp: options.runtimeState.scenario.directives.maxTimeWarp,
+        shouldCaptureBurn: queries.shouldCaptureBurn,
+        state: options.runtimeState.simulation.state,
+        targetHeading: options.runtimeState.simulation.targetHeading,
+        timeWarps: options.config.controls.timeWarps,
+      })
     },
     keyboardInput,
     onTargetHeadingSelected: (screenX, screenY) => {

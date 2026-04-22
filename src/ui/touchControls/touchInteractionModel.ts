@@ -1,3 +1,6 @@
+import type { TimeWarpPreviewReason } from '../../runtime/simulationStep'
+export type { TimeWarpPreviewReason } from '../../runtime/simulationStep'
+
 export type TimeWarpAction = 'increaseTimeWarp' | 'decreaseTimeWarp'
 
 export type TouchOverlayPoint = {
@@ -8,6 +11,7 @@ export type TouchOverlayPoint = {
 export type TimeWarpPreviewState = {
   action: TimeWarpAction | null
   opacity: number
+  reason: TimeWarpPreviewReason | null
   visible: boolean
   value: number | null
 }
@@ -48,6 +52,7 @@ const createSnapshot = (
   timeWarp: {
     action: timeWarp.action,
     opacity: timeWarp.opacity,
+    reason: timeWarp.reason,
     value: timeWarp.value,
     visible: timeWarp.visible,
   },
@@ -73,6 +78,7 @@ export type TouchInteractionModel = {
     action: TimeWarpAction
     canCommit: boolean
     opacity: number
+    reason: TimeWarpPreviewReason | null
     value: number
   }): TouchInteractionSnapshot
 }
@@ -89,6 +95,7 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
   const timeWarp: TimeWarpPreviewState = {
     action: null,
     opacity: 0,
+    reason: null,
     value: null,
     visible: false,
   }
@@ -106,6 +113,7 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
     cancelTimeWarpPreview() {
       timeWarp.action = null
       timeWarp.opacity = 0
+      timeWarp.reason = null
       timeWarp.value = null
       timeWarp.visible = false
       return getSnapshot()
@@ -115,6 +123,7 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
       const shouldPulseHaptics = action !== null
       timeWarp.action = null
       timeWarp.opacity = 0
+      timeWarp.reason = null
       timeWarp.value = null
       timeWarp.visible = false
       return {
@@ -166,10 +175,11 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
       const shouldPulseHaptics = syncThrustEngaged(shouldLatch)
       return getSnapshot(shouldPulseHaptics)
     },
-    updateTimeWarpPreview({ action, canCommit, opacity, value }) {
-      if (opacity > 0 && canCommit) {
-        timeWarp.action = opacity >= 1 ? action : null
+    updateTimeWarpPreview({ action, canCommit, opacity, reason, value }) {
+      if (opacity > 0) {
+        timeWarp.action = canCommit && opacity >= 1 ? action : null
         timeWarp.opacity = opacity
+        timeWarp.reason = canCommit ? null : reason
         timeWarp.value = value
         timeWarp.visible = true
         return getSnapshot()
@@ -177,6 +187,7 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
 
       timeWarp.action = null
       timeWarp.opacity = 0
+      timeWarp.reason = null
       timeWarp.value = null
       timeWarp.visible = false
       return getSnapshot()

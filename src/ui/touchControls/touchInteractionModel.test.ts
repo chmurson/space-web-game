@@ -9,16 +9,50 @@ describe('touchInteractionModel', () => {
       action: 'increaseTimeWarp',
       canCommit: true,
       opacity: 0.6,
+      reason: null,
       value: 10,
     })
 
     expect(snapshot.timeWarp).toEqual({
       action: null,
       opacity: 0.6,
+      reason: null,
       value: 10,
       visible: true,
     })
     expect(snapshot.shouldPulseHaptics).toBe(false)
+  })
+
+  it('keeps the preview visible and marks it blocked when the next step is clamped', () => {
+    const model = createTouchInteractionModel()
+
+    const snapshot = model.updateTimeWarpPreview({
+      action: 'increaseTimeWarp',
+      canCommit: false,
+      opacity: 1,
+      reason: 'thrust-active',
+      value: 500,
+    })
+
+    expect(snapshot.timeWarp).toEqual({
+      action: null,
+      opacity: 1,
+      reason: 'thrust-active',
+      value: 500,
+      visible: true,
+    })
+
+    const result = model.commitTimeWarpPreview()
+
+    expect(result.action).toBeNull()
+    expect(result.snapshot.timeWarp).toEqual({
+      action: null,
+      opacity: 0,
+      reason: null,
+      value: null,
+      visible: false,
+    })
+    expect(result.snapshot.shouldPulseHaptics).toBe(false)
   })
 
   it('commits one time-warp step on release and returns the correct action', () => {
@@ -28,6 +62,7 @@ describe('touchInteractionModel', () => {
       action: 'decreaseTimeWarp',
       canCommit: true,
       opacity: 1,
+      reason: null,
       value: 1,
     })
 
@@ -37,6 +72,7 @@ describe('touchInteractionModel', () => {
     expect(result.snapshot.timeWarp).toEqual({
       action: null,
       opacity: 0,
+      reason: null,
       value: null,
       visible: false,
     })
@@ -50,12 +86,14 @@ describe('touchInteractionModel', () => {
       action: 'increaseTimeWarp',
       canCommit: true,
       opacity: 1,
+      reason: null,
       value: 100,
     })
 
     expect(model.cancelTimeWarpPreview().timeWarp).toEqual({
       action: null,
       opacity: 0,
+      reason: null,
       value: null,
       visible: false,
     })

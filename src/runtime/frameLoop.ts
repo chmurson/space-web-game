@@ -19,7 +19,7 @@ import {
   applySimulationFrameResult,
 } from './runtimeStateTransitions'
 import type { RuntimeActions } from './runtimeActions'
-import { stepSimulationFrame } from './simulationStep'
+import { defaultMaxControlWarp, stepSimulationFrame } from './simulationStep'
 
 export const createFrameLoop = (options: {
   gameScene: GameSceneRefs
@@ -80,8 +80,7 @@ export const createFrameLoop = (options: {
         getCaptureMetrics: options.queries.getCaptureMetrics,
         getCircularizePlan: options.queries.getCircularizePlan,
         keyboardInput: options.keyboardInput,
-        //todo: why it's hardocded to 100 ?
-        maxControlWarp: 100,
+        maxControlWarp: defaultMaxControlWarp,
         physicsEngine: options.physicsEngine,
         realDt,
         shouldCaptureBurn: options.queries.shouldCaptureBurn,

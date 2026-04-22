@@ -1,5 +1,6 @@
 import { shouldCircularizeBurn, type AssistMode } from '../assist/orbitalAssist'
 import type { KeyboardInput } from '../input/keyboardInput'
+import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import { idleControls } from '../simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '../simulation/types'
 import {
@@ -35,6 +36,15 @@ type ResolvedSimulationControls = {
   targetHeading: number | null
 }
 
+export type TimeWarpConstraintReason = 'scenario-limit' | 'active-controls'
+export type TimeWarpPreviewReason =
+  | 'control-limit'
+  | 'global-max'
+  | 'global-min'
+  | 'scenario-limit'
+  | 'thrust-active'
+  | 'turning'
+
 export type StepSimulationFrameOptions = SimulationStepQueries & {
   assistMode: AssistMode
   crashedBodyName: string | null
@@ -55,6 +65,8 @@ export type StepSimulationFrameResult = {
   targetHeading: number | null
   timeWarpIndex: number
 }
+
+export const defaultMaxControlWarp = 100
 
 const resolveSimulationControls = (
   options: ResolveSimulationControlsOptions,
@@ -142,6 +154,101 @@ const capTimeWarpForActiveControls = (
   return timeWarpIndex
 }
 
+export const resolveSimulationTimeWarp = (
+  options: ResolveSimulationControlsOptions & {
+    maxControlWarp: number
+    maxTimeWarp: number | null
+    timeWarpIndex: number
+    timeWarps: number[]
+  },
+): {
+  reason: TimeWarpConstraintReason | null
+  simulationControls: ResolvedSimulationControls
+  timeWarpIndex: number
+} => {
+  const simulationControls = resolveSimulationControls(options)
+  const scenarioConstrainedTimeWarpIndex = getConstrainedTimeWarpIndex(
+    options.timeWarpIndex,
+    options.timeWarps,
+    options.maxTimeWarp,
+  )
+  const controlConstrainedTimeWarpIndex = capTimeWarpForActiveControls(
+    simulationControls.controls,
+    scenarioConstrainedTimeWarpIndex,
+    options.timeWarps,
+    options.maxControlWarp,
+  )
+
+  return {
+    reason:
+      controlConstrainedTimeWarpIndex !== scenarioConstrainedTimeWarpIndex
+        ? 'active-controls'
+        : scenarioConstrainedTimeWarpIndex !== options.timeWarpIndex
+          ? 'scenario-limit'
+          : null,
+    simulationControls,
+    timeWarpIndex: controlConstrainedTimeWarpIndex,
+  }
+}
+
+export const getSimulationTimeWarpPreview = (
+  options: ResolveSimulationControlsOptions & {
+    action: 'increaseTimeWarp' | 'decreaseTimeWarp'
+    currentTimeWarpIndex: number
+    maxControlWarp: number
+    maxTimeWarp: number | null
+    timeWarps: number[]
+  },
+): {
+  canCommit: boolean
+  reason: TimeWarpPreviewReason | null
+  value: number
+} => {
+  const direction = options.action === 'increaseTimeWarp' ? 1 : -1
+  const requestedIndex = getConstrainedTimeWarpIndex(
+    options.currentTimeWarpIndex + direction,
+    options.timeWarps,
+    null,
+  )
+  const resolvedTimeWarp = resolveSimulationTimeWarp({
+    assistMode: options.assistMode,
+    crashedBodyName: options.crashedBodyName,
+    getAssistTarget: options.getAssistTarget,
+    getAutopilotTurn: options.getAutopilotTurn,
+    getCaptureMetrics: options.getCaptureMetrics,
+    getCircularizePlan: options.getCircularizePlan,
+    keyboardInput: options.keyboardInput,
+    maxControlWarp: options.maxControlWarp,
+    maxTimeWarp: options.maxTimeWarp,
+    shouldCaptureBurn: options.shouldCaptureBurn,
+    state: options.state,
+    targetHeading: options.targetHeading,
+    timeWarpIndex: requestedIndex,
+    timeWarps: options.timeWarps,
+  })
+  const activeControls = resolvedTimeWarp.simulationControls.controls
+  const reason =
+    requestedIndex === options.currentTimeWarpIndex
+      ? options.action === 'increaseTimeWarp'
+        ? 'global-max'
+        : 'global-min'
+      : resolvedTimeWarp.reason === 'active-controls'
+        ? activeControls.main !== 0
+          ? 'thrust-active'
+          : activeControls.turn !== 0 &&
+              activeControls.reverse === 0 &&
+              activeControls.strafe === 0
+            ? 'turning'
+            : 'control-limit'
+        : resolvedTimeWarp.reason
+
+  return {
+    canCommit: resolvedTimeWarp.timeWarpIndex !== options.currentTimeWarpIndex,
+    reason,
+    value: options.timeWarps[resolvedTimeWarp.timeWarpIndex] ?? 1,
+  }
+}
+
 const detectCollision = (state: SimulationState) =>
   state.bodies.find(
     (body) =>
@@ -188,7 +295,7 @@ export const stepSimulationFrame = (
   let state = options.state
   let crashedBodyName = options.crashedBodyName
 
-  const initialControls = resolveSimulationControls({
+  const resolvedTimeWarp = resolveSimulationTimeWarp({
     assistMode,
     crashedBodyName,
     getAssistTarget: options.getAssistTarget,
@@ -196,19 +303,18 @@ export const stepSimulationFrame = (
     getCaptureMetrics: options.getCaptureMetrics,
     getCircularizePlan: options.getCircularizePlan,
     keyboardInput: options.keyboardInput,
+    maxControlWarp: options.maxControlWarp,
+    maxTimeWarp: null,
     shouldCaptureBurn: options.shouldCaptureBurn,
     state,
     targetHeading,
+    timeWarpIndex: options.timeWarpIndex,
+    timeWarps: options.timeWarps,
   })
 
-  assistMode = initialControls.assistMode
-  targetHeading = initialControls.targetHeading
-  const timeWarpIndex = capTimeWarpForActiveControls(
-    initialControls.controls,
-    options.timeWarpIndex,
-    options.timeWarps,
-    options.maxControlWarp,
-  )
+  assistMode = resolvedTimeWarp.simulationControls.assistMode
+  targetHeading = resolvedTimeWarp.simulationControls.targetHeading
+  const timeWarpIndex = resolvedTimeWarp.timeWarpIndex
   const timeWarp = options.timeWarps[timeWarpIndex] ?? 1
   const physicsStep = 1
   let remaining = Math.min(options.realDt * timeWarp, 3600)
