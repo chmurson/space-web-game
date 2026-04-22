@@ -9,6 +9,7 @@ import './touchControls.css'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 import { createTouchInteractionModel } from './touchInteractionModel'
 import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
+import { presentTimeWarpFeedback } from './timeWarpFeedbackPresenter'
 import { createTimeWarpFeedbackView } from './timeWarpFeedbackView'
 
 export type TouchControls = {
@@ -340,7 +341,9 @@ export const createTouchControls = (options: {
   }
 
   const clearTimeWarpPreview = () => {
-    timeWarpFeedbackView.render(timeWarpFeedbackModel.cancelPreview())
+    timeWarpFeedbackView.render(
+      presentTimeWarpFeedback(timeWarpFeedbackModel.cancelPreview()),
+    )
   }
 
   const finishLeftZoneGesture = (commitPreview: boolean) => {
@@ -350,7 +353,7 @@ export const createTouchControls = (options: {
 
     if (commitPreview) {
       const result = timeWarpFeedbackModel.commitPreview()
-      timeWarpFeedbackView.render(result.snapshot)
+      timeWarpFeedbackView.render(presentTimeWarpFeedback(result.snapshot))
       if (result.action) {
         options.commitTimeWarp(result.action)
       }
@@ -733,12 +736,12 @@ export const createTouchControls = (options: {
               x: touch.clientX,
               y: touch.clientY - timeWarpFeedbackOffsetYPx,
             },
-            canCommit: preview.canCommit,
+            isCommitEligible: preview.canCommit && opacity >= 1,
             opacity,
             reason: preview.reason,
             value: preview.value,
           })
-          timeWarpFeedbackView.render(snapshot)
+          timeWarpFeedbackView.render(presentTimeWarpFeedback(snapshot))
           return
         }
         case 'right-zone-pending':
@@ -863,7 +866,9 @@ export const createTouchControls = (options: {
         }
       }
 
-      timeWarpFeedbackView.render(timeWarpFeedbackModel.getSnapshot())
+      timeWarpFeedbackView.render(
+        presentTimeWarpFeedback(timeWarpFeedbackModel.getSnapshot()),
+      )
     },
     { passive: false },
   )
@@ -875,7 +880,9 @@ export const createTouchControls = (options: {
   window.addEventListener('resize', () => {
     refreshThrustControlSize()
     syncThrustControlUi()
-    timeWarpFeedbackView.render(timeWarpFeedbackModel.getSnapshot())
+    timeWarpFeedbackView.render(
+      presentTimeWarpFeedback(timeWarpFeedbackModel.getSnapshot()),
+    )
   })
 
   return {

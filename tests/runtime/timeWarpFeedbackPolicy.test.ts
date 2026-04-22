@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
-import {
-  formatTimeWarpFeedbackLabel,
-  getTimeWarpFeedbackPreview,
-} from '@/runtime/timeWarpFeedbackPolicy'
+import { getTimeWarpFeedbackPreview } from '@/runtime/timeWarpFeedbackPolicy'
 
 const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
   elapsed: 0,
@@ -148,15 +145,5 @@ describe('timeWarpFeedbackPolicy', () => {
 
     expect(preview.reason).toBe('thrust-active')
     expect(preview.value).toBe(100)
-  })
-
-  it('formats labels from policy output', () => {
-    expect(
-      formatTimeWarpFeedbackLabel({
-        action: 'increaseTimeWarp',
-        reason: 'scenario-limit',
-        value: 100,
-      }),
-    ).toBe('>> x100 max')
   })
 })

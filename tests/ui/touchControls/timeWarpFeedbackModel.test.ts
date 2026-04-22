@@ -8,7 +8,7 @@ describe('timeWarpFeedbackModel', () => {
     const snapshot = model.updatePreview({
       action: 'increaseTimeWarp',
       anchor: { x: 120, y: 80 },
-      canCommit: false,
+      isCommitEligible: false,
       opacity: 1,
       reason: 'thrust-active',
       value: 100,
@@ -31,7 +31,7 @@ describe('timeWarpFeedbackModel', () => {
     model.updatePreview({
       action: 'decreaseTimeWarp',
       anchor: { x: 40, y: 24 },
-      canCommit: true,
+      isCommitEligible: true,
       opacity: 1,
       reason: null,
       value: 10,
@@ -57,7 +57,7 @@ describe('timeWarpFeedbackModel', () => {
     model.updatePreview({
       action: 'increaseTimeWarp',
       anchor: { x: 8, y: 16 },
-      canCommit: true,
+      isCommitEligible: true,
       opacity: 0.7,
       reason: null,
       value: 50,
@@ -80,7 +80,7 @@ describe('timeWarpFeedbackModel', () => {
     model.updatePreview({
       action: 'increaseTimeWarp',
       anchor: { x: 10, y: 20 },
-      canCommit: false,
+      isCommitEligible: false,
       opacity: 1,
       reason: 'scenario-limit',
       value: 100,
@@ -91,5 +91,21 @@ describe('timeWarpFeedbackModel', () => {
     expect(result.action).toBeNull()
     expect(result.snapshot.mode).toBe('hidden')
     expect(result.snapshot.anchor).toBeNull()
+  })
+
+  it('stores commit eligibility explicitly instead of deriving it from opacity', () => {
+    const model = createTimeWarpFeedbackModel()
+
+    const snapshot = model.updatePreview({
+      action: 'increaseTimeWarp',
+      anchor: { x: 64, y: 32 },
+      isCommitEligible: true,
+      opacity: 0.4,
+      reason: null,
+      value: 500,
+    })
+
+    expect(snapshot.canCommit).toBe(true)
+    expect(model.commitPreview().action).toBe('increaseTimeWarp')
   })
 })

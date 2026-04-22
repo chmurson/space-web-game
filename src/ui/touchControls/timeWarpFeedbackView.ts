@@ -1,11 +1,5 @@
-import {
-  formatTimeWarpFeedbackLabel,
-  type TimeWarpFeedbackReason,
-} from '../../runtime/timeWarpFeedbackPolicy'
-import type {
-  TimeWarpFeedbackSnapshot,
-  TouchOverlayPoint,
-} from './timeWarpFeedbackModel'
+import type { TouchOverlayPoint } from './timeWarpFeedbackModel'
+import type { TimeWarpFeedbackRenderState } from './timeWarpFeedbackPresenter'
 
 type OverlaySize = {
   halfHeight: number
@@ -14,7 +8,7 @@ type OverlaySize = {
 
 type TimeWarpFeedbackView = {
   clear(): void
-  render(snapshot: TimeWarpFeedbackSnapshot): void
+  render(renderState: TimeWarpFeedbackRenderState | null): void
 }
 
 const screenEdgePaddingPx = 12
@@ -36,12 +30,6 @@ const measureOverlaySize = (
     halfWidth: rect.width / 2,
   }
 }
-
-const getVariant = (action: TimeWarpFeedbackSnapshot['action']) =>
-  action === 'increaseTimeWarp' ? 'v2' : 'v4'
-
-const getState = (reason: TimeWarpFeedbackReason | null) =>
-  reason ? 'blocked' : 'available'
 
 export const createTimeWarpFeedbackView = (options: {
   committedFadeMs: number
@@ -100,13 +88,8 @@ export const createTimeWarpFeedbackView = (options: {
     resetConfirmationState()
   }
 
-  const render = (snapshot: TimeWarpFeedbackSnapshot) => {
-    if (
-      snapshot.mode === 'hidden' ||
-      snapshot.action === null ||
-      snapshot.anchor === null ||
-      snapshot.value === null
-    ) {
+  const render = (renderState: TimeWarpFeedbackRenderState | null) => {
+    if (renderState === null) {
       clear()
       return
     }
@@ -114,24 +97,21 @@ export const createTimeWarpFeedbackView = (options: {
     clearFadeTimer()
     resetConfirmationState()
 
-    options.element.textContent = formatTimeWarpFeedbackLabel({
-      action: snapshot.action,
-      reason: snapshot.reason,
-      value: snapshot.value,
-    })
+    options.element.textContent = renderState.label
     overlaySize = measureOverlaySize(options.element, overlaySize)
-    const clampedPoint = clampPoint(snapshot.anchor)
+    const clampedPoint = clampPoint(renderState.anchor)
     options.element.style.left = `${clampedPoint.x}px`
     options.element.style.top = `${clampedPoint.y}px`
-    options.element.dataset.warpFeedbackVariant = getVariant(snapshot.action)
-    options.element.dataset.timeWarpFeedbackState = getState(snapshot.reason)
+    options.element.dataset.warpFeedbackVariant =
+      renderState.variant === 'increase' ? 'v2' : 'v4'
+    options.element.dataset.timeWarpFeedbackState = renderState.tone
     options.element.classList.add('touch-time-warp-feedback-visible')
     options.element.classList.remove('touch-time-warp-feedback-fade')
 
-    if (snapshot.mode === 'preview') {
+    if (renderState.mode === 'preview') {
       options.element.style.setProperty(
         '--touch-time-warp-feedback-opacity',
-        `${snapshot.opacity}`,
+        `${renderState.opacity}`,
       )
       options.element.style.removeProperty(
         '--touch-time-warp-feedback-transition-duration',
@@ -158,6 +138,6 @@ export const createTimeWarpFeedbackView = (options: {
 
   return {
     clear,
-    render,
+    render: (snapshot) => render(snapshot ? snapshot : null),
   }
 }

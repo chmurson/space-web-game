@@ -24,12 +24,11 @@ export type TimeWarpFeedbackModel = {
     action: TimeWarpAction | null
     snapshot: TimeWarpFeedbackSnapshot
   }
-  dismiss(): TimeWarpFeedbackSnapshot
   getSnapshot(): TimeWarpFeedbackSnapshot
   updatePreview(params: {
     action: TimeWarpAction
     anchor: TouchOverlayPoint
-    canCommit: boolean
+    isCommitEligible: boolean
     opacity: number
     reason: TimeWarpFeedbackReason | null
     value: number
@@ -99,23 +98,27 @@ export const createTimeWarpFeedbackModel = (): TimeWarpFeedbackModel => {
         snapshot: hideSnapshot(snapshot),
       }
     },
-    dismiss() {
-      return hideSnapshot(snapshot)
-    },
     getSnapshot() {
       return createSnapshot(snapshot)
     },
-    updatePreview({ action, anchor, canCommit, opacity, reason, value }) {
+    updatePreview({
+      action,
+      anchor,
+      isCommitEligible,
+      opacity,
+      reason,
+      value,
+    }) {
       if (opacity <= 0) {
         return hideSnapshot(snapshot)
       }
 
       snapshot.action = action
       snapshot.anchor = { ...anchor }
-      snapshot.canCommit = canCommit && opacity >= 1
+      snapshot.canCommit = isCommitEligible
       snapshot.mode = 'preview'
       snapshot.opacity = opacity
-      snapshot.reason = canCommit ? null : reason
+      snapshot.reason = isCommitEligible ? null : reason
       snapshot.value = value
       return createSnapshot(snapshot)
     },

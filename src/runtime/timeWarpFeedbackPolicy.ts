@@ -120,27 +120,3 @@ export const getTimeWarpFeedbackPreview = (
     value: options.timeWarps[resolvedTimeWarp.timeWarpIndex] ?? 1,
   }
 }
-
-export const formatTimeWarpFeedbackLabel = (
-  preview: Pick<TimeWarpFeedbackPreview, 'action' | 'reason' | 'value'>,
-): string => {
-  const prefix = preview.action === 'increaseTimeWarp' ? '>>' : '<<'
-  const statusLabel =
-    preview.reason === 'thrust-active'
-      ? ' thrust'
-      : preview.reason === 'global-max'
-        ? ' max'
-        : preview.reason === 'global-min'
-          ? ' min'
-          : preview.reason === 'turning'
-            ? ' turn'
-            : preview.reason === 'control-limit'
-              ? ' control'
-              : preview.reason === 'scenario-limit'
-                ? preview.action === 'increaseTimeWarp'
-                  ? ' max'
-                  : ' min'
-                : ''
-
-  return `${prefix} x${preview.value}${statusLabel}`
-}
