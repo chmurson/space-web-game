@@ -23,8 +23,7 @@ const maxMobileTouchDimensionPx = 430
 const timeWarpFeedbackFadeMs = 220
 const thrustAppearHoldMs = 180
 const thrustControlSpawnOffsetPx = 54
-const thrustControlTravelPx = 24
-const thrustOffsetFix = 24
+const thrustControlTravelPx = 48
 const thrustSnapDistancePx = 30
 const thrustControlHitRadiusPx = 90
 const screenEdgePaddingPx = 12
@@ -214,7 +213,7 @@ export const createTouchControls = (options: {
     thrustControl.style.top = `${clampedAnchor.y}px`
     thrustControl.style.setProperty(
       '--thrust-thumb-offset',
-      `${thrustState.offset - thrustOffsetFix}px`,
+      `${thrustState.offset}px`,
     )
     if (thrustControlLabel) {
       thrustControlLabel.textContent = thrustState.engaged
@@ -363,7 +362,7 @@ export const createTouchControls = (options: {
       (rightZoneGesture.startLatched ? -thrustControlTravelPx : 0) +
         (touch.clientY - rightZoneGesture.startY),
       -thrustControlTravelPx,
-      thrustControlTravelPx,
+      0,
     )
     const shouldLatch = rightZoneGesture.startLatched
       ? touch.clientY - rightZoneGesture.startY < thrustSnapDistancePx
