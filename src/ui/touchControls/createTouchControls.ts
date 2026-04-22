@@ -291,13 +291,20 @@ export const createTouchControls = (options: {
     timeWarpFeedback.classList.remove('touch-time-warp-feedback-fade')
   }
 
-  const clearZoneGestures = () => {
+  const clearTimeWarpPreview = () => {
     leftZoneGesture = null
-    const pendingHoldTimer = rightZoneGesture?.holdTimer ?? null
-    if (pendingHoldTimer !== null) {
-      window.clearTimeout(pendingHoldTimer)
+    hideTimeWarpFeedbackLater()
+  }
+
+  const finishLeftZoneGesture = (commitPreview: boolean) => {
+    if (commitPreview && leftZoneGesture?.previewAction) {
+      options.commitTimeWarp(leftZoneGesture.previewAction)
+      vibrate()
     }
-    rightZoneGesture = null
+    clearTimeWarpPreview()
+  }
+
+  const restoreThrustUiFromLatchState = () => {
     thrustState.offset = thrustState.latched ? -thrustControlTravelPx : 0
     setThrustState(thrustState.latched)
     if (!thrustState.latched) {
@@ -305,8 +312,21 @@ export const createTouchControls = (options: {
     } else {
       syncThrustControlUi()
     }
+  }
+
+  const clearRightZoneGesture = () => {
+    const pendingHoldTimer = rightZoneGesture?.holdTimer ?? null
+    if (pendingHoldTimer !== null) {
+      window.clearTimeout(pendingHoldTimer)
+    }
+    rightZoneGesture = null
+    restoreThrustUiFromLatchState()
     hideThrustHoldIndicator()
-    hideTimeWarpFeedbackLater()
+  }
+
+  const clearZoneGestures = () => {
+    clearTimeWarpPreview()
+    clearRightZoneGesture()
   }
 
   const shouldStartPinch = (touches: TouchList) => {
@@ -691,27 +711,11 @@ export const createTouchControls = (options: {
         }
 
         if (leftZoneGesture?.touchId === touch.identifier) {
-          if (leftZoneGesture.previewAction) {
-            options.commitTimeWarp(leftZoneGesture.previewAction)
-            vibrate()
-          }
-          leftZoneGesture = null
-          hideTimeWarpFeedbackLater()
+          finishLeftZoneGesture(true)
         }
 
         if (rightZoneGesture?.touchId === touch.identifier) {
-          if (rightZoneGesture.holdTimer !== null) {
-            window.clearTimeout(rightZoneGesture.holdTimer)
-          }
-          rightZoneGesture = null
-          thrustState.offset = thrustState.latched ? -thrustControlTravelPx : 0
-          setThrustState(thrustState.latched)
-          if (!thrustState.latched) {
-            hideThrustControl()
-          } else {
-            syncThrustControlUi()
-          }
-          hideThrustHoldIndicator()
+          clearRightZoneGesture()
         }
 
         const tapState = tapTouches.get(touch.identifier)
@@ -779,22 +783,10 @@ export const createTouchControls = (options: {
       for (const touch of Array.from(event.changedTouches)) {
         tapTouches.delete(touch.identifier)
         if (leftZoneGesture?.touchId === touch.identifier) {
-          leftZoneGesture = null
-          hideTimeWarpFeedbackLater()
+          finishLeftZoneGesture(false)
         }
         if (rightZoneGesture?.touchId === touch.identifier) {
-          if (rightZoneGesture.holdTimer !== null) {
-            window.clearTimeout(rightZoneGesture.holdTimer)
-          }
-          rightZoneGesture = null
-          thrustState.offset = thrustState.latched ? -thrustControlTravelPx : 0
-          setThrustState(thrustState.latched)
-          if (!thrustState.latched) {
-            hideThrustControl()
-          } else {
-            syncThrustControlUi()
-          }
-          hideThrustHoldIndicator()
+          clearRightZoneGesture()
         }
       }
     },
