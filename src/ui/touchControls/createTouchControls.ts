@@ -1,12 +1,15 @@
 import type { AssistMode } from '../../assist/orbitalAssist'
 import type { KeyboardInput } from '../../input/keyboardInput'
+import type {
+  TimeWarpAction,
+  TimeWarpFeedbackReason,
+} from '../../runtime/timeWarpFeedbackPolicy'
 import type { ScenarioTouchHintTarget } from '../../scenario/scenarioRegistry'
 import './touchControls.css'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
-import {
-  createTouchInteractionModel,
-  type TimeWarpPreviewReason,
-} from './touchInteractionModel'
+import { createTouchInteractionModel } from './touchInteractionModel'
+import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
+import { createTimeWarpFeedbackView } from './timeWarpFeedbackView'
 
 export type TouchControls = {
   element: HTMLElement
@@ -49,13 +52,6 @@ type OverlaySize = {
   halfWidth: number
 }
 
-type TimeWarpFeedbackRenderState = {
-  action: 'increaseTimeWarp' | 'decreaseTimeWarp'
-  point: ScreenPoint
-  reason: TimeWarpPreviewReason | null
-  value: number
-}
-
 type ActiveGestureSession =
   | { kind: 'none' }
   | {
@@ -96,11 +92,6 @@ const clamp = (value: number, min: number, max: number) =>
 const getTouchDistance = (first: Touch, second: Touch) =>
   Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY)
 
-const getTouchCenter = (first: Touch, second: Touch): ScreenPoint => ({
-  x: (first.clientX + second.clientX) / 2,
-  y: (first.clientY + second.clientY) / 2,
-})
-
 const getTouchById = (touches: TouchList, touchId: number) =>
   Array.from(touches).find((touch) => touch.identifier === touchId) ?? null
 
@@ -132,10 +123,10 @@ const vibrate = () => {
 
 export const createTouchControls = (options: {
   app: HTMLElement
-  commitTimeWarp(action: 'increaseTimeWarp' | 'decreaseTimeWarp'): void
-  getTimeWarpPreview(action: 'increaseTimeWarp' | 'decreaseTimeWarp'): {
+  commitTimeWarp(action: TimeWarpAction): void
+  getTimeWarpPreview(action: TimeWarpAction): {
     canCommit: boolean
-    reason: TimeWarpPreviewReason | null
+    reason: TimeWarpFeedbackReason | null
     value: number
   }
   keyboardInput: KeyboardInput
@@ -176,18 +167,13 @@ export const createTouchControls = (options: {
   )
 
   const interactionModel = createTouchInteractionModel()
+  const timeWarpFeedbackModel = createTimeWarpFeedbackModel()
   const tapTouches = new Map<number, TapState>()
   let activeSession: ActiveGestureSession = { kind: 'none' }
   let lastTap: (ScreenPoint & { time: number }) | null = null
   let pinchSuppressTapUntil = 0
-  let timeWarpFadeTimer: number | null = null
   let thrustLabelHideTimer: number | null = null
   let isThrustLabelVisible = true
-  let lastTimeWarpFeedbackState: TimeWarpFeedbackRenderState | null = null
-  let timeWarpFeedbackSize: OverlaySize = {
-    halfHeight: 20,
-    halfWidth: 64,
-  }
   let thrustControlSize: OverlaySize = {
     halfHeight: 88,
     halfWidth: 42,
@@ -223,16 +209,18 @@ export const createTouchControls = (options: {
     ),
   })
 
-  const refreshTimeWarpFeedbackSize = () => {
-    timeWarpFeedbackSize = measureOverlaySize(
-      timeWarpFeedback,
-      timeWarpFeedbackSize,
-    )
-  }
-
   const refreshThrustControlSize = () => {
     thrustControlSize = measureOverlaySize(thrustControl, thrustControlSize)
   }
+
+  const timeWarpFeedbackView = createTimeWarpFeedbackView({
+    committedFadeMs: committedTimeWarpFeedbackFadeMs,
+    element: timeWarpFeedback,
+    getBounds: () => ({
+      height: getPanelHeight(),
+      width: getPanelWidth(),
+    }),
+  })
 
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
@@ -258,134 +246,6 @@ export const createTouchControls = (options: {
       thrustControl.classList.add('touch-thrust-control-label-hidden')
       thrustLabelHideTimer = null
     }, thrustLatchedLabelHideDelayMs)
-  }
-
-  const clearTimeWarpFeedbackTimer = () => {
-    if (timeWarpFadeTimer !== null) {
-      window.clearTimeout(timeWarpFadeTimer)
-      timeWarpFadeTimer = null
-    }
-  }
-
-  const resetTimeWarpFeedbackConfirmationState = () => {
-    timeWarpFeedback.classList.remove('touch-time-warp-feedback-confirm')
-    timeWarpFeedback.style.removeProperty('--warp-feedback-duration')
-  }
-
-  const hideTimeWarpFeedbackImmediately = () => {
-    clearTimeWarpFeedbackTimer()
-    timeWarpFeedback.classList.remove(
-      'touch-time-warp-feedback-visible',
-      'touch-time-warp-feedback-fade',
-    )
-    delete timeWarpFeedback.dataset.timeWarpFeedbackState
-    resetTimeWarpFeedbackConfirmationState()
-    timeWarpFeedback.style.removeProperty(
-      '--touch-time-warp-feedback-transition-duration',
-    )
-    lastTimeWarpFeedbackState = null
-  }
-
-  const fadeTimeWarpFeedbackOut = (durationMs: number) => {
-    clearTimeWarpFeedbackTimer()
-    timeWarpFeedback.classList.add('touch-time-warp-feedback-fade')
-    timeWarpFadeTimer = window.setTimeout(() => {
-      hideTimeWarpFeedbackImmediately()
-    }, durationMs)
-  }
-
-  const syncTimeWarpFeedbackUi = (params: {
-    action?: 'increaseTimeWarp' | 'decreaseTimeWarp'
-    opacity: number
-    point?: ScreenPoint
-    reason?: TimeWarpPreviewReason | null
-    visible: boolean
-    value: number | null
-  }) => {
-    if (
-      !params.visible ||
-      !params.point ||
-      params.value === null ||
-      !params.action
-    ) {
-      hideTimeWarpFeedbackImmediately()
-      return
-    }
-
-    clearTimeWarpFeedbackTimer()
-    resetTimeWarpFeedbackConfirmationState()
-
-    const statusLabel =
-      params.reason === 'thrust-active'
-        ? ' thrust'
-        : params.reason === 'global-max'
-          ? ' max'
-          : params.reason === 'global-min'
-            ? ' min'
-            : params.reason === 'turning'
-              ? ' turn'
-              : params.reason === 'control-limit'
-                ? ' control'
-                : params.reason === 'scenario-limit'
-                  ? params.action === 'increaseTimeWarp'
-                    ? ' max'
-                    : ' min'
-                  : ''
-    timeWarpFeedback.textContent = `${
-      params.action === 'increaseTimeWarp' ? '>>' : '<<'
-    } x${params.value}${statusLabel}`
-    refreshTimeWarpFeedbackSize()
-    const clampedPoint = clampOverlayPoint(params.point, timeWarpFeedbackSize)
-    lastTimeWarpFeedbackState = {
-      action: params.action,
-      point: clampedPoint,
-      reason: params.reason ?? null,
-      value: params.value,
-    }
-    timeWarpFeedback.style.left = `${clampedPoint.x}px`
-    timeWarpFeedback.style.top = `${clampedPoint.y}px`
-    timeWarpFeedback.style.setProperty(
-      '--touch-time-warp-feedback-opacity',
-      `${params.opacity}`,
-    )
-    timeWarpFeedback.style.removeProperty(
-      '--touch-time-warp-feedback-transition-duration',
-    )
-    timeWarpFeedback.dataset.warpFeedbackVariant =
-      params.action === 'increaseTimeWarp' ? 'v2' : 'v4'
-    timeWarpFeedback.dataset.timeWarpFeedbackState = params.reason
-      ? 'blocked'
-      : 'available'
-    timeWarpFeedback.classList.add('touch-time-warp-feedback-visible')
-    timeWarpFeedback.classList.remove('touch-time-warp-feedback-fade')
-  }
-
-  const fadeCommittedTimeWarpFeedback = () => {
-    if (lastTimeWarpFeedbackState === null) {
-      hideTimeWarpFeedbackImmediately()
-      return
-    }
-
-    timeWarpFeedback.style.left = `${lastTimeWarpFeedbackState.point.x}px`
-    timeWarpFeedback.style.top = `${lastTimeWarpFeedbackState.point.y}px`
-    timeWarpFeedback.style.setProperty(
-      '--touch-time-warp-feedback-opacity',
-      '1',
-    )
-    timeWarpFeedback.style.setProperty(
-      '--touch-time-warp-feedback-transition-duration',
-      `${committedTimeWarpFeedbackFadeMs}ms`,
-    )
-    timeWarpFeedback.dataset.warpFeedbackVariant =
-      lastTimeWarpFeedbackState.action === 'increaseTimeWarp' ? 'v2' : 'v4'
-    timeWarpFeedback.style.setProperty(
-      '--warp-feedback-duration',
-      `${committedTimeWarpFeedbackFadeMs}ms`,
-    )
-    timeWarpFeedback.classList.remove('touch-time-warp-feedback-confirm')
-    void timeWarpFeedback.getBoundingClientRect()
-    timeWarpFeedback.classList.add('touch-time-warp-feedback-confirm')
-    fadeTimeWarpFeedbackOut(committedTimeWarpFeedbackFadeMs)
   }
 
   const syncThrustControlUi = () => {
@@ -480,13 +340,7 @@ export const createTouchControls = (options: {
   }
 
   const clearTimeWarpPreview = () => {
-    const snapshot = interactionModel.cancelTimeWarpPreview()
-    syncTimeWarpFeedbackUi({
-      opacity: snapshot.timeWarp.opacity,
-      reason: snapshot.timeWarp.reason,
-      visible: snapshot.timeWarp.visible,
-      value: snapshot.timeWarp.value,
-    })
+    timeWarpFeedbackView.render(timeWarpFeedbackModel.cancelPreview())
   }
 
   const finishLeftZoneGesture = (commitPreview: boolean) => {
@@ -495,14 +349,11 @@ export const createTouchControls = (options: {
     }
 
     if (commitPreview) {
-      const result = interactionModel.commitTimeWarpPreview()
+      const result = timeWarpFeedbackModel.commitPreview()
+      timeWarpFeedbackView.render(result.snapshot)
       if (result.action) {
-        fadeCommittedTimeWarpFeedback()
         options.commitTimeWarp(result.action)
-      } else {
-        hideTimeWarpFeedbackImmediately()
       }
-      applyInteractionSnapshot(result.snapshot)
     } else {
       clearTimeWarpPreview()
     }
@@ -829,9 +680,6 @@ export const createTouchControls = (options: {
           }
 
           activeSession.lastDistance = distance
-          const center = getTouchCenter(first, second)
-          timeWarpFeedback.style.left = `${center.x}px`
-          timeWarpFeedback.style.top = `${center.y}px`
           return
         }
         case 'double-tap-zoom': {
@@ -879,25 +727,18 @@ export const createTouchControls = (options: {
           )
           const action = deltaX >= 0 ? 'increaseTimeWarp' : 'decreaseTimeWarp'
           const preview = options.getTimeWarpPreview(action)
-          const snapshot = interactionModel.updateTimeWarpPreview({
+          const snapshot = timeWarpFeedbackModel.updatePreview({
             action,
+            anchor: {
+              x: touch.clientX,
+              y: touch.clientY - timeWarpFeedbackOffsetYPx,
+            },
             canCommit: preview.canCommit,
             opacity,
             reason: preview.reason,
             value: preview.value,
           })
-
-          syncTimeWarpFeedbackUi({
-            action,
-            opacity: snapshot.timeWarp.opacity,
-            point: {
-              x: touch.clientX,
-              y: touch.clientY - timeWarpFeedbackOffsetYPx,
-            },
-            reason: snapshot.timeWarp.reason,
-            value: snapshot.timeWarp.value,
-            visible: snapshot.timeWarp.visible,
-          })
+          timeWarpFeedbackView.render(snapshot)
           return
         }
         case 'right-zone-pending':
@@ -1021,19 +862,20 @@ export const createTouchControls = (options: {
           clearActiveSession()
         }
       }
+
+      timeWarpFeedbackView.render(timeWarpFeedbackModel.getSnapshot())
     },
     { passive: false },
   )
 
   options.app.appendChild(panel)
-  refreshTimeWarpFeedbackSize()
   refreshThrustControlSize()
   syncThrustControlUi()
 
   window.addEventListener('resize', () => {
-    refreshTimeWarpFeedbackSize()
     refreshThrustControlSize()
     syncThrustControlUi()
+    timeWarpFeedbackView.render(timeWarpFeedbackModel.getSnapshot())
   })
 
   return {

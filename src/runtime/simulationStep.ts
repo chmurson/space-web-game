@@ -37,13 +37,6 @@ type ResolvedSimulationControls = {
 }
 
 export type TimeWarpConstraintReason = 'scenario-limit' | 'active-controls'
-export type TimeWarpPreviewReason =
-  | 'control-limit'
-  | 'global-max'
-  | 'global-min'
-  | 'scenario-limit'
-  | 'thrust-active'
-  | 'turning'
 
 export type StepSimulationFrameOptions = SimulationStepQueries & {
   assistMode: AssistMode
@@ -188,64 +181,6 @@ export const resolveSimulationTimeWarp = (
           : null,
     simulationControls,
     timeWarpIndex: controlConstrainedTimeWarpIndex,
-  }
-}
-
-export const getSimulationTimeWarpPreview = (
-  options: ResolveSimulationControlsOptions & {
-    action: 'increaseTimeWarp' | 'decreaseTimeWarp'
-    currentTimeWarpIndex: number
-    maxControlWarp: number
-    maxTimeWarp: number | null
-    timeWarps: number[]
-  },
-): {
-  canCommit: boolean
-  reason: TimeWarpPreviewReason | null
-  value: number
-} => {
-  const direction = options.action === 'increaseTimeWarp' ? 1 : -1
-  const requestedIndex = getConstrainedTimeWarpIndex(
-    options.currentTimeWarpIndex + direction,
-    options.timeWarps,
-    null,
-  )
-  const resolvedTimeWarp = resolveSimulationTimeWarp({
-    assistMode: options.assistMode,
-    crashedBodyName: options.crashedBodyName,
-    getAssistTarget: options.getAssistTarget,
-    getAutopilotTurn: options.getAutopilotTurn,
-    getCaptureMetrics: options.getCaptureMetrics,
-    getCircularizePlan: options.getCircularizePlan,
-    keyboardInput: options.keyboardInput,
-    maxControlWarp: options.maxControlWarp,
-    maxTimeWarp: options.maxTimeWarp,
-    shouldCaptureBurn: options.shouldCaptureBurn,
-    state: options.state,
-    targetHeading: options.targetHeading,
-    timeWarpIndex: requestedIndex,
-    timeWarps: options.timeWarps,
-  })
-  const activeControls = resolvedTimeWarp.simulationControls.controls
-  const reason =
-    requestedIndex === options.currentTimeWarpIndex
-      ? options.action === 'increaseTimeWarp'
-        ? 'global-max'
-        : 'global-min'
-      : resolvedTimeWarp.reason === 'active-controls'
-        ? activeControls.main !== 0
-          ? 'thrust-active'
-          : activeControls.turn !== 0 &&
-              activeControls.reverse === 0 &&
-              activeControls.strafe === 0
-            ? 'turning'
-            : 'control-limit'
-        : resolvedTimeWarp.reason
-
-  return {
-    canCommit: resolvedTimeWarp.timeWarpIndex !== options.currentTimeWarpIndex,
-    reason,
-    value: options.timeWarps[resolvedTimeWarp.timeWarpIndex] ?? 1,
   }
 }
 

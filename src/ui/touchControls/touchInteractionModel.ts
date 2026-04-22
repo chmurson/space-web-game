@@ -1,19 +1,6 @@
-import type { TimeWarpPreviewReason } from '../../runtime/simulationStep'
-export type { TimeWarpPreviewReason } from '../../runtime/simulationStep'
-
-export type TimeWarpAction = 'increaseTimeWarp' | 'decreaseTimeWarp'
-
 export type TouchOverlayPoint = {
   x: number
   y: number
-}
-
-export type TimeWarpPreviewState = {
-  action: TimeWarpAction | null
-  opacity: number
-  reason: TimeWarpPreviewReason | null
-  visible: boolean
-  value: number | null
 }
 
 export type ThrustVisualState = {
@@ -27,7 +14,6 @@ export type ThrustVisualState = {
 export type TouchInteractionSnapshot = {
   shouldPulseHaptics: boolean
   thrust: ThrustVisualState
-  timeWarp: TimeWarpPreviewState
 }
 
 const thrustControlTravelPx = 48
@@ -38,7 +24,6 @@ const clamp = (value: number, min: number, max: number) =>
 
 const createSnapshot = (
   thrust: ThrustVisualState,
-  timeWarp: TimeWarpPreviewState,
   shouldPulseHaptics = false,
 ): TouchInteractionSnapshot => ({
   shouldPulseHaptics,
@@ -49,21 +34,9 @@ const createSnapshot = (
     offset: thrust.offset,
     visible: thrust.visible,
   },
-  timeWarp: {
-    action: timeWarp.action,
-    opacity: timeWarp.opacity,
-    reason: timeWarp.reason,
-    value: timeWarp.value,
-    visible: timeWarp.visible,
-  },
 })
 
 export type TouchInteractionModel = {
-  cancelTimeWarpPreview(): TouchInteractionSnapshot
-  commitTimeWarpPreview(): {
-    action: TimeWarpAction | null
-    snapshot: TouchInteractionSnapshot
-  }
   getSnapshot(): TouchInteractionSnapshot
   hideThrust(): TouchInteractionSnapshot
   reuseLatchedThrust(startLatched: boolean): TouchInteractionSnapshot
@@ -73,13 +46,6 @@ export type TouchInteractionModel = {
     currentY: number
     startLatched: boolean
     startY: number
-  }): TouchInteractionSnapshot
-  updateTimeWarpPreview(params: {
-    action: TimeWarpAction
-    canCommit: boolean
-    opacity: number
-    reason: TimeWarpPreviewReason | null
-    value: number
   }): TouchInteractionSnapshot
 }
 
@@ -92,16 +58,8 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
     visible: false,
   }
 
-  const timeWarp: TimeWarpPreviewState = {
-    action: null,
-    opacity: 0,
-    reason: null,
-    value: null,
-    visible: false,
-  }
-
   const getSnapshot = (shouldPulseHaptics = false) =>
-    createSnapshot(thrust, timeWarp, shouldPulseHaptics)
+    createSnapshot(thrust, shouldPulseHaptics)
 
   const syncThrustEngaged = (nextEngaged: boolean) => {
     const changed = thrust.engaged !== nextEngaged
@@ -110,27 +68,6 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
   }
 
   return {
-    cancelTimeWarpPreview() {
-      timeWarp.action = null
-      timeWarp.opacity = 0
-      timeWarp.reason = null
-      timeWarp.value = null
-      timeWarp.visible = false
-      return getSnapshot()
-    },
-    commitTimeWarpPreview() {
-      const action = timeWarp.action
-      const shouldPulseHaptics = action !== null
-      timeWarp.action = null
-      timeWarp.opacity = 0
-      timeWarp.reason = null
-      timeWarp.value = null
-      timeWarp.visible = false
-      return {
-        action,
-        snapshot: getSnapshot(shouldPulseHaptics),
-      }
-    },
     getSnapshot() {
       return getSnapshot()
     },
@@ -174,23 +111,6 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
       thrust.offset = shouldLatch ? -thrustControlTravelPx : rawOffset
       const shouldPulseHaptics = syncThrustEngaged(shouldLatch)
       return getSnapshot(shouldPulseHaptics)
-    },
-    updateTimeWarpPreview({ action, canCommit, opacity, reason, value }) {
-      if (opacity > 0) {
-        timeWarp.action = canCommit && opacity >= 1 ? action : null
-        timeWarp.opacity = opacity
-        timeWarp.reason = canCommit ? null : reason
-        timeWarp.value = value
-        timeWarp.visible = true
-        return getSnapshot()
-      }
-
-      timeWarp.action = null
-      timeWarp.opacity = 0
-      timeWarp.reason = null
-      timeWarp.value = null
-      timeWarp.visible = false
-      return getSnapshot()
     },
   }
 }

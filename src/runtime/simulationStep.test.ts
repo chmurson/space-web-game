@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import type { AppRuntimeState } from './appRuntimeState'
 import {
-  getSimulationTimeWarpPreview,
   resolveSimulationTimeWarp,
   stepSimulationFrame,
 } from './simulationStep'
@@ -34,102 +33,6 @@ const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
 })
 
 describe('stepSimulationFrame', () => {
-  it('derives a turning preview reason when target-heading guidance blocks warp increase', () => {
-    const preview = getSimulationTimeWarpPreview({
-      action: 'increaseTimeWarp',
-      assistMode: 'off',
-      crashedBodyName: null,
-      currentTimeWarpIndex: 3,
-      getAssistTarget: () => createRuntimeState().bodies[0],
-      getAutopilotTurn: () => 1,
-      getCaptureMetrics: () => ({
-        circularSpeed: 0,
-        distance: 0,
-        insideRange: false,
-        relativeSpeed: 0,
-        roughAssistRange: 0,
-        specificEnergy: 0,
-        surfaceDistance: 0,
-      }),
-      getCircularizePlan: () => ({
-        burnHeading: 0,
-        deltaV: 0,
-        desiredVelocityHeading: 0,
-        distance: 0,
-        radialSpeed: 0,
-        tangentialSpeed: 0,
-      }),
-      keyboardInput: {
-        clear: () => {},
-        getManualControls: () => ({ main: 0, reverse: 0, strafe: 0, turn: 0 }),
-        hasManualTurn: () => false,
-        press: () => {},
-        release: () => {},
-        setVirtualKey: () => {},
-      },
-      maxControlWarp: 100,
-      maxTimeWarp: null,
-      shouldCaptureBurn: () => false,
-      state: createRuntimeState(),
-      targetHeading: Math.PI / 2,
-      timeWarps: [1, 10, 50, 100, 500, 2000],
-    })
-
-    expect(preview).toEqual({
-      canCommit: false,
-      reason: 'turning',
-      value: 100,
-    })
-  })
-
-  it('derives a global max preview reason when already at the highest warp', () => {
-    const preview = getSimulationTimeWarpPreview({
-      action: 'increaseTimeWarp',
-      assistMode: 'off',
-      crashedBodyName: null,
-      currentTimeWarpIndex: 5,
-      getAssistTarget: () => createRuntimeState().bodies[0],
-      getAutopilotTurn: () => 0,
-      getCaptureMetrics: () => ({
-        circularSpeed: 0,
-        distance: 0,
-        insideRange: false,
-        relativeSpeed: 0,
-        roughAssistRange: 0,
-        specificEnergy: 0,
-        surfaceDistance: 0,
-      }),
-      getCircularizePlan: () => ({
-        burnHeading: 0,
-        deltaV: 0,
-        desiredVelocityHeading: 0,
-        distance: 0,
-        radialSpeed: 0,
-        tangentialSpeed: 0,
-      }),
-      keyboardInput: {
-        clear: () => {},
-        getManualControls: () => ({ main: 0, reverse: 0, strafe: 0, turn: 0 }),
-        hasManualTurn: () => false,
-        press: () => {},
-        release: () => {},
-        setVirtualKey: () => {},
-      },
-      maxControlWarp: 100,
-      maxTimeWarp: null,
-      shouldCaptureBurn: () => false,
-      state: createRuntimeState(),
-      targetHeading: null,
-      timeWarps: [1, 10, 50, 100, 500, 2000],
-    })
-
-    expect(preview).toEqual({
-      canCommit: false,
-      reason: 'global-max',
-      value: 2000,
-    })
-  })
-
   it('reports an active-controls clamp when thrust keeps warp at 100x', () => {
     const result = resolveSimulationTimeWarp({
       assistMode: 'off',

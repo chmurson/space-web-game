@@ -16,10 +16,8 @@ import { createGameQueries } from '../runtime/gameQueries'
 import { GameHighLevelActionsMediator } from '../runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { registerHighLevelActions } from '../runtime/highLevelActions/registerHighLevelActions'
 import { createRuntimeActions } from '../runtime/runtimeActions'
-import {
-  defaultMaxControlWarp,
-  getSimulationTimeWarpPreview,
-} from '../runtime/simulationStep'
+import { defaultMaxControlWarp } from '../runtime/simulationStep'
+import { getTimeWarpFeedbackPreview } from '../runtime/timeWarpFeedbackPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import { createGameScene } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
@@ -216,7 +214,7 @@ export const createAppComponents = (options: {
       dispatchRuntimeAction(action)
     },
     getTimeWarpPreview: (action) => {
-      return getSimulationTimeWarpPreview({
+      return getTimeWarpFeedbackPreview({
         action,
         assistMode: options.runtimeState.simulation.assistMode,
         crashedBodyName: options.runtimeState.simulation.crashedBodyName,

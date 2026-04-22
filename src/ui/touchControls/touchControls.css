@@ -94,7 +94,7 @@
   z-index: calc(var(--z-overlay-hud) + 1);
 }
 
-.touch-time-warp-feedback[data-warp-feedback-variant="v2"] {
+.touch-time-warp-feedback[data-time-warp-feedback-state="available"][data-warp-feedback-variant="v2"] {
   border-color: rgba(125, 211, 252, 0.4);
   background: rgba(8, 13, 24, 0.84);
   box-shadow:
@@ -103,7 +103,7 @@
   color: #dbeafe;
 }
 
-.touch-time-warp-feedback[data-warp-feedback-variant="v4"] {
+.touch-time-warp-feedback[data-time-warp-feedback-state="available"][data-warp-feedback-variant="v4"] {
   border-color: rgba(244, 114, 182, 0.32);
   background:
     linear-gradient(180deg, rgba(136, 19, 55, 0.12), rgba(8, 13, 24, 0.84)),
@@ -118,7 +118,7 @@
   will-change: box-shadow, filter, transform;
 }
 
-.touch-time-warp-feedback[data-time-warp-feedback-state="blocked"][data-warp-feedback-variant="v2"] {
+.touch-time-warp-feedback[data-time-warp-feedback-state="blocked"] {
   border-color: rgba(251, 191, 36, 0.42);
   background:
     linear-gradient(180deg, rgba(245, 158, 11, 0.14), rgba(8, 13, 24, 0.86)),
