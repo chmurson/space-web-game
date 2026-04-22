@@ -211,7 +211,13 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
+  opacity: 1;
   text-align: center;
   text-transform: uppercase;
+  transition: opacity 160ms ease;
   white-space: nowrap;
+}
+
+.touch-thrust-control-label-hidden .touch-thrust-control-label {
+  opacity: 0;
 }

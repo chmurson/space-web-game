@@ -23,10 +23,11 @@ const doubleTapZoomMaxFactor = 1.12
 const maxMobileTouchDimensionPx = 430
 const timeWarpFeedbackFadeMs = 220
 const thrustAppearHoldMs = 180
+const thrustLatchedLabelHideDelayMs = 500
 const thrustControlSpawnOffsetPx = 54
 const thrustControlHitRadiusPx = 90
 const screenEdgePaddingPx = 12
-const timeWarpFeedbackOffsetYPx = 38
+const timeWarpFeedbackOffsetYPx = 62
 const holdIndicatorHalfSizePx = 44
 
 type TapState = {
@@ -159,6 +160,9 @@ export const createTouchControls = (options: {
   const thrustControlLabel = thrustControl.querySelector<HTMLDivElement>(
     '.touch-thrust-control-label',
   )
+  const thrustControlThumb = thrustControl.querySelector<HTMLDivElement>(
+    '.touch-thrust-control-thumb',
+  )
 
   const interactionModel = createTouchInteractionModel()
   const tapTouches = new Map<number, TapState>()
@@ -166,6 +170,8 @@ export const createTouchControls = (options: {
   let lastTap: (ScreenPoint & { time: number }) | null = null
   let pinchSuppressTapUntil = 0
   let timeWarpFadeTimer: number | null = null
+  let thrustLabelHideTimer: number | null = null
+  let isThrustLabelVisible = true
   let timeWarpFeedbackSize: OverlaySize = {
     halfHeight: 20,
     halfWidth: 64,
@@ -218,6 +224,28 @@ export const createTouchControls = (options: {
 
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
+  }
+
+  const clearThrustLabelHideTimer = () => {
+    if (thrustLabelHideTimer !== null) {
+      window.clearTimeout(thrustLabelHideTimer)
+      thrustLabelHideTimer = null
+    }
+  }
+
+  const showThrustLabel = () => {
+    clearThrustLabelHideTimer()
+    isThrustLabelVisible = true
+    thrustControl.classList.remove('touch-thrust-control-label-hidden')
+  }
+
+  const scheduleLatchedThrustLabelHide = () => {
+    clearThrustLabelHideTimer()
+    thrustLabelHideTimer = window.setTimeout(() => {
+      isThrustLabelVisible = false
+      thrustControl.classList.add('touch-thrust-control-label-hidden')
+      thrustLabelHideTimer = null
+    }, thrustLatchedLabelHideDelayMs)
   }
 
   const hideTimeWarpFeedbackLater = () => {
@@ -286,6 +314,10 @@ export const createTouchControls = (options: {
         ? 'Thrust On'
         : 'Thrust Off'
     }
+    thrustControl.classList.toggle(
+      'touch-thrust-control-label-hidden',
+      !isThrustLabelVisible,
+    )
     refreshThrustControlSize()
     const clampedAnchor = clampOverlayPoint(
       snapshot.thrust.anchor,
@@ -326,6 +358,20 @@ export const createTouchControls = (options: {
     thrustHoldIndicator.style.left = `${clampedPoint.x}px`
     thrustHoldIndicator.style.top = `${clampedPoint.y}px`
     thrustHoldIndicator.classList.add('touch-thrust-hold-indicator-visible')
+  }
+
+  const isTouchOnThrustThumb = (touch: Pick<Touch, 'clientX' | 'clientY'>) => {
+    if (!thrustControlThumb) {
+      return false
+    }
+
+    const thumbRect = thrustControlThumb.getBoundingClientRect()
+    return (
+      touch.clientX >= thumbRect.left &&
+      touch.clientX <= thumbRect.right &&
+      touch.clientY >= thumbRect.top &&
+      touch.clientY <= thumbRect.bottom
+    )
   }
 
   const clearPendingHoldTimer = () => {
@@ -386,7 +432,11 @@ export const createTouchControls = (options: {
 
     hideThrustHoldIndicator()
     clearPendingHoldTimer()
-    applyInteractionSnapshot(interactionModel.hideThrust())
+    const snapshot = interactionModel.hideThrust()
+    applyInteractionSnapshot(snapshot)
+    if (snapshot.thrust.visible && snapshot.thrust.latched) {
+      scheduleLatchedThrustLabelHide()
+    }
     activeSession = { kind: 'none' }
   }
 
@@ -448,6 +498,7 @@ export const createTouchControls = (options: {
 
     const pendingSession = activeSession
     hideThrustHoldIndicator()
+    showThrustLabel()
     const anchor = interactionModel.getSnapshot().thrust.anchor
     activeSession = {
       kind: 'right-zone-active',
@@ -492,6 +543,9 @@ export const createTouchControls = (options: {
 
     if (canReuseLatchedControl) {
       hideThrustHoldIndicator()
+      if (isTouchOnThrustThumb(touch)) {
+        showThrustLabel()
+      }
       activeSession = {
         kind: 'right-zone-active',
         startLatched: thrustSnapshot.latched,
@@ -505,6 +559,7 @@ export const createTouchControls = (options: {
       return
     }
 
+    showThrustLabel()
     const anchor = {
       x: clamp(touch.clientX, minX, maxX),
       y: clamp(touch.clientY - thrustControlSpawnOffsetPx, minY, maxY),
