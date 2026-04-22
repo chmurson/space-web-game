@@ -3,6 +3,7 @@ import type { KeyboardInput } from '../../input/keyboardInput'
 import type { ScenarioTouchHintTarget } from '../../scenario/scenarioRegistry'
 import './touchControls.css'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
+import { createTouchInteractionModel } from './touchInteractionModel'
 
 export type TouchControls = {
   element: HTMLElement
@@ -23,25 +24,10 @@ const maxMobileTouchDimensionPx = 430
 const timeWarpFeedbackFadeMs = 220
 const thrustAppearHoldMs = 180
 const thrustControlSpawnOffsetPx = 54
-const thrustControlTravelPx = 48
-const thrustSnapDistancePx = 30
 const thrustControlHitRadiusPx = 90
 const screenEdgePaddingPx = 12
-const timeWarpFeedbackHalfWidthPx = 64
-const timeWarpFeedbackHalfHeightPx = 20
-const thrustControlHalfWidthPx = 42
-const thrustControlHalfHeightPx = 88
-
-const vibrate = () => {
-  if (
-    typeof navigator === 'undefined' ||
-    typeof navigator.vibrate !== 'function'
-  ) {
-    return
-  }
-
-  navigator.vibrate(hapticPulseMs)
-}
+const timeWarpFeedbackOffsetYPx = 38
+const holdIndicatorHalfSizePx = 44
 
 type TapState = {
   startTime: number
@@ -49,39 +35,49 @@ type TapState = {
   startY: number
 }
 
-type DoubleTapZoomState = {
-  lastY: number
-  startY: number
-  touchId: number
-  zooming: boolean
-}
-
-type TwoFingerGestureState = {
-  lastDistance: number
-  touchIds: [number, number]
-}
-
-type LeftZoneGestureState = {
-  previewAction: 'increaseTimeWarp' | 'decreaseTimeWarp' | null
-  previewOpacity: number
-  lastX: number
-  startX: number
-  touchId: number
-}
-
-type RightZoneGestureState = {
-  holdTimer: number | null
-  mode: 'pending' | 'active'
-  startLatched: boolean
-  startX: number
-  startY: number
-  touchId: number
-}
-
 type ScreenPoint = {
   x: number
   y: number
 }
+
+type OverlaySize = {
+  halfHeight: number
+  halfWidth: number
+}
+
+type ActiveGestureSession =
+  | { kind: 'none' }
+  | {
+      kind: 'double-tap-zoom'
+      lastY: number
+      startY: number
+      touchId: number
+      zooming: boolean
+    }
+  | {
+      kind: 'pinch'
+      lastDistance: number
+      touchIds: [number, number]
+    }
+  | {
+      kind: 'left-zone'
+      startX: number
+      touchId: number
+    }
+  | {
+      kind: 'right-zone-pending'
+      holdTimer: number
+      startX: number
+      startY: number
+      touchId: number
+    }
+  | {
+      kind: 'right-zone-active'
+      startLatched: boolean
+      startX: number
+      startY: number
+      touchId: number
+    }
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -96,6 +92,32 @@ const getTouchCenter = (first: Touch, second: Touch): ScreenPoint => ({
 
 const getTouchById = (touches: TouchList, touchId: number) =>
   Array.from(touches).find((touch) => touch.identifier === touchId) ?? null
+
+const measureOverlaySize = (
+  element: HTMLElement,
+  fallback: OverlaySize,
+): OverlaySize => {
+  const rect = element.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) {
+    return fallback
+  }
+
+  return {
+    halfHeight: rect.height / 2,
+    halfWidth: rect.width / 2,
+  }
+}
+
+const vibrate = () => {
+  if (
+    typeof navigator === 'undefined' ||
+    typeof navigator.vibrate !== 'function'
+  ) {
+    return
+  }
+
+  navigator.vibrate(hapticPulseMs)
+}
 
 export const createTouchControls = (options: {
   app: HTMLElement
@@ -138,21 +160,19 @@ export const createTouchControls = (options: {
     '.touch-thrust-control-label',
   )
 
+  const interactionModel = createTouchInteractionModel()
   const tapTouches = new Map<number, TapState>()
-  let pinchSuppressTapUntil = 0
-  let doubleTapZoom: DoubleTapZoomState | null = null
-  let twoFingerGesture: TwoFingerGestureState | null = null
-  let leftZoneGesture: LeftZoneGestureState | null = null
-  let rightZoneGesture: RightZoneGestureState | null = null
+  let activeSession: ActiveGestureSession = { kind: 'none' }
   let lastTap: (ScreenPoint & { time: number }) | null = null
+  let pinchSuppressTapUntil = 0
   let timeWarpFadeTimer: number | null = null
-  const thrustState = {
-    anchorX: 0,
-    anchorY: 0,
-    engaged: false,
-    latched: false,
-    offset: 0,
-    visible: false,
+  let timeWarpFeedbackSize: OverlaySize = {
+    halfHeight: 20,
+    halfWidth: 64,
+  }
+  let thrustControlSize: OverlaySize = {
+    halfHeight: 88,
+    halfWidth: 42,
   }
 
   const getPanelWidth = () =>
@@ -168,84 +188,36 @@ export const createTouchControls = (options: {
   const isInBottomRightQuarter = (touch: Pick<Touch, 'clientX' | 'clientY'>) =>
     touch.clientX >= getPanelWidth() / 2 &&
     touch.clientY >= getPanelHeight() / 2
+
   const clampOverlayPoint = (
     point: ScreenPoint,
-    halfWidth: number,
-    halfHeight: number,
+    overlaySize: OverlaySize,
   ): ScreenPoint => ({
     x: clamp(
       point.x,
-      halfWidth + screenEdgePaddingPx,
-      getPanelWidth() - halfWidth - screenEdgePaddingPx,
+      overlaySize.halfWidth + screenEdgePaddingPx,
+      getPanelWidth() - overlaySize.halfWidth - screenEdgePaddingPx,
     ),
     y: clamp(
       point.y,
-      halfHeight + screenEdgePaddingPx,
-      getPanelHeight() - halfHeight - screenEdgePaddingPx,
+      overlaySize.halfHeight + screenEdgePaddingPx,
+      getPanelHeight() - overlaySize.halfHeight - screenEdgePaddingPx,
     ),
   })
 
-  const syncMainThrust = () => {
-    options.keyboardInput.setVirtualKey('main', thrustState.engaged)
+  const refreshTimeWarpFeedbackSize = () => {
+    timeWarpFeedbackSize = measureOverlaySize(
+      timeWarpFeedback,
+      timeWarpFeedbackSize,
+    )
   }
 
-  const hideThrustControl = () => {
-    thrustState.visible = false
-    thrustState.offset = 0
-    syncThrustControlUi()
+  const refreshThrustControlSize = () => {
+    thrustControlSize = measureOverlaySize(thrustControl, thrustControlSize)
   }
 
-  const syncThrustControlUi = () => {
-    thrustControl.classList.toggle(
-      'touch-thrust-control-visible',
-      thrustState.visible,
-    )
-    thrustControl.classList.toggle(
-      'touch-thrust-control-on',
-      thrustState.engaged,
-    )
-    const clampedAnchor = clampOverlayPoint(
-      { x: thrustState.anchorX, y: thrustState.anchorY },
-      thrustControlHalfWidthPx,
-      thrustControlHalfHeightPx,
-    )
-    thrustControl.style.left = `${clampedAnchor.x}px`
-    thrustControl.style.top = `${clampedAnchor.y}px`
-    thrustControl.style.setProperty(
-      '--thrust-thumb-offset',
-      `${thrustState.offset}px`,
-    )
-    if (thrustControlLabel) {
-      thrustControlLabel.textContent = thrustState.engaged
-        ? 'Thrust On'
-        : 'Thrust Off'
-    }
-  }
-
-  const hideThrustHoldIndicator = () => {
-    thrustHoldIndicator.classList.remove('touch-thrust-hold-indicator-visible')
-  }
-
-  const showThrustHoldIndicator = (
-    touch: Pick<Touch, 'clientX' | 'clientY'>,
-  ) => {
-    const clampedPoint = clampOverlayPoint(
-      { x: touch.clientX, y: touch.clientY },
-      44,
-      44,
-    )
-    thrustHoldIndicator.style.left = `${clampedPoint.x}px`
-    thrustHoldIndicator.style.top = `${clampedPoint.y}px`
-    thrustHoldIndicator.classList.add('touch-thrust-hold-indicator-visible')
-  }
-
-  const setThrustState = (nextEngaged: boolean) => {
-    const changed = thrustState.engaged !== nextEngaged
-    thrustState.engaged = nextEngaged
-    syncMainThrust()
-    if (changed) {
-      vibrate()
-    }
+  const syncMainThrust = (engaged: boolean) => {
+    options.keyboardInput.setVirtualKey('main', engaged)
   }
 
   const hideTimeWarpFeedbackLater = () => {
@@ -262,71 +234,174 @@ export const createTouchControls = (options: {
     }, timeWarpFeedbackFadeMs)
   }
 
-  const showTimeWarpFeedback = (
-    direction: 'increaseTimeWarp' | 'decreaseTimeWarp',
-    touch: Pick<Touch, 'clientX' | 'clientY'>,
-    value: number,
-    opacity: number,
-  ) => {
+  const syncTimeWarpFeedbackUi = (params: {
+    action?: 'increaseTimeWarp' | 'decreaseTimeWarp'
+    opacity: number
+    point?: ScreenPoint
+    visible: boolean
+    value: number | null
+  }) => {
+    if (
+      !params.visible ||
+      !params.point ||
+      params.value === null ||
+      !params.action
+    ) {
+      hideTimeWarpFeedbackLater()
+      return
+    }
+
     if (timeWarpFadeTimer !== null) {
       window.clearTimeout(timeWarpFadeTimer)
       timeWarpFadeTimer = null
     }
 
     timeWarpFeedback.textContent = `${
-      direction === 'increaseTimeWarp' ? '>>' : '<<'
-    } x${value}`
-    const clampedPoint = clampOverlayPoint(
-      { x: touch.clientX, y: touch.clientY - 38 },
-      timeWarpFeedbackHalfWidthPx,
-      timeWarpFeedbackHalfHeightPx,
-    )
+      params.action === 'increaseTimeWarp' ? '>>' : '<<'
+    } x${params.value}`
+    refreshTimeWarpFeedbackSize()
+    const clampedPoint = clampOverlayPoint(params.point, timeWarpFeedbackSize)
     timeWarpFeedback.style.left = `${clampedPoint.x}px`
     timeWarpFeedback.style.top = `${clampedPoint.y}px`
     timeWarpFeedback.style.setProperty(
       '--touch-time-warp-feedback-opacity',
-      `${opacity}`,
+      `${params.opacity}`,
     )
     timeWarpFeedback.classList.add('touch-time-warp-feedback-visible')
     timeWarpFeedback.classList.remove('touch-time-warp-feedback-fade')
   }
 
+  const syncThrustControlUi = () => {
+    const snapshot = interactionModel.getSnapshot()
+    thrustControl.classList.toggle(
+      'touch-thrust-control-visible',
+      snapshot.thrust.visible,
+    )
+    thrustControl.classList.toggle(
+      'touch-thrust-control-on',
+      snapshot.thrust.engaged,
+    )
+    if (thrustControlLabel) {
+      thrustControlLabel.textContent = snapshot.thrust.engaged
+        ? 'Thrust On'
+        : 'Thrust Off'
+    }
+    refreshThrustControlSize()
+    const clampedAnchor = clampOverlayPoint(
+      snapshot.thrust.anchor,
+      thrustControlSize,
+    )
+    thrustControl.style.left = `${clampedAnchor.x}px`
+    thrustControl.style.top = `${clampedAnchor.y}px`
+    thrustControl.style.setProperty(
+      '--thrust-thumb-offset',
+      `${snapshot.thrust.offset}px`,
+    )
+  }
+
+  const applyInteractionSnapshot = (
+    snapshot: ReturnType<typeof interactionModel.getSnapshot>,
+  ) => {
+    syncMainThrust(snapshot.thrust.engaged)
+    syncThrustControlUi()
+    if (snapshot.shouldPulseHaptics) {
+      vibrate()
+    }
+  }
+
+  const hideThrustHoldIndicator = () => {
+    thrustHoldIndicator.classList.remove('touch-thrust-hold-indicator-visible')
+  }
+
+  const showThrustHoldIndicator = (
+    touch: Pick<Touch, 'clientX' | 'clientY'>,
+  ) => {
+    const clampedPoint = clampOverlayPoint(
+      { x: touch.clientX, y: touch.clientY },
+      {
+        halfHeight: holdIndicatorHalfSizePx,
+        halfWidth: holdIndicatorHalfSizePx,
+      },
+    )
+    thrustHoldIndicator.style.left = `${clampedPoint.x}px`
+    thrustHoldIndicator.style.top = `${clampedPoint.y}px`
+    thrustHoldIndicator.classList.add('touch-thrust-hold-indicator-visible')
+  }
+
+  const clearPendingHoldTimer = () => {
+    if (activeSession.kind === 'right-zone-pending') {
+      window.clearTimeout(activeSession.holdTimer)
+    }
+  }
+
+  const clearActiveSession = () => {
+    clearPendingHoldTimer()
+    activeSession = { kind: 'none' }
+  }
+
+  const clearPendingTapState = () => {
+    tapTouches.clear()
+    lastTap = null
+  }
+
   const clearTimeWarpPreview = () => {
-    leftZoneGesture = null
-    hideTimeWarpFeedbackLater()
+    const snapshot = interactionModel.cancelTimeWarpPreview()
+    syncTimeWarpFeedbackUi({
+      opacity: snapshot.timeWarp.opacity,
+      visible: snapshot.timeWarp.visible,
+      value: snapshot.timeWarp.value,
+    })
   }
 
   const finishLeftZoneGesture = (commitPreview: boolean) => {
-    if (commitPreview && leftZoneGesture?.previewAction) {
-      options.commitTimeWarp(leftZoneGesture.previewAction)
-      vibrate()
+    if (activeSession.kind !== 'left-zone') {
+      return
     }
-    clearTimeWarpPreview()
-  }
 
-  const restoreThrustUiFromLatchState = () => {
-    thrustState.offset = thrustState.latched ? -thrustControlTravelPx : 0
-    setThrustState(thrustState.latched)
-    if (!thrustState.latched) {
-      hideThrustControl()
+    if (commitPreview) {
+      const result = interactionModel.commitTimeWarpPreview()
+      syncTimeWarpFeedbackUi({
+        opacity: result.snapshot.timeWarp.opacity,
+        visible: result.snapshot.timeWarp.visible,
+        value: result.snapshot.timeWarp.value,
+      })
+      if (result.action) {
+        options.commitTimeWarp(result.action)
+      }
+      applyInteractionSnapshot(result.snapshot)
     } else {
-      syncThrustControlUi()
+      clearTimeWarpPreview()
     }
+
+    clearActiveSession()
   }
 
   const clearRightZoneGesture = () => {
-    const pendingHoldTimer = rightZoneGesture?.holdTimer ?? null
-    if (pendingHoldTimer !== null) {
-      window.clearTimeout(pendingHoldTimer)
+    if (
+      activeSession.kind !== 'right-zone-pending' &&
+      activeSession.kind !== 'right-zone-active'
+    ) {
+      return
     }
-    rightZoneGesture = null
-    restoreThrustUiFromLatchState()
+
     hideThrustHoldIndicator()
+    clearPendingHoldTimer()
+    applyInteractionSnapshot(interactionModel.hideThrust())
+    activeSession = { kind: 'none' }
   }
 
-  const clearZoneGestures = () => {
-    clearTimeWarpPreview()
-    clearRightZoneGesture()
+  const clearZoneGesture = () => {
+    if (activeSession.kind === 'left-zone') {
+      finishLeftZoneGesture(false)
+      return
+    }
+
+    if (
+      activeSession.kind === 'right-zone-pending' ||
+      activeSession.kind === 'right-zone-active'
+    ) {
+      clearRightZoneGesture()
+    }
   }
 
   const shouldStartPinch = (touches: TouchList) => {
@@ -342,59 +417,50 @@ export const createTouchControls = (options: {
     )
   }
 
-  const startPinch = (touches: TouchList) => {
+  const beginPinchSession = (touches: TouchList) => {
     if (touches.length !== 2) {
       return
     }
 
     const [first, second] = Array.from(touches)
-    clearZoneGestures()
-    tapTouches.clear()
-    lastTap = null
-    twoFingerGesture = {
+    clearZoneGesture()
+    clearPendingTapState()
+    activeSession = {
+      kind: 'pinch',
       lastDistance: getTouchDistance(first, second),
       touchIds: [first.identifier, second.identifier],
     }
     pinchSuppressTapUntil = performance.now() + pinchSuppressTapMs
   }
 
-  const updateRightZoneGesture = (touch: Touch) => {
-    if (!rightZoneGesture || rightZoneGesture.touchId !== touch.identifier) {
-      return
+  const beginLeftZoneSession = (touch: Touch) => {
+    activeSession = {
+      kind: 'left-zone',
+      startX: touch.clientX,
+      touchId: touch.identifier,
     }
-    if (rightZoneGesture.mode === 'pending') {
-      if (
-        Math.hypot(
-          touch.clientX - rightZoneGesture.startX,
-          touch.clientY - rightZoneGesture.startY,
-        ) > tapMoveTolerancePx
-      ) {
-        if (rightZoneGesture.holdTimer !== null) {
-          window.clearTimeout(rightZoneGesture.holdTimer)
-        }
-        rightZoneGesture = null
-        hideThrustHoldIndicator()
-      }
-      return
-    }
-
-    const rawOffset = clamp(
-      (rightZoneGesture.startLatched ? -thrustControlTravelPx : 0) +
-        (touch.clientY - rightZoneGesture.startY),
-      -thrustControlTravelPx,
-      0,
-    )
-    const shouldLatch = rightZoneGesture.startLatched
-      ? touch.clientY - rightZoneGesture.startY < thrustSnapDistancePx
-      : touch.clientY - rightZoneGesture.startY <= -thrustSnapDistancePx
-
-    thrustState.latched = shouldLatch
-    thrustState.offset = shouldLatch ? -thrustControlTravelPx : rawOffset
-    setThrustState(shouldLatch)
-    syncThrustControlUi()
   }
 
-  const beginRightZoneGesture = (touch: Touch) => {
+  const promotePendingThrustSession = () => {
+    if (activeSession.kind !== 'right-zone-pending') {
+      return
+    }
+
+    const pendingSession = activeSession
+    hideThrustHoldIndicator()
+    const anchor = interactionModel.getSnapshot().thrust.anchor
+    activeSession = {
+      kind: 'right-zone-active',
+      startLatched: interactionModel.getSnapshot().thrust.latched,
+      startX: pendingSession.startX,
+      startY: pendingSession.startY,
+      touchId: pendingSession.touchId,
+    }
+    applyInteractionSnapshot(interactionModel.showThrust(anchor))
+  }
+
+  const beginRightZoneSession = (touch: Touch) => {
+    const thrustSnapshot = interactionModel.getSnapshot().thrust
     const panelWidth = getPanelWidth()
     const panelHeight = getPanelHeight()
     const minX = Math.max(
@@ -409,14 +475,14 @@ export const createTouchControls = (options: {
     const maxY = panelHeight - screenEdgePaddingPx - thrustControlSpawnOffsetPx
     const touchPoint = { x: touch.clientX, y: touch.clientY }
     const canReuseLatchedControl =
-      thrustState.visible &&
-      thrustState.latched &&
+      thrustSnapshot.visible &&
+      thrustSnapshot.latched &&
       Math.hypot(
-        touchPoint.x - thrustState.anchorX,
-        touchPoint.y - thrustState.anchorY,
+        touchPoint.x - thrustSnapshot.anchor.x,
+        touchPoint.y - thrustSnapshot.anchor.y,
       ) <= thrustControlHitRadiusPx
 
-    if (thrustState.visible && !canReuseLatchedControl) {
+    if (thrustSnapshot.visible && !canReuseLatchedControl) {
       return
     }
 
@@ -424,89 +490,94 @@ export const createTouchControls = (options: {
       return
     }
 
-    if (leftZoneGesture && !thrustState.visible) {
-      return
-    }
-
     if (canReuseLatchedControl) {
       hideThrustHoldIndicator()
-      rightZoneGesture = {
-        holdTimer: null,
-        mode: 'active',
-        startLatched: thrustState.latched,
+      activeSession = {
+        kind: 'right-zone-active',
+        startLatched: thrustSnapshot.latched,
         startX: touch.clientX,
         startY: touch.clientY,
         touchId: touch.identifier,
       }
-      thrustState.visible = true
-      thrustState.offset = thrustState.latched ? -thrustControlTravelPx : 0
-      setThrustState(thrustState.latched)
-      syncThrustControlUi()
+      applyInteractionSnapshot(
+        interactionModel.reuseLatchedThrust(thrustSnapshot.latched),
+      )
       return
     }
 
-    if (!isInBottomRightQuarter(touch)) {
-      return
+    const anchor = {
+      x: clamp(touch.clientX, minX, maxX),
+      y: clamp(touch.clientY - thrustControlSpawnOffsetPx, minY, maxY),
     }
-
+    applyInteractionSnapshot(interactionModel.setPendingThrustAnchor(anchor))
     showThrustHoldIndicator(touch)
-    rightZoneGesture = {
-      holdTimer: window.setTimeout(() => {
-        if (
-          !rightZoneGesture ||
-          rightZoneGesture.touchId !== touch.identifier
-        ) {
-          return
-        }
-        if (rightZoneGesture.mode !== 'pending') {
-          return
-        }
-        const pendingGesture = rightZoneGesture
-
-        thrustState.anchorX = clamp(pendingGesture.startX, minX, maxX)
-        thrustState.anchorY = clamp(
-          pendingGesture.startY - thrustControlSpawnOffsetPx,
-          minY,
-          maxY,
-        )
-        hideThrustHoldIndicator()
-        rightZoneGesture = {
-          holdTimer: null,
-          mode: 'active',
-          startLatched: thrustState.latched,
-          startX: pendingGesture.startX,
-          startY: pendingGesture.startY,
-          touchId: touch.identifier,
-        }
-        thrustState.visible = true
-        thrustState.offset = 0
-        setThrustState(thrustState.latched)
-        syncThrustControlUi()
-      }, thrustAppearHoldMs),
-      mode: 'pending',
-      startLatched: false,
+    const holdTimer = window.setTimeout(() => {
+      if (
+        activeSession.kind !== 'right-zone-pending' ||
+        activeSession.touchId !== touch.identifier
+      ) {
+        return
+      }
+      promotePendingThrustSession()
+    }, thrustAppearHoldMs)
+    activeSession = {
+      kind: 'right-zone-pending',
+      holdTimer,
       startX: touch.clientX,
       startY: touch.clientY,
       touchId: touch.identifier,
     }
+  }
 
-    if (!canReuseLatchedControl) {
-      thrustState.anchorX = clamp(touch.clientX, minX, maxX)
-      thrustState.anchorY = clamp(
-        touch.clientY - thrustControlSpawnOffsetPx,
-        minY,
-        maxY,
+  const updateRightZoneSession = (touch: Touch) => {
+    if (activeSession.kind === 'right-zone-pending') {
+      if (
+        Math.hypot(
+          touch.clientX - activeSession.startX,
+          touch.clientY - activeSession.startY,
+        ) > tapMoveTolerancePx
+      ) {
+        clearRightZoneGesture()
+      }
+      return
+    }
+
+    if (
+      activeSession.kind === 'right-zone-active' &&
+      activeSession.touchId === touch.identifier
+    ) {
+      applyInteractionSnapshot(
+        interactionModel.updateThrustDrag({
+          currentY: touch.clientY,
+          startLatched: activeSession.startLatched,
+          startY: activeSession.startY,
+        }),
       )
     }
   }
 
-  const beginLeftZoneGesture = (touch: Touch) => {
-    leftZoneGesture = {
-      lastX: touch.clientX,
-      previewAction: null,
-      previewOpacity: 0,
-      startX: touch.clientX,
+  const beginDoubleTapZoomSession = (touch: Touch) => {
+    clearZoneGesture()
+    activeSession = {
+      kind: 'double-tap-zoom',
+      lastY: touch.clientY,
+      startY: touch.clientY,
       touchId: touch.identifier,
+      zooming: false,
+    }
+  }
+
+  const sessionOwnsTouch = (touchId: number) => {
+    switch (activeSession.kind) {
+      case 'double-tap-zoom':
+      case 'left-zone':
+      case 'right-zone-pending':
+      case 'right-zone-active':
+        return activeSession.touchId === touchId
+      case 'pinch':
+        return activeSession.touchIds.includes(touchId)
+      case 'none':
+        return false
     }
   }
 
@@ -531,13 +602,18 @@ export const createTouchControls = (options: {
     'touchstart',
     (event) => {
       const now = performance.now()
+      let startedDoubleTapZoom = false
 
-      if (doubleTapZoom || twoFingerGesture) {
+      if (
+        activeSession.kind === 'pinch' ||
+        activeSession.kind === 'double-tap-zoom'
+      ) {
         return
       }
 
       for (const touch of Array.from(event.changedTouches)) {
         const isDoubleTapCandidate =
+          activeSession.kind === 'none' &&
           event.touches.length === 1 &&
           lastTap &&
           now - lastTap.time <= doubleTapWindowMs &&
@@ -545,13 +621,8 @@ export const createTouchControls = (options: {
             tapMoveTolerancePx * 2
 
         if (isDoubleTapCandidate) {
-          clearZoneGestures()
-          doubleTapZoom = {
-            lastY: touch.clientY,
-            startY: touch.clientY,
-            touchId: touch.identifier,
-            zooming: false,
-          }
+          beginDoubleTapZoomSession(touch)
+          startedDoubleTapZoom = true
           continue
         }
 
@@ -562,25 +633,29 @@ export const createTouchControls = (options: {
         })
       }
 
-      if (!doubleTapZoom && shouldStartPinch(event.touches)) {
-        startPinch(event.touches)
+      if (startedDoubleTapZoom) {
+        return
+      }
+
+      if (shouldStartPinch(event.touches)) {
+        beginPinchSession(event.touches)
+        return
+      }
+
+      if (activeSession.kind !== 'none') {
         return
       }
 
       const midpointX = getMidpointX()
       for (const touch of Array.from(event.changedTouches)) {
-        if (doubleTapZoom?.touchId === touch.identifier) {
-          continue
-        }
         if (touch.clientX < midpointX) {
-          if (!leftZoneGesture) {
-            beginLeftZoneGesture(touch)
-          }
-          continue
+          beginLeftZoneSession(touch)
+        } else {
+          beginRightZoneSession(touch)
         }
 
-        if (!rightZoneGesture) {
-          beginRightZoneGesture(touch)
+        if (activeSession.kind !== 'none') {
+          return
         }
       }
     },
@@ -590,91 +665,108 @@ export const createTouchControls = (options: {
   panel.addEventListener(
     'touchmove',
     (event) => {
-      if (twoFingerGesture) {
-        const first = getTouchById(event.touches, twoFingerGesture.touchIds[0])
-        const second = getTouchById(event.touches, twoFingerGesture.touchIds[1])
-
-        if (!first || !second) {
-          return
-        }
-
-        pinchSuppressTapUntil = performance.now() + pinchSuppressTapMs
-        const distance = getTouchDistance(first, second)
-        const factor = clamp(
-          twoFingerGesture.lastDistance / distance,
-          pinchZoomMinFactor,
-          pinchZoomMaxFactor,
-        )
-
-        if (Math.abs(factor - 1) > 0.01) {
-          options.onZoom(factor)
-        }
-        twoFingerGesture.lastDistance = distance
-
-        const center = getTouchCenter(first, second)
-        timeWarpFeedback.style.left = `${center.x}px`
-        timeWarpFeedback.style.top = `${center.y}px`
-        return
-      }
-
-      if (doubleTapZoom) {
-        const touch = getTouchById(event.touches, doubleTapZoom.touchId)
-        if (!touch) {
-          return
-        }
-
-        const movedY = touch.clientY - doubleTapZoom.startY
-        if (
-          !doubleTapZoom.zooming &&
-          Math.abs(movedY) >= doubleTapZoomStartPx
-        ) {
-          doubleTapZoom.zooming = true
-          lastTap = null
-        }
-
-        if (!doubleTapZoom.zooming) {
-          return
-        }
-
-        const deltaY = touch.clientY - doubleTapZoom.lastY
-        doubleTapZoom.lastY = touch.clientY
-        const factor = clamp(
-          Math.exp(deltaY * 0.01),
-          doubleTapZoomMinFactor,
-          doubleTapZoomMaxFactor,
-        )
-        if (Math.abs(factor - 1) > 0.002) {
-          options.onZoom(factor)
-        }
-      }
-
-      if (leftZoneGesture) {
-        const touch = getTouchById(event.touches, leftZoneGesture.touchId)
-        if (touch) {
-          const deltaX = touch.clientX - leftZoneGesture.startX
-          leftZoneGesture.lastX = touch.clientX
-          const threshold = getTouchTravelActivationDistance()
-          const opacity = clamp(Math.abs(deltaX) / threshold, 0, 1)
-          const direction =
-            deltaX >= 0 ? 'increaseTimeWarp' : 'decreaseTimeWarp'
-          const preview = options.getTimeWarpPreview(direction)
-
-          leftZoneGesture.previewOpacity = opacity
-          if (opacity > 0 && preview.canCommit) {
-            leftZoneGesture.previewAction = opacity >= 1 ? direction : null
-            showTimeWarpFeedback(direction, touch, preview.value, opacity)
-          } else {
-            leftZoneGesture.previewAction = null
-            hideTimeWarpFeedbackLater()
+      switch (activeSession.kind) {
+        case 'pinch': {
+          const first = getTouchById(event.touches, activeSession.touchIds[0])
+          const second = getTouchById(event.touches, activeSession.touchIds[1])
+          if (!first || !second) {
+            return
           }
-        }
-      }
 
-      if (rightZoneGesture) {
-        const touch = getTouchById(event.touches, rightZoneGesture.touchId)
-        if (touch) {
-          updateRightZoneGesture(touch)
+          pinchSuppressTapUntil = performance.now() + pinchSuppressTapMs
+          const distance = getTouchDistance(first, second)
+          const factor = clamp(
+            activeSession.lastDistance / distance,
+            pinchZoomMinFactor,
+            pinchZoomMaxFactor,
+          )
+
+          if (Math.abs(factor - 1) > 0.01) {
+            options.onZoom(factor)
+          }
+
+          activeSession.lastDistance = distance
+          const center = getTouchCenter(first, second)
+          timeWarpFeedback.style.left = `${center.x}px`
+          timeWarpFeedback.style.top = `${center.y}px`
+          return
         }
+        case 'double-tap-zoom': {
+          const touch = getTouchById(event.touches, activeSession.touchId)
+          if (!touch) {
+            return
+          }
+
+          const movedY = touch.clientY - activeSession.startY
+          if (
+            !activeSession.zooming &&
+            Math.abs(movedY) >= doubleTapZoomStartPx
+          ) {
+            activeSession.zooming = true
+            lastTap = null
+          }
+
+          if (!activeSession.zooming) {
+            return
+          }
+
+          const deltaY = touch.clientY - activeSession.lastY
+          activeSession.lastY = touch.clientY
+          const factor = clamp(
+            Math.exp(deltaY * 0.01),
+            doubleTapZoomMinFactor,
+            doubleTapZoomMaxFactor,
+          )
+          if (Math.abs(factor - 1) > 0.002) {
+            options.onZoom(factor)
+          }
+          return
+        }
+        case 'left-zone': {
+          const touch = getTouchById(event.touches, activeSession.touchId)
+          if (!touch) {
+            return
+          }
+
+          const deltaX = touch.clientX - activeSession.startX
+          const opacity = clamp(
+            Math.abs(deltaX) / getTouchTravelActivationDistance(),
+            0,
+            1,
+          )
+          const action = deltaX >= 0 ? 'increaseTimeWarp' : 'decreaseTimeWarp'
+          const preview = options.getTimeWarpPreview(action)
+          const snapshot = interactionModel.updateTimeWarpPreview({
+            action,
+            canCommit: preview.canCommit,
+            opacity,
+            value: preview.value,
+          })
+
+          syncTimeWarpFeedbackUi({
+            action,
+            opacity: snapshot.timeWarp.opacity,
+            point: {
+              x: touch.clientX,
+              y: touch.clientY - timeWarpFeedbackOffsetYPx,
+            },
+            value: snapshot.timeWarp.value,
+            visible: snapshot.timeWarp.visible,
+          })
+          return
+        }
+        case 'right-zone-pending':
+        case 'right-zone-active': {
+          const touch = getTouchById(event.touches, activeSession.touchId)
+          if (!touch) {
+            return
+          }
+
+          updateRightZoneSession(touch)
+          return
+        }
+        case 'none':
+          return
       }
     },
     { passive: false },
@@ -686,35 +778,43 @@ export const createTouchControls = (options: {
       const now = performance.now()
 
       if (
-        twoFingerGesture &&
-        twoFingerGesture.touchIds.some((touchId) =>
+        activeSession.kind === 'pinch' &&
+        activeSession.touchIds.some((touchId) =>
           Array.from(event.changedTouches).some(
             (touch) => touch.identifier === touchId,
           ),
         )
       ) {
-        twoFingerGesture = null
+        clearActiveSession()
       }
 
       for (const touch of Array.from(event.changedTouches)) {
-        if (doubleTapZoom?.touchId === touch.identifier) {
-          const completedZoom = doubleTapZoom.zooming
-          const touchX = touch.clientX
-          const touchY = touch.clientY
-          doubleTapZoom = null
+        if (
+          activeSession.kind === 'double-tap-zoom' &&
+          activeSession.touchId === touch.identifier
+        ) {
+          const completedZoom = activeSession.zooming
+          clearActiveSession()
           lastTap = null
           if (!completedZoom) {
-            options.onTargetHeadingSelected(touchX, touchY)
+            options.onTargetHeadingSelected(touch.clientX, touch.clientY)
             vibrate()
           }
           continue
         }
 
-        if (leftZoneGesture?.touchId === touch.identifier) {
+        if (
+          activeSession.kind === 'left-zone' &&
+          activeSession.touchId === touch.identifier
+        ) {
           finishLeftZoneGesture(true)
         }
 
-        if (rightZoneGesture?.touchId === touch.identifier) {
+        if (
+          (activeSession.kind === 'right-zone-pending' ||
+            activeSession.kind === 'right-zone-active') &&
+          activeSession.touchId === touch.identifier
+        ) {
           clearRightZoneGesture()
         }
 
@@ -758,35 +858,22 @@ export const createTouchControls = (options: {
     'touchcancel',
     (event) => {
       pinchSuppressTapUntil = performance.now() + pinchSuppressTapMs
-      lastTap = null
+      clearPendingTapState()
 
       if (
-        twoFingerGesture &&
-        twoFingerGesture.touchIds.some((touchId) =>
-          Array.from(event.changedTouches).some(
-            (touch) => touch.identifier === touchId,
-          ),
+        Array.from(event.changedTouches).some((touch) =>
+          sessionOwnsTouch(touch.identifier),
         )
       ) {
-        twoFingerGesture = null
-      }
-
-      if (
-        doubleTapZoom &&
-        Array.from(event.changedTouches).some(
-          (touch) => touch.identifier === doubleTapZoom?.touchId,
-        )
-      ) {
-        doubleTapZoom = null
-      }
-
-      for (const touch of Array.from(event.changedTouches)) {
-        tapTouches.delete(touch.identifier)
-        if (leftZoneGesture?.touchId === touch.identifier) {
+        if (activeSession.kind === 'left-zone') {
           finishLeftZoneGesture(false)
-        }
-        if (rightZoneGesture?.touchId === touch.identifier) {
+        } else if (
+          activeSession.kind === 'right-zone-pending' ||
+          activeSession.kind === 'right-zone-active'
+        ) {
           clearRightZoneGesture()
+        } else {
+          clearActiveSession()
         }
       }
     },
@@ -794,7 +881,15 @@ export const createTouchControls = (options: {
   )
 
   options.app.appendChild(panel)
+  refreshTimeWarpFeedbackSize()
+  refreshThrustControlSize()
   syncThrustControlUi()
+
+  window.addEventListener('resize', () => {
+    refreshTimeWarpFeedbackSize()
+    refreshThrustControlSize()
+    syncThrustControlUi()
+  })
 
   return {
     element: panel,

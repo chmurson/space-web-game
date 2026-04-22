@@ -2,6 +2,18 @@
 
 ## Context
 
+## Status
+
+Resolved on 2026-04-22.
+
+Moved to `ideas/resolved/` because the follow-up refactor landed:
+
+- thrust and time-warp state rules were extracted into `src/ui/touchControls/touchInteractionModel.ts`
+- touch gesture ownership is now explicit in `src/ui/touchControls/createTouchControls.ts`
+- overlay clamping now uses measured element bounds
+
+This handoff no longer represents active work.
+
 The recent mobile control pass achieved the intended player behavior:
 
 - double tap selects target heading
