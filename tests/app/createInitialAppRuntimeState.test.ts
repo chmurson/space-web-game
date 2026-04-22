@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AppConfigContext } from './createAppConfigContext'
-import { createInitialAppRuntimeState } from './createInitialAppRuntimeState'
+import type { AppConfigContext } from '@/app/createAppConfigContext'
+import { createInitialAppRuntimeState } from '@/app/createInitialAppRuntimeState'
 
 const createConfig = (
   overrides: Partial<AppConfigContext> = {},

@@ -3,16 +3,16 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
-} from '../domain/viewportPresets'
-import * as sceneUpdates from '../render/sceneUpdates'
-import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
+} from '@/domain/viewportPresets'
+import * as sceneUpdates from '@/render/sceneUpdates'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
-} from '../scenario/scenarioSession'
-import type { AppRuntimeState } from './appRuntimeState'
-import { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
-import { createRuntimeActions } from './runtimeActions'
+} from '@/scenario/scenarioSession'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { GameHighLevelActionsMediator } from '@/runtime/highLevelActions/gameHighLevelActionDispatcher'
+import { createRuntimeActions } from '@/runtime/runtimeActions'
 
 const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,

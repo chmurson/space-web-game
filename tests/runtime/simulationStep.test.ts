@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AppRuntimeState } from './appRuntimeState'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import {
   resolveSimulationTimeWarp,
   stepSimulationFrame,
-} from './simulationStep'
+} from '@/runtime/simulationStep'
 
 const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
   elapsed: 0,

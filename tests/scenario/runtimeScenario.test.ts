@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { EARTH_VIEWPORT_SIZE } from '../domain/viewportPresets'
+import { EARTH_VIEWPORT_SIZE } from '@/domain/viewportPresets'
 import {
   createRuntimeScenarioState,
   type RuntimeScenarioOptions,
-} from './runtimeScenario'
+} from '@/scenario/runtimeScenario'
 
 const options: RuntimeScenarioOptions = {
   defaultCoastPredictionHorizonHours: 1,

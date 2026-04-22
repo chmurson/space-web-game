@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AppRuntimeState } from '../../../../runtime/appRuntimeState'
-import { createDefaultScenarioDirectives } from '../../../scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from '../../../scenarioSession'
-import { getTutorialOnboardingPromptContent } from './tutorialOnboardingFlow'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import { getTutorialOnboardingPromptContent } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow'
 import {
   advanceTutorialOnboarding,
   acknowledgeTutorialOnboardingPrompt,
   createTutorialOnboardingState,
-} from './tutorialOnboardingProgress'
+} from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingProgress'
 
 const createRuntime = (): AppRuntimeState => ({
   simulation: {

@@ -3,17 +3,17 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
-} from '../domain/viewportPresets'
-import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from '../scenario/scenarioSession'
-import * as scenarioDirectives from '../scenario/scenarioDirectives'
-import type { AppRuntimeState } from './appRuntimeState'
+} from '@/domain/viewportPresets'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import * as scenarioDirectives from '@/scenario/scenarioDirectives'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import {
   advanceRuntimeScenario,
   applyCheckpointRestoreTransition,
   applyScenarioLoadTransition,
   shouldSyncDirectivesForScenarioTransition,
-} from './runtimeStateTransitions'
+} from '@/runtime/runtimeStateTransitions'
 
 const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,

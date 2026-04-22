@@ -5,12 +5,12 @@ import {
   getCoastPredictionFadeColors,
   getCoastPredictionFadeStartRatio,
   getLineDistanceProgress,
-} from './predictionLineFade'
+} from '@/presentation/predictionLineFade'
 
 describe('predictionLineFade', () => {
-  it('starts fading close to the tip for short coast predictions', () => {
-    expect(getCoastPredictionFadeStartRatio(12 * 60 * 60)).toBeGreaterThan(0.86)
-    expect(getCoastPredictionFadeStartRatio(24 * 60 * 60)).toBeCloseTo(0.88, 3)
+  it('keeps the fade start halfway down the line for short coast predictions', () => {
+    expect(getCoastPredictionFadeStartRatio(12 * 60 * 60)).toBeCloseTo(0.5, 3)
+    expect(getCoastPredictionFadeStartRatio(24 * 60 * 60)).toBeCloseTo(0.5, 3)
   })
 
   it('moves the fade start earlier as the horizon gets longer', () => {
@@ -19,9 +19,9 @@ describe('predictionLineFade', () => {
     const twelveDays = getCoastPredictionFadeStartRatio(12 * 24 * 60 * 60)
 
     expect(fourDays).toBeLessThan(oneDay)
-    expect(fourDays).toBeCloseTo(0.62, 3)
+    expect(fourDays).toBeCloseTo(0.25, 3)
     expect(twelveDays).toBeLessThan(fourDays)
-    expect(twelveDays).toBeCloseTo(0.42, 3)
+    expect(twelveDays).toBeCloseTo(0.125, 3)
   })
 
   it('distributes line progress by traveled distance instead of raw point count', () => {
@@ -46,9 +46,9 @@ describe('predictionLineFade', () => {
     expect(getCoastPredictionFadeBlend(0.5, horizonSeconds)).toBe(0)
     expect(getCoastPredictionFadeBlend(1, horizonSeconds)).toBe(1)
     expect(colors.slice(0, 3)).toEqual([1, 1, 1])
-    expect(colors.slice(3, 6)).toEqual([
-      0.9422222222222221, 0.9422222222222221, 0.9422222222222221,
-    ])
+    expect(colors[3]).toBeCloseTo(0.30112, 5)
+    expect(colors[4]).toBeCloseTo(0.30112, 5)
+    expect(colors[5]).toBeCloseTo(0.30112, 5)
     expect(colors[6]).toBeCloseTo(0.22, 10)
     expect(colors[7]).toBeCloseTo(0.22, 10)
     expect(colors[8]).toBeCloseTo(0.22, 10)

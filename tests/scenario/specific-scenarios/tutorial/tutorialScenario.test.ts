@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
-} from '../../../domain/viewportPresets'
-import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
-import { EARTH_MOON_DISTANCE, G } from '../../../simulation/constants'
-import { resolveRuntimeScenarioDirectives } from '../../scenarioDirectives'
-import { createDefaultScenarioDirectives } from '../../scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from '../../scenarioSession'
-import { applyScenarioRuntimeTransition } from '../../../runtime/runtimeStateTransitions'
-import { registerTutorialScenario } from './tutorialScenario'
+} from '@/domain/viewportPresets'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { EARTH_MOON_DISTANCE, G } from '@/simulation/constants'
+import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import { applyScenarioRuntimeTransition } from '@/runtime/runtimeStateTransitions'
+import { registerTutorialScenario } from '@/scenario/specific-scenarios/tutorial/tutorialScenario'
 
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,

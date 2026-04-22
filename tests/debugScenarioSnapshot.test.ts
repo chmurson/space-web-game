@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   createScenarioFromSnapshot,
   createSnapshotFromState,
-} from './debugScenarioSnapshot'
-import { createRuntimeScenarioSession } from './scenario/scenarioSession'
-import { idleControls } from './simulation/state'
+} from '@/debugScenarioSnapshot'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import { idleControls } from '@/simulation/state'
 
 const snapshotBase = {
   version: 1 as const,

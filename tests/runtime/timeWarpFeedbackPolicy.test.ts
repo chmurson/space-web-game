@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { AppRuntimeState } from './appRuntimeState'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import {
   formatTimeWarpFeedbackLabel,
   getTimeWarpFeedbackPreview,
-} from './timeWarpFeedbackPolicy'
+} from '@/runtime/timeWarpFeedbackPolicy'
 
 const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
   elapsed: 0,

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
-} from '../scenario/scenarioSession'
-import type { AppRuntimeState } from './appRuntimeState'
-import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
+} from '@/scenario/scenarioSession'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { createRuntimeCheckpointRestoreTransition } from '@/runtime/scenarioRecovery'
 
 const createRuntime = (): AppRuntimeState => ({
   simulation: {

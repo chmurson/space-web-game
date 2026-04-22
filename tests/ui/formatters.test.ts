@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCompactElapsed, formatSpeed } from './formatters'
+import { formatCompactElapsed, formatSpeed } from '@/ui/formatters'
 
 describe('formatCompactElapsed', () => {
   it('shows split day and hour units for long durations', () => {

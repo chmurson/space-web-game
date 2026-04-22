@@ -3,16 +3,16 @@ import { describe, expect, it } from 'vitest'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
-} from '../domain/viewportPresets'
-import type { AppRuntimeState } from '../runtime/appRuntimeState'
+} from '@/domain/viewportPresets'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import {
   applyRuntimeScenarioDirectiveConstraints,
   getConstrainedTimeWarpIndex,
   resolveRuntimeScenarioDirectives,
-} from './scenarioDirectives'
-import { createDefaultScenarioDirectives } from './scenarioDirectiveTypes'
-import { getRuntimeScenarioDefinition } from './scenarioRegistry'
-import { createRuntimeScenarioSession } from './scenarioSession'
+} from '@/scenario/scenarioDirectives'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { getRuntimeScenarioDefinition } from '@/scenario/scenarioRegistry'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,

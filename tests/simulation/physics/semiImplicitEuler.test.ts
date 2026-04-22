@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { semiImplicitEuler } from './semiImplicitEuler'
-import type { SimulationState } from '../types'
+import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
+import type { SimulationState } from '@/simulation/types'
 
 const createState = (): SimulationState => ({
   bodies: [],

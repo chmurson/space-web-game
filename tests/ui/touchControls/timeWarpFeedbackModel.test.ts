@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
+import { createTimeWarpFeedbackModel } from '@/ui/touchControls/timeWarpFeedbackModel'
 
 describe('timeWarpFeedbackModel', () => {
   it('keeps blocked previews visible without commit eligibility', () => {

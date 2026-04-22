@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createKeyboardInput } from './keyboardInput'
+import { createKeyboardInput } from '@/input/keyboardInput'
 
 describe('createKeyboardInput', () => {
   it('does not expose manual turn from left and right keyboard keys', () => {

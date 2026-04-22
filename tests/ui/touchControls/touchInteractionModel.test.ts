@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createTouchInteractionModel } from './touchInteractionModel'
+import { createTouchInteractionModel } from '@/ui/touchControls/touchInteractionModel'
 
 describe('touchInteractionModel', () => {
   it('shows thrust without forcing engagement', () => {

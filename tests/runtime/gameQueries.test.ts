@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from '../scenario/scenarioSession'
-import type { AppRuntimeState } from './appRuntimeState'
-import { createGameQueries } from './gameQueries'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { createGameQueries } from '@/runtime/gameQueries'
 
 const createBody = (
   overrides: Partial<
