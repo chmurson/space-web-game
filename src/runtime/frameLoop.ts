@@ -115,6 +115,9 @@ export const createFrameLoop = (options: {
       isThrusting,
       spacecraft: options.runtime.simulation.state.spacecraft,
       spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+      targetHeading: options.runtime.simulation.targetHeading,
+      targetHeadingScreenPosition:
+        options.runtime.ui.targetHeadingScreenPosition ?? null,
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
@@ -158,6 +161,9 @@ export const createFrameLoop = (options: {
           options.runtime.simulation.state.spacecraft.fuel > 0,
         spacecraft: options.runtime.simulation.state.spacecraft,
         spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+        targetHeading: options.runtime.simulation.targetHeading,
+        targetHeadingScreenPosition:
+          options.runtime.ui.targetHeadingScreenPosition ?? null,
         viewportSize: options.runtime.simulation.viewportSize,
       })
       options.hudPresentation.update({ smoothedCpuMs, smoothedFps })

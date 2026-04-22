@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
 } from '../domain/viewportPresets'
+import * as sceneUpdates from '../render/sceneUpdates'
 import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
 import {
   createRuntimeScenarioCheckpoint,
@@ -118,6 +119,28 @@ const createTestRuntimeActions = (runtime: AppRuntimeState) =>
     updateUserSettings: () => {},
     gameHighLevelActions: new GameHighLevelActionsMediator(),
   })
+
+const getTestGlobals = () =>
+  globalThis as unknown as {
+    window?: {
+      innerHeight: number
+      innerWidth: number
+    }
+  }
+
+const setWindowSize = (width: number, height: number) => {
+  const globals = getTestGlobals()
+  if (!globals.window) {
+    globals.window = {
+      innerHeight: height,
+      innerWidth: width,
+    }
+    return
+  }
+
+  globals.window.innerWidth = width
+  globals.window.innerHeight = height
+}
 
 describe('createRuntimeActions', () => {
   it('resets time warp to the initial index when resetting the scenario', () => {
@@ -254,5 +277,56 @@ describe('createRuntimeActions', () => {
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
       new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
     )
+  })
+
+  it('rescales the heading target screen position on resize', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+
+    try {
+      setWindowSize(400, 800)
+      const runtime = createRuntime()
+      runtime.ui.targetHeadingScreenPosition = { x: 300, y: 200 }
+      const renderer = { setSize: vi.fn() }
+      const updateCameraViewSpy = vi
+        .spyOn(sceneUpdates, 'updateCameraView')
+        .mockImplementation(() => {})
+      const runtimeActions = createRuntimeActions({
+        app: {} as HTMLDivElement,
+        cameraDistance: 700,
+        cameraElevation: 1,
+        createRipple: () => {},
+        gameScene: { trailPoints: [] } as never,
+        maxCoastPredictionHorizonHours: 48,
+        maxViewport: EARTH_MOON_VIEWPORT_SIZE,
+        minCoastPredictionHorizonHours: 0.5,
+        minViewport: EARTH_VIEWPORT_SIZE,
+        renderer,
+        ripples: [],
+        runtime,
+        globalScenarioDirectiveLimits,
+        runtimeScenarioOptions,
+        timeWarps: [1, 10, 50, 100, 500, 2000],
+        updateUserSettings: () => {},
+        gameHighLevelActions: new GameHighLevelActionsMediator(),
+      })
+
+      setWindowSize(800, 400)
+      runtimeActions.handleResize()
+
+      expect(renderer.setSize).toHaveBeenCalledWith(800, 400)
+      expect(updateCameraViewSpy).toHaveBeenCalledOnce()
+      expect(runtime.ui.targetHeadingScreenPosition).toEqual({
+        x: 600,
+        y: 100,
+      })
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
   })
 })

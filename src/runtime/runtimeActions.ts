@@ -30,6 +30,28 @@ export type RuntimeActionsResult = {
   refreshTrajectoryPrediction: boolean
 }
 
+const getViewportDimensions = () => ({
+  height: typeof window === 'undefined' ? 0 : window.innerHeight,
+  width: typeof window === 'undefined' ? 0 : window.innerWidth,
+})
+
+const scaleScreenPointForResize = (
+  point: { x: number; y: number },
+  previousViewport: { width: number; height: number },
+  nextViewport: { width: number; height: number },
+) => ({
+  x: THREE.MathUtils.clamp(
+    (point.x / Math.max(previousViewport.width, 1)) * nextViewport.width,
+    0,
+    nextViewport.width,
+  ),
+  y: THREE.MathUtils.clamp(
+    (point.y / Math.max(previousViewport.height, 1)) * nextViewport.height,
+    0,
+    nextViewport.height,
+  ),
+})
+
 export const createRuntimeActions = (options: {
   app: HTMLDivElement
   cameraDistance: number
@@ -49,6 +71,10 @@ export const createRuntimeActions = (options: {
   updateUserSettings: (settings: { debugModeEnabled: boolean }) => void
   gameHighLevelActions: GameHighLevelActionsMediator
 }) => {
+  const initialViewport = getViewportDimensions()
+  let lastViewportWidth = initialViewport.width
+  let lastViewportHeight = initialViewport.height
+
   const normalizeAngle = (angle: number) => {
     const wrapped = (angle + Math.PI) % (Math.PI * 2)
     return wrapped < 0 ? wrapped + Math.PI : wrapped - Math.PI
@@ -255,13 +281,38 @@ export const createRuntimeActions = (options: {
       )
     },
     handleResize: () => {
-      options.renderer.setSize(window.innerWidth, window.innerHeight)
+      const nextViewport = getViewportDimensions()
+      const nextViewportWidth = nextViewport.width
+      const nextViewportHeight = nextViewport.height
+
+      if (options.runtime.ui.targetHeadingScreenPosition) {
+        options.runtime.ui.targetHeadingScreenPosition =
+          scaleScreenPointForResize(
+            options.runtime.ui.targetHeadingScreenPosition,
+            {
+              height: lastViewportHeight,
+              width: lastViewportWidth,
+            },
+            {
+              height: nextViewportHeight,
+              width: nextViewportWidth,
+            },
+          )
+      }
+
+      lastViewportWidth = nextViewportWidth
+      lastViewportHeight = nextViewportHeight
+      options.renderer.setSize(nextViewportWidth, nextViewportHeight)
       updateCamera()
     },
     resetScenario: scenarioRuntimeController.resetScenario,
     restartFromCheckpoint: scenarioRuntimeController.restartFromCheckpoint,
     setTargetHeading: (heading: number, clientX: number, clientY: number) => {
       options.runtime.simulation.targetHeading = heading
+      options.runtime.ui.targetHeadingScreenPosition = {
+        x: clientX,
+        y: clientY,
+      }
       options.runtime.ui.targetHeadingSelectionEpoch += 1
       options.runtime.simulation.assistMode = 'off'
       options.createRipple(options.app, options.ripples, clientX, clientY)

@@ -19,9 +19,6 @@ export type KeyboardInput = {
 
 const mainThrustKeys = ['KeyW', 'ArrowUp']
 const reverseThrustKeys = ['KeyS', 'ArrowDown']
-const turnLeftKeys = ['KeyA', 'ArrowLeft']
-const turnRightKeys = ['KeyD', 'ArrowRight']
-const turnKeys = [...turnLeftKeys, ...turnRightKeys]
 
 const hasAny = (pressedKeys: Set<string>, codes: string[]) =>
   codes.some((code) => pressedKeys.has(code))
@@ -56,17 +53,10 @@ export const createKeyboardInput = (): KeyboardInput => {
         (pressedKeys.has('KeyQ') || virtualControls.strafeLeft ? -1 : 0) +
         (pressedKeys.has('KeyE') || virtualControls.strafeRight ? 1 : 0),
       turn:
-        (hasAny(pressedKeys, turnLeftKeys) || virtualControls.turnLeft
-          ? 1
-          : 0) +
-        (hasAny(pressedKeys, turnRightKeys) || virtualControls.turnRight
-          ? -1
-          : 0),
+        (virtualControls.turnLeft ? 1 : 0) +
+        (virtualControls.turnRight ? -1 : 0),
     }),
-    hasManualTurn: () =>
-      hasAny(pressedKeys, turnKeys) ||
-      virtualControls.turnLeft ||
-      virtualControls.turnRight,
+    hasManualTurn: () => virtualControls.turnLeft || virtualControls.turnRight,
     press: (code) => {
       pressedKeys.add(code)
     },

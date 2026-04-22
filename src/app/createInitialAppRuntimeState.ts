@@ -36,6 +36,7 @@ export const createInitialAppRuntimeState = (
     },
     ui: {
       spacecraftLabelIntroUntil: performance.now() + 5_000,
+      targetHeadingScreenPosition: null,
       targetHeadingSelectionEpoch: 0,
       uiEffectEpoch: 0,
     },

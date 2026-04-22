@@ -18,6 +18,7 @@ import { registerHighLevelActions } from '../runtime/highLevelActions/registerHi
 import { createRuntimeActions } from '../runtime/runtimeActions'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import { createGameScene } from '../scene/createGameScene'
+import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import { RENDER_SCALE } from '../simulation/constants'
 import { createCrashMenu, type CrashMenu } from '../ui/createCrashMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
@@ -208,9 +209,24 @@ export const createAppComponents = (options: {
   })
   const touchControls = createTouchControls({
     app: options.app,
+    commitTimeWarp: (action) => {
+      dispatchRuntimeAction(action)
+    },
+    getTimeWarpPreview: (action) => {
+      const direction = action === 'increaseTimeWarp' ? 1 : -1
+      const currentIndex = options.runtimeState.simulation.timeWarpIndex
+      const nextIndex = getConstrainedTimeWarpIndex(
+        currentIndex + direction,
+        options.config.controls.timeWarps,
+        options.runtimeState.scenario.directives.maxTimeWarp,
+      )
+
+      return {
+        canCommit: nextIndex !== currentIndex,
+        value: options.config.controls.timeWarps[nextIndex] ?? 1,
+      }
+    },
     keyboardInput,
-    nudgeTargetHeading: runtimeActions.nudgeTargetHeading,
-    onAction: (action) => dispatchRuntimeAction(action),
     onTargetHeadingSelected: (screenX, screenY) => {
       const heading = pickHeadingFromScreenPoint(
         screenX,

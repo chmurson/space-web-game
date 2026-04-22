@@ -76,4 +76,52 @@ describe('stepSimulationFrame', () => {
 
     expect(result.timeWarpIndex).toBe(3)
   })
+
+  it('clears the target heading once target-heading rotation completes', () => {
+    const result = stepSimulationFrame({
+      assistMode: 'off',
+      crashedBodyName: null,
+      getAssistTarget: () => createRuntimeState().bodies[0],
+      getAutopilotTurn: () => 0,
+      getCaptureMetrics: () => ({
+        circularSpeed: 0,
+        distance: 0,
+        insideRange: false,
+        relativeSpeed: 0,
+        roughAssistRange: 0,
+        specificEnergy: 0,
+        surfaceDistance: 0,
+      }),
+      getCircularizePlan: () => ({
+        burnHeading: 0,
+        deltaV: 0,
+        desiredVelocityHeading: 0,
+        distance: 0,
+        radialSpeed: 0,
+        tangentialSpeed: 0,
+      }),
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({ main: 0, reverse: 0, strafe: 0, turn: 0 }),
+        hasManualTurn: () => false,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+      },
+      maxControlWarp: 100,
+      physicsEngine: {
+        name: 'test',
+        step: (state) => state,
+      },
+      realDt: 1 / 60,
+      shouldCaptureBurn: () => false,
+      state: createRuntimeState(),
+      targetHeading: Math.PI / 2,
+      timeWarpIndex: 0,
+      timeWarps: [1, 10, 50, 100, 500, 2000],
+    })
+
+    expect(result.targetHeading).toBeNull()
+    expect(result.state.controls.turn).toBe(0)
+  })
 })

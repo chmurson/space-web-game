@@ -22,6 +22,7 @@ export const clearTransientScenarioRuntimeState = (
   runtime.simulation.assistMode = 'off'
   runtime.simulation.crashedBodyName = null
   runtime.ui.spacecraftLabelIntroUntil = performance.now() + 5_000
+  runtime.ui.targetHeadingScreenPosition = null
 }
 
 export const applySimulationFrameResult = (
@@ -33,6 +34,9 @@ export const applySimulationFrameResult = (
   runtime.simulation.state = frameResult.state
   runtime.simulation.targetHeading = frameResult.targetHeading
   runtime.simulation.timeWarpIndex = frameResult.timeWarpIndex
+  if (frameResult.targetHeading === null) {
+    runtime.ui.targetHeadingScreenPosition = null
+  }
 }
 
 export const applyScenarioLoadTransition = (

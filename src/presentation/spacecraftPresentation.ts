@@ -14,6 +14,7 @@ const maxTrailPoints = 450
 const trailLifetimeSeconds = 24 * 60 * 60
 const trailOldestColor = new THREE.Color('#0b1220')
 const trailNewestColor = new THREE.Color('#7c8fa8')
+const headingTargetArcRadiusPx = 44
 const normalizeAngleDelta = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 const unwrapAngle = (angle: number, previousAngle: number | null) =>
@@ -134,6 +135,8 @@ const updateSpacecraftCallout = (options: {
   spacecraft: Spacecraft
   spacecraftLabelIntroUntil: number
   spacecraftModelZoomThreshold: number
+  targetHeading: number | null
+  targetHeadingScreenPosition: { x: number; y: number } | null
   viewportSize: number
 }) => {
   const position = renderPosition(
@@ -164,6 +167,7 @@ const updateSpacecraftCallout = (options: {
   if (!isVisible) {
     options.overlayUi.spacecraftCallout.style.display = 'none'
     options.overlayUi.spacecraftIconThrust.style.display = 'none'
+    options.overlayUi.headingTargetOverlay.style.display = 'none'
     return options.displayHeadingAngle
   }
 
@@ -213,6 +217,55 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.spacecraftIconThrust.style.transform = `translate(-50%, -50%) rotate(${headingAngle}rad)`
   }
 
+  if (options.targetHeading !== null && options.targetHeadingScreenPosition) {
+    const targetForward = {
+      x: Math.cos(options.targetHeading),
+      y: Math.sin(options.targetHeading),
+    }
+    const targetForwardPosition = renderPosition(
+      options.spacecraft.position.x + targetForward.x * 1_000_000,
+      options.spacecraft.position.y + targetForward.y * 1_000_000,
+      1.2,
+    )
+    targetForwardPosition.project(options.gameScene.camera)
+    const targetHeadingAngle = Math.atan2(
+      (-targetForwardPosition.y * 0.5 + 0.5) * window.innerHeight - screenY,
+      (targetForwardPosition.x * 0.5 + 0.5) * window.innerWidth - screenX,
+    )
+    const remainingDelta = normalizeAngleDelta(
+      targetHeadingAngle - headingAngle,
+    )
+    const arcEndAngle = headingAngle + remainingDelta
+    const largeArcFlag = Math.abs(remainingDelta) > Math.PI ? 1 : 0
+    const sweepFlag = remainingDelta >= 0 ? 1 : 0
+    const startX = screenX + Math.cos(headingAngle) * headingTargetArcRadiusPx
+    const startY = screenY + Math.sin(headingAngle) * headingTargetArcRadiusPx
+    const endX = screenX + Math.cos(arcEndAngle) * headingTargetArcRadiusPx
+    const endY = screenY + Math.sin(arcEndAngle) * headingTargetArcRadiusPx
+
+    options.overlayUi.headingTargetOverlay.style.display = 'block'
+    options.overlayUi.headingTargetOverlay.setAttribute(
+      'viewBox',
+      `0 0 ${window.innerWidth} ${window.innerHeight}`,
+    )
+    options.overlayUi.headingTargetLine.setAttribute('x1', `${screenX}`)
+    options.overlayUi.headingTargetLine.setAttribute('y1', `${screenY}`)
+    options.overlayUi.headingTargetLine.setAttribute(
+      'x2',
+      `${options.targetHeadingScreenPosition.x}`,
+    )
+    options.overlayUi.headingTargetLine.setAttribute(
+      'y2',
+      `${options.targetHeadingScreenPosition.y}`,
+    )
+    options.overlayUi.headingTargetArc.setAttribute(
+      'd',
+      `M ${startX} ${startY} A ${headingTargetArcRadiusPx} ${headingTargetArcRadiusPx} 0 ${largeArcFlag} ${sweepFlag} ${endX} ${endY}`,
+    )
+  } else {
+    options.overlayUi.headingTargetOverlay.style.display = 'none'
+  }
+
   return headingAngle
 }
 
@@ -232,6 +285,8 @@ export const createSpacecraftPresentation = (options: {
       isThrusting: boolean
       spacecraft: Spacecraft
       spacecraftLabelIntroUntil: number
+      targetHeading: number | null
+      targetHeadingScreenPosition: { x: number; y: number } | null
       viewportSize: number
     }) => {
       const rawMeshRotationY = -state.spacecraft.heading + Math.PI / 2
@@ -262,6 +317,8 @@ export const createSpacecraftPresentation = (options: {
         spacecraft: state.spacecraft,
         spacecraftLabelIntroUntil: state.spacecraftLabelIntroUntil,
         spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
+        targetHeading: state.targetHeading,
+        targetHeadingScreenPosition: state.targetHeadingScreenPosition,
         viewportSize: state.viewportSize,
       })
     },

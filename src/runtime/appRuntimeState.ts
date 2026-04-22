@@ -27,6 +27,10 @@ export type AppRuntimeScenarioSlice = {
 
 export type AppRuntimeUiSlice = {
   spacecraftLabelIntroUntil: number
+  targetHeadingScreenPosition?: {
+    x: number
+    y: number
+  } | null
   targetHeadingSelectionEpoch: number
   uiEffectEpoch: number
 }

@@ -26,6 +26,9 @@ export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   debugPanel: DebugPanel
   fpsIndicator: HTMLElement
+  headingTargetArc: SVGPathElement
+  headingTargetLine: SVGLineElement
+  headingTargetOverlay: SVGSVGElement
   hud: HTMLElement
   hudDescription: HTMLParagraphElement | null
   hudTitle: HTMLHeadingElement | null
@@ -151,6 +154,33 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   spacecraftIconThrust.style.display = 'none'
   options.app.appendChild(spacecraftIconThrust)
 
+  const headingTargetOverlay = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'svg',
+  )
+  headingTargetOverlay.classList.add('heading-target-overlay')
+  headingTargetOverlay.setAttribute('aria-hidden', 'true')
+  headingTargetOverlay.setAttribute(
+    'viewBox',
+    `0 0 ${window.innerWidth} ${window.innerHeight}`,
+  )
+  headingTargetOverlay.style.display = 'none'
+
+  const headingTargetLine = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'line',
+  )
+  headingTargetLine.classList.add('heading-target-line')
+  headingTargetOverlay.appendChild(headingTargetLine)
+
+  const headingTargetArc = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'path',
+  )
+  headingTargetArc.classList.add('heading-target-arc')
+  headingTargetOverlay.appendChild(headingTargetArc)
+  options.app.appendChild(headingTargetOverlay)
+
   const offscreenIndicators = new Map<string, HTMLElement>()
   const bodyLabels = new Map<string, HTMLElement>()
 
@@ -174,6 +204,9 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     bodyLabels,
     debugPanel,
     fpsIndicator,
+    headingTargetArc,
+    headingTargetLine,
+    headingTargetOverlay,
     hud,
     hudDescription: hud.querySelector<HTMLParagraphElement>('p'),
     hudTitle: hud.querySelector<HTMLHeadingElement>('h1'),
