@@ -8,8 +8,8 @@ import type { TrajectoryPresentation } from '../presentation/trajectoryPresentat
 import type { RendererProfiler } from '../render/rendererProfiler'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import { getRuntimeActivePrompt } from '../scenario/scenarioRegistry'
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
+import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PhysicsEngine } from '../simulation/types'
 import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
@@ -61,11 +61,11 @@ export const createFrameLoop = (options: {
       1 / Math.max(realDt, 1 / 240),
       0.12,
     )
-    const activePrompt = getRuntimeActivePrompt(
+    const prompts = resolveScenarioPrompts(
       options.runtime,
       options.touchControls ? 'mobile' : 'desktop',
     )
-    const hasBlockingPrompt = activePrompt?.mode === 'blocking'
+    const hasBlockingPrompt = prompts.active?.kind === 'blocking'
 
     const isThrusting =
       options.runtime.simulation.state.controls.main > 0 &&

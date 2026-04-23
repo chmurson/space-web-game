@@ -1,10 +1,11 @@
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import { getRuntimeScenarioDefinition } from '../scenario/scenarioRegistry'
 import {
-  acknowledgeRuntimeScenarioPrompt as acknowledgeScenarioPromptTransition,
-  getRuntimeScenarioDefinition,
-  reopenRuntimeScenarioPrompt as reopenScenarioPromptTransition,
-} from '../scenario/scenarioRegistry'
+  dispatchScenarioPromptAction as dispatchScenarioPromptActionTransition,
+  reopenScenarioReplayPrompt,
+} from '../scenario/scenarioPrompts'
+import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { ScenarioRuntimeTransition as ScenarioSessionTransition } from '../scenario/scenarioRuntimeTransition'
 import type { StepSimulationFrameResult } from './simulationStep'
 import type { AppRuntimeState } from './appRuntimeState'
@@ -106,6 +107,10 @@ export const applyScenarioRuntimeTransition = (
       transition.completed === undefined
         ? runtime.scenario.session.completed
         : transition.completed,
+    promptUi:
+      transition.promptUi === undefined
+        ? runtime.scenario.session.promptUi
+        : transition.promptUi,
     state:
       transition.nextState === undefined
         ? runtime.scenario.session.state
@@ -132,26 +137,26 @@ export const advanceRuntimeScenario = (
   }
 }
 
-export const acknowledgeRuntimeScenarioPrompt = (
+export const dispatchRuntimeScenarioPromptAction = (
   runtime: AppRuntimeState,
   limits: GlobalScenarioDirectiveLimits,
+  action: PromptAction,
 ) => {
-  const result = acknowledgeScenarioPromptTransition(runtime)
+  const result = dispatchScenarioPromptActionTransition(runtime, action)
   applyScenarioRuntimeTransition(runtime, result.transition)
   if (shouldSyncDirectivesForScenarioTransition(result.transition)) {
     syncRuntimeScenarioDirectives(runtime, limits)
   }
-  return { acknowledged: result.acknowledged, effect: result.effect }
+  return { handled: result.handled, effect: result.effect }
 }
 
 export const reopenRuntimeScenarioPrompt = (
   runtime: AppRuntimeState,
   limits: GlobalScenarioDirectiveLimits,
 ) => {
-  const transition = reopenScenarioPromptTransition(runtime)
-  applyScenarioRuntimeTransition(runtime, transition)
-  if (shouldSyncDirectivesForScenarioTransition(transition)) {
+  const reopened = reopenScenarioReplayPrompt(runtime)
+  if (reopened) {
     syncRuntimeScenarioDirectives(runtime, limits)
   }
-  return transition !== null && transition !== undefined
+  return reopened
 }

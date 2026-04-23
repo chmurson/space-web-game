@@ -148,7 +148,6 @@ describe('runtimeStateTransitions', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'escape-earth',
-      pendingPrompt: null,
       onboarding: {
         activeStepId: 'intro-thrust',
         completedStepIds: [],
@@ -250,7 +249,6 @@ describe('runtimeStateTransitions', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'escape-earth',
-      pendingPrompt: null,
       onboarding: {
         activeStepId: 'intro-thrust',
         completedStepIds: [],

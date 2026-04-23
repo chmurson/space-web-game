@@ -1,7 +1,7 @@
 import type {
   ScenarioPromptAnchor,
   ScenarioTouchHintTarget,
-} from '../../../scenarioRegistry'
+} from '../../../scenarioPromptTypes'
 
 export type TutorialOnboardingStepId =
   | 'intro-thrust'

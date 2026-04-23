@@ -1,10 +1,10 @@
 import './scenario-prompts.css'
 import type { AppRuntimeState } from '../../runtime/appRuntimeState'
-import {
-  getRuntimeActivePrompt,
-  getRuntimeScenarioReplayPromptContent,
-} from '../../scenario/scenarioRegistry'
 import { computePosition, flip, shift, offset, arrow } from '@floating-ui/dom'
+import {
+  resolveScenarioPrompts,
+  serializePromptAction,
+} from '../../scenario/scenarioPrompts'
 
 export type ScenarioPromptUiRefs = {
   backdropElement: HTMLElement
@@ -137,11 +137,11 @@ type PromptIdentity = {
   activePromptDescription: string
   activePromptMode: 'coach' | 'modal' | null
   activePromptAnchor: string | null
-  activePromptConfirmButtonLabel: string
-  activePromptConfirmButtonAction: string
+  activePromptPrimaryButtonLabel: string
+  activePromptPrimaryButtonAction: string
   activePromptSecondaryButtonLabel: string
   activePromptSecondaryButtonAction: string
-  replayPromptTitle: string
+  replayPromptLabel: string
   showScenarioInfoButton: boolean
   inputMode: 'desktop' | 'mobile'
 }
@@ -156,22 +156,28 @@ const computePromptIdentity = (
   inputMode: 'desktop' | 'mobile',
   showScenarioInfoButton: boolean,
 ): PromptIdentity => {
-  const activePrompt = getRuntimeActivePrompt(runtime, inputMode)
-  const replayPromptContent = getRuntimeScenarioReplayPromptContent(runtime)
+  const prompts = resolveScenarioPrompts(runtime, inputMode)
+  const activePrompt = prompts.active
+  const replayPrompt = prompts.replay
+  const primaryButton = activePrompt?.buttons[0]
+  const secondaryButton = activePrompt?.buttons[1]
 
   return {
     activePromptTitle: activePrompt?.title ?? '',
     activePromptDescription: activePrompt?.description ?? '',
     activePromptMode:
-      activePrompt?.mode === 'coach' ? 'coach' : activePrompt ? 'modal' : null,
-    activePromptAnchor: (activePrompt?.anchor as string) ?? null,
-    activePromptConfirmButtonLabel: activePrompt?.confirmButton?.label ?? '',
-    activePromptConfirmButtonAction: activePrompt?.confirmButton?.action ?? '',
-    activePromptSecondaryButtonLabel:
-      activePrompt?.secondaryButton?.label ?? '',
-    activePromptSecondaryButtonAction:
-      activePrompt?.secondaryButton?.action ?? '',
-    replayPromptTitle: replayPromptContent?.title ?? '',
+      activePrompt?.kind === 'coach' ? 'coach' : activePrompt ? 'modal' : null,
+    activePromptAnchor:
+      activePrompt?.kind === 'coach' ? activePrompt.anchor : null,
+    activePromptPrimaryButtonLabel: primaryButton?.label ?? '',
+    activePromptPrimaryButtonAction: primaryButton
+      ? serializePromptAction(primaryButton.action)
+      : '',
+    activePromptSecondaryButtonLabel: secondaryButton?.label ?? '',
+    activePromptSecondaryButtonAction: secondaryButton
+      ? serializePromptAction(secondaryButton.action)
+      : '',
+    replayPromptLabel: replayPrompt?.label ?? '',
     showScenarioInfoButton,
     inputMode,
   }
@@ -186,12 +192,12 @@ const identitiesEqual = (a: PromptIdentity, b: PromptIdentity): boolean => {
     a.activePromptDescription === b.activePromptDescription &&
     a.activePromptMode === b.activePromptMode &&
     a.activePromptAnchor === b.activePromptAnchor &&
-    a.activePromptConfirmButtonLabel === b.activePromptConfirmButtonLabel &&
-    a.activePromptConfirmButtonAction === b.activePromptConfirmButtonAction &&
+    a.activePromptPrimaryButtonLabel === b.activePromptPrimaryButtonLabel &&
+    a.activePromptPrimaryButtonAction === b.activePromptPrimaryButtonAction &&
     a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
     a.activePromptSecondaryButtonAction ===
       b.activePromptSecondaryButtonAction &&
-    a.replayPromptTitle === b.replayPromptTitle &&
+    a.replayPromptLabel === b.replayPromptLabel &&
     a.showScenarioInfoButton === b.showScenarioInfoButton &&
     a.inputMode === b.inputMode
   )
@@ -356,18 +362,24 @@ export const createScenarioPromptUpdater = (
       // Cache the current identity for next frame comparison
       lastPromptIdentity = currentPromptIdentity
 
-      const activePrompt = getRuntimeActivePrompt(runtime, inputMode)
-      const replayPromptContent = getRuntimeScenarioReplayPromptContent(runtime)
+      const prompts = resolveScenarioPrompts(runtime, inputMode)
+      const activePrompt = prompts.active
+      const replayPrompt = prompts.replay
+      const primaryButton = activePrompt?.buttons[0]
+      const secondaryButton = activePrompt?.buttons[1]
 
       // Show/hide backdrop
       refs.backdropElement.style.display = activePrompt ? 'grid' : 'none'
 
       // Set prompt mode
-      const promptMode = activePrompt?.mode === 'coach' ? 'coach' : 'modal'
+      const promptMode = activePrompt?.kind === 'coach' ? 'coach' : 'modal'
       refs.backdropElement.dataset.promptMode = promptMode
 
       // Set anchor if present
-      const currentAnchorKey = activePrompt?.anchor as AnchorKey | undefined
+      const currentAnchorKey =
+        activePrompt?.kind === 'coach'
+          ? (activePrompt.anchor as AnchorKey)
+          : undefined
       if (currentAnchorKey) {
         refs.promptElement.dataset.anchor = currentAnchorKey
       } else {
@@ -413,31 +425,31 @@ export const createScenarioPromptUpdater = (
 
       // Update buttons
       if (refs.confirmButton) {
-        refs.confirmButton.style.display = activePrompt?.confirmButton
+        refs.confirmButton.style.display = primaryButton
           ? 'inline-flex'
           : 'none'
-        refs.confirmButton.textContent =
-          activePrompt?.confirmButton?.label ?? ''
-        refs.confirmButton.dataset.promptAction =
-          activePrompt?.confirmButton?.action ?? ''
+        refs.confirmButton.textContent = primaryButton?.label ?? ''
+        refs.confirmButton.dataset.promptAction = primaryButton
+          ? serializePromptAction(primaryButton.action)
+          : ''
       }
       if (refs.secondaryButton) {
-        refs.secondaryButton.style.display = activePrompt?.secondaryButton
+        refs.secondaryButton.style.display = secondaryButton
           ? 'inline-flex'
           : 'none'
-        refs.secondaryButton.textContent =
-          activePrompt?.secondaryButton?.label ?? ''
-        refs.secondaryButton.dataset.promptAction =
-          activePrompt?.secondaryButton?.action ?? ''
+        refs.secondaryButton.textContent = secondaryButton?.label ?? ''
+        refs.secondaryButton.dataset.promptAction = secondaryButton
+          ? serializePromptAction(secondaryButton.action)
+          : ''
       }
 
       // Update replay button
       refs.replayButton.style.display =
-        showScenarioInfoButton && !activePrompt && replayPromptContent
+        showScenarioInfoButton && !activePrompt && replayPrompt
           ? 'inline-flex'
           : 'none'
       if (refs.replayButtonLabel) {
-        refs.replayButtonLabel.textContent = replayPromptContent?.title ?? ''
+        refs.replayButtonLabel.textContent = replayPrompt?.label ?? ''
       }
     },
 

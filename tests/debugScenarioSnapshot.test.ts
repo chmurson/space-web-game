@@ -97,6 +97,10 @@ describe('createScenarioFromSnapshot', () => {
     expect(scenario.scenarioSession).toEqual({
       checkpoint: null,
       completed: false,
+      promptUi: {
+        activePromptId: null,
+        replayPromptId: null,
+      },
       scenarioId: 'tutorial',
       state: { phase: 'escape-earth' },
     })

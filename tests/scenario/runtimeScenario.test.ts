@@ -44,6 +44,10 @@ describe('createRuntimeScenarioState', () => {
     expect(runtimeScenario.scenarioSession).toEqual({
       checkpoint: null,
       completed: false,
+      promptUi: {
+        activePromptId: null,
+        replayPromptId: null,
+      },
       scenarioId: 'test',
       state: null,
     })
@@ -92,6 +96,10 @@ describe('createRuntimeScenarioState', () => {
         scenarioSession: {
           checkpoint: null,
           completed: false,
+          promptUi: {
+            activePromptId: null,
+            replayPromptId: null,
+          },
           scenarioId: 'tutorial',
           state: { phase: 'return-earth' },
         },
@@ -113,6 +121,10 @@ describe('createRuntimeScenarioState', () => {
     expect(runtimeScenario.scenarioSession).toEqual({
       checkpoint: null,
       completed: false,
+      promptUi: {
+        activePromptId: null,
+        replayPromptId: null,
+      },
       scenarioId: 'tutorial',
       state: { phase: 'return-earth' },
     })

@@ -19,11 +19,17 @@ export type RuntimeScenarioCheckpoint = {
   world: SimulationState
 }
 
+export type ScenarioPromptUiState = {
+  activePromptId: string | null
+  replayPromptId: string | null
+}
+
 export type RuntimeScenarioSession<
   TState extends ScenarioSessionValue = ScenarioSessionValue,
 > = {
   checkpoint: RuntimeScenarioCheckpoint | null
   completed: boolean
+  promptUi: ScenarioPromptUiState
   scenarioId: string
   state: TState
 }
@@ -42,9 +48,14 @@ export const createRuntimeScenarioSession = <
 >(
   scenarioId: string,
   state: TState = null as TState,
+  promptUi: ScenarioPromptUiState = {
+    activePromptId: null,
+    replayPromptId: null,
+  },
 ): RuntimeScenarioSession<TState> => ({
   checkpoint: null,
   completed: false,
+  promptUi: { ...promptUi },
   scenarioId,
   state,
 })
@@ -65,6 +76,7 @@ export const cloneRuntimeScenarioSession = <
       }
     : null,
   completed: session.completed,
+  promptUi: { ...session.promptUi },
   scenarioId: session.scenarioId,
   state: cloneScenarioSessionValue(session.state),
 })

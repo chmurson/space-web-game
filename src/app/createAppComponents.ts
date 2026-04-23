@@ -16,6 +16,7 @@ import { createGameQueries } from '../runtime/gameQueries'
 import { GameHighLevelActionsMediator } from '../runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { registerHighLevelActions } from '../runtime/highLevelActions/registerHighLevelActions'
 import { createRuntimeActions } from '../runtime/runtimeActions'
+import { parsePromptAction } from '../scenario/scenarioPrompts'
 import { defaultMaxControlWarp } from '../runtime/simulationStep'
 import { getTimeWarpFeedbackPreview } from '../runtime/timeWarpFeedbackPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
@@ -382,9 +383,14 @@ export const createAppComponents = (options: {
     windowTarget: window,
   })
 
-  overlayUi.scenarioPromptConfirmButton?.addEventListener('click', () => {
-    const result = runtimeActions.acknowledgeScenarioPrompt()
-    if (!result.acknowledged) {
+  const dispatchPromptAction = (serializedAction: string | undefined) => {
+    const promptAction = parsePromptAction(serializedAction)
+    if (!promptAction) {
+      return
+    }
+
+    const result = runtimeActions.dispatchScenarioPromptAction(promptAction)
+    if (!result.handled) {
       return
     }
 
@@ -394,17 +400,25 @@ export const createAppComponents = (options: {
       })
     }
 
-    frameLoop.refreshTrajectoryPrediction()
-  })
-
-  overlayUi.scenarioPromptSecondaryButton?.addEventListener('click', () => {
-    const promptAction =
-      overlayUi.scenarioPromptSecondaryButton?.dataset.promptAction
-    if (promptAction === 'exit-to-menu') {
+    if (result.effect === 'exit-to-menu') {
       gameHighLevelActionsMediator.dispatch({
         type: 'enterMainMenu',
       })
     }
+
+    frameLoop.refreshTrajectoryPrediction()
+  }
+
+  overlayUi.scenarioPromptConfirmButton?.addEventListener('click', () => {
+    dispatchPromptAction(
+      overlayUi.scenarioPromptConfirmButton?.dataset.promptAction,
+    )
+  })
+
+  overlayUi.scenarioPromptSecondaryButton?.addEventListener('click', () => {
+    dispatchPromptAction(
+      overlayUi.scenarioPromptSecondaryButton?.dataset.promptAction,
+    )
   })
 
   overlayUi.scenarioPromptReplayButton.addEventListener('click', () => {

@@ -6,10 +6,8 @@ import { getDebugPanelLines, getGuidanceText } from '../ui/hudText'
 import type { RendererProfiler } from '../render/rendererProfiler'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { GameQueries } from '../runtime/gameQueries'
-import {
-  getRuntimeActivePrompt,
-  getRuntimeScenarioDefinition,
-} from '../scenario/scenarioRegistry'
+import { getRuntimeScenarioDefinition } from '../scenario/scenarioRegistry'
+import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import {
@@ -141,7 +139,7 @@ export const createHudPresentation = (options: {
       const scenarioDefinition = getRuntimeScenarioDefinition(
         options.runtime.scenario.session.scenarioId,
       )
-      const activePrompt = getRuntimeActivePrompt(options.runtime, inputMode)
+      const prompts = resolveScenarioPrompts(options.runtime, inputMode)
       const scenarioHudContent =
         scenarioDefinition?.getHudContent &&
         (!scenarioDefinition.isState ||
@@ -270,7 +268,9 @@ export const createHudPresentation = (options: {
         options.runtime.simulation.assistMode,
       )
       options.touchControls?.setTutorialHintTarget(
-        activePrompt?.touchHintTarget ?? null,
+        prompts.active?.kind === 'coach'
+          ? (prompts.active.touchHintTarget ?? null)
+          : null,
       )
       if (options.overlayUi.statGuidance) {
         options.overlayUi.statGuidance.textContent = getGuidanceText({

@@ -4,7 +4,7 @@ import type {
   TimeWarpAction,
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
-import type { ScenarioTouchHintTarget } from '../../scenario/scenarioRegistry'
+import type { ScenarioTouchHintTarget } from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 import { createTouchInteractionModel } from './touchInteractionModel'

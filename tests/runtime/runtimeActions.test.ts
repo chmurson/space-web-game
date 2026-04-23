@@ -224,22 +224,34 @@ describe('createRuntimeActions', () => {
 
   it('syncs directives immediately after acknowledging the tutorial intro prompt', () => {
     const runtime = createRuntime()
-    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
-      phase: 'escape-earth',
-      pendingPrompt: 'phase-one-intro',
-    })
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      {
+        phase: 'escape-earth',
+      },
+      {
+        activePromptId: 'phase-one-intro',
+        replayPromptId: null,
+      },
+    )
     const runtimeActions = createTestRuntimeActions(runtime)
 
-    const result = runtimeActions.acknowledgeScenarioPrompt()
+    const result = runtimeActions.dispatchScenarioPromptAction({
+      kind: 'scenario',
+      id: 'start-phase-one-onboarding',
+    })
 
-    expect(result).toEqual({ acknowledged: true, effect: undefined })
+    expect(result).toEqual({ handled: true, effect: undefined })
     expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
-      pendingPrompt: null,
       onboarding: {
         activeStepId: 'intro-thrust',
         gateActive: true,
       },
+    })
+    expect(runtime.scenario.session.promptUi).toEqual({
+      activePromptId: 'intro-thrust',
+      replayPromptId: 'phase-one-intro',
     })
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
       new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
@@ -248,31 +260,37 @@ describe('createRuntimeActions', () => {
 
   it('syncs directives immediately after reopening the tutorial intro prompt', () => {
     const runtime = createRuntime()
-    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
-      phase: 'escape-earth',
-      lastAcknowledgedPrompt: 'phase-one-intro',
-      pendingPrompt: null,
-      onboarding: {
-        activeStepId: 'intro-thrust',
-        completedStepIds: [],
-        gateActive: true,
-        progress: {
-          accumulatedHeadingChangeRadians: 0,
-          accumulatedMainThrustMs: 0,
-          lastSampleHeading: runtime.simulation.state.spacecraft.heading,
-          lastSampleAtMs: 1_000,
-          stepStartHeading: runtime.simulation.state.spacecraft.heading,
-          stepStartTargetHeadingSelectionEpoch: 0,
-          stepStartTimeWarpMultiplier: 1,
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      {
+        phase: 'escape-earth',
+        onboarding: {
+          activeStepId: 'intro-thrust',
+          completedStepIds: [],
+          gateActive: true,
+          progress: {
+            accumulatedHeadingChangeRadians: 0,
+            accumulatedMainThrustMs: 0,
+            lastSampleHeading: runtime.simulation.state.spacecraft.heading,
+            lastSampleAtMs: 1_000,
+            stepStartHeading: runtime.simulation.state.spacecraft.heading,
+            stepStartTargetHeadingSelectionEpoch: 0,
+            stepStartTimeWarpMultiplier: 1,
+          },
         },
       },
-    })
+      {
+        activePromptId: null,
+        replayPromptId: 'phase-one-intro',
+      },
+    )
     const runtimeActions = createTestRuntimeActions(runtime)
     runtime.scenario.directives = createDefaultScenarioDirectives()
 
     expect(runtimeActions.reopenScenarioPrompt()).toBe(true)
-    expect(runtime.scenario.session.state).toMatchObject({
-      pendingPrompt: 'phase-one-intro',
+    expect(runtime.scenario.session.promptUi).toEqual({
+      activePromptId: 'phase-one-intro',
+      replayPromptId: 'phase-one-intro',
     })
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
       new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),

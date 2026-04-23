@@ -26,21 +26,21 @@ import {
   type RuntimeScenarioDirectives,
 } from '../../scenarioDirectiveTypes'
 import type {
-  PromptActionEffect,
-  RuntimePromptContent,
   RuntimeScenarioDefinition,
-  ScenarioPromptAcknowledgeResult,
-  ScenarioPromptContent,
+  ScenarioPromptActionDispatchResult,
 } from '../../scenarioRegistry'
+import type { PromptDefinition } from '../../scenarioPromptTypes'
 import type { ScenarioRuntimeTransition } from '../../scenarioRuntimeTransition'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
   type RuntimeScenarioCheckpoint,
+  type ScenarioPromptUiState,
 } from '../../scenarioSession'
 import {
   getHiddenOnboardingUIElements,
-  getTutorialOnboardingPromptContent,
+  getTutorialOnboardingPromptDefinitions,
+  tutorialOnboardingStepOrder,
 } from './tutorialOnboarding/tutorialOnboardingFlow'
 import {
   acknowledgeTutorialOnboardingPrompt,
@@ -56,23 +56,13 @@ type TutorialScenarioPhase =
   | 'return-earth'
   | 'orbit-earth'
   | 'complete'
-type TutorialScenarioPrompt =
-  | 'phase-one-intro'
-  | 'phase-two-intro'
-  | 'orbit-moon-intro'
-  | 'phase-three-intro'
-  | 'orbit-earth-intro'
-  | 'complete-intro'
-  | null
 
 export type TutorialScenarioState = {
   onboarding?: TutorialOnboardingState
-  lastAcknowledgedPrompt?: Exclude<TutorialScenarioPrompt, null>
   orbitProgressRadians?: number
   orbitTurnsCompleted?: number
   previousOrbitAngle?: number
   phase: TutorialScenarioPhase
-  pendingPrompt: TutorialScenarioPrompt
 }
 
 const requiredMoonOrbitTurns = 3
@@ -86,9 +76,12 @@ const normalizeAngleDelta = (angle: number) =>
 const createTutorialScenarioSession = (
   state: TutorialScenarioState = {
     phase: 'escape-earth',
-    pendingPrompt: 'phase-one-intro',
   },
-) => createRuntimeScenarioSession('tutorial', state)
+) =>
+  createRuntimeScenarioSession('tutorial', state, {
+    activePromptId: 'phase-one-intro',
+    replayPromptId: null,
+  })
 
 const isTutorialScenarioState = (
   value: unknown,
@@ -215,124 +208,131 @@ const getTutorialHudContent = (state: TutorialScenarioState) => {
   }
 }
 
-const getTutorialPromptContent = (
+const tutorialPromptDefinitions = {
+  'phase-one-intro': {
+    id: 'phase-one-intro',
+    title: 'Leave Earth Orbit',
+    shortLabel: 'Leave Earth Orbit',
+    description:
+      'Use thrust, turning, double-click heading, and the projected path. Fly far enough away from Earth to move on.',
+    buttons: [
+      {
+        action: { kind: 'scenario', id: 'start-phase-one-onboarding' },
+        label: 'Start',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'phase-two-intro': {
+    id: 'phase-two-intro',
+    title: 'Reach the Moon',
+    shortLabel: 'Reach the Moon',
+    description:
+      'The Moon is now your target. You can zoom out more and look farther ahead. Use that to line up an approach.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'orbit-moon-intro': {
+    id: 'orbit-moon-intro',
+    title: 'Approach the Moon',
+    shortLabel: 'Approach the Moon',
+    description:
+      'You are close to the Moon. Orbit around it three times to complete the lunar phase of the tutorial.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'phase-three-intro': {
+    id: 'phase-three-intro',
+    title: 'Return to Earth',
+    shortLabel: 'Return to Earth',
+    description:
+      'You have completed three lunar orbits. The next goal is to head back toward Earth and get close enough to start the final orbit.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'orbit-earth-intro': {
+    id: 'orbit-earth-intro',
+    title: 'Back at Earth',
+    shortLabel: 'Back at Earth',
+    description:
+      'You are back in Earth range. Stabilize and complete three Earth orbits to finish the tutorial.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'complete-intro': {
+    id: 'complete-intro',
+    title: 'Tutorial Complete',
+    shortLabel: 'Tutorial Complete',
+    description:
+      'You completed the Earth-Moon round trip. Start free roam immediately or return to the main menu.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'start_free_roam' },
+        label: 'Free roam',
+        tone: 'primary',
+      },
+      {
+        action: { kind: 'builtin', id: 'exit_to_menu' },
+        label: 'Exit',
+        tone: 'secondary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  ...getTutorialOnboardingPromptDefinitions(),
+} satisfies Record<string, PromptDefinition>
+
+const isTutorialOnboardingPromptId = (
+  promptId: string | null,
+): promptId is NonNullable<TutorialOnboardingState['activeStepId']> =>
+  tutorialOnboardingStepOrder.includes(
+    promptId as NonNullable<TutorialOnboardingState['activeStepId']>,
+  )
+
+const getTutorialPromptUiForOnboarding = (
   state: TutorialScenarioState,
-): ScenarioPromptContent | null => {
-  return getTutorialPromptContentForPrompt(state.pendingPrompt)
-}
-
-const getActivePrompt = (
-  runtime: AppRuntimeState,
-  inputMode: 'desktop' | 'mobile',
-): RuntimePromptContent | null => {
-  const state = getTutorialScenarioState(runtime)
-  if (!state) {
-    return null
-  }
-
-  // Check onboarding (non-blocking coach tips) first
+  currentPromptUi: ScenarioPromptUiState,
+): ScenarioPromptUiState => {
   if (state.onboarding?.gateActive && state.onboarding.activeStepId) {
-    const onboardingContent = getTutorialOnboardingPromptContent(
-      state.onboarding.activeStepId,
-      inputMode,
-    )
-    const prompt: RuntimePromptContent = {
-      mode: 'coach',
-      title: onboardingContent.title,
-      description: onboardingContent.description,
-      confirmButton: onboardingContent.confirmLabel
-        ? { label: onboardingContent.confirmLabel }
-        : undefined,
-      anchor: onboardingContent.anchor,
-      touchHintTarget: onboardingContent.touchHintTarget,
-    }
-
-    return prompt
-  }
-
-  // Check phase prompts (blocking)
-  const phasePrompt = getTutorialPromptContentForPrompt(state.pendingPrompt)
-  if (phasePrompt) {
     return {
-      mode: 'blocking',
-      title: phasePrompt.title,
-      description: phasePrompt.description,
-      confirmButton: phasePrompt.confirmLabel
-        ? { label: phasePrompt.confirmLabel, action: phasePrompt.confirmAction }
-        : undefined,
-      secondaryButton: phasePrompt.secondaryLabel
-        ? {
-            label: phasePrompt.secondaryLabel,
-            action: phasePrompt.secondaryAction,
-          }
-        : undefined,
+      ...currentPromptUi,
+      activePromptId: state.onboarding.activeStepId,
     }
   }
 
-  return null
-}
-
-const getTutorialPromptContentForPrompt = (
-  prompt: TutorialScenarioPrompt,
-): ScenarioPromptContent | null => {
-  if (prompt === 'phase-one-intro') {
+  if (isTutorialOnboardingPromptId(currentPromptUi.activePromptId)) {
     return {
-      title: 'Leave Earth Orbit',
-      description:
-        'Use thrust, turning, double-click heading, and the projected path. Fly far enough away from Earth to move on.',
-      confirmLabel: 'Start',
+      ...currentPromptUi,
+      activePromptId: null,
     }
   }
 
-  if (prompt === 'phase-two-intro') {
-    return {
-      title: 'Reach the Moon',
-      description:
-        'The Moon is now your target. You can zoom out more and look farther ahead. Use that to line up an approach.',
-      confirmLabel: 'Continue',
-    }
-  }
-
-  if (prompt === 'phase-three-intro') {
-    return {
-      title: 'Return to Earth',
-      description:
-        'You have completed three lunar orbits. The next goal is to head back toward Earth and get close enough to start the final orbit.',
-      confirmLabel: 'Continue',
-    }
-  }
-
-  if (prompt === 'orbit-moon-intro') {
-    return {
-      title: 'Approach the Moon',
-      description:
-        'You are close to the Moon. Orbit around it three times to complete the lunar phase of the tutorial.',
-      confirmLabel: 'Continue',
-    }
-  }
-
-  if (prompt === 'orbit-earth-intro') {
-    return {
-      title: 'Back at Earth',
-      description:
-        'You are back in Earth range. Stabilize and complete three Earth orbits to finish the tutorial.',
-      confirmLabel: 'Continue',
-    }
-  }
-
-  if (prompt === 'complete-intro') {
-    return {
-      title: 'Tutorial Complete',
-      description:
-        'You completed the Earth-Moon round trip. Start free roam immediately or return to the main menu.',
-      confirmAction: 'start-free-roam',
-      confirmLabel: 'Free roam',
-      secondaryAction: 'exit-to-menu',
-      secondaryLabel: 'Exit',
-    }
-  }
-
-  return null
+  return currentPromptUi
 }
 
 const positionMoonForPhaseTwo = (runtime: AppRuntimeState) => {
@@ -396,11 +396,13 @@ const createTutorialTransition = (
   options: {
     checkpoint?: RuntimeScenarioCheckpoint | null
     completed?: boolean
+    promptUi?: ScenarioPromptUiState
   } = {},
 ): ScenarioRuntimeTransition<TutorialScenarioState> => ({
   checkpoint: options.checkpoint,
   completed: options.completed,
   nextState: state,
+  promptUi: options.promptUi,
 })
 
 const isWithinOrbitPhaseThreshold = (
@@ -500,7 +502,12 @@ const advanceTutorialScenario = (
         onboarding: advancedOnboarding,
       }
       if (advancedOnboarding.gateActive) {
-        return createTutorialTransition(nextState)
+        return createTutorialTransition(nextState, {
+          promptUi: getTutorialPromptUiForOnboarding(
+            nextState,
+            runtime.scenario.session.promptUi,
+          ),
+        })
       }
     }
 
@@ -523,10 +530,15 @@ const advanceTutorialScenario = (
     return createTutorialTransition(
       {
         phase: 'reach-moon',
-        pendingPrompt: 'phase-two-intro',
         ...createOrbitProgressState(),
       },
-      { checkpoint: createDefaultRuntimeScenarioSession(runtime) },
+      {
+        checkpoint: createDefaultRuntimeScenarioSession(runtime),
+        promptUi: {
+          ...runtime.scenario.session.promptUi,
+          activePromptId: 'phase-two-intro',
+        },
+      },
     )
   }
 
@@ -537,9 +549,14 @@ const advanceTutorialScenario = (
           ...nextState,
           ...createOrbitProgressState(),
           phase: 'orbit-moon',
-          pendingPrompt: 'orbit-moon-intro',
         },
-        { checkpoint: createDefaultRuntimeScenarioSession(runtime) },
+        {
+          checkpoint: createDefaultRuntimeScenarioSession(runtime),
+          promptUi: {
+            ...runtime.scenario.session.promptUi,
+            activePromptId: 'orbit-moon-intro',
+          },
+        },
       )
     }
 
@@ -555,10 +572,15 @@ const advanceTutorialScenario = (
     return createTutorialTransition(
       {
         phase: 'return-earth',
-        pendingPrompt: 'phase-three-intro',
         ...createOrbitProgressState(),
       },
-      { checkpoint: createDefaultRuntimeScenarioSession(runtime) },
+      {
+        checkpoint: createDefaultRuntimeScenarioSession(runtime),
+        promptUi: {
+          ...runtime.scenario.session.promptUi,
+          activePromptId: 'phase-three-intro',
+        },
+      },
     )
   }
 
@@ -569,9 +591,14 @@ const advanceTutorialScenario = (
           ...nextState,
           ...createOrbitProgressState(),
           phase: 'orbit-earth',
-          pendingPrompt: 'orbit-earth-intro',
         },
-        { checkpoint: createDefaultRuntimeScenarioSession(runtime) },
+        {
+          checkpoint: createDefaultRuntimeScenarioSession(runtime),
+          promptUi: {
+            ...runtime.scenario.session.promptUi,
+            activePromptId: 'orbit-earth-intro',
+          },
+        },
       )
     }
     return null
@@ -586,11 +613,14 @@ const advanceTutorialScenario = (
     return createTutorialTransition(
       {
         phase: 'complete',
-        pendingPrompt: 'complete-intro',
       },
       {
         checkpoint: createDefaultRuntimeScenarioSession(runtime),
         completed: true,
+        promptUi: {
+          ...runtime.scenario.session.promptUi,
+          activePromptId: 'complete-intro',
+        },
       },
     )
   }
@@ -598,16 +628,46 @@ const advanceTutorialScenario = (
   return null
 }
 
-const acknowledgeTutorialPrompt = (
+const handleTutorialPromptAction = (
   runtime: AppRuntimeState,
-): ScenarioPromptAcknowledgeResult<TutorialScenarioState> => {
+  actionId: string,
+): ScenarioPromptActionDispatchResult<TutorialScenarioState> => {
   const state = getTutorialScenarioState(runtime)
   if (!state) {
-    return { acknowledged: false }
+    return { handled: false }
+  }
+
+  if (
+    actionId === 'start-phase-one-onboarding' &&
+    runtime.scenario.session.promptUi.activePromptId === 'phase-one-intro'
+  ) {
+    const nextOnboarding = createTutorialOnboardingState(
+      runtime,
+      performance.now(),
+      tutorialTimeWarps[runtime.simulation.timeWarpIndex] ??
+        tutorialTimeWarps[0] ??
+        1,
+    )
+
+    return {
+      handled: true,
+      transition: createTutorialTransition(
+        {
+          ...state,
+          onboarding: nextOnboarding,
+        },
+        {
+          promptUi: {
+            activePromptId: nextOnboarding.activeStepId,
+            replayPromptId: 'phase-one-intro',
+          },
+        },
+      ),
+    }
   }
 
   const activeOnboarding = state.onboarding
-  if (activeOnboarding?.gateActive) {
+  if (actionId === 'advance-onboarding-step' && activeOnboarding?.gateActive) {
     const acknowledgedOnboarding = acknowledgeTutorialOnboardingPrompt(
       runtime,
       activeOnboarding,
@@ -618,74 +678,41 @@ const acknowledgeTutorialPrompt = (
     )
 
     if (!acknowledgedOnboarding) {
-      return { acknowledged: false }
+      return { handled: false }
     }
 
     return {
-      acknowledged: true,
-      transition: createTutorialTransition({
-        ...state,
-        onboarding: acknowledgedOnboarding,
-      }),
+      handled: true,
+      transition: createTutorialTransition(
+        {
+          ...state,
+          onboarding: acknowledgedOnboarding,
+        },
+        {
+          promptUi: getTutorialPromptUiForOnboarding(
+            {
+              ...state,
+              onboarding: acknowledgedOnboarding,
+            },
+            runtime.scenario.session.promptUi,
+          ),
+        },
+      ),
     }
   }
 
-  if (state.pendingPrompt === null) {
-    return { acknowledged: false }
-  }
-
-  const acknowledgedPrompt = state.pendingPrompt
-  const promptContent = getTutorialPromptContentForPrompt(acknowledgedPrompt)
-  const effect = promptContent?.confirmAction as PromptActionEffect | undefined
-  const nextOnboarding =
-    acknowledgedPrompt === 'phase-one-intro'
-      ? createTutorialOnboardingState(
-          runtime,
-          performance.now(),
-          tutorialTimeWarps[runtime.simulation.timeWarpIndex] ??
-            tutorialTimeWarps[0] ??
-            1,
-        )
-      : state.onboarding
-  return {
-    acknowledged: true,
-    effect,
-    transition: createTutorialTransition({
-      ...state,
-      lastAcknowledgedPrompt: acknowledgedPrompt,
-      ...(nextOnboarding ? { onboarding: nextOnboarding } : {}),
-      pendingPrompt: null,
-    }),
-  }
-}
-
-const reopenTutorialPrompt = (
-  runtime: AppRuntimeState,
-): ScenarioRuntimeTransition<TutorialScenarioState> | null => {
-  const state = getTutorialScenarioState(runtime)
-  if (!state || state.pendingPrompt !== null || !state.lastAcknowledgedPrompt) {
-    return null
-  }
-
-  return createTutorialTransition({
-    ...state,
-    pendingPrompt: state.lastAcknowledgedPrompt,
-  })
+  return { handled: false }
 }
 
 export const registerTutorialScenario =
   (): RuntimeScenarioDefinition<TutorialScenarioState> => ({
-    acknowledgePrompt: acknowledgeTutorialPrompt,
     advance: advanceTutorialScenario,
     id: 'tutorial',
     createScenario: createTutorialScenario,
-    getActivePrompt,
     getDirectiveOverrides: getTutorialScenarioDirectives,
     getHudContent: getTutorialHudContent,
-    getPromptContent: getTutorialPromptContent,
-    getReplayPromptContent: (state) =>
-      getTutorialPromptContentForPrompt(state.lastAcknowledgedPrompt ?? null),
+    handleScenarioPromptAction: handleTutorialPromptAction,
     isState: isTutorialScenarioState,
-    reopenPrompt: reopenTutorialPrompt,
+    prompts: tutorialPromptDefinitions,
     shouldAutoRestartOnCrash: () => true,
   })

@@ -7,6 +7,8 @@ import {
 } from '../scenario/runtimeScenario'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import type { PromptAction } from '../scenario/scenarioPromptTypes'
+import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { add } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
@@ -14,8 +16,8 @@ import type { AppRuntimeState } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
 import {
-  acknowledgeRuntimeScenarioPrompt,
   clearTransientScenarioRuntimeState,
+  dispatchRuntimeScenarioPromptAction,
   reopenRuntimeScenarioPrompt,
 } from './runtimeStateTransitions'
 
@@ -157,10 +159,11 @@ export const createRuntimeActions = (options: {
     }
   }
 
-  const acknowledgeScenarioPrompt = () => {
-    return acknowledgeRuntimeScenarioPrompt(
+  const dispatchScenarioPromptAction = (action: PromptAction) => {
+    return dispatchRuntimeScenarioPromptAction(
       options.runtime,
       options.globalScenarioDirectiveLimits,
+      action,
     )
   }
   const reopenScenarioPrompt = () => {
@@ -171,7 +174,7 @@ export const createRuntimeActions = (options: {
   }
 
   return {
-    acknowledgeScenarioPrompt,
+    dispatchScenarioPromptAction,
     enterMainMenuBackground: scenarioRuntimeController.enterMainMenuBackground,
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === 'increaseTimeWarp') {
@@ -264,10 +267,12 @@ export const createRuntimeActions = (options: {
         zoomCamera(1.22)
       }
       if (action === 'promptConfirm') {
-        acknowledgeScenarioPrompt()
+        const prompts = resolveScenarioPrompts(options.runtime, 'desktop')
+        const primaryAction = prompts.active?.buttons[0]?.action
+        if (primaryAction) {
+          dispatchScenarioPromptAction(primaryAction)
+        }
       }
-
-      //here let's call handlePromptConfirm or something
 
       return { refreshTrajectoryPrediction: false }
     },

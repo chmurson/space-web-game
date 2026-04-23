@@ -62,7 +62,6 @@ const createRuntime = (): AppRuntimeState => ({
     },
     session: createRuntimeScenarioSession('tutorial', {
       phase: 'escape-earth',
-      pendingPrompt: null,
     }),
   },
   ui: {
