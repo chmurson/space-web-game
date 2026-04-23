@@ -6,7 +6,6 @@ import { getDebugPanelLines, getGuidanceText } from '../ui/hudText'
 import type { RendererProfiler } from '../render/rendererProfiler'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { GameQueries } from '../runtime/gameQueries'
-import { getRuntimeScenarioDefinition } from '../scenario/scenarioRegistry'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
@@ -136,18 +135,7 @@ export const createHudPresentation = (options: {
           : null
       const predictionState =
         options.trajectoryPresentation.getPredictionState()
-      const scenarioDefinition = getRuntimeScenarioDefinition(
-        options.runtime.scenario.session.scenarioId,
-      )
       const prompts = resolveScenarioPrompts(options.runtime, inputMode)
-      const scenarioHudContent =
-        scenarioDefinition?.getHudContent &&
-        (!scenarioDefinition.isState ||
-          scenarioDefinition.isState(options.runtime.scenario.session.state))
-          ? scenarioDefinition.getHudContent(
-              options.runtime.scenario.session.state,
-            )
-          : null
 
       const hiddenUIElements =
         options.runtime.scenario.directives.hiddenUIElements
@@ -155,16 +143,6 @@ export const createHudPresentation = (options: {
       const showTimePill = !hiddenUIElements.has('timeWarpPill')
       const showSpeedPill = !hiddenUIElements.has('speedPill')
       const showThrustPill = !hiddenUIElements.has('thrustPill')
-
-      if (options.overlayUi.hudTitle) {
-        options.overlayUi.hudTitle.textContent =
-          scenarioHudContent?.title ?? options.runtime.scenario.metadata.title
-      }
-      if (options.overlayUi.hudDescription) {
-        options.overlayUi.hudDescription.textContent =
-          scenarioHudContent?.description ??
-          options.runtime.scenario.metadata.description
-      }
 
       // Update scenario prompt UI
       scenarioPromptUpdater.update(

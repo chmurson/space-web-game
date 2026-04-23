@@ -162,10 +162,6 @@ canvas {
   }
 }
 
-.hud-hidden {
-  display: contents;
-}
-
 .top-menu {
   display: inline-flex;
 }
@@ -591,38 +587,6 @@ canvas {
   100% {
     transform: translateX(0);
   }
-}
-
-.hud h1 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.2;
-}
-
-.hud p {
-  margin: 0;
-  color: #bac7d5;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.hud-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.hud-badge {
-  padding: 6px 10px;
-  border: 1px solid rgba(103, 232, 249, 0.28);
-  border-radius: 999px;
-  background: rgba(8, 13, 24, 0.7);
-  color: #9ddaf7;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .stats {
@@ -1117,7 +1081,6 @@ canvas {
 }
 
 #app.app-main-menu .top-bar,
-#app.app-main-menu .hud,
 #app.app-main-menu .scenario-prompt-backdrop,
 #app.app-main-menu .crash-menu,
 #app.app-main-menu .spacecraft-icon-thrust,

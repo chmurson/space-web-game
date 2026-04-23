@@ -25,11 +25,11 @@ import {
   type GlobalScenarioDirectiveLimits,
   type RuntimeScenarioDirectives,
 } from '../../scenarioDirectiveTypes'
+import type { PromptDefinition } from '../../scenarioPromptTypes'
 import type {
   RuntimeScenarioDefinition,
   ScenarioPromptActionDispatchResult,
 } from '../../scenarioRegistry'
-import type { PromptDefinition } from '../../scenarioPromptTypes'
 import type { ScenarioRuntimeTransition } from '../../scenarioRuntimeTransition'
 import {
   createRuntimeScenarioCheckpoint,
@@ -153,59 +153,6 @@ const getTutorialScenarioDirectives = (
   }
 
   return createDefaultScenarioDirectives()
-}
-
-const getTutorialHudContent = (state: TutorialScenarioState) => {
-  if (state.phase === 'escape-earth') {
-    return {
-      title: 'Tutorial: Escape Earth',
-      description:
-        'Build an outbound path and get at least five Earth radii away from the planet.',
-    }
-  }
-
-  if (state.phase === 'reach-moon') {
-    return {
-      title: 'Tutorial: Reach the Moon',
-      description:
-        'Approach the Moon and get close enough to begin the orbit phase.',
-    }
-  }
-
-  if (state.phase === 'orbit-moon') {
-    const completedTurns = Math.min(
-      requiredMoonOrbitTurns,
-      state.orbitTurnsCompleted ?? 0,
-    )
-    return {
-      title: 'Tutorial: Orbit the Moon',
-      description: `Stay captured and complete ${requiredMoonOrbitTurns} turns around the Moon (${completedTurns}/${requiredMoonOrbitTurns}).`,
-    }
-  }
-
-  if (state.phase === 'return-earth') {
-    return {
-      title: 'Tutorial: Return to Earth',
-      description:
-        'Leave the Moon behind and get close enough to Earth to begin the final orbit phase.',
-    }
-  }
-
-  if (state.phase === 'orbit-earth') {
-    const completedTurns = Math.min(
-      requiredMoonOrbitTurns,
-      state.orbitTurnsCompleted ?? 0,
-    )
-    return {
-      title: 'Tutorial: Orbit Earth',
-      description: `Stabilize your return and complete ${requiredMoonOrbitTurns} turns around Earth (${completedTurns}/${requiredMoonOrbitTurns}).`,
-    }
-  }
-
-  return {
-    title: 'Tutorial Complete',
-    description: 'You reached the end of the current tutorial flow.',
-  }
 }
 
 const tutorialPromptDefinitions = {
@@ -710,7 +657,6 @@ export const registerTutorialScenario =
     id: 'tutorial',
     createScenario: createTutorialScenario,
     getDirectiveOverrides: getTutorialScenarioDirectives,
-    getHudContent: getTutorialHudContent,
     handleScenarioPromptAction: handleTutorialPromptAction,
     isState: isTutorialScenarioState,
     prompts: tutorialPromptDefinitions,

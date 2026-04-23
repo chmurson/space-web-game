@@ -29,9 +29,6 @@ export type OverlayUiRefs = {
   headingTargetArc: SVGPathElement
   headingTargetLine: SVGLineElement
   headingTargetOverlay: SVGSVGElement
-  hud: HTMLElement
-  hudDescription: HTMLParagraphElement | null
-  hudTitle: HTMLHeadingElement | null
   offscreenIndicators: Map<string, HTMLElement>
   scenarioPrompt: HTMLElement
   scenarioPromptConfirmButton: HTMLButtonElement | null
@@ -69,10 +66,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const topBar = document.createElement('div')
   topBar.className = 'top-bar'
   options.app.appendChild(topBar)
-
-  const hud = document.createElement('section')
-  hud.className = 'hud hud-hidden'
-  options.app.appendChild(hud)
 
   const telemetryStrip = document.createElement('div')
   telemetryStrip.className = 'telemetry-strip'
@@ -207,9 +200,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     headingTargetArc,
     headingTargetLine,
     headingTargetOverlay,
-    hud,
-    hudDescription: hud.querySelector<HTMLParagraphElement>('p'),
-    hudTitle: hud.querySelector<HTMLHeadingElement>('h1'),
     offscreenIndicators,
     scenarioPrompt,
     scenarioPromptConfirmButton:

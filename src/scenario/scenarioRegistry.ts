@@ -35,7 +35,6 @@ export type RuntimeScenarioDefinition<
     state: TState,
     limits: GlobalScenarioDirectiveLimits,
   ): Partial<RuntimeScenarioDirectives>
-  getHudContent?(state: TState): { description: string; title: string }
   handleScenarioPromptAction?(
     runtime: AppRuntimeState,
     actionId: string,
