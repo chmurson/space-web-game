@@ -75,6 +75,7 @@ const vibrate = () => {
 export const createTouchControls = (options: {
   app: HTMLElement
   commitTimeWarp(action: TimeWarpAction): void
+  getCurrentTimeWarp(): number
   getTimeWarpPreview(action: TimeWarpAction): {
     canCommit: boolean
     reason: TimeWarpFeedbackReason | null
@@ -105,6 +106,7 @@ export const createTouchControls = (options: {
 
   const timeWarpControl = createConfiguredTimeWarpControl({
     commitTimeWarp: options.commitTimeWarp,
+    getCurrentTimeWarp: options.getCurrentTimeWarp,
     getTimeWarpPreview: options.getTimeWarpPreview,
     onSessionChange: (session) => {
       activeSession = session

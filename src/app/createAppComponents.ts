@@ -214,6 +214,10 @@ export const createAppComponents = (options: {
     commitTimeWarp: (action) => {
       dispatchRuntimeAction(action)
     },
+    getCurrentTimeWarp: () =>
+      options.config.controls.timeWarps[
+        options.runtimeState.simulation.timeWarpIndex
+      ] ?? 1,
     getTimeWarpPreview: (action) => {
       return getTimeWarpFeedbackPreview({
         action,

@@ -11,12 +11,15 @@ export type TimeWarpGestureSession =
   | { kind: 'none' }
   | {
       kind: 'left-zone'
+      hasCommitted?: boolean
       startX: number
+      startY: number
       touchId: number
     }
 
 export type TimeWarpControlOptions = {
   commitTimeWarp(action: TimeWarpAction): void
+  getCurrentTimeWarp(): number
   getTimeWarpPreview(action: TimeWarpAction): {
     canCommit: boolean
     reason: TimeWarpFeedbackReason | null
@@ -84,6 +87,7 @@ export const createTimeWarpControl = (
   const beginGesture = (touch: Touch): TimeWarpGestureSession => ({
     kind: 'left-zone',
     startX: touch.clientX,
+    startY: touch.clientY,
     touchId: touch.identifier,
   })
 

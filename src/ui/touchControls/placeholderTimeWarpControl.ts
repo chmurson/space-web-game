@@ -21,6 +21,7 @@ export const createPlaceholderTimeWarpControl = (
       const session: TimeWarpGestureSession = {
         kind: 'left-zone',
         startX: touch.clientX,
+        startY: touch.clientY,
         touchId: touch.identifier,
       }
       setSession(session)

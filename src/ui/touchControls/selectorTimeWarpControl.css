@@ -1,0 +1,159 @@
+.touch-time-warp-selector {
+  position: fixed;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  left: max(14px, env(safe-area-inset-left));
+  display: grid;
+  width: 66px;
+  min-height: 119px;
+  align-items: center;
+  justify-items: center;
+  padding: 8px 6px;
+  border: 1px solid rgba(71, 85, 105, 0.62);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.1), transparent 35%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.76));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(2, 6, 23, 0.28),
+    0 0 0 1px rgba(15, 23, 42, 0.64);
+  color: rgba(226, 232, 240, 0.7);
+  pointer-events: auto;
+  touch-action: none;
+  transition:
+    filter 160ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  user-select: none;
+  z-index: calc(var(--z-overlay-hud) + 1);
+}
+
+.touch-time-warp-selector-current {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+
+.touch-time-warp-selector-icon {
+  width: 10px;
+  height: 10px;
+  color: rgba(251, 191, 36, 0.78);
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.2));
+}
+
+.touch-time-warp-selector-icon-face,
+.touch-time-warp-selector-icon-hand,
+.touch-time-warp-selector-icon-center {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.touch-time-warp-selector-icon-center {
+  fill: currentColor;
+  stroke: none;
+}
+
+.touch-time-warp-selector-button {
+  display: grid;
+  width: 42px;
+  height: 20px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: rgba(245, 158, 11, 0.82);
+  cursor: pointer;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.26));
+  touch-action: manipulation;
+}
+
+.touch-time-warp-selector-button:disabled {
+  color: rgba(71, 85, 105, 0.42);
+  cursor: default;
+  filter: none;
+}
+
+.touch-time-warp-selector-caret {
+  width: 14px;
+  height: 14px;
+  border-top: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  border-radius: 2px;
+  transform: translateY(3px) rotate(45deg);
+}
+
+.touch-time-warp-selector-button-down .touch-time-warp-selector-caret {
+  transform: translateY(-3px) rotate(225deg);
+}
+
+.touch-time-warp-selector-value {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: lowercase;
+  transition:
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  white-space: nowrap;
+}
+
+.touch-time-warp-selector-value-current {
+  color: #f59e0b;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 0 7px rgba(245, 158, 11, 0.36),
+    0 0 12px rgba(245, 158, 11, 0.16);
+}
+
+.touch-time-warp-selector-value-next {
+  color: rgba(203, 213, 225, 0.68);
+  font-size: 10px;
+}
+
+.touch-time-warp-selector-value-disabled {
+  opacity: 0.22;
+}
+
+.touch-time-warp-selector-step-up {
+  filter: brightness(1.18);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.touch-time-warp-selector-step-down {
+  filter: brightness(1.12);
+  transform: translateY(2px) scale(1.02);
+}
+
+.touch-time-warp-selector-step-up .touch-time-warp-selector-value-current {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.touch-time-warp-selector-step-down .touch-time-warp-selector-value-current {
+  transform: translateY(2px) scale(1.08);
+}
+
+@media (max-width: 520px) {
+  .touch-time-warp-selector {
+    width: 60px;
+    min-height: 110px;
+    border-radius: 15px;
+  }
+
+  .touch-time-warp-selector-value-current {
+    font-size: 15px;
+  }
+
+  .touch-time-warp-selector-value-next {
+    font-size: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .touch-time-warp-selector,
+  .touch-time-warp-selector-value {
+    transition: none;
+  }
+}
