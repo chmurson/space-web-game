@@ -6,11 +6,10 @@ import type {
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type { ScenarioTouchHintTarget } from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
+import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
+import type { TimeWarpGestureSession } from './timeWarpControl'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
-import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
-import { presentTimeWarpFeedback } from './timeWarpFeedbackPresenter'
-import { createTimeWarpFeedbackView } from './timeWarpFeedbackView'
 
 export type TouchControls = {
   element: HTMLElement
@@ -27,9 +26,6 @@ const pinchSuppressTapMs = 140
 const doubleTapZoomStartPx = 10
 const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
-const maxMobileTouchDimensionPx = 430
-const committedTimeWarpFeedbackFadeMs = 1000
-const timeWarpFeedbackOffsetYPx = 62
 
 type TapState = {
   startTime: number
@@ -56,11 +52,7 @@ type ActiveGestureSession =
       lastDistance: number
       touchIds: [number, number]
     }
-  | {
-      kind: 'left-zone'
-      startX: number
-      touchId: number
-    }
+  | TimeWarpGestureSession
   | ThrustGestureSession
 
 const getTouchDistance = (first: Touch, second: Touch) =>
@@ -98,11 +90,6 @@ export const createTouchControls = (options: {
   const tutorialHint = createTouchControlsTutorialHint()
   panel.appendChild(tutorialHint.element)
 
-  const timeWarpFeedback = document.createElement('div')
-  timeWarpFeedback.className = 'touch-time-warp-feedback'
-  timeWarpFeedback.setAttribute('aria-hidden', 'true')
-  panel.appendChild(timeWarpFeedback)
-  const timeWarpFeedbackModel = createTimeWarpFeedbackModel()
   const tapTouches = new Map<number, TapState>()
   let activeSession: ActiveGestureSession = { kind: 'none' }
   let lastTap: (ScreenPoint & { time: number }) | null = null
@@ -110,27 +97,20 @@ export const createTouchControls = (options: {
 
   const getPanelWidth = () =>
     panel.getBoundingClientRect().width || window.innerWidth
-  const getPanelHeight = () =>
-    panel.getBoundingClientRect().height || window.innerHeight
   const getMidpointX = () => getPanelWidth() / 2
-  const getTouchTravelActivationDistance = () =>
-    Math.min(
-      Math.min(getPanelWidth(), getPanelHeight()),
-      maxMobileTouchDimensionPx,
-    ) / 5
-
-  const timeWarpFeedbackView = createTimeWarpFeedbackView({
-    committedFadeMs: committedTimeWarpFeedbackFadeMs,
-    element: timeWarpFeedback,
-    getBounds: () => ({
-      height: getPanelHeight(),
-      width: getPanelWidth(),
-    }),
-  })
 
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
   }
+
+  const timeWarpControl = createConfiguredTimeWarpControl({
+    commitTimeWarp: options.commitTimeWarp,
+    getTimeWarpPreview: options.getTimeWarpPreview,
+    onSessionChange: (session) => {
+      activeSession = session
+    },
+    panel,
+  })
 
   const thrustControl = createThrustControl({
     onSessionChange: (session) => {
@@ -154,28 +134,12 @@ export const createTouchControls = (options: {
     lastTap = null
   }
 
-  const clearTimeWarpPreview = () => {
-    timeWarpFeedbackView.render(
-      presentTimeWarpFeedback(timeWarpFeedbackModel.cancelPreview()),
-    )
-  }
-
   const finishLeftZoneGesture = (commitPreview: boolean) => {
     if (activeSession.kind !== 'left-zone') {
       return
     }
 
-    if (commitPreview) {
-      const result = timeWarpFeedbackModel.commitPreview()
-      timeWarpFeedbackView.render(presentTimeWarpFeedback(result.snapshot))
-      if (result.action) {
-        options.commitTimeWarp(result.action)
-      }
-    } else {
-      clearTimeWarpPreview()
-    }
-
-    clearActiveSession()
+    activeSession = timeWarpControl.finishGesture(activeSession, commitPreview)
   }
 
   const clearRightZoneGesture = () => {
@@ -228,11 +192,7 @@ export const createTouchControls = (options: {
   }
 
   const beginLeftZoneSession = (touch: Touch) => {
-    activeSession = {
-      kind: 'left-zone',
-      startX: touch.clientX,
-      touchId: touch.identifier,
-    }
+    activeSession = timeWarpControl.beginGesture(touch)
   }
 
   const beginRightZoneSession = (touch: Touch) => {
@@ -269,7 +229,9 @@ export const createTouchControls = (options: {
         return activeSession.kind === 'right-zone-pending' ||
           activeSession.kind === 'right-zone-active'
           ? thrustControl.ownsTouch(activeSession, touchId)
-          : activeSession.touchId === touchId
+          : activeSession.kind === 'left-zone'
+            ? timeWarpControl.ownsTouch(activeSession, touchId)
+            : activeSession.touchId === touchId
       case 'pinch':
         return activeSession.touchIds.includes(touchId)
       case 'none':
@@ -342,9 +304,9 @@ export const createTouchControls = (options: {
         return
       }
 
-      const midpointX = getMidpointX()
+      const rightZoneStartX = getPanelWidth() * (2 / 3)
       for (const touch of Array.from(event.changedTouches)) {
-        if (touch.clientX < midpointX) {
+        if (touch.clientX < rightZoneStartX) {
           beginLeftZoneSession(touch)
         } else {
           beginRightZoneSession(touch)
@@ -419,25 +381,7 @@ export const createTouchControls = (options: {
             return
           }
 
-          const deltaX = touch.clientX - activeSession.startX
-          const opacity = Math.min(
-            1,
-            Math.max(0, Math.abs(deltaX) / getTouchTravelActivationDistance()),
-          )
-          const action = deltaX >= 0 ? 'increaseTimeWarp' : 'decreaseTimeWarp'
-          const preview = options.getTimeWarpPreview(action)
-          const snapshot = timeWarpFeedbackModel.updatePreview({
-            action,
-            anchor: {
-              x: touch.clientX,
-              y: touch.clientY - timeWarpFeedbackOffsetYPx,
-            },
-            isCommitEligible: preview.canCommit && opacity >= 1,
-            opacity,
-            reason: preview.reason,
-            value: preview.value,
-          })
-          timeWarpFeedbackView.render(presentTimeWarpFeedback(snapshot))
+          activeSession = timeWarpControl.updateGesture(touch, activeSession)
           return
         }
         case 'right-zone-pending':
@@ -562,9 +506,7 @@ export const createTouchControls = (options: {
         }
       }
 
-      timeWarpFeedbackView.render(
-        presentTimeWarpFeedback(timeWarpFeedbackModel.getSnapshot()),
-      )
+      timeWarpControl.syncUi()
     },
     { passive: false },
   )
@@ -574,9 +516,7 @@ export const createTouchControls = (options: {
 
   window.addEventListener('resize', () => {
     thrustControl.syncUi()
-    timeWarpFeedbackView.render(
-      presentTimeWarpFeedback(timeWarpFeedbackModel.getSnapshot()),
-    )
+    timeWarpControl.syncUi()
   })
 
   return {
