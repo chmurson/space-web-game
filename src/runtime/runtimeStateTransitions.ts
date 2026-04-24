@@ -1,6 +1,6 @@
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import { getRuntimeScenarioDefinition } from '../scenario/scenarioRegistry'
+import { resolveCurrentScenarioScene } from '../scenario/scenarioScenes'
 import {
   dispatchScenarioPromptAction as dispatchScenarioPromptActionTransition,
   reopenScenarioReplayPrompt,
@@ -124,12 +124,15 @@ export const advanceRuntimeScenario = (
   limits: GlobalScenarioDirectiveLimits,
   options: { shouldAdvance?: boolean } = {},
 ) => {
-  const transition =
+  const resolvedScene =
     (options.shouldAdvance ?? true)
-      ? (getRuntimeScenarioDefinition(
-          runtime.scenario.session.scenarioId,
-        )?.advance?.(runtime) ?? null)
+      ? resolveCurrentScenarioScene(runtime)
       : null
+  const transition =
+    resolvedScene?.scene.advance?.({
+      runtime,
+      state: resolvedScene.state,
+    }) ?? null
 
   applyScenarioRuntimeTransition(runtime, transition)
   if (shouldSyncDirectivesForScenarioTransition(transition)) {

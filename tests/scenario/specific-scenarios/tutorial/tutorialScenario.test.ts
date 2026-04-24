@@ -7,6 +7,7 @@ import { EARTH_MOON_DISTANCE, G } from '@/simulation/constants'
 import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '@/scenario/scenarioPrompts'
+import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import { registerTutorialScenario } from '@/scenario/specific-scenarios/tutorial/tutorialScenario'
 
@@ -161,12 +162,13 @@ describe('tutorialScenario', () => {
     if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
+    const scene = tutorialScenario.getSceneDefinition(runtime.scenario.session.state)
 
     expect(
-      tutorialScenario.getDirectiveOverrides?.(
-        runtime.scenario.session.state,
-        globalScenarioDirectiveLimits,
-      ),
+      scene.directives?.({
+        limits: globalScenarioDirectiveLimits,
+        state: runtime.scenario.session.state,
+      }),
     ).toEqual({
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
@@ -187,10 +189,14 @@ describe('tutorialScenario', () => {
   })
 
   it('advances from phase 1 to phase 2 and activates the next prompt id', () => {
-    const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
 
-    const transition = tutorialScenario.advance?.(runtime) ?? null
+    const transition =
+      resolvedScene?.scene.advance?.({
+        runtime,
+        state: resolvedScene.state,
+      }) ?? null
     applyScenarioRuntimeTransition(runtime, transition)
 
     expect(runtime.scenario.session.state).toEqual({
@@ -209,7 +215,6 @@ describe('tutorialScenario', () => {
   })
 
   it('starts onboarding through prompt action handling and gates phase 1 directives', () => {
-    const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession(
       'tutorial',
@@ -219,12 +224,13 @@ describe('tutorialScenario', () => {
         replayPromptId: null,
       },
     )
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
 
     const result =
-      tutorialScenario.handleScenarioPromptAction?.(
+      resolvedScene?.scene.actions?.['start-phase-one-onboarding']?.({
         runtime,
-        'start-phase-one-onboarding',
-      ) ?? { handled: false }
+        state: resolvedScene.state,
+      }) ?? { handled: false }
     applyScenarioRuntimeTransition(runtime, result.transition)
 
     expect(result).toMatchObject({ handled: true })
@@ -284,7 +290,6 @@ describe('tutorialScenario', () => {
   })
 
   it('switches to moon orbit and then return-earth using prompt ids instead of pending prompt fields', () => {
-    const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'reach-moon',
@@ -295,7 +300,10 @@ describe('tutorialScenario', () => {
     setMoonOrbitState(runtime, 0)
     applyScenarioRuntimeTransition(
       runtime,
-      tutorialScenario.advance?.(runtime) ?? null,
+      resolveCurrentScenarioScene(runtime)?.scene.advance?.({
+        runtime,
+        state: runtime.scenario.session.state,
+      }) ?? null,
     )
     expect(runtime.scenario.session.state).toEqual({
       phase: 'orbit-moon',
@@ -327,7 +335,10 @@ describe('tutorialScenario', () => {
       setMoonOrbitState(runtime, angle)
       applyScenarioRuntimeTransition(
         runtime,
-        tutorialScenario.advance?.(runtime) ?? null,
+        resolveCurrentScenarioScene(runtime)?.scene.advance?.({
+          runtime,
+          state: runtime.scenario.session.state,
+        }) ?? null,
       )
     }
 
@@ -342,7 +353,6 @@ describe('tutorialScenario', () => {
   })
 
   it('completes the tutorial and activates the completion prompt', () => {
-    const tutorialScenario = registerTutorialScenario()
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'orbit-earth',
@@ -370,7 +380,10 @@ describe('tutorialScenario', () => {
       setEarthOrbitState(runtime, angle)
       applyScenarioRuntimeTransition(
         runtime,
-        tutorialScenario.advance?.(runtime) ?? null,
+        resolveCurrentScenarioScene(runtime)?.scene.advance?.({
+          runtime,
+          state: runtime.scenario.session.state,
+        }) ?? null,
       )
     }
 

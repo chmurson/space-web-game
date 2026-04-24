@@ -4,7 +4,7 @@ import {
   type RuntimeScenarioDirectives,
   type GlobalScenarioDirectiveLimits,
 } from './scenarioDirectiveTypes'
-import { getRuntimeScenarioDefinition } from './scenarioRegistry'
+import { resolveCurrentScenarioScene } from './scenarioScenes'
 import type { ScenarioSessionValue } from './scenarioSession'
 
 type DirectiveContext = {
@@ -86,20 +86,15 @@ export const resolveRuntimeScenarioDirectives = (
   limits: GlobalScenarioDirectiveLimits,
 ): RuntimeScenarioDirectives => {
   const baseDirectives = genericDirectiveResolver({ limits, runtime })
-  const definition = getRuntimeScenarioDefinition(
-    runtime.scenario.session.scenarioId,
-  )
+  const resolvedScene = resolveCurrentScenarioScene(runtime)
 
-  if (
-    definition?.getDirectiveOverrides &&
-    (!definition.isState || definition.isState(runtime.scenario.session.state))
-  ) {
+  if (resolvedScene?.scene.directives) {
     return {
       ...baseDirectives,
-      ...definition.getDirectiveOverrides(
-        runtime.scenario.session.state,
+      ...resolvedScene.scene.directives({
         limits,
-      ),
+        state: resolvedScene.state,
+      }),
     }
   }
 

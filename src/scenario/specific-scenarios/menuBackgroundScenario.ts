@@ -14,6 +14,7 @@ type MenuBackgroundScenarioState = {
 export const registerMenuBackgroundScenario =
   (): RuntimeScenarioDefinition<MenuBackgroundScenarioState> => ({
     id: 'menu-background',
+    getSceneDefinition: () => ({}),
     createScenario: () => {
       const scenario = createEarthMoonScenario()
       const earth = scenario.bodies.find((body) => body.id === 'earth')

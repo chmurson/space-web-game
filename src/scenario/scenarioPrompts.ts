@@ -1,5 +1,6 @@
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
+import { resolveCurrentScenarioScene } from './scenarioScenes'
 import type { ScenarioRuntimeTransition } from './scenarioRuntimeTransition'
 import type {
   PromptAction,
@@ -179,21 +180,20 @@ export const dispatchScenarioPromptAction = (
     }
   }
 
-  const definition = getRuntimeScenarioDefinition(
-    runtime.scenario.session.scenarioId,
-  )
-  if (
-    !definition ||
-    (definition.isState && !definition.isState(runtime.scenario.session.state))
-  ) {
+  const resolvedScene = resolveCurrentScenarioScene(runtime)
+  if (!resolvedScene) {
     return { handled: false }
   }
 
-  return (
-    definition.handleScenarioPromptAction?.(runtime, action.id) ?? {
-      handled: false,
-    }
-  )
+  const actionHandler = resolvedScene.scene.actions?.[action.id]
+  if (!actionHandler) {
+    return { handled: false }
+  }
+
+  return actionHandler({
+    runtime,
+    state: resolvedScene.state,
+  })
 }
 
 export const serializePromptAction = (action: PromptAction): string =>

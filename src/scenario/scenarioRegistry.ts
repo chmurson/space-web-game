@@ -26,50 +26,70 @@ export type ScenarioPromptActionDispatchResult<
   transition?: ScenarioRuntimeTransition<TState> | null
 }
 
+export type ScenarioSceneContext<
+  TState extends ScenarioSessionValue = ScenarioSessionValue,
+> = {
+  runtime: AppRuntimeState
+  state: TState
+}
+
+export type ScenarioSceneDefinition<
+  TState extends ScenarioSessionValue = ScenarioSessionValue,
+  TTransitionState extends ScenarioSessionValue = TState,
+> = {
+  actions?: Record<
+    string,
+    (
+      context: ScenarioSceneContext<TState>,
+    ) => ScenarioPromptActionDispatchResult<TTransitionState>
+  >
+  advance?: (
+    context: ScenarioSceneContext<TState>,
+  ) => ScenarioRuntimeTransition<TTransitionState> | null
+  directives?: (context: {
+    limits: GlobalScenarioDirectiveLimits
+    state: TState
+  }) => Partial<RuntimeScenarioDirectives>
+}
+
 export type RuntimeScenarioDefinition<
   TState extends ScenarioSessionValue = ScenarioSessionValue,
 > = {
-  advance?(runtime: AppRuntimeState): ScenarioRuntimeTransition<TState> | null
   createScenario(): RuntimeScenario
-  getDirectiveOverrides?(
-    state: TState,
-    limits: GlobalScenarioDirectiveLimits,
-  ): Partial<RuntimeScenarioDirectives>
-  handleScenarioPromptAction?(
-    runtime: AppRuntimeState,
-    actionId: string,
-  ): ScenarioPromptActionDispatchResult<TState>
+  getSceneDefinition(state: TState): ScenarioSceneDefinition<TState>
   id: string
   isState?(value: unknown): value is TState
   prompts?: Record<string, PromptDefinition>
   shouldAutoRestartOnCrash?(runtime: AppRuntimeState): boolean
 }
 
+const earthMoonScenarioScene: ScenarioSceneDefinition = {
+  directives: () => ({
+    maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
+  }),
+}
+
 const runtimeScenarioDefinitions = {
   'earth-moon': {
     id: 'earth-moon',
     createScenario: createEarthMoonScenario,
-    getDirectiveOverrides: () => ({
-      maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-    }),
+    getSceneDefinition: () => earthMoonScenarioScene,
   },
   'moon-capture-debug': {
     id: 'moon-capture-debug',
     createScenario: createMoonCaptureDebugScenario,
-    getDirectiveOverrides: () => ({
-      maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-    }),
+    getSceneDefinition: () => earthMoonScenarioScene,
   },
   'menu-background': registerMenuBackgroundScenario(),
   tutorial: registerTutorialScenario(),
-} satisfies Record<string, RuntimeScenarioDefinition>
+}
 
 export const getRuntimeScenarioDefinition = (
   scenarioId: string,
 ): RuntimeScenarioDefinition | null =>
-  runtimeScenarioDefinitions[
+  (runtimeScenarioDefinitions[
     scenarioId as keyof typeof runtimeScenarioDefinitions
-  ] ?? null
+  ] as RuntimeScenarioDefinition | undefined) ?? null
 
 export const shouldAutoRestartRuntimeScenarioOnCrash = (
   runtime: AppRuntimeState,
