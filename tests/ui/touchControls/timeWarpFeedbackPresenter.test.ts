@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatTimeWarpFeedbackLabel,
   presentTimeWarpFeedback,
-} from '@/ui/touchControls/timeWarpFeedbackPresenter'
+} from '@/ui/touchControls/swipeTimeWarpControl/timeWarpFeedbackPresenter'
 
 describe('timeWarpFeedbackPresenter', () => {
   it('formats labels in the UI layer', () => {

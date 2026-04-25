@@ -3,8 +3,9 @@
   bottom: max(14px, env(safe-area-inset-bottom));
   left: max(14px, env(safe-area-inset-left));
   display: grid;
-  width: 66px;
-  min-height: 119px;
+  width: 70px;
+  min-height: 144px;
+  grid-template-rows: 20px 12px 12px auto 12px 12px 20px;
   align-items: center;
   justify-items: center;
   padding: 8px 6px;
@@ -29,30 +30,8 @@
 
 .touch-time-warp-selector-current {
   display: grid;
-  justify-items: center;
-  gap: 3px;
-}
-
-.touch-time-warp-selector-icon {
-  width: 10px;
-  height: 10px;
-  color: rgba(251, 191, 36, 0.78);
-  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.2));
-}
-
-.touch-time-warp-selector-icon-face,
-.touch-time-warp-selector-icon-hand,
-.touch-time-warp-selector-icon-center {
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.6;
-}
-
-.touch-time-warp-selector-icon-center {
-  fill: currentColor;
-  stroke: none;
+  min-height: 30px;
+  place-items: center;
 }
 
 .touch-time-warp-selector-button {
@@ -113,8 +92,17 @@
   font-size: 10px;
 }
 
+.touch-time-warp-selector-value-secondary {
+  font-size: 9px;
+  opacity: 0.56;
+}
+
 .touch-time-warp-selector-value-disabled {
   opacity: 0.22;
+}
+
+.touch-time-warp-selector-value-hidden {
+  opacity: 0;
 }
 
 .touch-time-warp-selector-step-up {
@@ -137,9 +125,10 @@
 
 @media (max-width: 520px) {
   .touch-time-warp-selector {
-    width: 60px;
-    min-height: 110px;
+    width: 64px;
+    min-height: 134px;
     border-radius: 15px;
+    grid-template-rows: 20px 11px 11px auto 11px 11px 20px;
   }
 
   .touch-time-warp-selector-value-current {
@@ -148,6 +137,10 @@
 
   .touch-time-warp-selector-value-next {
     font-size: 9px;
+  }
+
+  .touch-time-warp-selector-value-secondary {
+    font-size: 8px;
   }
 }
 

@@ -1087,6 +1087,8 @@ canvas {
 #app.app-main-menu .heading-target-overlay,
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,
+#app.app-main-menu .touch-time-warp-feedback,
+#app.app-main-menu .touch-time-warp-selector,
 #app.app-main-menu .fps-indicator,
 #app.app-main-menu .debug-panel {
   display: none;

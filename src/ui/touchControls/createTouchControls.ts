@@ -7,8 +7,8 @@ import type {
 import type { ScenarioTouchHintTarget } from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
 import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
+import type { TimeWarpGestureSession } from './timeWarpControlTypes'
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
-import type { TimeWarpGestureSession } from './timeWarpControl'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 
 export type TouchControls = {
@@ -81,6 +81,14 @@ export const createTouchControls = (options: {
     reason: TimeWarpFeedbackReason | null
     value: number
   }
+  getTimeWarpPreviews(
+    action: TimeWarpAction,
+    count: number,
+  ): {
+    canCommit: boolean
+    reason: TimeWarpFeedbackReason | null
+    value: number
+  }[]
   keyboardInput: KeyboardInput
   onTargetHeadingSelected(screenX: number, screenY: number): void
   onZoom(factor: number): void
@@ -108,6 +116,7 @@ export const createTouchControls = (options: {
     commitTimeWarp: options.commitTimeWarp,
     getCurrentTimeWarp: options.getCurrentTimeWarp,
     getTimeWarpPreview: options.getTimeWarpPreview,
+    getTimeWarpPreviews: options.getTimeWarpPreviews,
     onSessionChange: (session) => {
       activeSession = session
     },
