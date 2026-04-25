@@ -88,33 +88,6 @@ export const createSelectorTimeWarpControl = (
     return true
   }
 
-  const handleButtonTouch = (action: TimeWarpAction) => (event: Event) => {
-    event.preventDefault()
-    event.stopPropagation()
-    commitAction(action)
-  }
-
-  view.upButton?.addEventListener(
-    'touchstart',
-    handleButtonTouch('increaseTimeWarp'),
-    {
-      passive: false,
-    },
-  )
-  view.downButton?.addEventListener(
-    'touchstart',
-    handleButtonTouch('decreaseTimeWarp'),
-    { passive: false },
-  )
-  view.upButton?.addEventListener(
-    'click',
-    handleButtonTouch('increaseTimeWarp'),
-  )
-  view.downButton?.addEventListener(
-    'click',
-    handleButtonTouch('decreaseTimeWarp'),
-  )
-
   render()
 
   return {

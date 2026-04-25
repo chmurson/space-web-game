@@ -17,8 +17,6 @@ describe('selectorTimeWarpControlPresenter', () => {
         ],
       }),
     ).toMatchObject({
-      canDecrease: true,
-      canIncrease: true,
       currentLabel: 'x5m',
       decreaseFarStep: {
         hidden: false,

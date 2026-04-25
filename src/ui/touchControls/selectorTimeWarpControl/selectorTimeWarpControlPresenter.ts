@@ -1,5 +1,5 @@
-import type { TimeWarpPreview } from '../timeWarpControlTypes'
 import { formatTimeWarpLabel } from '../../formatters'
+import type { TimeWarpPreview } from '../timeWarpControlTypes'
 import type { SelectorTimeWarpSnapshot } from './selectorTimeWarpControlModel'
 
 export type SelectorTimeWarpRenderTone = 'available' | 'blocked'
@@ -12,8 +12,6 @@ export type SelectorTimeWarpRenderStep = {
 
 export type SelectorTimeWarpControlRenderState = {
   animationDirection: 'up' | 'down' | null
-  canDecrease: boolean
-  canIncrease: boolean
   currentLabel: string
   decreaseFarStep: SelectorTimeWarpRenderStep
   decreaseNearStep: SelectorTimeWarpRenderStep
@@ -45,8 +43,6 @@ export const presentSelectorTimeWarpControl = (
   snapshot: SelectorTimeWarpSnapshot,
 ): SelectorTimeWarpControlRenderState => ({
   animationDirection: snapshot.animationDirection,
-  canDecrease: snapshot.decreaseSteps[0]?.canCommit ?? false,
-  canIncrease: snapshot.increaseSteps[0]?.canCommit ?? false,
   currentLabel: formatTimeWarpLabel(snapshot.currentValue),
   decreaseFarStep: presentStep(snapshot.decreaseSteps[1]),
   decreaseNearStep: presentStep(snapshot.decreaseSteps[0]),

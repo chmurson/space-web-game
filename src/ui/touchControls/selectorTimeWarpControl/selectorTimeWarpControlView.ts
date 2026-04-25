@@ -1,10 +1,8 @@
 import type { SelectorTimeWarpControlRenderState } from './selectorTimeWarpControlPresenter'
 
 type SelectorTimeWarpControlView = {
-  downButton: HTMLButtonElement | null
   element: HTMLElement
   render(renderState: SelectorTimeWarpControlRenderState): void
-  upButton: HTMLButtonElement | null
 }
 
 const renderStep = (
@@ -27,11 +25,8 @@ export const createSelectorTimeWarpControlView =
   (): SelectorTimeWarpControlView => {
     const element = document.createElement('div')
     element.className = 'touch-time-warp-selector'
-    element.setAttribute('aria-label', 'Time warp selector')
+    element.setAttribute('aria-label', 'Time warp control')
     element.innerHTML = `
-      <button class="touch-time-warp-selector-button touch-time-warp-selector-button-up" type="button" aria-label="Increase time warp">
-        <span class="touch-time-warp-selector-caret" aria-hidden="true"></span>
-      </button>
       <div class="touch-time-warp-selector-value touch-time-warp-selector-value-next touch-time-warp-selector-value-secondary touch-time-warp-selector-value-up-far"></div>
       <div class="touch-time-warp-selector-value touch-time-warp-selector-value-next touch-time-warp-selector-value-up-near"></div>
       <div class="touch-time-warp-selector-current">
@@ -39,17 +34,7 @@ export const createSelectorTimeWarpControlView =
       </div>
       <div class="touch-time-warp-selector-value touch-time-warp-selector-value-next touch-time-warp-selector-value-down-near"></div>
       <div class="touch-time-warp-selector-value touch-time-warp-selector-value-next touch-time-warp-selector-value-secondary touch-time-warp-selector-value-down-far"></div>
-      <button class="touch-time-warp-selector-button touch-time-warp-selector-button-down" type="button" aria-label="Decrease time warp">
-        <span class="touch-time-warp-selector-caret" aria-hidden="true"></span>
-      </button>
     `
-
-    const upButton = element.querySelector<HTMLButtonElement>(
-      '.touch-time-warp-selector-button-up',
-    )
-    const downButton = element.querySelector<HTMLButtonElement>(
-      '.touch-time-warp-selector-button-down',
-    )
     const increaseFarValue = element.querySelector<HTMLElement>(
       '.touch-time-warp-selector-value-up-far',
     )
@@ -67,7 +52,6 @@ export const createSelectorTimeWarpControlView =
     )
 
     return {
-      downButton,
       element,
       render(renderState) {
         currentValue?.replaceChildren(renderState.currentLabel)
@@ -75,8 +59,6 @@ export const createSelectorTimeWarpControlView =
         renderStep(increaseNearValue, renderState.increaseNearStep)
         renderStep(decreaseNearValue, renderState.decreaseNearStep)
         renderStep(decreaseFarValue, renderState.decreaseFarStep)
-        upButton?.toggleAttribute('disabled', !renderState.canIncrease)
-        downButton?.toggleAttribute('disabled', !renderState.canDecrease)
         element.classList.toggle(
           'touch-time-warp-selector-step-up',
           renderState.animationDirection === 'up',
@@ -86,6 +68,5 @@ export const createSelectorTimeWarpControlView =
           renderState.animationDirection === 'down',
         )
       },
-      upButton,
     }
   }
