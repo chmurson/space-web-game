@@ -51,12 +51,11 @@
 }
 
 .touch-time-warp-selector-dragging {
-  filter: brightness(1.08);
   transition-duration: 80ms;
 }
 
 .touch-time-warp-selector-drag-committable {
-  filter: brightness(1.18);
+   /*todo decide on the stylign here*/
 }
 
 .touch-time-warp-selector-value-current {
@@ -98,33 +97,33 @@
 .touch-time-warp-selector-target-increase
   .touch-time-warp-selector-value-current {
   transform: translateY(
-      calc(var(--touch-time-warp-selector-drag-progress) * 22px)
+      calc(var(--touch-time-warp-selector-drag-progress) * 24px)
     )
-    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.36));
+    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.38));
 }
 
 .touch-time-warp-selector-target-decrease
   .touch-time-warp-selector-value-current {
   transform: translateY(
-      calc(var(--touch-time-warp-selector-drag-progress) * -22px)
+      calc(var(--touch-time-warp-selector-drag-progress) * -25px)
     )
-    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.36));
+    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.38));
 }
 
 .touch-time-warp-selector-target-increase
   .touch-time-warp-selector-value-up-far {
   opacity: calc(0.56 + var(--touch-time-warp-selector-drag-progress) * 0.12);
   transform: translateY(
-      calc(var(--touch-time-warp-selector-drag-progress) * 12px)
+      calc(var(--touch-time-warp-selector-drag-progress) * 11px)
     )
-    scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.11));
+    scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.10));
 }
 
 .touch-time-warp-selector-target-increase
   .touch-time-warp-selector-value-down-near {
   opacity: calc(0.68 - var(--touch-time-warp-selector-drag-progress) * 0.12);
   transform: translateY(
-      calc(var(--touch-time-warp-selector-drag-progress) * 12px)
+      calc(var(--touch-time-warp-selector-drag-progress) * 11px)
     )
     scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.1));
 }
@@ -149,7 +148,7 @@
   .touch-time-warp-selector-value-up-near {
   opacity: calc(0.68 - var(--touch-time-warp-selector-drag-progress) * 0.12);
   transform: translateY(
-      calc(var(--touch-time-warp-selector-drag-progress) * -12px)
+      calc(var(--touch-time-warp-selector-drag-progress) * -11px)
     )
     scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.1));
 }
@@ -184,7 +183,7 @@
 .touch-time-warp-selector-target-increase
   .touch-time-warp-selector-value-up-near {
   transform: translateY(
-      calc(var(--touch-time-warp-selector-drag-progress) * 22px)
+      calc(var(--touch-time-warp-selector-drag-progress) * 25px)
     )
     scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.6));
 }
@@ -192,7 +191,7 @@
 .touch-time-warp-selector-target-decrease
   .touch-time-warp-selector-value-down-near {
   transform: translateY(
-      calc(var(--touch-time-warp-selector-drag-progress) * -22px)
+      calc(var(--touch-time-warp-selector-drag-progress) * -24px)
     )
     scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.6));
 }
@@ -230,7 +229,7 @@
   opacity: calc(var(--touch-time-warp-selector-drag-progress) * 0.56);
   transform: translateX(-50%)
     translateY(
-      calc((1 - var(--touch-time-warp-selector-drag-progress)) * -12px)
+      calc((1 - var(--touch-time-warp-selector-drag-progress)) * -12px + 1.5px)
     )
     scale(calc(0.72 + var(--touch-time-warp-selector-drag-progress) * 0.28));
 }
@@ -239,7 +238,7 @@
   .touch-time-warp-selector-value-down-extra {
   opacity: calc(var(--touch-time-warp-selector-drag-progress) * 0.56);
   transform: translateX(-50%)
-    translateY(calc((1 - var(--touch-time-warp-selector-drag-progress)) * 12px))
+    translateY(calc((1 - var(--touch-time-warp-selector-drag-progress)) * 12px - 1.5px))
     scale(calc(0.72 + var(--touch-time-warp-selector-drag-progress) * 0.28));
 }
 
