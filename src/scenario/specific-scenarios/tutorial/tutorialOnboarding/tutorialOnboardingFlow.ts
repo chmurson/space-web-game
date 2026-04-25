@@ -88,9 +88,15 @@ const tutorialOnboardingPromptDefinitions = {
     title: 'Thrusting Off',
     shortLabel: 'Thrusting Off',
     buttons: [],
-    description:
-      'You can now turn off by sliding the thrust control down. Do it now.',
-    presentation: { kind: 'coach', anchor: 'thrust-control' },
+    description: ({ inputMode }) =>
+      inputMode === 'mobile'
+        ? 'You can now turn off by sliding the thrust control down. Do it now.'
+        : 'Release W or Up Arrow so the main engine shuts down.',
+    presentation: {
+      kind: 'coach',
+      anchor: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'thrust-control' : 'speed-pill',
+    },
   },
   'intro-point-and-turn': {
     id: 'intro-point-and-turn',

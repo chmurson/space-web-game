@@ -8,7 +8,10 @@ import {
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { ScenarioRuntimeTransition as ScenarioSessionTransition } from '../scenario/scenarioRuntimeTransition'
 import type { StepSimulationFrameResult } from './simulationStep'
-import type { AppRuntimeState } from './appRuntimeState'
+import {
+  createDefaultTouchThrustControlUiState,
+  type AppRuntimeState,
+} from './appRuntimeState'
 import type { ScenarioRuntimeTransition } from './createScenarioRuntimeController'
 import type { RuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 
@@ -24,11 +27,7 @@ export const clearTransientScenarioRuntimeState = (
   runtime.simulation.crashedBodyName = null
   runtime.ui.spacecraftLabelIntroUntil = performance.now() + 5_000
   runtime.ui.targetHeadingScreenPosition = null
-  runtime.ui.touchThrustControl = {
-    engaged: false,
-    interactive: false,
-    visible: false,
-  }
+  runtime.ui.touchThrustControl = createDefaultTouchThrustControlUiState()
 }
 
 export const applySimulationFrameResult = (

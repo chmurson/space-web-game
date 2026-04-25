@@ -106,6 +106,7 @@ export const createTouchControls = (options: {
   let activeSession: ActiveGestureSession = { kind: 'none' }
   let lastTap: (ScreenPoint & { time: number }) | null = null
   let pinchSuppressTapUntil = 0
+  let timeWarpControlVisible = true
 
   const getPanelWidth = () =>
     panel.getBoundingClientRect().width || window.innerWidth
@@ -154,7 +155,18 @@ export const createTouchControls = (options: {
       return
     }
 
-    activeSession = timeWarpControl.finishGesture(activeSession, commitPreview)
+    activeSession = timeWarpControl.finishGesture(
+      activeSession,
+      commitPreview && timeWarpControlVisible,
+    )
+  }
+
+  const setTimeWarpControlVisible = (visible: boolean) => {
+    timeWarpControlVisible = visible
+    if (!visible && activeSession.kind === 'left-zone') {
+      finishLeftZoneGesture(false)
+    }
+    timeWarpControl.setVisible(visible)
   }
 
   const clearRightZoneGesture = () => {
@@ -207,6 +219,10 @@ export const createTouchControls = (options: {
   }
 
   const beginLeftZoneSession = (touch: Touch) => {
+    if (!timeWarpControlVisible) {
+      return
+    }
+
     activeSession = timeWarpControl.beginGesture(touch)
   }
 
@@ -391,6 +407,11 @@ export const createTouchControls = (options: {
           return
         }
         case 'left-zone': {
+          if (!timeWarpControlVisible) {
+            finishLeftZoneGesture(false)
+            return
+          }
+
           const touch = getTouchById(event.touches, activeSession.touchId)
           if (!touch) {
             return
@@ -536,9 +557,7 @@ export const createTouchControls = (options: {
 
   return {
     element: panel,
-    setTimeWarpControlVisible: (visible) => {
-      timeWarpControl.setVisible(visible)
-    },
+    setTimeWarpControlVisible,
     setTutorialHintTarget: (target) => {
       const showThrustHint = target === 'thrust-zone'
       tutorialHint.setVisible(showThrustHint)

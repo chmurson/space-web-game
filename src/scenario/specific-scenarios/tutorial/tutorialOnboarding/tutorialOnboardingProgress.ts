@@ -21,6 +21,18 @@ import type {
 const normalizeAngleDelta = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 
+const hasMainThrust = (runtime: AppRuntimeState) =>
+  runtime.simulation.state.controls.main > 0
+
+const hasVisibleTouchThrustControl = (runtime: AppRuntimeState) =>
+  runtime.ui.touchThrustControl.visible
+
+const hasInteractiveTouchThrustControl = (runtime: AppRuntimeState) =>
+  runtime.ui.touchThrustControl.interactive
+
+const isTouchThrustEngaged = (runtime: AppRuntimeState) =>
+  runtime.ui.touchThrustControl.engaged
+
 const createStepProgress = (
   runtime: AppRuntimeState,
   nowMs: number,
@@ -46,6 +58,13 @@ const getNextStepId = (
 
   return tutorialOnboardingStepOrder[stepIndex + 1] ?? null
 }
+
+const getThrustRecoveryStepId = (
+  runtime: AppRuntimeState,
+): TutorialOnboardingStepId =>
+  hasVisibleTouchThrustControl(runtime)
+    ? 'intro-thrust'
+    : 'intro-show-thrust-control'
 
 const getNearestBody = (runtime: AppRuntimeState): Body | null => {
   let nearestBody: Body | null = null
@@ -204,16 +223,15 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-show-thrust-control') {
-    return runtime.ui.touchThrustControl.interactive ||
-      runtime.simulation.state.controls.main > 0
+    return hasInteractiveTouchThrustControl(runtime) || hasMainThrust(runtime)
       ? advanceToNextStep(runtime, onboarding, nowMs, timeWarpMultiplier)
       : { ...onboarding, progress: nextProgress }
   }
 
   if (onboarding.activeStepId === 'intro-thrust') {
-    if (runtime.simulation.state.controls.main <= 0) {
+    if (!hasMainThrust(runtime)) {
       nextProgress.accumulatedMainThrustMs = 0
-      return !runtime.ui.touchThrustControl.visible
+      return !hasVisibleTouchThrustControl(runtime)
         ? goToStep(
             runtime,
             { ...onboarding, progress: nextProgress },
@@ -237,7 +255,7 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-keep-thrusting') {
-    if (runtime.simulation.state.controls.main <= 0) {
+    if (!hasMainThrust(runtime)) {
       nextProgress.accumulatedMainThrustMs = Math.max(
         0,
         onboarding.progress.accumulatedMainThrustMs - deltaMs * 2,
@@ -245,9 +263,7 @@ export const advanceTutorialOnboarding = (
       return goToStep(
         runtime,
         { ...onboarding, progress: nextProgress },
-        runtime.ui.touchThrustControl.visible
-          ? 'intro-thrust'
-          : 'intro-show-thrust-control',
+        getThrustRecoveryStepId(runtime),
         nowMs,
         timeWarpMultiplier,
       )
@@ -267,10 +283,10 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-thrusting-off') {
-    const touchControlEngaged = runtime.ui.touchThrustControl.engaged
+    const touchControlEngaged = isTouchThrustEngaged(runtime)
     const usingTouchControlState =
       onboarding.progress.stepStartTouchThrustControlEngaged ||
-      runtime.ui.touchThrustControl.visible
+      hasVisibleTouchThrustControl(runtime)
 
     if (
       !onboarding.progress.stepStartTouchThrustControlEngaged &&
@@ -286,8 +302,8 @@ export const advanceTutorialOnboarding = (
     }
 
     const thrustTurnedOffAndReleased = usingTouchControlState
-      ? !touchControlEngaged && !runtime.ui.touchThrustControl.visible
-      : runtime.simulation.state.controls.main <= 0
+      ? !touchControlEngaged && !hasVisibleTouchThrustControl(runtime)
+      : !hasMainThrust(runtime)
 
     return thrustTurnedOffAndReleased
       ? advanceToNextStep(runtime, onboarding, nowMs, timeWarpMultiplier)
@@ -331,7 +347,7 @@ export const advanceTutorialOnboarding = (
     nextProgress.accumulatedMainThrustMs =
       outwardAligned &&
       timeWarpMultiplier >= requiredHighWarpMultiplier &&
-      runtime.simulation.state.controls.main > 0
+      hasMainThrust(runtime)
         ? onboarding.progress.accumulatedMainThrustMs + deltaMs
         : 0
     return nextProgress.accumulatedMainThrustMs >= requiredHighWarpThrustMs

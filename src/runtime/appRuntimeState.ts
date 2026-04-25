@@ -25,6 +25,13 @@ export type TouchThrustControlUiState = {
   visible: boolean
 }
 
+export const createDefaultTouchThrustControlUiState =
+  (): TouchThrustControlUiState => ({
+    engaged: false,
+    interactive: false,
+    visible: false,
+  })
+
 export type AppRuntimeScenarioSlice = {
   directives: RuntimeScenarioDirectives
   metadata: RuntimeScenarioMetadata

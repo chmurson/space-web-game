@@ -1,5 +1,8 @@
 import type { AppConfigContext } from './createAppConfigContext'
-import type { AppRuntimeState } from '../runtime/appRuntimeState'
+import {
+  createDefaultTouchThrustControlUiState,
+  type AppRuntimeState,
+} from '../runtime/appRuntimeState'
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
 import {
@@ -47,11 +50,7 @@ export const createInitialAppRuntimeState = (
       spacecraftLabelIntroUntil: performance.now() + 5_000,
       targetHeadingScreenPosition: null,
       targetHeadingSelectionEpoch: 0,
-      touchThrustControl: {
-        engaged: false,
-        interactive: false,
-        visible: false,
-      },
+      touchThrustControl: createDefaultTouchThrustControlUiState(),
       uiEffectEpoch: 0,
     },
     debug: {

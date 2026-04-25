@@ -107,6 +107,22 @@ describe('tutorialOnboardingProgress', () => {
     ).toBeUndefined()
   })
 
+  it('uses input-specific instructions for turning thrust off', () => {
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrusting-off', 'mobile'),
+    ).toMatchObject({
+      anchor: 'thrust-control',
+      description:
+        'You can now turn off by sliding the thrust control down. Do it now.',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrusting-off', 'desktop'),
+    ).toMatchObject({
+      anchor: 'speed-pill',
+      description: 'Release W or Up Arrow so the main engine shuts down.',
+    })
+  })
+
   it('advances from show-control to use-thrust when the thrust control becomes interactive', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
