@@ -9,8 +9,8 @@
 ## Deployment
 
 - This repository has two Netlify targets:
-- Production site for `main`: `space-web-game-tiny-impr2`
-- Production URL for `main`: `https://space-web-game-tiny-impr2.netlify.app`
+- Production site for `main`: `space-web-game`
+- Production URL for `main`: `https://space-web-game.netlify.app`
 - Production site ID for `main`: `0ed821be-c897-4f15-ad17-859ae866ca1d`
 - Shared staging site for non-`main` branches: `fanciful-bunny-d77b4b`
 - Shared staging site ID for non-`main` branches: `e0d8dda6-9340-4d3c-9e78-941ccbb63d5f`

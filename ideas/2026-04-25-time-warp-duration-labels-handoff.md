@@ -268,4 +268,4 @@ This refactor should stay bounded. Do not redesign time-warp mechanics, touch in
 
 ## Status
 
-Ready for a smaller model. The task is bounded, the risky spots are identified, and the expected ladder plus threshold choices are explicit.
+Resolved. The task has been completed and the implementation details in this handoff are retained for context.

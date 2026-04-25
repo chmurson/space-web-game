@@ -37,7 +37,7 @@ Deployment scripts:
 
 Current Netlify targets:
 
-- Production: `space-web-game-tiny-impr2`
-  (`https://space-web-game-tiny-impr2.netlify.app`)
+- Production: `space-web-game`
+  (`https://space-web-game.netlify.app`)
 - Staging: `fanciful-bunny-d77b4b`
   (`https://fanciful-bunny-d77b4b.netlify.app`)
