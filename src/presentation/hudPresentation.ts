@@ -249,6 +249,7 @@ export const createHudPresentation = (options: {
       options.touchControls?.updateAssistMode(
         options.runtime.simulation.assistMode,
       )
+      options.touchControls?.syncUi()
       options.touchControls?.setTutorialHintTarget(
         prompts.active?.kind === 'coach'
           ? (prompts.active.touchHintTarget ?? null)
