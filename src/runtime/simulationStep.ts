@@ -134,7 +134,11 @@ const capTimeWarpForActiveControls = (
     controls.reverse !== 0 ||
     controls.strafe !== 0 ||
     controls.turn !== 0
-  const maxControlWarpIndex = timeWarps.indexOf(maxControlWarp)
+  const maxControlWarpIndex = timeWarps.reduce(
+    (safeIndex, timeWarp, index) =>
+      timeWarp <= maxControlWarp ? index : safeIndex,
+    -1,
+  )
 
   if (
     usingControls &&

@@ -6,6 +6,7 @@ import type {
   TimeWarpFeedbackSnapshot,
   TouchOverlayPoint,
 } from './timeWarpFeedbackModel'
+import { formatTimeWarpLabel } from '../../formatters'
 
 export type TimeWarpFeedbackTone = 'available' | 'blocked'
 
@@ -65,7 +66,7 @@ export const formatTimeWarpFeedbackLabel = (options: {
   value: number
 }): string => {
   const prefix = options.action === 'increaseTimeWarp' ? '>>' : '<<'
-  return `${prefix} x${options.value}${getStatusLabel(options.action, options.reason)}`
+  return `${prefix} ${formatTimeWarpLabel(options.value)}${getStatusLabel(options.action, options.reason)}`
 }
 
 export const presentTimeWarpFeedback = (

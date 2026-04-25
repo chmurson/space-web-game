@@ -33,7 +33,7 @@ const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
 })
 
 describe('stepSimulationFrame', () => {
-  it('reports an active-controls clamp when thrust keeps warp at 100x', () => {
+  it('reports an active-controls clamp at the highest configured safe warp', () => {
     const result = resolveSimulationTimeWarp({
       assistMode: 'off',
       crashedBodyName: null,
@@ -70,7 +70,7 @@ describe('stepSimulationFrame', () => {
       state: createRuntimeState(),
       targetHeading: null,
       timeWarpIndex: 5,
-      timeWarps: [1, 10, 50, 100, 500, 2000],
+      timeWarps: [1, 10, 30, 60, 300, 1800],
     })
 
     expect(result.reason).toBe('active-controls')
@@ -119,7 +119,7 @@ describe('stepSimulationFrame', () => {
       state: createRuntimeState(),
       targetHeading: Math.PI / 2,
       timeWarpIndex: 5,
-      timeWarps: [1, 10, 50, 100, 500, 2000],
+      timeWarps: [1, 10, 30, 60, 300, 1800],
     })
 
     expect(result.timeWarpIndex).toBe(3)
@@ -166,7 +166,7 @@ describe('stepSimulationFrame', () => {
       state: createRuntimeState(),
       targetHeading: Math.PI / 2,
       timeWarpIndex: 0,
-      timeWarps: [1, 10, 50, 100, 500, 2000],
+      timeWarps: [1, 10, 30, 60, 300, 1800],
     })
 
     expect(result.targetHeading).toBeNull()

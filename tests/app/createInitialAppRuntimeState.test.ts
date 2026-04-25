@@ -12,7 +12,7 @@ const createConfig = (
   requestedScenarioId: 'tutorial',
   userSettings: { debugModeEnabled: false },
   controls: {
-    timeWarps: [1, 10, 100, 500],
+    timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
     autopilotRotationRate: 1,
   },
   assistTarget: {
@@ -58,7 +58,7 @@ const createConfig = (
     maxCoastPredictionHorizonHours: 48,
     maxViewportSize: 1200,
     minViewportSize: 104,
-    timeWarps: [1, 10, 100, 500],
+    timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
   },
   ...overrides,
 })
@@ -75,7 +75,22 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.scenario.metadata.title).toBe('Menu background')
     expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
-    expect(runtime.simulation.timeWarpIndex).toBe(3)
+    expect(runtime.simulation.timeWarpIndex).toBe(4)
+  })
+
+  it('boots the menu at the nearest configured warp at or below the menu target', () => {
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        initialAppMode: 'menu',
+        requestedScenarioId: 'tutorial',
+        controls: {
+          autopilotRotationRate: 1,
+          timeWarps: [1, 10, 60, 600],
+        },
+      }),
+    )
+
+    expect(runtime.simulation.timeWarpIndex).toBe(2)
   })
 
   it('boots the requested scenario in game mode', () => {

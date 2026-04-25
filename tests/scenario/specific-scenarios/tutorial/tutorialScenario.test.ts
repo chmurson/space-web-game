@@ -16,7 +16,7 @@ const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,
   maxViewportSize: 800,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 50, 100, 500, 2000],
+  timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
 }
 
 const createRuntime = (): AppRuntimeState => ({
@@ -176,7 +176,7 @@ describe('tutorialScenario', () => {
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
-      maxTimeWarp: 500,
+      maxTimeWarp: 300,
       maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })

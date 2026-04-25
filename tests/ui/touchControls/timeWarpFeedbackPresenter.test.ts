@@ -10,9 +10,9 @@ describe('timeWarpFeedbackPresenter', () => {
       formatTimeWarpFeedbackLabel({
         action: 'increaseTimeWarp',
         reason: 'scenario-limit',
-        value: 100,
+        value: 60,
       }),
-    ).toBe('>> x100 max')
+    ).toBe('>> x1m max')
   })
 
   it('maps snapshots into explicit render instructions', () => {
@@ -24,15 +24,15 @@ describe('timeWarpFeedbackPresenter', () => {
         mode: 'preview',
         opacity: 0.75,
         reason: 'turning',
-        value: 50,
+        value: 30,
       }),
     ).toEqual({
       anchor: { x: 80, y: 40 },
-      label: '<< x50 turn',
+      label: '<< x30s turn',
       mode: 'preview',
       opacity: 0.75,
       tone: 'blocked',
-      value: 50,
+      value: 30,
       variant: 'decrease',
     })
   })

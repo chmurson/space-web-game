@@ -158,7 +158,7 @@ describe('scenarioDirectives', () => {
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
-      maxTimeWarp: 500,
+      maxTimeWarp: 300,
       maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })

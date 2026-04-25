@@ -41,6 +41,19 @@ export const formatCompactElapsed = (seconds: number) => {
   return `${roundedSeconds}s`
 }
 
+export const formatTimeWarpLabel = (warpSeconds: number) => {
+  const roundedSeconds = Math.max(0, Math.round(warpSeconds))
+
+  if (roundedSeconds < 60) {
+    return `x${roundedSeconds}s`
+  }
+  if (roundedSeconds < 3600) {
+    return `x${Math.round(roundedSeconds / 60)}m`
+  }
+
+  return `x${Math.round(roundedSeconds / 3600)}h`
+}
+
 export const formatSpecificEnergy = (energy: number) =>
   `${(energy / 1_000).toFixed(1)} kJ/kg`
 

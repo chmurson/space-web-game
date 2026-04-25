@@ -19,7 +19,7 @@ const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 50, 100, 500, 2000],
+  timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
 }
 
 const runtimeScenarioOptions = {
@@ -115,7 +115,7 @@ const createTestRuntimeActions = (runtime: AppRuntimeState) =>
     runtime,
     globalScenarioDirectiveLimits,
     runtimeScenarioOptions,
-    timeWarps: [1, 10, 50, 100, 500, 2000],
+    timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
     updateUserSettings: () => {},
     gameHighLevelActions: new GameHighLevelActionsMediator(),
   })
@@ -324,7 +324,7 @@ describe('createRuntimeActions', () => {
         runtime,
         globalScenarioDirectiveLimits,
         runtimeScenarioOptions,
-        timeWarps: [1, 10, 50, 100, 500, 2000],
+        timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
         updateUserSettings: () => {},
         gameHighLevelActions: new GameHighLevelActionsMediator(),
       })

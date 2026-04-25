@@ -1,5 +1,9 @@
 import { getBodyInfluences } from '../simulation/bodyInfluence'
-import { formatCompactElapsed, formatSpeed } from '../ui/formatters'
+import {
+  formatCompactElapsed,
+  formatSpeed,
+  formatTimeWarpLabel,
+} from '../ui/formatters'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import type { TouchControls } from '../ui/touchControls/createTouchControls'
 import { getDebugPanelLines, getGuidanceText } from '../ui/hudText'
@@ -165,9 +169,9 @@ export const createHudPresentation = (options: {
         options.overlayUi.statEngine.textContent = options.physicsEngineName
       }
       if (options.overlayUi.statTime) {
-        options.overlayUi.statTime.textContent = `${formatCompactElapsed(options.runtime.simulation.state.elapsed)} · ${
-          options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1
-        }x`
+        options.overlayUi.statTime.textContent = `${formatCompactElapsed(options.runtime.simulation.state.elapsed)} · ${formatTimeWarpLabel(
+          options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
+        )}`
       }
       if (options.overlayUi.timeIcon) {
         const maxWarpIndex = Math.max(0, options.timeWarps.length - 1)

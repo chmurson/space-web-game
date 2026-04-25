@@ -7,6 +7,15 @@ import {
   resolveStartupScenarioId,
 } from '../runtime/createScenarioRuntimeController'
 
+const menuTimeWarpTarget = 300
+
+const getMenuTimeWarpIndex = (timeWarps: number[]) =>
+  timeWarps.reduce(
+    (targetIndex, timeWarp, index) =>
+      timeWarp <= menuTimeWarpTarget ? index : targetIndex,
+    0,
+  )
+
 export const createInitialAppRuntimeState = (
   config: AppConfigContext,
 ): AppRuntimeState => {
@@ -56,9 +65,9 @@ export const createInitialAppRuntimeState = (
 
   if (config.initialAppMode === 'menu') {
     runtimeState.ui.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
-    const menuTimeWarpIndex = config.controls.timeWarps.indexOf(500)
-    runtimeState.simulation.timeWarpIndex =
-      menuTimeWarpIndex >= 0 ? menuTimeWarpIndex : 0
+    runtimeState.simulation.timeWarpIndex = getMenuTimeWarpIndex(
+      config.controls.timeWarps,
+    )
   }
 
   return runtimeState

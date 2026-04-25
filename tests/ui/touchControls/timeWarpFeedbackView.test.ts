@@ -73,15 +73,15 @@ describe('timeWarpFeedbackView', () => {
 
     view.render({
       anchor: { x: 4, y: 200 },
-      label: '>> x100 max',
+      label: '>> x1m max',
       mode: 'preview',
       opacity: 0.6,
       tone: 'blocked',
-      value: 100,
+      value: 60,
       variant: 'increase',
     })
 
-    expect(element.textContent).toBe('>> x100 max')
+    expect(element.textContent).toBe('>> x1m max')
     expect(element.dataset.timeWarpFeedbackState).toBe('blocked')
     expect(element.dataset.warpFeedbackVariant).toBe('v2')
     expect(element.classList.contains('touch-time-warp-feedback-visible')).toBe(
@@ -106,7 +106,7 @@ describe('timeWarpFeedbackView', () => {
 
     view.render({
       anchor: { x: 80, y: 90 },
-      label: '<< x10',
+      label: '<< x10s',
       mode: 'confirmation',
       opacity: 1,
       tone: 'available',

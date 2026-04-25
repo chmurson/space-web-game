@@ -162,13 +162,13 @@ describe('tutorialOnboardingProgress', () => {
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_150, 1)
     expect(onboarding.activeStepId).toBe('intro-timewarp')
 
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 100)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 60)
     expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
     expect(runtime.simulation.targetHeading).toBeCloseTo(0, 6)
 
     runtime.simulation.state.spacecraft.heading = 0
     runtime.simulation.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_250, 100)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_250, 60)
 
     expect(onboarding.activeStepId).toBe('intro-trajectory')
     expect(onboarding.completedStepIds).toEqual([
@@ -201,7 +201,7 @@ describe('tutorialOnboardingProgress', () => {
       runtime,
       onboarding,
       1_050,
-      100,
+      60,
     )
     expect(acknowledgedTrajectory?.activeStepId).toBe('intro-complete')
 
@@ -210,7 +210,7 @@ describe('tutorialOnboardingProgress', () => {
       // biome-ignore lint/style/noNonNullAssertion: acknowledgedTrajectory is guaranteed to exist after previous assertion
       acknowledgedTrajectory!,
       1_100,
-      100,
+      60,
     )
     expect(acknowledgedComplete).toMatchObject({
       activeStepId: null,

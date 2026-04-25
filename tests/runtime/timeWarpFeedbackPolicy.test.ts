@@ -64,7 +64,7 @@ const createBaseOptions = () => ({
   shouldCaptureBurn: () => false,
   state: createRuntimeState(),
   targetHeading: null,
-  timeWarps: [1, 10, 50, 100, 500, 2000],
+  timeWarps: [1, 10, 30, 60, 300, 1800],
 })
 
 describe('timeWarpFeedbackPolicy', () => {
@@ -80,7 +80,7 @@ describe('timeWarpFeedbackPolicy', () => {
       action: 'increaseTimeWarp',
       canCommit: false,
       reason: 'turning',
-      value: 100,
+      value: 60,
     })
   })
 
@@ -95,7 +95,7 @@ describe('timeWarpFeedbackPolicy', () => {
       action: 'increaseTimeWarp',
       canCommit: false,
       reason: 'global-max',
-      value: 2000,
+      value: 1800,
     })
   })
 
@@ -118,14 +118,14 @@ describe('timeWarpFeedbackPolicy', () => {
     const preview = getTimeWarpFeedbackPreview({
       ...createBaseOptions(),
       action: 'increaseTimeWarp',
-      maxTimeWarp: 100,
+      maxTimeWarp: 60,
     })
 
     expect(preview).toEqual({
       action: 'increaseTimeWarp',
       canCommit: false,
       reason: 'scenario-limit',
-      value: 100,
+      value: 60,
     })
   })
 
@@ -144,6 +144,6 @@ describe('timeWarpFeedbackPolicy', () => {
     })
 
     expect(preview.reason).toBe('thrust-active')
-    expect(preview.value).toBe(100)
+    expect(preview.value).toBe(60)
   })
 })

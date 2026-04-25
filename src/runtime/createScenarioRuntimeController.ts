@@ -95,7 +95,7 @@ export const createScenarioRuntimeController = (options: {
     enterMainMenuBackground: () => {
       loadScenarioById('menu-background')
       options.runtime.ui.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
-      options.setTimeWarp(500)
+      options.setTimeWarp(300)
     },
     initializeFromStartup: (startupOptions: {
       initialAppMode: 'menu' | 'game'
@@ -107,7 +107,7 @@ export const createScenarioRuntimeController = (options: {
       }
 
       options.runtime.ui.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
-      options.setTimeWarp(500)
+      options.setTimeWarp(300)
     },
     loadDebugSnapshot: () => {
       const loadedDebugScenario = loadDebugRuntimeScenario(

@@ -93,17 +93,16 @@ const tutorialOnboardingPromptDefinitions = {
     id: 'intro-timewarp',
     title: 'Raise Time Warp',
     shortLabel: 'Raise Time Warp',
-    description:
-      'Increase time warp until the time pill reaches at least 100x.',
+    description: 'Increase time warp until the time pill reaches at least x1m.',
     buttons: [],
     presentation: { kind: 'coach', anchor: 'trajectory' },
   },
   'intro-timewarp-thrust': {
     id: 'intro-timewarp-thrust',
-    title: 'Burn At 100x',
-    shortLabel: 'Burn At 100x',
+    title: 'Burn At x1m',
+    shortLabel: 'Burn At x1m',
     description:
-      'The tutorial is turning you outward from the nearest body. Keep time warp at 100x or higher, then hold thrust in the lower control area for 2 seconds.',
+      'The tutorial is turning you outward from the nearest body. Keep time warp at x1m or higher, then hold thrust in the lower control area for 2 seconds.',
     buttons: [],
     presentation: {
       kind: 'coach',

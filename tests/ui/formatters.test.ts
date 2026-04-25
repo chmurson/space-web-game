@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { formatCompactElapsed, formatSpeed } from '@/ui/formatters'
+import {
+  formatCompactElapsed,
+  formatSpeed,
+  formatTimeWarpLabel,
+} from '@/ui/formatters'
 
 describe('formatCompactElapsed', () => {
   it('shows split day and hour units for long durations', () => {
@@ -35,5 +39,19 @@ describe('formatSpeed', () => {
 
   it('formats zero speed', () => {
     expect(formatSpeed(0)).toBe('0 m/s')
+  })
+})
+
+describe('formatTimeWarpLabel', () => {
+  it('formats duration-oriented warp labels', () => {
+    expect(formatTimeWarpLabel(1)).toBe('x1s')
+    expect(formatTimeWarpLabel(10)).toBe('x10s')
+    expect(formatTimeWarpLabel(30)).toBe('x30s')
+    expect(formatTimeWarpLabel(60)).toBe('x1m')
+    expect(formatTimeWarpLabel(300)).toBe('x5m')
+    expect(formatTimeWarpLabel(1800)).toBe('x30m')
+    expect(formatTimeWarpLabel(3600)).toBe('x1h')
+    expect(formatTimeWarpLabel(7200)).toBe('x2h')
+    expect(formatTimeWarpLabel(18000)).toBe('x5h')
   })
 })
