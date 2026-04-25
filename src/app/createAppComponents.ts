@@ -18,7 +18,10 @@ import { registerHighLevelActions } from '../runtime/highLevelActions/registerHi
 import { createRuntimeActions } from '../runtime/runtimeActions'
 import { parsePromptAction } from '../scenario/scenarioPrompts'
 import { defaultMaxControlWarp } from '../runtime/simulationStep'
-import { getTimeWarpFeedbackPreview } from '../runtime/timeWarpFeedbackPolicy'
+import {
+  getTimeWarpFeedbackPreview,
+  getTimeWarpFeedbackPreviews,
+} from '../runtime/timeWarpFeedbackPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import { createGameScene } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
@@ -214,11 +217,35 @@ export const createAppComponents = (options: {
     commitTimeWarp: (action) => {
       dispatchRuntimeAction(action)
     },
+    getCurrentTimeWarp: () =>
+      options.config.controls.timeWarps[
+        options.runtimeState.simulation.timeWarpIndex
+      ] ?? 1,
     getTimeWarpPreview: (action) => {
       return getTimeWarpFeedbackPreview({
         action,
         assistMode: options.runtimeState.simulation.assistMode,
         crashedBodyName: options.runtimeState.simulation.crashedBodyName,
+        currentTimeWarpIndex: options.runtimeState.simulation.timeWarpIndex,
+        getAssistTarget: queries.getAssistTarget,
+        getAutopilotTurn: queries.getAutopilotTurn,
+        getCaptureMetrics: queries.getCaptureMetrics,
+        getCircularizePlan: queries.getCircularizePlan,
+        keyboardInput,
+        maxControlWarp: defaultMaxControlWarp,
+        maxTimeWarp: options.runtimeState.scenario.directives.maxTimeWarp,
+        shouldCaptureBurn: queries.shouldCaptureBurn,
+        state: options.runtimeState.simulation.state,
+        targetHeading: options.runtimeState.simulation.targetHeading,
+        timeWarps: options.config.controls.timeWarps,
+      })
+    },
+    getTimeWarpPreviews: (action, count) => {
+      return getTimeWarpFeedbackPreviews({
+        action,
+        assistMode: options.runtimeState.simulation.assistMode,
+        crashedBodyName: options.runtimeState.simulation.crashedBodyName,
+        count,
         currentTimeWarpIndex: options.runtimeState.simulation.timeWarpIndex,
         getAssistTarget: queries.getAssistTarget,
         getAutopilotTurn: queries.getAutopilotTurn,

@@ -1,7 +1,7 @@
 import type {
   TimeWarpAction,
   TimeWarpFeedbackReason,
-} from '../../runtime/timeWarpFeedbackPolicy'
+} from '../../../runtime/timeWarpFeedbackPolicy'
 import type {
   TimeWarpFeedbackSnapshot,
   TouchOverlayPoint,

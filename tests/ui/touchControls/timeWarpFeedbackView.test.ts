@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createTimeWarpFeedbackView } from '@/ui/touchControls/timeWarpFeedbackView'
+import { createTimeWarpFeedbackView } from '@/ui/touchControls/swipeTimeWarpControl/timeWarpFeedbackView'
 
 type FakeClassList = {
   add: (...tokens: string[]) => void

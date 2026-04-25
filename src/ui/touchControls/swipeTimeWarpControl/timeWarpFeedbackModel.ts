@@ -1,7 +1,7 @@
 import type {
   TimeWarpAction,
   TimeWarpFeedbackReason,
-} from '../../runtime/timeWarpFeedbackPolicy'
+} from '../../../runtime/timeWarpFeedbackPolicy'
 
 export type TouchOverlayPoint = {
   x: number

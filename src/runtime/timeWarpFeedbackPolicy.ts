@@ -47,6 +47,10 @@ export type TimeWarpFeedbackPolicyOptions = TimeWarpFeedbackQueries & {
   timeWarps: number[]
 }
 
+type ResolvedTimeWarpFeedbackPreview = TimeWarpFeedbackPreview & {
+  nextTimeWarpIndex: number
+}
+
 const normalizeConstraintReason = (params: {
   action: TimeWarpAction
   currentTimeWarpIndex: number
@@ -81,9 +85,9 @@ const normalizeConstraintReason = (params: {
   return 'control-limit'
 }
 
-export const getTimeWarpFeedbackPreview = (
+const resolveTimeWarpFeedbackPreview = (
   options: TimeWarpFeedbackPolicyOptions,
-): TimeWarpFeedbackPreview => {
+): ResolvedTimeWarpFeedbackPreview => {
   const direction = options.action === 'increaseTimeWarp' ? 1 : -1
   const requestedIndex = getConstrainedTimeWarpIndex(
     options.currentTimeWarpIndex + direction,
@@ -110,6 +114,7 @@ export const getTimeWarpFeedbackPreview = (
   return {
     action: options.action,
     canCommit: resolvedTimeWarp.timeWarpIndex !== options.currentTimeWarpIndex,
+    nextTimeWarpIndex: resolvedTimeWarp.timeWarpIndex,
     reason: normalizeConstraintReason({
       action: options.action,
       currentTimeWarpIndex: options.currentTimeWarpIndex,
@@ -119,4 +124,49 @@ export const getTimeWarpFeedbackPreview = (
     }),
     value: options.timeWarps[resolvedTimeWarp.timeWarpIndex] ?? 1,
   }
+}
+
+export const getTimeWarpFeedbackPreview = (
+  options: TimeWarpFeedbackPolicyOptions,
+): TimeWarpFeedbackPreview => {
+  const { nextTimeWarpIndex: _nextTimeWarpIndex, ...preview } =
+    resolveTimeWarpFeedbackPreview(options)
+  return preview
+}
+
+export const getTimeWarpFeedbackPreviews = (
+  options: TimeWarpFeedbackPolicyOptions & { count: number },
+): TimeWarpFeedbackPreview[] => {
+  if (options.count <= 0) {
+    return []
+  }
+
+  const previews: TimeWarpFeedbackPreview[] = []
+  let currentTimeWarpIndex = options.currentTimeWarpIndex
+
+  for (let step = 0; step < options.count; step += 1) {
+    const preview = resolveTimeWarpFeedbackPreview({
+      ...options,
+      currentTimeWarpIndex,
+    })
+
+    if (step > 0 && preview.nextTimeWarpIndex === currentTimeWarpIndex) {
+      break
+    }
+
+    previews.push({
+      action: preview.action,
+      canCommit: preview.canCommit,
+      reason: preview.reason,
+      value: preview.value,
+    })
+
+    if (!preview.canCommit) {
+      break
+    }
+
+    currentTimeWarpIndex = preview.nextTimeWarpIndex
+  }
+
+  return previews
 }

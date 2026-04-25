@@ -1,51 +1,18 @@
-import type {
-  TimeWarpAction,
-  TimeWarpFeedbackReason,
-} from '../../runtime/timeWarpFeedbackPolicy'
-import './timeWarpControl.css'
+import './swipeTimeWarpControl.css'
 import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
 import { presentTimeWarpFeedback } from './timeWarpFeedbackPresenter'
 import { createTimeWarpFeedbackView } from './timeWarpFeedbackView'
-
-export type TimeWarpGestureSession =
-  | { kind: 'none' }
-  | {
-      kind: 'left-zone'
-      startX: number
-      touchId: number
-    }
-
-export type TimeWarpControlOptions = {
-  commitTimeWarp(action: TimeWarpAction): void
-  getTimeWarpPreview(action: TimeWarpAction): {
-    canCommit: boolean
-    reason: TimeWarpFeedbackReason | null
-    value: number
-  }
-  onSessionChange(session: TimeWarpGestureSession): void
-  panel: HTMLElement
-}
-
-export type TimeWarpControl = {
-  beginGesture(touch: Touch): TimeWarpGestureSession
-  finishGesture(
-    session: TimeWarpGestureSession,
-    commitPreview: boolean,
-  ): TimeWarpGestureSession
-  ownsTouch(session: TimeWarpGestureSession, touchId: number): boolean
-  setSession(session: TimeWarpGestureSession): void
-  syncUi(): void
-  updateGesture(
-    touch: Touch,
-    session: TimeWarpGestureSession,
-  ): TimeWarpGestureSession
-}
+import type {
+  TimeWarpControl,
+  TimeWarpControlOptions,
+  TimeWarpGestureSession,
+} from '../timeWarpControlTypes'
 
 const committedTimeWarpFeedbackFadeMs = 1000
 const maxMobileTouchDimensionPx = 430
 const timeWarpFeedbackOffsetYPx = 62
 
-export const createTimeWarpControl = (
+export const createSwipeTimeWarpControl = (
   options: TimeWarpControlOptions,
 ): TimeWarpControl => {
   const timeWarpFeedback = document.createElement('div')
@@ -84,6 +51,7 @@ export const createTimeWarpControl = (
   const beginGesture = (touch: Touch): TimeWarpGestureSession => ({
     kind: 'left-zone',
     startX: touch.clientX,
+    startY: touch.clientY,
     touchId: touch.identifier,
   })
 
@@ -145,7 +113,7 @@ export const createTimeWarpControl = (
   syncUi()
 
   return {
-    beginGesture(touch: Touch) {
+    beginGesture(touch) {
       const nextSession = beginGesture(touch)
       setSession(nextSession)
       return nextSession

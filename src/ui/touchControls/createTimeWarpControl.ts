@@ -1,21 +1,21 @@
-import { createPlaceholderTimeWarpControl } from './placeholderTimeWarpControl'
-import {
-  createTimeWarpControl as createDefaultTimeWarpControl,
-  type TimeWarpControl,
-  type TimeWarpControlOptions,
-} from './timeWarpControl'
+import { createSelectorTimeWarpControl } from './selectorTimeWarpControl/createSelectorTimeWarpControl'
+import { createSwipeTimeWarpControl } from './swipeTimeWarpControl/createSwipeTimeWarpControl'
+import type {
+  TimeWarpControl,
+  TimeWarpControlOptions,
+} from './timeWarpControlTypes'
 
-type TimeWarpControlVariant = 'default' | 'placeholder'
+type TimeWarpControlVariant = 'default' | 'selector'
 
-const timeWarpControlVariant = 'default' as TimeWarpControlVariant
+const timeWarpControlVariant = 'selector' as TimeWarpControlVariant
 
 export const createConfiguredTimeWarpControl = (
   options: TimeWarpControlOptions,
 ): TimeWarpControl => {
   switch (timeWarpControlVariant) {
     case 'default':
-      return createDefaultTimeWarpControl(options)
-    case 'placeholder':
-      return createPlaceholderTimeWarpControl(options)
+      return createSwipeTimeWarpControl(options)
+    case 'selector':
+      return createSelectorTimeWarpControl(options)
   }
 }
