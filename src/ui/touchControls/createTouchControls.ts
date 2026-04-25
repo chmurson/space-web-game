@@ -8,8 +8,8 @@ import type {
 import type { ScenarioTouchHintTarget } from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
 import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
-import type { TimeWarpGestureSession } from './timeWarpControlTypes'
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
+import type { TimeWarpGestureSession } from './timeWarpControlTypes'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 
 export type TouchControls = {
