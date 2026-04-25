@@ -113,6 +113,9 @@ export const createSelectorTimeWarpControl = (
     ownsTouch(session, touchId) {
       return session.kind === 'left-zone' && session.touchId === touchId
     },
+    setVisible(visible) {
+      view.element.style.display = visible ? 'grid' : 'none'
+    },
     setSession,
     syncUi: render,
     updateGesture(touch, session) {

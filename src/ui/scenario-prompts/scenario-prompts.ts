@@ -5,6 +5,7 @@ import {
   resolveScenarioPrompts,
   serializePromptAction,
 } from '../../scenario/scenarioPrompts'
+import type { ScenarioPromptAnchor } from '../../scenario/scenarioPromptTypes'
 
 export type ScenarioPromptUiRefs = {
   backdropElement: HTMLElement
@@ -18,7 +19,7 @@ export type ScenarioPromptUiRefs = {
   replayButtonLabel: HTMLSpanElement | null
 }
 
-type AnchorKey = 'speed-pill' | 'time-warp-pill' | 'trajectory'
+type AnchorKey = ScenarioPromptAnchor
 
 const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
   if (anchor === 'speed-pill') {
@@ -31,6 +32,9 @@ const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
   if (anchor === 'time-warp-pill') {
     const statTime = document.querySelector<HTMLElement>('[data-stat="time"]')
     return statTime?.closest<HTMLElement>('.telemetry-pill') ?? null
+  }
+  if (anchor === 'thrust-control') {
+    return document.querySelector<HTMLElement>('.touch-thrust-control')
   }
   return null
 }
@@ -284,6 +288,10 @@ export const createScenarioPromptUpdater = (
       }[placementSide]
 
       refs.arrowElement.style.position = 'absolute'
+      refs.arrowElement.style.setProperty('top', '')
+      refs.arrowElement.style.setProperty('right', '')
+      refs.arrowElement.style.setProperty('bottom', '')
+      refs.arrowElement.style.setProperty('left', '')
       refs.arrowElement.style.left = arrowX !== undefined ? `${arrowX}px` : ''
       refs.arrowElement.style.top = arrowY !== undefined ? `${arrowY}px` : ''
       refs.arrowElement.style.setProperty(staticSide, '-6px')

@@ -35,6 +35,7 @@ export type TimeWarpControl = {
     commitPreview: boolean,
   ): TimeWarpGestureSession
   ownsTouch(session: TimeWarpGestureSession, touchId: number): boolean
+  setVisible(visible: boolean): void
   setSession(session: TimeWarpGestureSession): void
   syncUi(): void
   updateGesture(

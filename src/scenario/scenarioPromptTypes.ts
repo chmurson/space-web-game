@@ -3,6 +3,7 @@ import type { AppRuntimeState } from '../runtime/appRuntimeState'
 export type ScenarioPromptAnchor =
   | 'time-warp-pill'
   | 'speed-pill'
+  | 'thrust-control'
   | 'trajectory'
 
 export type ScenarioTouchHintTarget = 'thrust-zone'

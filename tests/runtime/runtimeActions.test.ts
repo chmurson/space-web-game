@@ -88,6 +88,11 @@ const createRuntime = (): AppRuntimeState => ({
   ui: {
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
+    touchThrustControl: {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    },
     uiEffectEpoch: 0,
   },
   debug: {
@@ -245,12 +250,12 @@ describe('createRuntimeActions', () => {
     expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
       onboarding: {
-        activeStepId: 'intro-thrust',
+        activeStepId: 'intro-show-thrust-control',
         gateActive: true,
       },
     })
     expect(runtime.scenario.session.promptUi).toEqual({
-      activePromptId: 'intro-thrust',
+      activePromptId: 'intro-show-thrust-control',
       replayPromptId: 'phase-one-intro',
     })
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
@@ -265,7 +270,7 @@ describe('createRuntimeActions', () => {
       {
         phase: 'escape-earth',
         onboarding: {
-          activeStepId: 'intro-thrust',
+          activeStepId: 'intro-show-thrust-control',
           completedStepIds: [],
           gateActive: true,
           progress: {
@@ -274,6 +279,7 @@ describe('createRuntimeActions', () => {
             lastSampleHeading: runtime.simulation.state.spacecraft.heading,
             lastSampleAtMs: 1_000,
             stepStartHeading: runtime.simulation.state.spacecraft.heading,
+            stepStartTouchThrustControlEngaged: false,
             stepStartTargetHeadingSelectionEpoch: 0,
             stepStartTimeWarpMultiplier: 1,
           },

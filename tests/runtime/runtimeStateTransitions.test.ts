@@ -80,6 +80,11 @@ const createRuntime = (): AppRuntimeState => ({
   ui: {
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
+    touchThrustControl: {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    },
     uiEffectEpoch: 0,
   },
   debug: {
@@ -149,7 +154,7 @@ describe('runtimeStateTransitions', () => {
     runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
       phase: 'escape-earth',
       onboarding: {
-        activeStepId: 'intro-thrust',
+        activeStepId: 'intro-show-thrust-control',
         completedStepIds: [],
         gateActive: true,
         progress: {
@@ -158,6 +163,7 @@ describe('runtimeStateTransitions', () => {
           lastSampleHeading: runtime.simulation.state.spacecraft.heading,
           lastSampleAtMs: 1_000,
           stepStartHeading: runtime.simulation.state.spacecraft.heading,
+          stepStartTouchThrustControlEngaged: false,
           stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },
@@ -251,7 +257,7 @@ describe('runtimeStateTransitions', () => {
       phase: 'escape-earth',
       onboarding: {
         activeStepId: 'intro-thrust',
-        completedStepIds: [],
+        completedStepIds: ['intro-show-thrust-control'],
         gateActive: true,
         progress: {
           accumulatedHeadingChangeRadians: 0,
@@ -259,6 +265,7 @@ describe('runtimeStateTransitions', () => {
           lastSampleHeading: runtime.simulation.state.spacecraft.heading,
           lastSampleAtMs: performance.now() - 1_100,
           stepStartHeading: runtime.simulation.state.spacecraft.heading,
+          stepStartTouchThrustControlEngaged: true,
           stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },

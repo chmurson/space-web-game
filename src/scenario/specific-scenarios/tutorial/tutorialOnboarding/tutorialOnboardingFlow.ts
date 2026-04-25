@@ -13,10 +13,11 @@ import type {
 } from './tutorialOnboardingTypes'
 
 export const tutorialOnboardingStepOrder: TutorialOnboardingStepId[] = [
+  'intro-show-thrust-control',
   'intro-thrust',
   'intro-keep-thrusting',
   'intro-thrusting-complete',
-  'intro-turn',
+  'intro-thrusting-off',
   'intro-point-and-turn',
   'intro-timewarp',
   'intro-timewarp-thrust',
@@ -25,14 +26,14 @@ export const tutorialOnboardingStepOrder: TutorialOnboardingStepId[] = [
 ]
 
 const tutorialOnboardingPromptDefinitions = {
-  'intro-thrust': {
-    id: 'intro-thrust',
-    title: 'Use Thrust',
-    shortLabel: 'Use Thrust',
+  'intro-show-thrust-control': {
+    id: 'intro-show-thrust-control',
+    title: 'Show Thrust Control',
+    shortLabel: 'Show Thrust Control',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? `Press and hold in the lower control area for about ${formatDuration(requiredIntroKeepThrustMs / 1000)} to fire the main engine and start changing your path.`
-        : 'Hold W or Up Arrow for about 2 seconds to fire the main engine and start changing your path.',
+        ? 'Press and hold in the lower-right control area until the thrust control appears. That is where you will light the engine to start pushing away from Earth.'
+        : 'Press W or Up Arrow to wake the main engine and start pushing your path away from Earth.',
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -41,17 +42,30 @@ const tutorialOnboardingPromptDefinitions = {
         inputMode === 'mobile' ? 'thrust-zone' : undefined,
     },
   },
+  'intro-thrust': {
+    id: 'intro-thrust',
+    title: 'Use Thrust',
+    shortLabel: 'Use Thrust',
+    description: ({ inputMode }) =>
+      inputMode === 'mobile'
+        ? 'Swipe the visible thrust control upward and keep it on briefly. A short burn starts bending your path away from Earth.'
+        : 'Keep W or Up Arrow held briefly so the main engine can start widening your escape path.',
+    buttons: [],
+    presentation: {
+      kind: 'coach',
+      anchor: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'thrust-control' : 'trajectory',
+    },
+  },
   'intro-keep-thrusting': {
     id: 'intro-keep-thrusting',
     title: 'Keep Thrusting',
     shortLabel: 'Keep Thrusting',
-    description: `That's great. Keep thrusting for ${formatDuration(requiredIntroKeepThrustMs / 1000)}.`,
+    description: `That's it. Keep the burn going for ${formatDuration(requiredIntroKeepThrustMs / 1000)} so your path opens away from Earth.`,
     buttons: [],
     presentation: {
       kind: 'coach',
       anchor: 'speed-pill',
-      touchHintTarget: ({ inputMode }) =>
-        inputMode === 'mobile' ? 'thrust-zone' : undefined,
     },
   },
   'intro-thrusting-complete': {
@@ -67,18 +81,16 @@ const tutorialOnboardingPromptDefinitions = {
         tone: 'primary',
       },
     ],
-    presentation: { kind: 'coach', anchor: 'trajectory' },
-  },
-  'intro-turn': {
-    id: 'intro-turn',
-    title: 'Turn The Ship',
-    shortLabel: 'Turn The Ship',
-    description: ({ inputMode }) =>
-      inputMode === 'mobile'
-        ? 'Drag sideways in the lower control area until you have turned a total of at least 90 degrees. You can do it in one direction or split it across both directions.'
-        : 'Press A or D, or Left/Right Arrow keys to turn the ship. Rotate at least 90 degrees in total, which you can do in one direction or split across both directions.',
-    buttons: [],
     presentation: { kind: 'coach', anchor: 'speed-pill' },
+  },
+  'intro-thrusting-off': {
+    id: 'intro-thrusting-off',
+    title: 'Thrusting Off',
+    shortLabel: 'Thrusting Off',
+    buttons: [],
+    description:
+      'You can now turn off by sliding the thrust control down. Do it now.',
+    presentation: { kind: 'coach', anchor: 'thrust-control' },
   },
   'intro-point-and-turn': {
     id: 'intro-point-and-turn',
@@ -200,9 +212,10 @@ export const getHiddenOnboardingUIElements = (
   if (!state) return emptyHiddenUIElements
 
   if (
+    state.activeStepId === 'intro-show-thrust-control' ||
     state.activeStepId === 'intro-thrust' ||
     state.activeStepId === 'intro-keep-thrusting' ||
-    state.activeStepId === 'intro-turn' ||
+    state.activeStepId === 'intro-thrusting-off' ||
     state.activeStepId === 'intro-point-and-turn' ||
     state.activeStepId === 'intro-thrusting-complete'
   ) {

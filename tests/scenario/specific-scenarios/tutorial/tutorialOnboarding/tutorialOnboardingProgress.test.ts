@@ -67,6 +67,11 @@ const createRuntime = (): AppRuntimeState => ({
   ui: {
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
+    touchThrustControl: {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    },
     uiEffectEpoch: 0,
   },
   debug: {
@@ -79,69 +84,177 @@ const createRuntime = (): AppRuntimeState => ({
 })
 
 describe('tutorialOnboardingProgress', () => {
-  it('exposes a mobile thrust-zone hint for thrust-focused onboarding steps', () => {
+  it('exposes the thrust-zone hint only while mobile players are finding the thrust control', () => {
+    expect(
+      getTutorialOnboardingPromptContent('intro-show-thrust-control', 'mobile')
+        .touchHintTarget,
+    ).toBe('thrust-zone')
     expect(
       getTutorialOnboardingPromptContent('intro-thrust', 'mobile')
         .touchHintTarget,
-    ).toBe('thrust-zone')
+    ).toBeUndefined()
     expect(
       getTutorialOnboardingPromptContent('intro-keep-thrusting', 'mobile')
         .touchHintTarget,
-    ).toBe('thrust-zone')
+    ).toBeUndefined()
     expect(
       getTutorialOnboardingPromptContent('intro-timewarp-thrust', 'mobile')
         .touchHintTarget,
     ).toBe('thrust-zone')
     expect(
-      getTutorialOnboardingPromptContent('intro-thrust', 'desktop')
+      getTutorialOnboardingPromptContent('intro-show-thrust-control', 'desktop')
         .touchHintTarget,
     ).toBeUndefined()
+  })
+
+  it('advances from show-control to use-thrust when the thrust control becomes interactive', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+
+    runtime.ui.touchThrustControl = {
+      engaged: false,
+      interactive: true,
+      visible: true,
+    }
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-thrust')
+    expect(onboarding.completedStepIds).toEqual(['intro-show-thrust-control'])
   })
 
   it('advances from thrust to keep-thrusting after sustained main thrust', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-thrust',
+      completedStepIds: ['intro-show-thrust-control'],
+    }
 
     runtime.simulation.state.controls.main = 1
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_050, 1)
 
     expect(onboarding.activeStepId).toBe('intro-keep-thrusting')
-    expect(onboarding.completedStepIds).toEqual(['intro-thrust'])
-  })
-
-  it('requires the turn lesson to accumulate 90 degrees of rotation across both directions', () => {
-    const runtime = createRuntime()
-    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
-    onboarding = {
-      ...onboarding,
-      activeStepId: 'intro-turn',
-      completedStepIds: ['intro-thrust', 'intro-keep-thrusting'],
-    }
-
-    runtime.simulation.state.spacecraft.heading = Math.PI / 4
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
-    expect(onboarding.activeStepId).toBe('intro-turn')
-
-    runtime.simulation.state.spacecraft.heading = 0
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 1)
-    expect(onboarding.activeStepId).toBe('intro-point-and-turn')
+    expect(onboarding.completedStepIds).toEqual([
+      'intro-show-thrust-control',
+      'intro-thrust',
+    ])
   })
 
   it('requires the first thrust hold to be continuous', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
+    runtime.ui.touchThrustControl = {
+      engaged: false,
+      interactive: true,
+      visible: true,
+    }
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_050, 1)
+
     runtime.simulation.state.controls.main = 1
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_300, 1)
     runtime.simulation.state.controls.main = 0
+    runtime.ui.touchThrustControl = {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    }
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_450, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-show-thrust-control')
+
+    runtime.ui.touchThrustControl = {
+      engaged: false,
+      interactive: true,
+      visible: true,
+    }
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_500, 1)
     runtime.simulation.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_750, 1)
-
-    expect(onboarding.activeStepId).toBe('intro-thrust')
-
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 4_500, 1)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_900, 1)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 4_650, 1)
     expect(onboarding.activeStepId).toBe('intro-keep-thrusting')
+  })
+
+  it('falls back from keep-thrusting to show-control when thrust stops and the control is gone', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-keep-thrusting',
+      completedStepIds: ['intro-show-thrust-control', 'intro-thrust'],
+      progress: {
+        ...onboarding.progress,
+        accumulatedMainThrustMs: 2_000,
+      },
+    }
+
+    runtime.simulation.state.controls.main = 0
+    runtime.ui.touchThrustControl = {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    }
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-show-thrust-control')
+    expect(onboarding.completedStepIds).toEqual([
+      'intro-show-thrust-control',
+      'intro-thrust',
+    ])
+  })
+
+  it('advances from thrusting-off once the touch thrust control is disengaged and released', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    runtime.ui.touchThrustControl = {
+      engaged: true,
+      interactive: true,
+      visible: true,
+    }
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-thrusting-off',
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+        'intro-thrusting-complete',
+      ],
+      progress: {
+        ...onboarding.progress,
+        stepStartTouchThrustControlEngaged: true,
+      },
+    }
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_050, 1)
+    expect(onboarding.activeStepId).toBe('intro-thrusting-off')
+
+    runtime.ui.touchThrustControl = {
+      engaged: false,
+      interactive: true,
+      visible: true,
+    }
+    runtime.simulation.state.controls.main = 0
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-thrusting-off')
+
+    runtime.ui.touchThrustControl = {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    }
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_150, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-point-and-turn')
+    expect(onboarding.completedStepIds).toEqual([
+      'intro-show-thrust-control',
+      'intro-thrust',
+      'intro-keep-thrusting',
+      'intro-thrusting-complete',
+      'intro-thrusting-off',
+    ])
   })
 
   it('uses direct heading selection, time warp, and high-warp thrust to reach trajectory explanation', () => {
@@ -151,7 +264,11 @@ describe('tutorialOnboardingProgress', () => {
     onboarding = {
       ...onboarding,
       activeStepId: 'intro-point-and-turn',
-      completedStepIds: ['intro-thrust', 'intro-keep-thrusting', 'intro-turn'],
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+      ],
     }
     runtime.ui.targetHeadingSelectionEpoch = 1
     runtime.simulation.targetHeading = Math.PI / 2
@@ -172,9 +289,9 @@ describe('tutorialOnboardingProgress', () => {
 
     expect(onboarding.activeStepId).toBe('intro-trajectory')
     expect(onboarding.completedStepIds).toEqual([
+      'intro-show-thrust-control',
       'intro-thrust',
       'intro-keep-thrusting',
-      'intro-turn',
       'intro-point-and-turn',
       'intro-timewarp',
       'intro-timewarp-thrust',
@@ -188,9 +305,9 @@ describe('tutorialOnboardingProgress', () => {
       ...onboarding,
       activeStepId: 'intro-trajectory',
       completedStepIds: [
+        'intro-show-thrust-control',
         'intro-thrust',
         'intro-keep-thrusting',
-        'intro-turn',
         'intro-point-and-turn',
         'intro-timewarp',
         'intro-timewarp-thrust',

@@ -47,6 +47,11 @@ export const createInitialAppRuntimeState = (
       spacecraftLabelIntroUntil: performance.now() + 5_000,
       targetHeadingScreenPosition: null,
       targetHeadingSelectionEpoch: 0,
+      touchThrustControl: {
+        engaged: false,
+        interactive: false,
+        visible: false,
+      },
       uiEffectEpoch: 0,
     },
     debug: {

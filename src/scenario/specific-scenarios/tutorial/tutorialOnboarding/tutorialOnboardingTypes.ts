@@ -4,10 +4,11 @@ import type {
 } from '../../../scenarioPromptTypes'
 
 export type TutorialOnboardingStepId =
+  | 'intro-show-thrust-control'
   | 'intro-thrust'
   | 'intro-keep-thrusting'
   | 'intro-thrusting-complete'
-  | 'intro-turn'
+  | 'intro-thrusting-off'
   | 'intro-point-and-turn'
   | 'intro-timewarp'
   | 'intro-timewarp-thrust'
@@ -29,6 +30,7 @@ export type TutorialOnboardingStepProgress = {
   lastSampleHeading: number | null
   lastSampleAtMs: number | null
   stepStartHeading: number | null
+  stepStartTouchThrustControlEngaged: boolean
   stepStartTargetHeadingSelectionEpoch: number
   stepStartTimeWarpMultiplier: number
 }

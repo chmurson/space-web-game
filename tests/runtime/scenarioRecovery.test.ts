@@ -56,6 +56,11 @@ const createRuntime = (): AppRuntimeState => ({
   ui: {
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
+    touchThrustControl: {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    },
     uiEffectEpoch: 0,
   },
   debug: {

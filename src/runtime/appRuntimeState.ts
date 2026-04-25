@@ -19,6 +19,12 @@ export type RuntimeScenarioMetadata = {
   title: string
 }
 
+export type TouchThrustControlUiState = {
+  engaged: boolean
+  interactive: boolean
+  visible: boolean
+}
+
 export type AppRuntimeScenarioSlice = {
   directives: RuntimeScenarioDirectives
   metadata: RuntimeScenarioMetadata
@@ -32,6 +38,7 @@ export type AppRuntimeUiSlice = {
     y: number
   } | null
   targetHeadingSelectionEpoch: number
+  touchThrustControl: TouchThrustControlUiState
   uiEffectEpoch: number
 }
 

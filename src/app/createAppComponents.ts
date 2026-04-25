@@ -273,6 +273,9 @@ export const createAppComponents = (options: {
 
       runtimeActions.setTargetHeading(heading, screenX, screenY)
     },
+    onThrustControlUiStateChange: (state) => {
+      options.runtimeState.ui.touchThrustControl = state
+    },
     onZoom: runtimeActions.zoomCamera,
   })
   const hudPresentation = createHudPresentation({

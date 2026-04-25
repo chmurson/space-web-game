@@ -126,6 +126,12 @@ export const createSwipeTimeWarpControl = (
     ownsTouch(session: TimeWarpGestureSession, touchId: number) {
       return session.kind === 'left-zone' && session.touchId === touchId
     },
+    setVisible(visible) {
+      timeWarpFeedback.style.display = visible ? 'block' : 'none'
+      if (!visible) {
+        clearPreview()
+      }
+    },
     setSession,
     syncUi,
     updateGesture(touch: Touch, session: TimeWarpGestureSession) {

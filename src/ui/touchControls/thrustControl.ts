@@ -1,4 +1,5 @@
 import './thrustControl.css'
+import type { TouchThrustControlUiState } from '../../runtime/appRuntimeState'
 import {
   createTouchInteractionModel,
   type TouchInteractionSnapshot,
@@ -59,6 +60,7 @@ const measureOverlaySize = (
 
 export const createThrustControl = (options: {
   onSessionChange(session: ThrustGestureSession): void
+  onUiStateChange(state: TouchThrustControlUiState): void
   panel: HTMLElement
   setMainThrust(engaged: boolean): void
   tapMoveTolerancePx: number
@@ -149,9 +151,14 @@ export const createThrustControl = (options: {
 
   const syncControlUi = () => {
     const snapshot = interactionModel.getSnapshot()
+    const uiState: TouchThrustControlUiState = {
+      engaged: snapshot.thrust.engaged,
+      interactive: snapshot.thrust.visible,
+      visible: snapshot.thrust.visible || isPendingFadeReady,
+    }
     thrustControl.classList.toggle(
       'touch-thrust-control-visible',
-      snapshot.thrust.visible || isPendingFadeReady,
+      uiState.visible,
     )
     thrustControl.classList.toggle(
       'touch-thrust-control-on',
@@ -189,6 +196,7 @@ export const createThrustControl = (options: {
       '--thrust-control-scale-duration',
       `${isPendingVisible ? pendingFadeInMs : 160}ms`,
     )
+    options.onUiStateChange(uiState)
   }
 
   const applySnapshot = (snapshot: TouchInteractionSnapshot) => {

@@ -76,6 +76,11 @@ const createRuntime = (): AppRuntimeState => ({
   ui: {
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
+    touchThrustControl: {
+      engaged: false,
+      interactive: false,
+      visible: false,
+    },
     uiEffectEpoch: 0,
   },
   debug: {
@@ -237,12 +242,12 @@ describe('tutorialScenario', () => {
     expect(runtime.scenario.session.state).toMatchObject({
       phase: 'escape-earth',
       onboarding: {
-        activeStepId: 'intro-thrust',
+        activeStepId: 'intro-show-thrust-control',
         gateActive: true,
       },
     })
     expect(runtime.scenario.session.promptUi).toEqual({
-      activePromptId: 'intro-thrust',
+      activePromptId: 'intro-show-thrust-control',
       replayPromptId: 'phase-one-intro',
     })
     expect(
@@ -258,7 +263,7 @@ describe('tutorialScenario', () => {
       {
         phase: 'escape-earth',
         onboarding: {
-          activeStepId: 'intro-thrust',
+          activeStepId: 'intro-show-thrust-control',
           completedStepIds: [],
           gateActive: true,
           progress: {
@@ -267,25 +272,26 @@ describe('tutorialScenario', () => {
             lastSampleHeading: runtime.simulation.state.spacecraft.heading,
             lastSampleAtMs: 1_000,
             stepStartHeading: runtime.simulation.state.spacecraft.heading,
+            stepStartTouchThrustControlEngaged: false,
             stepStartTargetHeadingSelectionEpoch: 0,
             stepStartTimeWarpMultiplier: 1,
           },
         },
       },
       {
-        activePromptId: 'intro-thrust',
+        activePromptId: 'intro-show-thrust-control',
         replayPromptId: 'phase-one-intro',
       },
     )
 
     expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
       kind: 'coach',
-      title: 'Use Thrust',
+      title: 'Show Thrust Control',
       touchHintTarget: 'thrust-zone',
     })
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       kind: 'coach',
-      title: 'Use Thrust',
+      title: 'Show Thrust Control',
     })
   })
 

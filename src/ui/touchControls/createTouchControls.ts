@@ -1,5 +1,6 @@
 import type { AssistMode } from '../../assist/orbitalAssist'
 import type { KeyboardInput } from '../../input/keyboardInput'
+import type { TouchThrustControlUiState } from '../../runtime/appRuntimeState'
 import type {
   TimeWarpAction,
   TimeWarpFeedbackReason,
@@ -13,6 +14,7 @@ import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 
 export type TouchControls = {
   element: HTMLElement
+  setTimeWarpControlVisible(visible: boolean): void
   setTutorialHintTarget(target: ScenarioTouchHintTarget | null): void
   updateAssistMode(mode: AssistMode): void
 }
@@ -91,6 +93,7 @@ export const createTouchControls = (options: {
   }[]
   keyboardInput: KeyboardInput
   onTargetHeadingSelected(screenX: number, screenY: number): void
+  onThrustControlUiStateChange(state: TouchThrustControlUiState): void
   onZoom(factor: number): void
 }): TouchControls => {
   const panel = document.createElement('section')
@@ -127,6 +130,7 @@ export const createTouchControls = (options: {
     onSessionChange: (session) => {
       activeSession = session
     },
+    onUiStateChange: options.onThrustControlUiStateChange,
     panel,
     setMainThrust: syncMainThrust,
     tapMoveTolerancePx,
@@ -532,6 +536,9 @@ export const createTouchControls = (options: {
 
   return {
     element: panel,
+    setTimeWarpControlVisible: (visible) => {
+      timeWarpControl.setVisible(visible)
+    },
     setTutorialHintTarget: (target) => {
       const showThrustHint = target === 'thrust-zone'
       tutorialHint.setVisible(showThrustHint)

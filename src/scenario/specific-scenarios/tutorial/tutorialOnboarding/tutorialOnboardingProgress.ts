@@ -7,7 +7,6 @@ import {
   requiredHighWarpThrustMs,
   requiredIntroKeepThrustMs,
   requiredIntroThrustMs,
-  requiredTurnRadians,
 } from './config'
 import {
   getTutorialOnboardingPromptContent,
@@ -32,6 +31,7 @@ const createStepProgress = (
   lastSampleHeading: runtime.simulation.state.spacecraft.heading,
   lastSampleAtMs: nowMs,
   stepStartHeading: runtime.simulation.state.spacecraft.heading,
+  stepStartTouchThrustControlEngaged: runtime.ui.touchThrustControl.engaged,
   stepStartTargetHeadingSelectionEpoch: runtime.ui.targetHeadingSelectionEpoch,
   stepStartTimeWarpMultiplier: timeWarpMultiplier,
 })
@@ -45,17 +45,6 @@ const getNextStepId = (
   }
 
   return tutorialOnboardingStepOrder[stepIndex + 1] ?? null
-}
-
-const getPreviousStepId = (
-  stepId: TutorialOnboardingStepId,
-): TutorialOnboardingStepId | null => {
-  const stepIndex = tutorialOnboardingStepOrder.indexOf(stepId)
-  if (stepIndex < 0 || stepIndex === 0) {
-    return null
-  }
-
-  return tutorialOnboardingStepOrder[stepIndex - 1] ?? null
 }
 
 const getNearestBody = (runtime: AppRuntimeState): Body | null => {
@@ -117,6 +106,9 @@ const setStepId = (
   nextStepId: TutorialOnboardingStepId | null,
   nowMs: number,
   timeWarpMultiplier: number,
+  options: {
+    markCurrentStepCompleted: boolean
+  },
 ): TutorialOnboardingState => {
   if (nextStepId === null) {
     return {
@@ -135,9 +127,10 @@ const setStepId = (
 
   return {
     activeStepId: nextStepId,
-    completedStepIds: onboarding.activeStepId
-      ? [...onboarding.completedStepIds, onboarding.activeStepId]
-      : onboarding.completedStepIds,
+    completedStepIds:
+      options.markCurrentStepCompleted && onboarding.activeStepId
+        ? [...onboarding.completedStepIds, onboarding.activeStepId]
+        : onboarding.completedStepIds,
     gateActive: true,
     progress: createStepProgress(runtime, nowMs, timeWarpMultiplier),
   }
@@ -155,21 +148,19 @@ const advanceToNextStep = (
     onboarding.activeStepId ? getNextStepId(onboarding.activeStepId) : null,
     nowMs,
     timeWarpMultiplier,
+    { markCurrentStepCompleted: true },
   )
 
-const goBackToPreviousStep = (
+const goToStep = (
   runtime: AppRuntimeState,
   onboarding: TutorialOnboardingState,
+  nextStepId: TutorialOnboardingStepId,
   nowMs: number,
   timeWarpMultiplier: number,
 ) =>
-  setStepId(
-    runtime,
-    onboarding,
-    onboarding.activeStepId ? getPreviousStepId(onboarding.activeStepId) : null,
-    nowMs,
-    timeWarpMultiplier,
-  )
+  setStepId(runtime, onboarding, nextStepId, nowMs, timeWarpMultiplier, {
+    markCurrentStepCompleted: false,
+  })
 
 export const createTutorialOnboardingState = (
   runtime: AppRuntimeState,
@@ -212,11 +203,29 @@ export const advanceTutorialOnboarding = (
     lastSampleAtMs: nowMs,
   }
 
-  if (onboarding.activeStepId === 'intro-thrust') {
-    nextProgress.accumulatedMainThrustMs =
+  if (onboarding.activeStepId === 'intro-show-thrust-control') {
+    return runtime.ui.touchThrustControl.interactive ||
       runtime.simulation.state.controls.main > 0
-        ? onboarding.progress.accumulatedMainThrustMs + deltaMs
-        : 0
+      ? advanceToNextStep(runtime, onboarding, nowMs, timeWarpMultiplier)
+      : { ...onboarding, progress: nextProgress }
+  }
+
+  if (onboarding.activeStepId === 'intro-thrust') {
+    if (runtime.simulation.state.controls.main <= 0) {
+      nextProgress.accumulatedMainThrustMs = 0
+      return !runtime.ui.touchThrustControl.visible
+        ? goToStep(
+            runtime,
+            { ...onboarding, progress: nextProgress },
+            'intro-show-thrust-control',
+            nowMs,
+            timeWarpMultiplier,
+          )
+        : { ...onboarding, progress: nextProgress }
+    }
+
+    nextProgress.accumulatedMainThrustMs =
+      onboarding.progress.accumulatedMainThrustMs + deltaMs
     return nextProgress.accumulatedMainThrustMs >= requiredIntroThrustMs
       ? advanceToNextStep(
           runtime,
@@ -228,22 +237,24 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-keep-thrusting') {
-    nextProgress.accumulatedMainThrustMs =
-      runtime.simulation.state.controls.main > 0
-        ? onboarding.progress.accumulatedMainThrustMs + deltaMs
-        : Math.max(0, onboarding.progress.accumulatedMainThrustMs - deltaMs * 2)
-
-    if (
-      nextProgress.accumulatedMainThrustMs === 0 &&
-      onboarding.progress.accumulatedMainThrustMs !== 0
-    ) {
-      return goBackToPreviousStep(
+    if (runtime.simulation.state.controls.main <= 0) {
+      nextProgress.accumulatedMainThrustMs = Math.max(
+        0,
+        onboarding.progress.accumulatedMainThrustMs - deltaMs * 2,
+      )
+      return goToStep(
         runtime,
         { ...onboarding, progress: nextProgress },
+        runtime.ui.touchThrustControl.visible
+          ? 'intro-thrust'
+          : 'intro-show-thrust-control',
         nowMs,
         timeWarpMultiplier,
       )
     }
+
+    nextProgress.accumulatedMainThrustMs =
+      onboarding.progress.accumulatedMainThrustMs + deltaMs
 
     return nextProgress.accumulatedMainThrustMs >= requiredIntroKeepThrustMs
       ? advanceToNextStep(
@@ -255,24 +266,31 @@ export const advanceTutorialOnboarding = (
       : { ...onboarding, progress: nextProgress }
   }
 
-  if (onboarding.activeStepId === 'intro-turn') {
-    nextProgress.accumulatedHeadingChangeRadians =
-      onboarding.progress.accumulatedHeadingChangeRadians +
-      Math.abs(
-        normalizeAngleDelta(
-          runtime.simulation.state.spacecraft.heading -
-            (onboarding.progress.lastSampleHeading ??
-              runtime.simulation.state.spacecraft.heading),
-        ),
-      )
-    nextProgress.lastSampleHeading = runtime.simulation.state.spacecraft.heading
-    return nextProgress.accumulatedHeadingChangeRadians >= requiredTurnRadians
-      ? advanceToNextStep(
-          runtime,
-          { ...onboarding, progress: nextProgress },
-          nowMs,
-          timeWarpMultiplier,
-        )
+  if (onboarding.activeStepId === 'intro-thrusting-off') {
+    const touchControlEngaged = runtime.ui.touchThrustControl.engaged
+    const usingTouchControlState =
+      onboarding.progress.stepStartTouchThrustControlEngaged ||
+      runtime.ui.touchThrustControl.visible
+
+    if (
+      !onboarding.progress.stepStartTouchThrustControlEngaged &&
+      touchControlEngaged
+    ) {
+      return {
+        ...onboarding,
+        progress: {
+          ...nextProgress,
+          stepStartTouchThrustControlEngaged: true,
+        },
+      }
+    }
+
+    const thrustTurnedOffAndReleased = usingTouchControlState
+      ? !touchControlEngaged && !runtime.ui.touchThrustControl.visible
+      : runtime.simulation.state.controls.main <= 0
+
+    return thrustTurnedOffAndReleased
+      ? advanceToNextStep(runtime, onboarding, nowMs, timeWarpMultiplier)
       : { ...onboarding, progress: nextProgress }
   }
 

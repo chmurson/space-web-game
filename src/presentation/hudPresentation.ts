@@ -164,6 +164,7 @@ export const createHudPresentation = (options: {
       if (timePill) {
         timePill.style.display = showTimePill ? 'inline-flex' : 'none'
       }
+      options.touchControls?.setTimeWarpControlVisible(showTimePill)
 
       if (options.overlayUi.statEngine) {
         options.overlayUi.statEngine.textContent = options.physicsEngineName
