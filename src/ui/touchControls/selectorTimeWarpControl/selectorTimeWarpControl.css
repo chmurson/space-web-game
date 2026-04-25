@@ -1,4 +1,5 @@
 .touch-time-warp-selector {
+  --touch-time-warp-selector-drag-progress: 0;
   position: fixed;
   bottom: max(14px, env(safe-area-inset-bottom));
   left: max(14px, env(safe-area-inset-left));
@@ -21,9 +22,7 @@
   color: rgba(226, 232, 240, 0.7);
   pointer-events: auto;
   touch-action: none;
-  transition:
-    filter 160ms ease,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: filter 160ms ease;
   user-select: none;
   z-index: calc(var(--z-overlay-hud) + 1);
 }
@@ -46,13 +45,49 @@
   white-space: nowrap;
 }
 
+.touch-time-warp-selector-instant,
+.touch-time-warp-selector-instant .touch-time-warp-selector-value {
+  transition: none;
+}
+
+.touch-time-warp-selector-dragging {
+  filter: brightness(1.08);
+  transition-duration: 80ms;
+}
+
+.touch-time-warp-selector-drag-committable {
+  filter: brightness(1.18);
+}
+
 .touch-time-warp-selector-value-current {
   color: #f59e0b;
   font-size: 16px;
   letter-spacing: 0.04em;
+  opacity: 1;
   text-shadow:
     0 0 7px rgba(245, 158, 11, 0.36),
     0 0 12px rgba(245, 158, 11, 0.16);
+}
+
+.touch-time-warp-selector-dragging .touch-time-warp-selector-value-current {
+  color: color-mix(
+    in srgb,
+    #f59e0b calc((1 - var(--touch-time-warp-selector-drag-progress)) * 100%),
+    rgba(203, 213, 225, 0.68)
+      calc(var(--touch-time-warp-selector-drag-progress) * 100%)
+  );
+  opacity: calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.32);
+  text-shadow:
+    0 0 7px
+    rgb(
+      245 158 11 /
+      calc((1 - var(--touch-time-warp-selector-drag-progress)) * 0.36)
+    ),
+    0 0 12px
+    rgb(
+      245 158 11 /
+      calc((1 - var(--touch-time-warp-selector-drag-progress)) * 0.16)
+    );
 }
 
 .touch-time-warp-selector-value-next {
@@ -60,13 +95,152 @@
   font-size: 10px;
 }
 
+.touch-time-warp-selector-target-increase
+  .touch-time-warp-selector-value-current {
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * 22px)
+    )
+    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.36));
+}
+
+.touch-time-warp-selector-target-decrease
+  .touch-time-warp-selector-value-current {
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * -22px)
+    )
+    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.36));
+}
+
+.touch-time-warp-selector-target-increase
+  .touch-time-warp-selector-value-up-far {
+  opacity: calc(0.56 + var(--touch-time-warp-selector-drag-progress) * 0.12);
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * 12px)
+    )
+    scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.11));
+}
+
+.touch-time-warp-selector-target-increase
+  .touch-time-warp-selector-value-down-near {
+  opacity: calc(0.68 - var(--touch-time-warp-selector-drag-progress) * 0.12);
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * 12px)
+    )
+    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.1));
+}
+
+.touch-time-warp-selector-target-increase
+  .touch-time-warp-selector-value-down-far {
+  opacity: calc(0.56 - var(--touch-time-warp-selector-drag-progress) * 0.56);
+  transform: translateY(
+    calc(var(--touch-time-warp-selector-drag-progress) * 12px)
+  );
+}
+
+.touch-time-warp-selector-target-decrease
+  .touch-time-warp-selector-value-up-far {
+  opacity: calc(0.56 - var(--touch-time-warp-selector-drag-progress) * 0.56);
+  transform: translateY(
+    calc(var(--touch-time-warp-selector-drag-progress) * -12px)
+  );
+}
+
+.touch-time-warp-selector-target-decrease
+  .touch-time-warp-selector-value-up-near {
+  opacity: calc(0.68 - var(--touch-time-warp-selector-drag-progress) * 0.12);
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * -12px)
+    )
+    scale(calc(1 - var(--touch-time-warp-selector-drag-progress) * 0.1));
+}
+
+.touch-time-warp-selector-target-decrease
+  .touch-time-warp-selector-value-down-far {
+  opacity: calc(0.56 + var(--touch-time-warp-selector-drag-progress) * 0.12);
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * -12px)
+    )
+    scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.11));
+}
+
+.touch-time-warp-selector-target-increase
+  .touch-time-warp-selector-value-up-near,
+.touch-time-warp-selector-target-decrease
+  .touch-time-warp-selector-value-down-near {
+  color: color-mix(
+    in srgb,
+    rgba(203, 213, 225, 0.68)
+      calc((1 - var(--touch-time-warp-selector-drag-progress)) * 100%),
+    #f59e0b calc(var(--touch-time-warp-selector-drag-progress) * 100%)
+  );
+  opacity: calc(0.68 + var(--touch-time-warp-selector-drag-progress) * 0.32);
+  text-shadow:
+    0 0 7px
+    rgb(245 158 11 / calc(var(--touch-time-warp-selector-drag-progress) * 0.36)),
+    0 0 12px
+    rgb(245 158 11 / calc(var(--touch-time-warp-selector-drag-progress) * 0.16));
+}
+
+.touch-time-warp-selector-target-increase
+  .touch-time-warp-selector-value-up-near {
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * 22px)
+    )
+    scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.6));
+}
+
+.touch-time-warp-selector-target-decrease
+  .touch-time-warp-selector-value-down-near {
+  transform: translateY(
+      calc(var(--touch-time-warp-selector-drag-progress) * -22px)
+    )
+    scale(calc(1 + var(--touch-time-warp-selector-drag-progress) * 0.6));
+}
+
+.touch-time-warp-selector .touch-time-warp-selector-value-disabled {
+  color: rgba(203, 213, 225, 0.68);
+  opacity: 0.22;
+  text-shadow: none;
+}
+
 .touch-time-warp-selector-value-secondary {
   font-size: 9px;
   opacity: 0.56;
 }
 
-.touch-time-warp-selector-value-disabled {
-  opacity: 0.22;
+.touch-time-warp-selector-value-extra {
+  left: 50%;
+  opacity: 0;
+  position: absolute;
+  transform: translateX(-50%) scale(0.72);
+}
+
+.touch-time-warp-selector-value-up-extra {
+  top: 12px;
+  transform: translateX(-50%) translateY(-12px) scale(0.72);
+}
+
+.touch-time-warp-selector-value-down-extra {
+  bottom: 12px;
+  transform: translateX(-50%) translateY(12px) scale(0.72);
+}
+
+.touch-time-warp-selector-target-increase
+  .touch-time-warp-selector-value-up-extra {
+  opacity: calc(var(--touch-time-warp-selector-drag-progress) * 0.56);
+  transform: translateX(-50%)
+    translateY(
+      calc((1 - var(--touch-time-warp-selector-drag-progress)) * -12px)
+    )
+    scale(calc(0.72 + var(--touch-time-warp-selector-drag-progress) * 0.28));
+}
+
+.touch-time-warp-selector-target-decrease
+  .touch-time-warp-selector-value-down-extra {
+  opacity: calc(var(--touch-time-warp-selector-drag-progress) * 0.56);
+  transform: translateX(-50%)
+    translateY(calc((1 - var(--touch-time-warp-selector-drag-progress)) * 12px))
+    scale(calc(0.72 + var(--touch-time-warp-selector-drag-progress) * 0.28));
 }
 
 .touch-time-warp-selector-value-hidden {
@@ -75,12 +249,10 @@
 
 .touch-time-warp-selector-step-up {
   filter: brightness(1.18);
-  transform: translateY(-2px) scale(1.02);
 }
 
 .touch-time-warp-selector-step-down {
   filter: brightness(1.12);
-  transform: translateY(2px) scale(1.02);
 }
 
 .touch-time-warp-selector-step-up .touch-time-warp-selector-value-current {

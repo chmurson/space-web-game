@@ -13,8 +13,14 @@ export type SelectorTimeWarpRenderStep = {
 export type SelectorTimeWarpControlRenderState = {
   animationDirection: 'up' | 'down' | null
   currentLabel: string
+  decreaseExtraStep: SelectorTimeWarpRenderStep
   decreaseFarStep: SelectorTimeWarpRenderStep
   decreaseNearStep: SelectorTimeWarpRenderStep
+  dragDirection: 'increase' | 'decrease' | null
+  dragProgress: number
+  releaseWillCommit: boolean
+  targetDirection: 'increase' | 'decrease' | null
+  increaseExtraStep: SelectorTimeWarpRenderStep
   increaseFarStep: SelectorTimeWarpRenderStep
   increaseNearStep: SelectorTimeWarpRenderStep
 }
@@ -41,11 +47,24 @@ const presentStep = (
 
 export const presentSelectorTimeWarpControl = (
   snapshot: SelectorTimeWarpSnapshot,
-): SelectorTimeWarpControlRenderState => ({
-  animationDirection: snapshot.animationDirection,
-  currentLabel: formatTimeWarpLabel(snapshot.currentValue),
-  decreaseFarStep: presentStep(snapshot.decreaseSteps[1]),
-  decreaseNearStep: presentStep(snapshot.decreaseSteps[0]),
-  increaseFarStep: presentStep(snapshot.increaseSteps[1]),
-  increaseNearStep: presentStep(snapshot.increaseSteps[0]),
-})
+): SelectorTimeWarpControlRenderState => {
+  const activeGesture = snapshot.gesture
+  const runtimeSnapshot = snapshot.runtimeSnapshot
+  const dragDirection = activeGesture?.visualDirection ?? null
+  const dragProgress = activeGesture?.progress ?? 0
+
+  return {
+    animationDirection: snapshot.animationDirection,
+    currentLabel: formatTimeWarpLabel(runtimeSnapshot.currentValue),
+    decreaseExtraStep: presentStep(runtimeSnapshot.decreaseSteps[2]),
+    decreaseFarStep: presentStep(runtimeSnapshot.decreaseSteps[1]),
+    decreaseNearStep: presentStep(runtimeSnapshot.decreaseSteps[0]),
+    dragDirection,
+    dragProgress,
+    increaseExtraStep: presentStep(runtimeSnapshot.increaseSteps[2]),
+    increaseFarStep: presentStep(runtimeSnapshot.increaseSteps[1]),
+    increaseNearStep: presentStep(runtimeSnapshot.increaseSteps[0]),
+    releaseWillCommit: activeGesture?.releaseWillCommit ?? false,
+    targetDirection: activeGesture?.direction ?? null,
+  }
+}

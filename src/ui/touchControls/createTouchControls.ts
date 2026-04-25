@@ -16,6 +16,7 @@ export type TouchControls = {
   element: HTMLElement
   setTimeWarpControlVisible(visible: boolean): void
   setTutorialHintTarget(target: ScenarioTouchHintTarget | null): void
+  syncUi(): void
   updateAssistMode(mode: AssistMode): void
 }
 
@@ -562,6 +563,9 @@ export const createTouchControls = (options: {
       const showThrustHint = target === 'thrust-zone'
       tutorialHint.setVisible(showThrustHint)
       tutorialHint.element.dataset.target = target ?? ''
+    },
+    syncUi: () => {
+      timeWarpControl.syncUi()
     },
     updateAssistMode: (_mode) => {},
   }
