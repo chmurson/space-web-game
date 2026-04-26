@@ -14,6 +14,9 @@
 
   /* specific z-index values */
   --z-coach-prompt: calc(var(--z-overlay-floating) - 1);
+
+  /* common touch-control values */
+  --touch-control-radius: 15px;
 }
 
 html,

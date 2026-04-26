@@ -111,7 +111,6 @@ export const createTouchControls = (options: {
 
   const getPanelWidth = () =>
     panel.getBoundingClientRect().width || window.innerWidth
-  const getMidpointX = () => getPanelWidth() / 2
 
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
@@ -191,16 +190,7 @@ export const createTouchControls = (options: {
   }
 
   const shouldStartPinch = (touches: TouchList) => {
-    if (touches.length !== 2) {
-      return false
-    }
-
-    const [first, second] = Array.from(touches)
-    const midpointX = getMidpointX()
-    return (
-      (first.clientX < midpointX && second.clientX < midpointX) ||
-      (first.clientX >= midpointX && second.clientX >= midpointX)
-    )
+    return touches.length === 2
   }
 
   const beginPinchSession = (touches: TouchList) => {
