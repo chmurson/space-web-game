@@ -23,7 +23,8 @@ export const createSelectorTimeWarpControl = (
 ): TimeWarpControl => {
   const model = createSelectorTimeWarpControlModel()
   const view = createSelectorTimeWarpControlView()
-  options.panel.appendChild(view.element)
+  const parentElement = options.container ?? options.panel
+  parentElement.appendChild(view.element)
   const reducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
   ).matches

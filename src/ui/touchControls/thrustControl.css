@@ -19,6 +19,17 @@
   transform: translate(-50%, -50%) scale(1);
 }
 
+.touch-thrust-control-docked {
+  position: relative;
+  opacity: 1;
+  transform: none;
+  z-index: auto;
+}
+
+.touch-thrust-control-docked.touch-thrust-control-visible {
+  transform: none;
+}
+
 .touch-thrust-control-pending {
   transition-timing-function: ease;
 }

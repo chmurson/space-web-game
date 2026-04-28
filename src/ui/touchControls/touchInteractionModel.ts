@@ -16,7 +16,7 @@ export type TouchInteractionSnapshot = {
   thrust: ThrustVisualState
 }
 
-const thrustControlTravelPx = 60
+const thrustControlTravelPx = 48
 const thrustSnapDistancePx = 30
 
 const clamp = (value: number, min: number, max: number) =>

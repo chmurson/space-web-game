@@ -59,6 +59,7 @@ const measureOverlaySize = (
 }
 
 export const createThrustControl = (options: {
+  container?: HTMLElement
   onSessionChange(session: ThrustGestureSession): void
   onUiStateChange(state: TouchThrustControlUiState): void
   panel: HTMLElement
@@ -75,7 +76,12 @@ export const createThrustControl = (options: {
     </div>
     <div class="touch-thrust-control-label">Thrust</div>
   `
-  options.panel.appendChild(thrustControl)
+  const isDocked = Boolean(options.container)
+  if (isDocked) {
+    thrustControl.classList.add('touch-thrust-control-docked')
+  }
+  const parentElement = options.container ?? options.panel
+  parentElement.appendChild(thrustControl)
 
   const thrustControlLabel = thrustControl.querySelector<HTMLDivElement>(
     '.touch-thrust-control-label',
@@ -90,6 +96,7 @@ export const createThrustControl = (options: {
   let isPendingFadeReady = false
   let isThrustLabelVisible = true
   let isPendingVisible = false
+  let isAvailable = true
   let thrustControlSize: OverlaySize = {
     halfHeight: 88,
     halfWidth: 42,
@@ -153,9 +160,12 @@ export const createThrustControl = (options: {
     const snapshot = interactionModel.getSnapshot()
     const uiState: TouchThrustControlUiState = {
       engaged: snapshot.thrust.engaged,
-      interactive: snapshot.thrust.visible,
-      visible: snapshot.thrust.visible || isPendingFadeReady,
+      interactive: isAvailable && (isDocked || snapshot.thrust.visible),
+      visible:
+        isAvailable &&
+        (isDocked || snapshot.thrust.visible || isPendingFadeReady),
     }
+    thrustControl.hidden = !isAvailable
     thrustControl.classList.toggle(
       'touch-thrust-control-visible',
       uiState.visible,
@@ -182,8 +192,13 @@ export const createThrustControl = (options: {
       snapshot.thrust.anchor,
       thrustControlSize,
     )
-    thrustControl.style.left = `${clampedAnchor.x}px`
-    thrustControl.style.top = `${clampedAnchor.y}px`
+    if (isDocked) {
+      thrustControl.style.removeProperty('left')
+      thrustControl.style.removeProperty('top')
+    } else {
+      thrustControl.style.left = `${clampedAnchor.x}px`
+      thrustControl.style.top = `${clampedAnchor.y}px`
+    }
     thrustControl.style.setProperty(
       '--thrust-thumb-offset',
       `${snapshot.thrust.offset}px`,
@@ -280,6 +295,10 @@ export const createThrustControl = (options: {
     touch: Touch,
     session: ThrustGestureSession,
   ): ThrustGestureSession => {
+    if (!isAvailable) {
+      return session
+    }
+
     const thrustSnapshot = interactionModel.getSnapshot().thrust
     const panelWidth = getPanelWidth()
     const panelHeight = getPanelHeight()
@@ -361,6 +380,33 @@ export const createThrustControl = (options: {
     return pendingSession
   }
 
+  const beginDockedGesture = (
+    touch: Touch,
+    session: ThrustGestureSession,
+  ): ThrustGestureSession => {
+    if (!isAvailable || !isDocked) {
+      return session
+    }
+
+    const thrustSnapshot = interactionModel.getSnapshot().thrust
+    if (thrustSnapshot.visible && !thrustSnapshot.latched) {
+      return session
+    }
+
+    clearPendingFadeTimer()
+    isPendingFadeReady = false
+    isPendingVisible = false
+    showLabel()
+    applySnapshot(interactionModel.reuseLatchedThrust(thrustSnapshot.latched))
+    return {
+      kind: 'right-zone-active',
+      startLatched: thrustSnapshot.latched,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      touchId: touch.identifier,
+    }
+  }
+
   const updateGesture = (
     touch: Touch,
     session: ThrustGestureSession,
@@ -413,6 +459,11 @@ export const createThrustControl = (options: {
       setSession(nextSession)
       return nextSession
     },
+    beginDockedGesture(touch: Touch, session: ThrustGestureSession) {
+      const nextSession = beginDockedGesture(touch, session)
+      setSession(nextSession)
+      return nextSession
+    },
     clearGesture(session: ThrustGestureSession) {
       const nextSession = clearGesture(session)
       setSession(nextSession)
@@ -426,6 +477,13 @@ export const createThrustControl = (options: {
       )
     },
     setSession,
+    setAvailable(available: boolean) {
+      isAvailable = available
+      if (!available) {
+        clearGesture(currentSession)
+      }
+      syncUi()
+    },
     syncUi,
     updateGesture(touch: Touch, session: ThrustGestureSession) {
       const nextSession = updateGesture(touch, session)

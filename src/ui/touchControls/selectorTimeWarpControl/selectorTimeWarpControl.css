@@ -27,6 +27,13 @@
   z-index: calc(var(--z-overlay-hud) + 1);
 }
 
+.touch-edge-reveal-content .touch-time-warp-selector {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  z-index: auto;
+}
+
 .touch-time-warp-selector-current {
   display: grid;
   min-height: 30px;

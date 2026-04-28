@@ -11,6 +11,11 @@ import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
 import type { TimeWarpGestureSession } from './timeWarpControlTypes'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
+import {
+  createEdgeRevealControl,
+  type EdgeRevealControl,
+  type TouchControlRevealEdge,
+} from './edgeRevealControl'
 
 export type TouchControls = {
   element: HTMLElement
@@ -29,6 +34,21 @@ const pinchSuppressTapMs = 140
 const doubleTapZoomStartPx = 10
 const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
+const touchControlRevealTabHeightPx = 84
+const touchControlRevealLayout = {
+  gapPx: 12,
+  startOffsetPx: 24,
+  controls: {
+    timeWarp: {
+      edge: 'right',
+      priority: 10,
+    },
+    thrust: {
+      edge: 'right',
+      priority: 10,
+    },
+  },
+} as const
 
 type TapState = {
   startTime: number
@@ -75,6 +95,41 @@ const vibrate = () => {
   navigator.vibrate(hapticPulseMs)
 }
 
+const isEventTargetInside = (
+  element: HTMLElement,
+  target: EventTarget | null,
+) => target instanceof Node && element.contains(target)
+
+const syncRevealControlLayout = (revealControls: EdgeRevealControl[]) => {
+  const controlsByEdge = new Map<TouchControlRevealEdge, EdgeRevealControl[]>()
+
+  for (const revealControl of revealControls) {
+    const controls = controlsByEdge.get(revealControl.placement.edge) ?? []
+    controls.push(revealControl)
+    controlsByEdge.set(revealControl.placement.edge, controls)
+    revealControl.element.style.setProperty(
+      '--touch-edge-reveal-gap',
+      `${touchControlRevealLayout.gapPx}px`,
+    )
+    revealControl.element.style.setProperty(
+      '--touch-edge-reveal-start',
+      `${touchControlRevealLayout.startOffsetPx}px`,
+    )
+  }
+
+  for (const controls of controlsByEdge.values()) {
+    controls
+      .sort((a, b) => a.placement.priority - b.placement.priority)
+      .forEach((control, index) => {
+        control.syncPlacement(index)
+        control.element.style.setProperty(
+          '--touch-edge-reveal-stack-offset',
+          `${index * (touchControlRevealTabHeightPx + touchControlRevealLayout.gapPx)}px`,
+        )
+      })
+  }
+}
+
 export const createTouchControls = (options: {
   app: HTMLElement
   commitTimeWarp(action: TimeWarpAction): void
@@ -109,14 +164,14 @@ export const createTouchControls = (options: {
   let pinchSuppressTapUntil = 0
   let timeWarpControlVisible = true
 
-  const getPanelWidth = () =>
-    panel.getBoundingClientRect().width || window.innerWidth
-
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
   }
 
+  const timeWarpDock = document.createElement('div')
+  timeWarpDock.className = 'touch-edge-reveal-dock touch-time-warp-reveal-dock'
   const timeWarpControl = createConfiguredTimeWarpControl({
+    container: timeWarpDock,
     commitTimeWarp: options.commitTimeWarp,
     getCurrentTimeWarp: options.getCurrentTimeWarp,
     getTimeWarpPreview: options.getTimeWarpPreview,
@@ -127,7 +182,10 @@ export const createTouchControls = (options: {
     panel,
   })
 
+  const thrustDock = document.createElement('div')
+  thrustDock.className = 'touch-edge-reveal-dock touch-thrust-reveal-dock'
   const thrustControl = createThrustControl({
+    container: thrustDock,
     onSessionChange: (session) => {
       activeSession = session
     },
@@ -137,6 +195,24 @@ export const createTouchControls = (options: {
     tapMoveTolerancePx,
     vibrate,
   })
+
+  const timeWarpRevealControl = createEdgeRevealControl({
+    content: timeWarpDock,
+    icon: 'Warp',
+    id: 'touch-time-warp-reveal',
+    label: 'Reveal time warp control',
+    placement: touchControlRevealLayout.controls.timeWarp,
+  })
+  const thrustRevealControl = createEdgeRevealControl({
+    content: thrustDock,
+    icon: 'Burn',
+    id: 'touch-thrust-reveal',
+    label: 'Reveal thrust control',
+    placement: touchControlRevealLayout.controls.thrust,
+  })
+  const revealControls = [timeWarpRevealControl, thrustRevealControl]
+  syncRevealControlLayout(revealControls)
+  panel.append(timeWarpRevealControl.element, thrustRevealControl.element)
 
   const clearActiveSession = () => {
     if (activeSession.kind === 'right-zone-pending') {
@@ -166,6 +242,7 @@ export const createTouchControls = (options: {
     if (!visible && activeSession.kind === 'left-zone') {
       finishLeftZoneGesture(false)
     }
+    timeWarpRevealControl.setAvailable(visible)
     timeWarpControl.setVisible(visible)
   }
 
@@ -210,15 +287,19 @@ export const createTouchControls = (options: {
   }
 
   const beginLeftZoneSession = (touch: Touch) => {
-    if (!timeWarpControlVisible) {
+    if (!timeWarpControlVisible || !timeWarpRevealControl.isOpen()) {
       return
     }
 
     activeSession = timeWarpControl.beginGesture(touch)
   }
 
-  const beginRightZoneSession = (touch: Touch) => {
-    activeSession = thrustControl.beginGesture(
+  const beginDockedThrustSession = (touch: Touch) => {
+    if (!thrustRevealControl.isOpen()) {
+      return
+    }
+
+    activeSession = thrustControl.beginDockedGesture(
       touch,
       activeSession as ThrustGestureSession,
     )
@@ -282,6 +363,14 @@ export const createTouchControls = (options: {
     'touchstart',
     (event) => {
       const now = performance.now()
+      const eventTarget = event.target
+      const isTimeWarpTarget =
+        timeWarpRevealControl.isOpen() &&
+        isEventTargetInside(timeWarpRevealControl.element, eventTarget)
+      const isThrustTarget =
+        thrustRevealControl.isOpen() &&
+        isEventTargetInside(thrustRevealControl.element, eventTarget)
+      const isRevealControlTarget = isTimeWarpTarget || isThrustTarget
       let startedDoubleTapZoom = false
 
       if (
@@ -292,6 +381,10 @@ export const createTouchControls = (options: {
       }
 
       for (const touch of Array.from(event.changedTouches)) {
+        if (isRevealControlTarget) {
+          continue
+        }
+
         const isDoubleTapCandidate =
           activeSession.kind === 'none' &&
           event.touches.length === 1 &&
@@ -317,26 +410,28 @@ export const createTouchControls = (options: {
         return
       }
 
+      if (isRevealControlTarget) {
+        if (activeSession.kind !== 'none' || event.touches.length !== 1) {
+          return
+        }
+
+        for (const touch of Array.from(event.changedTouches)) {
+          if (isTimeWarpTarget) {
+            beginLeftZoneSession(touch)
+          } else if (isThrustTarget) {
+            beginDockedThrustSession(touch)
+          }
+
+          if (activeSession.kind !== 'none') {
+            return
+          }
+        }
+        return
+      }
+
       if (shouldStartPinch(event.touches)) {
         beginPinchSession(event.touches)
         return
-      }
-
-      if (activeSession.kind !== 'none') {
-        return
-      }
-
-      const rightZoneStartX = getPanelWidth() * (2 / 3)
-      for (const touch of Array.from(event.changedTouches)) {
-        if (touch.clientX < rightZoneStartX) {
-          beginLeftZoneSession(touch)
-        } else {
-          beginRightZoneSession(touch)
-        }
-
-        if (activeSession.kind !== 'none') {
-          return
-        }
       }
     },
     { passive: false },
@@ -556,6 +651,7 @@ export const createTouchControls = (options: {
     },
     syncUi: () => {
       timeWarpControl.syncUi()
+      thrustControl.syncUi()
     },
     updateAssistMode: (_mode) => {},
   }

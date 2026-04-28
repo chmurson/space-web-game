@@ -25,6 +25,7 @@ export type TimeWarpControlOptions = {
   getTimeWarpPreview(action: TimeWarpAction): TimeWarpPreview
   getTimeWarpPreviews(action: TimeWarpAction, count: number): TimeWarpPreview[]
   onSessionChange(session: TimeWarpGestureSession): void
+  container?: HTMLElement
   panel: HTMLElement
 }
 
