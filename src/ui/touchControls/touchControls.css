@@ -7,8 +7,9 @@
   --touch-edge-reveal-tab-width: 34px;
   position: fixed;
   bottom: calc(
-    env(safe-area-inset-bottom, 0px) + var(--touch-edge-reveal-start) +
-      var(--touch-edge-reveal-stack-offset)
+    env(safe-area-inset-bottom, 0px) +
+    var(--touch-edge-reveal-start) +
+    var(--touch-edge-reveal-stack-offset)
   );
   z-index: calc(var(--z-overlay-hud) + 1);
   pointer-events: none;
@@ -86,6 +87,12 @@
   transition:
     opacity 150ms ease,
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-edge-reveal-dock {
+  display: grid;
+  width: 104px;
+  justify-items: center;
 }
 
 .touch-edge-reveal-control-left .touch-edge-reveal-content {

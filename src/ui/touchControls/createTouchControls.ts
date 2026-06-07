@@ -15,10 +15,13 @@ import {
   createEdgeRevealControl,
   type EdgeRevealControl,
   type TouchControlRevealEdge,
+  type TouchControlRevealPlacement,
 } from './edgeRevealControl'
 
 export type TouchControls = {
   element: HTMLElement
+  setBurnControlSide(side: TouchControlRevealEdge): void
+  setWarpControlSide(side: TouchControlRevealEdge): void
   setTimeWarpControlVisible(visible: boolean): void
   setTutorialHintTarget(target: ScenarioTouchHintTarget | null): void
   syncUi(): void
@@ -36,8 +39,8 @@ const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
 const touchControlRevealTabHeightPx = 84
 const touchControlRevealLayout = {
-  gapPx: 12,
-  startOffsetPx: 24,
+  gapPx: 66,
+  startOffsetPx: 72,
   controls: {
     timeWarp: {
       edge: 'right',
@@ -147,6 +150,8 @@ export const createTouchControls = (options: {
     reason: TimeWarpFeedbackReason | null
     value: number
   }[]
+  initialBurnControlSide: TouchControlRevealEdge
+  initialWarpControlSide: TouchControlRevealEdge
   keyboardInput: KeyboardInput
   onTargetHeadingSelected(screenX: number, screenY: number): void
   onThrustControlUiStateChange(state: TouchThrustControlUiState): void
@@ -196,19 +201,28 @@ export const createTouchControls = (options: {
     vibrate,
   })
 
+  const timeWarpRevealPlacement: TouchControlRevealPlacement = {
+    edge: options.initialWarpControlSide,
+    priority: touchControlRevealLayout.controls.timeWarp.priority,
+  }
+  const thrustRevealPlacement: TouchControlRevealPlacement = {
+    edge: options.initialBurnControlSide,
+    priority: touchControlRevealLayout.controls.thrust.priority,
+  }
+
   const timeWarpRevealControl = createEdgeRevealControl({
     content: timeWarpDock,
     icon: 'Warp',
     id: 'touch-time-warp-reveal',
     label: 'Reveal time warp control',
-    placement: touchControlRevealLayout.controls.timeWarp,
+    placement: timeWarpRevealPlacement,
   })
   const thrustRevealControl = createEdgeRevealControl({
     content: thrustDock,
     icon: 'Burn',
     id: 'touch-thrust-reveal',
     label: 'Reveal thrust control',
-    placement: touchControlRevealLayout.controls.thrust,
+    placement: thrustRevealPlacement,
   })
   const revealControls = [timeWarpRevealControl, thrustRevealControl]
   syncRevealControlLayout(revealControls)
@@ -643,6 +657,14 @@ export const createTouchControls = (options: {
 
   return {
     element: panel,
+    setBurnControlSide: (side) => {
+      thrustRevealControl.setEdge(side)
+      syncRevealControlLayout(revealControls)
+    },
+    setWarpControlSide: (side) => {
+      timeWarpRevealControl.setEdge(side)
+      syncRevealControlLayout(revealControls)
+    },
     setTimeWarpControlVisible,
     setTutorialHintTarget: (target) => {
       const showThrustHint = target === 'thrust-zone'

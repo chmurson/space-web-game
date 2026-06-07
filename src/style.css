@@ -260,6 +260,68 @@ canvas {
   background: rgba(148, 163, 184, 0.06);
 }
 
+.menu-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.menu-setting-name {
+  color: #f0f9ff;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.segmented-control {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(54px, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.58);
+}
+
+.segmented-control-option {
+  min-width: 54px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.68);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.top-menu-dropdown button.segmented-control-option {
+  padding: 7px 10px;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.segmented-control-option + .segmented-control-option {
+  border-left: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.segmented-control-option-selected {
+  background: rgba(56, 189, 248, 0.2);
+  color: #e0f2fe;
+}
+
+.top-menu-dropdown button.segmented-control-option-selected {
+  background: rgba(56, 189, 248, 0.2);
+  color: #e0f2fe;
+}
+
 .menu-stepper-copy {
   display: grid;
   gap: 2px;
@@ -1040,7 +1102,16 @@ canvas {
     padding: 8px 9px;
   }
 
+  .menu-setting {
+    gap: 10px;
+    padding: 8px 9px;
+  }
+
   .menu-stepper-name {
+    font-size: 12px;
+  }
+
+  .menu-setting-name {
     font-size: 12px;
   }
 
@@ -1090,6 +1161,7 @@ canvas {
 #app.app-main-menu .heading-target-overlay,
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,
+#app.app-main-menu .touch-controls,
 #app.app-main-menu .touch-time-warp-feedback,
 #app.app-main-menu .touch-time-warp-selector,
 #app.app-main-menu .fps-indicator,

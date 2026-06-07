@@ -21,6 +21,7 @@ export type EdgeRevealControl = {
   close(): void
   isOpen(): boolean
   setAvailable(available: boolean): void
+  setEdge(edge: TouchControlRevealEdge): void
   setOpen(open: boolean): void
   syncPlacement(indexOnEdge: number): void
 }
@@ -225,6 +226,17 @@ export const createEdgeRevealControl = (
         open = false
       }
       syncState()
+    },
+    setEdge(edge) {
+      if (options.placement.edge === edge) {
+        return
+      }
+
+      root.classList.remove(
+        `touch-edge-reveal-control-${options.placement.edge}`,
+      )
+      options.placement.edge = edge
+      root.classList.add(`touch-edge-reveal-control-${edge}`)
     },
     setOpen,
     syncPlacement(indexOnEdge) {

@@ -10,7 +10,11 @@ const createConfig = (
   requestedEngine: '',
   physicsEngine: { name: 'test-engine', step: (() => undefined) as never },
   requestedScenarioId: 'tutorial',
-  userSettings: { debugModeEnabled: false },
+  userSettings: {
+    debugModeEnabled: false,
+    touchBurnControlSide: 'right',
+    touchWarpControlSide: 'right',
+  },
   controls: {
     timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
     autopilotRotationRate: 1,

@@ -34,7 +34,10 @@ import {
   type OverlayUiRefs,
 } from '../ui/overlayUI/createOverlayUi'
 import { createRipple, type Ripple } from '../ui/overlayUpdates'
-import { updateUserSettings } from '../userSettingsStorage'
+import {
+  updateUserSettings,
+  type TouchControlSide,
+} from '../userSettingsStorage'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
 
@@ -200,18 +203,10 @@ export const createAppComponents = (options: {
     updateUserSettings,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
-  const topMenu = createTopMenu({
-    app: options.app,
-    getCoastPredictionHorizonHours: () =>
-      options.runtimeState.simulation.coastPredictionHorizonHours,
-    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
-    getMaxCoastPredictionHorizonHours: () =>
-      options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
-      options.config.trajectory.maxCoastPredictionHorizonHours,
-    getMinCoastPredictionHorizonHours: () =>
-      options.config.trajectory.minCoastPredictionHorizonHours,
-    onAction: (action) => dispatchRuntimeAction(action),
-  })
+  let touchBurnControlSide: TouchControlSide =
+    options.config.userSettings.touchBurnControlSide
+  let touchWarpControlSide: TouchControlSide =
+    options.config.userSettings.touchWarpControlSide
   const touchControls = createTouchControls({
     app: options.app,
     commitTimeWarp: (action) => {
@@ -260,6 +255,8 @@ export const createAppComponents = (options: {
         timeWarps: options.config.controls.timeWarps,
       })
     },
+    initialBurnControlSide: touchBurnControlSide,
+    initialWarpControlSide: touchWarpControlSide,
     keyboardInput,
     onTargetHeadingSelected: (screenX, screenY) => {
       const heading = pickHeadingFromScreenPoint(
@@ -277,6 +274,30 @@ export const createAppComponents = (options: {
       options.runtimeState.ui.touchThrustControl = state
     },
     onZoom: runtimeActions.zoomCamera,
+  })
+  const topMenu = createTopMenu({
+    app: options.app,
+    getCoastPredictionHorizonHours: () =>
+      options.runtimeState.simulation.coastPredictionHorizonHours,
+    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
+    getMaxCoastPredictionHorizonHours: () =>
+      options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
+      options.config.trajectory.maxCoastPredictionHorizonHours,
+    getMinCoastPredictionHorizonHours: () =>
+      options.config.trajectory.minCoastPredictionHorizonHours,
+    getTouchBurnControlSide: () => touchBurnControlSide,
+    getTouchWarpControlSide: () => touchWarpControlSide,
+    onAction: (action) => dispatchRuntimeAction(action),
+    onTouchBurnControlSideChange: (side) => {
+      touchBurnControlSide = side
+      touchControls.setBurnControlSide(side)
+      updateUserSettings({ touchBurnControlSide: side })
+    },
+    onTouchWarpControlSideChange: (side) => {
+      touchWarpControlSide = side
+      touchControls.setWarpControlSide(side)
+      updateUserSettings({ touchWarpControlSide: side })
+    },
   })
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
