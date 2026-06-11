@@ -8,15 +8,15 @@ import type {
 import type { ScenarioTouchHintTarget } from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
 import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
-import { createThrustControl, type ThrustGestureSession } from './thrustControl'
-import type { TimeWarpGestureSession } from './timeWarpControlTypes'
-import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 import {
   createEdgeRevealControl,
   type EdgeRevealControl,
   type TouchControlRevealEdge,
   type TouchControlRevealPlacement,
 } from './edgeRevealControl'
+import { createThrustControl, type ThrustGestureSession } from './thrustControl'
+import type { TimeWarpGestureSession } from './timeWarpControlTypes'
+import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 
 export type TouchControls = {
   element: HTMLElement
@@ -175,6 +175,7 @@ export const createTouchControls = (options: {
 
   const timeWarpDock = document.createElement('div')
   timeWarpDock.className = 'touch-edge-reveal-dock touch-time-warp-reveal-dock'
+  timeWarpDock.dataset.touchControlDock = 'warp'
   const timeWarpControl = createConfiguredTimeWarpControl({
     container: timeWarpDock,
     commitTimeWarp: options.commitTimeWarp,
@@ -189,6 +190,7 @@ export const createTouchControls = (options: {
 
   const thrustDock = document.createElement('div')
   thrustDock.className = 'touch-edge-reveal-dock touch-thrust-reveal-dock'
+  thrustDock.dataset.touchControlDock = 'burn'
   const thrustControl = createThrustControl({
     container: thrustDock,
     onSessionChange: (session) => {

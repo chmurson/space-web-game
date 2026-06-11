@@ -5,7 +5,11 @@ import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { defaultPhysicsEngine, physicsEngines } from '../simulation/physics'
 import type { PhysicsEngine } from '../simulation/types'
-import { readUserSettings, type UserSettings } from '../userSettingsStorage'
+import {
+  readUserSettings,
+  type TouchControlSide,
+  type UserSettings,
+} from '../userSettingsStorage'
 
 export type AppMode = 'menu' | 'game'
 
@@ -57,13 +61,27 @@ const deepFreeze = <T>(value: T): T => {
   return value
 }
 
+const parseTouchControlSideOverride = (
+  value: string | null,
+): TouchControlSide | null =>
+  value === 'left' || value === 'right' ? value : null
+
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const requestedScenarioId = urlParams.get('scenario') ?? 'earth-moon'
-  const userSettings = readUserSettings()
+  const storedUserSettings = readUserSettings()
+  const userSettings: UserSettings = {
+    ...storedUserSettings,
+    touchBurnControlSide:
+      parseTouchControlSideOverride(urlParams.get('touchBurnSide')) ??
+      storedUserSettings.touchBurnControlSide,
+    touchWarpControlSide:
+      parseTouchControlSideOverride(urlParams.get('touchWarpSide')) ??
+      storedUserSettings.touchWarpControlSide,
+  }
   const defaultViewport = gameConfig.camera.viewport.default
   const minViewport = defaultViewport / gameConfig.camera.viewport.minDivisor
   const maxViewport = gameConfig.camera.viewport.max

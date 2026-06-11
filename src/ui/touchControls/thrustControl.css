@@ -22,12 +22,12 @@
 .touch-thrust-control-docked {
   position: relative;
   opacity: 1;
-  transform: translateY(-28.5px);
+  transform: none;
   z-index: auto;
 }
 
 .touch-thrust-control-docked.touch-thrust-control-visible {
-  transform: translateY(-28.5px);
+  transform: none;
 }
 
 .touch-thrust-control-pending {
@@ -110,6 +110,10 @@
   text-transform: uppercase;
   transition: opacity 160ms ease;
   white-space: nowrap;
+}
+
+.touch-thrust-control-docked .touch-thrust-control-label {
+  display: none;
 }
 
 .touch-thrust-control-label-hidden .touch-thrust-control-label {

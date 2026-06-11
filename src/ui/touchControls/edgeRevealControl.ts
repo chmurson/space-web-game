@@ -41,6 +41,7 @@ export const createEdgeRevealControl = (
   options: EdgeRevealControlOptions,
 ): EdgeRevealControl => {
   const root = document.createElement('section')
+  root.id = options.id
   root.className = [
     'touch-edge-reveal-control',
     `touch-edge-reveal-control-${options.placement.edge}`,

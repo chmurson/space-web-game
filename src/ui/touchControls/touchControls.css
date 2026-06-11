@@ -1,4 +1,6 @@
 .touch-edge-reveal-control {
+  --touch-edge-reveal-content-bottom-overhang: 12px;
+  --touch-edge-reveal-content-gap: 12px;
   --touch-edge-reveal-gap: 12px;
   --touch-edge-reveal-index: 0;
   --touch-edge-reveal-start: 96px;
@@ -51,8 +53,17 @@
   padding: 0;
   text-transform: uppercase;
   touch-action: none;
+  transition:
+    opacity 120ms ease,
+    visibility 120ms ease;
   user-select: none;
   writing-mode: vertical-rl;
+}
+
+.touch-edge-reveal-control-open .touch-edge-reveal-tab {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .touch-edge-reveal-control-left .touch-edge-reveal-tab {
@@ -70,23 +81,24 @@
   outline-offset: 3px;
 }
 
-.touch-edge-reveal-control-open .touch-edge-reveal-tab {
-  border-color: rgba(125, 211, 252, 0.54);
-  color: #e0f2fe;
-}
-
 .touch-edge-reveal-content {
   position: absolute;
-  top: 50%;
+  bottom: calc(-1 * var(--touch-edge-reveal-content-bottom-overhang));
   display: grid;
   min-width: max-content;
   place-items: center;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-50%) translateX(var(--touch-edge-reveal-closed-x));
+  transform: translateX(var(--touch-edge-reveal-closed-x));
   transition:
     opacity 150ms ease,
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-edge-reveal-control:not(.touch-edge-reveal-control-open)
+  .touch-edge-reveal-content
+  * {
+  pointer-events: none;
 }
 
 .touch-edge-reveal-dock {
@@ -97,18 +109,26 @@
 
 .touch-edge-reveal-control-left .touch-edge-reveal-content {
   --touch-edge-reveal-closed-x: -12px;
-  left: calc(var(--touch-edge-reveal-tab-width) + 10px);
+  left: var(--touch-edge-reveal-content-gap);
 }
 
 .touch-edge-reveal-control-right .touch-edge-reveal-content {
   --touch-edge-reveal-closed-x: 12px;
-  right: calc(var(--touch-edge-reveal-tab-width) + 10px);
+  right: var(--touch-edge-reveal-content-gap);
+}
+
+.touch-edge-reveal-control-left .touch-edge-reveal-dock {
+  justify-items: start;
+}
+
+.touch-edge-reveal-control-right .touch-edge-reveal-dock {
+  justify-items: end;
 }
 
 .touch-edge-reveal-control-open .touch-edge-reveal-content {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(-50%) translateX(0);
+  transform: translateX(0);
 }
 
 .touch-controls-tutorial-hint {
