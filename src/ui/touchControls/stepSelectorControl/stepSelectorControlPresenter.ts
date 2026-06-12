@@ -12,16 +12,16 @@ export type StepSelectorRenderStep = {
 export type StepSelectorControlRenderState = {
   animationDirection: 'up' | 'down' | null
   currentLabel: string
-  decreaseExtraStep: StepSelectorRenderStep
-  decreaseFarStep: StepSelectorRenderStep
-  decreaseNearStep: StepSelectorRenderStep
+  downExtraStep: StepSelectorRenderStep
+  downFarStep: StepSelectorRenderStep
+  downNearStep: StepSelectorRenderStep
   dragDirection: 'increase' | 'decrease' | null
   dragProgress: number
   releaseWillCommit: boolean
   targetDirection: 'increase' | 'decrease' | null
-  increaseExtraStep: StepSelectorRenderStep
-  increaseFarStep: StepSelectorRenderStep
-  increaseNearStep: StepSelectorRenderStep
+  upExtraStep: StepSelectorRenderStep
+  upFarStep: StepSelectorRenderStep
+  upNearStep: StepSelectorRenderStep
 }
 
 const hiddenStep: StepSelectorRenderStep = {
@@ -57,33 +57,33 @@ export const presentStepSelectorControl = (
   return {
     animationDirection: snapshot.animationDirection,
     currentLabel: options.formatValue(runtimeSnapshot.currentValue),
-    decreaseExtraStep: presentStep(
-      runtimeSnapshot.decreaseSteps[2],
+    downExtraStep: presentStep(
+      runtimeSnapshot.increaseSteps[2],
       options.formatValue,
     ),
-    decreaseFarStep: presentStep(
-      runtimeSnapshot.decreaseSteps[1],
+    downFarStep: presentStep(
+      runtimeSnapshot.increaseSteps[1],
       options.formatValue,
     ),
-    decreaseNearStep: presentStep(
-      runtimeSnapshot.decreaseSteps[0],
+    downNearStep: presentStep(
+      runtimeSnapshot.increaseSteps[0],
       options.formatValue,
     ),
     dragDirection,
     dragProgress,
-    increaseExtraStep: presentStep(
-      runtimeSnapshot.increaseSteps[2],
-      options.formatValue,
-    ),
-    increaseFarStep: presentStep(
-      runtimeSnapshot.increaseSteps[1],
-      options.formatValue,
-    ),
-    increaseNearStep: presentStep(
-      runtimeSnapshot.increaseSteps[0],
-      options.formatValue,
-    ),
     releaseWillCommit: activeGesture?.releaseWillCommit ?? false,
     targetDirection: activeGesture?.direction ?? null,
+    upExtraStep: presentStep(
+      runtimeSnapshot.decreaseSteps[2],
+      options.formatValue,
+    ),
+    upFarStep: presentStep(
+      runtimeSnapshot.decreaseSteps[1],
+      options.formatValue,
+    ),
+    upNearStep: presentStep(
+      runtimeSnapshot.decreaseSteps[0],
+      options.formatValue,
+    ),
   }
 }

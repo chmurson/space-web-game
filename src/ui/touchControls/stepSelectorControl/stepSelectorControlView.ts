@@ -1,4 +1,5 @@
 import type { StepSelectorControlRenderState } from './stepSelectorControlPresenter'
+import type { StepSelectorRenderStep } from './stepSelectorControlPresenter'
 
 type StepSelectorControlView = {
   element: HTMLElement
@@ -7,7 +8,7 @@ type StepSelectorControlView = {
 
 const renderStep = (
   element: HTMLElement | null,
-  step: StepSelectorControlRenderState['increaseNearStep'],
+  step: StepSelectorRenderStep,
 ) => {
   if (!element) {
     return
@@ -41,25 +42,25 @@ export const createStepSelectorControlView = (options: {
     <div class="touch-step-selector-value touch-step-selector-value-next touch-step-selector-value-secondary touch-step-selector-value-down-far"></div>
     <div class="touch-step-selector-value touch-step-selector-value-next touch-step-selector-value-secondary touch-step-selector-value-extra touch-step-selector-value-down-extra"></div>
   `
-  const increaseExtraValue = element.querySelector<HTMLElement>(
+  const upExtraValue = element.querySelector<HTMLElement>(
     '.touch-step-selector-value-up-extra',
   )
-  const increaseFarValue = element.querySelector<HTMLElement>(
+  const upFarValue = element.querySelector<HTMLElement>(
     '.touch-step-selector-value-up-far',
   )
-  const increaseNearValue = element.querySelector<HTMLElement>(
+  const upNearValue = element.querySelector<HTMLElement>(
     '.touch-step-selector-value-up-near',
   )
   const currentValue = element.querySelector<HTMLElement>(
     '.touch-step-selector-value-current',
   )
-  const decreaseNearValue = element.querySelector<HTMLElement>(
+  const downNearValue = element.querySelector<HTMLElement>(
     '.touch-step-selector-value-down-near',
   )
-  const decreaseFarValue = element.querySelector<HTMLElement>(
+  const downFarValue = element.querySelector<HTMLElement>(
     '.touch-step-selector-value-down-far',
   )
-  const decreaseExtraValue = element.querySelector<HTMLElement>(
+  const downExtraValue = element.querySelector<HTMLElement>(
     '.touch-step-selector-value-down-extra',
   )
   let lastRenderKey = ''
@@ -74,12 +75,12 @@ export const createStepSelectorControlView = (options: {
       lastRenderKey = renderKey
 
       currentValue?.replaceChildren(renderState.currentLabel)
-      renderStep(increaseExtraValue, renderState.increaseExtraStep)
-      renderStep(increaseFarValue, renderState.increaseFarStep)
-      renderStep(increaseNearValue, renderState.increaseNearStep)
-      renderStep(decreaseNearValue, renderState.decreaseNearStep)
-      renderStep(decreaseFarValue, renderState.decreaseFarStep)
-      renderStep(decreaseExtraValue, renderState.decreaseExtraStep)
+      renderStep(upExtraValue, renderState.upExtraStep)
+      renderStep(upFarValue, renderState.upFarStep)
+      renderStep(upNearValue, renderState.upNearStep)
+      renderStep(downNearValue, renderState.downNearStep)
+      renderStep(downFarValue, renderState.downFarStep)
+      renderStep(downExtraValue, renderState.downExtraStep)
       element.style.setProperty(
         '--touch-step-selector-drag-progress',
         renderState.dragProgress.toFixed(3),

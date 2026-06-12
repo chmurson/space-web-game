@@ -110,51 +110,51 @@
 }
 
 .touch-step-selector-target-increase .touch-step-selector-value-current {
-  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 24px))
-    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
-}
-
-.touch-step-selector-target-decrease .touch-step-selector-value-current {
   transform: translateY(calc(var(--touch-step-selector-drag-progress) * -25px))
     scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
 }
 
+.touch-step-selector-target-decrease .touch-step-selector-value-current {
+  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 24px))
+    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
+}
+
 .touch-step-selector-target-increase .touch-step-selector-value-up-far {
-  opacity: calc(0.56 + var(--touch-step-selector-drag-progress) * 0.12);
-  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 11px))
-    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.1));
-}
-
-.touch-step-selector-target-increase .touch-step-selector-value-down-near {
-  opacity: calc(0.68 - var(--touch-step-selector-drag-progress) * 0.12);
-  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 11px))
-    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.1));
-}
-
-.touch-step-selector-target-increase .touch-step-selector-value-down-far {
-  opacity: calc(0.56 - var(--touch-step-selector-drag-progress) * 0.56);
-  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 12px));
-}
-
-.touch-step-selector-target-decrease .touch-step-selector-value-up-far {
   opacity: calc(0.56 - var(--touch-step-selector-drag-progress) * 0.56);
   transform: translateY(calc(var(--touch-step-selector-drag-progress) * -12px));
 }
 
-.touch-step-selector-target-decrease .touch-step-selector-value-up-near {
+.touch-step-selector-target-increase .touch-step-selector-value-up-near {
   opacity: calc(0.68 - var(--touch-step-selector-drag-progress) * 0.12);
   transform: translateY(calc(var(--touch-step-selector-drag-progress) * -11px))
     scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.1));
 }
 
-.touch-step-selector-target-decrease .touch-step-selector-value-down-far {
+.touch-step-selector-target-increase .touch-step-selector-value-down-far {
   opacity: calc(0.56 + var(--touch-step-selector-drag-progress) * 0.12);
   transform: translateY(calc(var(--touch-step-selector-drag-progress) * -12px))
     scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.11));
 }
 
-.touch-step-selector-target-increase .touch-step-selector-value-up-near,
+.touch-step-selector-target-decrease .touch-step-selector-value-up-far {
+  opacity: calc(0.56 + var(--touch-step-selector-drag-progress) * 0.12);
+  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 11px))
+    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.1));
+}
+
 .touch-step-selector-target-decrease .touch-step-selector-value-down-near {
+  opacity: calc(0.68 - var(--touch-step-selector-drag-progress) * 0.12);
+  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 11px))
+    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.1));
+}
+
+.touch-step-selector-target-decrease .touch-step-selector-value-down-far {
+  opacity: calc(0.56 - var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 12px));
+}
+
+.touch-step-selector-target-decrease .touch-step-selector-value-up-near,
+.touch-step-selector-target-increase .touch-step-selector-value-down-near {
   color: color-mix(
     in srgb,
     rgba(203, 213, 225, 0.68)
@@ -176,13 +176,13 @@
     );
 }
 
-.touch-step-selector-target-increase .touch-step-selector-value-up-near {
-  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 25px))
+.touch-step-selector-target-increase .touch-step-selector-value-down-near {
+  transform: translateY(calc(var(--touch-step-selector-drag-progress) * -24px))
     scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
 }
 
-.touch-step-selector-target-decrease .touch-step-selector-value-down-near {
-  transform: translateY(calc(var(--touch-step-selector-drag-progress) * -24px))
+.touch-step-selector-target-decrease .touch-step-selector-value-up-near {
+  transform: translateY(calc(var(--touch-step-selector-drag-progress) * 25px))
     scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
 }
 
@@ -214,20 +214,20 @@
   transform: translateX(-50%) translateY(12px) scale(0.72);
 }
 
-.touch-step-selector-target-increase .touch-step-selector-value-up-extra {
-  opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
-  transform: translateX(-50%)
-    translateY(
-      calc((1 - var(--touch-step-selector-drag-progress)) * -12px + 1.5px)
-    )
-    scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
-}
-
-.touch-step-selector-target-decrease .touch-step-selector-value-down-extra {
+.touch-step-selector-target-increase .touch-step-selector-value-down-extra {
   opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
   transform: translateX(-50%)
     translateY(
       calc((1 - var(--touch-step-selector-drag-progress)) * 12px - 1.5px)
+    )
+    scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
+}
+
+.touch-step-selector-target-decrease .touch-step-selector-value-up-extra {
+  opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateX(-50%)
+    translateY(
+      calc((1 - var(--touch-step-selector-drag-progress)) * -12px + 1.5px)
     )
     scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
 }

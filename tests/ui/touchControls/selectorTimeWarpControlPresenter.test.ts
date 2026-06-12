@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { presentSelectorTimeWarpControl } from '@/ui/touchControls/selectorTimeWarpControl/selectorTimeWarpControlPresenter'
 
 describe('selectorTimeWarpControlPresenter', () => {
-  it('formats current and adjacent warp values as durations', () => {
+  it('formats current and inverted adjacent warp values as durations', () => {
     expect(
       presentSelectorTimeWarpControl({
         animationDirection: null,
@@ -22,24 +22,24 @@ describe('selectorTimeWarpControlPresenter', () => {
       }),
     ).toMatchObject({
       currentLabel: 'x5m',
-      decreaseFarStep: {
-        hidden: false,
-        label: 'x30s',
-        tone: 'available',
-      },
-      decreaseNearStep: {
-        hidden: false,
-        label: 'x1m',
-        tone: 'available',
-      },
-      increaseFarStep: {
+      downFarStep: {
         hidden: false,
         label: 'x1h',
         tone: 'blocked',
       },
-      increaseNearStep: {
+      downNearStep: {
         hidden: false,
         label: 'x30m',
+        tone: 'available',
+      },
+      upFarStep: {
+        hidden: false,
+        label: 'x30s',
+        tone: 'available',
+      },
+      upNearStep: {
+        hidden: false,
+        label: 'x1m',
         tone: 'available',
       },
     })

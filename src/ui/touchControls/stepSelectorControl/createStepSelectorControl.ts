@@ -17,6 +17,11 @@ const commitSettleDelayMs = 180
 const fullSwipeAnimationDistancePx = 80
 const previewStepCount = 3
 
+export const getStepSelectorGestureDirection = (
+  deltaY: number,
+): StepSelectorDirection | null =>
+  deltaY < 0 ? 'increase' : deltaY > 0 ? 'decrease' : null
+
 export const createStepSelectorControl = <ControlId extends string>(
   options: StepSelectorControlOptions<ControlId>,
 ): StepSelectorControl<ControlId> => {
@@ -99,9 +104,8 @@ export const createStepSelectorControl = <ControlId extends string>(
   const updateGesturePreview = (deltaY: number) => {
     const distance = Math.abs(deltaY)
     const direction: StepSelectorDirection | null =
-      deltaY < 0 ? 'decrease' : deltaY > 0 ? 'increase' : null
-    const visualDirection: StepSelectorDirection | null =
-      deltaY < 0 ? 'increase' : deltaY > 0 ? 'decrease' : null
+      getStepSelectorGestureDirection(deltaY)
+    const visualDirection = direction
     const progress = Math.min(1, distance / fullSwipeAnimationDistancePx)
     const runtimeSnapshot = model.getSnapshot().runtimeSnapshot
     const target = direction ? getNearStep(runtimeSnapshot, direction) : null
