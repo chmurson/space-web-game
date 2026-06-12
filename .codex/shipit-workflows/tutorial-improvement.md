@@ -2,7 +2,7 @@
 
 Task: Tutorial improvement
 Branch: tutorial-improvement
-Current Mode: review
+Current Mode: brainstorm
 Status: active
 
 ## Checklist
@@ -39,6 +39,7 @@ Status: active
 - Second scoped improvement: apply the same dim/blur focus effect when tutorial coach prompts focus telemetry UI pills such as speed or thrust.
 - `focusedHudElement` is separate from `focusedTouchControl` so telemetry pill focus and touch-control focus can use different DOM layering without mixing ownership.
 - User accepted the current review and requested merge, but asked to keep the Shipit workflow open for further tutorial improvements.
+- Merged reviewed tutorial spotlight slice into `main` via fast-forward, then deployed production.
 
 ## Open Questions
 
@@ -55,7 +56,7 @@ Status: active
 
 ## Next Step
 
-Commit and merge this slice into `main`, deploy production, and keep Shipit state active for handoff/future improvements.
+Collect or define the next tutorial improvement while keeping this workflow active.
 
 ## Brainstorm Handoff
 
@@ -266,3 +267,8 @@ Deploy:
 
 - Merge requested after review approval.
 - Keep this workflow `active` rather than marking it completed because more tutorial improvements may follow.
+- Tutorial spotlight commit: `e162f4c feat(ui): spotlight focused tutorial controls`.
+- Merge style: fast-forward into `main`.
+- Production URL: https://space-web-game.netlify.app
+- Production unique deploy URL: https://6a2c219b9dfb150ea9e9c6e8--space-web-game.netlify.app
+- Production deploy ID: `6a2c219b9dfb150ea9e9c6e8`
