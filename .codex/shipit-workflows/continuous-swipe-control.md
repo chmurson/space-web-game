@@ -51,7 +51,7 @@ Status: completed
 
 ## Next Step
 
-Final review passed. Merge to `main` and deploy production per request.
+Task complete. Merged to local `main` and deployed production per request.
 
 ## Brainstorm Handoff
 
@@ -181,4 +181,4 @@ Solution retrospect: The moving `stepAnchorY` is a better fit than direction loc
 
 Validation results: `npm test` passed with 28 files and 121 tests; `npm run build` passed; `git diff --check` passed.
 
-Merge plan: Commit the feature branch, merge it into local `main`, then deploy production from `main` using `npm run deploy:netlify`.
+Merge result: Feature commit `8820195` was merged into local `main` by merge commit `80538ce`. Production deploy completed at `https://space-web-game.netlify.app` with unique deploy URL `https://6a2bf6994b6c6912a99bfe07--space-web-game.netlify.app`.
