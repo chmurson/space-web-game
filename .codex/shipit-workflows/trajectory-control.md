@@ -3,7 +3,7 @@
 Task: Add trajectory prediction main control
 Branch: trajectory-control
 Current Mode: review
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -42,11 +42,11 @@ Status: active
 - [x] `npm run build`
 - [x] `npm run deploy:netlify`
 - [x] Final pre-merge validation
-- [ ] Production deploy from `main`
+- [x] Production deploy from `main`
 
 ## Next Step
 
-Deploy production from `main`.
+Completed. Merged to `main` and deployed production.
 
 ## Design Handoff
 
@@ -158,6 +158,9 @@ Validation results:
 - Follow-up unique deploy URL: `https://6a2ba3c93c810a133c896b27--fanciful-bunny-d77b4b.netlify.app`.
 - Follow-up deploy passed after changing trajectory values to avoid fractional-day labels: `npm run deploy:netlify`.
 - Follow-up unique deploy URL: `https://6a2bac62680ce5da0e32d29b--fanciful-bunny-d77b4b.netlify.app`.
+- Production deploy passed after merging to `main`: `npm run deploy:netlify`.
+- Production URL: `https://space-web-game.netlify.app`.
+- Production unique deploy URL: `https://6a2bb221db567c3013730b3c--space-web-game.netlify.app`.
 
 Follow-up change:
 
