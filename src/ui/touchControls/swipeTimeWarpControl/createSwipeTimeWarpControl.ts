@@ -53,8 +53,10 @@ export const createSwipeTimeWarpControl = (
   }
 
   const beginGesture = (touch: Touch): ActiveTimeWarpGestureSession => ({
+    committedStepCount: 0,
     kind: 'step-selector',
     controlId: 'time-warp',
+    stepAnchorY: touch.clientY,
     startX: touch.clientX,
     startY: touch.clientY,
     touchId: touch.identifier,

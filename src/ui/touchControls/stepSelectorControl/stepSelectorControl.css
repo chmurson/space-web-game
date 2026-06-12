@@ -2,6 +2,8 @@
   --touch-step-selector-accent: #f59e0b;
   --touch-step-selector-accent-rgb: 245 158 11;
   --touch-step-selector-drag-progress: 0;
+  --touch-step-selector-hit-overhang-x: 25%;
+  --touch-step-selector-hit-overhang-y: 25%;
   position: fixed;
   bottom: max(14px, env(safe-area-inset-bottom));
   left: max(14px, env(safe-area-inset-left));
@@ -31,6 +33,20 @@
   transition: filter 160ms ease;
   user-select: none;
   z-index: calc(var(--z-overlay-hud) + 1);
+}
+
+.touch-step-selector::before {
+  position: absolute;
+  inset: calc(-1 * var(--touch-step-selector-hit-overhang-y))
+    calc(-1 * var(--touch-step-selector-hit-overhang-x));
+  background: transparent;
+  content: "";
+  pointer-events: auto;
+}
+
+.touch-edge-reveal-control:not(.touch-edge-reveal-control-open)
+  .touch-step-selector::before {
+  pointer-events: none;
 }
 
 .touch-step-selector-trajectory {

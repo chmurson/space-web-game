@@ -6,8 +6,10 @@ export type StepSelectorPreview = {
 }
 
 export type StepSelectorGestureSession<ControlId extends string = string> = {
+  committedStepCount: number
   kind: 'step-selector'
   controlId: ControlId
+  stepAnchorY: number
   startX: number
   startY: number
   touchId: number
