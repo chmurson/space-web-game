@@ -35,6 +35,10 @@ import {
   type TopMenuAction,
 } from '../ui/createTopMenu'
 import {
+  createUiSettingsDialog,
+  type UiSettingsDialog,
+} from '../ui/createUiSettingsDialog'
+import {
   createOverlayUi,
   type OverlayUiRefs,
 } from '../ui/overlayUI/createOverlayUi'
@@ -72,6 +76,7 @@ const createRuntimeCoordinator = (options: {
   mainMenu: MainMenu
   crashMenu: CrashMenu
   topMenu: TopMenu
+  uiSettingsDialog: UiSettingsDialog
   frameLoop: ReturnType<typeof createFrameLoop>
   runtimeActions: ReturnType<typeof createRuntimeActions>
   runtimeState: AppRuntimeState
@@ -123,6 +128,7 @@ const createRuntimeCoordinator = (options: {
         options.mainMenu.syncState()
         options.mainMenu.setVisible(true)
         options.topMenu.close()
+        options.uiSettingsDialog.close(false)
         options.frameLoop.refreshTrajectoryPrediction()
         return
       }
@@ -310,23 +316,11 @@ export const createAppComponents = (options: {
 
     dispatchRuntimeAction(action)
   }
-
-  const topMenu = createTopMenu({
+  const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
-    getCoastPredictionHorizonHours: () =>
-      options.runtimeState.simulation.coastPredictionHorizonHours,
-    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
-    getFpsIndicatorEnabled: () =>
-      options.runtimeState.debug.fpsIndicatorEnabled,
-    getMaxCoastPredictionHorizonHours: () =>
-      options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
-      options.config.trajectory.maxCoastPredictionHorizonHours,
-    getMinCoastPredictionHorizonHours: () =>
-      options.config.trajectory.minCoastPredictionHorizonHours,
     getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
     getTouchWarpControlSide: () => touchWarpControlSide,
-    onAction: handleTopMenuAction,
     onTouchBurnControlSideChange: (side) => {
       touchBurnControlSide = side
       touchControls.setBurnControlSide(side)
@@ -342,6 +336,22 @@ export const createAppComponents = (options: {
       touchControls.setWarpControlSide(side)
       updateUserSettings({ touchWarpControlSide: side })
     },
+  })
+
+  const topMenu = createTopMenu({
+    app: options.app,
+    getCoastPredictionHorizonHours: () =>
+      options.runtimeState.simulation.coastPredictionHorizonHours,
+    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
+    getFpsIndicatorEnabled: () =>
+      options.runtimeState.debug.fpsIndicatorEnabled,
+    getMaxCoastPredictionHorizonHours: () =>
+      options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
+      options.config.trajectory.maxCoastPredictionHorizonHours,
+    getMinCoastPredictionHorizonHours: () =>
+      options.config.trajectory.minCoastPredictionHorizonHours,
+    onAction: handleTopMenuAction,
+    onOpenUiSettings: uiSettingsDialog.open,
   })
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
@@ -461,6 +471,7 @@ export const createAppComponents = (options: {
     mainMenu,
     crashMenu,
     topMenu,
+    uiSettingsDialog,
     frameLoop,
     runtimeActions,
     runtimeState: options.runtimeState,
