@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] Merged to main
+- [x] Merged to main
 
 ## Artifacts
 
@@ -46,7 +46,7 @@ Status: active
 
 ## Next Step
 
-Commit the branch, merge into `main`, and deploy production.
+Deploy production from `main`.
 
 ## Design Handoff
 
