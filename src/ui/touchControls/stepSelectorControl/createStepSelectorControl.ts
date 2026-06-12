@@ -25,6 +25,9 @@ export const getStepSelectorGestureDirection = (
 export const getStepSelectorGestureCommittedStepCount = (deltaY: number) =>
   Math.floor(Math.abs(deltaY) / swipeCommitDistancePx)
 
+export const getStepSelectorReleaseWillCommit = (deltaY: number) =>
+  Math.abs(deltaY) > swipeCommitDistancePx / 2
+
 export const getStepSelectorGesturePreviewDeltaY = (
   currentY: number,
   stepAnchorY: number,
@@ -197,7 +200,9 @@ export const createStepSelectorControl = <ControlId extends string>(
     const runtimeSnapshot = model.getSnapshot().runtimeSnapshot
     const target = direction ? getNearStep(runtimeSnapshot, direction) : null
     const releaseWillCommit = Boolean(
-      direction && target?.canCommit && distance >= swipeCommitDistancePx,
+      direction &&
+        target?.canCommit &&
+        getStepSelectorReleaseWillCommit(deltaY),
     )
 
     const snapshot = model.updateGesture({
@@ -283,10 +288,7 @@ export const createStepSelectorControl = <ControlId extends string>(
       ) {
         return session
       }
-      const didCommit =
-        commitPreview && session.committedStepCount === 0
-          ? resolveReleaseCommit()
-          : false
+      const didCommit = commitPreview ? resolveReleaseCommit() : false
       if (!commitPreview) {
         model.setRuntimeSnapshot(getRuntimeSnapshot())
       }
