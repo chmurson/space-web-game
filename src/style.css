@@ -11,6 +11,7 @@
   --z-overlay-debug: 40;
   --z-overlay-modal: 100;
   --z-overlay-modal-menu: 500;
+  --z-overlay-dialog: 510;
 
   /* specific z-index values */
   --z-coach-prompt: calc(var(--z-overlay-floating) - 1);
@@ -260,22 +261,6 @@ canvas {
   background: rgba(148, 163, 184, 0.06);
 }
 
-.menu-setting {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(148, 163, 184, 0.06);
-}
-
-.menu-setting-name {
-  color: #f0f9ff;
-  font-size: 13px;
-  line-height: 1.2;
-}
-
 .segmented-control {
   display: grid;
   grid-auto-flow: column;
@@ -395,6 +380,139 @@ canvas {
 
   .top-menu-dropdown button.menu-stepper-button:hover {
     background: rgba(59, 130, 246, 0.2);
+  }
+}
+
+.app-dialog {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px
+    calc(env(safe-area-inset-bottom, 0px) + 18px);
+  z-index: var(--z-overlay-dialog);
+}
+
+.app-dialog[hidden] {
+  display: none;
+}
+
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.54);
+  backdrop-filter: blur(3px);
+}
+
+.app-dialog-panel {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  width: min(100%, 430px);
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.84), rgba(8, 13, 24, 0.74)),
+    rgba(8, 13, 24, 0.58);
+  box-shadow: 0 24px 54px rgba(2, 6, 23, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.app-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.app-dialog-kicker {
+  margin-bottom: 5px;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.app-dialog-title {
+  margin: 0;
+  color: #f0f9ff;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.app-dialog-button {
+  padding: 8px 11px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.54);
+  color: #f0f9ff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  touch-action: manipulation;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.app-dialog-close {
+  flex: 0 0 auto;
+}
+
+.app-dialog-body {
+  display: grid;
+  gap: 8px;
+}
+
+.app-dialog-setting-list {
+  display: grid;
+  gap: 8px;
+}
+
+.app-dialog-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.07);
+}
+
+.app-dialog-setting-name {
+  min-width: 0;
+  color: #f0f9ff;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.app-dialog-panel:focus-visible,
+.app-dialog-button:focus-visible,
+.app-dialog .segmented-control-option:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.8);
+  outline-offset: 2px;
+}
+
+.app-dialog-button:active,
+.app-dialog .segmented-control-option:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-dialog-button:hover {
+    border-color: rgba(125, 211, 252, 0.38);
+    background: rgba(56, 189, 248, 0.16);
+  }
+
+  .app-dialog .segmented-control-option:hover {
+    background: rgba(148, 163, 184, 0.12);
+  }
+
+  .app-dialog .segmented-control-option-selected:hover {
+    background: rgba(56, 189, 248, 0.24);
   }
 }
 
@@ -1125,16 +1243,7 @@ canvas {
     padding: 8px 9px;
   }
 
-  .menu-setting {
-    gap: 10px;
-    padding: 8px 9px;
-  }
-
   .menu-stepper-name {
-    font-size: 12px;
-  }
-
-  .menu-setting-name {
     font-size: 12px;
   }
 
@@ -1146,6 +1255,36 @@ canvas {
     width: 30px;
     min-width: 30px;
     height: 30px;
+  }
+
+  .app-dialog {
+    align-items: end;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 10px
+      calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+
+  .app-dialog-panel {
+    gap: 14px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .app-dialog-title {
+    font-size: 18px;
+  }
+
+  .app-dialog-button {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .app-dialog-setting {
+    gap: 10px;
+    padding: 9px;
+  }
+
+  .app-dialog-setting-name {
+    font-size: 12px;
   }
 
   .telemetry-pill {

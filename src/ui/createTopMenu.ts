@@ -1,8 +1,6 @@
 import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
-import type { TouchControlSide } from '../userSettingsStorage'
 import { formatTrajectoryHorizonDuration } from './formatters'
-import { createSegmentedControl } from './segmentedControl'
 
 export type TopMenu = {
   close: () => void
@@ -19,13 +17,8 @@ export const createTopMenu = (options: {
   getFpsIndicatorEnabled: () => boolean
   getMaxCoastPredictionHorizonHours: () => number
   getMinCoastPredictionHorizonHours: () => number
-  getTouchBurnControlSide: () => TouchControlSide
-  getTouchTrajectoryControlSide: () => TouchControlSide
-  getTouchWarpControlSide: () => TouchControlSide
   onAction: (action: TopMenuAction) => void
-  onTouchBurnControlSideChange(side: TouchControlSide): void
-  onTouchTrajectoryControlSideChange(side: TouchControlSide): void
-  onTouchWarpControlSideChange(side: TouchControlSide): void
+  onOpenUiSettings(): void
 }): TopMenu => {
   const menuId = 'top-menu-dropdown'
   const debugSectionLabelId = `${menuId}-debug`
@@ -71,18 +64,7 @@ export const createTopMenu = (options: {
 
       <section class="menu-section" aria-labelledby="${controlsSectionLabelId}">
         <div class="menu-section-label" id="${controlsSectionLabelId}">Controls</div>
-        <div class="menu-setting">
-          <span class="menu-setting-name">Burn side</span>
-          <div data-menu-touch-burn-control-side></div>
-        </div>
-        <div class="menu-setting">
-          <span class="menu-setting-name">Warp side</span>
-          <div data-menu-touch-warp-control-side></div>
-        </div>
-        <div class="menu-setting">
-          <span class="menu-setting-name">Trajectory side</span>
-          <div data-menu-touch-trajectory-control-side></div>
-        </div>
+        <button type="button" role="menuitem" data-menu-action="openUiSettings">UI settings</button>
       </section>
 
       <hr class="menu-separator" />
@@ -134,70 +116,6 @@ export const createTopMenu = (options: {
   )
   const coastHorizonValue = dropdown.querySelector<HTMLElement>(
     '[data-menu-coast-horizon]',
-  )
-  const touchBurnControlSideMount = dropdown.querySelector<HTMLElement>(
-    '[data-menu-touch-burn-control-side]',
-  )
-  const touchWarpControlSideMount = dropdown.querySelector<HTMLElement>(
-    '[data-menu-touch-warp-control-side]',
-  )
-  const touchTrajectoryControlSideMount = dropdown.querySelector<HTMLElement>(
-    '[data-menu-touch-trajectory-control-side]',
-  )
-  if (
-    !touchBurnControlSideMount ||
-    !touchWarpControlSideMount ||
-    !touchTrajectoryControlSideMount
-  ) {
-    throw new Error('Failed to create top menu touch control side settings')
-  }
-  let syncTouchControlSides = () => {}
-  const sideOptions = [
-    { label: 'Left', value: 'left' },
-    { label: 'Right', value: 'right' },
-  ] satisfies { label: string; value: TouchControlSide }[]
-  const touchBurnControlSideControl = createSegmentedControl<TouchControlSide>({
-    ariaLabel: 'Burn control side',
-    onChange: (side) => {
-      options.onTouchBurnControlSideChange(side)
-      syncTouchControlSides()
-    },
-    optionRole: 'menuitemradio',
-    options: sideOptions,
-    value: options.getTouchBurnControlSide(),
-  })
-  const touchWarpControlSideControl = createSegmentedControl<TouchControlSide>({
-    ariaLabel: 'Warp control side',
-    onChange: (side) => {
-      options.onTouchWarpControlSideChange(side)
-      syncTouchControlSides()
-    },
-    optionRole: 'menuitemradio',
-    options: sideOptions,
-    value: options.getTouchWarpControlSide(),
-  })
-  const touchTrajectoryControlSideControl =
-    createSegmentedControl<TouchControlSide>({
-      ariaLabel: 'Trajectory control side',
-      onChange: (side) => {
-        options.onTouchTrajectoryControlSideChange(side)
-        syncTouchControlSides()
-      },
-      optionRole: 'menuitemradio',
-      options: sideOptions,
-      value: options.getTouchTrajectoryControlSide(),
-    })
-  syncTouchControlSides = () => {
-    touchBurnControlSideControl.sync(options.getTouchBurnControlSide())
-    touchWarpControlSideControl.sync(options.getTouchWarpControlSide())
-    touchTrajectoryControlSideControl.sync(
-      options.getTouchTrajectoryControlSide(),
-    )
-  }
-  touchBurnControlSideMount.replaceWith(touchBurnControlSideControl.element)
-  touchWarpControlSideMount.replaceWith(touchWarpControlSideControl.element)
-  touchTrajectoryControlSideMount.replaceWith(
-    touchTrajectoryControlSideControl.element,
   )
   const menuItems = Array.from(
     dropdown.querySelectorAll<HTMLButtonElement>(
@@ -292,7 +210,6 @@ export const createTopMenu = (options: {
         lastIncreaseDisabled = increaseDisabled
       }
     }
-    syncTouchControlSides()
   }
   const shouldKeepOpenAfterAction = (action: TopMenuAction) => {
     return (
@@ -335,8 +252,18 @@ export const createTopMenu = (options: {
       return
     }
 
-    const action = target.dataset.menuAction as TopMenuAction | undefined
+    const action = target.dataset.menuAction as
+      | TopMenuAction
+      | 'openUiSettings'
+      | undefined
     if (!action) {
+      return
+    }
+
+    if (action === 'openUiSettings') {
+      resetExitConfirmation()
+      setOpen(false, 'button')
+      options.onOpenUiSettings()
       return
     }
 
