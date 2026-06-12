@@ -3,6 +3,7 @@ import {
   getStepSelectorGestureCommittedStepCount,
   getStepSelectorGestureDirection,
   getStepSelectorGesturePreviewDeltaY,
+  getStepSelectorReleaseWillCommit,
 } from '@/ui/touchControls/stepSelectorControl/createStepSelectorControl'
 
 describe('createStepSelectorControl', () => {
@@ -23,5 +24,12 @@ describe('createStepSelectorControl', () => {
     expect(getStepSelectorGesturePreviewDeltaY(92, 100)).toBe(-8)
     expect(getStepSelectorGesturePreviewDeltaY(100, 92)).toBe(8)
     expect(getStepSelectorGesturePreviewDeltaY(100, 100)).toBe(0)
+  })
+
+  it('settles release to the nearest value after the midpoint', () => {
+    expect(getStepSelectorReleaseWillCommit(-23)).toBe(false)
+    expect(getStepSelectorReleaseWillCommit(23)).toBe(false)
+    expect(getStepSelectorReleaseWillCommit(-24)).toBe(true)
+    expect(getStepSelectorReleaseWillCommit(24)).toBe(true)
   })
 })
