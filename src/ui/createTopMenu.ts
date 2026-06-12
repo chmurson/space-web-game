@@ -16,6 +16,7 @@ export const createTopMenu = (options: {
   app: HTMLElement
   getCoastPredictionHorizonHours: () => number
   getDebugModeEnabled: () => boolean
+  getFpsIndicatorEnabled: () => boolean
   getMaxCoastPredictionHorizonHours: () => number
   getMinCoastPredictionHorizonHours: () => number
   getTouchBurnControlSide: () => TouchControlSide
@@ -53,7 +54,8 @@ export const createTopMenu = (options: {
 
       <section class="menu-section" aria-labelledby="${debugSectionLabelId}">
         <div class="menu-section-label" id="${debugSectionLabelId}">Debug</div>
-        <button type="button" role="menuitem" data-menu-action="toggleDebugMode" data-menu-debug-toggle></button>
+        <button type="button" role="menuitemcheckbox" data-menu-action="toggleDebugMode" data-menu-debug-toggle></button>
+        <button type="button" role="menuitemcheckbox" data-menu-action="toggleFpsIndicator" data-menu-fps-toggle></button>
         <button type="button" role="menuitem" data-menu-action="saveDebugSnapshot">Save debug snapshot</button>
         <button type="button" role="menuitem" data-menu-action="loadDebugSnapshot">Load debug snapshot</button>
       </section>
@@ -120,6 +122,9 @@ export const createTopMenu = (options: {
   )
   const debugToggleButton = dropdown.querySelector<HTMLButtonElement>(
     '[data-menu-debug-toggle]',
+  )
+  const fpsToggleButton = dropdown.querySelector<HTMLButtonElement>(
+    '[data-menu-fps-toggle]',
   )
   const decreaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>(
     '[data-menu-action="decreaseCoastHorizon"]',
@@ -196,12 +201,15 @@ export const createTopMenu = (options: {
   )
   const menuItems = Array.from(
     dropdown.querySelectorAll<HTMLButtonElement>(
-      'button[role="menuitem"], button[role="menuitemradio"]',
+      'button[role="menuitem"], button[role="menuitemcheckbox"], button[role="menuitemradio"]',
     ),
   )
   let exitConfirmationPending = false
   let lastCoastHorizonLabel = ''
   let lastDebugToggleLabel = ''
+  let lastDebugToggleChecked: boolean | null = null
+  let lastFpsToggleLabel = ''
+  let lastFpsToggleChecked: boolean | null = null
   let lastDecreaseDisabled: boolean | null = null
   let lastIncreaseDisabled: boolean | null = null
   const focusItem = (index: number) => {
@@ -226,9 +234,14 @@ export const createTopMenu = (options: {
     loadSnapshotButton.disabled = readDebugScenarioSnapshot() === null
   }
   const syncState = () => {
-    const debugToggleLabel = options.getDebugModeEnabled()
+    const debugModeEnabled = options.getDebugModeEnabled()
+    const fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
+    const debugToggleLabel = debugModeEnabled
       ? 'Hide debug window'
       : 'Show debug window'
+    const fpsToggleLabel = fpsIndicatorEnabled
+      ? 'Hide FPS meter'
+      : 'Show FPS meter'
     const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours()
     const coastHorizonLabel = formatTrajectoryHorizonDuration(
       coastPredictionHorizonHours * 60 * 60,
@@ -242,6 +255,23 @@ export const createTopMenu = (options: {
       if (debugToggleLabel !== lastDebugToggleLabel) {
         debugToggleButton.textContent = debugToggleLabel
         lastDebugToggleLabel = debugToggleLabel
+      }
+      if (debugModeEnabled !== lastDebugToggleChecked) {
+        debugToggleButton.setAttribute('aria-checked', String(debugModeEnabled))
+        lastDebugToggleChecked = debugModeEnabled
+      }
+    }
+    if (fpsToggleButton) {
+      if (fpsToggleLabel !== lastFpsToggleLabel) {
+        fpsToggleButton.textContent = fpsToggleLabel
+        lastFpsToggleLabel = fpsToggleLabel
+      }
+      if (fpsIndicatorEnabled !== lastFpsToggleChecked) {
+        fpsToggleButton.setAttribute(
+          'aria-checked',
+          String(fpsIndicatorEnabled),
+        )
+        lastFpsToggleChecked = fpsIndicatorEnabled
       }
     }
     if (coastHorizonValue) {

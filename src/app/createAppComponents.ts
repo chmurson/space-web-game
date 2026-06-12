@@ -316,6 +316,8 @@ export const createAppComponents = (options: {
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
+    getFpsIndicatorEnabled: () =>
+      options.runtimeState.debug.fpsIndicatorEnabled,
     getMaxCoastPredictionHorizonHours: () =>
       options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
       options.config.trajectory.maxCoastPredictionHorizonHours,

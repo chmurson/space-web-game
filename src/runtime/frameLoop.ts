@@ -127,7 +127,8 @@ export const createFrameLoop = (options: {
     options.rendererProfiler.render(
       options.gameScene.scene,
       options.gameScene.camera,
-      options.runtime.debug.performanceDebugEnabled,
+      options.runtime.debug.performanceDebugEnabled ||
+        options.runtime.debug.fpsIndicatorEnabled,
     )
 
     smoothedCpuMs = THREE.MathUtils.lerp(

@@ -135,3 +135,52 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
 
   return lines
 }
+
+export type FpsMeterStatus = 'good' | 'warning' | 'danger'
+
+export type FpsMeterTextInput = {
+  smoothedCpuMs: number
+  smoothedFps: number
+  smoothedGpuMs: number | null
+}
+
+const frameBudgetMs60 = 1000 / 60
+
+const formatSignedMs = (value: number) =>
+  `${value >= 0 ? '+' : ''}${value.toFixed(1)}ms`
+
+const getLimitingWorkMs = (input: FpsMeterTextInput) =>
+  input.smoothedGpuMs === null
+    ? input.smoothedCpuMs
+    : Math.max(input.smoothedCpuMs, input.smoothedGpuMs)
+
+export const getFpsMeterStatus = (input: FpsMeterTextInput): FpsMeterStatus => {
+  const limitingWorkMs = getLimitingWorkMs(input)
+
+  if (input.smoothedFps < 45 || limitingWorkMs > frameBudgetMs60) {
+    return 'danger'
+  }
+  if (input.smoothedFps < 55 || limitingWorkMs > frameBudgetMs60 * 0.8) {
+    return 'warning'
+  }
+
+  return 'good'
+}
+
+export const getFpsMeterText = (input: FpsMeterTextInput) => {
+  const safeFps = Math.max(input.smoothedFps, 1)
+  const frameMs = 1000 / safeFps
+  const headroomMs = frameBudgetMs60 - getLimitingWorkMs(input)
+  const gpuText =
+    input.smoothedGpuMs === null
+      ? 'gpu n/a'
+      : `gpu ${input.smoothedGpuMs.toFixed(1)}ms`
+
+  return [
+    `FPS ${input.smoothedFps.toFixed(1)}`,
+    `frame ${frameMs.toFixed(1)}ms`,
+    `cpu ${input.smoothedCpuMs.toFixed(1)}ms`,
+    gpuText,
+    `60Hz ${formatSignedMs(headroomMs)}`,
+  ].join('\n')
+}

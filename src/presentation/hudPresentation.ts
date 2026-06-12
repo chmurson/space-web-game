@@ -9,7 +9,12 @@ import {
   formatSpeed,
   formatTimeWarpLabel,
 } from '../ui/formatters'
-import { getDebugPanelLines, getGuidanceText } from '../ui/hudText'
+import {
+  getDebugPanelLines,
+  getFpsMeterStatus,
+  getFpsMeterText,
+  getGuidanceText,
+} from '../ui/hudText'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import {
   createScenarioPromptUpdater,
@@ -314,13 +319,19 @@ export const createHudPresentation = (options: {
         })
       }
 
-      const fpsIndicatorVisible =
-        options.runtime.debug.debugModeEnabled &&
-        options.runtime.debug.fpsIndicatorEnabled
+      const fpsIndicatorVisible = options.runtime.debug.fpsIndicatorEnabled
       options.overlayUi.fpsIndicator.style.display = fpsIndicatorVisible
         ? 'block'
         : 'none'
-      options.overlayUi.fpsIndicator.textContent = `FPS ${metrics.smoothedFps.toFixed(1)}`
+      const fpsMeterInput = {
+        smoothedCpuMs: metrics.smoothedCpuMs,
+        smoothedFps: metrics.smoothedFps,
+        smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
+      }
+      options.overlayUi.fpsIndicator.textContent =
+        getFpsMeterText(fpsMeterInput)
+      options.overlayUi.fpsIndicator.dataset.status =
+        getFpsMeterStatus(fpsMeterInput)
     },
   }
 }

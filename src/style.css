@@ -803,21 +803,44 @@ canvas {
   white-space: pre-wrap;
 }
 
-#app fps-indicator {
+#app .fps-indicator {
+  --fps-meter-accent: rgba(125, 211, 252, 0.72);
+
   position: fixed;
-  top: 16px;
-  right: 16px;
-  padding: 8px 10px;
+  top: calc(env(safe-area-inset-top, 0px) + 54px);
+  right: 12px;
+  min-width: 108px;
+  max-width: calc(100vw - 24px);
+  padding: 6px 8px 6px 9px;
   border: 1px solid rgba(148, 163, 184, 0.22);
+  border-left-color: var(--fps-meter-accent);
+  border-left-width: 3px;
   border-radius: 6px;
   background: rgba(5, 7, 13, 0.82);
   color: #dbeafe;
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     monospace;
-  font-size: 12px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.28;
   pointer-events: none;
+  white-space: pre;
   z-index: var(--z-overlay-debug);
+}
+
+#app .fps-indicator::first-line {
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+#app .fps-indicator[data-status="warning"] {
+  --fps-meter-accent: rgba(250, 204, 21, 0.86);
+}
+
+#app .fps-indicator[data-status="danger"] {
+  --fps-meter-accent: rgba(248, 113, 113, 0.9);
 }
 
 .tutorial-focus-overlay {
@@ -1134,9 +1157,9 @@ canvas {
   }
 
   #app .fps-indicator {
-    top: auto;
+    top: calc(env(safe-area-inset-top, 0px) + 54px);
     right: 10px;
-    bottom: 72px;
+    min-width: 104px;
   }
 
   #app .debug-panel {
