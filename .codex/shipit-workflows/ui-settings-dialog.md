@@ -15,7 +15,7 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated (not requested)
+- [x] Merged to main (PR not used)
 
 ## Artifacts
 
@@ -226,11 +226,19 @@ Validation results:
 - Browser smoke test at `http://127.0.0.1:5173/`: passed after the reusable-dialog refactor. Verified the top menu opens `UI settings`, Burn side can be changed, and Close removes the dialog.
 - Earlier browser smoke test also passed on desktop and 390x844 mobile viewport, including mobile panel bounds and backdrop dimming.
 - `npm run deploy:netlify`: passed for shared staging site after the reusable-dialog refactor.
+- Post-merge `main` validation: `npm test` passed, 29 files and 126 tests; `npm run build` passed with the existing non-failing chunk-size warning.
 
 Staging deploy:
 
 - Shared staging URL: https://fanciful-bunny-d77b4b.netlify.app
 - Unique deploy URL: https://6a2c00169caa9e2dc31bcff8--fanciful-bunny-d77b4b.netlify.app
+
+Main merge and production deploy:
+
+- Feature commit: 735c95f
+- Main merge commit: 557472d
+- Production URL: https://space-web-game.netlify.app
+- Unique production deploy URL: https://6a2c0adafa0caf11ce31928c--space-web-game.netlify.app
 
 Residual risk:
 
