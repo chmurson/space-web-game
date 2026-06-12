@@ -10,6 +10,8 @@ export type TopMenu = {
   syncState: () => void
 }
 
+export type TopMenuAction = UIUserAction | 'enterMainMenu'
+
 export const createTopMenu = (options: {
   app: HTMLElement
   getCoastPredictionHorizonHours: () => number
@@ -18,7 +20,7 @@ export const createTopMenu = (options: {
   getMinCoastPredictionHorizonHours: () => number
   getTouchBurnControlSide: () => TouchControlSide
   getTouchWarpControlSide: () => TouchControlSide
-  onAction: (action: UIUserAction) => void
+  onAction: (action: TopMenuAction) => void
   onTouchBurnControlSideChange(side: TouchControlSide): void
   onTouchWarpControlSideChange(side: TouchControlSide): void
 }): TopMenu => {
@@ -43,6 +45,10 @@ export const createTopMenu = (options: {
       <span></span>
     </button>
     <div class="top-menu-dropdown" id="${menuId}" role="menu" hidden>
+      <button type="button" role="menuitem" data-menu-action="enterMainMenu">Exit</button>
+
+      <hr class="menu-separator" />
+
       <section class="menu-section" aria-labelledby="${debugSectionLabelId}">
         <div class="menu-section-label" id="${debugSectionLabelId}">Debug</div>
         <button type="button" role="menuitem" data-menu-action="toggleDebugMode" data-menu-debug-toggle></button>
@@ -100,6 +106,9 @@ export const createTopMenu = (options: {
     throw new Error('Failed to create top menu')
   }
 
+  const exitButton = dropdown.querySelector<HTMLButtonElement>(
+    '[data-menu-action="enterMainMenu"]',
+  )
   const loadSnapshotButton = dropdown.querySelector<HTMLButtonElement>(
     '[data-menu-action="loadDebugSnapshot"]',
   )
@@ -160,12 +169,24 @@ export const createTopMenu = (options: {
       'button[role="menuitem"], button[role="menuitemradio"]',
     ),
   )
+  let exitConfirmationPending = false
   let lastCoastHorizonLabel = ''
   let lastDebugToggleLabel = ''
   let lastDecreaseDisabled: boolean | null = null
   let lastIncreaseDisabled: boolean | null = null
   const focusItem = (index: number) => {
     menuItems.at(index)?.focus()
+  }
+  const syncExitConfirmation = () => {
+    if (!exitButton) {
+      return
+    }
+
+    exitButton.textContent = exitConfirmationPending ? 'Confirm exit' : 'Exit'
+  }
+  const resetExitConfirmation = () => {
+    exitConfirmationPending = false
+    syncExitConfirmation()
   }
   const syncSnapshotAvailability = () => {
     if (!loadSnapshotButton) {
@@ -213,7 +234,7 @@ export const createTopMenu = (options: {
     }
     syncTouchControlSides()
   }
-  const shouldKeepOpenAfterAction = (action: UIUserAction) => {
+  const shouldKeepOpenAfterAction = (action: TopMenuAction) => {
     return (
       action === 'decreaseCoastHorizon' || action === 'increaseCoastHorizon'
     )
@@ -230,6 +251,10 @@ export const createTopMenu = (options: {
     button.setAttribute('aria-expanded', String(open))
     dropdown.hidden = !open
     root.classList.toggle('top-menu-open', open)
+
+    if (!open) {
+      resetExitConfirmation()
+    }
 
     if (open && focusTarget === 'first-item') {
       focusItem(0)
@@ -250,8 +275,14 @@ export const createTopMenu = (options: {
       return
     }
 
-    const action = target.dataset.menuAction as UIUserAction | undefined
+    const action = target.dataset.menuAction as TopMenuAction | undefined
     if (!action) {
+      return
+    }
+
+    if (action === 'enterMainMenu' && !exitConfirmationPending) {
+      exitConfirmationPending = true
+      syncExitConfirmation()
       return
     }
 
@@ -260,6 +291,7 @@ export const createTopMenu = (options: {
       syncSnapshotAvailability()
     }
     syncState()
+    resetExitConfirmation()
     if (!shouldKeepOpenAfterAction(action)) {
       setOpen(false, 'button')
     }
@@ -312,6 +344,7 @@ export const createTopMenu = (options: {
   })
 
   syncState()
+  syncExitConfirmation()
 
   return {
     close: () => setOpen(false),

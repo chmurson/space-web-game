@@ -27,7 +27,11 @@ import { createGameScene } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import { createCrashMenu, type CrashMenu } from '../ui/createCrashMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
-import { createTopMenu, type TopMenu } from '../ui/createTopMenu'
+import {
+  createTopMenu,
+  type TopMenu,
+  type TopMenuAction,
+} from '../ui/createTopMenu'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
   createOverlayUi,
@@ -275,6 +279,17 @@ export const createAppComponents = (options: {
     },
     onZoom: runtimeActions.zoomCamera,
   })
+  const handleTopMenuAction = (action: TopMenuAction) => {
+    if (action === 'enterMainMenu') {
+      gameHighLevelActionsMediator.dispatch({
+        type: 'enterMainMenu',
+      })
+      return
+    }
+
+    dispatchRuntimeAction(action)
+  }
+
   const topMenu = createTopMenu({
     app: options.app,
     getCoastPredictionHorizonHours: () =>
@@ -287,7 +302,7 @@ export const createAppComponents = (options: {
       options.config.trajectory.minCoastPredictionHorizonHours,
     getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchWarpControlSide: () => touchWarpControlSide,
-    onAction: (action) => dispatchRuntimeAction(action),
+    onAction: handleTopMenuAction,
     onTouchBurnControlSideChange: (side) => {
       touchBurnControlSide = side
       touchControls.setBurnControlSide(side)
