@@ -5,6 +5,7 @@ import type {
   TimeWarpAction,
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
+import type { TrajectoryHorizonAction } from '../../runtime/trajectoryHorizonControlPolicy'
 import type { ScenarioTouchHintTarget } from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
 import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
@@ -14,13 +15,16 @@ import {
   type TouchControlRevealEdge,
   type TouchControlRevealPlacement,
 } from './edgeRevealControl'
+import type { StepSelectorGestureSession } from './stepSelectorControl/stepSelectorControlTypes'
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
-import type { TimeWarpGestureSession } from './timeWarpControlTypes'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
+import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/createTrajectoryHorizonControl'
 
 export type TouchControls = {
   element: HTMLElement
   setBurnControlSide(side: TouchControlRevealEdge): void
+  setTrajectoryControlSide(side: TouchControlRevealEdge): void
+  setTrajectoryControlVisible(visible: boolean): void
   setWarpControlSide(side: TouchControlRevealEdge): void
   setTimeWarpControlVisible(visible: boolean): void
   setTutorialHintTarget(target: ScenarioTouchHintTarget | null): void
@@ -44,6 +48,9 @@ const touchControlRevealLayout = {
   controls: {
     timeWarp: {
       edge: 'right',
+      priority: 10,
+    },
+    trajectory: {
       priority: 10,
     },
     thrust: {
@@ -78,7 +85,8 @@ type ActiveGestureSession =
       lastDistance: number
       touchIds: [number, number]
     }
-  | TimeWarpGestureSession
+  | StepSelectorGestureSession<'time-warp'>
+  | StepSelectorGestureSession<'trajectory-horizon'>
   | ThrustGestureSession
 
 const getTouchDistance = (first: Touch, second: Touch) =>
@@ -135,8 +143,17 @@ const syncRevealControlLayout = (revealControls: EdgeRevealControl[]) => {
 
 export const createTouchControls = (options: {
   app: HTMLElement
+  commitTrajectoryHorizon(action: TrajectoryHorizonAction): void
   commitTimeWarp(action: TimeWarpAction): void
+  getCurrentTrajectoryHorizonHours(): number
   getCurrentTimeWarp(): number
+  getTrajectoryHorizonPreviews(
+    action: TrajectoryHorizonAction,
+    count: number,
+  ): {
+    canCommit: boolean
+    value: number
+  }[]
   getTimeWarpPreview(action: TimeWarpAction): {
     canCommit: boolean
     reason: TimeWarpFeedbackReason | null
@@ -151,6 +168,7 @@ export const createTouchControls = (options: {
     value: number
   }[]
   initialBurnControlSide: TouchControlRevealEdge
+  initialTrajectoryControlSide: TouchControlRevealEdge
   initialWarpControlSide: TouchControlRevealEdge
   keyboardInput: KeyboardInput
   onTargetHeadingSelected(screenX: number, screenY: number): void
@@ -188,6 +206,21 @@ export const createTouchControls = (options: {
     panel,
   })
 
+  const trajectoryHorizonDock = document.createElement('div')
+  trajectoryHorizonDock.className =
+    'touch-edge-reveal-dock touch-trajectory-horizon-reveal-dock'
+  trajectoryHorizonDock.dataset.touchControlDock = 'trajectory'
+  const trajectoryHorizonControl = createTrajectoryHorizonControl({
+    container: trajectoryHorizonDock,
+    commitTrajectoryHorizon: options.commitTrajectoryHorizon,
+    getCurrentTrajectoryHorizonHours: options.getCurrentTrajectoryHorizonHours,
+    getTrajectoryHorizonPreviews: options.getTrajectoryHorizonPreviews,
+    onSessionChange: (session) => {
+      activeSession = session
+    },
+    panel,
+  })
+
   const thrustDock = document.createElement('div')
   thrustDock.className = 'touch-edge-reveal-dock touch-thrust-reveal-dock'
   thrustDock.dataset.touchControlDock = 'burn'
@@ -207,6 +240,10 @@ export const createTouchControls = (options: {
     edge: options.initialWarpControlSide,
     priority: touchControlRevealLayout.controls.timeWarp.priority,
   }
+  const trajectoryHorizonRevealPlacement: TouchControlRevealPlacement = {
+    edge: options.initialTrajectoryControlSide,
+    priority: touchControlRevealLayout.controls.trajectory.priority,
+  }
   const thrustRevealPlacement: TouchControlRevealPlacement = {
     edge: options.initialBurnControlSide,
     priority: touchControlRevealLayout.controls.thrust.priority,
@@ -219,6 +256,13 @@ export const createTouchControls = (options: {
     label: 'Reveal time warp control',
     placement: timeWarpRevealPlacement,
   })
+  const trajectoryHorizonRevealControl = createEdgeRevealControl({
+    content: trajectoryHorizonDock,
+    icon: 'Traj',
+    id: 'touch-trajectory-horizon-reveal',
+    label: 'Reveal trajectory prediction horizon control',
+    placement: trajectoryHorizonRevealPlacement,
+  })
   const thrustRevealControl = createEdgeRevealControl({
     content: thrustDock,
     icon: 'Burn',
@@ -226,9 +270,17 @@ export const createTouchControls = (options: {
     label: 'Reveal thrust control',
     placement: thrustRevealPlacement,
   })
-  const revealControls = [timeWarpRevealControl, thrustRevealControl]
+  const revealControls = [
+    timeWarpRevealControl,
+    trajectoryHorizonRevealControl,
+    thrustRevealControl,
+  ]
   syncRevealControlLayout(revealControls)
-  panel.append(timeWarpRevealControl.element, thrustRevealControl.element)
+  panel.append(
+    timeWarpRevealControl.element,
+    trajectoryHorizonRevealControl.element,
+    thrustRevealControl.element,
+  )
 
   const clearActiveSession = () => {
     if (activeSession.kind === 'right-zone-pending') {
@@ -242,24 +294,50 @@ export const createTouchControls = (options: {
     lastTap = null
   }
 
-  const finishLeftZoneGesture = (commitPreview: boolean) => {
-    if (activeSession.kind !== 'left-zone') {
+  const finishStepSelectorGesture = (commitPreview: boolean) => {
+    if (activeSession.kind !== 'step-selector') {
       return
     }
 
-    activeSession = timeWarpControl.finishGesture(
+    if (activeSession.controlId === 'time-warp') {
+      activeSession = timeWarpControl.finishGesture(
+        activeSession,
+        commitPreview && timeWarpControlVisible,
+      )
+      return
+    }
+
+    activeSession = trajectoryHorizonControl.finishGesture(
       activeSession,
-      commitPreview && timeWarpControlVisible,
+      commitPreview && trajectoryHorizonControlVisible,
     )
   }
 
   const setTimeWarpControlVisible = (visible: boolean) => {
     timeWarpControlVisible = visible
-    if (!visible && activeSession.kind === 'left-zone') {
-      finishLeftZoneGesture(false)
+    if (
+      !visible &&
+      activeSession.kind === 'step-selector' &&
+      activeSession.controlId === 'time-warp'
+    ) {
+      finishStepSelectorGesture(false)
     }
     timeWarpRevealControl.setAvailable(visible)
     timeWarpControl.setVisible(visible)
+  }
+
+  let trajectoryHorizonControlVisible = true
+  const setTrajectoryControlVisible = (visible: boolean) => {
+    trajectoryHorizonControlVisible = visible
+    if (
+      !visible &&
+      activeSession.kind === 'step-selector' &&
+      activeSession.controlId === 'trajectory-horizon'
+    ) {
+      finishStepSelectorGesture(false)
+    }
+    trajectoryHorizonRevealControl.setAvailable(visible)
+    trajectoryHorizonControl.setVisible(visible)
   }
 
   const clearRightZoneGesture = () => {
@@ -269,8 +347,8 @@ export const createTouchControls = (options: {
   }
 
   const clearZoneGesture = () => {
-    if (activeSession.kind === 'left-zone') {
-      finishLeftZoneGesture(false)
+    if (activeSession.kind === 'step-selector') {
+      finishStepSelectorGesture(false)
       return
     }
 
@@ -302,12 +380,23 @@ export const createTouchControls = (options: {
     pinchSuppressTapUntil = performance.now() + pinchSuppressTapMs
   }
 
-  const beginLeftZoneSession = (touch: Touch) => {
+  const beginTimeWarpSession = (touch: Touch) => {
     if (!timeWarpControlVisible || !timeWarpRevealControl.isOpen()) {
       return
     }
 
     activeSession = timeWarpControl.beginGesture(touch)
+  }
+
+  const beginTrajectoryHorizonSession = (touch: Touch) => {
+    if (
+      !trajectoryHorizonControlVisible ||
+      !trajectoryHorizonRevealControl.isOpen()
+    ) {
+      return
+    }
+
+    activeSession = trajectoryHorizonControl.beginGesture(touch)
   }
 
   const beginDockedThrustSession = (touch: Touch) => {
@@ -342,14 +431,16 @@ export const createTouchControls = (options: {
   const sessionOwnsTouch = (touchId: number) => {
     switch (activeSession.kind) {
       case 'double-tap-zoom':
-      case 'left-zone':
+      case 'step-selector':
       case 'right-zone-pending':
       case 'right-zone-active':
         return activeSession.kind === 'right-zone-pending' ||
           activeSession.kind === 'right-zone-active'
           ? thrustControl.ownsTouch(activeSession, touchId)
-          : activeSession.kind === 'left-zone'
-            ? timeWarpControl.ownsTouch(activeSession, touchId)
+          : activeSession.kind === 'step-selector'
+            ? activeSession.controlId === 'time-warp'
+              ? timeWarpControl.ownsTouch(activeSession, touchId)
+              : trajectoryHorizonControl.ownsTouch(activeSession, touchId)
             : activeSession.touchId === touchId
       case 'pinch':
         return activeSession.touchIds.includes(touchId)
@@ -383,10 +474,14 @@ export const createTouchControls = (options: {
       const isTimeWarpTarget =
         timeWarpRevealControl.isOpen() &&
         isEventTargetInside(timeWarpRevealControl.element, eventTarget)
+      const isTrajectoryHorizonTarget =
+        trajectoryHorizonRevealControl.isOpen() &&
+        isEventTargetInside(trajectoryHorizonRevealControl.element, eventTarget)
       const isThrustTarget =
         thrustRevealControl.isOpen() &&
         isEventTargetInside(thrustRevealControl.element, eventTarget)
-      const isRevealControlTarget = isTimeWarpTarget || isThrustTarget
+      const isRevealControlTarget =
+        isTimeWarpTarget || isTrajectoryHorizonTarget || isThrustTarget
       let startedDoubleTapZoom = false
 
       if (
@@ -433,7 +528,9 @@ export const createTouchControls = (options: {
 
         for (const touch of Array.from(event.changedTouches)) {
           if (isTimeWarpTarget) {
-            beginLeftZoneSession(touch)
+            beginTimeWarpSession(touch)
+          } else if (isTrajectoryHorizonTarget) {
+            beginTrajectoryHorizonSession(touch)
           } else if (isThrustTarget) {
             beginDockedThrustSession(touch)
           }
@@ -508,9 +605,14 @@ export const createTouchControls = (options: {
           }
           return
         }
-        case 'left-zone': {
-          if (!timeWarpControlVisible) {
-            finishLeftZoneGesture(false)
+        case 'step-selector': {
+          if (
+            (activeSession.controlId === 'time-warp' &&
+              !timeWarpControlVisible) ||
+            (activeSession.controlId === 'trajectory-horizon' &&
+              !trajectoryHorizonControlVisible)
+          ) {
+            finishStepSelectorGesture(false)
             return
           }
 
@@ -519,7 +621,10 @@ export const createTouchControls = (options: {
             return
           }
 
-          activeSession = timeWarpControl.updateGesture(touch, activeSession)
+          activeSession =
+            activeSession.controlId === 'time-warp'
+              ? timeWarpControl.updateGesture(touch, activeSession)
+              : trajectoryHorizonControl.updateGesture(touch, activeSession)
           return
         }
         case 'right-zone-pending':
@@ -571,10 +676,10 @@ export const createTouchControls = (options: {
         }
 
         if (
-          activeSession.kind === 'left-zone' &&
+          activeSession.kind === 'step-selector' &&
           activeSession.touchId === touch.identifier
         ) {
-          finishLeftZoneGesture(true)
+          finishStepSelectorGesture(true)
         }
 
         if (
@@ -632,8 +737,8 @@ export const createTouchControls = (options: {
           sessionOwnsTouch(touch.identifier),
         )
       ) {
-        if (activeSession.kind === 'left-zone') {
-          finishLeftZoneGesture(false)
+        if (activeSession.kind === 'step-selector') {
+          finishStepSelectorGesture(false)
         } else if (
           activeSession.kind === 'right-zone-pending' ||
           activeSession.kind === 'right-zone-active'
@@ -645,16 +750,19 @@ export const createTouchControls = (options: {
       }
 
       timeWarpControl.syncUi()
+      trajectoryHorizonControl.syncUi()
     },
     { passive: false },
   )
 
   options.app.appendChild(panel)
   thrustControl.syncUi()
+  trajectoryHorizonControl.syncUi()
 
   window.addEventListener('resize', () => {
     thrustControl.syncUi()
     timeWarpControl.syncUi()
+    trajectoryHorizonControl.syncUi()
   })
 
   return {
@@ -663,6 +771,11 @@ export const createTouchControls = (options: {
       thrustRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)
     },
+    setTrajectoryControlSide: (side) => {
+      trajectoryHorizonRevealControl.setEdge(side)
+      syncRevealControlLayout(revealControls)
+    },
+    setTrajectoryControlVisible,
     setWarpControlSide: (side) => {
       timeWarpRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)
@@ -675,6 +788,7 @@ export const createTouchControls = (options: {
     },
     syncUi: () => {
       timeWarpControl.syncUi()
+      trajectoryHorizonControl.syncUi()
       thrustControl.syncUi()
     },
     updateAssistMode: (_mode) => {},

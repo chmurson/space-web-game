@@ -2,6 +2,10 @@ import type {
   TimeWarpAction,
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
+import type {
+  StepSelectorControl,
+  StepSelectorGestureSession,
+} from './stepSelectorControl/stepSelectorControlTypes'
 
 export type TimeWarpPreview = {
   canCommit: boolean
@@ -11,13 +15,7 @@ export type TimeWarpPreview = {
 
 export type TimeWarpGestureSession =
   | { kind: 'none' }
-  | {
-      kind: 'left-zone'
-      hasCommitted?: boolean
-      startX: number
-      startY: number
-      touchId: number
-    }
+  | StepSelectorGestureSession<'time-warp'>
 
 export type TimeWarpControlOptions = {
   commitTimeWarp(action: TimeWarpAction): void
@@ -29,18 +27,4 @@ export type TimeWarpControlOptions = {
   panel: HTMLElement
 }
 
-export type TimeWarpControl = {
-  beginGesture(touch: Touch): TimeWarpGestureSession
-  finishGesture(
-    session: TimeWarpGestureSession,
-    commitPreview: boolean,
-  ): TimeWarpGestureSession
-  ownsTouch(session: TimeWarpGestureSession, touchId: number): boolean
-  setVisible(visible: boolean): void
-  setSession(session: TimeWarpGestureSession): void
-  syncUi(): void
-  updateGesture(
-    touch: Touch,
-    session: TimeWarpGestureSession,
-  ): TimeWarpGestureSession
-}
+export type TimeWarpControl = StepSelectorControl<'time-warp'>

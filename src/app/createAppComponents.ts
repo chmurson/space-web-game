@@ -1,48 +1,49 @@
 import * as THREE from 'three'
-import type { UIUserAction } from '../input/uiUserActions'
 import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
   bindPointerCameraInput,
   createScreenPointHeadingPicker,
 } from '../input/pointerCameraInput'
+import type { UIUserAction } from '../input/uiUserActions'
 import { createBodyPresentation } from '../presentation/bodyPresentation'
 import { createHudPresentation } from '../presentation/hudPresentation'
 import { createSpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import { createTrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import { createRendererProfiler } from '../render/rendererProfiler'
+import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import { createFrameLoop } from '../runtime/frameLoop'
 import { createGameQueries } from '../runtime/gameQueries'
 import { GameHighLevelActionsMediator } from '../runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { registerHighLevelActions } from '../runtime/highLevelActions/registerHighLevelActions'
 import { createRuntimeActions } from '../runtime/runtimeActions'
-import { parsePromptAction } from '../scenario/scenarioPrompts'
 import { defaultMaxControlWarp } from '../runtime/simulationStep'
 import {
   getTimeWarpFeedbackPreview,
   getTimeWarpFeedbackPreviews,
 } from '../runtime/timeWarpFeedbackPolicy'
+import { getTrajectoryHorizonPreviews } from '../runtime/trajectoryHorizonControlPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
+import { parsePromptAction } from '../scenario/scenarioPrompts'
 import { createGameScene } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
-import { createCrashMenu, type CrashMenu } from '../ui/createCrashMenu'
+import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
 import {
   createTopMenu,
   type TopMenu,
   type TopMenuAction,
 } from '../ui/createTopMenu'
-import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
   createOverlayUi,
   type OverlayUiRefs,
 } from '../ui/overlayUI/createOverlayUi'
 import { createRipple, type Ripple } from '../ui/overlayUpdates'
+import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
-  updateUserSettings,
   type TouchControlSide,
+  updateUserSettings,
 } from '../userSettingsStorage'
-import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
 
 type AppRuntimeCoordinator = {
@@ -209,17 +210,36 @@ export const createAppComponents = (options: {
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
   let touchBurnControlSide: TouchControlSide =
     options.config.userSettings.touchBurnControlSide
+  let touchTrajectoryControlSide: TouchControlSide =
+    options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
   const touchControls = createTouchControls({
     app: options.app,
+    commitTrajectoryHorizon: (action) => {
+      dispatchRuntimeAction(action)
+    },
     commitTimeWarp: (action) => {
       dispatchRuntimeAction(action)
     },
+    getCurrentTrajectoryHorizonHours: () =>
+      options.runtimeState.simulation.coastPredictionHorizonHours,
     getCurrentTimeWarp: () =>
       options.config.controls.timeWarps[
         options.runtimeState.simulation.timeWarpIndex
       ] ?? 1,
+    getTrajectoryHorizonPreviews: (action, count) =>
+      getTrajectoryHorizonPreviews({
+        action,
+        count,
+        currentHours:
+          options.runtimeState.simulation.coastPredictionHorizonHours,
+        maxHours:
+          options.runtimeState.scenario.directives
+            .maxCoastPredictionHorizonHours ??
+          options.config.trajectory.maxCoastPredictionHorizonHours,
+        minHours: options.config.trajectory.minCoastPredictionHorizonHours,
+      }),
     getTimeWarpPreview: (action) => {
       return getTimeWarpFeedbackPreview({
         action,
@@ -260,6 +280,7 @@ export const createAppComponents = (options: {
       })
     },
     initialBurnControlSide: touchBurnControlSide,
+    initialTrajectoryControlSide: touchTrajectoryControlSide,
     initialWarpControlSide: touchWarpControlSide,
     keyboardInput,
     onTargetHeadingSelected: (screenX, screenY) => {
@@ -301,12 +322,18 @@ export const createAppComponents = (options: {
     getMinCoastPredictionHorizonHours: () =>
       options.config.trajectory.minCoastPredictionHorizonHours,
     getTouchBurnControlSide: () => touchBurnControlSide,
+    getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
     getTouchWarpControlSide: () => touchWarpControlSide,
     onAction: handleTopMenuAction,
     onTouchBurnControlSideChange: (side) => {
       touchBurnControlSide = side
       touchControls.setBurnControlSide(side)
       updateUserSettings({ touchBurnControlSide: side })
+    },
+    onTouchTrajectoryControlSideChange: (side) => {
+      touchTrajectoryControlSide = side
+      touchControls.setTrajectoryControlSide(side)
+      updateUserSettings({ touchTrajectoryControlSide: side })
     },
     onTouchWarpControlSideChange: (side) => {
       touchWarpControlSide = side

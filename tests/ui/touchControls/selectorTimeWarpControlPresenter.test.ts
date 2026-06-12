@@ -11,12 +11,12 @@ describe('selectorTimeWarpControlPresenter', () => {
         runtimeSnapshot: {
           currentValue: 300,
           decreaseSteps: [
-            { canCommit: true, reason: null, value: 60 },
-            { canCommit: true, reason: null, value: 30 },
+            { canCommit: true, value: 60 },
+            { canCommit: true, value: 30 },
           ],
           increaseSteps: [
-            { canCommit: true, reason: null, value: 1800 },
-            { canCommit: false, reason: 'scenario-limit', value: 3600 },
+            { canCommit: true, value: 1800 },
+            { canCommit: false, value: 3600 },
           ],
         },
       }),

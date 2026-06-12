@@ -6,15 +6,15 @@ describe('selectorTimeWarpControlModel', () => {
     const model = createSelectorTimeWarpControlModel()
     model.setRuntimeSnapshot({
       currentValue: 60,
-      decreaseSteps: [{ canCommit: true, reason: null, value: 1 }],
-      increaseSteps: [{ canCommit: true, reason: null, value: 300 }],
+      decreaseSteps: [{ canCommit: true, value: 1 }],
+      increaseSteps: [{ canCommit: true, value: 300 }],
     })
     model.startGesture()
 
     const duringGesture = model.setRuntimeSnapshot({
       currentValue: 300,
-      decreaseSteps: [{ canCommit: true, reason: null, value: 60 }],
-      increaseSteps: [{ canCommit: true, reason: null, value: 1800 }],
+      decreaseSteps: [{ canCommit: true, value: 60 }],
+      increaseSteps: [{ canCommit: true, value: 1800 }],
     })
 
     expect(duringGesture.runtimeSnapshot.currentValue).toBe(60)
@@ -30,7 +30,7 @@ describe('selectorTimeWarpControlModel', () => {
     model.setRuntimeSnapshot({
       currentValue: 60,
       decreaseSteps: [],
-      increaseSteps: [{ canCommit: true, reason: null, value: 300 }],
+      increaseSteps: [{ canCommit: true, value: 300 }],
     })
     model.startGesture()
 
@@ -38,7 +38,7 @@ describe('selectorTimeWarpControlModel', () => {
       direction: 'increase',
       progress: 1,
       releaseWillCommit: true,
-      target: { canCommit: true, reason: null, value: 300 },
+      target: { canCommit: true, value: 300 },
       visualDirection: 'increase',
     })
 

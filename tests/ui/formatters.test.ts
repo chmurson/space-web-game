@@ -3,6 +3,7 @@ import {
   formatCompactElapsed,
   formatSpeed,
   formatTimeWarpLabel,
+  formatTrajectoryHorizonDuration,
 } from '@/ui/formatters'
 
 describe('formatCompactElapsed', () => {
@@ -53,5 +54,15 @@ describe('formatTimeWarpLabel', () => {
     expect(formatTimeWarpLabel(3600)).toBe('x1h')
     expect(formatTimeWarpLabel(7200)).toBe('x2h')
     expect(formatTimeWarpLabel(18000)).toBe('x5h')
+  })
+})
+
+describe('formatTrajectoryHorizonDuration', () => {
+  it('formats trajectory horizons without fractional days', () => {
+    expect(formatTrajectoryHorizonDuration(30 * 60)).toBe('30m')
+    expect(formatTrajectoryHorizonDuration(16 * 3600)).toBe('16h')
+    expect(formatTrajectoryHorizonDuration(24 * 3600)).toBe('1d')
+    expect(formatTrajectoryHorizonDuration(32 * 3600)).toBe('32h')
+    expect(formatTrajectoryHorizonDuration(48 * 3600)).toBe('2d')
   })
 })

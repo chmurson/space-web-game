@@ -1163,7 +1163,7 @@ canvas {
 #app.app-main-menu .body-label,
 #app.app-main-menu .touch-controls,
 #app.app-main-menu .touch-time-warp-feedback,
-#app.app-main-menu .touch-time-warp-selector,
+#app.app-main-menu .touch-step-selector,
 #app.app-main-menu .fps-indicator,
 #app.app-main-menu .debug-panel {
   display: none;

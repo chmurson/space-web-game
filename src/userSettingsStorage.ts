@@ -3,6 +3,7 @@ const userSettingsStorageKey = 'space-web-game.userSettings.v1'
 export type UserSettings = {
   debugModeEnabled: boolean
   touchBurnControlSide: TouchControlSide
+  touchTrajectoryControlSide: TouchControlSide
   touchWarpControlSide: TouchControlSide
 }
 
@@ -11,6 +12,7 @@ export type TouchControlSide = 'left' | 'right'
 const defaultUserSettings: UserSettings = {
   debugModeEnabled: false,
   touchBurnControlSide: 'right',
+  touchTrajectoryControlSide: 'left',
   touchWarpControlSide: 'right',
 }
 
@@ -36,6 +38,10 @@ const parseUserSettings = (value: unknown): UserSettings => {
       parseTouchControlSide(settings.touchBurnControlSide) ??
       legacyTouchControlSide ??
       defaultUserSettings.touchBurnControlSide,
+    touchTrajectoryControlSide:
+      parseTouchControlSide(settings.touchTrajectoryControlSide) ??
+      legacyTouchControlSide ??
+      defaultUserSettings.touchTrajectoryControlSide,
     touchWarpControlSide:
       parseTouchControlSide(settings.touchWarpControlSide) ??
       legacyTouchControlSide ??

@@ -5,14 +5,14 @@ import {
   EARTH_VIEWPORT_SIZE,
 } from '@/domain/viewportPresets'
 import * as sceneUpdates from '@/render/sceneUpdates'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { GameHighLevelActionsMediator } from '@/runtime/highLevelActions/gameHighLevelActionDispatcher'
+import { createRuntimeActions } from '@/runtime/runtimeActions'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
 } from '@/scenario/scenarioSession'
-import type { AppRuntimeState } from '@/runtime/appRuntimeState'
-import { GameHighLevelActionsMediator } from '@/runtime/highLevelActions/gameHighLevelActionDispatcher'
-import { createRuntimeActions } from '@/runtime/runtimeActions'
 
 const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,
@@ -214,6 +214,26 @@ describe('createRuntimeActions', () => {
 
     expect(runtime.simulation.timeWarpIndex).toBe(0)
     expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
+  })
+
+  it('changes coast horizon on the trajectory whole-day ladder', () => {
+    const runtime = createRuntime()
+    runtime.simulation.coastPredictionHorizonHours = 16
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.handleUIUserAction('increaseCoastHorizon')).toEqual({
+      refreshTrajectoryPrediction: true,
+    })
+    expect(runtime.simulation.coastPredictionHorizonHours).toBe(24)
+
+    runtimeActions.handleUIUserAction('increaseCoastHorizon')
+    expect(runtime.simulation.coastPredictionHorizonHours).toBe(48)
+
+    runtimeActions.handleUIUserAction('decreaseCoastHorizon')
+    expect(runtime.simulation.coastPredictionHorizonHours).toBe(24)
+
+    runtimeActions.handleUIUserAction('decreaseCoastHorizon')
+    expect(runtime.simulation.coastPredictionHorizonHours).toBe(16)
   })
 
   it('switches to the menu background scenario and menu-only overrides', () => {

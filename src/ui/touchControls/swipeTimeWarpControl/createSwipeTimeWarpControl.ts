@@ -1,16 +1,20 @@
 import './swipeTimeWarpControl.css'
-import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
-import { presentTimeWarpFeedback } from './timeWarpFeedbackPresenter'
-import { createTimeWarpFeedbackView } from './timeWarpFeedbackView'
 import type {
   TimeWarpControl,
   TimeWarpControlOptions,
   TimeWarpGestureSession,
 } from '../timeWarpControlTypes'
+import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
+import { presentTimeWarpFeedback } from './timeWarpFeedbackPresenter'
+import { createTimeWarpFeedbackView } from './timeWarpFeedbackView'
 
 const committedTimeWarpFeedbackFadeMs = 1000
 const maxMobileTouchDimensionPx = 430
 const timeWarpFeedbackOffsetYPx = 62
+type ActiveTimeWarpGestureSession = Exclude<
+  TimeWarpGestureSession,
+  { kind: 'none' }
+>
 
 export const createSwipeTimeWarpControl = (
   options: TimeWarpControlOptions,
@@ -48,8 +52,9 @@ export const createSwipeTimeWarpControl = (
     feedbackView.render(presentTimeWarpFeedback(feedbackModel.cancelPreview()))
   }
 
-  const beginGesture = (touch: Touch): TimeWarpGestureSession => ({
-    kind: 'left-zone',
+  const beginGesture = (touch: Touch): ActiveTimeWarpGestureSession => ({
+    kind: 'step-selector',
+    controlId: 'time-warp',
     startX: touch.clientX,
     startY: touch.clientY,
     touchId: touch.identifier,
@@ -57,9 +62,13 @@ export const createSwipeTimeWarpControl = (
 
   const updateGesture = (
     touch: Touch,
-    session: TimeWarpGestureSession,
-  ): TimeWarpGestureSession => {
-    if (session.kind !== 'left-zone' || session.touchId !== touch.identifier) {
+    session: ActiveTimeWarpGestureSession,
+  ): ActiveTimeWarpGestureSession => {
+    if (
+      session.kind !== 'step-selector' ||
+      session.controlId !== 'time-warp' ||
+      session.touchId !== touch.identifier
+    ) {
       return session
     }
 
@@ -89,7 +98,7 @@ export const createSwipeTimeWarpControl = (
     session: TimeWarpGestureSession,
     commitPreview: boolean,
   ): TimeWarpGestureSession => {
-    if (session.kind !== 'left-zone') {
+    if (session.kind !== 'step-selector' || session.controlId !== 'time-warp') {
       return session
     }
 
@@ -124,7 +133,11 @@ export const createSwipeTimeWarpControl = (
       return nextSession
     },
     ownsTouch(session: TimeWarpGestureSession, touchId: number) {
-      return session.kind === 'left-zone' && session.touchId === touchId
+      return (
+        session.kind === 'step-selector' &&
+        session.controlId === 'time-warp' &&
+        session.touchId === touchId
+      )
     },
     setVisible(visible) {
       timeWarpFeedback.style.display = visible ? 'block' : 'none'
@@ -134,7 +147,7 @@ export const createSwipeTimeWarpControl = (
     },
     setSession,
     syncUi,
-    updateGesture(touch: Touch, session: TimeWarpGestureSession) {
+    updateGesture(touch: Touch, session: ActiveTimeWarpGestureSession) {
       const nextSession = updateGesture(touch, session)
       setSession(nextSession)
       return nextSession

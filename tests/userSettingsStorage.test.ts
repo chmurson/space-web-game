@@ -37,10 +37,11 @@ describe('userSettingsStorage', () => {
     })
   })
 
-  it('defaults touch controls to the right side', () => {
+  it('defaults touch controls to their configured sides', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: false,
       touchBurnControlSide: 'right',
+      touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'right',
     })
   })
@@ -49,12 +50,14 @@ describe('userSettingsStorage', () => {
     writeUserSettings({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
+      touchTrajectoryControlSide: 'right',
       touchWarpControlSide: 'right',
     })
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
+      touchTrajectoryControlSide: 'right',
       touchWarpControlSide: 'right',
     })
   })
@@ -63,12 +66,14 @@ describe('userSettingsStorage', () => {
     writeUserSettings({
       debugModeEnabled: true,
       touchBurnControlSide: 'right',
+      touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'right',
     })
 
     expect(updateUserSettings({ touchBurnControlSide: 'left' })).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
+      touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'right',
     })
   })
@@ -82,6 +87,7 @@ describe('userSettingsStorage', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'right',
+      touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'right',
     })
   })
@@ -98,6 +104,7 @@ describe('userSettingsStorage', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
+      touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'left',
     })
   })

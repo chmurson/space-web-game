@@ -78,6 +78,9 @@ export const createAppConfigContext = (): AppConfigContext => {
     touchBurnControlSide:
       parseTouchControlSideOverride(urlParams.get('touchBurnSide')) ??
       storedUserSettings.touchBurnControlSide,
+    touchTrajectoryControlSide:
+      parseTouchControlSideOverride(urlParams.get('touchTrajectorySide')) ??
+      storedUserSettings.touchTrajectoryControlSide,
     touchWarpControlSide:
       parseTouchControlSideOverride(urlParams.get('touchWarpSide')) ??
       storedUserSettings.touchWarpControlSide,

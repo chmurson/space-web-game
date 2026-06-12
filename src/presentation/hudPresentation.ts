@@ -1,22 +1,22 @@
+import type { RendererProfiler } from '../render/rendererProfiler'
+import type { AppRuntimeState } from '../runtime/appRuntimeState'
+import type { GameQueries } from '../runtime/gameQueries'
+import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
+import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import { getBodyInfluences } from '../simulation/bodyInfluence'
 import {
   formatCompactElapsed,
   formatSpeed,
   formatTimeWarpLabel,
 } from '../ui/formatters'
-import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
-import type { TouchControls } from '../ui/touchControls/createTouchControls'
 import { getDebugPanelLines, getGuidanceText } from '../ui/hudText'
-import type { RendererProfiler } from '../render/rendererProfiler'
-import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import type { GameQueries } from '../runtime/gameQueries'
-import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
-import type { TrajectoryPresentation } from './trajectoryPresentation'
-import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
+import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import {
   createScenarioPromptUpdater,
   type ScenarioPromptUiRefs,
 } from '../ui/scenario-prompts/scenario-prompts'
+import type { TouchControls } from '../ui/touchControls/createTouchControls'
+import type { TrajectoryPresentation } from './trajectoryPresentation'
 
 export const createHudPresentation = (options: {
   defaultViewport: number
@@ -147,6 +147,7 @@ export const createHudPresentation = (options: {
       const showTimePill = !hiddenUIElements.has('timeWarpPill')
       const showSpeedPill = !hiddenUIElements.has('speedPill')
       const showThrustPill = !hiddenUIElements.has('thrustPill')
+      const showTrajectoryControl = !hiddenUIElements.has('trajectory')
 
       // Update scenario prompt UI
       scenarioPromptUpdater.update(
@@ -165,6 +166,7 @@ export const createHudPresentation = (options: {
         timePill.style.display = showTimePill ? 'inline-flex' : 'none'
       }
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
+      options.touchControls?.setTrajectoryControlVisible(showTrajectoryControl)
 
       if (options.overlayUi.statEngine) {
         options.overlayUi.statEngine.textContent = options.physicsEngineName

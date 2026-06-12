@@ -7,8 +7,8 @@ import {
 } from '../scenario/runtimeScenario'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
+import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { add } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
@@ -20,6 +20,7 @@ import {
   dispatchRuntimeScenarioPromptAction,
   reopenRuntimeScenarioPrompt,
 } from './runtimeStateTransitions'
+import { getNextTrajectoryHorizonHours } from './trajectoryHorizonControlPolicy'
 
 type RippleCreator = (
   parent: HTMLElement,
@@ -237,18 +238,31 @@ export const createRuntimeActions = (options: {
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'decreaseCoastHorizon') {
-        options.runtime.simulation.coastPredictionHorizonHours = Math.max(
-          options.minCoastPredictionHorizonHours,
-          options.runtime.simulation.coastPredictionHorizonHours / 2,
-        )
+        options.runtime.simulation.coastPredictionHorizonHours =
+          getNextTrajectoryHorizonHours({
+            action,
+            currentHours:
+              options.runtime.simulation.coastPredictionHorizonHours,
+            maxHours:
+              options.runtime.scenario.directives
+                .maxCoastPredictionHorizonHours ??
+              options.maxCoastPredictionHorizonHours,
+            minHours: options.minCoastPredictionHorizonHours,
+          })
         return { refreshTrajectoryPrediction: true }
       }
       if (action === 'increaseCoastHorizon') {
-        options.runtime.simulation.coastPredictionHorizonHours = Math.min(
-          options.runtime.scenario.directives.maxCoastPredictionHorizonHours ??
-            options.maxCoastPredictionHorizonHours,
-          options.runtime.simulation.coastPredictionHorizonHours * 2,
-        )
+        options.runtime.simulation.coastPredictionHorizonHours =
+          getNextTrajectoryHorizonHours({
+            action,
+            currentHours:
+              options.runtime.simulation.coastPredictionHorizonHours,
+            maxHours:
+              options.runtime.scenario.directives
+                .maxCoastPredictionHorizonHours ??
+              options.maxCoastPredictionHorizonHours,
+            minHours: options.minCoastPredictionHorizonHours,
+          })
         return { refreshTrajectoryPrediction: true }
       }
       if (action === 'saveDebugSnapshot') {

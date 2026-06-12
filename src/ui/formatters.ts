@@ -22,6 +22,22 @@ export const formatDuration = (seconds: number) => {
   return `${(seconds / 3600).toFixed(1)}h`
 }
 
+export const formatTrajectoryHorizonDuration = (seconds: number) => {
+  if (seconds < 60) {
+    return `${Math.round(seconds)}s`
+  }
+  if (seconds < 3600) {
+    return `${Math.round(seconds / 60)}m`
+  }
+
+  const roundedHours = Math.round(seconds / 3600)
+  if (roundedHours >= 24 && roundedHours % 24 === 0) {
+    return `${roundedHours / 24}d`
+  }
+
+  return `${roundedHours}h`
+}
+
 export const formatCompactElapsed = (seconds: number) => {
   const roundedSeconds = Math.max(0, Math.round(seconds))
   const days = Math.floor(roundedSeconds / 86_400)

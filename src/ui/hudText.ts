@@ -17,6 +17,7 @@ import {
   formatDistance,
   formatDuration,
   formatSpecificEnergy,
+  formatTrajectoryHorizonDuration,
 } from './formatters'
 
 export type GuidanceTextInput = {
@@ -102,7 +103,7 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
     `debug: [1] no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | [2] fps ${input.fpsIndicatorEnabled ? 'on' : 'off'} | [3] perf ${
       input.performanceDebugEnabled ? 'on' : 'off'
     }`,
-    `coast horizon: [4]/2 [5]x2 => ${formatDuration(input.coastPredictionHorizonSeconds)}`,
+    `coast horizon: [4]- [5]+ => ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
     `prediction step: ${formatDuration(input.predictionStepSeconds)}`,
     `snapshot: [6] save | [7] load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
     `target: ${input.targetName}`,

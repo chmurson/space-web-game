@@ -44,12 +44,14 @@ describe('createAppConfigContext', () => {
       value: createWindowWithSearch('', {
         debugModeEnabled: false,
         touchBurnControlSide: 'left',
+        touchTrajectoryControlSide: 'left',
         touchWarpControlSide: 'right',
       }),
     })
 
     expect(createAppConfigContext().userSettings).toMatchObject({
       touchBurnControlSide: 'left',
+      touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'right',
     })
   })
@@ -58,10 +60,11 @@ describe('createAppConfigContext', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch(
-        '?scenario=earth-moon&touchBurnSide=left&touchWarpSide=right',
+        '?scenario=earth-moon&touchBurnSide=left&touchTrajectorySide=right&touchWarpSide=right',
         {
           debugModeEnabled: false,
           touchBurnControlSide: 'right',
+          touchTrajectoryControlSide: 'left',
           touchWarpControlSide: 'left',
         },
       ),
@@ -72,6 +75,7 @@ describe('createAppConfigContext', () => {
     expect(config.initialAppMode).toBe('game')
     expect(config.userSettings).toMatchObject({
       touchBurnControlSide: 'left',
+      touchTrajectoryControlSide: 'right',
       touchWarpControlSide: 'right',
     })
   })
@@ -80,10 +84,11 @@ describe('createAppConfigContext', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch(
-        '?touchBurnSide=center&touchWarpSide=bottom',
+        '?touchBurnSide=center&touchTrajectorySide=top&touchWarpSide=bottom',
         {
           debugModeEnabled: false,
           touchBurnControlSide: 'left',
+          touchTrajectoryControlSide: 'right',
           touchWarpControlSide: 'right',
         },
       ),
@@ -91,6 +96,7 @@ describe('createAppConfigContext', () => {
 
     expect(createAppConfigContext().userSettings).toMatchObject({
       touchBurnControlSide: 'left',
+      touchTrajectoryControlSide: 'right',
       touchWarpControlSide: 'right',
     })
   })
