@@ -131,7 +131,95 @@ describe('scenarioPrompts', () => {
       kind: 'coach',
       id: 'intro-keep-thrusting',
       anchor: 'speed-pill',
+      focusedHudElement: 'speed-pill',
     })
+  })
+
+  it('resolves focused HUD pills for coach prompts', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      {
+        phase: 'escape-earth',
+        onboarding: {
+          activeStepId: 'intro-thrusting-complete',
+          completedStepIds: [
+            'intro-show-thrust-control',
+            'intro-thrust',
+            'intro-keep-thrusting',
+          ],
+          gateActive: true,
+          progress: {
+            accumulatedHeadingChangeRadians: 0,
+            accumulatedMainThrustMs: 0,
+            lastSampleHeading: runtime.simulation.state.spacecraft.heading,
+            lastSampleAtMs: 1_000,
+            stepStartHeading: runtime.simulation.state.spacecraft.heading,
+            stepStartTouchThrustControlEngaged: false,
+            stepStartTargetHeadingSelectionEpoch: 0,
+            stepStartTimeWarpMultiplier: 1,
+          },
+        },
+      },
+      {
+        activePromptId: 'intro-thrusting-complete',
+        replayPromptId: 'phase-one-intro',
+      },
+    )
+
+    expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
+      kind: 'coach',
+      id: 'intro-thrusting-complete',
+      anchor: 'speed-pill',
+      focusedHudElement: 'speed-pill',
+    })
+  })
+
+  it('resolves mobile focused touch controls for coach prompts', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      {
+        phase: 'escape-earth',
+        onboarding: {
+          activeStepId: 'intro-thrust',
+          completedStepIds: ['intro-show-thrust-control'],
+          gateActive: true,
+          progress: {
+            accumulatedHeadingChangeRadians: 0,
+            accumulatedMainThrustMs: 0,
+            lastSampleHeading: runtime.simulation.state.spacecraft.heading,
+            lastSampleAtMs: 1_000,
+            stepStartHeading: runtime.simulation.state.spacecraft.heading,
+            stepStartTouchThrustControlEngaged: false,
+            stepStartTargetHeadingSelectionEpoch: 0,
+            stepStartTimeWarpMultiplier: 1,
+          },
+        },
+      },
+      {
+        activePromptId: 'intro-thrust',
+        replayPromptId: 'phase-one-intro',
+      },
+    )
+
+    expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
+      kind: 'coach',
+      id: 'intro-thrust',
+      anchor: 'thrust-control',
+      focusedTouchControl: 'burn',
+    })
+    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+      kind: 'coach',
+      id: 'intro-thrust',
+      anchor: 'trajectory',
+    })
+    const desktopPrompt = resolveScenarioPrompts(runtime, 'desktop').active
+    expect(
+      desktopPrompt?.kind === 'coach'
+        ? desktopPrompt.focusedTouchControl
+        : null,
+    ).toBeUndefined()
   })
 
   it('resolves replay labels from shortLabel or title and reopens replay prompts generically', () => {

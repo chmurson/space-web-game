@@ -1,10 +1,10 @@
 import { formatDuration } from '../../../../ui/formatters'
+import type { RuntimeScenarioDirectives } from '../../../scenarioDirectiveTypes'
 import type {
   PromptDefinition,
   PromptResolverContext,
   PromptValue,
 } from '../../../scenarioPromptTypes'
-import type { RuntimeScenarioDirectives } from '../../../scenarioDirectiveTypes'
 import { requiredIntroKeepThrustMs } from './config'
 import type {
   TutorialOnboardingPromptContent,
@@ -55,6 +55,8 @@ const tutorialOnboardingPromptDefinitions = {
       kind: 'coach',
       anchor: ({ inputMode }) =>
         inputMode === 'mobile' ? 'thrust-control' : 'trajectory',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'burn' : undefined,
     },
   },
   'intro-keep-thrusting': {
@@ -66,6 +68,7 @@ const tutorialOnboardingPromptDefinitions = {
     presentation: {
       kind: 'coach',
       anchor: 'speed-pill',
+      focusedHudElement: 'speed-pill',
     },
   },
   'intro-thrusting-complete': {
@@ -81,7 +84,11 @@ const tutorialOnboardingPromptDefinitions = {
         tone: 'primary',
       },
     ],
-    presentation: { kind: 'coach', anchor: 'speed-pill' },
+    presentation: {
+      kind: 'coach',
+      anchor: 'speed-pill',
+      focusedHudElement: 'speed-pill',
+    },
   },
   'intro-thrusting-off': {
     id: 'intro-thrusting-off',
@@ -96,6 +103,10 @@ const tutorialOnboardingPromptDefinitions = {
       kind: 'coach',
       anchor: ({ inputMode }) =>
         inputMode === 'mobile' ? 'thrust-control' : 'speed-pill',
+      focusedHudElement: ({ inputMode }) =>
+        inputMode === 'mobile' ? undefined : 'speed-pill',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'burn' : undefined,
     },
   },
   'intro-point-and-turn': {
@@ -192,6 +203,18 @@ export const getTutorialOnboardingPromptContent = (
         ? resolvePromptValue(presentation.touchHintTarget, inputMode)
         : undefined
       : undefined
+  const focusedTouchControl =
+    presentation.kind === 'coach' && 'focusedTouchControl' in presentation
+      ? presentation.focusedTouchControl
+        ? resolvePromptValue(presentation.focusedTouchControl, inputMode)
+        : undefined
+      : undefined
+  const focusedHudElement =
+    presentation.kind === 'coach' && 'focusedHudElement' in presentation
+      ? presentation.focusedHudElement
+        ? resolvePromptValue(presentation.focusedHudElement, inputMode)
+        : undefined
+      : undefined
 
   return {
     title: resolvePromptValue(definition.title, inputMode),
@@ -205,6 +228,8 @@ export const getTutorialOnboardingPromptContent = (
       ? resolvePromptValue(primaryButton.label, inputMode)
       : undefined,
     anchor,
+    focusedHudElement,
+    focusedTouchControl,
     touchHintTarget,
   }
 }

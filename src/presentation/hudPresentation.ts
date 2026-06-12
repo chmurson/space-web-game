@@ -263,6 +263,11 @@ export const createHudPresentation = (options: {
           ? (prompts.active.touchHintTarget ?? null)
           : null,
       )
+      options.touchControls?.setTutorialFocusedControl(
+        prompts.active?.kind === 'coach'
+          ? (prompts.active.focusedTouchControl ?? null)
+          : null,
+      )
       if (options.overlayUi.statGuidance) {
         options.overlayUi.statGuidance.textContent = getGuidanceText({
           assistMode: options.runtime.simulation.assistMode,

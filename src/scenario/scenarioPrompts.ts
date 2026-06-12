@@ -1,7 +1,4 @@
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import { getRuntimeScenarioDefinition } from './scenarioRegistry'
-import { resolveCurrentScenarioScene } from './scenarioScenes'
-import type { ScenarioRuntimeTransition } from './scenarioRuntimeTransition'
 import type {
   PromptAction,
   PromptActionEffect,
@@ -11,6 +8,9 @@ import type {
   ResolvedPrompt,
   ResolvedPromptState,
 } from './scenarioPromptTypes'
+import { getRuntimeScenarioDefinition } from './scenarioRegistry'
+import type { ScenarioRuntimeTransition } from './scenarioRuntimeTransition'
+import { resolveCurrentScenarioScene } from './scenarioScenes'
 
 const resolvePromptValue = <T>(
   value: PromptValue<T>,
@@ -69,6 +69,12 @@ const resolvePrompt = (
       ...basePrompt,
       kind: 'coach',
       anchor: resolvePromptValue(presentation.anchor, context),
+      focusedTouchControl: presentation.focusedTouchControl
+        ? resolvePromptValue(presentation.focusedTouchControl, context)
+        : undefined,
+      focusedHudElement: presentation.focusedHudElement
+        ? resolvePromptValue(presentation.focusedHudElement, context)
+        : undefined,
       touchHintTarget: presentation.touchHintTarget
         ? resolvePromptValue(presentation.touchHintTarget, context)
         : undefined,

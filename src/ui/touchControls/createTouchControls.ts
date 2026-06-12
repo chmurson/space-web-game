@@ -6,7 +6,10 @@ import type {
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type { TrajectoryHorizonAction } from '../../runtime/trajectoryHorizonControlPolicy'
-import type { ScenarioTouchHintTarget } from '../../scenario/scenarioPromptTypes'
+import type {
+  ScenarioTouchControlFocusTarget,
+  ScenarioTouchHintTarget,
+} from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
 import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
 import {
@@ -27,6 +30,9 @@ export type TouchControls = {
   setTrajectoryControlVisible(visible: boolean): void
   setWarpControlSide(side: TouchControlRevealEdge): void
   setTimeWarpControlVisible(visible: boolean): void
+  setTutorialFocusedControl(
+    target: ScenarioTouchControlFocusTarget | null,
+  ): void
   setTutorialHintTarget(target: ScenarioTouchHintTarget | null): void
   syncUi(): void
   updateAssistMode(mode: AssistMode): void
@@ -275,6 +281,33 @@ export const createTouchControls = (options: {
     trajectoryHorizonRevealControl,
     thrustRevealControl,
   ]
+  const tutorialFocusTargets: Record<
+    ScenarioTouchControlFocusTarget,
+    EdgeRevealControl
+  > = {
+    burn: thrustRevealControl,
+    trajectory: trajectoryHorizonRevealControl,
+    warp: timeWarpRevealControl,
+  }
+
+  const setTutorialFocusedControl = (
+    target: ScenarioTouchControlFocusTarget | null,
+  ) => {
+    if (target) {
+      panel.dataset.tutorialFocusedControl = target
+    } else {
+      delete panel.dataset.tutorialFocusedControl
+    }
+
+    for (const [controlTarget, revealControl] of Object.entries(
+      tutorialFocusTargets,
+    ) as [ScenarioTouchControlFocusTarget, EdgeRevealControl][]) {
+      revealControl.element.classList.toggle(
+        'touch-edge-reveal-control-tutorial-focused',
+        target === controlTarget,
+      )
+    }
+  }
   syncRevealControlLayout(revealControls)
   panel.append(
     timeWarpRevealControl.element,
@@ -781,6 +814,7 @@ export const createTouchControls = (options: {
       syncRevealControlLayout(revealControls)
     },
     setTimeWarpControlVisible,
+    setTutorialFocusedControl,
     setTutorialHintTarget: (target) => {
       const showThrustHint = target === 'thrust-zone'
       tutorialHint.setVisible(showThrustHint)

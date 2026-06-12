@@ -15,6 +15,9 @@
 
   /* specific z-index values */
   --z-coach-prompt: calc(var(--z-overlay-floating) - 1);
+  --z-tutorial-focus-backdrop: calc(var(--z-overlay-modal) - 3);
+  --z-tutorial-focus-layer: calc(var(--z-overlay-modal) - 2);
+  --z-tutorial-focus-prompt: calc(var(--z-overlay-modal) - 1);
 
   /* common touch-control values */
   --touch-control-radius: 15px;
@@ -536,6 +539,20 @@ canvas {
   will-change: transform;
 }
 
+#app[data-tutorial-focused-hud-element]::before {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-tutorial-focus-backdrop);
+  background: rgba(5, 7, 13, 0.66);
+  backdrop-filter: blur(5px);
+  content: "";
+  pointer-events: none;
+}
+
+#app[data-tutorial-focused-hud-element] .top-bar {
+  z-index: var(--z-tutorial-focus-layer);
+}
+
 .telemetry-pill strong {
   display: block;
   color: #f0f9ff;
@@ -729,6 +746,17 @@ canvas {
     0 10px 24px rgba(245, 158, 11, 0.18);
   filter: brightness(1.14);
   transform: scale(1.16);
+}
+
+.telemetry-pill.telemetry-pill-tutorial-focused {
+  z-index: 1;
+  background: rgba(12, 19, 34, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(125, 211, 252, 0.3),
+    0 16px 34px rgba(2, 6, 23, 0.52),
+    0 0 26px rgba(125, 211, 252, 0.22);
+  filter: brightness(1.16);
+  transform: scale(1.12);
 }
 
 .telemetry-pill-time > span,

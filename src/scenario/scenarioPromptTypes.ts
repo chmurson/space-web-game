@@ -3,10 +3,16 @@ import type { AppRuntimeState } from '../runtime/appRuntimeState'
 export type ScenarioPromptAnchor =
   | 'time-warp-pill'
   | 'speed-pill'
+  | 'thrust-pill'
   | 'thrust-control'
   | 'trajectory'
 
+export type ScenarioHudFocusTarget =
+  | 'time-warp-pill'
+  | 'speed-pill'
+  | 'thrust-pill'
 export type ScenarioTouchHintTarget = 'thrust-zone'
+export type ScenarioTouchControlFocusTarget = 'burn' | 'trajectory' | 'warp'
 
 export type PromptAction =
   | {
@@ -39,6 +45,10 @@ export type PromptPresentationDefinition =
   | { kind: 'blocking' }
   | {
       anchor: PromptValue<ScenarioPromptAnchor>
+      focusedTouchControl?: PromptValue<
+        ScenarioTouchControlFocusTarget | undefined
+      >
+      focusedHudElement?: PromptValue<ScenarioHudFocusTarget | undefined>
       kind: 'coach'
       touchHintTarget?: PromptValue<ScenarioTouchHintTarget | undefined>
     }
@@ -67,6 +77,8 @@ export type ResolvedPrompt = {
   | { kind: 'blocking' }
   | {
       anchor: ScenarioPromptAnchor
+      focusedTouchControl?: ScenarioTouchControlFocusTarget
+      focusedHudElement?: ScenarioHudFocusTarget
       kind: 'coach'
       touchHintTarget?: ScenarioTouchHintTarget
     }

@@ -1,11 +1,15 @@
 import './scenario-prompts.css'
+import { arrow, computePosition, flip, offset, shift } from '@floating-ui/dom'
 import type { AppRuntimeState } from '../../runtime/appRuntimeState'
-import { computePosition, flip, shift, offset, arrow } from '@floating-ui/dom'
 import {
   resolveScenarioPrompts,
   serializePromptAction,
 } from '../../scenario/scenarioPrompts'
-import type { ScenarioPromptAnchor } from '../../scenario/scenarioPromptTypes'
+import type {
+  ScenarioHudFocusTarget,
+  ScenarioPromptAnchor,
+  ScenarioTouchControlFocusTarget,
+} from '../../scenario/scenarioPromptTypes'
 
 export type ScenarioPromptUiRefs = {
   backdropElement: HTMLElement
@@ -20,21 +24,59 @@ export type ScenarioPromptUiRefs = {
 }
 
 type AnchorKey = ScenarioPromptAnchor
+type HudFocusKey = ScenarioHudFocusTarget
+type TouchControlFocusKey = ScenarioTouchControlFocusTarget
+
+const focusedHudElementClassName = 'telemetry-pill-tutorial-focused'
+
+const hasVisibleRect = (element: HTMLElement): boolean => {
+  const rect = element.getBoundingClientRect()
+  return rect.width > 0 && rect.height > 0
+}
+
+const getTelemetryPillElement = (
+  stat: 'speed' | 'thrust' | 'time',
+): HTMLElement | null =>
+  document
+    .querySelector<HTMLElement>(`[data-stat="${stat}"]`)
+    ?.closest<HTMLElement>('.telemetry-pill') ?? null
+
+const getHudFocusElement = (target: HudFocusKey): HTMLElement | null => {
+  if (target === 'speed-pill') {
+    return getTelemetryPillElement('speed')
+  }
+  if (target === 'time-warp-pill') {
+    return getTelemetryPillElement('time')
+  }
+  return getTelemetryPillElement('thrust')
+}
 
 const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
   if (anchor === 'speed-pill') {
-    // Find the thrust pill element
-    const statThrust = document.querySelector<HTMLElement>(
-      '[data-stat="speed"]',
-    )
-    return statThrust?.closest<HTMLElement>('.telemetry-pill') ?? null
+    return getTelemetryPillElement('speed')
   }
   if (anchor === 'time-warp-pill') {
-    const statTime = document.querySelector<HTMLElement>('[data-stat="time"]')
-    return statTime?.closest<HTMLElement>('.telemetry-pill') ?? null
+    return getTelemetryPillElement('time')
+  }
+  if (anchor === 'thrust-pill') {
+    return getTelemetryPillElement('thrust')
   }
   if (anchor === 'thrust-control') {
-    return document.querySelector<HTMLElement>('.touch-thrust-control')
+    const thrustControl = document.querySelector<HTMLElement>(
+      '.touch-thrust-control',
+    )
+    const revealControl =
+      thrustControl?.closest<HTMLElement>('.touch-edge-reveal-control') ??
+      document.querySelector<HTMLElement>('#touch-thrust-reveal')
+    const revealOpen =
+      revealControl?.classList.contains('touch-edge-reveal-control-open') ??
+      true
+
+    if (thrustControl && revealOpen && hasVisibleRect(thrustControl)) {
+      return thrustControl
+    }
+
+    return revealControl ?? thrustControl
   }
   return null
 }
@@ -141,6 +183,8 @@ type PromptIdentity = {
   activePromptDescription: string
   activePromptMode: 'coach' | 'modal' | null
   activePromptAnchor: string | null
+  activePromptFocusedHudElement: string | null
+  activePromptFocusedTouchControl: string | null
   activePromptPrimaryButtonLabel: string
   activePromptPrimaryButtonAction: string
   activePromptSecondaryButtonLabel: string
@@ -173,6 +217,14 @@ const computePromptIdentity = (
       activePrompt?.kind === 'coach' ? 'coach' : activePrompt ? 'modal' : null,
     activePromptAnchor:
       activePrompt?.kind === 'coach' ? activePrompt.anchor : null,
+    activePromptFocusedHudElement:
+      activePrompt?.kind === 'coach'
+        ? (activePrompt.focusedHudElement ?? null)
+        : null,
+    activePromptFocusedTouchControl:
+      activePrompt?.kind === 'coach'
+        ? (activePrompt.focusedTouchControl ?? null)
+        : null,
     activePromptPrimaryButtonLabel: primaryButton?.label ?? '',
     activePromptPrimaryButtonAction: primaryButton
       ? serializePromptAction(primaryButton.action)
@@ -196,6 +248,8 @@ const identitiesEqual = (a: PromptIdentity, b: PromptIdentity): boolean => {
     a.activePromptDescription === b.activePromptDescription &&
     a.activePromptMode === b.activePromptMode &&
     a.activePromptAnchor === b.activePromptAnchor &&
+    a.activePromptFocusedHudElement === b.activePromptFocusedHudElement &&
+    a.activePromptFocusedTouchControl === b.activePromptFocusedTouchControl &&
     a.activePromptPrimaryButtonLabel === b.activePromptPrimaryButtonLabel &&
     a.activePromptPrimaryButtonAction === b.activePromptPrimaryButtonAction &&
     a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
@@ -213,6 +267,7 @@ export const createScenarioPromptUpdater = (
   let anchorResizeObserver: ResizeObserver | null = null
   let windowResizeTimeoutId: number | null = null
   let anchorMutationObserver: MutationObserver | null = null
+  let focusedHudElement: HTMLElement | null = null
   let lastAnchorKey: AnchorKey | undefined
   let lastPromptMode: 'coach' | 'modal' | null = null
   let lastPromptIdentity: PromptIdentity | null = null
@@ -224,6 +279,23 @@ export const createScenarioPromptUpdater = (
     refs.promptElement.style.transform = ''
     refs.arrowElement.style.display = 'none'
     delete refs.promptElement.dataset.arrowPlacement
+  }
+
+  const setFocusedHudElement = (target: HudFocusKey | null): void => {
+    focusedHudElement?.classList.remove(focusedHudElementClassName)
+    focusedHudElement = target ? getHudFocusElement(target) : null
+    focusedHudElement?.classList.add(focusedHudElementClassName)
+
+    const appElement = refs.backdropElement.closest<HTMLElement>('#app')
+    if (!appElement) {
+      return
+    }
+
+    if (target) {
+      appElement.dataset.tutorialFocusedHudElement = target
+    } else {
+      delete appElement.dataset.tutorialFocusedHudElement
+    }
   }
 
   const updatePromptPosition = async (): Promise<void> => {
@@ -393,6 +465,26 @@ export const createScenarioPromptUpdater = (
       } else {
         delete refs.promptElement.dataset.anchor
       }
+      const focusedTouchControl: TouchControlFocusKey | undefined =
+        activePrompt?.kind === 'coach'
+          ? activePrompt.focusedTouchControl
+          : undefined
+      const focusedHudElementKey: HudFocusKey | undefined =
+        activePrompt?.kind === 'coach'
+          ? activePrompt.focusedHudElement
+          : undefined
+
+      if (focusedTouchControl) {
+        refs.backdropElement.dataset.focusedTouchControl = focusedTouchControl
+      } else {
+        delete refs.backdropElement.dataset.focusedTouchControl
+      }
+      if (focusedHudElementKey) {
+        refs.backdropElement.dataset.focusedHudElement = focusedHudElementKey
+      } else {
+        delete refs.backdropElement.dataset.focusedHudElement
+      }
+      setFocusedHudElement(focusedHudElementKey ?? null)
 
       // Track if mode or anchor changed
       const modeChanged = lastPromptMode !== promptMode
@@ -471,6 +563,7 @@ export const createScenarioPromptUpdater = (
       if (windowResizeTimeoutId !== null) {
         window.clearTimeout(windowResizeTimeoutId)
       }
+      setFocusedHudElement(null)
       window.removeEventListener('resize', handleWindowResize)
     },
   }

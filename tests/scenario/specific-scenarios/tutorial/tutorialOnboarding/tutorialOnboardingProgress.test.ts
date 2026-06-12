@@ -5,8 +5,8 @@ import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTyp
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import { getTutorialOnboardingPromptContent } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow'
 import {
-  advanceTutorialOnboarding,
   acknowledgeTutorialOnboardingPrompt,
+  advanceTutorialOnboarding,
   createTutorialOnboardingState,
 } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingProgress'
 
@@ -114,6 +114,7 @@ describe('tutorialOnboardingProgress', () => {
       anchor: 'thrust-control',
       description:
         'You can now turn off by sliding the thrust control down. Do it now.',
+      focusedTouchControl: 'burn',
     })
     expect(
       getTutorialOnboardingPromptContent('intro-thrusting-off', 'desktop'),
@@ -121,6 +122,40 @@ describe('tutorialOnboardingProgress', () => {
       anchor: 'speed-pill',
       description: 'Release W or Up Arrow so the main engine shuts down.',
     })
+  })
+
+  it('focuses the burn control only for mobile thrust-control coach prompts', () => {
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrust', 'mobile')
+        .focusedTouchControl,
+    ).toBe('burn')
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrust', 'desktop')
+        .focusedTouchControl,
+    ).toBeUndefined()
+    expect(
+      getTutorialOnboardingPromptContent('intro-keep-thrusting', 'mobile')
+        .focusedTouchControl,
+    ).toBeUndefined()
+  })
+
+  it('focuses HUD pills for speed-pill coach prompts', () => {
+    expect(
+      getTutorialOnboardingPromptContent('intro-keep-thrusting', 'mobile')
+        .focusedHudElement,
+    ).toBe('speed-pill')
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrusting-complete', 'mobile')
+        .focusedHudElement,
+    ).toBe('speed-pill')
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrusting-off', 'desktop')
+        .focusedHudElement,
+    ).toBe('speed-pill')
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrusting-off', 'mobile')
+        .focusedHudElement,
+    ).toBeUndefined()
   })
 
   it('advances from show-control to use-thrust when the thrust control becomes interactive', () => {

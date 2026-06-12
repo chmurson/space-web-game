@@ -20,6 +20,11 @@
   z-index: var(--z-coach-prompt);
 }
 
+.scenario-prompt-backdrop[data-prompt-mode="coach"][data-focused-touch-control],
+.scenario-prompt-backdrop[data-prompt-mode="coach"][data-focused-hud-element] {
+  z-index: var(--z-tutorial-focus-prompt);
+}
+
 .scenario-prompt {
   display: grid;
   gap: 12px;
