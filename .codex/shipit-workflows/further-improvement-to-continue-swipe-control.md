@@ -135,3 +135,13 @@ Self-review findings: None. Re-reviewed the scoped diff and confirmed `resolveRe
 Solution retrospect: No rewrite is justified. The shared selector remains the right abstraction boundary, and the focused helper/test keeps the product rule explicit without changing wrapper APIs.
 
 Merge plan: Run `npm test`, `npm run build`, and `git diff --check`; commit this branch; merge it into local `main`; deploy production from `main`; then record the production deploy in this Shipit state on `main`.
+
+Validation before merge: `npm test` passed with 28 files and 122 tests; `npm run build` passed; `git diff --check` passed.
+
+Feature commit: `3f19461` (`feat(ui): settle swipe selector to nearest value`).
+
+Main merge commit: `bcd0e5a` (`Merge branch 'further-improvement-to-continue-swipe-control'`).
+
+Production deploy: `npm run deploy:netlify` passed from `main`.
+
+Production links: Production URL `https://space-web-game.netlify.app`; unique deploy URL `https://6a2c006570ac2a3385dc4584--space-web-game.netlify.app`; build logs `https://app.netlify.com/projects/space-web-game/deploys/6a2c006570ac2a3385dc4584`.
