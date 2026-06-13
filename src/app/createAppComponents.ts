@@ -527,6 +527,35 @@ export const createAppComponents = (options: {
     )
   })
 
+  overlayUi.scenarioPromptCloseButton?.addEventListener('click', () => {
+    dispatchPromptAction(
+      overlayUi.scenarioPromptCloseButton?.dataset.promptAction,
+    )
+  })
+
+  overlayUi.scenarioPromptRestartButton?.addEventListener('click', () => {
+    const restartAction =
+      overlayUi.scenarioPromptRestartButton?.dataset.restartAction
+    keyboardInput.clear()
+
+    if (restartAction === 'scenario') {
+      runtimeActions.resetScenario()
+      frameLoop.refreshTrajectoryPrediction()
+      return
+    }
+
+    if (
+      restartAction === 'checkpoint' &&
+      runtimeActions.restartFromCheckpoint()
+    ) {
+      runtimeActions.dispatchScenarioPromptAction({
+        kind: 'builtin',
+        id: 'dismiss_to_replay',
+      })
+      frameLoop.refreshTrajectoryPrediction()
+    }
+  })
+
   overlayUi.scenarioPromptReplayButton.addEventListener('click', () => {
     if (runtimeActions.reopenScenarioPrompt()) {
       frameLoop.refreshTrajectoryPrediction()

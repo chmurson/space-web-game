@@ -8,7 +8,11 @@ import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '@/scenario/scenarioPrompts'
 import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
-import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import {
+  createRuntimeScenarioCheckpoint,
+  createRuntimeScenarioSession,
+} from '@/scenario/scenarioSession'
+import { tutorialOnboardingStepOrder } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow'
 import { registerTutorialScenario } from '@/scenario/specific-scenarios/tutorial/tutorialScenario'
 
 const globalScenarioDirectiveLimits = {
@@ -137,6 +141,16 @@ const setEarthOrbitState = (runtime: AppRuntimeState, angle: number) => {
   }
 }
 
+const captureRuntimeCheckpoint = (runtime: AppRuntimeState) =>
+  createRuntimeScenarioCheckpoint({
+    assistMode: runtime.simulation.assistMode,
+    assistTargetIndex: runtime.simulation.assistTargetIndex,
+    coastPredictionHorizonHours: runtime.simulation.coastPredictionHorizonHours,
+    targetHeading: runtime.simulation.targetHeading,
+    viewportSize: runtime.simulation.viewportSize,
+    world: runtime.simulation.state,
+  })
+
 describe('tutorialScenario', () => {
   it('creates a tutorial session with explicit prompt UI state', () => {
     const tutorialScenario = registerTutorialScenario()
@@ -168,7 +182,9 @@ describe('tutorialScenario', () => {
     if (!tutorialScenario.isState?.(runtime.scenario.session.state)) {
       throw new Error('Expected tutorial scenario state.')
     }
-    const scene = tutorialScenario.getSceneDefinition(runtime.scenario.session.state)
+    const scene = tutorialScenario.getSceneDefinition(
+      runtime.scenario.session.state,
+    )
 
     expect(
       scene.directives?.({
@@ -232,11 +248,12 @@ describe('tutorialScenario', () => {
     )
     const resolvedScene = resolveCurrentScenarioScene(runtime)
 
-    const result =
-      resolvedScene?.scene.actions?.['start-phase-one-onboarding']?.({
-        runtime,
-        state: resolvedScene.state,
-      }) ?? { handled: false }
+    const result = resolvedScene?.scene.actions?.[
+      'start-phase-one-onboarding'
+    ]?.({
+      runtime,
+      state: resolvedScene.state,
+    }) ?? { handled: false }
     applyScenarioRuntimeTransition(runtime, result.transition)
 
     expect(result).toMatchObject({ handled: true })
@@ -255,6 +272,68 @@ describe('tutorialScenario', () => {
       resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
         .hiddenUIElements,
     ).toEqual(new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']))
+  })
+
+  it('captures a checkpoint when onboarding completes into free flight', () => {
+    const runtime = createRuntime()
+    const checkpointPosition = { x: 8_000_000, y: 250_000 }
+    runtime.simulation.state.elapsed = 123
+    runtime.simulation.state.spacecraft.position = checkpointPosition
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      {
+        phase: 'escape-earth',
+        onboarding: {
+          activeStepId: 'intro-complete',
+          completedStepIds: tutorialOnboardingStepOrder.filter(
+            (stepId) => stepId !== 'intro-complete',
+          ),
+          gateActive: true,
+          progress: {
+            accumulatedHeadingChangeRadians: 0,
+            accumulatedMainThrustMs: 0,
+            lastSampleHeading: runtime.simulation.state.spacecraft.heading,
+            lastSampleAtMs: 1_000,
+            stepStartHeading: runtime.simulation.state.spacecraft.heading,
+            stepStartTargetHeadingSelectionEpoch: 0,
+            stepStartTimeWarpMultiplier: 60,
+            stepStartTouchThrustControlEngaged: false,
+          },
+        },
+      },
+      {
+        activePromptId: 'intro-complete',
+        replayPromptId: 'phase-one-intro',
+      },
+    )
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
+
+    const result = resolvedScene?.scene.actions?.['advance-onboarding-step']?.({
+      runtime,
+      state: resolvedScene.state,
+    }) ?? { handled: false }
+    applyScenarioRuntimeTransition(runtime, result.transition)
+
+    expect(result).toMatchObject({ handled: true })
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'escape-earth',
+      onboarding: {
+        activeStepId: null,
+        gateActive: false,
+      },
+    })
+    expect(runtime.scenario.session.promptUi).toEqual({
+      activePromptId: null,
+      replayPromptId: 'phase-one-intro',
+    })
+    expect(runtime.scenario.session.checkpoint).not.toBeNull()
+    expect(runtime.scenario.session.checkpoint?.world.elapsed).toBe(123)
+    expect(
+      runtime.scenario.session.checkpoint?.world.spacecraft.position,
+    ).toEqual(checkpointPosition)
+    expect(runtime.scenario.session.checkpoint?.world).not.toBe(
+      runtime.simulation.state,
+    )
   })
 
   it('resolves mobile onboarding prompts as coach prompts for the burn tab', () => {
@@ -358,6 +437,100 @@ describe('tutorialScenario', () => {
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'phase-three-intro',
     )
+  })
+
+  it('captures a checkpoint when the first Moon orbit is attempted', () => {
+    const runtime = createRuntime()
+    runtime.simulation.state.elapsed = 111
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'orbit-moon',
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    })
+    runtime.scenario.session.checkpoint = captureRuntimeCheckpoint(runtime)
+
+    runtime.simulation.state.elapsed = 222
+    setMoonOrbitState(runtime, Math.PI / 3)
+    const checkpointPosition = {
+      ...runtime.simulation.state.spacecraft.position,
+    }
+
+    applyScenarioRuntimeTransition(
+      runtime,
+      resolveCurrentScenarioScene(runtime)?.scene.advance?.({
+        runtime,
+        state: runtime.scenario.session.state,
+      }) ?? null,
+    )
+
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'orbit-moon',
+      orbitAttemptCheckpointCaptured: true,
+      orbitTurnsCompleted: 0,
+    })
+    expect(runtime.scenario.session.checkpoint?.world.elapsed).toBe(222)
+    expect(
+      runtime.scenario.session.checkpoint?.world.spacecraft.position,
+    ).toEqual(checkpointPosition)
+
+    runtime.simulation.state.elapsed = 333
+    setMoonOrbitState(runtime, Math.PI / 2)
+    applyScenarioRuntimeTransition(
+      runtime,
+      resolveCurrentScenarioScene(runtime)?.scene.advance?.({
+        runtime,
+        state: runtime.scenario.session.state,
+      }) ?? null,
+    )
+
+    expect(runtime.scenario.session.checkpoint?.world.elapsed).toBe(222)
+  })
+
+  it('captures a checkpoint when the first Earth orbit is attempted', () => {
+    const runtime = createRuntime()
+    runtime.simulation.state.elapsed = 111
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'orbit-earth',
+      orbitProgressRadians: 0,
+      orbitTurnsCompleted: 0,
+    })
+    runtime.scenario.session.checkpoint = captureRuntimeCheckpoint(runtime)
+
+    runtime.simulation.state.elapsed = 222
+    setEarthOrbitState(runtime, Math.PI / 3)
+    const checkpointPosition = {
+      ...runtime.simulation.state.spacecraft.position,
+    }
+
+    applyScenarioRuntimeTransition(
+      runtime,
+      resolveCurrentScenarioScene(runtime)?.scene.advance?.({
+        runtime,
+        state: runtime.scenario.session.state,
+      }) ?? null,
+    )
+
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'orbit-earth',
+      orbitAttemptCheckpointCaptured: true,
+      orbitTurnsCompleted: 0,
+    })
+    expect(runtime.scenario.session.checkpoint?.world.elapsed).toBe(222)
+    expect(
+      runtime.scenario.session.checkpoint?.world.spacecraft.position,
+    ).toEqual(checkpointPosition)
+
+    runtime.simulation.state.elapsed = 333
+    setEarthOrbitState(runtime, Math.PI / 2)
+    applyScenarioRuntimeTransition(
+      runtime,
+      resolveCurrentScenarioScene(runtime)?.scene.advance?.({
+        runtime,
+        state: runtime.scenario.session.state,
+      }) ?? null,
+    )
+
+    expect(runtime.scenario.session.checkpoint?.world.elapsed).toBe(222)
   })
 
   it('completes the tutorial and activates the completion prompt', () => {

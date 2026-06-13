@@ -31,10 +31,12 @@ export type OverlayUiRefs = {
   headingTargetOverlay: SVGSVGElement
   offscreenIndicators: Map<string, HTMLElement>
   scenarioPrompt: HTMLElement
+  scenarioPromptCloseButton: HTMLButtonElement | null
   scenarioPromptConfirmButton: HTMLButtonElement | null
   scenarioPromptDescription: HTMLParagraphElement | null
   scenarioPromptReplayButton: HTMLButtonElement
   scenarioPromptReplayButtonLabel: HTMLSpanElement | null
+  scenarioPromptRestartButton: HTMLButtonElement | null
   scenarioPromptSecondaryButton: HTMLButtonElement | null
   scenarioPromptTitle: HTMLHeadingElement | null
   spacecraftCallout: HTMLElement
@@ -115,11 +117,15 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   scenarioPrompt.innerHTML = `
     <div class="scenario-prompt">
       <div class="scenario-prompt-arrow"></div>
-      <h2></h2>
+      <div class="scenario-prompt-header">
+        <h2></h2>
+        <button type="button" data-role="close" class="scenario-prompt-close-button" aria-label="Close scenario prompt">&times;</button>
+      </div>
       <p></p>
       <div class="scenario-prompt-actions">
         <button type="button" data-role="confirm"></button>
         <button type="button" data-role="secondary"></button>
+        <button type="button" data-role="restart" class="scenario-prompt-restart-button">Restart scenario</button>
       </div>
     </div>
   `
@@ -202,6 +208,9 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     headingTargetOverlay,
     offscreenIndicators,
     scenarioPrompt,
+    scenarioPromptCloseButton: scenarioPrompt.querySelector<HTMLButtonElement>(
+      '[data-role="close"]',
+    ),
     scenarioPromptConfirmButton:
       scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="confirm"]'),
     scenarioPromptDescription:
@@ -211,6 +220,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
       scenarioPromptReplayButton.querySelector<HTMLSpanElement>(
         '.scenario-prompt-pill-label',
       ),
+    scenarioPromptRestartButton:
+      scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="restart"]'),
     scenarioPromptSecondaryButton:
       scenarioPrompt.querySelector<HTMLButtonElement>(
         '[data-role="secondary"]',
