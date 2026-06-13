@@ -2,8 +2,8 @@
 
 Task: Checkpoint improvement tutorial scenario
 Branch: checkpoint-improvement-tutorial-scenario
-Current Mode: review
-Status: active
+Current Mode: yeet
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated or local merge recorded
 
 ## Artifacts
 
@@ -62,7 +62,7 @@ Status: active
 
 ## Next Step
 
-Commit the reviewed branch changes, merge into local `main`, deploy production from `main`, then record the merge handoff.
+Work is merged into local `main` and production deployed. No PR was used.
 
 ## Brainstorm Handoff
 
@@ -299,7 +299,14 @@ Validation:
 - Passed: `npm test` (29 files, 143 tests).
 - Passed: `npm run build`.
 - Passed: `git diff --check`.
+- Post-merge on `main` passed: `npm test` (30 files, 145 tests).
+- Post-merge on `main` passed: `npm run build`.
+- Post-merge on `main` passed: `git diff --check`.
 
 Merge status:
 
-- Pending branch commit and local merge to `main`.
+- Branch commit: `1b80b1a feat(tutorial): improve checkpoint recovery`.
+- Local `main` merge commit: `28ae3c8 Merge branch 'checkpoint-improvement-tutorial-scenario'`.
+- Production deploy: `https://space-web-game.netlify.app`.
+- Unique production deploy: `https://6a2da7f68a01267946e34ef5--space-web-game.netlify.app`.
+- Build logs: `https://app.netlify.com/projects/space-web-game/deploys/6a2da7f68a01267946e34ef5`.
