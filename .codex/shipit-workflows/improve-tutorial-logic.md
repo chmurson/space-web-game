@@ -1,8 +1,8 @@
 # Shipit State
 
 Task: Improve tutorial logic
-Branch: improve-tutorial-logic
-Current Mode: review
+Branch: main (merged from improve-tutorial-logic)
+Current Mode: yeet
 Status: completed
 
 ## Checklist
@@ -15,7 +15,7 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] Merged to main
 
 ## Artifacts
 
@@ -38,6 +38,7 @@ Status: completed
 - Follow-up accepted: dimmer should be weaker, and the time-warp tooltip should follow the Burn-control guidance pattern.
 - Follow-up accepted: the high-warp burn prompt should not dim the world, and the two final Continue tooltips after that burn should pause gameplay progression.
 - Follow-up accepted: the `Burn At x1m` step should not feel stuck when the player is at `x1m` and burning before the ship has fully reached the outward heading.
+- User requested a Shipit review followed by a direct merge to `main`; no PR was opened.
 
 ## Open Questions
 
@@ -52,10 +53,13 @@ Status: completed
 - [x] Browser smoke check passed: tutorial starts on `Open Burn Control`, touch-control dimmer reports `rgba(5, 7, 13, 0.5)` and `blur(3px)`.
 - [x] Browser smoke check for follow-up 3 was limited by existing browser profile state, but local mobile runtime loaded successfully and had no stale tutorial focus/dimmer attributes; focused tests cover the final prompt state.
 - [x] `npm run deploy:netlify` passed.
+- [x] On `main`, `npm test` passed: 29 files, 140 tests.
+- [x] On `main`, `npm run build` passed.
+- [x] On `main`, `npm run deploy:netlify` deployed production.
 
 ## Next Step
 
-Shipit review is complete and validation passed. Next step is merging `improve-tutorial-logic` to `main`.
+Done. `improve-tutorial-logic` was merged to `main` and deployed to production.
 
 ## Brainstorm Handoff
 
@@ -274,3 +278,15 @@ Validation after review:
 Residual risk:
 
 - Low. Browser smoke coverage for the late tutorial sequence remains less direct than unit coverage, but prompt/progression behavior is covered through public scenario APIs and focused regression tests.
+
+## Main Merge
+
+- Branch commit: `6315ea674dc4ba34c13bcabfe44843f62ca2ba8f` (`feat(tutorial): improve onboarding control guidance`)
+- Main merge commit: `68b89ee735e784ff24f713319aed9b25426f5e87` (`Merge branch 'improve-tutorial-logic'`)
+- Main validation after merge:
+  - `npm test` passed: 29 files, 140 tests.
+  - `npm run build` passed with the existing Vite chunk-size warning.
+- Production deploy after merge:
+  - Production URL: `https://space-web-game.netlify.app`
+  - Unique deploy URL: `https://6a2d03178edfb57707b86f21--space-web-game.netlify.app`
+  - Build logs: `https://app.netlify.com/projects/space-web-game/deploys/6a2d03178edfb57707b86f21`
