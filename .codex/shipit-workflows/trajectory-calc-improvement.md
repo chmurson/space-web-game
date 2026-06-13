@@ -49,7 +49,7 @@ Status: completed
 
 ## Next Step
 
-Commit this branch, merge to `main`, and deploy production.
+Completed. Merged to `main` and deployed production.
 
 ## Brainstorm Handoff
 
@@ -204,6 +204,12 @@ Validation results:
 - Passed: `npm run deploy:netlify`.
 - Staging URL: `https://fanciful-bunny-d77b4b.netlify.app`.
 - Unique deploy URL: `https://6a2c87bbeec7292af08b0276--fanciful-bunny-d77b4b.netlify.app`.
+- Merged to `main` with merge commit `491a5a9`.
+- Passed final post-merge validation on `main`: `npm test -- --run` (30 files, 142 tests).
+- Passed final post-merge validation on `main`: `npm run build` (config validation, `tsc`, Vite release build). Vite emitted the existing large chunk warning.
+- Production deploy passed from `main`: `npm run deploy:netlify`.
+- Production URL: `https://space-web-game.netlify.app`.
+- Production unique deploy URL: `https://6a2d06863096b238d22ab528--space-web-game.netlify.app`.
 
 Residual risk:
 
