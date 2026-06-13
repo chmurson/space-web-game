@@ -118,6 +118,9 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "maxIntegrationStepSeconds": {
+              "type": "number"
+            },
             "refreshInterval": {
               "type": "number"
             },

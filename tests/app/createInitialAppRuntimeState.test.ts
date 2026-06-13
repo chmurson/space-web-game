@@ -29,6 +29,7 @@ const createConfig = (
     minCoastPredictionHorizonHours: 1,
     maxCoastPredictionHorizonHours: 48,
     predictionSampling: {
+      maxIntegrationStepSeconds: 10,
       refreshInterval: 0.25,
       stepOptionsSeconds: [10, 60, 300],
       targetMaxSteps: 100,

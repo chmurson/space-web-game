@@ -1,3 +1,4 @@
+import { G } from '../simulation/constants'
 import { cloneSimulationState } from '../simulation/state'
 import type {
   Body,
@@ -9,12 +10,14 @@ import { length, sub, type Vec2 } from '../simulation/vector'
 
 export type TrajectoryPredictionConfig = {
   horizonSeconds: number
+  maxIntegrationStepSeconds: number
   maxLoopRevolutions: number
   refreshInterval: number
   stepSeconds: number
 }
 
 export type TrajectoryPredictionSamplingConfig = {
+  maxIntegrationStepSeconds: number
   refreshInterval: number
   stepOptionsSeconds: number[]
   targetMaxSteps: number
@@ -45,6 +48,8 @@ export type AssistedTrajectoryPredictionResult = {
 
 const normalizeAngle = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
+const gravityTimescaleStepRatio = 0.01
+const minIntegrationStepSeconds = 1
 
 export const getTrajectoryPredictionStepSeconds = (
   horizonSeconds: number,
@@ -64,12 +69,23 @@ export const getTrajectoryPredictionConfig = (
   horizonSeconds: number,
   sampling: TrajectoryPredictionSamplingConfig,
   maxLoopRevolutions: number,
-): TrajectoryPredictionConfig => ({
-  horizonSeconds,
-  maxLoopRevolutions,
-  refreshInterval: sampling.refreshInterval,
-  stepSeconds: getTrajectoryPredictionStepSeconds(horizonSeconds, sampling),
-})
+): TrajectoryPredictionConfig => {
+  const stepSeconds = getTrajectoryPredictionStepSeconds(
+    horizonSeconds,
+    sampling,
+  )
+
+  return {
+    horizonSeconds,
+    maxIntegrationStepSeconds: Math.min(
+      stepSeconds,
+      sampling.maxIntegrationStepSeconds,
+    ),
+    maxLoopRevolutions,
+    refreshInterval: sampling.refreshInterval,
+    stepSeconds,
+  }
+}
 
 const getTargetRelativePosition = (
   simulationState: SimulationState,
@@ -87,6 +103,30 @@ const getTargetRelativePosition = (
   return sub(spacecraftPosition, predictedTarget.position)
 }
 
+const getAdaptiveIntegrationStepSeconds = (
+  state: SimulationState,
+  maxStepSeconds: number,
+) => {
+  const gravityLimitedStepSeconds = state.bodies.reduce((stepSeconds, body) => {
+    if (body.mass <= 0) {
+      return stepSeconds
+    }
+
+    const distance = Math.max(
+      length(sub(state.spacecraft.position, body.position)),
+      body.radius,
+    )
+    const gravitationalTimescale = Math.sqrt(distance ** 3 / (G * body.mass))
+
+    return Math.min(
+      stepSeconds,
+      gravitationalTimescale * gravityTimescaleStepRatio,
+    )
+  }, maxStepSeconds)
+
+  return Math.max(minIntegrationStepSeconds, gravityLimitedStepSeconds)
+}
+
 export const predictCoastTrajectory = (
   state: SimulationState,
   physicsEngine: PhysicsEngine,
@@ -97,8 +137,6 @@ export const predictCoastTrajectory = (
   let predictedState = cloneSimulationState(state)
   const absolutePoints: Vec2[] = [{ ...state.spacecraft.position }]
   const relativePoints: Vec2[] = []
-  const maxSteps =
-    predictionConfig.horizonSeconds / predictionConfig.stepSeconds
   const maxLoopAngularTravel = predictionConfig.maxLoopRevolutions * Math.PI * 2
   let closestApproach: PredictedClosestApproach | null = null
   let impact: PredictedImpact | null = null
@@ -107,54 +145,66 @@ export const predictCoastTrajectory = (
     state.spacecraft.position.x - target.position.x,
   )
   let predictionAngularTravel = 0
+  let predictionTime = 0
 
-  for (let step = 0; step < maxSteps; step += 1) {
-    predictedState = physicsEngine.step(
-      predictedState,
-      predictionConfig.stepSeconds,
+  while (predictionTime < predictionConfig.horizonSeconds && !impact) {
+    const sampleEndTime = Math.min(
+      predictionTime + predictionConfig.stepSeconds,
+      predictionConfig.horizonSeconds,
     )
-    const { spacecraft } = predictedState
-    const predictionTime = (step + 1) * predictionConfig.stepSeconds
+    while (predictionTime < sampleEndTime && !impact) {
+      const dt = Math.min(
+        getAdaptiveIntegrationStepSeconds(
+          predictedState,
+          predictionConfig.maxIntegrationStepSeconds,
+        ),
+        sampleEndTime - predictionTime,
+      )
+      predictedState = physicsEngine.step(predictedState, dt)
+      predictionTime += dt
+      const { spacecraft: predictedSpacecraft } = predictedState
+      const predictedTarget = predictedState.bodies.find(
+        (body) => body.id === target.id,
+      )
+      if (predictedTarget) {
+        const altitude =
+          length(sub(predictedSpacecraft.position, predictedTarget.position)) -
+          predictedTarget.radius
+
+        if (!closestApproach || altitude < closestApproach.altitude) {
+          closestApproach = {
+            altitude,
+            bodyName: predictedTarget.name,
+            time: predictionTime,
+          }
+        }
+      }
+
+      const hitBody = predictedState.bodies.find(
+        (body) =>
+          length(sub(predictedSpacecraft.position, body.position)) <=
+          body.radius,
+      )
+      if (hitBody) {
+        impact = {
+          bodyName: hitBody.name,
+          time: predictionTime,
+        }
+      }
+    }
+
     const relativePoint = getTargetRelativePosition(
       predictedState,
       target.id,
-      spacecraft.position,
+      predictedState.spacecraft.position,
     )
     const predictionAngle = Math.atan2(relativePoint.y, relativePoint.x)
     predictionAngularTravel += Math.abs(
       normalizeAngle(predictionAngle - previousPredictionAngle),
     )
     previousPredictionAngle = predictionAngle
-    absolutePoints.push({ ...spacecraft.position })
+    absolutePoints.push({ ...predictedState.spacecraft.position })
     relativePoints.push(relativePoint)
-
-    const predictedTarget = predictedState.bodies.find(
-      (body) => body.id === target.id,
-    )
-    if (predictedTarget) {
-      const altitude =
-        length(sub(spacecraft.position, predictedTarget.position)) -
-        predictedTarget.radius
-
-      if (!closestApproach || altitude < closestApproach.altitude) {
-        closestApproach = {
-          altitude,
-          bodyName: predictedTarget.name,
-          time: predictionTime,
-        }
-      }
-    }
-
-    const hitBody = predictedState.bodies.find(
-      (body) => length(sub(spacecraft.position, body.position)) <= body.radius,
-    )
-    if (hitBody) {
-      impact = {
-        bodyName: hitBody.name,
-        time: predictionTime,
-      }
-      break
-    }
 
     if (allowLoopTrim && predictionAngularTravel >= maxLoopAngularTravel) {
       break
@@ -185,18 +235,36 @@ export const predictAssistedTrajectory = (
 ): AssistedTrajectoryPredictionResult => {
   let assistedState = cloneSimulationState(state)
   const relativePoints: Vec2[] = []
-  const maxSteps =
-    predictionConfig.horizonSeconds / predictionConfig.stepSeconds
+  let hitBody: Body | undefined
+  let predictionTime = 0
 
-  for (let step = 0; step < maxSteps; step += 1) {
-    assistedState = {
-      ...assistedState,
-      controls: getControls(assistedState, targetId),
-    }
-    assistedState = physicsEngine.step(
-      assistedState,
-      predictionConfig.stepSeconds,
+  while (predictionTime < predictionConfig.horizonSeconds && !hitBody) {
+    const sampleEndTime = Math.min(
+      predictionTime + predictionConfig.stepSeconds,
+      predictionConfig.horizonSeconds,
     )
+
+    while (predictionTime < sampleEndTime && !hitBody) {
+      const dt = Math.min(
+        getAdaptiveIntegrationStepSeconds(
+          assistedState,
+          predictionConfig.maxIntegrationStepSeconds,
+        ),
+        sampleEndTime - predictionTime,
+      )
+      assistedState = {
+        ...assistedState,
+        controls: getControls(assistedState, targetId),
+      }
+      assistedState = physicsEngine.step(assistedState, dt)
+      predictionTime += dt
+      hitBody = assistedState.bodies.find(
+        (body) =>
+          length(sub(assistedState.spacecraft.position, body.position)) <=
+          body.radius,
+      )
+    }
+
     relativePoints.push(
       getTargetRelativePosition(
         assistedState,
@@ -204,15 +272,6 @@ export const predictAssistedTrajectory = (
         assistedState.spacecraft.position,
       ),
     )
-
-    const hitBody = assistedState.bodies.find(
-      (body) =>
-        length(sub(assistedState.spacecraft.position, body.position)) <=
-        body.radius,
-    )
-    if (hitBody) {
-      break
-    }
   }
 
   return { relativePoints }
