@@ -61,6 +61,8 @@ const resolvePrompt = (
     })),
     description: resolvePromptValue(definition.description, context),
     id: definition.id,
+    pausesGameplay:
+      definition.pausesGameplay ?? definition.presentation.kind === 'blocking',
     title: resolvePromptValue(definition.title, context),
   }
 

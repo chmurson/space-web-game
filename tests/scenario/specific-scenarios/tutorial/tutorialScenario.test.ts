@@ -79,6 +79,7 @@ const createRuntime = (): AppRuntimeState => ({
     touchThrustControl: {
       engaged: false,
       interactive: false,
+      revealed: false,
       visible: false,
     },
     uiEffectEpoch: 0,
@@ -256,7 +257,7 @@ describe('tutorialScenario', () => {
     ).toEqual(new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']))
   })
 
-  it('resolves mobile onboarding prompts as coach prompts with touch hints', () => {
+  it('resolves mobile onboarding prompts as coach prompts for the burn tab', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession(
       'tutorial',
@@ -285,9 +286,10 @@ describe('tutorialScenario', () => {
     )
 
     expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
+      anchor: 'thrust-control',
+      focusedTouchControl: 'burn',
       kind: 'coach',
-      title: 'Show Thrust Control',
-      touchHintTarget: 'thrust-zone',
+      title: 'Open Burn Control',
     })
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       kind: 'coach',

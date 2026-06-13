@@ -2,7 +2,6 @@ import type { AppRuntimeState } from '../../../../runtime/appRuntimeState'
 import type { Body } from '../../../../simulation/types'
 import { length, normalize, sub, vec } from '../../../../simulation/vector'
 import {
-  outwardHeadingToleranceRadians,
   requiredHighWarpMultiplier,
   requiredHighWarpThrustMs,
   requiredIntroKeepThrustMs,
@@ -18,17 +17,11 @@ import type {
   TutorialOnboardingStepProgress,
 } from './tutorialOnboardingTypes'
 
-const normalizeAngleDelta = (angle: number) =>
-  Math.atan2(Math.sin(angle), Math.cos(angle))
-
 const hasMainThrust = (runtime: AppRuntimeState) =>
   runtime.simulation.state.controls.main > 0
 
-const hasVisibleTouchThrustControl = (runtime: AppRuntimeState) =>
-  runtime.ui.touchThrustControl.visible
-
-const hasInteractiveTouchThrustControl = (runtime: AppRuntimeState) =>
-  runtime.ui.touchThrustControl.interactive
+const hasRevealedTouchThrustControl = (runtime: AppRuntimeState) =>
+  runtime.ui.touchThrustControl.revealed
 
 const isTouchThrustEngaged = (runtime: AppRuntimeState) =>
   runtime.ui.touchThrustControl.engaged
@@ -62,7 +55,7 @@ const getNextStepId = (
 const getThrustRecoveryStepId = (
   runtime: AppRuntimeState,
 ): TutorialOnboardingStepId =>
-  hasVisibleTouchThrustControl(runtime)
+  hasRevealedTouchThrustControl(runtime)
     ? 'intro-thrust'
     : 'intro-show-thrust-control'
 
@@ -99,24 +92,6 @@ const getOutwardHeading = (
   const safeDirection =
     length(radialDirection) > 0 ? radialDirection : vec(1, 0)
   return Math.atan2(safeDirection.y, safeDirection.x)
-}
-
-const isHeadingOutwardFromNearestBody = (
-  runtime: AppRuntimeState,
-  nearestBody: Body | null,
-) => {
-  if (!nearestBody) {
-    return true
-  }
-
-  const outwardHeading = getOutwardHeading(runtime, nearestBody)
-  return (
-    Math.abs(
-      normalizeAngleDelta(
-        runtime.simulation.state.spacecraft.heading - outwardHeading,
-      ),
-    ) <= outwardHeadingToleranceRadians
-  )
 }
 
 const setStepId = (
@@ -223,7 +198,7 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-show-thrust-control') {
-    return hasInteractiveTouchThrustControl(runtime) || hasMainThrust(runtime)
+    return hasRevealedTouchThrustControl(runtime) || hasMainThrust(runtime)
       ? advanceToNextStep(runtime, onboarding, nowMs, timeWarpMultiplier)
       : { ...onboarding, progress: nextProgress }
   }
@@ -231,7 +206,7 @@ export const advanceTutorialOnboarding = (
   if (onboarding.activeStepId === 'intro-thrust') {
     if (!hasMainThrust(runtime)) {
       nextProgress.accumulatedMainThrustMs = 0
-      return !hasVisibleTouchThrustControl(runtime)
+      return !hasRevealedTouchThrustControl(runtime)
         ? goToStep(
             runtime,
             { ...onboarding, progress: nextProgress },
@@ -286,7 +261,7 @@ export const advanceTutorialOnboarding = (
     const touchControlEngaged = isTouchThrustEngaged(runtime)
     const usingTouchControlState =
       onboarding.progress.stepStartTouchThrustControlEngaged ||
-      hasVisibleTouchThrustControl(runtime)
+      hasRevealedTouchThrustControl(runtime)
 
     if (
       !onboarding.progress.stepStartTouchThrustControlEngaged &&
@@ -302,7 +277,7 @@ export const advanceTutorialOnboarding = (
     }
 
     const thrustTurnedOffAndReleased = usingTouchControlState
-      ? !touchControlEngaged && !hasVisibleTouchThrustControl(runtime)
+      ? !touchControlEngaged
       : !hasMainThrust(runtime)
 
     return thrustTurnedOffAndReleased
@@ -342,12 +317,8 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-timewarp-thrust') {
-    const nearestBody = getNearestBody(runtime)
-    const outwardAligned = isHeadingOutwardFromNearestBody(runtime, nearestBody)
     nextProgress.accumulatedMainThrustMs =
-      outwardAligned &&
-      timeWarpMultiplier >= requiredHighWarpMultiplier &&
-      hasMainThrust(runtime)
+      timeWarpMultiplier >= requiredHighWarpMultiplier && hasMainThrust(runtime)
         ? onboarding.progress.accumulatedMainThrustMs + deltaMs
         : 0
     return nextProgress.accumulatedMainThrustMs >= requiredHighWarpThrustMs

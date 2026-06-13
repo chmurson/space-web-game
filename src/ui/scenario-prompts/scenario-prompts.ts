@@ -51,6 +51,24 @@ const getHudFocusElement = (target: HudFocusKey): HTMLElement | null => {
   return getTelemetryPillElement('thrust')
 }
 
+const getEdgeRevealControlAnchor = (
+  controlSelector: string,
+  revealSelector: string,
+): HTMLElement | null => {
+  const control = document.querySelector<HTMLElement>(controlSelector)
+  const revealControl =
+    control?.closest<HTMLElement>('.touch-edge-reveal-control') ??
+    document.querySelector<HTMLElement>(revealSelector)
+  const revealOpen =
+    revealControl?.classList.contains('touch-edge-reveal-control-open') ?? true
+
+  if (control && revealOpen && hasVisibleRect(control)) {
+    return control
+  }
+
+  return revealControl ?? control
+}
+
 const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
   if (anchor === 'speed-pill') {
     return getTelemetryPillElement('speed')
@@ -58,25 +76,20 @@ const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
   if (anchor === 'time-warp-pill') {
     return getTelemetryPillElement('time')
   }
+  if (anchor === 'time-warp-control') {
+    return getEdgeRevealControlAnchor(
+      '.touch-step-selector-time-warp',
+      '#touch-time-warp-reveal',
+    )
+  }
   if (anchor === 'thrust-pill') {
     return getTelemetryPillElement('thrust')
   }
   if (anchor === 'thrust-control') {
-    const thrustControl = document.querySelector<HTMLElement>(
+    return getEdgeRevealControlAnchor(
       '.touch-thrust-control',
+      '#touch-thrust-reveal',
     )
-    const revealControl =
-      thrustControl?.closest<HTMLElement>('.touch-edge-reveal-control') ??
-      document.querySelector<HTMLElement>('#touch-thrust-reveal')
-    const revealOpen =
-      revealControl?.classList.contains('touch-edge-reveal-control-open') ??
-      true
-
-    if (thrustControl && revealOpen && hasVisibleRect(thrustControl)) {
-      return thrustControl
-    }
-
-    return revealControl ?? thrustControl
   }
   return null
 }

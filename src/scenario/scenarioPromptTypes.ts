@@ -2,6 +2,7 @@ import type { AppRuntimeState } from '../runtime/appRuntimeState'
 
 export type ScenarioPromptAnchor =
   | 'time-warp-pill'
+  | 'time-warp-control'
   | 'speed-pill'
   | 'thrust-pill'
   | 'thrust-control'
@@ -57,6 +58,7 @@ export type PromptDefinition = {
   buttons: PromptButtonDefinition[]
   description: PromptValue<string>
   id: string
+  pausesGameplay?: boolean
   presentation: PromptPresentationDefinition
   shortLabel?: PromptValue<string>
   title: PromptValue<string>
@@ -72,6 +74,7 @@ export type ResolvedPrompt = {
   buttons: ResolvedPromptButton[]
   description: string
   id: string
+  pausesGameplay: boolean
   title: string
 } & (
   | { kind: 'blocking' }

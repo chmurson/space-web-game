@@ -25,21 +25,27 @@ export const tutorialOnboardingStepOrder: TutorialOnboardingStepId[] = [
   'intro-complete',
 ]
 
-const tutorialOnboardingPromptDefinitions = {
+const tutorialOnboardingPromptDefinitions: Record<
+  TutorialOnboardingStepId,
+  PromptDefinition
+> = {
   'intro-show-thrust-control': {
     id: 'intro-show-thrust-control',
-    title: 'Show Thrust Control',
-    shortLabel: 'Show Thrust Control',
+    title: ({ inputMode }) =>
+      inputMode === 'mobile' ? 'Open Burn Control' : 'Show Thrust Control',
+    shortLabel: ({ inputMode }) =>
+      inputMode === 'mobile' ? 'Open Burn Control' : 'Show Thrust Control',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Press and hold in the lower-right control area until the thrust control appears. That is where you will light the engine to start pushing away from Earth.'
+        ? 'Swipe inward from the Burn tab on the screen edge to open the thrust control.'
         : 'Press W or Up Arrow to wake the main engine and start pushing your path away from Earth.',
     buttons: [],
     presentation: {
       kind: 'coach',
-      anchor: 'trajectory',
-      touchHintTarget: ({ inputMode }) =>
-        inputMode === 'mobile' ? 'thrust-zone' : undefined,
+      anchor: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'thrust-control' : 'trajectory',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'burn' : undefined,
     },
   },
   'intro-thrust': {
@@ -48,7 +54,7 @@ const tutorialOnboardingPromptDefinitions = {
     shortLabel: 'Use Thrust',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Swipe the visible thrust control upward and keep it on briefly. A short burn starts bending your path away from Earth.'
+        ? 'Drag the orange handle upward to turn thrust on. Hold it briefly while your path starts bending away from Earth.'
         : 'Keep W or Up Arrow held briefly so the main engine can start widening your escape path.',
     buttons: [],
     presentation: {
@@ -69,6 +75,8 @@ const tutorialOnboardingPromptDefinitions = {
       kind: 'coach',
       anchor: 'speed-pill',
       focusedHudElement: 'speed-pill',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'burn' : undefined,
     },
   },
   'intro-thrusting-complete': {
@@ -88,6 +96,8 @@ const tutorialOnboardingPromptDefinitions = {
       kind: 'coach',
       anchor: 'speed-pill',
       focusedHudElement: 'speed-pill',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'burn' : undefined,
     },
   },
   'intro-thrusting-off': {
@@ -97,7 +107,7 @@ const tutorialOnboardingPromptDefinitions = {
     buttons: [],
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'You can now turn off by sliding the thrust control down. Do it now.'
+        ? 'Drag the orange handle back down to turn thrust off.'
         : 'Release W or Up Arrow so the main engine shuts down.',
     presentation: {
       kind: 'coach',
@@ -122,22 +132,31 @@ const tutorialOnboardingPromptDefinitions = {
     id: 'intro-timewarp',
     title: 'Raise Time Warp',
     shortLabel: 'Raise Time Warp',
-    description: 'Increase time warp until the time pill reaches at least x1m.',
+    description: ({ inputMode }) =>
+      inputMode === 'mobile'
+        ? 'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches at least x1m.'
+        : 'Increase time warp until the time pill reaches at least x1m.',
     buttons: [],
-    presentation: { kind: 'coach', anchor: 'trajectory' },
+    presentation: {
+      kind: 'coach',
+      anchor: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'time-warp-control' : 'trajectory',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'warp' : undefined,
+    },
   },
   'intro-timewarp-thrust': {
     id: 'intro-timewarp-thrust',
     title: 'Burn At x1m',
     shortLabel: 'Burn At x1m',
-    description:
-      'The tutorial is turning you outward from the nearest body. Keep time warp at x1m or higher, then hold thrust in the lower control area for 2 seconds.',
+    description: ({ inputMode }) =>
+      inputMode === 'mobile'
+        ? 'The tutorial is turning you outward from the nearest body. Keep the time pill at x1m, the one-minute warp notch, then open Burn and hold the orange handle upward for 2 seconds.'
+        : 'The tutorial is turning you outward from the nearest body. Keep the time pill at x1m, the one-minute warp notch, then hold W or Up Arrow for 2 seconds.',
     buttons: [],
     presentation: {
       kind: 'coach',
       anchor: 'trajectory',
-      touchHintTarget: ({ inputMode }) =>
-        inputMode === 'mobile' ? 'thrust-zone' : undefined,
     },
   },
   'intro-trajectory': {
@@ -153,6 +172,7 @@ const tutorialOnboardingPromptDefinitions = {
         tone: 'primary',
       },
     ],
+    pausesGameplay: true,
     presentation: { kind: 'coach', anchor: 'trajectory' },
   },
   'intro-complete': {
@@ -168,9 +188,10 @@ const tutorialOnboardingPromptDefinitions = {
         tone: 'primary',
       },
     ],
+    pausesGameplay: true,
     presentation: { kind: 'coach', anchor: 'trajectory' },
   },
-} satisfies Record<TutorialOnboardingStepId, PromptDefinition>
+}
 
 export const getTutorialOnboardingPromptDefinitions = () =>
   tutorialOnboardingPromptDefinitions
@@ -230,6 +251,7 @@ export const getTutorialOnboardingPromptContent = (
     anchor,
     focusedHudElement,
     focusedTouchControl,
+    pausesGameplay: definition.pausesGameplay ?? false,
     touchHintTarget,
   }
 }

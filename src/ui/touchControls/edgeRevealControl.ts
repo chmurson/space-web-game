@@ -11,6 +11,7 @@ export type EdgeRevealControlOptions = {
   icon?: string
   id: string
   label: string
+  onOpenChange?(open: boolean): void
   placement: TouchControlRevealPlacement
   revealThresholdPx?: number
 }
@@ -82,8 +83,12 @@ export const createEdgeRevealControl = (
   }
 
   const setOpen = (nextOpen: boolean) => {
+    const wasOpen = open
     open = available && nextOpen
     syncState()
+    if (open !== wasOpen) {
+      options.onOpenChange?.(open)
+    }
   }
 
   const stopTabEvent = (event: Event) => {
@@ -222,11 +227,15 @@ export const createEdgeRevealControl = (
       return open
     },
     setAvailable(nextAvailable) {
+      const wasOpen = open
       available = nextAvailable
       if (!available) {
         open = false
       }
       syncState()
+      if (open !== wasOpen) {
+        options.onOpenChange?.(open)
+      }
     },
     setEdge(edge) {
       if (options.placement.edge === edge) {
