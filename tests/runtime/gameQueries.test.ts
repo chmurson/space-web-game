@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
-
-import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { createGameQueries } from '@/runtime/gameQueries'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 
 const createBody = (
   overrides: Partial<
@@ -108,6 +107,7 @@ describe('createGameQueries', () => {
         createPredictedTrajectoryPoints([0, 0], [4_000_000, 0], [8_000_000, 0]),
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
+        maxIntegrationStepSeconds: 10,
         refreshInterval: 0.25,
         stepOptionsSeconds: [10, 60, 300],
         targetMaxSteps: 100,
@@ -144,6 +144,7 @@ describe('createGameQueries', () => {
           : createPredictedTrajectoryPoints([0, 0], [20, 40], [40, 0]),
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
+        maxIntegrationStepSeconds: 10,
         refreshInterval: 0.25,
         stepOptionsSeconds: [10, 60, 300],
         targetMaxSteps: 100,
@@ -183,6 +184,7 @@ describe('createGameQueries', () => {
       getPredictedTrajectoryPoints: () => [],
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
+        maxIntegrationStepSeconds: 10,
         refreshInterval: 0.25,
         stepOptionsSeconds: [10, 60, 300],
         targetMaxSteps: 100,
@@ -208,6 +210,7 @@ describe('createGameQueries', () => {
       getPredictedTrajectoryPoints: () => [],
       maxPredictionLoopRevolutions: 3,
       predictionSampling: {
+        maxIntegrationStepSeconds: 10,
         refreshInterval: 0.5,
         stepOptionsSeconds: [10, 60, 300, 1800],
         targetMaxSteps: 100,
@@ -219,6 +222,7 @@ describe('createGameQueries', () => {
     expect(queries.getPredictionConfig()).toEqual({
       horizonSeconds: 21_600,
       maxLoopRevolutions: 3,
+      maxIntegrationStepSeconds: 10,
       refreshInterval: 0.5,
       stepSeconds: 300,
     })
@@ -245,6 +249,7 @@ describe('createGameQueries', () => {
       getPredictedTrajectoryPoints: () => [],
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
+        maxIntegrationStepSeconds: 10,
         refreshInterval: 0.25,
         stepOptionsSeconds: [10, 60, 300],
         targetMaxSteps: 100,

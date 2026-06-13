@@ -35,6 +35,7 @@ export type GameConfig = {
       endMarkerMinScreenRadius: number
     }
     sampling: {
+      maxIntegrationStepSeconds: number
       refreshInterval: number
       targetMaxSteps: number
       stepOptionsSeconds: number[]
