@@ -22,6 +22,7 @@ export type RuntimeScenarioMetadata = {
 export type TouchThrustControlUiState = {
   engaged: boolean
   interactive: boolean
+  revealed: boolean
   visible: boolean
 }
 
@@ -29,6 +30,7 @@ export const createDefaultTouchThrustControlUiState =
   (): TouchThrustControlUiState => ({
     engaged: false,
     interactive: false,
+    revealed: false,
     visible: false,
   })
 

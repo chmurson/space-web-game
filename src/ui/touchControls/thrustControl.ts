@@ -161,6 +161,7 @@ export const createThrustControl = (options: {
     const uiState: TouchThrustControlUiState = {
       engaged: snapshot.thrust.engaged,
       interactive: isAvailable && (isDocked || snapshot.thrust.visible),
+      revealed: isAvailable && (isDocked || snapshot.thrust.visible),
       visible:
         isAvailable &&
         (isDocked || snapshot.thrust.visible || isPendingFadeReady),

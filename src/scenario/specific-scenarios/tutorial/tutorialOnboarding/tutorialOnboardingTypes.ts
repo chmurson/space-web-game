@@ -21,6 +21,7 @@ export type TutorialOnboardingPromptContent = {
   confirmAction?: 'advance-step'
   confirmLabel?: string
   description: string
+  pausesGameplay: boolean
   title: string
   anchor?: ScenarioPromptAnchor
   focusedHudElement?: ScenarioHudFocusTarget

@@ -64,6 +64,7 @@ const createRuntime = (): AppRuntimeState => ({
     touchThrustControl: {
       engaged: false,
       interactive: false,
+      revealed: false,
       visible: false,
     },
     uiEffectEpoch: 0,

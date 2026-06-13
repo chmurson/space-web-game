@@ -230,12 +230,18 @@ export const createTouchControls = (options: {
   const thrustDock = document.createElement('div')
   thrustDock.className = 'touch-edge-reveal-dock touch-thrust-reveal-dock'
   thrustDock.dataset.touchControlDock = 'burn'
+  let burnControlRevealed = false
   const thrustControl = createThrustControl({
     container: thrustDock,
     onSessionChange: (session) => {
       activeSession = session
     },
-    onUiStateChange: options.onThrustControlUiStateChange,
+    onUiStateChange: (state) => {
+      options.onThrustControlUiStateChange({
+        ...state,
+        revealed: burnControlRevealed,
+      })
+    },
     panel,
     setMainThrust: syncMainThrust,
     tapMoveTolerancePx,
@@ -274,6 +280,10 @@ export const createTouchControls = (options: {
     icon: 'Burn',
     id: 'touch-thrust-reveal',
     label: 'Reveal thrust control',
+    onOpenChange: (open) => {
+      burnControlRevealed = open
+      thrustControl.syncUi()
+    },
     placement: thrustRevealPlacement,
   })
   const revealControls = [

@@ -65,13 +65,13 @@ export const createFrameLoop = (options: {
       options.runtime,
       options.touchControls ? 'mobile' : 'desktop',
     )
-    const hasBlockingPrompt = prompts.active?.kind === 'blocking'
+    const gameplayPaused = prompts.active?.pausesGameplay ?? false
 
     const isThrusting =
       options.runtime.simulation.state.controls.main > 0 &&
       options.runtime.simulation.state.spacecraft.fuel > 0
 
-    if (!hasBlockingPrompt) {
+    if (!gameplayPaused) {
       const simulationStep = stepSimulationFrame({
         assistMode: options.runtime.simulation.assistMode,
         crashedBodyName: options.runtime.simulation.crashedBodyName,
@@ -95,7 +95,7 @@ export const createFrameLoop = (options: {
     advanceRuntimeScenario(
       options.runtime,
       options.globalScenarioDirectiveLimits,
-      { shouldAdvance: !hasBlockingPrompt },
+      { shouldAdvance: !gameplayPaused },
     )
     updateRipples(options.ripples, realDt)
     options.runtimeActions.updateCamera()
