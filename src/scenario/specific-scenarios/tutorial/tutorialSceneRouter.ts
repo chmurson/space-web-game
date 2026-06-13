@@ -244,15 +244,25 @@ const advanceOrbitScene = <
       : 0
   const orbitProgressRadians = state.orbitProgressRadians + additionalProgress
   const orbitTurnsCompleted = Math.floor(orbitProgressRadians / fullTurnRadians)
+  const shouldCaptureFirstOrbitAttemptCheckpoint =
+    state.orbitAttemptCheckpointCaptured !== true
 
   return createTutorialTransition(
     {
       ...state,
+      ...(shouldCaptureFirstOrbitAttemptCheckpoint
+        ? { orbitAttemptCheckpointCaptured: true }
+        : {}),
       orbitProgressRadians,
       orbitTurnsCompleted,
       previousOrbitAngle: orbitAngle,
     },
-    { completed: orbitTurnsCompleted >= requiredMoonOrbitTurns },
+    {
+      checkpoint: shouldCaptureFirstOrbitAttemptCheckpoint
+        ? createDefaultRuntimeScenarioCheckpoint(runtime)
+        : undefined,
+      completed: orbitTurnsCompleted >= requiredMoonOrbitTurns,
+    },
   )
 }
 
@@ -351,6 +361,9 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
               onboarding: acknowledgedOnboarding,
             },
             {
+              checkpoint: acknowledgedOnboarding.gateActive
+                ? undefined
+                : createDefaultRuntimeScenarioCheckpoint(runtime),
               promptUi: resolveOnboardingPromptUi(
                 acknowledgedOnboarding,
                 runtime.scenario.session.promptUi,

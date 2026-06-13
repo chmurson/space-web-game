@@ -9,6 +9,7 @@ export type TutorialScenarioPhase =
   | 'complete'
 
 export type TutorialOrbitProgressState = {
+  orbitAttemptCheckpointCaptured?: boolean
   orbitProgressRadians: number
   orbitTurnsCompleted: number
   previousOrbitAngle?: number

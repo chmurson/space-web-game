@@ -6,6 +6,8 @@ import {
   serializePromptAction,
 } from '../../scenario/scenarioPrompts'
 import type {
+  ResolvedPrompt,
+  ResolvedPromptState,
   ScenarioHudFocusTarget,
   ScenarioPromptAnchor,
   ScenarioTouchControlFocusTarget,
@@ -17,7 +19,9 @@ export type ScenarioPromptUiRefs = {
   arrowElement: HTMLElement
   titleElement: HTMLHeadingElement | null
   descriptionElement: HTMLParagraphElement | null
+  closeButton: HTMLButtonElement | null
   confirmButton: HTMLButtonElement | null
+  restartButton: HTMLButtonElement | null
   secondaryButton: HTMLButtonElement | null
   replayButton: HTMLButtonElement
   replayButtonLabel: HTMLSpanElement | null
@@ -110,11 +114,15 @@ export const createScenarioPromptUI = (
   backdropElement.innerHTML = `
     <div class="scenario-prompt">
       <div class="scenario-prompt-arrow"></div>
-      <h2></h2>
+      <div class="scenario-prompt-header">
+        <h2></h2>
+        <button type="button" data-role="close" class="scenario-prompt-close-button" aria-label="Close scenario prompt">&times;</button>
+      </div>
       <p></p>
       <div class="scenario-prompt-actions">
         <button type="button" data-role="confirm"></button>
         <button type="button" data-role="secondary"></button>
+        <button type="button" data-role="restart" class="scenario-prompt-restart-button">Restart scenario</button>
       </div>
     </div>
   `
@@ -149,8 +157,14 @@ export const createScenarioPromptUI = (
     titleElement: backdropElement.querySelector<HTMLHeadingElement>('h2'),
     descriptionElement:
       backdropElement.querySelector<HTMLParagraphElement>('p'),
+    closeButton: backdropElement.querySelector<HTMLButtonElement>(
+      '[data-role="close"]',
+    ),
     confirmButton: backdropElement.querySelector<HTMLButtonElement>(
       '[data-role="confirm"]',
+    ),
+    restartButton: backdropElement.querySelector<HTMLButtonElement>(
+      '[data-role="restart"]',
     ),
     secondaryButton: backdropElement.querySelector<HTMLButtonElement>(
       '[data-role="secondary"]',
@@ -202,10 +216,53 @@ type PromptIdentity = {
   activePromptPrimaryButtonAction: string
   activePromptSecondaryButtonLabel: string
   activePromptSecondaryButtonAction: string
+  closeButtonVisible: boolean
+  restartButtonAction: ReplayPromptRestartAction | null
   replayPromptLabel: string
   showScenarioInfoButton: boolean
   inputMode: 'desktop' | 'mobile'
 }
+
+type ReplayPromptRestartAction = 'checkpoint' | 'scenario'
+
+const replayPromptCancelLabel = 'Cancel'
+const replayPromptCancelAction = serializePromptAction({
+  kind: 'builtin',
+  id: 'dismiss_to_replay',
+})
+
+const isReplayPromptActive = (
+  activePrompt: ResolvedPrompt | null,
+  replayPrompt: ResolvedPromptState['replay'],
+): boolean =>
+  activePrompt !== null &&
+  replayPrompt !== null &&
+  activePrompt.id === replayPrompt.id
+
+const getReplayPromptRestartAction = (
+  runtime: AppRuntimeState,
+  activePrompt: ResolvedPrompt | null,
+  replayPrompt: ResolvedPromptState['replay'],
+): ReplayPromptRestartAction | null => {
+  if (!isReplayPromptActive(activePrompt, replayPrompt)) {
+    return null
+  }
+
+  return runtime.scenario.session.checkpoint !== null
+    ? 'checkpoint'
+    : 'scenario'
+}
+
+const getRestartButtonLabel = (action: ReplayPromptRestartAction): string =>
+  action === 'checkpoint' ? 'Restart from checkpoint' : 'Restart scenario'
+
+const getPromptButtonLabel = (options: {
+  label: string
+  replayPromptActive: boolean
+}): string =>
+  options.replayPromptActive && options.label === 'Start'
+    ? 'Restart'
+    : options.label
 
 /**
  * Computes a compact identity key from the current runtime state.
@@ -220,6 +277,13 @@ const computePromptIdentity = (
   const prompts = resolveScenarioPrompts(runtime, inputMode)
   const activePrompt = prompts.active
   const replayPrompt = prompts.replay
+  const replayPromptActive = isReplayPromptActive(activePrompt, replayPrompt)
+  const restartButtonAction = getReplayPromptRestartAction(
+    runtime,
+    activePrompt,
+    replayPrompt,
+  )
+  const promptButtonsVisible = restartButtonAction !== 'scenario'
   const primaryButton = activePrompt?.buttons[0]
   const secondaryButton = activePrompt?.buttons[1]
 
@@ -238,14 +302,29 @@ const computePromptIdentity = (
       activePrompt?.kind === 'coach'
         ? (activePrompt.focusedTouchControl ?? null)
         : null,
-    activePromptPrimaryButtonLabel: primaryButton?.label ?? '',
-    activePromptPrimaryButtonAction: primaryButton
-      ? serializePromptAction(primaryButton.action)
+    activePromptPrimaryButtonLabel: promptButtonsVisible
+      ? getPromptButtonLabel({
+          label: primaryButton?.label ?? '',
+          replayPromptActive,
+        })
       : '',
-    activePromptSecondaryButtonLabel: secondaryButton?.label ?? '',
-    activePromptSecondaryButtonAction: secondaryButton
-      ? serializePromptAction(secondaryButton.action)
-      : '',
+    activePromptPrimaryButtonAction:
+      promptButtonsVisible && primaryButton
+        ? serializePromptAction(primaryButton.action)
+        : '',
+    activePromptSecondaryButtonLabel: promptButtonsVisible
+      ? (secondaryButton?.label ?? '')
+      : restartButtonAction === 'scenario'
+        ? replayPromptCancelLabel
+        : '',
+    activePromptSecondaryButtonAction:
+      promptButtonsVisible && secondaryButton
+        ? serializePromptAction(secondaryButton.action)
+        : restartButtonAction === 'scenario'
+          ? replayPromptCancelAction
+          : '',
+    closeButtonVisible: replayPromptActive,
+    restartButtonAction,
     replayPromptLabel: replayPrompt?.label ?? '',
     showScenarioInfoButton,
     inputMode,
@@ -268,6 +347,8 @@ const identitiesEqual = (a: PromptIdentity, b: PromptIdentity): boolean => {
     a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
     a.activePromptSecondaryButtonAction ===
       b.activePromptSecondaryButtonAction &&
+    a.closeButtonVisible === b.closeButtonVisible &&
+    a.restartButtonAction === b.restartButtonAction &&
     a.replayPromptLabel === b.replayPromptLabel &&
     a.showScenarioInfoButton === b.showScenarioInfoButton &&
     a.inputMode === b.inputMode
@@ -458,6 +539,16 @@ export const createScenarioPromptUpdater = (
       const prompts = resolveScenarioPrompts(runtime, inputMode)
       const activePrompt = prompts.active
       const replayPrompt = prompts.replay
+      const replayPromptActive = isReplayPromptActive(
+        activePrompt,
+        replayPrompt,
+      )
+      const restartButtonAction = getReplayPromptRestartAction(
+        runtime,
+        activePrompt,
+        replayPrompt,
+      )
+      const promptButtonsVisible = restartButtonAction !== 'scenario'
       const primaryButton = activePrompt?.buttons[0]
       const secondaryButton = activePrompt?.buttons[1]
 
@@ -537,23 +628,55 @@ export const createScenarioPromptUpdater = (
       }
 
       // Update buttons
-      if (refs.confirmButton) {
-        refs.confirmButton.style.display = primaryButton
+      if (refs.closeButton) {
+        refs.closeButton.style.display = replayPromptActive
           ? 'inline-flex'
           : 'none'
-        refs.confirmButton.textContent = primaryButton?.label ?? ''
-        refs.confirmButton.dataset.promptAction = primaryButton
-          ? serializePromptAction(primaryButton.action)
+        refs.closeButton.dataset.promptAction = replayPromptActive
+          ? replayPromptCancelAction
           : ''
       }
+      if (refs.confirmButton) {
+        refs.confirmButton.style.display =
+          promptButtonsVisible && primaryButton ? 'inline-flex' : 'none'
+        refs.confirmButton.textContent = promptButtonsVisible
+          ? getPromptButtonLabel({
+              label: primaryButton?.label ?? '',
+              replayPromptActive,
+            })
+          : ''
+        refs.confirmButton.dataset.promptAction =
+          promptButtonsVisible && primaryButton
+            ? serializePromptAction(primaryButton.action)
+            : ''
+      }
       if (refs.secondaryButton) {
-        refs.secondaryButton.style.display = secondaryButton
+        refs.secondaryButton.style.display =
+          (promptButtonsVisible && secondaryButton) ||
+          restartButtonAction === 'scenario'
+            ? 'inline-flex'
+            : 'none'
+        refs.secondaryButton.textContent = promptButtonsVisible
+          ? (secondaryButton?.label ?? '')
+          : restartButtonAction === 'scenario'
+            ? replayPromptCancelLabel
+            : ''
+        refs.secondaryButton.dataset.promptAction =
+          promptButtonsVisible && secondaryButton
+            ? serializePromptAction(secondaryButton.action)
+            : restartButtonAction === 'scenario'
+              ? replayPromptCancelAction
+              : ''
+      }
+      if (refs.restartButton) {
+        refs.restartButton.style.display = restartButtonAction
           ? 'inline-flex'
           : 'none'
-        refs.secondaryButton.textContent = secondaryButton?.label ?? ''
-        refs.secondaryButton.dataset.promptAction = secondaryButton
-          ? serializePromptAction(secondaryButton.action)
+        refs.restartButton.disabled = restartButtonAction === null
+        refs.restartButton.textContent = restartButtonAction
+          ? getRestartButtonLabel(restartButtonAction)
           : ''
+        refs.restartButton.dataset.restartAction = restartButtonAction ?? ''
       }
 
       // Update replay button
