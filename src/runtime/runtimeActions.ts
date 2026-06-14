@@ -57,6 +57,7 @@ const scaleScreenPointForResize = (
 
 export const createRuntimeActions = (options: {
   app: HTMLDivElement
+  autoSelectNearestSurface: boolean
   cameraDistance: number
   cameraElevation: number
   createRipple: RippleCreator
@@ -83,10 +84,37 @@ export const createRuntimeActions = (options: {
     return wrapped < 0 ? wrapped + Math.PI : wrapped - Math.PI
   }
 
-  const clearTransientScenarioState = () =>
+  const normalizeAssistTargetIndex = (index: number) => {
+    const bodyCount = options.runtime.simulation.state.bodies.length
+    if (bodyCount === 0) {
+      return null
+    }
+
+    return ((index % bodyCount) + bodyCount) % bodyCount
+  }
+
+  const selectAssistTargetIndex = (index: number) => {
+    const normalizedIndex = normalizeAssistTargetIndex(index)
+    if (normalizedIndex === null) {
+      return false
+    }
+
+    options.runtime.simulation.assistTargetIndex = normalizedIndex
+    options.runtime.simulation.assistTargetSelectionMode = 'manual'
+    return true
+  }
+
+  const resetAssistTargetSelectionMode = () => {
+    options.runtime.simulation.assistTargetSelectionMode =
+      options.autoSelectNearestSurface ? 'auto' : 'manual'
+  }
+
+  const clearTransientScenarioState = () => {
     clearTransientScenarioRuntimeState(options.runtime, () => {
       options.gameScene.trailPoints.length = 0
     })
+    resetAssistTargetSelectionMode()
+  }
 
   const setTimeWarp = (warp: number) => {
     const desiredIndex = options.timeWarps.indexOf(warp)
@@ -199,9 +227,9 @@ export const createRuntimeActions = (options: {
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'cycleAssistTarget') {
-        options.runtime.simulation.assistTargetIndex =
-          (options.runtime.simulation.assistTargetIndex + 1) %
-          options.runtime.simulation.state.bodies.length
+        selectAssistTargetIndex(
+          options.runtime.simulation.assistTargetIndex + 1,
+        )
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'cycleAssistMode') {
@@ -345,8 +373,17 @@ export const createRuntimeActions = (options: {
       )
       options.runtime.simulation.assistMode = 'off'
     },
+    returnToAutomaticAssistTargetSelection: () => {
+      if (!options.autoSelectNearestSurface) {
+        return false
+      }
+
+      options.runtime.simulation.assistTargetSelectionMode = 'auto'
+      return true
+    },
     recoverScenarioAfterCrash,
     reopenScenarioPrompt,
+    selectAssistTargetIndex,
     startFreeRoam: scenarioRuntimeController.startFreeRoam,
     startTutorial: scenarioRuntimeController.startTutorial,
     updateCamera,

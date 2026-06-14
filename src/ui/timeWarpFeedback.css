@@ -9,8 +9,8 @@
   --warp-feedback-glow: rgba(14, 165, 233, 0.24);
   --warp-feedback-brightness-peak: 1.24;
   --warp-feedback-bg-peak: rgba(8, 36, 52, 0.52);
-  animation: time-warp-feedback-confirm-v2
-    var(--warp-feedback-duration, 1.5s) ease;
+  animation: time-warp-feedback-confirm-v2 var(--warp-feedback-duration, 1.5s)
+    ease;
 }
 
 .telemetry-pill-warp-bump[data-warp-feedback-variant="v4"],
@@ -19,8 +19,8 @@
   --warp-feedback-glow: rgba(225, 29, 72, 0.22);
   --warp-feedback-brightness-peak: 1.18;
   --warp-feedback-bg-peak: rgba(54, 18, 34, 0.5);
-  animation: time-warp-feedback-confirm-v4
-    var(--warp-feedback-duration, 1s) ease;
+  animation: time-warp-feedback-confirm-v4 var(--warp-feedback-duration, 1s)
+    ease;
 }
 
 @keyframes time-warp-feedback-confirm-v2 {

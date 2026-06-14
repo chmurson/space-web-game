@@ -27,6 +27,7 @@ const createRuntime = (): AppRuntimeState => ({
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 1,
+    assistTargetSelectionMode: 'auto',
     coastPredictionHorizonHours: 24,
     crashedBodyName: 'Earth',
     state: {
@@ -204,7 +205,12 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.simulation.assistMode).toBe('off')
     expect(runtime.simulation.targetHeading).toBeNull()
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
-      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'timeWarpPill',
+        'trajectory',
+      ]),
     )
   })
 

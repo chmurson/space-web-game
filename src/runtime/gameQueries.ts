@@ -24,6 +24,14 @@ export type AutoAssistTargetConfig = {
   switchRangeMultiplier: number
 }
 
+export type AssistTargetSelectionSource = 'auto' | 'forced' | 'manual'
+
+export type AssistTargetUiState = {
+  activeTarget: Body
+  mode: AssistTargetSelectionSource
+  recommendedTarget: Body | null
+}
+
 export type GameQueries = {
   getAssistTargetDebug(): AssistTargetDebugInfo | null
   getAssistPredictionControls(
@@ -31,6 +39,7 @@ export type GameQueries = {
     targetId: string,
   ): ControlInput
   getAssistTarget(): Body
+  getAssistTargetUiState(): AssistTargetUiState
   getAutopilotTurn(desiredHeading: number): number
   getCaptureMetrics(target: Body): CaptureMetrics
   getCircularizePlan(target: Body): CircularizePlan
@@ -52,7 +61,25 @@ export const createGameQueries = (options: {
   let currentAutoTargetId: string | null = null
   let lastAssistTargetDebug: AssistTargetDebugInfo | null = null
 
-  const getAssistTarget = () => {
+  const getTargetDecision = (autoSelectNearestSurface: boolean) =>
+    getAssistTargetDecisionForState(options.runtime.simulation.state, {
+      autoSelectNearestSurface,
+      autoSelectConfig: options.autoSelectConfig,
+      currentAutoTargetId,
+      predictedTrajectoryPoints: options.getPredictedTrajectoryPoints(),
+      predictedTrajectoryEnd: options.getPredictedTrajectoryEnd(),
+      selectedIndex: options.runtime.simulation.assistTargetIndex,
+    })
+
+  const getAutoTargetDecision = () => {
+    const decision = getTargetDecision(true)
+    currentAutoTargetId = decision.target.id
+    return decision
+  }
+
+  const getManualTargetDecision = () => getTargetDecision(false)
+
+  const getAssistTargetUiState = (): AssistTargetUiState => {
     const forcedTargetId =
       options.runtime.scenario.directives.forcedAssistTargetId
     if (forcedTargetId) {
@@ -60,29 +87,47 @@ export const createGameQueries = (options: {
         (body) => body.id === forcedTargetId,
       )
       if (forcedTarget) {
-        return forcedTarget
+        lastAssistTargetDebug = null
+        return {
+          activeTarget: forcedTarget,
+          mode: 'forced',
+          recommendedTarget: null,
+        }
       }
     }
 
-    const decision = getAssistTargetDecisionForState(
-      options.runtime.simulation.state,
-      {
-        autoSelectNearestSurface: options.autoSelectNearestSurface,
-        autoSelectConfig: options.autoSelectConfig,
-        currentAutoTargetId,
-        predictedTrajectoryPoints: options.getPredictedTrajectoryPoints(),
-        predictedTrajectoryEnd: options.getPredictedTrajectoryEnd(),
-        selectedIndex: options.runtime.simulation.assistTargetIndex,
-      },
-    )
-    const target = decision.target
-    lastAssistTargetDebug = decision.debug
-
-    if (options.autoSelectNearestSurface) {
-      currentAutoTargetId = target.id
+    if (
+      options.autoSelectNearestSurface &&
+      options.runtime.simulation.assistTargetSelectionMode === 'auto'
+    ) {
+      const decision = getAutoTargetDecision()
+      lastAssistTargetDebug = decision.debug
+      return {
+        activeTarget: decision.target,
+        mode: 'auto',
+        recommendedTarget: null,
+      }
     }
 
-    return target
+    const manualDecision = getManualTargetDecision()
+    lastAssistTargetDebug = manualDecision.debug
+    const autoDecision = options.autoSelectNearestSurface
+      ? getAutoTargetDecision()
+      : null
+    const recommendedTarget =
+      autoDecision && autoDecision.target.id !== manualDecision.target.id
+        ? autoDecision.target
+        : null
+
+    return {
+      activeTarget: manualDecision.target,
+      mode: 'manual',
+      recommendedTarget,
+    }
+  }
+
+  const getAssistTarget = () => {
+    return getAssistTargetUiState().activeTarget
   }
 
   const getCaptureMetrics = (target: Body) =>
@@ -98,6 +143,7 @@ export const createGameQueries = (options: {
         options.autopilotRotationRate,
       ),
     getAssistTarget,
+    getAssistTargetUiState,
     getAutopilotTurn: (desiredHeading) =>
       getAutopilotTurnForHeading(
         options.runtime.simulation.state.spacecraft.heading,

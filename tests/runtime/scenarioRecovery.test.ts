@@ -12,6 +12,7 @@ const createRuntime = (): AppRuntimeState => ({
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 1,
+    assistTargetSelectionMode: 'auto',
     coastPredictionHorizonHours: 24,
     crashedBodyName: 'Earth',
     state: {

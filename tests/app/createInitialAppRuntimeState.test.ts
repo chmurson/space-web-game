@@ -110,4 +110,30 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.scenario.session.scenarioId).toBe('tutorial')
     expect(runtime.scenario.metadata.title).toBe('Tutorial: Escape Earth')
   })
+
+  it('starts manual target selection when auto target selection is disabled', () => {
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        assistTarget: {
+          autoSelectNearestSurface: false,
+          switchRangeMultiplier: 1,
+        },
+      }),
+    )
+
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
+  })
+
+  it('starts automatic target selection when auto target selection is enabled', () => {
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        assistTarget: {
+          autoSelectNearestSurface: true,
+          switchRangeMultiplier: 1,
+        },
+      }),
+    )
+
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('auto')
+  })
 })

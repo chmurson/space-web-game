@@ -26,6 +26,7 @@ const createRuntime = (): AppRuntimeState => ({
   simulation: {
     assistMode: 'off',
     assistTargetIndex: 0,
+    assistTargetSelectionMode: 'manual',
     coastPredictionHorizonHours: 24,
     crashedBodyName: null,
     state: {

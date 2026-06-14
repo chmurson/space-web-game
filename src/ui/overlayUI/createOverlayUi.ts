@@ -1,5 +1,6 @@
 import type { Body } from '../../simulation/types'
 import { createDebugPanel, type DebugPanel } from '../debugPanel'
+import '../targetBodyGlyphs.css'
 import './overlayUIStyles.css'
 
 const replayPromptIconMarkup = `
@@ -50,6 +51,9 @@ export type OverlayUiRefs = {
   statThrust: HTMLElement | null
   speedIcon: SVGSVGElement | null
   statTarget: HTMLElement | null
+  targetPill: HTMLElement | null
+  targetSphere: HTMLElement | null
+  targetStatus: HTMLElement | null
   statTargetSpeed: HTMLElement | null
   statTime: HTMLElement | null
   timeIcon: SVGSVGElement | null
@@ -99,6 +103,13 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
           <path class="telemetry-speed-icon-flame" d="M8 14.6 C8.9 13.6, 9.3 12.4, 8 11.1 C6.7 12.4, 7.1 13.6, 8 14.6 Z"></path>
         </svg>
         <strong data-stat="speed"></strong>
+      </span>
+    </div>
+    <div class="telemetry-pill telemetry-pill-target">
+      <span class="telemetry-target-display">
+        <span class="target-body-sphere" data-stat="target-sphere" aria-hidden="true"></span>
+        <strong data-stat="target"></strong>
+        <span class="target-status-mark" data-stat="target-status" aria-hidden="true"></span>
       </span>
     </div>
   `
@@ -237,7 +248,14 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     statSpeed: topBar.querySelector<HTMLElement>('[data-stat="speed"]'),
     statThrust: topBar.querySelector<HTMLElement>('[data-stat="thrust"]'),
     speedIcon: topBar.querySelector<SVGSVGElement>('.telemetry-speed-icon'),
-    statTarget: null,
+    statTarget: topBar.querySelector<HTMLElement>('[data-stat="target"]'),
+    targetPill: topBar.querySelector<HTMLElement>('.telemetry-pill-target'),
+    targetSphere: topBar.querySelector<HTMLElement>(
+      '[data-stat="target-sphere"]',
+    ),
+    targetStatus: topBar.querySelector<HTMLElement>(
+      '[data-stat="target-status"]',
+    ),
     statTargetSpeed: null,
     statTime: topBar.querySelector<HTMLElement>('[data-stat="time"]'),
     timeIcon: topBar.querySelector<SVGSVGElement>('.telemetry-time-icon'),

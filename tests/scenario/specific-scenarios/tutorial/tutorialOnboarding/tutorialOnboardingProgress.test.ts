@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
-import { getTutorialOnboardingPromptContent } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow'
+import {
+  getHiddenOnboardingUIElements,
+  getTutorialOnboardingPromptContent,
+} from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow'
 import {
   acknowledgeTutorialOnboardingPrompt,
   advanceTutorialOnboarding,
@@ -14,6 +17,7 @@ const createRuntime = (): AppRuntimeState => ({
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 0,
+    assistTargetSelectionMode: 'manual',
     coastPredictionHorizonHours: 2,
     crashedBodyName: null,
     state: {
@@ -417,6 +421,32 @@ describe('tutorialOnboardingProgress', () => {
       'intro-thrusting-complete',
       'intro-thrusting-off',
     ])
+  })
+
+  it('keeps target controls hidden until trajectory controls appear', () => {
+    const runtime = createRuntime()
+    const onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+
+    expect(getHiddenOnboardingUIElements(onboarding)).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'timeWarpPill',
+        'trajectory',
+      ]),
+    )
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
+        activeStepId: 'intro-timewarp',
+      }),
+    ).toEqual(new Set(['scenarioInfoButton', 'targetControl', 'trajectory']))
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
+        activeStepId: 'intro-trajectory',
+      }),
+    ).toEqual(new Set(['scenarioInfoButton']))
   })
 
   it('uses direct heading selection, time warp, and high-warp thrust to reach trajectory explanation', () => {

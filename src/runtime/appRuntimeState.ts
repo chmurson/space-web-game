@@ -3,9 +3,12 @@ import type { RuntimeScenarioDirectives } from '../scenario/scenarioDirectiveTyp
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState } from '../simulation/types'
 
+export type AssistTargetSelectionMode = 'auto' | 'manual'
+
 export type AppRuntimeSimulationSlice = {
   assistMode: AssistMode
   assistTargetIndex: number
+  assistTargetSelectionMode: AssistTargetSelectionMode
   coastPredictionHorizonHours: number
   crashedBodyName: string | null
   state: SimulationState
