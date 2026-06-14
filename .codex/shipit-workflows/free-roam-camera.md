@@ -3,7 +3,7 @@
 Task: Free roam camera
 Branch: free-roam-camera
 Current Mode: review
-Status: completed
+Status: active
 
 ## Checklist
 
@@ -29,7 +29,7 @@ Status: completed
 ## Decisions
 
 - Created branch `free-roam-camera` from `checkpoint-improvement-tutorial-scenario`.
-- Existing untracked files `pnpm-lock.yaml` and `pnpm-workspace.yaml` were present before this task and will be left untouched unless directly relevant.
+- Existing untracked files `pnpm-lock.yaml` and `pnpm-workspace.yaml` were removed after the user explicitly requested cleanup.
 - Use `free-roam-camera` as the branch name; user-visible naming can prefer `Unlocked camera` if it better matches centered vs free-pan semantics.
 - Default camera behavior remains centered on the spacecraft.
 - Scenario camera behavior should be optional configuration, with centered/default and optional runtime locking.
@@ -48,11 +48,12 @@ Status: completed
 - [x] `git diff --check` passed.
 - [x] `npx biome check <touched files>` passed after scoped Biome formatting/import fixes.
 - [x] Browser smoke passed: tutorial starts with `Centered` selected and disabled with `Locked`; onboarding first tooltip keeps camera locked; sandbox camera menu can switch to `Unlocked`; unlocked drag moves the spacecraft callout; centered long drag over 50% viewport switches to `Unlocked`; a later smoke loaded the game canvas with no console errors after focal zoom changes.
+- [x] Follow-up threshold smoothing validation passed: `npm test`, `npm run build`, `git diff --check`, Biome check for the two touched input files, browser smoke loaded the game canvas with no console errors.
 - [x] `npm run deploy:netlify:staging:woven-moth` passed.
 
 ## Next Step
 
-Task complete. PR/commit was not requested.
+Commit the threshold smoothing follow-up, merge `free-roam-camera` into `main`, then deploy production from `main`.
 
 ## Brainstorm Handoff
 
@@ -163,6 +164,7 @@ Behavior implemented:
 - Centered mode keeps the existing spacecraft/body-follow behavior; unlocked mode uses the stored pan center.
 - Top menu exposes a `Centered` / `Unlocked` segmented camera control and disables it when scenario directives lock changes.
 - Pointer drag pans unlocked camera; a drag beyond half the viewport switches from centered to unlocked when changes are not locked.
+- The centered-to-unlocked long-swipe transition starts panning from the threshold crossing point rather than from the gesture start, avoiding a camera jump when the unlock threshold is met.
 - Touch pinch zoom preserves the world point under the two-finger midpoint in unlocked camera mode; double-tap zoom uses the default center zoom.
 - Target-heading line and ripple feedback are anchored to the selected world point so they remain aligned after camera pan/zoom.
 - Tutorial phase one starts centered and locked, and unlocks after the onboarding gate completes.
@@ -183,9 +185,11 @@ Known gaps:
 
 - No supplied external findings were present.
 - Self-review checked scenario load/reset, checkpoint restore, tutorial lock/unlock, top-menu disabled state, and pointer pan interactions against the accepted requirements.
+- Follow-up review checked both desktop pointer and mobile touch overlay unlock paths. The threshold crossing helper computes the first axis threshold crossed along the gesture vector, and panning starts from that crossing point instead of the original touch down point.
 - Residual risk: low around exact mobile feel because browser automation cannot fully emulate all real-device touch streams here. The touch overlay now owns mobile pan, pinch, and double-tap zoom paths directly; unit tests and browser smoke cover state transitions, build integrity, and no-error startup.
+- Solution retrospect: no rewrite warranted. The duplicated threshold helper exists in desktop and mobile input layers to keep the change scoped; extracting a shared helper can be deferred unless future gesture logic needs the same calculation.
 - Proposed follow-ups: none required for this task.
 - Staging deploy:
   - Production URL for woven-moth staging site: `https://space-web-game-woven-moth.netlify.app`
-  - Unique deploy URL: `https://6a2ec0a9ca224ef84f6d6caf--space-web-game-woven-moth.netlify.app`
-  - Build logs: `https://app.netlify.com/projects/space-web-game-woven-moth/deploys/6a2ec0a9ca224ef84f6d6caf`
+  - Unique deploy URL: `https://6a2ec224cf6acaf93aca819f--space-web-game-woven-moth.netlify.app`
+  - Build logs: `https://app.netlify.com/projects/space-web-game-woven-moth/deploys/6a2ec224cf6acaf93aca819f`

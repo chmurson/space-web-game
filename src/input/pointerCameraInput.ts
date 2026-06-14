@@ -46,6 +46,39 @@ const intentionalSwipeViewportRatio = 0.5
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
+const getAxisThresholdProgress = (delta: number, threshold: number) => {
+  if (threshold <= 0) {
+    return 0
+  }
+
+  const distance = Math.abs(delta)
+  return distance >= threshold ? threshold / distance : Number.POSITIVE_INFINITY
+}
+
+const getIntentionalSwipeThresholdPoint = (options: {
+  currentX: number
+  currentY: number
+  startX: number
+  startY: number
+  thresholdX: number
+  thresholdY: number
+}): PointerScreenPosition | null => {
+  const deltaX = options.currentX - options.startX
+  const deltaY = options.currentY - options.startY
+  const crossX = getAxisThresholdProgress(deltaX, options.thresholdX)
+  const crossY = getAxisThresholdProgress(deltaY, options.thresholdY)
+  const thresholdProgress = Math.min(crossX, crossY)
+
+  if (!Number.isFinite(thresholdProgress)) {
+    return null
+  }
+
+  return {
+    x: options.startX + deltaX * thresholdProgress,
+    y: options.startY + deltaY * thresholdProgress,
+  }
+}
+
 const getWheelModeScale = (deltaMode: number, viewportHeight: number) => {
   if (deltaMode === WheelEvent.DOM_DELTA_LINE) {
     return wheelLineModePixels
@@ -269,12 +302,21 @@ export const bindPointerCameraInput = (
         return
       }
 
+      const thresholdPoint = getIntentionalSwipeThresholdPoint({
+        currentX: event.clientX,
+        currentY: event.clientY,
+        startX: activeCameraPan.startX,
+        startY: activeCameraPan.startY,
+        thresholdX: unlockThresholdX,
+        thresholdY: unlockThresholdY,
+      })
+
       event.preventDefault()
-      if (options.onCameraModeSelected('unlocked')) {
+      if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
         activeCameraPan.hasPanned =
           panCameraBetweenScreenPoints(
-            activeCameraPan.startX,
-            activeCameraPan.startY,
+            thresholdPoint.x,
+            thresholdPoint.y,
             event.clientX,
             event.clientY,
           ) || activeCameraPan.hasPanned

@@ -130,6 +130,39 @@ const isEventTargetInside = (
   target: EventTarget | null,
 ) => target instanceof Node && element.contains(target)
 
+const getAxisThresholdProgress = (delta: number, threshold: number) => {
+  if (threshold <= 0) {
+    return 0
+  }
+
+  const distance = Math.abs(delta)
+  return distance >= threshold ? threshold / distance : Number.POSITIVE_INFINITY
+}
+
+const getIntentionalSwipeThresholdPoint = (options: {
+  currentX: number
+  currentY: number
+  startX: number
+  startY: number
+  thresholdX: number
+  thresholdY: number
+}): ScreenPoint | null => {
+  const deltaX = options.currentX - options.startX
+  const deltaY = options.currentY - options.startY
+  const crossX = getAxisThresholdProgress(deltaX, options.thresholdX)
+  const crossY = getAxisThresholdProgress(deltaY, options.thresholdY)
+  const thresholdProgress = Math.min(crossX, crossY)
+
+  if (!Number.isFinite(thresholdProgress)) {
+    return null
+  }
+
+  return {
+    x: options.startX + deltaX * thresholdProgress,
+    y: options.startY + deltaY * thresholdProgress,
+  }
+}
+
 const syncRevealControlLayout = (revealControls: EdgeRevealControl[]) => {
   const controlsByEdge = new Map<TouchControlRevealEdge, EdgeRevealControl[]>()
 
@@ -716,15 +749,21 @@ export const createTouchControls = (options: {
               return
             }
 
-            if (options.onCameraModeSelected('unlocked')) {
+            const thresholdPoint = getIntentionalSwipeThresholdPoint({
+              currentX: touch.clientX,
+              currentY: touch.clientY,
+              startX: activeSession.startX,
+              startY: activeSession.startY,
+              thresholdX: unlockThresholdX,
+              thresholdY: unlockThresholdY,
+            })
+
+            if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
               activeSession.hasPanned =
-                options.onCameraPanGesture(
-                  {
-                    x: activeSession.startX,
-                    y: activeSession.startY,
-                  },
-                  { x: touch.clientX, y: touch.clientY },
-                ) || activeSession.hasPanned
+                options.onCameraPanGesture(thresholdPoint, {
+                  x: touch.clientX,
+                  y: touch.clientY,
+                }) || activeSession.hasPanned
             }
             activeSession.previousX = touch.clientX
             activeSession.previousY = touch.clientY
