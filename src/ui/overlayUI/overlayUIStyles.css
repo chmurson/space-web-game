@@ -1,4 +1,4 @@
-/* Top bar layout - contains menu, telemetry strip, and scenario prompt pill */
+/* Top bar layout - contains menu and telemetry strip */
 .top-bar {
   position: fixed;
   top: 0;
@@ -15,9 +15,13 @@
 /* Telemetry strip - centered in the top bar */
 .telemetry-strip {
   display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
   justify-content: center;
   pointer-events: none;
-  flex-shrink: 0;
+  flex-shrink: 1;
   margin-left: auto;
 }
 
@@ -25,12 +29,29 @@
   order: 1;
 }
 
-.scenario-prompt-pill {
+.telemetry-strip {
   order: 2;
 }
 
-.telemetry-strip {
-  order: 3;
+.bottom-pill-area {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  pointer-events: none;
+  z-index: var(--z-overlay-hud);
+}
+
+.bottom-pill-area > * {
+  pointer-events: auto;
+}
+
+#app.app-main-menu .bottom-pill-area {
+  display: none;
 }
 
 .telemetry-pill {
@@ -38,6 +59,10 @@
 }
 
 .telemetry-strip > .telemetry-pill {
+  flex-shrink: 1;
+}
+
+.telemetry-strip > .telemetry-pill-velocity {
   flex-shrink: 0;
 }
 
@@ -105,6 +130,10 @@
   border-color: rgba(103, 232, 249, 0.62);
 }
 
+.bottom-pill-area .scenario-prompt-pill {
+  max-width: min(420px, calc(100vw - 32px));
+}
+
 /* Mobile adjustments */
 @media (max-width: 720px) {
   .top-bar {
@@ -116,6 +145,14 @@
     max-width: min(180px, calc(100vw - 108px));
     gap: 6px;
     font-size: 11px;
+  }
+
+  .bottom-pill-area {
+    padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+
+  .bottom-pill-area .scenario-prompt-pill {
+    max-width: min(360px, calc(100vw - 24px));
   }
 
   .scenario-prompt-pill-icon {

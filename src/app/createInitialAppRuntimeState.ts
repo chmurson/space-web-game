@@ -34,6 +34,9 @@ export const createInitialAppRuntimeState = (
     simulation: {
       assistMode: 'off',
       assistTargetIndex: 1,
+      assistTargetSelectionMode: config.assistTarget.autoSelectNearestSurface
+        ? 'auto'
+        : 'manual',
       coastPredictionHorizonHours:
         initialScenarioTransition.coastPredictionHorizonHours,
       crashedBodyName: null,

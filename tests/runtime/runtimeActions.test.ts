@@ -35,6 +35,7 @@ const createRuntime = (): AppRuntimeState => ({
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 1,
+    assistTargetSelectionMode: 'auto',
     coastPredictionHorizonHours: 24,
     crashedBodyName: 'Earth',
     state: {
@@ -106,9 +107,13 @@ const createRuntime = (): AppRuntimeState => ({
   },
 })
 
-const createTestRuntimeActions = (runtime: AppRuntimeState) =>
+const createTestRuntimeActions = (
+  runtime: AppRuntimeState,
+  options: { autoSelectNearestSurface?: boolean } = {},
+) =>
   createRuntimeActions({
     app: {} as HTMLDivElement,
+    autoSelectNearestSurface: options.autoSelectNearestSurface ?? true,
     cameraDistance: 700,
     cameraElevation: 1,
     createRipple: () => {},
@@ -305,6 +310,48 @@ describe('createRuntimeActions', () => {
     expect(runtime.simulation.coastPredictionHorizonHours).toBe(16)
   })
 
+  it('selects a manual assist target by index', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.selectAssistTargetIndex(0)).toBe(true)
+
+    expect(runtime.simulation.assistTargetIndex).toBe(0)
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
+  })
+
+  it('wraps manual assist target selection to available bodies', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.selectAssistTargetIndex(-1)).toBe(true)
+
+    expect(runtime.simulation.assistTargetIndex).toBe(1)
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
+  })
+
+  it('returns to automatic assist target selection when auto targeting is available', () => {
+    const runtime = createRuntime()
+    runtime.simulation.assistTargetSelectionMode = 'manual'
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.returnToAutomaticAssistTargetSelection()).toBe(true)
+
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('auto')
+  })
+
+  it('keeps manual assist target selection when auto targeting is unavailable', () => {
+    const runtime = createRuntime()
+    runtime.simulation.assistTargetSelectionMode = 'manual'
+    const runtimeActions = createTestRuntimeActions(runtime, {
+      autoSelectNearestSurface: false,
+    })
+
+    expect(runtimeActions.returnToAutomaticAssistTargetSelection()).toBe(false)
+
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
+  })
+
   it('switches to the menu background scenario and menu-only overrides', () => {
     const runtime = createRuntime()
     const runtimeActions = createTestRuntimeActions(runtime)
@@ -348,7 +395,13 @@ describe('createRuntimeActions', () => {
       replayPromptId: 'phase-one-intro',
     })
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
-      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'timeWarpPill',
+        'trajectory',
+      ]),
     )
   })
 
@@ -388,7 +441,13 @@ describe('createRuntimeActions', () => {
       replayPromptId: 'phase-one-intro',
     })
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
-      new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'timeWarpPill',
+        'trajectory',
+      ]),
     )
   })
 
@@ -406,6 +465,7 @@ describe('createRuntimeActions', () => {
         .mockImplementation(() => {})
       const runtimeActions = createRuntimeActions({
         app: {} as HTMLDivElement,
+        autoSelectNearestSurface: true,
         cameraDistance: 700,
         cameraElevation: 1,
         createRipple: () => {},

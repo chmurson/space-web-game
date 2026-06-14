@@ -36,6 +36,12 @@
 - Planning-only, docs-only, and repository-instruction-only edits do not require test runs, build runs, or deploys unless the user explicitly asks for them.
 - When verification is skipped because the change is non-executable, say so briefly in the response.
 
+## Shipit Reviews
+
+- Run CodeRabbit as part of Shipit review with `coderabbit --base main --agent`.
+- If CodeRabbit fails, times out, or cannot produce findings for any reason, explicitly alert the user so they can debug it or run it themselves.
+- Treat automated review findings, including CodeRabbit findings, as hypotheses rather than facts. Inspect the current code and diff before deciding whether each finding is valid, stale, out of scope, or based on an incorrect proposed fix.
+
 ## Code Quality
 
 - Do not widen module APIs only to make tests easier to write.

@@ -27,6 +27,7 @@ const createRuntime = (): AppRuntimeState => ({
   simulation: {
     assistMode: 'off',
     assistTargetIndex: 0,
+    assistTargetSelectionMode: 'manual',
     coastPredictionHorizonHours: 2,
     crashedBodyName: null,
     state: {
@@ -274,7 +275,15 @@ describe('tutorialScenario', () => {
     expect(
       resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
         .hiddenUIElements,
-    ).toEqual(new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']))
+    ).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'timeWarpPill',
+        'trajectory',
+      ]),
+    )
   })
 
   it('captures a checkpoint when onboarding completes into free flight', () => {

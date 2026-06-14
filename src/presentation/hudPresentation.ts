@@ -1,9 +1,14 @@
 import type { RendererProfiler } from '../render/rendererProfiler'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import type { GameQueries } from '../runtime/gameQueries'
+import type {
+  AssistTargetSelectionSource,
+  AssistTargetUiState,
+  GameQueries,
+} from '../runtime/gameQueries'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import { getBodyInfluences } from '../simulation/bodyInfluence'
+import type { Body } from '../simulation/types'
 import {
   formatCompactElapsed,
   formatSpeed,
@@ -22,6 +27,17 @@ import {
 } from '../ui/scenario-prompts/scenario-prompts'
 import type { TouchControls } from '../ui/touchControls/createTouchControls'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
+
+const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
+  auto: 'tracking target',
+  forced: 'locked target',
+  manual: 'pinned target',
+}
+
+const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
+  element.className = 'target-body-sphere'
+  element.style.setProperty('--target-body-color', body.color)
+}
 
 export const createHudPresentation = (options: {
   defaultViewport: number
@@ -45,6 +61,31 @@ export const createHudPresentation = (options: {
     '(prefers-reduced-motion: reduce)',
   ).matches
   const inputMode = options.touchControls ? 'mobile' : 'desktop'
+
+  const syncTargetPill = (targetUiState: AssistTargetUiState) => {
+    const target = targetUiState.activeTarget
+    const targetLabel = `${target.name}, ${targetStatusLabels[targetUiState.mode]}`
+
+    if (options.overlayUi.targetPill) {
+      options.overlayUi.targetPill.setAttribute('aria-label', targetLabel)
+      options.overlayUi.targetPill.title = targetLabel
+    }
+    if (
+      options.overlayUi.statTarget &&
+      options.overlayUi.statTarget.textContent !== target.name
+    ) {
+      options.overlayUi.statTarget.textContent = target.name
+    }
+    if (options.overlayUi.targetSphere) {
+      syncTargetSphere(options.overlayUi.targetSphere, target)
+    }
+    if (options.overlayUi.targetStatus) {
+      options.overlayUi.targetStatus.hidden = false
+      options.overlayUi.targetStatus.style.visibility =
+        targetUiState.mode === 'forced' ? 'hidden' : ''
+      options.overlayUi.targetStatus.className = `target-status-mark target-status-mark-${targetUiState.mode}`
+    }
+  }
 
   // Create scenario prompt updater using existing UI elements from overlayUi
   const scenarioPromptRefs: ScenarioPromptUiRefs = {
@@ -138,7 +179,8 @@ export const createHudPresentation = (options: {
       }
       lastTimeWarpIndex = options.runtime.simulation.timeWarpIndex
 
-      const target = options.queries.getAssistTarget()
+      const targetUiState = options.queries.getAssistTargetUiState()
+      const target = targetUiState.activeTarget
       const targetMetrics = options.queries.getCaptureMetrics(target)
       const circularizePlan =
         options.runtime.simulation.assistMode === 'circularize'
@@ -153,7 +195,9 @@ export const createHudPresentation = (options: {
       const showScenarioInfoButton = !hiddenUIElements.has('scenarioInfoButton')
       const showTimePill = !hiddenUIElements.has('timeWarpPill')
       const showSpeedPill = !hiddenUIElements.has('speedPill')
+      const showTargetPill = !hiddenUIElements.has('targetPill')
       const showThrustPill = !hiddenUIElements.has('thrustPill')
+      const showTargetControl = !hiddenUIElements.has('targetControl')
       const showTrajectoryControl = !hiddenUIElements.has('trajectory')
 
       // Update scenario prompt UI
@@ -168,11 +212,13 @@ export const createHudPresentation = (options: {
         options.overlayUi.statSpeed?.closest<HTMLElement>('.telemetry-pill')
       const thrustPill =
         options.overlayUi.statThrust?.closest<HTMLElement>('.telemetry-pill')
+      const targetPill = options.overlayUi.targetPill
 
       if (timePill) {
         timePill.style.display = showTimePill ? 'inline-flex' : 'none'
       }
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
+      options.touchControls?.setTargetControlVisible(showTargetControl)
       options.touchControls?.setTrajectoryControlVisible(showTrajectoryControl)
 
       if (options.overlayUi.statEngine) {
@@ -223,6 +269,10 @@ export const createHudPresentation = (options: {
           speedPill.style.display =
             !crashed && showSpeedPill ? 'inline-flex' : 'none'
         }
+        if (targetPill) {
+          targetPill.style.display =
+            !crashed && showTargetPill ? 'inline-flex' : 'none'
+        }
         if (thrustPill) {
           thrustPill.style.display =
             crashed && showThrustPill ? 'inline-flex' : 'none'
@@ -244,7 +294,7 @@ export const createHudPresentation = (options: {
         options.overlayUi.statZoom.textContent = `${(options.defaultViewport / options.runtime.simulation.viewportSize).toFixed(1)}x`
       }
       if (options.overlayUi.statTarget) {
-        options.overlayUi.statTarget.textContent = target.name
+        syncTargetPill(targetUiState)
       }
       if (options.overlayUi.statAssist) {
         options.overlayUi.statAssist.textContent = options.runtime.simulation

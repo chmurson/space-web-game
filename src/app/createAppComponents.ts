@@ -235,6 +235,8 @@ export const createAppComponents = (options: {
   const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
   const runtimeActions = createRuntimeActions({
     app: options.app,
+    autoSelectNearestSurface:
+      options.config.assistTarget.autoSelectNearestSurface,
     gameHighLevelActions: gameHighLevelActionsMediator,
     cameraDistance: options.config.camera.distance,
     cameraElevation: options.config.camera.elevation,
@@ -263,6 +265,8 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchWarpControlSide
   const touchControls = createTouchControls({
     app: options.app,
+    automaticTargetingAvailable:
+      options.config.assistTarget.autoSelectNearestSurface,
     commitTrajectoryHorizon: (action) => {
       dispatchRuntimeAction(action)
     },
@@ -275,6 +279,13 @@ export const createAppComponents = (options: {
       options.config.controls.timeWarps[
         options.runtimeState.simulation.timeWarpIndex
       ] ?? 1,
+    getAssistTargetUiState: queries.getAssistTargetUiState,
+    getTargetControlRows: () =>
+      options.runtimeState.simulation.state.bodies.map((body, index) => ({
+        body,
+        distanceMeters: queries.getCaptureMetrics(body).surfaceDistance,
+        index,
+      })),
     getTrajectoryHorizonPreviews: (action, count) =>
       getTrajectoryHorizonPreviews({
         action,
@@ -334,6 +345,9 @@ export const createAppComponents = (options: {
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPanGesture: panCameraBetweenScreenPoints,
+    onReturnToAutomaticTarget:
+      runtimeActions.returnToAutomaticAssistTargetSelection,
+    onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
     onTargetHeadingSelected: (screenX, screenY) => {
       const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
 

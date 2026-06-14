@@ -177,6 +177,12 @@
 
 /* Responsive: Mobile adjustments */
 @media (max-width: 720px) {
+  .scenario-prompt-backdrop[data-prompt-mode="modal"] {
+    place-items: end center;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px
+      calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+
   .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
     width: calc(100vw - 20px);
     max-width: 360px;

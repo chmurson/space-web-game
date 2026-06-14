@@ -7,9 +7,12 @@ import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 
+export type AssistTargetSelectionMode = 'auto' | 'manual'
+
 export type AppRuntimeSimulationSlice = {
   assistMode: AssistMode
   assistTargetIndex: number
+  assistTargetSelectionMode: AssistTargetSelectionMode
   coastPredictionHorizonHours: number
   crashedBodyName: string | null
   state: SimulationState

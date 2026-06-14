@@ -26,6 +26,7 @@ const createRuntime = (
   simulation: {
     assistMode: 'off',
     assistTargetIndex: 0,
+    assistTargetSelectionMode: 'auto',
     coastPredictionHorizonHours,
     crashedBodyName: null,
     state: {
@@ -118,6 +119,11 @@ describe('createGameQueries', () => {
     })
 
     expect(queries.getAssistTarget().id).toBe('moon')
+    expect(queries.getAssistTargetUiState()).toMatchObject({
+      activeTarget: { id: 'moon' },
+      mode: 'auto',
+      recommendedTarget: null,
+    })
   })
 
   it('keeps the current auto target when another body is closer but not dominant enough', () => {
@@ -197,6 +203,52 @@ describe('createGameQueries', () => {
     expect(queries.getAssistTarget().id).toBe('mars')
   })
 
+  it('keeps a manual target while exposing a different auto recommendation', () => {
+    const runtime = createRuntime(
+      [
+        createBody({
+          id: 'earth',
+          name: 'Earth',
+          position: { x: 10_000_000, y: 0 },
+        }),
+        createBody({
+          id: 'moon',
+          name: 'Moon',
+          position: { x: 4_000_000, y: 0 },
+        }),
+      ],
+      2,
+    )
+    runtime.simulation.assistTargetIndex = 0
+    runtime.simulation.assistTargetSelectionMode = 'manual'
+
+    const queries = createGameQueries({
+      autoSelectNearestSurface: true,
+      autoSelectConfig: {
+        switchRangeMultiplier: 2,
+      },
+      autopilotRotationRate: 0.1,
+      getPredictedTrajectoryEnd: () =>
+        createPredictedTrajectoryEnd(8_000_000, 0),
+      getPredictedTrajectoryPoints: () =>
+        createPredictedTrajectoryPoints([0, 0], [4_000_000, 0], [8_000_000, 0]),
+      maxPredictionLoopRevolutions: 2,
+      predictionSampling: {
+        maxIntegrationStepSeconds: 10,
+        refreshInterval: 0.25,
+        stepOptionsSeconds: [10, 60, 300],
+        targetMaxSteps: 100,
+      },
+      runtime,
+    })
+
+    expect(queries.getAssistTargetUiState()).toMatchObject({
+      activeTarget: { id: 'earth' },
+      mode: 'manual',
+      recommendedTarget: { id: 'moon' },
+    })
+  })
+
   it('derives prediction horizon seconds and step size from runtime horizon hours', () => {
     const runtime = createRuntime(
       [createBody({ id: 'earth', name: 'Earth' })],
@@ -260,5 +312,10 @@ describe('createGameQueries', () => {
     })
 
     expect(queries.getAssistTarget().id).toBe('moon')
+    expect(queries.getAssistTargetUiState()).toMatchObject({
+      activeTarget: { id: 'moon' },
+      mode: 'forced',
+      recommendedTarget: null,
+    })
   })
 })

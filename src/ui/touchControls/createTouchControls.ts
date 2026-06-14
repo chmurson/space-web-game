@@ -1,6 +1,7 @@
 import type { AssistMode } from '../../assist/orbitalAssist'
 import type { KeyboardInput } from '../../input/keyboardInput'
 import type { TouchThrustControlUiState } from '../../runtime/appRuntimeState'
+import type { AssistTargetUiState } from '../../runtime/gameQueries'
 import type {
   TimeWarpAction,
   TimeWarpFeedbackReason,
@@ -23,10 +24,15 @@ import type { StepSelectorGestureSession } from './stepSelectorControl/stepSelec
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/createTrajectoryHorizonControl'
+import {
+  createTargetControl,
+  type TargetControlBodyRow,
+} from './targetControl/createTargetControl'
 
 export type TouchControls = {
   element: HTMLElement
   setBurnControlSide(side: TouchControlRevealEdge): void
+  setTargetControlVisible(visible: boolean): void
   setTrajectoryControlSide(side: TouchControlRevealEdge): void
   setTrajectoryControlVisible(visible: boolean): void
   setWarpControlSide(side: TouchControlRevealEdge): void
@@ -58,6 +64,10 @@ const touchControlRevealLayout = {
     timeWarp: {
       edge: 'right',
       priority: 10,
+    },
+    target: {
+      edge: 'left',
+      priority: 20,
     },
     trajectory: {
       priority: 10,
@@ -195,10 +205,13 @@ const syncRevealControlLayout = (revealControls: EdgeRevealControl[]) => {
 
 export const createTouchControls = (options: {
   app: HTMLElement
+  automaticTargetingAvailable: boolean
   commitTrajectoryHorizon(action: TrajectoryHorizonAction): void
   commitTimeWarp(action: TimeWarpAction): void
   getCurrentTrajectoryHorizonHours(): number
   getCurrentTimeWarp(): number
+  getAssistTargetUiState(): AssistTargetUiState
+  getTargetControlRows(): TargetControlBodyRow[]
   getTrajectoryHorizonPreviews(
     action: TrajectoryHorizonAction,
     count: number,
@@ -227,6 +240,8 @@ export const createTouchControls = (options: {
   getCameraModeChangesLocked(): boolean
   onCameraModeSelected(mode: CameraControlMode): boolean
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
+  onReturnToAutomaticTarget(): boolean
+  onSelectTargetIndex(index: number): boolean
   onTargetHeadingSelected(screenX: number, screenY: number): void
   onThrustControlUiStateChange(state: TouchThrustControlUiState): void
   onZoom(factor: number, focalPoint?: ScreenPoint): void
@@ -242,6 +257,7 @@ export const createTouchControls = (options: {
   let lastTap: (ScreenPoint & { time: number }) | null = null
   let pinchSuppressTapUntil = 0
   let timeWarpControlVisible = true
+  let syncTargetRecommendationCue = () => {}
 
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
@@ -277,6 +293,21 @@ export const createTouchControls = (options: {
     panel,
   })
 
+  const targetDock = document.createElement('div')
+  targetDock.className = 'touch-edge-reveal-dock touch-target-reveal-dock'
+  targetDock.dataset.touchControlDock = 'target'
+  let closeTargetControl = () => {}
+  const targetControl = createTargetControl({
+    automaticTargetingAvailable: options.automaticTargetingAvailable,
+    getRows: options.getTargetControlRows,
+    getTargetState: options.getAssistTargetUiState,
+    onCommit: () => closeTargetControl(),
+    onReturnToAutomaticTarget: options.onReturnToAutomaticTarget,
+    onSelectTargetIndex: options.onSelectTargetIndex,
+    onStateChange: () => syncTargetRecommendationCue(),
+  })
+  targetDock.appendChild(targetControl.element)
+
   const thrustDock = document.createElement('div')
   thrustDock.className = 'touch-edge-reveal-dock touch-thrust-reveal-dock'
   thrustDock.dataset.touchControlDock = 'burn'
@@ -306,6 +337,10 @@ export const createTouchControls = (options: {
     edge: options.initialTrajectoryControlSide,
     priority: touchControlRevealLayout.controls.trajectory.priority,
   }
+  const targetRevealPlacement: TouchControlRevealPlacement = {
+    edge: touchControlRevealLayout.controls.target.edge,
+    priority: touchControlRevealLayout.controls.target.priority,
+  }
   const thrustRevealPlacement: TouchControlRevealPlacement = {
     edge: options.initialBurnControlSide,
     priority: touchControlRevealLayout.controls.thrust.priority,
@@ -325,6 +360,18 @@ export const createTouchControls = (options: {
     label: 'Reveal trajectory prediction horizon control',
     placement: trajectoryHorizonRevealPlacement,
   })
+  const targetRevealControl = createEdgeRevealControl({
+    content: targetDock,
+    icon: 'Target',
+    id: 'touch-target-reveal',
+    label: 'Reveal target body selector',
+    placement: targetRevealPlacement,
+  })
+  closeTargetControl = targetRevealControl.close
+  const targetRevealTab =
+    targetRevealControl.element.querySelector<HTMLButtonElement>(
+      '.touch-edge-reveal-tab',
+    )
   const thrustRevealControl = createEdgeRevealControl({
     content: thrustDock,
     icon: 'Burn',
@@ -339,6 +386,7 @@ export const createTouchControls = (options: {
   const revealControls = [
     timeWarpRevealControl,
     trajectoryHorizonRevealControl,
+    targetRevealControl,
     thrustRevealControl,
   ]
   const tutorialFocusTargets: Record<
@@ -372,8 +420,24 @@ export const createTouchControls = (options: {
   panel.append(
     timeWarpRevealControl.element,
     trajectoryHorizonRevealControl.element,
+    targetRevealControl.element,
     thrustRevealControl.element,
   )
+
+  syncTargetRecommendationCue = () => {
+    const targetState = options.getAssistTargetUiState()
+    const recommendedTarget = targetState.recommendedTarget
+    const hasRecommendation =
+      targetState.mode === 'manual' && recommendedTarget !== null
+    targetRevealControl.element.classList.remove(
+      'touch-target-reveal-recommended',
+    )
+    const targetRevealLabel =
+      hasRecommendation && recommendedTarget
+        ? `Reveal target body selector; ${recommendedTarget.name} recommended`
+        : 'Reveal target body selector'
+    targetRevealTab?.setAttribute('aria-label', targetRevealLabel)
+  }
 
   const clearActiveSession = () => {
     if (activeSession.kind === 'right-zone-pending') {
@@ -431,6 +495,13 @@ export const createTouchControls = (options: {
     }
     trajectoryHorizonRevealControl.setAvailable(visible)
     trajectoryHorizonControl.setVisible(visible)
+  }
+
+  const setTargetControlVisible = (visible: boolean) => {
+    if (!visible) {
+      closeTargetControl()
+    }
+    targetRevealControl.setAvailable(visible)
   }
 
   const clearRightZoneGesture = () => {
@@ -585,11 +656,17 @@ export const createTouchControls = (options: {
       const isTrajectoryHorizonTarget =
         trajectoryHorizonRevealControl.isOpen() &&
         isEventTargetInside(trajectoryHorizonRevealControl.element, eventTarget)
+      const isTargetControlTarget =
+        targetRevealControl.isOpen() &&
+        isEventTargetInside(targetRevealControl.element, eventTarget)
       const isThrustTarget =
         thrustRevealControl.isOpen() &&
         isEventTargetInside(thrustRevealControl.element, eventTarget)
       const isRevealControlTarget =
-        isTimeWarpTarget || isTrajectoryHorizonTarget || isThrustTarget
+        isTimeWarpTarget ||
+        isTrajectoryHorizonTarget ||
+        isTargetControlTarget ||
+        isThrustTarget
       let startedDoubleTapZoom = false
 
       if (
@@ -643,6 +720,8 @@ export const createTouchControls = (options: {
             beginTimeWarpSession(touch)
           } else if (isTrajectoryHorizonTarget) {
             beginTrajectoryHorizonSession(touch)
+          } else if (isTargetControlTarget) {
+            continue
           } else if (isThrustTarget) {
             beginDockedThrustSession(touch)
           }
@@ -945,6 +1024,8 @@ export const createTouchControls = (options: {
       }
 
       timeWarpControl.syncUi()
+      syncTargetRecommendationCue()
+      targetControl.syncUi()
       trajectoryHorizonControl.syncUi()
     },
     { passive: false },
@@ -952,11 +1033,15 @@ export const createTouchControls = (options: {
 
   options.app.appendChild(panel)
   thrustControl.syncUi()
+  syncTargetRecommendationCue()
+  targetControl.syncUi()
   trajectoryHorizonControl.syncUi()
 
   window.addEventListener('resize', () => {
     thrustControl.syncUi()
     timeWarpControl.syncUi()
+    syncTargetRecommendationCue()
+    targetControl.syncUi()
     trajectoryHorizonControl.syncUi()
   })
 
@@ -970,6 +1055,7 @@ export const createTouchControls = (options: {
       trajectoryHorizonRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)
     },
+    setTargetControlVisible,
     setTrajectoryControlVisible,
     setWarpControlSide: (side) => {
       timeWarpRevealControl.setEdge(side)
@@ -984,6 +1070,8 @@ export const createTouchControls = (options: {
     },
     syncUi: () => {
       timeWarpControl.syncUi()
+      syncTargetRecommendationCue()
+      targetControl.syncUi()
       trajectoryHorizonControl.syncUi()
       thrustControl.syncUi()
     },

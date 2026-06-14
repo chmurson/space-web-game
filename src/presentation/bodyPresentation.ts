@@ -38,19 +38,21 @@ const updateOffscreenIndicators = (options: {
   ).matches
   const portraitViewport = window.innerWidth < window.innerHeight
 
-  // Account for scenario prompt pill at the top
-  const scenarioPromptPill = document.querySelector<HTMLElement>(
-    '.scenario-prompt-pill',
-  )
-  const scenarioPromptPillBottom =
-    scenarioPromptPill?.style.display !== 'none'
-      ? (scenarioPromptPill?.getBoundingClientRect().bottom ?? 0)
-      : 0
   const telemetryStrip = document.querySelector<HTMLElement>('.telemetry-strip')
   const telemetryStripBottom =
     telemetryStrip?.getBoundingClientRect().bottom ?? 0
-  const reservedTop =
-    Math.max(telemetryStripBottom, scenarioPromptPillBottom) + 12
+  const reservedTop = telemetryStripBottom + 12
+  const scenarioPromptPill = document.querySelector<HTMLElement>(
+    '.bottom-pill-area .scenario-prompt-pill',
+  )
+  const scenarioPromptPillTop =
+    scenarioPromptPill?.style.display !== 'none'
+      ? (scenarioPromptPill?.getBoundingClientRect().top ?? window.innerHeight)
+      : window.innerHeight
+  const reservedBottom =
+    scenarioPromptPillTop < window.innerHeight
+      ? window.innerHeight - scenarioPromptPillTop + 12
+      : edgePadding
 
   const visibleIndicators: Array<{
     distance: number
@@ -113,7 +115,9 @@ const updateOffscreenIndicators = (options: {
     const edgeY = THREE.MathUtils.clamp(
       projectedY,
       bounds.height * 0.5 + Math.max(edgePadding, reservedTop),
-      window.innerHeight - bounds.height * 0.5 - edgePadding,
+      window.innerHeight -
+        bounds.height * 0.5 -
+        Math.max(edgePadding, reservedBottom),
     )
     const shouldStackIndicator =
       mobileViewport &&
@@ -141,7 +145,9 @@ const updateOffscreenIndicators = (options: {
     const stackedEdgeY = THREE.MathUtils.clamp(
       projectedY,
       stackedBounds.height * 0.5 + Math.max(edgePadding, reservedTop),
-      window.innerHeight - stackedBounds.height * 0.5 - edgePadding,
+      window.innerHeight -
+        stackedBounds.height * 0.5 -
+        Math.max(edgePadding, reservedBottom),
     )
 
     indicator.style.left = `${stackedEdgeX}px`
