@@ -1,6 +1,8 @@
 import type { AssistMode } from '../assist/orbitalAssist'
 import { cloneSimulationState } from '../simulation/state'
 import type { SimulationState } from '../simulation/types'
+import type { Vec2 } from '../simulation/vector'
+import type { CameraControlMode } from './scenarioDirectiveTypes'
 
 export type ScenarioSessionValue =
   | null
@@ -13,6 +15,8 @@ export type ScenarioSessionValue =
 export type RuntimeScenarioCheckpoint = {
   assistMode: AssistMode
   assistTargetIndex: number
+  cameraMode?: CameraControlMode
+  cameraPanOffset?: Vec2
   coastPredictionHorizonHours: number
   targetHeading: number | null
   viewportSize: number
@@ -37,6 +41,8 @@ export type RuntimeScenarioSession<
 export type RuntimeScenarioCheckpointSource = {
   assistMode: AssistMode
   assistTargetIndex: number
+  cameraMode?: CameraControlMode
+  cameraPanOffset?: Vec2
   coastPredictionHorizonHours: number
   targetHeading: number | null
   viewportSize: number
@@ -72,6 +78,9 @@ export const cloneRuntimeScenarioSession = <
   checkpoint: session.checkpoint
     ? {
         ...session.checkpoint,
+        cameraPanOffset: session.checkpoint.cameraPanOffset
+          ? { ...session.checkpoint.cameraPanOffset }
+          : undefined,
         world: cloneSimulationState(session.checkpoint.world),
       }
     : null,
@@ -83,11 +92,22 @@ export const cloneRuntimeScenarioSession = <
 
 export const createRuntimeScenarioCheckpoint = (
   source: RuntimeScenarioCheckpointSource,
-): RuntimeScenarioCheckpoint => ({
-  assistMode: source.assistMode,
-  assistTargetIndex: source.assistTargetIndex,
-  coastPredictionHorizonHours: source.coastPredictionHorizonHours,
-  targetHeading: source.targetHeading,
-  viewportSize: source.viewportSize,
-  world: cloneSimulationState(source.world),
-})
+): RuntimeScenarioCheckpoint => {
+  const checkpoint: RuntimeScenarioCheckpoint = {
+    assistMode: source.assistMode,
+    assistTargetIndex: source.assistTargetIndex,
+    coastPredictionHorizonHours: source.coastPredictionHorizonHours,
+    targetHeading: source.targetHeading,
+    viewportSize: source.viewportSize,
+    world: cloneSimulationState(source.world),
+  }
+
+  if (source.cameraMode !== undefined) {
+    checkpoint.cameraMode = source.cameraMode
+  }
+  if (source.cameraPanOffset !== undefined) {
+    checkpoint.cameraPanOffset = { ...source.cameraPanOffset }
+  }
+
+  return checkpoint
+}

@@ -6,19 +6,19 @@ import type { HudPresentation } from '../presentation/hudPresentation'
 import type { SpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import type { TrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import type { RendererProfiler } from '../render/rendererProfiler'
-import type { GameSceneRefs } from '../scene/createGameScene'
-import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
+import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
+import type { GameSceneRefs } from '../scene/createGameScene'
 import type { PhysicsEngine } from '../simulation/types'
 import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import type { GameQueries } from './gameQueries'
+import type { RuntimeActions } from './runtimeActions'
 import {
   advanceRuntimeScenario,
   applySimulationFrameResult,
 } from './runtimeStateTransitions'
-import type { RuntimeActions } from './runtimeActions'
 import { defaultMaxControlWarp, stepSimulationFrame } from './simulationStep'
 
 export const createFrameLoop = (options: {
@@ -97,8 +97,8 @@ export const createFrameLoop = (options: {
       options.globalScenarioDirectiveLimits,
       { shouldAdvance: !gameplayPaused },
     )
-    updateRipples(options.ripples, realDt)
     options.runtimeActions.updateCamera()
+    updateRipples(options.ripples, realDt, { camera: options.gameScene.camera })
     options.trajectoryPresentation.maybeRefreshPrediction(realDt)
 
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
@@ -117,6 +117,8 @@ export const createFrameLoop = (options: {
       targetHeading: options.runtime.simulation.targetHeading,
       targetHeadingScreenPosition:
         options.runtime.ui.targetHeadingScreenPosition ?? null,
+      targetHeadingWorldPosition:
+        options.runtime.ui.targetHeadingWorldPosition ?? null,
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
@@ -164,6 +166,8 @@ export const createFrameLoop = (options: {
         targetHeading: options.runtime.simulation.targetHeading,
         targetHeadingScreenPosition:
           options.runtime.ui.targetHeadingScreenPosition ?? null,
+        targetHeadingWorldPosition:
+          options.runtime.ui.targetHeadingWorldPosition ?? null,
         viewportSize: options.runtime.simulation.viewportSize,
       })
       options.hudPresentation.update({ smoothedCpuMs, smoothedFps })

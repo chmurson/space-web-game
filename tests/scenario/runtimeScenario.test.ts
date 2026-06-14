@@ -41,6 +41,7 @@ describe('createRuntimeScenarioState', () => {
     )
 
     expect(runtimeScenario.coastPredictionHorizonHours).toBe(48)
+    expect(runtimeScenario.cameraMode).toBe('centered')
     expect(runtimeScenario.scenarioSession).toEqual({
       checkpoint: null,
       completed: false,
@@ -85,6 +86,31 @@ describe('createRuntimeScenarioState', () => {
     expect(runtimeScenario.coastPredictionHorizonHours).toBe(1)
     expect(runtimeScenario.viewportSize).toBe(200)
     expect(runtimeScenario.state.elapsed).toBe(0)
+  })
+
+  it('uses the scenario-defined starting camera mode when present', () => {
+    const runtimeScenario = createRuntimeScenarioState(
+      {
+        id: 'test',
+        name: 'Test',
+        description: 'Test scenario',
+        cameraMode: 'unlocked',
+        bodies: [],
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
+      },
+      options,
+    )
+
+    expect(runtimeScenario.cameraMode).toBe('unlocked')
   })
 
   it('preserves provided scenario session metadata', () => {

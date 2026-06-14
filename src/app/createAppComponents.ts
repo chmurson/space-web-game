@@ -3,7 +3,7 @@ import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
   bindPointerCameraInput,
-  createScreenPointHeadingPicker,
+  createScreenPointWorldPicker,
 } from '../input/pointerCameraInput'
 import type { UIUserAction } from '../input/uiUserActions'
 import { createBodyPresentation } from '../presentation/bodyPresentation'
@@ -186,11 +186,52 @@ export const createAppComponents = (options: {
     runtime: options.runtimeState,
     trajectoryPredictionRuntime,
   })
-  const pickHeadingFromScreenPoint = createScreenPointHeadingPicker(
+  const pickWorldPointFromScreenPoint = createScreenPointWorldPicker(
     gameScene.camera,
     renderer.domElement,
     RENDER_SCALE,
   )
+  const panCameraBetweenScreenPoints = (
+    previous: { x: number; y: number },
+    next: { x: number; y: number },
+  ) => {
+    const previousWorld = pickWorldPointFromScreenPoint(previous.x, previous.y)
+    const nextWorld = pickWorldPointFromScreenPoint(next.x, next.y)
+
+    if (!previousWorld || !nextWorld) {
+      return false
+    }
+
+    return runtimeActions.panCamera({
+      x: previousWorld.x - nextWorld.x,
+      y: previousWorld.y - nextWorld.y,
+    })
+  }
+  const zoomCameraAroundScreenPoint = (
+    factor: number,
+    focalPoint?: { x: number; y: number },
+  ) => {
+    if (!focalPoint || runtimeActions.getCameraMode() !== 'unlocked') {
+      runtimeActions.zoomCamera(factor)
+      return
+    }
+
+    const previousWorld = pickWorldPointFromScreenPoint(
+      focalPoint.x,
+      focalPoint.y,
+    )
+    runtimeActions.zoomCamera(factor)
+    const nextWorld = pickWorldPointFromScreenPoint(focalPoint.x, focalPoint.y)
+
+    if (!previousWorld || !nextWorld) {
+      return
+    }
+
+    runtimeActions.panCamera({
+      x: previousWorld.x - nextWorld.x,
+      y: previousWorld.y - nextWorld.y,
+    })
+  }
   const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
   const runtimeActions = createRuntimeActions({
     app: options.app,
@@ -289,22 +330,30 @@ export const createAppComponents = (options: {
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     initialWarpControlSide: touchWarpControlSide,
     keyboardInput,
+    getCameraMode: runtimeActions.getCameraMode,
+    getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
+    onCameraModeSelected: runtimeActions.setCameraMode,
+    onCameraPanGesture: panCameraBetweenScreenPoints,
     onTargetHeadingSelected: (screenX, screenY) => {
-      const heading = pickHeadingFromScreenPoint(
-        screenX,
-        screenY,
-        options.runtimeState.simulation.state.spacecraft.position,
-      )
-      if (heading === null) {
+      const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
+
+      if (worldPosition === null) {
         return
       }
 
-      runtimeActions.setTargetHeading(heading, screenX, screenY)
+      const spacecraftPosition =
+        options.runtimeState.simulation.state.spacecraft.position
+      const heading = Math.atan2(
+        worldPosition.y - spacecraftPosition.y,
+        worldPosition.x - spacecraftPosition.x,
+      )
+
+      runtimeActions.setTargetHeading(heading, screenX, screenY, worldPosition)
     },
     onThrustControlUiStateChange: (state) => {
       options.runtimeState.ui.touchThrustControl = state
     },
-    onZoom: runtimeActions.zoomCamera,
+    onZoom: zoomCameraAroundScreenPoint,
   })
   const handleTopMenuAction = (action: TopMenuAction) => {
     if (action === 'enterMainMenu') {
@@ -340,6 +389,8 @@ export const createAppComponents = (options: {
 
   const topMenu = createTopMenu({
     app: options.app,
+    getCameraMode: runtimeActions.getCameraMode,
+    getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
@@ -366,15 +417,20 @@ export const createAppComponents = (options: {
   })
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
+    getCameraMode: runtimeActions.getCameraMode,
+    getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     getInteractionsEnabled: () => coordinator.getAppMode() === 'game',
     getSpacecraftPosition: () =>
       options.runtimeState.simulation.state.spacecraft.position,
+    onCameraModeSelected: runtimeActions.setCameraMode,
+    onCameraPan: runtimeActions.panCamera,
     onResize: runtimeActions.handleResize,
-    onTargetHeadingSelected: (heading, screenPosition) => {
+    onTargetHeadingSelected: (heading, selection) => {
       runtimeActions.setTargetHeading(
         heading,
-        screenPosition.x,
-        screenPosition.y,
+        selection.screenPosition.x,
+        selection.screenPosition.y,
+        selection.worldPosition,
       )
     },
     onZoom: runtimeActions.zoomCamera,

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { EARTH_VIEWPORT_SIZE } from '@/domain/viewportPresets'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { applyScenarioRuntimeTransition } from '@/runtime/runtimeStateTransitions'
-import { EARTH_MOON_DISTANCE, G } from '@/simulation/constants'
 import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '@/scenario/scenarioPrompts'
@@ -14,6 +13,7 @@ import {
 } from '@/scenario/scenarioSession'
 import { tutorialOnboardingStepOrder } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow'
 import { registerTutorialScenario } from '@/scenario/specific-scenarios/tutorial/tutorialScenario'
+import { EARTH_MOON_DISTANCE, G } from '@/simulation/constants'
 
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,
@@ -78,6 +78,7 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
+    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -194,6 +195,8 @@ describe('tutorialScenario', () => {
     ).toEqual({
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
+      cameraMode: 'centered',
+      cameraModeChangesLocked: true,
       forcedAssistTargetId: 'earth',
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),

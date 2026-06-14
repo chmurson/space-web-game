@@ -1,19 +1,20 @@
 import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import { resolveCurrentScenarioScene } from '../scenario/scenarioScenes'
 import {
   dispatchScenarioPromptAction as dispatchScenarioPromptActionTransition,
   reopenScenarioReplayPrompt,
 } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { ScenarioRuntimeTransition as ScenarioSessionTransition } from '../scenario/scenarioRuntimeTransition'
-import type { StepSimulationFrameResult } from './simulationStep'
+import { resolveCurrentScenarioScene } from '../scenario/scenarioScenes'
 import {
-  createDefaultTouchThrustControlUiState,
   type AppRuntimeState,
+  createDefaultCameraControlUiState,
+  createDefaultTouchThrustControlUiState,
 } from './appRuntimeState'
 import type { ScenarioRuntimeTransition } from './createScenarioRuntimeController'
 import type { RuntimeCheckpointRestoreTransition } from './scenarioRecovery'
+import type { StepSimulationFrameResult } from './simulationStep'
 
 type ClearTransientScenarioState = () => void
 
@@ -27,6 +28,7 @@ export const clearTransientScenarioRuntimeState = (
   runtime.simulation.crashedBodyName = null
   runtime.ui.spacecraftLabelIntroUntil = performance.now() + 5_000
   runtime.ui.targetHeadingScreenPosition = null
+  runtime.ui.targetHeadingWorldPosition = null
   runtime.ui.touchThrustControl = createDefaultTouchThrustControlUiState()
 }
 
@@ -41,6 +43,7 @@ export const applySimulationFrameResult = (
   runtime.simulation.timeWarpIndex = frameResult.timeWarpIndex
   if (frameResult.targetHeading === null) {
     runtime.ui.targetHeadingScreenPosition = null
+    runtime.ui.targetHeadingWorldPosition = null
   }
 }
 
@@ -59,6 +62,10 @@ export const applyScenarioLoadTransition = (
   runtime.simulation.coastPredictionHorizonHours =
     transition.coastPredictionHorizonHours
   runtime.scenario.session = transition.scenario.session
+  runtime.ui.camera = createDefaultCameraControlUiState(
+    transition.cameraMode,
+    transition.state.spacecraft.position,
+  )
   runtime.ui.uiEffectEpoch += 1
   options.clearTransientScenarioState()
   syncRuntimeScenarioDirectives(runtime, options.globalScenarioDirectiveLimits)
@@ -84,6 +91,10 @@ export const applyCheckpointRestoreTransition = (
   runtime.simulation.targetHeading = transition.targetHeading
   runtime.simulation.timeWarpIndex = transition.timeWarpIndex
   runtime.simulation.viewportSize = transition.viewportSize
+  runtime.ui.camera = createDefaultCameraControlUiState(
+    transition.cameraMode ?? 'centered',
+    transition.cameraPanOffset ?? transition.state.spacecraft.position,
+  )
   options.clearTransientScenarioState()
   syncRuntimeScenarioDirectives(runtime, options.globalScenarioDirectiveLimits)
   return true

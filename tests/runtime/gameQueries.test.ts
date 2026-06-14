@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
-
-import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { createGameQueries } from '@/runtime/gameQueries'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 
 const createBody = (
   overrides: Partial<
@@ -57,6 +56,7 @@ const createRuntime = (
     session: createRuntimeScenarioSession('test'),
   },
   ui: {
+    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {

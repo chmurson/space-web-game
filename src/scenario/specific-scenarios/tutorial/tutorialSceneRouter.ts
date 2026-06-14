@@ -70,6 +70,8 @@ const createDefaultRuntimeScenarioCheckpoint = (
   createRuntimeScenarioCheckpoint({
     assistMode: runtime.simulation.assistMode,
     assistTargetIndex: runtime.simulation.assistTargetIndex,
+    cameraMode: runtime.ui.camera.mode,
+    cameraPanOffset: runtime.ui.camera.panOffset,
     coastPredictionHorizonHours: runtime.simulation.coastPredictionHorizonHours,
     targetHeading: runtime.simulation.targetHeading,
     viewportSize: runtime.simulation.viewportSize,
@@ -127,6 +129,8 @@ const resolveOnboardingPromptUi = (
 }
 
 const createEarthFocusDirectives = (options: {
+  cameraMode?: RuntimeScenarioDirectives['cameraMode']
+  cameraModeChangesLocked?: RuntimeScenarioDirectives['cameraModeChangesLocked']
   hiddenBodyIds?: string[]
   hiddenUIElements?: RuntimeScenarioDirectives['hiddenUIElements']
   maxCoastPredictionHorizonHours: number
@@ -134,6 +138,8 @@ const createEarthFocusDirectives = (options: {
   maxViewportSize: number
 }): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
+  cameraMode: options.cameraMode ?? null,
+  cameraModeChangesLocked: options.cameraModeChangesLocked ?? false,
   forcedAssistTargetId: 'earth',
   hiddenBodyIds: options.hiddenBodyIds ?? [],
   hiddenUIElements: options.hiddenUIElements ?? new Set(),
@@ -406,6 +412,8 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
     },
     directives: ({ state }) =>
       createEarthFocusDirectives({
+        cameraMode: state.onboarding?.gateActive === false ? null : 'centered',
+        cameraModeChangesLocked: state.onboarding?.gateActive !== false,
         hiddenBodyIds: ['moon'],
         hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
         maxCoastPredictionHorizonHours: 2,

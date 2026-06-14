@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
-
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { createRuntimeCheckpointRestoreTransition } from '@/runtime/scenarioRecovery'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
 } from '@/scenario/scenarioSession'
-import type { AppRuntimeState } from '@/runtime/appRuntimeState'
-import { createRuntimeCheckpointRestoreTransition } from '@/runtime/scenarioRecovery'
 
 const createRuntime = (): AppRuntimeState => ({
   simulation: {
@@ -54,6 +53,7 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
+    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -79,6 +79,8 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
     runtime.scenario.session.checkpoint = createRuntimeScenarioCheckpoint({
       assistMode: 'off',
       assistTargetIndex: 0,
+      cameraMode: 'unlocked',
+      cameraPanOffset: { x: 12, y: 24 },
       coastPredictionHorizonHours: 12,
       targetHeading: null,
       viewportSize: 320,
@@ -115,6 +117,8 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
     expect(transition).toMatchObject({
       assistMode: 'off',
       assistTargetIndex: 0,
+      cameraMode: 'unlocked',
+      cameraPanOffset: { x: 12, y: 24 },
       coastPredictionHorizonHours: 12,
       targetHeading: null,
       timeWarpIndex: 0,

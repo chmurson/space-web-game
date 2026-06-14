@@ -59,6 +59,7 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
+    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -82,6 +83,8 @@ describe('scenarioDirectives', () => {
   it('resolves generic forced target and hidden body directives from scenario state', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('custom', {
+      cameraMode: 'unlocked',
+      cameraModeChangesLocked: true,
       forcedAssistTargetId: 'moon',
       hiddenBodyIds: ['moon'],
     })
@@ -94,8 +97,60 @@ describe('scenarioDirectives', () => {
       timeWarps: [1, 10, 100, 1000],
     })
 
+    expect(directives.cameraMode).toBe('unlocked')
+    expect(directives.cameraModeChangesLocked).toBe(true)
     expect(directives.forcedAssistTargetId).toBe('moon')
     expect(directives.hiddenBodyIds).toEqual(['moon'])
+  })
+
+  it('applies directive camera mode constraints to runtime camera state', () => {
+    const runtime = createRuntime()
+    runtime.ui.camera = {
+      mode: 'unlocked',
+      panOffset: { x: 12, y: 24 },
+    }
+    runtime.scenario.directives = {
+      ...createDefaultScenarioDirectives(),
+      cameraMode: 'centered',
+      cameraModeChangesLocked: true,
+    }
+
+    applyRuntimeScenarioDirectiveConstraints(runtime, {
+      maxCoastPredictionHorizonHours: 48,
+      defaultViewportSize: 520,
+      maxViewportSize: 800,
+      minViewportSize: EARTH_VIEWPORT_SIZE,
+      timeWarps: [1, 10, 100, 1000],
+    })
+
+    expect(runtime.ui.camera.mode).toBe('centered')
+    expect(runtime.ui.camera.panOffset).toEqual({ x: 12, y: 24 })
+  })
+
+  it('preserves unlocked pan offset when forced unlocked mode is already active', () => {
+    const runtime = createRuntime()
+    runtime.ui.camera = {
+      mode: 'unlocked',
+      panOffset: { x: 12, y: 24 },
+    }
+    runtime.scenario.directives = {
+      ...createDefaultScenarioDirectives(),
+      cameraMode: 'unlocked',
+      cameraModeChangesLocked: true,
+    }
+
+    applyRuntimeScenarioDirectiveConstraints(runtime, {
+      maxCoastPredictionHorizonHours: 48,
+      defaultViewportSize: 520,
+      maxViewportSize: 800,
+      minViewportSize: EARTH_VIEWPORT_SIZE,
+      timeWarps: [1, 10, 100, 1000],
+    })
+
+    expect(runtime.ui.camera).toEqual({
+      mode: 'unlocked',
+      panOffset: { x: 12, y: 24 },
+    })
   })
 
   it('merges earth-moon directive overrides with generic scenario state directives', () => {
@@ -160,6 +215,8 @@ describe('scenarioDirectives', () => {
     expect(directives).toEqual({
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
+      cameraMode: 'centered',
+      cameraModeChangesLocked: true,
       forcedAssistTargetId: 'earth',
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
@@ -168,5 +225,35 @@ describe('scenarioDirectives', () => {
       maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })
+  })
+
+  it('unlocks tutorial camera changes after onboarding is completed', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      onboarding: {
+        activeStepId: null,
+        completedStepIds: [],
+        gateActive: false,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 0,
+          lastSampleHeading: 0,
+          lastSampleAtMs: 0,
+          stepStartHeading: 0,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 1,
+          stepStartTouchThrustControlEngaged: false,
+        },
+      },
+    })
+
+    const directives = resolveRuntimeScenarioDirectives(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
+
+    expect(directives.cameraMode).toBeNull()
+    expect(directives.cameraModeChangesLocked).toBe(false)
   })
 })

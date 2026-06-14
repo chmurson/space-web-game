@@ -1,7 +1,11 @@
 import type { AssistMode } from '../assist/orbitalAssist'
-import type { RuntimeScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
+import type {
+  CameraControlMode,
+  RuntimeScenarioDirectives,
+} from '../scenario/scenarioDirectiveTypes'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState } from '../simulation/types'
+import type { Vec2 } from '../simulation/vector'
 
 export type AppRuntimeSimulationSlice = {
   assistMode: AssistMode
@@ -26,6 +30,11 @@ export type TouchThrustControlUiState = {
   visible: boolean
 }
 
+export type CameraControlUiState = {
+  mode: CameraControlMode
+  panOffset: Vec2
+}
+
 export const createDefaultTouchThrustControlUiState =
   (): TouchThrustControlUiState => ({
     engaged: false,
@@ -34,6 +43,14 @@ export const createDefaultTouchThrustControlUiState =
     visible: false,
   })
 
+export const createDefaultCameraControlUiState = (
+  mode: CameraControlMode = 'centered',
+  panOffset: Vec2 = { x: 0, y: 0 },
+): CameraControlUiState => ({
+  mode,
+  panOffset: { ...panOffset },
+})
+
 export type AppRuntimeScenarioSlice = {
   directives: RuntimeScenarioDirectives
   metadata: RuntimeScenarioMetadata
@@ -41,11 +58,13 @@ export type AppRuntimeScenarioSlice = {
 }
 
 export type AppRuntimeUiSlice = {
+  camera: CameraControlUiState
   spacecraftLabelIntroUntil: number
   targetHeadingScreenPosition?: {
     x: number
     y: number
   } | null
+  targetHeadingWorldPosition?: Vec2 | null
   targetHeadingSelectionEpoch: number
   touchThrustControl: TouchThrustControlUiState
   uiEffectEpoch: number
