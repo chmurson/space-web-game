@@ -114,7 +114,7 @@ const evalInInspectedPage = (expression) =>
 const sendBridgeRequest = async (request) => {
     const response = await evalInInspectedPage(getBridgeExpression(request))
 
-    if (!response || response.ok !== true) {
+    if (response?.ok !== true) {
         throw new Error(response?.error || 'Bridge request failed')
     }
 
