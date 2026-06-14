@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { installDevtoolsBridge } from '../devtools/devtoolsBridge'
 import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
@@ -548,6 +549,14 @@ export const createAppComponents = (options: {
     gameHighLevelActionsMediator,
   })
   dispatchRuntimeAction = coordinator.dispatchRuntimeAction
+
+  installDevtoolsBridge({
+    dispatchRuntimeAction,
+    getAppMode: coordinator.getAppMode,
+    runtime: options.runtimeState,
+    runtimeActions,
+    timeWarps: options.config.controls.timeWarps,
+  })
 
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence:

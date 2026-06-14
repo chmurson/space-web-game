@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Space Game DevTools</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header class="panel-header">
+      <div>
+        <h1>Space Game</h1>
+        <p id="subtitle">Runtime bridge inspector</p>
+      </div>
+      <div class="header-actions">
+        <span id="status" class="status disconnected">Disconnected</span>
+        <button id="refreshButton" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="connectionHint" class="notice hidden">
+        Bridge not found. Run the app in local dev mode, or open a deployed build
+        with <code>?devtools=1</code>.
+      </section>
+
+      <section class="grid two-columns">
+        <article class="card">
+          <h2>Scenario</h2>
+          <dl class="kv-list">
+            <div><dt>Mode</dt><dd id="appMode">—</dd></div>
+            <div><dt>Scenario</dt><dd id="scenarioTitle">—</dd></div>
+            <div><dt>ID</dt><dd id="scenarioId">—</dd></div>
+            <div><dt>Completed</dt><dd id="scenarioCompleted">—</dd></div>
+            <div><dt>Checkpoint</dt><dd id="scenarioCheckpoint">—</dd></div>
+            <div><dt>Prompt</dt><dd id="scenarioPrompt">—</dd></div>
+          </dl>
+        </article>
+
+        <article class="card">
+          <h2>Simulation</h2>
+          <dl class="kv-list">
+            <div><dt>Elapsed</dt><dd id="elapsed">—</dd></div>
+            <div><dt>Time warp</dt><dd id="timeWarp">—</dd></div>
+            <div><dt>Assist</dt><dd id="assistMode">—</dd></div>
+            <div><dt>Target</dt><dd id="assistTarget">—</dd></div>
+            <div><dt>Crash</dt><dd id="crashState">—</dd></div>
+            <div><dt>Horizon</dt><dd id="coastHorizon">—</dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="grid two-columns">
+        <article class="card">
+          <h2>Spacecraft</h2>
+          <dl class="kv-list">
+            <div><dt>Position</dt><dd id="spacecraftPosition">—</dd></div>
+            <div><dt>Velocity</dt><dd id="spacecraftVelocity">—</dd></div>
+            <div><dt>Speed</dt><dd id="spacecraftSpeed">—</dd></div>
+            <div><dt>Heading</dt><dd id="spacecraftHeading">—</dd></div>
+            <div><dt>Fuel</dt><dd id="spacecraftFuel">—</dd></div>
+          </dl>
+        </article>
+
+        <article class="card">
+          <h2>Camera</h2>
+          <dl class="kv-list">
+            <div><dt>Mode</dt><dd id="cameraMode">—</dd></div>
+            <div><dt>Viewport</dt><dd id="viewportSize">—</dd></div>
+            <div><dt>Pan</dt><dd id="cameraPan">—</dd></div>
+            <div><dt>Target heading</dt><dd id="targetHeading">—</dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Controls</h2>
+        <div class="control-group">
+          <label for="timeWarpSelect">Time warp</label>
+          <select id="timeWarpSelect"></select>
+        </div>
+        <div class="button-row">
+          <button data-ui-action="decreaseTimeWarp" type="button">Warp −</button>
+          <button data-ui-action="increaseTimeWarp" type="button">Warp +</button>
+          <button data-ui-action="decreaseCoastHorizon" type="button">Horizon −</button>
+          <button data-ui-action="increaseCoastHorizon" type="button">Horizon +</button>
+          <button data-command="camera:centered" type="button">Camera centered</button>
+          <button data-command="camera:unlocked" type="button">Camera unlocked</button>
+          <button data-ui-action="cycleAssistMode" type="button">Cycle assist</button>
+          <button data-ui-action="cycleAssistTarget" type="button">Cycle target</button>
+          <button data-ui-action="saveDebugSnapshot" type="button">Save debug snapshot</button>
+          <button data-ui-action="loadDebugSnapshot" type="button">Load debug snapshot</button>
+          <button data-ui-action="resetScenario" class="danger" type="button">Reset scenario</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Debug flags</h2>
+        <div class="toggle-grid">
+          <label><input data-debug-flag="debugModeEnabled" type="checkbox" /> Debug mode</label>
+          <label><input data-debug-flag="fpsIndicatorEnabled" type="checkbox" /> FPS indicator</label>
+          <label><input data-debug-flag="performanceDebugEnabled" type="checkbox" /> Performance debug</label>
+          <label><input data-debug-flag="debugNoGravityEnabled" type="checkbox" /> No gravity</label>
+        </div>
+        <p id="debugSnapshotStatus" class="muted"></p>
+      </section>
+
+      <section class="grid two-columns">
+        <article class="card">
+          <h2>Bodies</h2>
+          <div id="bodyList" class="body-list"></div>
+        </article>
+
+        <article class="card">
+          <h2>Command log</h2>
+          <ol id="commandLog" class="command-log"></ol>
+        </article>
+      </section>
+
+      <details class="card raw-card">
+        <summary>Raw snapshot</summary>
+        <div class="raw-card-toolbar">
+          <button id="openRawSnapshotButton" type="button">Full height</button>
+        </div>
+        <pre id="rawJson" class="json-viewer">{}</pre>
+      </details>
+    </main>
+
+    <section id="rawSnapshotPanel" class="raw-snapshot-panel hidden" aria-hidden="true">
+      <header class="raw-snapshot-header">
+        <div>
+          <h2>Raw snapshot</h2>
+          <p>Live app runtime snapshot, refreshed with the main panel.</p>
+        </div>
+        <div class="raw-snapshot-actions">
+          <button id="copyRawSnapshotButton" type="button">Copy JSON</button>
+          <button id="closeRawSnapshotButton" type="button">Close</button>
+        </div>
+      </header>
+      <pre id="rawJsonFull" class="json-viewer raw-json-full" tabindex="0">{}</pre>
+    </section>
+
+    <script src="panel.js"></script>
+  </body>
+</html>
