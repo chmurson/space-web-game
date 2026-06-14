@@ -64,20 +64,11 @@ export const createHudPresentation = (options: {
 
   const syncTargetPill = (targetUiState: AssistTargetUiState) => {
     const target = targetUiState.activeTarget
-    const recommendation =
-      targetUiState.mode === 'manual' ? targetUiState.recommendedTarget : null
-    const recommendationLabel = recommendation
-      ? `; recommended ${recommendation.name}`
-      : ''
-    const targetLabel = `${target.name}, ${targetStatusLabels[targetUiState.mode]}${recommendationLabel}`
+    const targetLabel = `${target.name}, ${targetStatusLabels[targetUiState.mode]}`
 
     if (options.overlayUi.targetPill) {
       options.overlayUi.targetPill.setAttribute('aria-label', targetLabel)
       options.overlayUi.targetPill.title = targetLabel
-      options.overlayUi.targetPill.classList.toggle(
-        'telemetry-pill-target-recommended',
-        recommendation !== null,
-      )
     }
     if (
       options.overlayUi.statTarget &&
@@ -89,7 +80,9 @@ export const createHudPresentation = (options: {
       syncTargetSphere(options.overlayUi.targetSphere, target)
     }
     if (options.overlayUi.targetStatus) {
-      options.overlayUi.targetStatus.hidden = recommendation !== null
+      options.overlayUi.targetStatus.hidden = false
+      options.overlayUi.targetStatus.style.visibility =
+        targetUiState.mode === 'forced' ? 'hidden' : ''
       options.overlayUi.targetStatus.className = `target-status-mark target-status-mark-${targetUiState.mode}`
     }
   }
@@ -202,6 +195,7 @@ export const createHudPresentation = (options: {
       const showScenarioInfoButton = !hiddenUIElements.has('scenarioInfoButton')
       const showTimePill = !hiddenUIElements.has('timeWarpPill')
       const showSpeedPill = !hiddenUIElements.has('speedPill')
+      const showTargetPill = !hiddenUIElements.has('targetPill')
       const showThrustPill = !hiddenUIElements.has('thrustPill')
       const showTargetControl = !hiddenUIElements.has('targetControl')
       const showTrajectoryControl = !hiddenUIElements.has('trajectory')
@@ -277,7 +271,7 @@ export const createHudPresentation = (options: {
         }
         if (targetPill) {
           targetPill.style.display =
-            !crashed && showSpeedPill ? 'inline-flex' : 'none'
+            !crashed && showTargetPill ? 'inline-flex' : 'none'
         }
         if (thrustPill) {
           thrustPill.style.display =

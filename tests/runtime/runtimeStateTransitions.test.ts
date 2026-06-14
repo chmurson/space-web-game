@@ -208,6 +208,7 @@ describe('runtimeStateTransitions', () => {
       new Set([
         'scenarioInfoButton',
         'targetControl',
+        'targetPill',
         'timeWarpPill',
         'trajectory',
       ]),

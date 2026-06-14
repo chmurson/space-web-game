@@ -242,7 +242,10 @@ Completed task slices: runtime target source, runtime actions, passive telemetry
 
 ## Review Notes
 
-No external findings were supplied.
+External CodeRabbit findings supplied after review were assessed before applying any changes:
+
+- `src/presentation/hudPresentation.ts`: stale/incorrect for the current tree. The target pill already uses `showTargetPill`, not `showSpeedPill`.
+- `src/ui/createDialog.ts`: not applied for this scoped change. Dialogs are app-lifetime objects in current usage, not repeatedly created/destroyed. The suggested `AbortController` fix would abort on `close()`, which is not a destroy lifecycle and would break keyboard handling after a dialog is reopened.
 
 Self-review covered the diff against the design handoff, forced/manual/auto precedence, scenario reset behavior, mobile spacing, hidden touch-control state, and per-frame UI sync. The only in-scope finding was the target selector rebuilding rows during frame sync; fixed with a render signature.
 

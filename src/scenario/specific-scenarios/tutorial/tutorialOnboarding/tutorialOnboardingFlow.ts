@@ -275,6 +275,7 @@ export const getHiddenOnboardingUIElements = (
     return new Set([
       'scenarioInfoButton',
       'targetControl',
+      'targetPill',
       'timeWarpPill',
       'trajectory',
     ])
@@ -284,7 +285,12 @@ export const getHiddenOnboardingUIElements = (
     state.activeStepId === 'intro-timewarp' ||
     state.activeStepId === 'intro-timewarp-thrust'
   ) {
-    return new Set(['scenarioInfoButton', 'targetControl', 'trajectory'])
+    return new Set([
+      'scenarioInfoButton',
+      'targetControl',
+      'targetPill',
+      'trajectory',
+    ])
   }
 
   if (state.activeStepId === 'intro-trajectory') {

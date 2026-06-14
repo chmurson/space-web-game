@@ -330,6 +330,7 @@ describe('createRuntimeActions', () => {
       new Set([
         'scenarioInfoButton',
         'targetControl',
+        'targetPill',
         'timeWarpPill',
         'trajectory',
       ]),
@@ -375,6 +376,7 @@ describe('createRuntimeActions', () => {
       new Set([
         'scenarioInfoButton',
         'targetControl',
+        'targetPill',
         'timeWarpPill',
         'trajectory',
       ]),

@@ -423,7 +423,7 @@ describe('tutorialOnboardingProgress', () => {
     ])
   })
 
-  it('keeps target controls hidden until trajectory controls appear', () => {
+  it('keeps target UI hidden until trajectory controls appear', () => {
     const runtime = createRuntime()
     const onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
@@ -431,6 +431,7 @@ describe('tutorialOnboardingProgress', () => {
       new Set([
         'scenarioInfoButton',
         'targetControl',
+        'targetPill',
         'timeWarpPill',
         'trajectory',
       ]),
@@ -440,7 +441,14 @@ describe('tutorialOnboardingProgress', () => {
         ...onboarding,
         activeStepId: 'intro-timewarp',
       }),
-    ).toEqual(new Set(['scenarioInfoButton', 'targetControl', 'trajectory']))
+    ).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'trajectory',
+      ]),
+    )
     expect(
       getHiddenOnboardingUIElements({
         ...onboarding,

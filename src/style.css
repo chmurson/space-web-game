@@ -703,12 +703,6 @@ canvas {
     max-width: min(128px, calc(100vw - 168px));
 }
 
-.telemetry-pill-target-recommended {
-    box-shadow:
-        inset 0 0 0 1px rgba(56, 189, 248, 0.14),
-        0 0 14px rgba(14, 165, 233, 0.08);
-}
-
 .telemetry-pill-target .target-body-sphere {
     font-size: 12px;
     transform: translateY(-0.25px);

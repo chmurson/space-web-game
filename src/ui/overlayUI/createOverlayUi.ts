@@ -25,6 +25,7 @@ const crashIconMarkup = `
 
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
+  bottomPillArea: HTMLElement
   debugPanel: DebugPanel
   fpsIndicator: HTMLElement
   headingTargetArc: SVGPathElement
@@ -72,6 +73,10 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const topBar = document.createElement('div')
   topBar.className = 'top-bar'
   options.app.appendChild(topBar)
+
+  const bottomPillArea = document.createElement('div')
+  bottomPillArea.className = 'bottom-pill-area'
+  options.app.appendChild(bottomPillArea)
 
   const telemetryStrip = document.createElement('div')
   telemetryStrip.className = 'telemetry-strip'
@@ -150,7 +155,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     ${replayPromptIconMarkup}
     <span class="scenario-prompt-pill-label"></span>
   `
-  topBar.appendChild(scenarioPromptReplayButton)
+  bottomPillArea.appendChild(scenarioPromptReplayButton)
 
   const spacecraftCallout = document.createElement('div')
   spacecraftCallout.className = 'spacecraft-callout'
@@ -212,6 +217,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
 
   return {
     bodyLabels,
+    bottomPillArea,
     debugPanel,
     fpsIndicator,
     headingTargetArc,

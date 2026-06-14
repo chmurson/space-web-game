@@ -276,6 +276,7 @@ describe('tutorialScenario', () => {
       new Set([
         'scenarioInfoButton',
         'targetControl',
+        'targetPill',
         'timeWarpPill',
         'trajectory',
       ]),
