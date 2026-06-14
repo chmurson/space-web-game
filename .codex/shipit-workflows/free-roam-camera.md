@@ -2,8 +2,8 @@
 
 Task: Free roam camera
 Branch: free-roam-camera
-Current Mode: review
-Status: active
+Current Mode: yeet
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated (waived: direct merge to `main` requested)
 
 ## Artifacts
 
@@ -34,7 +34,7 @@ Status: active
 - Default camera behavior remains centered on the spacecraft.
 - Scenario camera behavior should be optional configuration, with centered/default and optional runtime locking.
 - Tutorial should start centered and locked, then unlock camera changes after the initial onboarding tooltips finish.
-- Repository deploy guidance applies: this non-`main` executable/user-visible change needs staging deploy before handoff.
+- Repository deploy guidance applies: this feature was deployed to woven-moth staging before handoff and to production after merging into `main`.
 
 ## Open Questions
 
@@ -53,7 +53,7 @@ Status: active
 
 ## Next Step
 
-Commit the threshold smoothing follow-up, merge `free-roam-camera` into `main`, then deploy production from `main`.
+Task complete. Merged into `main` and deployed production.
 
 ## Brainstorm Handoff
 
@@ -193,3 +193,18 @@ Known gaps:
   - Production URL for woven-moth staging site: `https://space-web-game-woven-moth.netlify.app`
   - Unique deploy URL: `https://6a2ec224cf6acaf93aca819f--space-web-game-woven-moth.netlify.app`
   - Build logs: `https://app.netlify.com/projects/space-web-game-woven-moth/deploys/6a2ec224cf6acaf93aca819f`
+
+## Merge Notes
+
+- Feature commits:
+  - `d93882d Add unlocked camera controls`
+  - `9907cab Smooth camera unlock panning`
+- Main merge commit: `1beda96 Merge branch 'free-roam-camera'`
+- Main validation after merge:
+  - `npm test` passed: 30 files, 152 tests.
+  - `npm run build` passed; Vite reported the existing large chunk warning.
+  - `git diff --check` passed.
+- Production deploy:
+  - Production URL: `https://space-web-game.netlify.app`
+  - Unique deploy URL: `https://6a2ec44d56b5426f3ed975bb--space-web-game.netlify.app`
+  - Build logs: `https://app.netlify.com/projects/space-web-game/deploys/6a2ec44d56b5426f3ed975bb`
