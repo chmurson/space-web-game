@@ -5,6 +5,7 @@ export type SegmentedControlOption<TValue extends string> = {
 
 export type SegmentedControl<TValue extends string> = {
   element: HTMLElement
+  setDisabled(disabled: boolean): void
   sync(value: TValue): void
 }
 
@@ -64,6 +65,12 @@ export const createSegmentedControl = <TValue extends string>(options: {
 
   return {
     element: root,
+    setDisabled: (disabled) => {
+      for (const option of buttons) {
+        option.button.disabled = disabled
+      }
+      root.classList.toggle('segmented-control-disabled', disabled)
+    },
     sync,
   }
 }

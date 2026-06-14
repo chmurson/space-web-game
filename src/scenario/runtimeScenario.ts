@@ -8,6 +8,7 @@ import {
 } from '../debugScenarioSnapshot'
 import { idleControls } from '../simulation/state'
 import type { SimulationState } from '../simulation/types'
+import type { CameraControlMode } from './scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
 import {
   cloneRuntimeScenarioSession,
@@ -24,6 +25,7 @@ export type RuntimeScenarioOptions = {
 }
 
 export type RuntimeScenarioState = {
+  cameraMode: CameraControlMode
   coastPredictionHorizonHours: number
   scenarioSession: ReturnType<typeof createRuntimeScenarioSession>
   state: SimulationState
@@ -76,6 +78,7 @@ export const createRuntimeScenarioState = (
   scenario: RuntimeScenario,
   options: RuntimeScenarioOptions,
 ): RuntimeScenarioState => ({
+  cameraMode: scenario.cameraMode ?? 'centered',
   coastPredictionHorizonHours: clamp(
     scenario.coastPredictionHorizonHours ??
       options.defaultCoastPredictionHorizonHours,

@@ -4,7 +4,10 @@ import {
   loadDebugRuntimeScenario,
   type RuntimeScenarioOptions,
 } from '../scenario/runtimeScenario'
-import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import type {
+  CameraControlMode,
+  GlobalScenarioDirectiveLimits,
+} from '../scenario/scenarioDirectiveTypes'
 import type {
   AppRuntimeScenarioSlice,
   AppRuntimeSimulationSlice,
@@ -18,6 +21,7 @@ import {
 import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 
 export type ScenarioRuntimeTransition = {
+  cameraMode: CameraControlMode
   coastPredictionHorizonHours: number
   scenario: Pick<AppRuntimeScenarioSlice, 'metadata' | 'session'>
   state: AppRuntimeSimulationSlice['state']
@@ -43,6 +47,7 @@ export const createScenarioRuntimeTransition = (
   )
 
   return {
+    cameraMode: runtimeScenarioState.cameraMode,
     coastPredictionHorizonHours:
       runtimeScenarioState.coastPredictionHorizonHours,
     scenario: {
@@ -123,6 +128,7 @@ export const createScenarioRuntimeController = (options: {
         {
           coastPredictionHorizonHours:
             loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
+          cameraMode: loadedDebugScenario.runtimeState.cameraMode,
           scenario: {
             metadata: {
               description: loadedDebugScenario.scenario.description,

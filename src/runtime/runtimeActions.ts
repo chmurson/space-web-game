@@ -6,11 +6,14 @@ import {
   saveRuntimeDebugSnapshot,
 } from '../scenario/runtimeScenario'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
-import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
+import type {
+  CameraControlMode,
+  GlobalScenarioDirectiveLimits,
+} from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { GameSceneRefs } from '../scene/createGameScene'
-import { add } from '../simulation/vector'
+import { add, type Vec2 } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
@@ -27,6 +30,7 @@ type RippleCreator = (
   ripples: Ripple[],
   screenX: number,
   screenY: number,
+  worldPosition?: Vec2 | null,
 ) => void
 
 export type RuntimeActionsResult = {
@@ -115,30 +119,68 @@ export const createRuntimeActions = (options: {
       : 'snapshot save failed'
   }
 
+  const getFollowCameraTargetPosition = () =>
+    options.runtime.scenario.directives.cameraFollowBodyId === null
+      ? add(
+          options.runtime.simulation.state.spacecraft.position,
+          options.runtime.scenario.directives.cameraFollowOffset,
+        )
+      : add(
+          options.runtime.simulation.state.bodies.find(
+            (body) =>
+              body.id ===
+              options.runtime.scenario.directives.cameraFollowBodyId,
+          )?.position ?? options.runtime.simulation.state.spacecraft.position,
+          options.runtime.scenario.directives.cameraFollowOffset,
+        )
+
+  const getCameraTargetPosition = () =>
+    options.runtime.ui.camera.mode === 'unlocked'
+      ? options.runtime.ui.camera.panOffset
+      : getFollowCameraTargetPosition()
+
   const updateCamera = () =>
     updateCameraView({
       cameraDistance: options.cameraDistance,
       cameraElevation: options.cameraElevation,
-      cameraTargetPosition:
-        options.runtime.scenario.directives.cameraFollowBodyId === null
-          ? add(
-              options.runtime.simulation.state.spacecraft.position,
-              options.runtime.scenario.directives.cameraFollowOffset,
-            )
-          : add(
-              options.runtime.simulation.state.bodies.find(
-                (body) =>
-                  body.id ===
-                  options.runtime.scenario.directives.cameraFollowBodyId,
-              )?.position ??
-                options.runtime.simulation.state.spacecraft.position,
-              options.runtime.scenario.directives.cameraFollowOffset,
-            ),
+      cameraTargetPosition: getCameraTargetPosition(),
       gameScene: options.gameScene,
       viewportHeight: window.innerHeight,
       viewportSize: options.runtime.simulation.viewportSize,
       viewportWidth: window.innerWidth,
     })
+
+  const setCameraMode = (mode: CameraControlMode) => {
+    if (options.runtime.scenario.directives.cameraModeChangesLocked) {
+      return false
+    }
+
+    if (mode === options.runtime.ui.camera.mode) {
+      return true
+    }
+
+    if (mode === 'unlocked') {
+      options.runtime.ui.camera.panOffset = {
+        ...getFollowCameraTargetPosition(),
+      }
+    }
+    options.runtime.ui.camera.mode = mode
+    updateCamera()
+    return true
+  }
+
+  const panCamera = (delta: { x: number; y: number }) => {
+    if (options.runtime.ui.camera.mode !== 'unlocked') {
+      return false
+    }
+
+    options.runtime.ui.camera.panOffset = add(
+      options.runtime.ui.camera.panOffset,
+      delta,
+    )
+    updateCamera()
+    return true
+  }
 
   const zoomCamera = (factor: number) => {
     options.runtime.simulation.viewportSize = THREE.MathUtils.clamp(
@@ -280,6 +322,14 @@ export const createRuntimeActions = (options: {
       if (action === 'zoomOut') {
         zoomCamera(1.22)
       }
+      if (action === 'setCameraCentered') {
+        setCameraMode('centered')
+        return { refreshTrajectoryPrediction: false }
+      }
+      if (action === 'setCameraUnlocked') {
+        setCameraMode('unlocked')
+        return { refreshTrajectoryPrediction: false }
+      }
       if (action === 'promptConfirm') {
         const prompts = resolveScenarioPrompts(options.runtime, 'desktop')
         const primaryAction = prompts.active?.buttons[0]?.action
@@ -326,15 +376,35 @@ export const createRuntimeActions = (options: {
     },
     resetScenario: scenarioRuntimeController.resetScenario,
     restartFromCheckpoint: scenarioRuntimeController.restartFromCheckpoint,
-    setTargetHeading: (heading: number, clientX: number, clientY: number) => {
+    getCameraMode: () => options.runtime.ui.camera.mode,
+    getCameraModeChangesLocked: () =>
+      options.runtime.scenario.directives.cameraModeChangesLocked,
+    getCameraTargetPosition,
+    panCamera,
+    setCameraMode,
+    setTargetHeading: (
+      heading: number,
+      clientX: number,
+      clientY: number,
+      worldPosition?: Vec2 | null,
+    ) => {
       options.runtime.simulation.targetHeading = heading
       options.runtime.ui.targetHeadingScreenPosition = {
         x: clientX,
         y: clientY,
       }
+      options.runtime.ui.targetHeadingWorldPosition = worldPosition
+        ? { ...worldPosition }
+        : null
       options.runtime.ui.targetHeadingSelectionEpoch += 1
       options.runtime.simulation.assistMode = 'off'
-      options.createRipple(options.app, options.ripples, clientX, clientY)
+      options.createRipple(
+        options.app,
+        options.ripples,
+        clientX,
+        clientY,
+        worldPosition,
+      )
     },
     nudgeTargetHeading: (deltaRadians: number) => {
       const baseHeading =

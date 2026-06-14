@@ -1,8 +1,9 @@
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import {
+  type CameraControlMode,
   createDefaultScenarioDirectives,
-  type RuntimeScenarioDirectives,
   type GlobalScenarioDirectiveLimits,
+  type RuntimeScenarioDirectives,
 } from './scenarioDirectiveTypes'
 import { resolveCurrentScenarioScene } from './scenarioScenes'
 import type { ScenarioSessionValue } from './scenarioSession'
@@ -20,6 +21,8 @@ type CommonScenarioDirectiveState = {
   cameraFollowBodyId?: string
   cameraFollowOffsetX?: number
   cameraFollowOffsetY?: number
+  cameraMode?: CameraControlMode
+  cameraModeChangesLocked?: boolean
   forcedAssistTargetId?: string
   hiddenBodyIds?: string[]
 }
@@ -45,12 +48,22 @@ const getNumberValue = (value: number | undefined): number | null =>
 const getStringValue = (value: string | undefined): string | null =>
   typeof value === 'string' ? value : null
 
+const getBooleanValue = (value: boolean | undefined): boolean =>
+  typeof value === 'boolean' ? value : false
+
+const getCameraModeValue = (
+  value: CameraControlMode | undefined,
+): CameraControlMode | null =>
+  value === 'centered' || value === 'unlocked' ? value : null
+
 const resolveBaseScenarioDirectives = (
   state: ScenarioSessionValue,
 ): Pick<
   RuntimeScenarioDirectives,
   | 'cameraFollowBodyId'
   | 'cameraFollowOffset'
+  | 'cameraMode'
+  | 'cameraModeChangesLocked'
   | 'forcedAssistTargetId'
   | 'hiddenBodyIds'
 > => {
@@ -60,6 +73,8 @@ const resolveBaseScenarioDirectives = (
     return {
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
+      cameraMode: null,
+      cameraModeChangesLocked: false,
       forcedAssistTargetId: null,
       hiddenBodyIds: [],
     }
@@ -71,6 +86,10 @@ const resolveBaseScenarioDirectives = (
       x: getNumberValue(commonState.cameraFollowOffsetX) ?? 0,
       y: getNumberValue(commonState.cameraFollowOffsetY) ?? 0,
     },
+    cameraMode: getCameraModeValue(commonState.cameraMode),
+    cameraModeChangesLocked: getBooleanValue(
+      commonState.cameraModeChangesLocked,
+    ),
     forcedAssistTargetId: getStringValue(commonState.forcedAssistTargetId),
     hiddenBodyIds: getStringArrayValue(commonState.hiddenBodyIds),
   }
@@ -127,6 +146,15 @@ export const applyRuntimeScenarioDirectiveConstraints = (
   runtime: AppRuntimeState,
   limits: GlobalScenarioDirectiveLimits,
 ) => {
+  const forcedCameraMode = runtime.scenario.directives.cameraMode
+  if (forcedCameraMode && forcedCameraMode !== runtime.ui.camera.mode) {
+    runtime.ui.camera.mode = forcedCameraMode
+    if (forcedCameraMode === 'unlocked') {
+      runtime.ui.camera.panOffset = {
+        ...runtime.simulation.state.spacecraft.position,
+      }
+    }
+  }
   runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
     runtime.simulation.timeWarpIndex,
     limits.timeWarps,

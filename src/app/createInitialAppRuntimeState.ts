@@ -1,14 +1,15 @@
-import type { AppConfigContext } from './createAppConfigContext'
 import {
-  createDefaultTouchThrustControlUiState,
   type AppRuntimeState,
+  createDefaultCameraControlUiState,
+  createDefaultTouchThrustControlUiState,
 } from '../runtime/appRuntimeState'
-import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
-import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
 import {
   createScenarioRuntimeTransition,
   resolveStartupScenarioId,
 } from '../runtime/createScenarioRuntimeController'
+import { syncRuntimeScenarioDirectives } from '../scenario/scenarioDirectives'
+import { createDefaultScenarioDirectives } from '../scenario/scenarioDirectiveTypes'
+import type { AppConfigContext } from './createAppConfigContext'
 
 const menuTimeWarpTarget = 300
 
@@ -47,8 +48,13 @@ export const createInitialAppRuntimeState = (
       session: initialScenarioTransition.scenario.session,
     },
     ui: {
+      camera: createDefaultCameraControlUiState(
+        initialScenarioTransition.cameraMode,
+        initialScenarioTransition.state.spacecraft.position,
+      ),
       spacecraftLabelIntroUntil: performance.now() + 5_000,
       targetHeadingScreenPosition: null,
+      targetHeadingWorldPosition: null,
       targetHeadingSelectionEpoch: 0,
       touchThrustControl: createDefaultTouchThrustControlUiState(),
       uiEffectEpoch: 0,

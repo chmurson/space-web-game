@@ -7,6 +7,7 @@ import type {
   SpacecraftTrailPoint,
 } from '../scene/createGameScene'
 import type { Spacecraft } from '../simulation/types'
+import type { Vec2 } from '../simulation/vector'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 
 const trailPointDistanceThreshold = 4
@@ -137,6 +138,7 @@ const updateSpacecraftCallout = (options: {
   spacecraftModelZoomThreshold: number
   targetHeading: number | null
   targetHeadingScreenPosition: { x: number; y: number } | null
+  targetHeadingWorldPosition: Vec2 | null
   viewportSize: number
 }) => {
   const position = renderPosition(
@@ -217,7 +219,10 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.spacecraftIconThrust.style.transform = `translate(-50%, -50%) rotate(${headingAngle}rad)`
   }
 
-  if (options.targetHeading !== null && options.targetHeadingScreenPosition) {
+  if (
+    options.targetHeading !== null &&
+    (options.targetHeadingWorldPosition || options.targetHeadingScreenPosition)
+  ) {
     const targetForward = {
       x: Math.cos(options.targetHeading),
       y: Math.sin(options.targetHeading),
@@ -242,6 +247,20 @@ const updateSpacecraftCallout = (options: {
     const startY = screenY + Math.sin(headingAngle) * headingTargetArcRadiusPx
     const endX = screenX + Math.cos(arcEndAngle) * headingTargetArcRadiusPx
     const endY = screenY + Math.sin(arcEndAngle) * headingTargetArcRadiusPx
+    const targetHeadingScreenPosition = options.targetHeadingWorldPosition
+      ? (() => {
+          const targetPosition = renderPosition(
+            options.targetHeadingWorldPosition.x,
+            options.targetHeadingWorldPosition.y,
+            1.2,
+          )
+          targetPosition.project(options.gameScene.camera)
+          return {
+            x: (targetPosition.x * 0.5 + 0.5) * window.innerWidth,
+            y: (-targetPosition.y * 0.5 + 0.5) * window.innerHeight,
+          }
+        })()
+      : options.targetHeadingScreenPosition
 
     options.overlayUi.headingTargetOverlay.style.display = 'block'
     options.overlayUi.headingTargetOverlay.setAttribute(
@@ -252,11 +271,11 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.headingTargetLine.setAttribute('y1', `${screenY}`)
     options.overlayUi.headingTargetLine.setAttribute(
       'x2',
-      `${options.targetHeadingScreenPosition.x}`,
+      `${targetHeadingScreenPosition?.x ?? screenX}`,
     )
     options.overlayUi.headingTargetLine.setAttribute(
       'y2',
-      `${options.targetHeadingScreenPosition.y}`,
+      `${targetHeadingScreenPosition?.y ?? screenY}`,
     )
     options.overlayUi.headingTargetArc.setAttribute(
       'd',
@@ -287,6 +306,7 @@ export const createSpacecraftPresentation = (options: {
       spacecraftLabelIntroUntil: number
       targetHeading: number | null
       targetHeadingScreenPosition: { x: number; y: number } | null
+      targetHeadingWorldPosition: Vec2 | null
       viewportSize: number
     }) => {
       const rawMeshRotationY = -state.spacecraft.heading + Math.PI / 2
@@ -319,6 +339,7 @@ export const createSpacecraftPresentation = (options: {
         spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
         targetHeading: state.targetHeading,
         targetHeadingScreenPosition: state.targetHeadingScreenPosition,
+        targetHeadingWorldPosition: state.targetHeadingWorldPosition,
         viewportSize: state.viewportSize,
       })
     },

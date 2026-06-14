@@ -109,5 +109,9 @@ describe('createInitialAppRuntimeState', () => {
 
     expect(runtime.scenario.session.scenarioId).toBe('tutorial')
     expect(runtime.scenario.metadata.title).toBe('Tutorial: Escape Earth')
+    expect(runtime.ui.camera.mode).toBe('centered')
+    expect(runtime.ui.camera.panOffset).toEqual(
+      runtime.simulation.state.spacecraft.position,
+    )
   })
 })

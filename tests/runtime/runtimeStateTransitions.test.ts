@@ -4,9 +4,6 @@ import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
 } from '@/domain/viewportPresets'
-import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
-import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
-import * as scenarioDirectives from '@/scenario/scenarioDirectives'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import {
   advanceRuntimeScenario,
@@ -14,6 +11,9 @@ import {
   applyScenarioLoadTransition,
   shouldSyncDirectivesForScenarioTransition,
 } from '@/runtime/runtimeStateTransitions'
+import * as scenarioDirectives from '@/scenario/scenarioDirectives'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 
 const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,
@@ -78,6 +78,7 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
+    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -105,6 +106,7 @@ describe('runtimeStateTransitions', () => {
     applyScenarioLoadTransition(
       runtime,
       {
+        cameraMode: 'unlocked',
         coastPredictionHorizonHours: 2,
         scenario: {
           metadata: {
@@ -148,6 +150,10 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.simulation.targetHeading).toBeNull()
     expect(runtime.scenario.directives.cameraFollowBodyId).toBe('earth')
     expect(runtime.scenario.directives.hiddenBodyIds).toEqual(['moon'])
+    expect(runtime.ui.camera).toEqual({
+      mode: 'unlocked',
+      panOffset: runtime.simulation.state.spacecraft.position,
+    })
   })
 
   it('always syncs directives for checkpoint restores', () => {
@@ -176,6 +182,8 @@ describe('runtimeStateTransitions', () => {
       {
         assistMode: 'capture',
         assistTargetIndex: 0,
+        cameraMode: 'unlocked',
+        cameraPanOffset: { x: 12, y: 24 },
         coastPredictionHorizonHours: 12,
         state: {
           elapsed: 42,
@@ -203,6 +211,7 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.simulation.coastPredictionHorizonHours).toBe(2)
     expect(runtime.simulation.assistMode).toBe('off')
     expect(runtime.simulation.targetHeading).toBeNull()
+    expect(runtime.ui.camera.mode).toBe('centered')
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
       new Set(['scenarioInfoButton', 'timeWarpPill', 'trajectory']),
     )

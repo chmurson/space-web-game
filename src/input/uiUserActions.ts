@@ -9,6 +9,8 @@ export type UIUserAction =
   | 'promptConfirm'
   | 'resetScenario'
   | 'saveDebugSnapshot'
+  | 'setCameraCentered'
+  | 'setCameraUnlocked'
   | 'toggleDebugMode'
   | 'toggleFpsIndicator'
   | 'toggleNoGravityDebug'

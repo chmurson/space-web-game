@@ -86,6 +86,7 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
+    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -199,6 +200,73 @@ describe('createRuntimeActions', () => {
     expect(runtime.simulation.timeWarpIndex).toBe(0)
     expect(runtime.simulation.state.elapsed).toBe(42)
     expect(runtime.simulation.viewportSize).toBe(320)
+  })
+
+  it('switches between centered and unlocked camera modes', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
+      expect(runtime.ui.camera).toEqual({
+        mode: 'unlocked',
+        panOffset: runtime.simulation.state.spacecraft.position,
+      })
+
+      expect(runtimeActions.panCamera({ x: 10, y: -5 })).toBe(true)
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 60, y: 55 })
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: { x: 60, y: 55 },
+        }),
+      )
+
+      expect(runtimeActions.setCameraMode('centered')).toBe(true)
+      expect(runtime.ui.camera.mode).toBe('centered')
+      expect(runtimeActions.panCamera({ x: 1, y: 1 })).toBe(false)
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('does not change camera mode while scenario directives lock changes', () => {
+    const runtime = createRuntime()
+    runtime.scenario.directives.cameraModeChangesLocked = true
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.setCameraMode('unlocked')).toBe(false)
+    expect(runtime.ui.camera.mode).toBe('centered')
+    expect(updateCameraViewSpy).not.toHaveBeenCalled()
+
+    vi.restoreAllMocks()
+  })
+
+  it('stores a world-space target heading anchor for camera-relative feedback', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    runtimeActions.setTargetHeading(1.2, 300, 200, { x: 12, y: 34 })
+
+    expect(runtime.simulation.targetHeading).toBe(1.2)
+    expect(runtime.ui.targetHeadingScreenPosition).toEqual({ x: 300, y: 200 })
+    expect(runtime.ui.targetHeadingWorldPosition).toEqual({ x: 12, y: 34 })
+    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(1)
+    expect(runtime.simulation.assistMode).toBe('off')
   })
 
   it('updates the reset target when free roam starts', () => {

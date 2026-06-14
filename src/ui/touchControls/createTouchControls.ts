@@ -6,6 +6,7 @@ import type {
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type { TrajectoryHorizonAction } from '../../runtime/trajectoryHorizonControlPolicy'
+import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
 import type {
   ScenarioTouchControlFocusTarget,
   ScenarioTouchHintTarget,
@@ -47,6 +48,8 @@ const pinchSuppressTapMs = 140
 const doubleTapZoomStartPx = 10
 const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
+const cameraPanTapTolerancePx = 8
+const intentionalCameraUnlockSwipeViewportRatio = 0.5
 const touchControlRevealTabHeightPx = 84
 const touchControlRevealLayout = {
   gapPx: 66,
@@ -79,6 +82,16 @@ type ScreenPoint = {
 
 type ActiveGestureSession =
   | { kind: 'none' }
+  | {
+      kind: 'camera-pan'
+      hasMovedForTap: boolean
+      hasPanned: boolean
+      previousX: number
+      previousY: number
+      startX: number
+      startY: number
+      touchId: number
+    }
   | {
       kind: 'double-tap-zoom'
       lastY: number
@@ -116,6 +129,39 @@ const isEventTargetInside = (
   element: HTMLElement,
   target: EventTarget | null,
 ) => target instanceof Node && element.contains(target)
+
+const getAxisThresholdProgress = (delta: number, threshold: number) => {
+  if (threshold <= 0) {
+    return 0
+  }
+
+  const distance = Math.abs(delta)
+  return distance >= threshold ? threshold / distance : Number.POSITIVE_INFINITY
+}
+
+const getIntentionalSwipeThresholdPoint = (options: {
+  currentX: number
+  currentY: number
+  startX: number
+  startY: number
+  thresholdX: number
+  thresholdY: number
+}): ScreenPoint | null => {
+  const deltaX = options.currentX - options.startX
+  const deltaY = options.currentY - options.startY
+  const crossX = getAxisThresholdProgress(deltaX, options.thresholdX)
+  const crossY = getAxisThresholdProgress(deltaY, options.thresholdY)
+  const thresholdProgress = Math.min(crossX, crossY)
+
+  if (!Number.isFinite(thresholdProgress)) {
+    return null
+  }
+
+  return {
+    x: options.startX + deltaX * thresholdProgress,
+    y: options.startY + deltaY * thresholdProgress,
+  }
+}
 
 const syncRevealControlLayout = (revealControls: EdgeRevealControl[]) => {
   const controlsByEdge = new Map<TouchControlRevealEdge, EdgeRevealControl[]>()
@@ -177,9 +223,13 @@ export const createTouchControls = (options: {
   initialTrajectoryControlSide: TouchControlRevealEdge
   initialWarpControlSide: TouchControlRevealEdge
   keyboardInput: KeyboardInput
+  getCameraMode(): CameraControlMode
+  getCameraModeChangesLocked(): boolean
+  onCameraModeSelected(mode: CameraControlMode): boolean
+  onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onTargetHeadingSelected(screenX: number, screenY: number): void
   onThrustControlUiStateChange(state: TouchThrustControlUiState): void
-  onZoom(factor: number): void
+  onZoom(factor: number, focalPoint?: ScreenPoint): void
 }): TouchControls => {
   const panel = document.createElement('section')
   panel.className = 'touch-controls'
@@ -471,6 +521,19 @@ export const createTouchControls = (options: {
     }
   }
 
+  const beginCameraPanSession = (touch: Touch) => {
+    activeSession = {
+      kind: 'camera-pan',
+      hasMovedForTap: false,
+      hasPanned: false,
+      previousX: touch.clientX,
+      previousY: touch.clientY,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      touchId: touch.identifier,
+    }
+  }
+
   const sessionOwnsTouch = (touchId: number) => {
     switch (activeSession.kind) {
       case 'double-tap-zoom':
@@ -487,6 +550,8 @@ export const createTouchControls = (options: {
             : activeSession.touchId === touchId
       case 'pinch':
         return activeSession.touchIds.includes(touchId)
+      case 'camera-pan':
+        return activeSession.touchId === touchId
       case 'none':
         return false
     }
@@ -558,6 +623,10 @@ export const createTouchControls = (options: {
           startX: touch.clientX,
           startY: touch.clientY,
         })
+
+        if (activeSession.kind === 'none' && event.touches.length === 1) {
+          beginCameraPanSession(touch)
+        }
       }
 
       if (startedDoubleTapZoom) {
@@ -612,7 +681,10 @@ export const createTouchControls = (options: {
           )
 
           if (Math.abs(factor - 1) > 0.01) {
-            options.onZoom(factor)
+            options.onZoom(factor, {
+              x: (first.clientX + second.clientX) / 2,
+              y: (first.clientY + second.clientY) / 2,
+            })
           }
 
           activeSession.lastDistance = distance
@@ -646,6 +718,72 @@ export const createTouchControls = (options: {
           if (Math.abs(factor - 1) > 0.002) {
             options.onZoom(factor)
           }
+          return
+        }
+        case 'camera-pan': {
+          const touch = getTouchById(event.touches, activeSession.touchId)
+          if (!touch) {
+            return
+          }
+
+          const totalDeltaX = touch.clientX - activeSession.startX
+          const totalDeltaY = touch.clientY - activeSession.startY
+          const previousDeltaX = touch.clientX - activeSession.previousX
+          const previousDeltaY = touch.clientY - activeSession.previousY
+          const previousDistance = Math.hypot(previousDeltaX, previousDeltaY)
+          if (Math.hypot(totalDeltaX, totalDeltaY) >= cameraPanTapTolerancePx) {
+            activeSession.hasMovedForTap = true
+          }
+
+          if (options.getCameraMode() === 'centered') {
+            const unlockThresholdX =
+              window.innerWidth * intentionalCameraUnlockSwipeViewportRatio
+            const unlockThresholdY =
+              window.innerHeight * intentionalCameraUnlockSwipeViewportRatio
+            const shouldUnlock =
+              !options.getCameraModeChangesLocked() &&
+              (Math.abs(totalDeltaX) >= unlockThresholdX ||
+                Math.abs(totalDeltaY) >= unlockThresholdY)
+
+            if (!shouldUnlock) {
+              return
+            }
+
+            const thresholdPoint = getIntentionalSwipeThresholdPoint({
+              currentX: touch.clientX,
+              currentY: touch.clientY,
+              startX: activeSession.startX,
+              startY: activeSession.startY,
+              thresholdX: unlockThresholdX,
+              thresholdY: unlockThresholdY,
+            })
+
+            if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
+              activeSession.hasPanned =
+                options.onCameraPanGesture(thresholdPoint, {
+                  x: touch.clientX,
+                  y: touch.clientY,
+                }) || activeSession.hasPanned
+            }
+            activeSession.previousX = touch.clientX
+            activeSession.previousY = touch.clientY
+            return
+          }
+
+          if (previousDistance <= 0) {
+            return
+          }
+
+          activeSession.hasPanned =
+            options.onCameraPanGesture(
+              {
+                x: activeSession.previousX,
+                y: activeSession.previousY,
+              },
+              { x: touch.clientX, y: touch.clientY },
+            ) || activeSession.hasPanned
+          activeSession.previousX = touch.clientX
+          activeSession.previousY = touch.clientY
           return
         }
         case 'step-selector': {
@@ -704,6 +842,20 @@ export const createTouchControls = (options: {
       }
 
       for (const touch of Array.from(event.changedTouches)) {
+        if (
+          activeSession.kind === 'camera-pan' &&
+          activeSession.touchId === touch.identifier
+        ) {
+          const completedPan =
+            activeSession.hasMovedForTap || activeSession.hasPanned
+          clearActiveSession()
+          if (completedPan) {
+            tapTouches.delete(touch.identifier)
+            lastTap = null
+            continue
+          }
+        }
+
         if (
           activeSession.kind === 'double-tap-zoom' &&
           activeSession.touchId === touch.identifier

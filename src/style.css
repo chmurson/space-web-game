@@ -254,7 +254,8 @@ canvas {
   background: rgba(148, 163, 184, 0.14);
 }
 
-.menu-stepper {
+.menu-stepper,
+.menu-setting {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -262,6 +263,10 @@ canvas {
   padding: 8px 10px;
   border-radius: 12px;
   background: rgba(148, 163, 184, 0.06);
+}
+
+.menu-setting {
+  align-items: flex-start;
 }
 
 .segmented-control {
@@ -305,12 +310,21 @@ canvas {
   color: #e0f2fe;
 }
 
+.segmented-control-disabled {
+  opacity: 0.58;
+}
+
+.segmented-control-option:disabled {
+  cursor: default;
+}
+
 .top-menu-dropdown button.segmented-control-option-selected {
   background: rgba(56, 189, 248, 0.2);
   color: #e0f2fe;
 }
 
-.menu-stepper-copy {
+.menu-stepper-copy,
+.menu-setting-copy {
   display: grid;
   gap: 2px;
 }

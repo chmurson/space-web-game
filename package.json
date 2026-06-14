@@ -11,6 +11,7 @@
     "deploy:netlify": "node scripts/deployNetlify.mjs",
     "deploy:netlify:production": "node scripts/deployNetlify.mjs --mode=production",
     "deploy:netlify:staging": "node scripts/deployNetlify.mjs --mode=staging",
+    "deploy:netlify:staging:woven-moth": "node scripts/deployNetlify.mjs --mode=staging --staging-target=woven-moth",
     "preview": "vite preview",
     "lint": "biome lint --write src tests scripts",
     "commitlint": "commitlint --edit $1",

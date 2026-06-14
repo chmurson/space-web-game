@@ -1,16 +1,45 @@
 import { execFileSync, spawnSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 
 const PRODUCTION_SITE_ID = '0ed821be-c897-4f15-ad17-859ae866ca1d'
-const STAGING_SITE_ID = 'e0d8dda6-9340-4d3c-9e78-941ccbb63d5f'
+const DEFAULT_STAGING_TARGET = 'shared'
+const LOCAL_DEPLOY_CONFIG_PATH = '.netlify-deploy.local.json'
+const STAGING_TARGETS = {
+  shared: {
+    label: 'staging:shared',
+    siteId: 'e0d8dda6-9340-4d3c-9e78-941ccbb63d5f',
+  },
+  'woven-moth': {
+    label: 'staging:woven-moth',
+    siteId: '65b8db6a-f0cc-49e3-b4e4-cc994699ba6a',
+  },
+}
 
-const parseMode = () => {
-  const modeFlag = process.argv.find((arg) => arg.startsWith('--mode='))
-  if (!modeFlag) {
-    return 'auto'
+const parseArgs = () => {
+  let mode = 'auto'
+  let stagingTarget = null
+
+  for (const arg of process.argv) {
+    if (arg.startsWith('--mode=')) {
+      const [, value] = arg.split('=')
+      mode = value === 'production' || value === 'staging' ? value : 'auto'
+    }
+    if (arg.startsWith('--staging-target=')) {
+      const [, value] = arg.split('=')
+      stagingTarget = value || null
+    }
   }
 
-  const [, value] = modeFlag.split('=')
-  return value === 'production' || value === 'staging' ? value : 'auto'
+  return { mode, stagingTarget }
+}
+
+const readLocalDeployConfig = () => {
+  if (!existsSync(LOCAL_DEPLOY_CONFIG_PATH)) {
+    return {}
+  }
+
+  const config = JSON.parse(readFileSync(LOCAL_DEPLOY_CONFIG_PATH, 'utf8'))
+  return config && typeof config === 'object' ? config : {}
 }
 
 const getCurrentBranch = () => {
@@ -39,7 +68,35 @@ const getCurrentCommit = () => {
   }
 }
 
-const resolveTarget = (mode, branch) => {
+const resolveStagingTarget = (requestedTarget, localConfig) => {
+  const targetKey =
+    requestedTarget ||
+    process.env.NETLIFY_STAGING_TARGET ||
+    localConfig.defaultStagingTarget ||
+    DEFAULT_STAGING_TARGET
+
+  if (STAGING_TARGETS[targetKey]) {
+    return STAGING_TARGETS[targetKey]
+  }
+
+  if (process.env.NETLIFY_STAGING_SITE_ID && !requestedTarget) {
+    return {
+      label: 'staging:env',
+      siteId: process.env.NETLIFY_STAGING_SITE_ID,
+    }
+  }
+
+  if (typeof targetKey === 'string' && targetKey.length > 0) {
+    return {
+      label: `staging:${targetKey}`,
+      siteId: targetKey,
+    }
+  }
+
+  return STAGING_TARGETS[DEFAULT_STAGING_TARGET]
+}
+
+const resolveTarget = (mode, branch, requestedStagingTarget, localConfig) => {
   if (mode === 'production') {
     return {
       label: 'production',
@@ -48,10 +105,7 @@ const resolveTarget = (mode, branch) => {
   }
 
   if (mode === 'staging' || branch !== 'main') {
-    return {
-      label: 'staging',
-      siteId: process.env.NETLIFY_STAGING_SITE_ID || STAGING_SITE_ID,
-    }
+    return resolveStagingTarget(requestedStagingTarget, localConfig)
   }
 
   return {
@@ -60,10 +114,11 @@ const resolveTarget = (mode, branch) => {
   }
 }
 
-const mode = parseMode()
+const { mode, stagingTarget } = parseArgs()
+const localDeployConfig = readLocalDeployConfig()
 const branch = getCurrentBranch()
 const commit = getCurrentCommit()
-const target = resolveTarget(mode, branch)
+const target = resolveTarget(mode, branch, stagingTarget, localDeployConfig)
 const message = `${target.label} deploy from ${branch}@${commit}`
 
 console.log(

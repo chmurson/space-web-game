@@ -1,6 +1,8 @@
 import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
+import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
 import { formatTrajectoryHorizonDuration } from './formatters'
+import { createSegmentedControl } from './segmentedControl'
 
 export type TopMenu = {
   close: () => void
@@ -12,6 +14,8 @@ export type TopMenuAction = UIUserAction | 'enterMainMenu'
 
 export const createTopMenu = (options: {
   app: HTMLElement
+  getCameraMode: () => CameraControlMode
+  getCameraModeChangesLocked: () => boolean
   getCoastPredictionHorizonHours: () => number
   getDebugModeEnabled: () => boolean
   getFpsIndicatorEnabled: () => boolean
@@ -64,6 +68,13 @@ export const createTopMenu = (options: {
 
       <section class="menu-section" aria-labelledby="${controlsSectionLabelId}">
         <div class="menu-section-label" id="${controlsSectionLabelId}">Controls</div>
+        <div class="menu-setting">
+          <div class="menu-setting-copy">
+            <span class="menu-stepper-name">Camera</span>
+            <span class="menu-stepper-value" data-menu-camera-lock></span>
+          </div>
+          <div data-menu-camera-control></div>
+        </div>
         <button type="button" role="menuitem" data-menu-action="openUiSettings">UI settings</button>
       </section>
 
@@ -114,6 +125,28 @@ export const createTopMenu = (options: {
   const increaseCoastHorizonButton = dropdown.querySelector<HTMLButtonElement>(
     '[data-menu-action="increaseCoastHorizon"]',
   )
+  const cameraLockStatus = dropdown.querySelector<HTMLElement>(
+    '[data-menu-camera-lock]',
+  )
+  const cameraControlContainer = dropdown.querySelector<HTMLElement>(
+    '[data-menu-camera-control]',
+  )
+  const cameraModeControl = createSegmentedControl<CameraControlMode>({
+    ariaLabel: 'Camera mode',
+    onChange: (mode) => {
+      options.onAction(
+        mode === 'centered' ? 'setCameraCentered' : 'setCameraUnlocked',
+      )
+      syncState()
+    },
+    optionRole: 'menuitemradio',
+    options: [
+      { label: 'Centered', value: 'centered' },
+      { label: 'Unlocked', value: 'unlocked' },
+    ],
+    value: options.getCameraMode(),
+  })
+  cameraControlContainer?.append(cameraModeControl.element)
   const coastHorizonValue = dropdown.querySelector<HTMLElement>(
     '[data-menu-coast-horizon]',
   )
@@ -128,6 +161,8 @@ export const createTopMenu = (options: {
   let lastDebugToggleChecked: boolean | null = null
   let lastFpsToggleLabel = ''
   let lastFpsToggleChecked: boolean | null = null
+  let lastCameraMode: CameraControlMode | null = null
+  let lastCameraModeChangesLocked: boolean | null = null
   let lastDecreaseDisabled: boolean | null = null
   let lastIncreaseDisabled: boolean | null = null
   const focusItem = (index: number) => {
@@ -160,6 +195,8 @@ export const createTopMenu = (options: {
     const fpsToggleLabel = fpsIndicatorEnabled
       ? 'Hide FPS meter'
       : 'Show FPS meter'
+    const cameraMode = options.getCameraMode()
+    const cameraModeChangesLocked = options.getCameraModeChangesLocked()
     const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours()
     const coastHorizonLabel = formatTrajectoryHorizonDuration(
       coastPredictionHorizonHours * 60 * 60,
@@ -191,6 +228,17 @@ export const createTopMenu = (options: {
         )
         lastFpsToggleChecked = fpsIndicatorEnabled
       }
+    }
+    if (cameraMode !== lastCameraMode) {
+      cameraModeControl.sync(cameraMode)
+      lastCameraMode = cameraMode
+    }
+    if (cameraModeChangesLocked !== lastCameraModeChangesLocked) {
+      cameraModeControl.setDisabled(cameraModeChangesLocked)
+      if (cameraLockStatus) {
+        cameraLockStatus.textContent = cameraModeChangesLocked ? 'Locked' : ''
+      }
+      lastCameraModeChangesLocked = cameraModeChangesLocked
     }
     if (coastHorizonValue) {
       if (coastHorizonLabel !== lastCoastHorizonLabel) {

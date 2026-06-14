@@ -1,3 +1,5 @@
+export type CameraControlMode = 'centered' | 'unlocked'
+
 export type RuntimeScenarioHiddenUIElement =
   | 'scenarioInfoButton'
   | 'speedPill'
@@ -8,6 +10,8 @@ export type RuntimeScenarioHiddenUIElement =
 export type RuntimeScenarioDirectives = {
   cameraFollowBodyId: string | null
   cameraFollowOffset: { x: number; y: number }
+  cameraMode: CameraControlMode | null
+  cameraModeChangesLocked: boolean
   forcedAssistTargetId: string | null
   hiddenBodyIds: string[]
   maxCoastPredictionHorizonHours: number | null
@@ -29,6 +33,8 @@ export const createDefaultScenarioDirectives =
   (): RuntimeScenarioDirectives => ({
     cameraFollowBodyId: null,
     cameraFollowOffset: { x: 0, y: 0 },
+    cameraMode: null,
+    cameraModeChangesLocked: false,
     forcedAssistTargetId: null,
     hiddenBodyIds: [],
     maxCoastPredictionHorizonHours: null,

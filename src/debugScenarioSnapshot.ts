@@ -1,9 +1,10 @@
-import { cloneBodies, cloneSpacecraft } from './simulation/state'
+import type { CameraControlMode } from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
   createRuntimeScenarioSession,
   type RuntimeScenarioSession,
 } from './scenario/scenarioSession'
+import { cloneBodies, cloneSpacecraft } from './simulation/state'
 import type {
   Body,
   Scenario,
@@ -40,6 +41,7 @@ export type DebugScenarioSnapshot =
   | DebugScenarioSnapshotV2
 
 export type RuntimeScenario = Scenario & {
+  cameraMode?: CameraControlMode
   coastPredictionHorizonHours?: number
   elapsed?: number
   scenarioSession?: RuntimeScenarioSession
