@@ -89,6 +89,7 @@ export const createHudPresentation = (options: {
       syncTargetSphere(options.overlayUi.targetSphere, target)
     }
     if (options.overlayUi.targetStatus) {
+      options.overlayUi.targetStatus.hidden = recommendation !== null
       options.overlayUi.targetStatus.className = `target-status-mark target-status-mark-${targetUiState.mode}`
     }
   }

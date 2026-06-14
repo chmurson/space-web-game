@@ -379,9 +379,8 @@ export const createTouchControls = (options: {
     const recommendedTarget = targetState.recommendedTarget
     const hasRecommendation =
       targetState.mode === 'manual' && recommendedTarget !== null
-    targetRevealControl.element.classList.toggle(
+    targetRevealControl.element.classList.remove(
       'touch-target-reveal-recommended',
-      hasRecommendation,
     )
     const targetRevealLabel =
       hasRecommendation && recommendedTarget
