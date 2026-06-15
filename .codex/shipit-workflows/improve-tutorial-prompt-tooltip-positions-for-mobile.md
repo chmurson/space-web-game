@@ -3,7 +3,7 @@
 Task: Improve tutorial prompt tooltip positions for mobile
 Branch: improve-tutorial-prompt-tooltip-positions-for-mobile
 Current Mode: yeet
-Status: in progress
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: in progress
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -53,7 +53,7 @@ Status: in progress
 
 ## Next Step
 
-Stage the intended changes, commit, push, open and merge a PR to `main`, then deploy production from `main`.
+PR is opened and ready to merge to `main`; deploy production from `main` after merge.
 
 ## Brainstorm Handoff
 
@@ -295,3 +295,11 @@ When a scenario prompt is dismissible and shows the close button, clicking the d
 - Staging URL: https://fanciful-bunny-d77b4b.netlify.app
 - Unique deploy URL: https://6a2f1e8eca224e1cdc6d6cd1--fanciful-bunny-d77b4b.netlify.app
 - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a2f1e8eca224e1cdc6d6cd1
+
+## Yeet Notes
+
+- Branch: `improve-tutorial-prompt-tooltip-positions-for-mobile`
+- Implementation commit: `618e9b0 feat(tutorial): improve scenario prompt behavior`
+- PR: https://github.com/chmurson/space-web-game/pull/3
+- Validation before PR: focused prompt tests, `npm test`, `npm run build`, `git diff --check`, CodeRabbit with 0 findings, browser verification, and staging deploy.
+- Staging URL: https://fanciful-bunny-d77b4b.netlify.app
