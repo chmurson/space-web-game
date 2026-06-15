@@ -14,6 +14,7 @@ export type ScenarioHudFocusTarget =
   | 'thrust-pill'
 export type ScenarioTouchHintTarget = 'thrust-zone'
 export type ScenarioTouchControlFocusTarget = 'burn' | 'trajectory' | 'warp'
+export type ScenarioCoachPromptLayout = 'anchored' | 'bottom'
 
 export type PromptAction =
   | {
@@ -51,6 +52,7 @@ export type PromptPresentationDefinition =
       >
       focusedHudElement?: PromptValue<ScenarioHudFocusTarget | undefined>
       kind: 'coach'
+      layout?: PromptValue<ScenarioCoachPromptLayout | undefined>
       touchHintTarget?: PromptValue<ScenarioTouchHintTarget | undefined>
     }
 
@@ -83,6 +85,7 @@ export type ResolvedPrompt = {
       focusedTouchControl?: ScenarioTouchControlFocusTarget
       focusedHudElement?: ScenarioHudFocusTarget
       kind: 'coach'
+      layout: ScenarioCoachPromptLayout
       touchHintTarget?: ScenarioTouchHintTarget
     }
 )

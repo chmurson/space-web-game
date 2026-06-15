@@ -311,12 +311,12 @@ export const createHudPresentation = (options: {
       )
       options.touchControls?.syncUi()
       options.touchControls?.setTutorialHintTarget(
-        prompts.active?.kind === 'coach'
+        prompts.active?.kind === 'coach' && prompts.active.layout === 'anchored'
           ? (prompts.active.touchHintTarget ?? null)
           : null,
       )
       options.touchControls?.setTutorialFocusedControl(
-        prompts.active?.kind === 'coach'
+        prompts.active?.kind === 'coach' && prompts.active.layout === 'anchored'
           ? (prompts.active.focusedTouchControl ?? null)
           : null,
       )

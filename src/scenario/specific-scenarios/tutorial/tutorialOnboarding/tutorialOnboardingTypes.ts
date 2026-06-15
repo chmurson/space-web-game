@@ -1,4 +1,5 @@
 import type {
+  ScenarioCoachPromptLayout,
   ScenarioHudFocusTarget,
   ScenarioPromptAnchor,
   ScenarioTouchControlFocusTarget,
@@ -26,6 +27,7 @@ export type TutorialOnboardingPromptContent = {
   anchor?: ScenarioPromptAnchor
   focusedHudElement?: ScenarioHudFocusTarget
   focusedTouchControl?: ScenarioTouchControlFocusTarget
+  layout?: ScenarioCoachPromptLayout
   touchHintTarget?: ScenarioTouchHintTarget
 }
 

@@ -186,6 +186,15 @@ describe('tutorialOnboardingProgress', () => {
       getTutorialOnboardingPromptContent('intro-trajectory', 'desktop'),
     ).toMatchObject({
       confirmAction: 'advance-step',
+      layout: 'anchored',
+      pausesGameplay: true,
+      title: 'Read The Trajectory',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-trajectory', 'mobile'),
+    ).toMatchObject({
+      confirmAction: 'advance-step',
+      layout: 'bottom',
       pausesGameplay: true,
       title: 'Read The Trajectory',
     })
@@ -193,6 +202,15 @@ describe('tutorialOnboardingProgress', () => {
       getTutorialOnboardingPromptContent('intro-complete', 'desktop'),
     ).toMatchObject({
       confirmAction: 'advance-step',
+      layout: 'anchored',
+      pausesGameplay: true,
+      title: 'Free Flight Unlocked',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-complete', 'mobile'),
+    ).toMatchObject({
+      confirmAction: 'advance-step',
+      layout: 'bottom',
       pausesGameplay: true,
       title: 'Free Flight Unlocked',
     })
@@ -200,6 +218,23 @@ describe('tutorialOnboardingProgress', () => {
       getTutorialOnboardingPromptContent('intro-timewarp-thrust', 'desktop')
         .pausesGameplay,
     ).toBe(false)
+  })
+
+  it('uses bottom layout on mobile for button-driven onboarding prompts', () => {
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrusting-complete', 'desktop'),
+    ).toMatchObject({
+      confirmAction: 'advance-step',
+      layout: 'anchored',
+      title: 'Nice!',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrusting-complete', 'mobile'),
+    ).toMatchObject({
+      confirmAction: 'advance-step',
+      layout: 'bottom',
+      title: 'Nice!',
+    })
   })
 
   it('uses input-specific instructions for turning thrust off', () => {
