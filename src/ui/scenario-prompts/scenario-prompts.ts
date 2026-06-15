@@ -30,6 +30,7 @@ export type ScenarioPromptUiRefs = {
 type AnchorKey = ScenarioPromptAnchor
 type HudFocusKey = ScenarioHudFocusTarget
 type TouchControlFocusKey = ScenarioTouchControlFocusTarget
+type PromptDisplayMode = 'coach' | 'modal'
 
 const focusedHudElementClassName = 'telemetry-pill-tutorial-focused'
 
@@ -208,10 +209,11 @@ export type ScenarioPromptUpdater = {
 type PromptIdentity = {
   activePromptTitle: string
   activePromptDescription: string
-  activePromptMode: 'coach' | 'modal' | null
+  activePromptMode: PromptDisplayMode | null
   activePromptAnchor: string | null
   activePromptFocusedHudElement: string | null
   activePromptFocusedTouchControl: string | null
+  activePromptLayout: string | null
   activePromptPrimaryButtonLabel: string
   activePromptPrimaryButtonAction: string
   activePromptSecondaryButtonLabel: string
@@ -264,6 +266,15 @@ const getPromptButtonLabel = (options: {
     ? 'Restart'
     : options.label
 
+const getPromptDisplayMode = (
+  activePrompt: ResolvedPrompt | null,
+): PromptDisplayMode | null =>
+  activePrompt?.kind === 'coach' && activePrompt.layout === 'anchored'
+    ? 'coach'
+    : activePrompt
+      ? 'modal'
+      : null
+
 /**
  * Computes a compact identity key from the current runtime state.
  * This is used to detect meaningful changes in prompt content without relying on
@@ -290,8 +301,7 @@ const computePromptIdentity = (
   return {
     activePromptTitle: activePrompt?.title ?? '',
     activePromptDescription: activePrompt?.description ?? '',
-    activePromptMode:
-      activePrompt?.kind === 'coach' ? 'coach' : activePrompt ? 'modal' : null,
+    activePromptMode: getPromptDisplayMode(activePrompt),
     activePromptAnchor:
       activePrompt?.kind === 'coach' ? activePrompt.anchor : null,
     activePromptFocusedHudElement:
@@ -302,6 +312,8 @@ const computePromptIdentity = (
       activePrompt?.kind === 'coach'
         ? (activePrompt.focusedTouchControl ?? null)
         : null,
+    activePromptLayout:
+      activePrompt?.kind === 'coach' ? activePrompt.layout : null,
     activePromptPrimaryButtonLabel: promptButtonsVisible
       ? getPromptButtonLabel({
           label: primaryButton?.label ?? '',
@@ -342,6 +354,7 @@ const identitiesEqual = (a: PromptIdentity, b: PromptIdentity): boolean => {
     a.activePromptAnchor === b.activePromptAnchor &&
     a.activePromptFocusedHudElement === b.activePromptFocusedHudElement &&
     a.activePromptFocusedTouchControl === b.activePromptFocusedTouchControl &&
+    a.activePromptLayout === b.activePromptLayout &&
     a.activePromptPrimaryButtonLabel === b.activePromptPrimaryButtonLabel &&
     a.activePromptPrimaryButtonAction === b.activePromptPrimaryButtonAction &&
     a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
@@ -363,7 +376,7 @@ export const createScenarioPromptUpdater = (
   let anchorMutationObserver: MutationObserver | null = null
   let focusedHudElement: HTMLElement | null = null
   let lastAnchorKey: AnchorKey | undefined
-  let lastPromptMode: 'coach' | 'modal' | null = null
+  let lastPromptMode: PromptDisplayMode | null = null
   let lastPromptIdentity: PromptIdentity | null = null
 
   const resetPromptToDefault = (): void => {
@@ -556,12 +569,12 @@ export const createScenarioPromptUpdater = (
       refs.backdropElement.style.display = activePrompt ? 'grid' : 'none'
 
       // Set prompt mode
-      const promptMode = activePrompt?.kind === 'coach' ? 'coach' : 'modal'
+      const promptMode = getPromptDisplayMode(activePrompt) ?? 'modal'
       refs.backdropElement.dataset.promptMode = promptMode
 
       // Set anchor if present
       const currentAnchorKey =
-        activePrompt?.kind === 'coach'
+        activePrompt?.kind === 'coach' && promptMode === 'coach'
           ? (activePrompt.anchor as AnchorKey)
           : undefined
       if (currentAnchorKey) {
@@ -570,11 +583,11 @@ export const createScenarioPromptUpdater = (
         delete refs.promptElement.dataset.anchor
       }
       const focusedTouchControl: TouchControlFocusKey | undefined =
-        activePrompt?.kind === 'coach'
+        activePrompt?.kind === 'coach' && promptMode === 'coach'
           ? activePrompt.focusedTouchControl
           : undefined
       const focusedHudElementKey: HudFocusKey | undefined =
-        activePrompt?.kind === 'coach'
+        activePrompt?.kind === 'coach' && promptMode === 'coach'
           ? activePrompt.focusedHudElement
           : undefined
 

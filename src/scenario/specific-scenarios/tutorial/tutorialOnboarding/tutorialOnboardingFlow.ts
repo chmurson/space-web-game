@@ -25,10 +25,46 @@ export const tutorialOnboardingStepOrder: TutorialOnboardingStepId[] = [
   'intro-complete',
 ]
 
+const getActionPromptLayout = ({ inputMode }: PromptResolverContext) =>
+  inputMode === 'mobile' ? 'bottom' : 'anchored'
+
+const hasOnboardingAdvanceButton = (definition: PromptDefinition): boolean =>
+  definition.buttons.some(
+    (button) =>
+      button.action.kind === 'scenario' &&
+      button.action.id === 'advance-onboarding-step',
+  )
+
+const withMobileBottomLayoutForActionPrompts = (
+  definitions: Record<TutorialOnboardingStepId, PromptDefinition>,
+): Record<TutorialOnboardingStepId, PromptDefinition> => {
+  const nextDefinitions = { ...definitions }
+
+  for (const stepId of tutorialOnboardingStepOrder) {
+    const definition = definitions[stepId]
+    if (
+      !hasOnboardingAdvanceButton(definition) ||
+      definition.presentation.kind !== 'coach'
+    ) {
+      continue
+    }
+
+    nextDefinitions[stepId] = {
+      ...definition,
+      presentation: {
+        ...definition.presentation,
+        layout: getActionPromptLayout,
+      },
+    }
+  }
+
+  return nextDefinitions
+}
+
 const tutorialOnboardingPromptDefinitions: Record<
   TutorialOnboardingStepId,
   PromptDefinition
-> = {
+> = withMobileBottomLayoutForActionPrompts({
   'intro-show-thrust-control': {
     id: 'intro-show-thrust-control',
     title: ({ inputMode }) =>
@@ -191,7 +227,7 @@ const tutorialOnboardingPromptDefinitions: Record<
     pausesGameplay: true,
     presentation: { kind: 'coach', anchor: 'trajectory' },
   },
-}
+})
 
 export const getTutorialOnboardingPromptDefinitions = () =>
   tutorialOnboardingPromptDefinitions
@@ -236,6 +272,12 @@ export const getTutorialOnboardingPromptContent = (
         ? resolvePromptValue(presentation.focusedHudElement, inputMode)
         : undefined
       : undefined
+  const layout =
+    presentation.kind === 'coach'
+      ? presentation.layout
+        ? (resolvePromptValue(presentation.layout, inputMode) ?? 'anchored')
+        : 'anchored'
+      : undefined
 
   return {
     title: resolvePromptValue(definition.title, inputMode),
@@ -251,6 +293,7 @@ export const getTutorialOnboardingPromptContent = (
     anchor,
     focusedHudElement,
     focusedTouchControl,
+    layout,
     pausesGameplay: definition.pausesGameplay ?? false,
     touchHintTarget,
   }

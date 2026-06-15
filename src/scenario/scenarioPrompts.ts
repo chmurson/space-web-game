@@ -77,6 +77,9 @@ const resolvePrompt = (
       focusedHudElement: presentation.focusedHudElement
         ? resolvePromptValue(presentation.focusedHudElement, context)
         : undefined,
+      layout: presentation.layout
+        ? (resolvePromptValue(presentation.layout, context) ?? 'anchored')
+        : 'anchored',
       touchHintTarget: presentation.touchHintTarget
         ? resolvePromptValue(presentation.touchHintTarget, context)
         : undefined,

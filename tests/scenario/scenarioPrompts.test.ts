@@ -136,6 +136,7 @@ describe('scenarioPrompts', () => {
       anchor: 'speed-pill',
       focusedHudElement: 'speed-pill',
       focusedTouchControl: 'burn',
+      layout: 'anchored',
     })
   })
 
@@ -177,6 +178,7 @@ describe('scenarioPrompts', () => {
       anchor: 'speed-pill',
       focusedHudElement: 'speed-pill',
       focusedTouchControl: 'burn',
+      layout: 'bottom',
     })
   })
 
@@ -366,6 +368,13 @@ describe('scenarioPrompts', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       kind: 'coach',
       id: 'intro-trajectory',
+      layout: 'anchored',
+      pausesGameplay: true,
+    })
+    expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
+      kind: 'coach',
+      id: 'intro-trajectory',
+      layout: 'bottom',
       pausesGameplay: true,
     })
 
@@ -408,6 +417,13 @@ describe('scenarioPrompts', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       kind: 'coach',
       id: 'intro-complete',
+      layout: 'anchored',
+      pausesGameplay: true,
+    })
+    expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
+      kind: 'coach',
+      id: 'intro-complete',
+      layout: 'bottom',
       pausesGameplay: true,
     })
   })

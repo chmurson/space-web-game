@@ -547,6 +547,16 @@ export const createAppComponents = (options: {
     )
   })
 
+  overlayUi.scenarioPrompt.addEventListener('click', (event) => {
+    if (event.target !== overlayUi.scenarioPrompt) {
+      return
+    }
+
+    dispatchPromptAction(
+      overlayUi.scenarioPromptCloseButton?.dataset.promptAction,
+    )
+  })
+
   overlayUi.scenarioPromptRestartButton?.addEventListener('click', () => {
     const restartAction =
       overlayUi.scenarioPromptRestartButton?.dataset.restartAction
