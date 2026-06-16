@@ -108,6 +108,23 @@ describe('createStarfield', () => {
     expect(closeLayer.visible).toBe(false)
     expect(closeLayerMaterial.opacity).toBe(0)
   })
+
+  it('crossfades from dense close layers to a sparse far layer at max zoom-out', () => {
+    const starfield = createStarfield()
+
+    updateStarfield(starfield, { viewportSize: 4 })
+
+    expect(getLayerGroup(starfield, 0).visible).toBe(true)
+    expect(getLayerGroup(starfield, 5).visible).toBe(false)
+
+    updateStarfield(starfield, { viewportSize: 2_500 })
+
+    expect(getLayerGroup(starfield, 0).visible).toBe(false)
+    expect(getLayerGroup(starfield, 3).visible).toBe(false)
+    expect(getLayerGroup(starfield, 4).visible).toBe(false)
+    expect(getLayerGroup(starfield, 5).visible).toBe(true)
+    expect(getLayerPoints(starfield, 5).material.opacity).toBeGreaterThan(0)
+  })
 })
 
 describe('createGameScene', () => {
