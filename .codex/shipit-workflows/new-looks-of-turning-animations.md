@@ -35,6 +35,7 @@ Status: active
 - Likely relevant skills for later phases: `game-studio:three-webgl-game` for runtime turning animation behavior, `game-studio:web-game-foundations` if the change touches simulation/render boundaries, and `game-studio:game-playtest` for browser verification.
 - Scope the first implementation to the double-click map ripple marker and the heading-turn indicator that follows the ship.
 - Keep the target-heading behavior transient and avoid changing simulation, controls, or autopilot timing.
+- Iteration: simplify the visual treatment by removing the turn-slice border/glow and removing crosshair ticks from the click marker.
 
 ## Open Questions
 
@@ -89,6 +90,8 @@ Completion criteria: Ripple is visibly more delicate and transient. Heading-turn
 - [x] Replace heading arc SVG path with a turn-slice path.
 - [x] Soften target-heading line styling.
 - [x] Run build and browser checks.
+- [x] Simplify the click marker to one ring and one center dot.
+- [x] Remove the turn-slice border and glow.
 
 ## Implementation Handoff
 
@@ -102,7 +105,7 @@ Changed files:
 
 Completed task slices: all implementation task slices completed.
 
-Behavior implemented: Double-click target markers still appear transiently and follow the selected world position, but now use two thin tactical rings, crosshair ticks, and a small center diamond instead of three bright expanding circles. The target-heading circular arc is replaced with a translucent annular slice between the ship's current heading and target heading. The straight target-heading line remains but is softened to a low-alpha dashed support line.
+Behavior implemented: Double-click target markers still appear transiently and follow the selected world position, but now use a single thin ring and small center dot instead of bright expanding circles or crosshair ticks. The target-heading circular arc is replaced with a translucent annular slice between the ship's current heading and target heading. The slice has no border or glow. The straight target-heading line remains but is softened to a low-alpha dashed support line.
 
 Deviations from design: none.
 
@@ -120,11 +123,13 @@ Stale artifacts/docs: Shipit state updated inline.
 
 ## Validation Results
 
-- `npm run build` passed.
-- `git diff --check` passed.
+- `npm run build` passed after the initial implementation and again after simplifying the visuals.
+- `git diff --check` passed after the initial implementation and again after simplifying the visuals.
 - `npm run deploy:netlify` passed. Staging URL: https://fanciful-bunny-d77b4b.netlify.app. Unique deploy URL: https://6a31aa9c8a46745482cb241b--fanciful-bunny-d77b4b.netlify.app.
 - Desktop browser check passed: real canvas `dblclick` creates the new marker DOM, keeps the target-heading overlay active, and renders a turn-slice SVG path with softened line styling.
 - Mobile browser check passed at mobile-sized viewport: real canvas `dblclick` creates one marker inside viewport bounds, keeps the target-heading overlay active, and renders the turn-slice SVG path without blocking HUD controls.
+- Simplified-visual browser checks passed: desktop and mobile real canvas `dblclick` produce only one `.map-ripple-ring` and one `.map-ripple-center`, no ripple crosshair pseudo-elements, and `.heading-target-turn-slice` has computed `stroke: none`.
 - Screenshots captured for visual QA:
   - `/tmp/turn-animation-desktop-4.png`
   - `/tmp/turn-animation-mobile.png`
+  - `/tmp/turn-animation-simple-mobile.png`

@@ -21,8 +21,7 @@ export const createRipple = (
   ripple.style.left = `${screenX}px`
   ripple.style.top = `${screenY}px`
   ripple.innerHTML = `
-    <span class="map-ripple-ring map-ripple-ring-primary"></span>
-    <span class="map-ripple-ring map-ripple-ring-secondary"></span>
+    <span class="map-ripple-ring"></span>
     <span class="map-ripple-center"></span>
   `
   parent.appendChild(ripple)
@@ -61,9 +60,7 @@ export const updateRipples = (
     const ripple = ripples[index]
     ripple.age += dt
     const progress = ripple.age / maxAge
-    const rings = Array.from(
-      ripple.element.querySelectorAll<HTMLElement>('.map-ripple-ring'),
-    )
+    const ring = ripple.element.querySelector<HTMLElement>('.map-ripple-ring')
     const center =
       ripple.element.querySelector<HTMLElement>('.map-ripple-center')
 
@@ -76,25 +73,14 @@ export const updateRipples = (
       ripple.element.style.top = `${screenPosition.y}px`
     }
 
-    ripple.element.style.setProperty(
-      '--map-ripple-alpha',
-      `${Math.max(0, 0.74 * (1 - progress))}`,
-    )
-
-    for (let ringIndex = 0; ringIndex < rings.length; ringIndex += 1) {
-      const ring = rings[ringIndex]
-      const delayedProgress = THREE.MathUtils.clamp(
-        progress - ringIndex * 0.18,
-        0,
-        1,
-      )
-      ring.style.opacity = `${Math.max(0, 0.64 * (1 - delayedProgress))}`
-      ring.style.transform = `scale(${0.72 + delayedProgress * 1.55})`
+    if (ring) {
+      const delayedProgress = THREE.MathUtils.clamp(progress, 0, 1)
+      ring.style.opacity = `${Math.max(0, 0.52 * (1 - delayedProgress))}`
+      ring.style.transform = `scale(${0.78 + delayedProgress * 1.45})`
     }
 
     if (center) {
-      center.style.opacity = `${Math.max(0, 0.68 * (1 - progress))}`
-      center.style.transform = `translate(-50%, -50%) rotate(45deg) scale(${1 + progress * 0.35})`
+      center.style.opacity = `${Math.max(0, 0.58 * (1 - progress))}`
     }
 
     if (ripple.age >= maxAge) {
