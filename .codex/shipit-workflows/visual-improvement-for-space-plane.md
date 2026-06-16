@@ -237,6 +237,8 @@ Status:
 - Visual branch merged into `main` via merge commit `1b42149`.
 - Merged `main` validation passed: `npm test` (33 files, 177 tests) and `npm run build`.
 - Production deploy target: `https://space-web-game.netlify.app` via `npm run deploy:netlify` from `main`.
+- Production deploy passed from `main`.
+- Unique production deploy URL: `https://6a31a53ef511ba1dd741cf82--space-web-game.netlify.app`.
 
 Review notes:
 - No supplied findings.
@@ -245,4 +247,4 @@ Review notes:
 
 ## Next Step
 
-Run the branch-aware Netlify production deploy from final `main` HEAD.
+Task complete.
