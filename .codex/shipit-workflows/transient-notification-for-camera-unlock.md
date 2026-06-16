@@ -15,7 +15,7 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -239,6 +239,11 @@ Deployment:
 - Staging URL: https://fanciful-bunny-d77b4b.netlify.app
 - Unique deploy URL: https://6a316452a1411714e9c0b852--fanciful-bunny-d77b4b.netlify.app
 - Deploy logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a316452a1411714e9c0b852
+- PR: https://github.com/chmurson/space-web-game/pull/4
+- Merge commit: 2cb0bdea7c5a23c8d2297c2b4907dbefa6de4d42
+- Production URL: https://space-web-game.netlify.app
+- Production deploy URL: https://6a3172347c21c77406cccc15--space-web-game.netlify.app
+- Production deploy logs: https://app.netlify.com/projects/space-web-game/deploys/6a3172347c21c77406cccc15
 
 Residual risk:
 
@@ -247,4 +252,4 @@ Residual risk:
 
 ## Next Step
 
-Push branch, open and merge PR, then record PR/merge status.
+Merged and deployed. No further action pending.
