@@ -3,7 +3,7 @@
 Task: Visual improvement for space plane
 Branch: visual-improvement-for-space-plane
 Current Mode: review
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -232,7 +232,11 @@ Status:
 - Fresh CodeRabbit review passed with 0 findings.
 - Ponytail review lens: Lean already. Ship.
 - Validation rerun passed: `npm test`, `npm run build`, `npx biome lint src/scene/createGameScene.ts src/scene/starfield.ts src/render/sceneUpdates.ts src/runtime/frameLoop.ts tests/scene/starfield.test.ts`, and `git diff --check`.
-- Pending commit, merge to `main`, and production deploy.
+- Feature commit created: `9ca87c8 feat(scene): improve space plane visuals`.
+- Local `main` was first brought up to date with `origin/main` via merge commit `06c042c`.
+- Visual branch merged into `main` via merge commit `1b42149`.
+- Merged `main` validation passed: `npm test` (33 files, 177 tests) and `npm run build`.
+- Production deploy target: `https://space-web-game.netlify.app` via `npm run deploy:netlify` from `main`.
 
 Review notes:
 - No supplied findings.
@@ -241,4 +245,4 @@ Review notes:
 
 ## Next Step
 
-Commit the reviewed branch changes, merge to `main`, then run the branch-aware Netlify deploy from `main`.
+Run the branch-aware Netlify production deploy from final `main` HEAD.
