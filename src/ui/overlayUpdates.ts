@@ -75,12 +75,12 @@ export const updateRipples = (
 
     if (ring) {
       const delayedProgress = THREE.MathUtils.clamp(progress, 0, 1)
-      ring.style.opacity = `${Math.max(0, 0.52 * (1 - delayedProgress))}`
+      ring.style.opacity = `${Math.max(0, 0.62 * (1 - delayedProgress))}`
       ring.style.transform = `scale(${0.78 + delayedProgress * 1.45})`
     }
 
     if (center) {
-      center.style.opacity = `${Math.max(0, 0.58 * (1 - progress))}`
+      center.style.opacity = `${Math.max(0, 0.68 * (1 - progress))}`
     }
 
     if (ripple.age >= maxAge) {

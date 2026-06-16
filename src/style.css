@@ -1139,14 +1139,14 @@ canvas {
 }
 
 .heading-target-line {
-    stroke: rgba(125, 211, 252, 0.22);
+    stroke: rgba(125, 211, 252, 0.3);
     stroke-width: 1;
     stroke-dasharray: 3 9;
     stroke-linecap: round;
 }
 
 .heading-target-turn-slice {
-    fill: rgba(56, 189, 248, 0.13);
+    fill: rgba(56, 189, 248, 0.18);
     stroke: none;
 }
 
@@ -1169,7 +1169,7 @@ canvas {
 .map-ripple-ring {
     position: absolute;
     inset: 5px;
-    border: 1px solid rgba(125, 211, 252, 0.58);
+    border: 1px solid rgba(125, 211, 252, 0.68);
     border-radius: 50%;
     opacity: 0;
     transform: scale(0.78);
@@ -1182,7 +1182,7 @@ canvas {
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background: rgba(186, 230, 253, 0.62);
+    background: rgba(186, 230, 253, 0.72);
     opacity: 0;
     transform: translate(-50%, -50%);
 }
