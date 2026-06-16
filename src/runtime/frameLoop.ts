@@ -49,6 +49,10 @@ export const createFrameLoop = (options: {
   let smoothedFps = 60
   let smoothedCpuMs = 0
 
+  const syncDebugSceneVisibility = () => {
+    options.gameScene.debugGrid.visible = options.runtime.debug.debugModeEnabled
+  }
+
   const refreshTrajectoryPrediction = () => {
     options.trajectoryPresentation.refreshPrediction()
   }
@@ -130,6 +134,7 @@ export const createFrameLoop = (options: {
     options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
     options.crashMenu?.syncState()
     options.topMenu?.syncState()
+    syncDebugSceneVisibility()
     options.rendererProfiler.render(
       options.gameScene.scene,
       options.gameScene.camera,
@@ -177,6 +182,7 @@ export const createFrameLoop = (options: {
       options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
       options.crashMenu?.syncState()
       options.topMenu?.syncState()
+      syncDebugSceneVisibility()
       requestAnimationFrame(animate)
     },
   }

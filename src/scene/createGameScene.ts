@@ -6,6 +6,7 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import type { GameConfig } from '../config/types'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
+import { createStarfield, type Starfield } from './starfield'
 
 export type SpacecraftTrailPoint = {
   elapsed: number
@@ -31,6 +32,7 @@ export type GameSceneRefs = {
   desiredVelocityGeometry: LineGeometry
   desiredVelocityLine: Line2
   desiredVelocityMaterial: LineMaterial
+  debugGrid: THREE.GridHelper
   engineGlow: THREE.Mesh<THREE.ConeGeometry, THREE.MeshBasicMaterial>
   impactGradientGeometry: LineGeometry
   impactGradientLine: Line2
@@ -53,6 +55,7 @@ export type GameSceneRefs = {
   screenSpaceDashPatterns: ScreenSpaceDashPattern[]
   spacecraftMarker: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>
   spacecraftMesh: THREE.Group
+  starfield: Starfield
   trail: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
   trailPoints: SpacecraftTrailPoint[]
 }
@@ -72,9 +75,13 @@ export const createGameScene = (
   sunLight.position.set(-1, 2, 1)
   scene.add(sunLight)
 
-  const grid = new THREE.GridHelper(900, 36, 0x1d4ed8, 0x18253a)
-  grid.position.y = -0.05
-  scene.add(grid)
+  const starfield = createStarfield()
+  scene.add(starfield.group)
+
+  const debugGrid = new THREE.GridHelper(900, 36, 0x1d4ed8, 0x18253a)
+  debugGrid.position.y = -0.05
+  debugGrid.visible = false
+  scene.add(debugGrid)
 
   const bodyMeshes = new Map<string, THREE.Mesh>()
 
@@ -279,6 +286,7 @@ export const createGameScene = (
     desiredVelocityGeometry,
     desiredVelocityLine,
     desiredVelocityMaterial,
+    debugGrid,
     engineGlow,
     impactGradientGeometry,
     impactGradientLine,
@@ -298,6 +306,7 @@ export const createGameScene = (
     screenSpaceDashPatterns,
     spacecraftMarker,
     spacecraftMesh,
+    starfield,
     trail,
     trailPoints,
   }

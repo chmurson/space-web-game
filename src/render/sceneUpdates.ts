@@ -81,4 +81,10 @@ export const updateCameraView = (options: {
   for (const pattern of options.gameScene.screenSpaceDashPatterns) {
     updateScreenSpaceDashPattern(pattern, renderUnitsPerPixel)
   }
+  options.gameScene.starfield.update({
+    cameraTarget: options.gameScene.cameraTarget,
+    viewportHeight: options.viewportHeight,
+    viewportSize: options.viewportSize,
+    viewportWidth: options.viewportWidth,
+  })
 }
