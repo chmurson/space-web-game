@@ -38,12 +38,22 @@ describe('createAppConfigContext', () => {
     })
   })
 
+  it('uses configured default touch control settings without stored settings', () => {
+    expect(createAppConfigContext().userSettings).toMatchObject({
+      touchBurnControlSide: 'right',
+      touchTargetControlSide: 'left',
+      touchTrajectoryControlSide: 'hidden',
+      touchWarpControlSide: 'right',
+    })
+  })
+
   it('uses persisted touch control sides by default', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch('', {
         debugModeEnabled: false,
         touchBurnControlSide: 'left',
+        touchTargetControlSide: 'right',
         touchTrajectoryControlSide: 'left',
         touchWarpControlSide: 'right',
       }),
@@ -51,6 +61,7 @@ describe('createAppConfigContext', () => {
 
     expect(createAppConfigContext().userSettings).toMatchObject({
       touchBurnControlSide: 'left',
+      touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'right',
     })
@@ -60,10 +71,11 @@ describe('createAppConfigContext', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch(
-        '?scenario=earth-moon&touchBurnSide=left&touchTrajectorySide=right&touchWarpSide=right',
+        '?scenario=earth-moon&touchBurnSide=left&touchTargetSide=right&touchTrajectorySide=hidden&touchWarpSide=right',
         {
           debugModeEnabled: false,
           touchBurnControlSide: 'right',
+          touchTargetControlSide: 'left',
           touchTrajectoryControlSide: 'left',
           touchWarpControlSide: 'left',
         },
@@ -75,7 +87,8 @@ describe('createAppConfigContext', () => {
     expect(config.initialAppMode).toBe('game')
     expect(config.userSettings).toMatchObject({
       touchBurnControlSide: 'left',
-      touchTrajectoryControlSide: 'right',
+      touchTargetControlSide: 'right',
+      touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
   })
@@ -84,10 +97,11 @@ describe('createAppConfigContext', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch(
-        '?touchBurnSide=center&touchTrajectorySide=top&touchWarpSide=bottom',
+        '?touchBurnSide=center&touchTargetSide=middle&touchTrajectorySide=top&touchWarpSide=bottom',
         {
           debugModeEnabled: false,
           touchBurnControlSide: 'left',
+          touchTargetControlSide: 'right',
           touchTrajectoryControlSide: 'right',
           touchWarpControlSide: 'right',
         },
@@ -96,6 +110,7 @@ describe('createAppConfigContext', () => {
 
     expect(createAppConfigContext().userSettings).toMatchObject({
       touchBurnControlSide: 'left',
+      touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'right',
       touchWarpControlSide: 'right',
     })

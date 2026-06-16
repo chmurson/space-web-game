@@ -41,23 +41,26 @@ describe('userSettingsStorage', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: false,
       touchBurnControlSide: 'right',
-      touchTrajectoryControlSide: 'left',
+      touchTargetControlSide: 'left',
+      touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
   })
 
-  it('persists the selected touch control sides', () => {
+  it('persists the selected touch control sides and trajectory hidden state', () => {
     writeUserSettings({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
-      touchTrajectoryControlSide: 'right',
+      touchTargetControlSide: 'right',
+      touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
-      touchTrajectoryControlSide: 'right',
+      touchTargetControlSide: 'right',
+      touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
   })
@@ -66,14 +69,16 @@ describe('userSettingsStorage', () => {
     writeUserSettings({
       debugModeEnabled: true,
       touchBurnControlSide: 'right',
-      touchTrajectoryControlSide: 'left',
+      touchTargetControlSide: 'left',
+      touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
 
     expect(updateUserSettings({ touchBurnControlSide: 'left' })).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
-      touchTrajectoryControlSide: 'left',
+      touchTargetControlSide: 'left',
+      touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
   })
@@ -87,12 +92,13 @@ describe('userSettingsStorage', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'right',
-      touchTrajectoryControlSide: 'left',
+      touchTargetControlSide: 'left',
+      touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
   })
 
-  it('migrates the previous shared touch side to both controls', () => {
+  it('migrates the previous shared touch side to all touch controls', () => {
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
@@ -104,6 +110,7 @@ describe('userSettingsStorage', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
+      touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'left',
     })

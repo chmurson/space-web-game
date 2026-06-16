@@ -32,8 +32,9 @@ import {
 export type TouchControls = {
   element: HTMLElement
   setBurnControlSide(side: TouchControlRevealEdge): void
+  setTargetControlSide(side: TouchControlRevealEdge): void
   setTargetControlVisible(visible: boolean): void
-  setTrajectoryControlSide(side: TouchControlRevealEdge): void
+  setTrajectoryControlSide(side: TouchControlRevealState): void
   setTrajectoryControlVisible(visible: boolean): void
   setWarpControlSide(side: TouchControlRevealEdge): void
   setTimeWarpControlVisible(visible: boolean): void
@@ -66,7 +67,6 @@ const touchControlRevealLayout = {
       priority: 10,
     },
     target: {
-      edge: 'left',
       priority: 20,
     },
     trajectory: {
@@ -78,6 +78,12 @@ const touchControlRevealLayout = {
     },
   },
 } as const
+
+type TouchControlRevealState = TouchControlRevealEdge | 'hidden'
+
+const getRevealEdge = (
+  state: TouchControlRevealState,
+): TouchControlRevealEdge => (state === 'hidden' ? 'left' : state)
 
 type TapState = {
   startTime: number
@@ -177,6 +183,10 @@ const syncRevealControlLayout = (revealControls: EdgeRevealControl[]) => {
   const controlsByEdge = new Map<TouchControlRevealEdge, EdgeRevealControl[]>()
 
   for (const revealControl of revealControls) {
+    if (revealControl.element.hidden) {
+      continue
+    }
+
     const controls = controlsByEdge.get(revealControl.placement.edge) ?? []
     controls.push(revealControl)
     controlsByEdge.set(revealControl.placement.edge, controls)
@@ -234,7 +244,8 @@ export const createTouchControls = (options: {
     value: number
   }[]
   initialBurnControlSide: TouchControlRevealEdge
-  initialTrajectoryControlSide: TouchControlRevealEdge
+  initialTargetControlSide: TouchControlRevealEdge
+  initialTrajectoryControlSide: TouchControlRevealState
   initialWarpControlSide: TouchControlRevealEdge
   keyboardInput: KeyboardInput
   getCameraMode(): CameraControlMode
@@ -336,11 +347,11 @@ export const createTouchControls = (options: {
     priority: touchControlRevealLayout.controls.timeWarp.priority,
   }
   const trajectoryHorizonRevealPlacement: TouchControlRevealPlacement = {
-    edge: options.initialTrajectoryControlSide,
+    edge: getRevealEdge(options.initialTrajectoryControlSide),
     priority: touchControlRevealLayout.controls.trajectory.priority,
   }
   const targetRevealPlacement: TouchControlRevealPlacement = {
-    edge: touchControlRevealLayout.controls.target.edge,
+    edge: options.initialTargetControlSide,
     priority: touchControlRevealLayout.controls.target.priority,
   }
   const thrustRevealPlacement: TouchControlRevealPlacement = {
@@ -483,10 +494,17 @@ export const createTouchControls = (options: {
     }
     timeWarpRevealControl.setAvailable(visible)
     timeWarpControl.setVisible(visible)
+    syncRevealControlLayout(revealControls)
   }
 
-  let trajectoryHorizonControlVisible = true
-  const setTrajectoryControlVisible = (visible: boolean) => {
+  let trajectoryHorizonScenarioVisible = true
+  let trajectoryHorizonUserVisible =
+    options.initialTrajectoryControlSide !== 'hidden'
+  let trajectoryHorizonControlVisible = false
+
+  const syncTrajectoryControlVisibility = () => {
+    const visible =
+      trajectoryHorizonScenarioVisible && trajectoryHorizonUserVisible
     trajectoryHorizonControlVisible = visible
     if (
       !visible &&
@@ -497,6 +515,12 @@ export const createTouchControls = (options: {
     }
     trajectoryHorizonRevealControl.setAvailable(visible)
     trajectoryHorizonControl.setVisible(visible)
+    syncRevealControlLayout(revealControls)
+  }
+
+  const setTrajectoryControlVisible = (visible: boolean) => {
+    trajectoryHorizonScenarioVisible = visible
+    syncTrajectoryControlVisibility()
   }
 
   const setTargetControlVisible = (visible: boolean) => {
@@ -504,6 +528,7 @@ export const createTouchControls = (options: {
       closeTargetControl()
     }
     targetRevealControl.setAvailable(visible)
+    syncRevealControlLayout(revealControls)
   }
 
   const clearRightZoneGesture = () => {
@@ -1065,6 +1090,7 @@ export const createTouchControls = (options: {
   thrustControl.syncUi()
   syncTargetRecommendationCue()
   targetControl.syncUi()
+  syncTrajectoryControlVisibility()
   trajectoryHorizonControl.syncUi()
 
   window.addEventListener('resize', () => {
@@ -1081,9 +1107,16 @@ export const createTouchControls = (options: {
       thrustRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)
     },
-    setTrajectoryControlSide: (side) => {
-      trajectoryHorizonRevealControl.setEdge(side)
+    setTargetControlSide: (side) => {
+      targetRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)
+    },
+    setTrajectoryControlSide: (side) => {
+      trajectoryHorizonUserVisible = side !== 'hidden'
+      if (side !== 'hidden') {
+        trajectoryHorizonRevealControl.setEdge(side)
+      }
+      syncTrajectoryControlVisibility()
     },
     setTargetControlVisible,
     setTrajectoryControlVisible,

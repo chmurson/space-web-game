@@ -8,6 +8,7 @@ import type { PhysicsEngine } from '../simulation/types'
 import {
   readUserSettings,
   type TouchControlSide,
+  type TouchTrajectoryControlState,
   type UserSettings,
 } from '../userSettingsStorage'
 
@@ -66,6 +67,11 @@ const parseTouchControlSideOverride = (
 ): TouchControlSide | null =>
   value === 'left' || value === 'right' ? value : null
 
+const parseTouchTrajectoryControlStateOverride = (
+  value: string | null,
+): TouchTrajectoryControlState | null =>
+  value === 'hidden' ? value : parseTouchControlSideOverride(value)
+
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
@@ -78,9 +84,13 @@ export const createAppConfigContext = (): AppConfigContext => {
     touchBurnControlSide:
       parseTouchControlSideOverride(urlParams.get('touchBurnSide')) ??
       storedUserSettings.touchBurnControlSide,
+    touchTargetControlSide:
+      parseTouchControlSideOverride(urlParams.get('touchTargetSide')) ??
+      storedUserSettings.touchTargetControlSide,
     touchTrajectoryControlSide:
-      parseTouchControlSideOverride(urlParams.get('touchTrajectorySide')) ??
-      storedUserSettings.touchTrajectoryControlSide,
+      parseTouchTrajectoryControlStateOverride(
+        urlParams.get('touchTrajectorySide'),
+      ) ?? storedUserSettings.touchTrajectoryControlSide,
     touchWarpControlSide:
       parseTouchControlSideOverride(urlParams.get('touchWarpSide')) ??
       storedUserSettings.touchWarpControlSide,
