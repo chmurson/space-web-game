@@ -32,6 +32,7 @@ export const createFrameLoop = (options: {
   runtime: AppRuntimeState
   runtimeActions: RuntimeActions
   globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
+  getGameplayPaused?: () => boolean
   crashMenu?: {
     syncState(): void
   }
@@ -65,9 +66,12 @@ export const createFrameLoop = (options: {
       options.runtime,
       options.touchControls ? 'mobile' : 'desktop',
     )
-    const gameplayPaused = prompts.active?.pausesGameplay ?? false
+    const gameplayPaused =
+      (prompts.active?.pausesGameplay ?? false) ||
+      (options.getGameplayPaused?.() ?? false)
 
     const isThrusting =
+      !gameplayPaused &&
       options.runtime.simulation.state.controls.main > 0 &&
       options.runtime.simulation.state.spacecraft.fuel > 0
 

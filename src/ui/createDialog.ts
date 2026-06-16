@@ -53,6 +53,7 @@ export const createDialog = (options: {
   closeLabel?: string
   id?: string
   kicker?: string
+  onOpenChange?: (open: boolean) => void
   title: string
 }): AppDialog => {
   const id = options.id ?? `app-dialog-${++nextDialogId}`
@@ -120,6 +121,7 @@ export const createDialog = (options: {
     }
 
     root.hidden = true
+    options.onOpenChange?.(false)
 
     if (activeDialog === dialog) {
       activeDialog = null
@@ -142,6 +144,7 @@ export const createDialog = (options: {
           ? document.activeElement
           : null
       root.hidden = false
+      options.onOpenChange?.(true)
     }
 
     activeDialog = dialog

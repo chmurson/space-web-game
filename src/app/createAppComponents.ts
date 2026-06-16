@@ -265,6 +265,10 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
+  let uiSettingsOpen = false
+  let getAppMode = () => options.config.initialAppMode
+  const getGameInteractionsEnabled = () =>
+    getAppMode() === 'game' && !uiSettingsOpen
   const touchControls = createTouchControls({
     app: options.app,
     automaticTargetingAvailable:
@@ -281,6 +285,7 @@ export const createAppComponents = (options: {
       options.config.controls.timeWarps[
         options.runtimeState.simulation.timeWarpIndex
       ] ?? 1,
+    getInteractionsEnabled: getGameInteractionsEnabled,
     getAssistTargetUiState: queries.getAssistTargetUiState,
     getTargetControlRows: () =>
       options.runtimeState.simulation.state.bodies.map((body, index) => ({
@@ -386,6 +391,12 @@ export const createAppComponents = (options: {
     getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
     getTouchWarpControlSide: () => touchWarpControlSide,
+    onOpenChange: (open) => {
+      uiSettingsOpen = open
+      if (open) {
+        keyboardInput.clear()
+      }
+    },
     onTouchBurnControlSideChange: (side) => {
       touchBurnControlSide = side
       touchControls.setBurnControlSide(side)
@@ -440,7 +451,7 @@ export const createAppComponents = (options: {
     camera: gameScene.camera,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
-    getInteractionsEnabled: () => coordinator.getAppMode() === 'game',
+    getInteractionsEnabled: getGameInteractionsEnabled,
     getSpacecraftPosition: () =>
       options.runtimeState.simulation.state.spacecraft.position,
     onCameraModeSelected: runtimeActions.setCameraMode,
@@ -509,7 +520,7 @@ export const createAppComponents = (options: {
     crashMenu: {
       syncState: () => {
         const visible =
-          coordinator.getAppMode() === 'game' &&
+          getAppMode() === 'game' &&
           options.runtimeState.simulation.crashedBodyName !== null
         crashMenu.setVisible(visible)
         crashMenu.syncState({
@@ -528,6 +539,7 @@ export const createAppComponents = (options: {
     runtime: options.runtimeState,
     runtimeActions,
     globalScenarioDirectiveLimits: options.config.globalScenarioDirectiveLimits,
+    getGameplayPaused: () => uiSettingsOpen,
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport: options.config.camera.defaultViewport,
       gameScene,
@@ -554,11 +566,12 @@ export const createAppComponents = (options: {
     runtimeState: options.runtimeState,
     gameHighLevelActionsMediator,
   })
+  getAppMode = coordinator.getAppMode
   dispatchRuntimeAction = coordinator.dispatchRuntimeAction
 
   installDevtoolsBridge({
     dispatchRuntimeAction,
-    getAppMode: coordinator.getAppMode,
+    getAppMode,
     runtime: options.runtimeState,
     runtimeActions,
     timeWarps: options.config.controls.timeWarps,
@@ -568,7 +581,7 @@ export const createAppComponents = (options: {
     autoDiscoverStrongestInfluence:
       options.config.assistTarget.autoSelectNearestSurface,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
-    getInteractionsEnabled: () => coordinator.getAppMode() === 'game',
+    getInteractionsEnabled: getGameInteractionsEnabled,
     handleAction: dispatchRuntimeAction,
     keyboardInput,
     windowTarget: window,

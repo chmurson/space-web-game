@@ -14,6 +14,7 @@ export const createUiSettingsDialog = (options: {
   getTouchBurnControlSide: () => TouchControlSide
   getTouchTrajectoryControlSide: () => TouchControlSide
   getTouchWarpControlSide: () => TouchControlSide
+  onOpenChange?: (open: boolean) => void
   onTouchBurnControlSideChange(side: TouchControlSide): void
   onTouchTrajectoryControlSideChange(side: TouchControlSide): void
   onTouchWarpControlSideChange(side: TouchControlSide): void
@@ -23,6 +24,7 @@ export const createUiSettingsDialog = (options: {
     className: 'ui-settings-dialog',
     closeAriaLabel: 'Close UI settings',
     kicker: 'Controls',
+    onOpenChange: options.onOpenChange,
     title: 'UI settings',
   })
   const sideOptions = [

@@ -210,6 +210,7 @@ export const createTouchControls = (options: {
   commitTimeWarp(action: TimeWarpAction): void
   getCurrentTrajectoryHorizonHours(): number
   getCurrentTimeWarp(): number
+  getInteractionsEnabled(): boolean
   getAssistTargetUiState(): AssistTargetUiState
   getTargetControlRows(): TargetControlBodyRow[]
   getTrajectoryHorizonPreviews(
@@ -524,6 +525,13 @@ export const createTouchControls = (options: {
     }
   }
 
+  const clearGameplayTouchInput = () => {
+    clearPendingTapState()
+    clearZoneGesture()
+    clearActiveSession()
+    options.keyboardInput.clear()
+  }
+
   const shouldStartPinch = (touches: TouchList) => {
     return touches.length === 2
   }
@@ -648,6 +656,11 @@ export const createTouchControls = (options: {
   panel.addEventListener(
     'touchstart',
     (event) => {
+      if (!options.getInteractionsEnabled()) {
+        clearGameplayTouchInput()
+        return
+      }
+
       const now = performance.now()
       const eventTarget = event.target
       const isTimeWarpTarget =
@@ -744,6 +757,11 @@ export const createTouchControls = (options: {
   panel.addEventListener(
     'touchmove',
     (event) => {
+      if (!options.getInteractionsEnabled()) {
+        clearGameplayTouchInput()
+        return
+      }
+
       switch (activeSession.kind) {
         case 'pinch': {
           const first = getTouchById(event.touches, activeSession.touchIds[0])
@@ -907,6 +925,11 @@ export const createTouchControls = (options: {
   panel.addEventListener(
     'touchend',
     (event) => {
+      if (!options.getInteractionsEnabled()) {
+        clearGameplayTouchInput()
+        return
+      }
+
       const now = performance.now()
 
       if (
@@ -1003,6 +1026,11 @@ export const createTouchControls = (options: {
   panel.addEventListener(
     'touchcancel',
     (event) => {
+      if (!options.getInteractionsEnabled()) {
+        clearGameplayTouchInput()
+        return
+      }
+
       pinchSuppressTapUntil = performance.now() + pinchSuppressTapMs
       clearPendingTapState()
 

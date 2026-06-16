@@ -12,6 +12,7 @@ export const bindKeyboardShortcuts = (options: {
 }) => {
   options.windowTarget.addEventListener('keydown', (event) => {
     if (!options.getInteractionsEnabled()) {
+      options.keyboardInput.clear()
       return
     }
 
@@ -28,10 +29,6 @@ export const bindKeyboardShortcuts = (options: {
   })
 
   options.windowTarget.addEventListener('keyup', (event) => {
-    if (!options.getInteractionsEnabled()) {
-      return
-    }
-
     options.keyboardInput.release(event.code)
   })
 }
