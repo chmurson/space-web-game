@@ -3,21 +3,29 @@ const userSettingsStorageKey = 'space-web-game.userSettings.v1'
 export type UserSettings = {
   debugModeEnabled: boolean
   touchBurnControlSide: TouchControlSide
-  touchTrajectoryControlSide: TouchControlSide
+  touchTargetControlSide: TouchControlSide
+  touchTrajectoryControlSide: TouchTrajectoryControlState
   touchWarpControlSide: TouchControlSide
 }
 
 export type TouchControlSide = 'left' | 'right'
+export type TouchTrajectoryControlState = TouchControlSide | 'hidden'
 
 const defaultUserSettings: UserSettings = {
   debugModeEnabled: false,
   touchBurnControlSide: 'right',
-  touchTrajectoryControlSide: 'left',
+  touchTargetControlSide: 'left',
+  touchTrajectoryControlSide: 'hidden',
   touchWarpControlSide: 'right',
 }
 
 const parseTouchControlSide = (value: unknown): TouchControlSide | null =>
   value === 'left' || value === 'right' ? value : null
+
+const parseTouchTrajectoryControlState = (
+  value: unknown,
+): TouchTrajectoryControlState | null =>
+  value === 'hidden' ? value : parseTouchControlSide(value)
 
 const parseUserSettings = (value: unknown): UserSettings => {
   if (!value || typeof value !== 'object') {
@@ -38,8 +46,12 @@ const parseUserSettings = (value: unknown): UserSettings => {
       parseTouchControlSide(settings.touchBurnControlSide) ??
       legacyTouchControlSide ??
       defaultUserSettings.touchBurnControlSide,
+    touchTargetControlSide:
+      parseTouchControlSide(settings.touchTargetControlSide) ??
+      legacyTouchControlSide ??
+      defaultUserSettings.touchTargetControlSide,
     touchTrajectoryControlSide:
-      parseTouchControlSide(settings.touchTrajectoryControlSide) ??
+      parseTouchTrajectoryControlState(settings.touchTrajectoryControlSide) ??
       legacyTouchControlSide ??
       defaultUserSettings.touchTrajectoryControlSide,
     touchWarpControlSide:

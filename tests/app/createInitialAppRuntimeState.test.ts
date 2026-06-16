@@ -13,6 +13,7 @@ const createConfig = (
   userSettings: {
     debugModeEnabled: false,
     touchBurnControlSide: 'right',
+    touchTargetControlSide: 'left',
     touchTrajectoryControlSide: 'left',
     touchWarpControlSide: 'right',
   },

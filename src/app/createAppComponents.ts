@@ -48,6 +48,7 @@ import { createRipple, type Ripple } from '../ui/overlayUpdates'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
   type TouchControlSide,
+  type TouchTrajectoryControlState,
   updateUserSettings,
 } from '../userSettingsStorage'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
@@ -306,7 +307,9 @@ export const createAppComponents = (options: {
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
   let touchBurnControlSide: TouchControlSide =
     options.config.userSettings.touchBurnControlSide
-  let touchTrajectoryControlSide: TouchControlSide =
+  let touchTargetControlSide: TouchControlSide =
+    options.config.userSettings.touchTargetControlSide
+  let touchTrajectoryControlSide: TouchTrajectoryControlState =
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
@@ -390,6 +393,7 @@ export const createAppComponents = (options: {
       })
     },
     initialBurnControlSide: touchBurnControlSide,
+    initialTargetControlSide: touchTargetControlSide,
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     initialWarpControlSide: touchWarpControlSide,
     keyboardInput,
@@ -435,6 +439,7 @@ export const createAppComponents = (options: {
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
     getTouchBurnControlSide: () => touchBurnControlSide,
+    getTouchTargetControlSide: () => touchTargetControlSide,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
     getTouchWarpControlSide: () => touchWarpControlSide,
     onOpenChange: (open) => {
@@ -447,6 +452,11 @@ export const createAppComponents = (options: {
       touchBurnControlSide = side
       touchControls.setBurnControlSide(side)
       updateUserSettings({ touchBurnControlSide: side })
+    },
+    onTouchTargetControlSideChange: (side) => {
+      touchTargetControlSide = side
+      touchControls.setTargetControlSide(side)
+      updateUserSettings({ touchTargetControlSide: side })
     },
     onTouchTrajectoryControlSideChange: (side) => {
       touchTrajectoryControlSide = side

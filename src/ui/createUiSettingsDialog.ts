@@ -1,4 +1,7 @@
-import type { TouchControlSide } from '../userSettingsStorage'
+import type {
+  TouchControlSide,
+  TouchTrajectoryControlState,
+} from '../userSettingsStorage'
 import { createDialog, createDialogSettingRow } from './createDialog'
 import { createSegmentedControl } from './segmentedControl'
 
@@ -12,11 +15,13 @@ export type UiSettingsDialog = {
 export const createUiSettingsDialog = (options: {
   app: HTMLElement
   getTouchBurnControlSide: () => TouchControlSide
-  getTouchTrajectoryControlSide: () => TouchControlSide
+  getTouchTargetControlSide: () => TouchControlSide
+  getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
   getTouchWarpControlSide: () => TouchControlSide
   onOpenChange?: (open: boolean) => void
   onTouchBurnControlSideChange(side: TouchControlSide): void
-  onTouchTrajectoryControlSideChange(side: TouchControlSide): void
+  onTouchTargetControlSideChange(side: TouchControlSide): void
+  onTouchTrajectoryControlSideChange(side: TouchTrajectoryControlState): void
   onTouchWarpControlSideChange(side: TouchControlSide): void
 }): UiSettingsDialog => {
   const dialog = createDialog({
@@ -31,6 +36,10 @@ export const createUiSettingsDialog = (options: {
     { label: 'Left', value: 'left' },
     { label: 'Right', value: 'right' },
   ] satisfies { label: string; value: TouchControlSide }[]
+  const trajectoryOptions = [
+    ...sideOptions,
+    { label: 'Hidden', value: 'hidden' },
+  ] satisfies { label: string; value: TouchTrajectoryControlState }[]
   const burnSideControl = createSegmentedControl<TouchControlSide>({
     ariaLabel: 'Burn control side',
     onChange: (side) => {
@@ -49,18 +58,29 @@ export const createUiSettingsDialog = (options: {
     options: sideOptions,
     value: options.getTouchWarpControlSide(),
   })
-  const trajectorySideControl = createSegmentedControl<TouchControlSide>({
-    ariaLabel: 'Trajectory control side',
+  const targetSideControl = createSegmentedControl<TouchControlSide>({
+    ariaLabel: 'Target control side',
     onChange: (side) => {
-      options.onTouchTrajectoryControlSideChange(side)
+      options.onTouchTargetControlSideChange(side)
       syncState()
     },
     options: sideOptions,
-    value: options.getTouchTrajectoryControlSide(),
+    value: options.getTouchTargetControlSide(),
   })
+  const trajectorySideControl =
+    createSegmentedControl<TouchTrajectoryControlState>({
+      ariaLabel: 'Trajectory control side',
+      onChange: (side) => {
+        options.onTouchTrajectoryControlSideChange(side)
+        syncState()
+      },
+      options: trajectoryOptions,
+      value: options.getTouchTrajectoryControlSide(),
+    })
 
   const settingList = document.createElement('div')
   settingList.className = 'app-dialog-setting-list'
+
   settingList.append(
     createDialogSettingRow({
       control: burnSideControl.element,
@@ -71,6 +91,10 @@ export const createUiSettingsDialog = (options: {
       label: 'Warp side',
     }),
     createDialogSettingRow({
+      control: targetSideControl.element,
+      label: 'Target side',
+    }),
+    createDialogSettingRow({
       control: trajectorySideControl.element,
       label: 'Trajectory side',
     }),
@@ -79,6 +103,7 @@ export const createUiSettingsDialog = (options: {
 
   function syncState() {
     burnSideControl.sync(options.getTouchBurnControlSide())
+    targetSideControl.sync(options.getTouchTargetControlSide())
     warpSideControl.sync(options.getTouchWarpControlSide())
     trajectorySideControl.sync(options.getTouchTrajectoryControlSide())
   }

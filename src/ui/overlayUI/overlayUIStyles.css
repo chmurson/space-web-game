@@ -153,34 +153,6 @@
   text-transform: uppercase;
 }
 
-.in-game-controls-menu-setting {
-  display: grid;
-  gap: 8px;
-  padding: 9px;
-  border-radius: 12px;
-  background: var(--ui-glass-row-bg);
-}
-
-.in-game-controls-menu-setting-copy {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.in-game-controls-menu-setting-name {
-  color: #f0f9ff;
-  font-size: 13px;
-  line-height: 1.2;
-}
-
-.in-game-controls-menu-setting-value {
-  color: rgba(191, 219, 254, 0.78);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
 .in-game-controls-menu-action {
   display: flex;
   align-items: center;
@@ -198,17 +170,54 @@
   touch-action: manipulation;
 }
 
-.in-game-controls-menu .segmented-control {
-  width: 100%;
-  grid-auto-columns: minmax(92px, 1fr);
-}
-
-.in-game-controls-menu .segmented-control-option {
-  min-width: 92px;
-}
-
 .in-game-controls-menu .menu-stepper {
   width: 100%;
+}
+
+.in-game-controls-menu-switch {
+  position: relative;
+  width: 38px;
+  min-width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: 999px;
+  background: var(--ui-glass-control-bg);
+  box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.42);
+  touch-action: manipulation;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    opacity 140ms ease;
+}
+
+.in-game-controls-menu-switch > span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(203, 213, 225, 0.88);
+  box-shadow: 0 1px 3px rgba(2, 6, 23, 0.4);
+  transition:
+    background-color 140ms ease,
+    transform 140ms ease;
+}
+
+.in-game-controls-menu-switch[aria-checked="true"] {
+  border-color: rgba(56, 189, 248, 0.64);
+  background: rgba(14, 165, 233, 0.32);
+}
+
+.in-game-controls-menu-switch[aria-checked="true"] > span {
+  background: rgba(240, 249, 255, 0.96);
+  transform: translateX(16px);
+}
+
+.in-game-controls-menu-switch:disabled {
+  cursor: default;
+  opacity: 0.58;
 }
 
 .in-game-controls-menu .menu-stepper-button {
@@ -235,8 +244,8 @@
 }
 
 .in-game-controls-menu-button:focus-visible,
-.in-game-controls-menu .segmented-control-option:focus-visible,
 .in-game-controls-menu-action:focus-visible,
+.in-game-controls-menu-switch:focus-visible,
 .in-game-controls-menu .menu-stepper-button:focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.8);
   outline-offset: 2px;
@@ -253,8 +262,13 @@
   }
 
   .in-game-controls-menu-action:hover,
+  .in-game-controls-menu-switch:hover:not(:disabled),
   .in-game-controls-menu .menu-stepper-button:hover:not(:disabled) {
     background: rgba(148, 163, 184, 0.09);
+  }
+
+  .in-game-controls-menu-switch[aria-checked="true"]:hover:not(:disabled) {
+    background: rgba(14, 165, 233, 0.42);
   }
 }
 
