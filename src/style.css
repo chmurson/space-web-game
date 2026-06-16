@@ -1063,7 +1063,7 @@ canvas {
         0 0 22px rgba(56, 189, 248, 0.18);
 }
 
-.scenario-prompt-pill {
+.hud-notice-durable {
     width: auto;
     display: flex;
     align-items: center;
@@ -1080,7 +1080,7 @@ canvas {
     z-index: var(--z-overlay-hud);
 }
 
-.scenario-prompt-pill:hover {
+.hud-notice-durable:hover {
     border-color: rgba(103, 232, 249, 0.62);
 }
 
@@ -1394,7 +1394,7 @@ canvas {
         max-height: 30vh;
     }
 
-    .scenario-prompt-pill {
+    .hud-notice-durable {
         top: calc(env(safe-area-inset-top, 0px) + 12px);
         right: calc(env(safe-area-inset-right, 0px) + 10px);
         font-size: 11px;
