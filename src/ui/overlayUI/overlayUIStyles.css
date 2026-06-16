@@ -280,9 +280,9 @@
   font: inherit;
   backdrop-filter: var(--ui-glass-control-blur);
   box-shadow:
-    inset 0 0 0 1px rgba(125, 211, 252, 0.08),
-    0 0 14px rgba(56, 189, 248, 0.16),
-    0 0 28px rgba(14, 165, 233, 0.08);
+    inset 0 0 0px 0px rgba(125, 211, 252, 0.08),
+    0 0 3px 0px rgba(56, 189, 248, 0.16),
+    0 0 6px 0px rgba(14, 165, 233, 0.08);
 }
 
 .hud-notice-durable {
@@ -303,9 +303,6 @@
   border-color: rgba(140, 199, 255, 0.16);
   border-radius: 999px;
   font-size: 12px;
-  background:
-    linear-gradient(135deg, rgba(36, 56, 96, 0.14), rgba(12, 18, 31, 0) 48%),
-    var(--ui-glass-control-bg);
   pointer-events: none;
   opacity: 0;
   transform: translateY(6px);
@@ -314,6 +311,10 @@
     transform 170ms ease,
     visibility 170ms ease;
   visibility: hidden;
+  box-shadow:
+    inset 0 0 0px 0px rgba(125, 211, 252, 0.08),
+    0 0 1.5px 0px rgba(56, 189, 248, 0.16),
+    0 0 3px 0px rgba(14, 165, 233, 0.08);
 }
 
 .hud-notice-transient[hidden] {
