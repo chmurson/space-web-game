@@ -270,23 +270,92 @@
   flex-shrink: 0;
 }
 
-/* Scenario prompt pill - positioned absolutely on desktop */
-.scenario-prompt-pill {
+.hud-notice {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  background: var(--ui-glass-control-bg);
+  color: #dbeafe;
+  font: inherit;
+  backdrop-filter: var(--ui-glass-control-blur);
+  box-shadow:
+    inset 0 0 0 1px rgba(125, 211, 252, 0.08),
+    0 0 14px rgba(56, 189, 248, 0.16),
+    0 0 28px rgba(14, 165, 233, 0.08);
+}
+
+.hud-notice-durable {
+  order: 20;
   flex: 0 1 auto;
   min-width: 0;
   max-width: min(240px, calc(100vw - 140px));
   padding: 6px 10px;
-  border: 1px solid rgba(103, 232, 249, 0.28);
   border-radius: 999px;
-  background: var(--ui-glass-control-bg);
-  color: #dbeafe;
-  font: inherit;
   font-size: 12px;
-  backdrop-filter: var(--ui-glass-control-blur);
   cursor: pointer;
+}
+
+.hud-notice-transient {
+  order: 10;
+  max-width: min(360px, calc(100vw - 116px));
+  padding: 6px 10px;
+  border-color: rgba(140, 199, 255, 0.16);
+  border-radius: 999px;
+  font-size: 12px;
+  background:
+    linear-gradient(135deg, rgba(36, 56, 96, 0.14), rgba(12, 18, 31, 0) 48%),
+    var(--ui-glass-control-bg);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 170ms ease,
+    transform 170ms ease,
+    visibility 170ms ease;
+  visibility: hidden;
+}
+
+.hud-notice-transient[hidden] {
+  display: none;
+}
+
+.hud-notice-transient[data-visible="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.hud-notice-title,
+.hud-notice-body {
+  min-width: 0;
+}
+
+.hud-notice-title {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  white-space: nowrap;
+}
+
+.hud-notice-body {
+  color: rgba(219, 234, 254, 0.82);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-notice-body:empty {
+  display: none;
+}
+
+.hud-notice-transient .hud-notice-body::before {
+  content: "·";
+  margin: 0 6px 0 1px;
+  color: rgba(125, 211, 252, 0.72);
 }
 
 .scenario-prompt-pill-icon {
@@ -330,7 +399,7 @@
   white-space: nowrap;
 }
 
-.scenario-prompt-pill:hover {
+.hud-notice-durable:hover {
   border-color: rgba(103, 232, 249, 0.62);
 }
 
@@ -345,10 +414,14 @@
     gap: 8px;
   }
 
-  .scenario-prompt-pill {
+  .hud-notice-durable {
     max-width: min(180px, calc(100vw - 108px));
     gap: 6px;
     font-size: 11px;
+  }
+
+  .hud-notice-transient {
+    max-width: min(320px, calc(100vw - 112px));
   }
 
   .bottom-pill-area {
@@ -381,6 +454,15 @@
 
   .telemetry-strip {
     gap: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-notice-transient {
+    transition:
+      opacity 120ms ease,
+      visibility 120ms ease;
+    transform: translateY(0);
   }
 }
 

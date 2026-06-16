@@ -26,6 +26,9 @@ const crashIconMarkup = `
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   bottomPillArea: HTMLElement
+  cameraUnlockNotice: HTMLElement
+  cameraUnlockNoticeBody: HTMLSpanElement | null
+  cameraUnlockNoticeTitle: HTMLSpanElement | null
   debugPanel: DebugPanel
   fpsIndicator: HTMLElement
   headingTargetArc: SVGPathElement
@@ -149,13 +152,28 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
 
   const scenarioPromptReplayButton = document.createElement('button')
   scenarioPromptReplayButton.type = 'button'
-  scenarioPromptReplayButton.className = 'scenario-prompt-pill'
+  scenarioPromptReplayButton.className =
+    'hud-notice hud-notice-durable scenario-prompt-pill'
   scenarioPromptReplayButton.style.display = 'none'
   scenarioPromptReplayButton.innerHTML = `
     ${replayPromptIconMarkup}
     <span class="scenario-prompt-pill-label"></span>
   `
   bottomPillArea.appendChild(scenarioPromptReplayButton)
+
+  const cameraUnlockNotice = document.createElement('div')
+  cameraUnlockNotice.className = 'hud-notice hud-notice-transient'
+  cameraUnlockNotice.dataset.visible = 'false'
+  cameraUnlockNotice.setAttribute('role', 'status')
+  cameraUnlockNotice.setAttribute('aria-live', 'polite')
+  cameraUnlockNotice.setAttribute('aria-atomic', 'true')
+  cameraUnlockNotice.setAttribute('aria-hidden', 'true')
+  cameraUnlockNotice.hidden = true
+  cameraUnlockNotice.innerHTML = `
+    <span class="hud-notice-title"></span>
+    <span class="hud-notice-body"></span>
+  `
+  bottomPillArea.appendChild(cameraUnlockNotice)
 
   const spacecraftCallout = document.createElement('div')
   spacecraftCallout.className = 'spacecraft-callout'
@@ -218,6 +236,11 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   return {
     bodyLabels,
     bottomPillArea,
+    cameraUnlockNotice,
+    cameraUnlockNoticeBody:
+      cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-body'),
+    cameraUnlockNoticeTitle:
+      cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-title'),
     debugPanel,
     fpsIndicator,
     headingTargetArc,

@@ -58,6 +58,8 @@ type AppRuntimeCoordinator = {
   initialize(): void
 }
 
+const cameraUnlockNoticeDurationMs = 2400
+
 export type AppComponents = {
   renderer: THREE.WebGLRenderer
   keyboardInput: ReturnType<typeof createKeyboardInput>
@@ -141,6 +143,48 @@ const createRuntimeCoordinator = (options: {
   }
 }
 
+const createCameraUnlockNoticePresenter = (overlayUi: OverlayUiRefs) => {
+  let hideTimeout: number | null = null
+  let finishHideTimeout: number | null = null
+
+  const hide = () => {
+    overlayUi.cameraUnlockNotice.dataset.visible = 'false'
+    overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'true')
+    finishHideTimeout = window.setTimeout(() => {
+      if (overlayUi.cameraUnlockNotice.dataset.visible !== 'true') {
+        overlayUi.cameraUnlockNotice.hidden = true
+      }
+      finishHideTimeout = null
+    }, 180)
+    hideTimeout = null
+  }
+
+  return {
+    show() {
+      if (finishHideTimeout !== null) {
+        window.clearTimeout(finishHideTimeout)
+        finishHideTimeout = null
+      }
+      overlayUi.cameraUnlockNotice.hidden = false
+      overlayUi.cameraUnlockNoticeTitle?.replaceChildren('Camera unlocked')
+      overlayUi.cameraUnlockNoticeBody?.replaceChildren()
+      overlayUi.cameraUnlockNotice.setAttribute(
+        'aria-label',
+        'Camera unlocked. Drag anywhere to pan.',
+      )
+      overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'false')
+      window.requestAnimationFrame(() => {
+        overlayUi.cameraUnlockNotice.dataset.visible = 'true'
+      })
+
+      if (hideTimeout !== null) {
+        window.clearTimeout(hideTimeout)
+      }
+      hideTimeout = window.setTimeout(hide, cameraUnlockNoticeDurationMs)
+    },
+  }
+}
+
 export const createAppComponents = (options: {
   app: HTMLDivElement
   config: AppConfigContext
@@ -165,6 +209,7 @@ export const createAppComponents = (options: {
     bodies: options.runtimeState.simulation.state.bodies,
     showCycleTargetHint: !options.config.assistTarget.autoSelectNearestSurface,
   })
+  const cameraUnlockNotice = createCameraUnlockNoticePresenter(overlayUi)
   const queries = createGameQueries({
     autoSelectNearestSurface:
       options.config.assistTarget.autoSelectNearestSurface,
@@ -350,6 +395,7 @@ export const createAppComponents = (options: {
     keyboardInput,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
+    onCameraUnlockedBySwipe: cameraUnlockNotice.show,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
