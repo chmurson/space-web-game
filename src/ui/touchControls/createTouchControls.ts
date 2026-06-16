@@ -239,6 +239,7 @@ export const createTouchControls = (options: {
   keyboardInput: KeyboardInput
   getCameraMode(): CameraControlMode
   getCameraModeChangesLocked(): boolean
+  onCameraUnlockedBySwipe?(): void
   onCameraModeSelected(mode: CameraControlMode): boolean
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
@@ -856,6 +857,7 @@ export const createTouchControls = (options: {
             })
 
             if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
+              options.onCameraUnlockedBySwipe?.()
               activeSession.hasPanned =
                 options.onCameraPanGesture(thresholdPoint, {
                   x: touch.clientX,

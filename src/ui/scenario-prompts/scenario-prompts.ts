@@ -132,7 +132,7 @@ export const createScenarioPromptUI = (
   // Create the replay button pill
   const replayButton = document.createElement('button')
   replayButton.type = 'button'
-  replayButton.className = 'scenario-prompt-pill'
+  replayButton.className = 'hud-notice hud-notice-durable scenario-prompt-pill'
   replayButton.style.display = 'none'
   replayButton.innerHTML = `
     <svg class="scenario-prompt-pill-icon" viewBox="0 0 20 20" aria-hidden="true">
