@@ -29,11 +29,8 @@
   order: 1;
 }
 
-.telemetry-strip {
-  order: 2;
-}
-
 .bottom-pill-area {
+  --bottom-hud-edge-gap: 6px;
   position: fixed;
   right: 0;
   bottom: 0;
@@ -41,7 +38,8 @@
   display: grid;
   justify-items: center;
   gap: 8px;
-  padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  padding: 0 16px
+    calc(env(safe-area-inset-bottom, 0px) + var(--bottom-hud-edge-gap));
   pointer-events: none;
   z-index: var(--z-overlay-hud);
 }
@@ -50,8 +48,214 @@
   pointer-events: auto;
 }
 
-#app.app-main-menu .bottom-pill-area {
+.telemetry-strip {
+  order: 2;
+}
+
+.in-game-controls-menu {
+  --bottom-hud-edge-gap: 6px;
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--bottom-hud-edge-gap));
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+  z-index: var(--z-overlay-hud);
+  display: grid;
+  justify-items: start;
+  pointer-events: none;
+}
+
+.in-game-controls-menu-button,
+.in-game-controls-menu-popover {
+  pointer-events: auto;
+}
+
+.in-game-controls-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: 12px;
+  background: var(--ui-glass-control-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 24px rgba(2, 6, 23, 0.24);
+  color: rgba(226, 232, 240, 0.9);
+  font: inherit;
+  backdrop-filter: var(--ui-glass-control-blur);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.in-game-controls-menu-button-icon {
+  width: 17px;
+  height: 14px;
+  flex: 0 0 auto;
+  background:
+    radial-gradient(circle, currentColor 0 1.8px, transparent 1.9px) 3px 0.5px /
+    5px 5px no-repeat,
+    radial-gradient(circle, currentColor 0 1.8px, transparent 1.9px) 12px 6px /
+    5px 5px no-repeat,
+    radial-gradient(circle, currentColor 0 1.8px, transparent 1.9px) 6px 11.5px
+    / 5px 5px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 2px / 17px 1.4px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 7.5px / 17px 1.4px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 13px / 17px 1.4px no-repeat;
+  opacity: 0.78;
+}
+
+.in-game-controls-menu-button[aria-expanded="true"] {
+  border-color: rgba(125, 211, 252, 0.38);
+  background: rgba(14, 116, 144, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 24px rgba(2, 6, 23, 0.26),
+    0 0 18px rgba(56, 189, 248, 0.12);
+  color: #e0f2fe;
+}
+
+.in-game-controls-menu-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  width: min(252px, calc(100vw - 24px));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ui-glass-panel-border);
+  border-radius: 14px;
+  background: var(--ui-glass-panel-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--ui-glass-panel-shadow);
+  backdrop-filter: var(--ui-glass-panel-blur);
+  color: #f0f9ff;
+}
+
+.in-game-controls-menu-popover[hidden] {
   display: none;
+}
+
+.in-game-controls-menu-heading {
+  padding: 0 2px;
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.in-game-controls-menu-setting {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border-radius: 12px;
+  background: var(--ui-glass-row-bg);
+}
+
+.in-game-controls-menu-setting-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.in-game-controls-menu-setting-name {
+  color: #f0f9ff;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.in-game-controls-menu-setting-value {
+  color: rgba(191, 219, 254, 0.78);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.in-game-controls-menu-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 9px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ui-glass-row-bg);
+  color: #f0f9ff;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.in-game-controls-menu .segmented-control {
+  width: 100%;
+  grid-auto-columns: minmax(92px, 1fr);
+}
+
+.in-game-controls-menu .segmented-control-option {
+  min-width: 92px;
+}
+
+.in-game-controls-menu .menu-stepper {
+  width: 100%;
+}
+
+.in-game-controls-menu .menu-stepper-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.52);
+  color: #f0f9ff;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.in-game-controls-menu .menu-stepper-button:disabled {
+  color: rgba(240, 249, 255, 0.45);
+}
+
+.in-game-controls-menu-button:focus-visible,
+.in-game-controls-menu .segmented-control-option:focus-visible,
+.in-game-controls-menu-action:focus-visible,
+.in-game-controls-menu .menu-stepper-button:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.8);
+  outline-offset: 2px;
+}
+
+.in-game-controls-menu-button:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .in-game-controls-menu-button:hover {
+    border-color: rgba(103, 232, 249, 0.58);
+    background: rgba(15, 23, 42, 0.5);
+  }
+
+  .in-game-controls-menu-action:hover,
+  .in-game-controls-menu .menu-stepper-button:hover:not(:disabled) {
+    background: rgba(148, 163, 184, 0.09);
+  }
 }
 
 .telemetry-pill {
@@ -77,11 +281,11 @@
   padding: 6px 10px;
   border: 1px solid rgba(103, 232, 249, 0.28);
   border-radius: 999px;
-  background: rgba(8, 13, 24, 0.56);
+  background: var(--ui-glass-control-bg);
   color: #dbeafe;
   font: inherit;
   font-size: 12px;
-  backdrop-filter: blur(12px);
+  backdrop-filter: var(--ui-glass-control-blur);
   cursor: pointer;
 }
 
@@ -148,11 +352,26 @@
   }
 
   .bottom-pill-area {
-    padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 12px);
+    --bottom-hud-edge-gap: 4px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
   .bottom-pill-area .scenario-prompt-pill {
     max-width: min(360px, calc(100vw - 24px));
+  }
+
+  .in-game-controls-menu {
+    --bottom-hud-edge-gap: 4px;
+  }
+
+  .in-game-controls-menu-button {
+    width: 42px;
+    height: 34px;
+  }
+
+  .in-game-controls-menu-popover {
+    width: min(248px, calc(100vw - 24px));
   }
 
   .scenario-prompt-pill-icon {
@@ -163,4 +382,9 @@
   .telemetry-strip {
     gap: 5px;
   }
+}
+
+#app.app-main-menu .bottom-pill-area,
+#app.app-main-menu .in-game-controls-menu {
+  display: none;
 }

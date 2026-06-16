@@ -145,7 +145,8 @@ export const createDialog = (options: {
     }
 
     activeDialog = dialog
-    panel.focus()
+    const focusTarget = getFocusableElements()[0] ?? panel
+    focusTarget.focus()
   }
 
   root.addEventListener('click', (event) => {

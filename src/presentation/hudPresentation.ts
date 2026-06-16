@@ -25,6 +25,7 @@ import {
   createScenarioPromptUpdater,
   type ScenarioPromptUiRefs,
 } from '../ui/scenario-prompts/scenario-prompts'
+import type { InGameControlsMenu } from '../ui/createInGameControlsMenu'
 import type { TouchControls } from '../ui/touchControls/createTouchControls'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
 
@@ -41,6 +42,7 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
 
 export const createHudPresentation = (options: {
   defaultViewport: number
+  inGameControlsMenu?: InGameControlsMenu
   overlayUi: OverlayUiRefs
   physicsEngineName: string
   queries: GameQueries
@@ -206,6 +208,7 @@ export const createHudPresentation = (options: {
         inputMode,
         showScenarioInfoButton,
       )
+      options.inGameControlsMenu?.syncState()
       const timePill =
         options.overlayUi.statTime?.closest<HTMLElement>('.telemetry-pill')
       const speedPill =

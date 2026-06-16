@@ -39,6 +39,7 @@
 ## Shipit Reviews
 
 - Run CodeRabbit as part of Shipit review with `coderabbit --base main --agent`.
+- Apply the Ponytail review lens during Shipit review: look for code to delete, simplify, or replace with native/standard-library behavior, and call out YAGNI/speculative abstractions before approving the branch.
 - If CodeRabbit fails, times out, or cannot produce findings for any reason, explicitly alert the user so they can debug it or run it themselves.
 - Treat automated review findings, including CodeRabbit findings, as hypotheses rather than facts. Inspect the current code and diff before deciding whether each finding is valid, stale, out of scope, or based on an incorrect proposed fix.
 
@@ -46,3 +47,22 @@
 
 - Do not widen module APIs only to make tests easier to write.
 - Prefer testing behavior through existing public functions instead of exporting internal helpers just for tests.
+- For HUD, menu, drawer, touch-control, and overlay styling, prefer shared UI surface tokens in `src/style.css` such as `--ui-glass-control-bg`, `--ui-glass-panel-bg`, `--ui-glass-label-bg`, and their related border/blur/shadow variables before adding local colors.
+- Reuse or extend shared UI surface styles when a new element has the same role as an existing pill, popup, drawer, label, or glass panel. Add local CSS values only when the visual treatment is genuinely component-specific, and keep those values close to the component that owns them.
+
+## Recommended Game Studio Skills
+
+- Use `game-studio:three-webgl-game` for core Three.js runtime work, including scene setup, render-loop behavior, camera controls, pointer input, visual simulation presentation, and changes around `src/scene`, `src/render`, `src/rendering`, `src/presentation`, and related input code.
+- Use `game-studio:web-game-foundations` for architecture decisions that affect the game loop, simulation/render boundaries, runtime state, scenario flow, save/debug behavior, or performance strategy across `src/runtime`, `src/simulation`, `src/scenario`, and app composition.
+- Use `game-studio:game-ui-frontend` for HUD, menus, dialogs, overlays, touch controls, responsive layout, settings panels, and other DOM UI under `src/ui` or CSS changes that affect the playable surface.
+- Use `game-studio:game-playtest` after gameplay, camera, rendering, HUD, input, or responsive-layout changes to verify the browser experience with screenshots, interaction checks, and desktop/mobile viewport coverage.
+- Use `game-studio:web-3d-asset-pipeline` only when adding or optimizing shipped 3D assets such as GLB/glTF models, textures, compression, LODs, or collision assets.
+- Do not use `game-studio:phaser-2d-game` for this repo unless the project deliberately migrates to Phaser; this codebase is a plain TypeScript/Vite/Three.js app.
+- Do not use `game-studio:react-three-fiber-game` unless the project deliberately moves to React-hosted Three.js rendering.
+- Use `game-studio:sprite-pipeline` only if the project adds generated 2D sprite animation assets.
+
+Future skill candidates to remember:
+
+- Consider `game-studio:react-three-fiber-game` if the project later moves toward React-hosted Three.js UI or scene composition.
+- Consider `game-studio:sprite-pipeline` if the game later adds generated 2D sprite effects, icons, animation strips, or sprite-based UI/gameplay assets.
+- Consider `game-studio:web-3d-asset-pipeline` if asset work becomes larger than simple model loading, especially for GLB/glTF optimization, texture packaging, compression, LODs, or collision assets.

@@ -28,6 +28,7 @@ import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredicti
 import { parsePromptAction } from '../scenario/scenarioPrompts'
 import { createGameScene } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
+import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
 import {
@@ -404,23 +405,28 @@ export const createAppComponents = (options: {
 
   const topMenu = createTopMenu({
     app: options.app,
+    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
+    getFpsIndicatorEnabled: () =>
+      options.runtimeState.debug.fpsIndicatorEnabled,
+    onAction: handleTopMenuAction,
+  })
+  const inGameControlsMenu = createInGameControlsMenu({
+    app: options.app,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
-    getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
-    getFpsIndicatorEnabled: () =>
-      options.runtimeState.debug.fpsIndicatorEnabled,
     getMaxCoastPredictionHorizonHours: () =>
       options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
       options.config.trajectory.maxCoastPredictionHorizonHours,
     getMinCoastPredictionHorizonHours: () =>
       options.config.trajectory.minCoastPredictionHorizonHours,
-    onAction: handleTopMenuAction,
+    onAction: (action) => dispatchRuntimeAction(action),
     onOpenUiSettings: uiSettingsDialog.open,
   })
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
+    inGameControlsMenu,
     overlayUi,
     physicsEngineName: options.config.physicsEngine.name,
     queries,

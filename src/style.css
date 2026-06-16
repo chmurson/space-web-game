@@ -21,6 +21,17 @@
 
     /* common touch-control values */
     --touch-control-radius: 15px;
+
+    /* shared HUD glass surfaces */
+    --ui-glass-control-bg: rgba(8, 13, 24, 0.56);
+    --ui-glass-control-border: rgba(148, 163, 184, 0.24);
+    --ui-glass-control-blur: blur(12px);
+    --ui-glass-panel-bg: rgba(8, 13, 24, 0.72);
+    --ui-glass-panel-border: rgba(148, 163, 184, 0.14);
+    --ui-glass-panel-blur: blur(16px);
+    --ui-glass-panel-shadow: 0 16px 32px rgba(2, 6, 23, 0.28);
+    --ui-glass-label-bg: rgba(8, 13, 24, 0.58);
+    --ui-glass-row-bg: rgba(148, 163, 184, 0.055);
 }
 
 html,
@@ -184,7 +195,7 @@ canvas {
     border: 0;
     border-radius: 999px;
     background: rgba(8, 13, 24, 0.32);
-    backdrop-filter: blur(12px);
+    backdrop-filter: var(--ui-glass-control-blur);
     color: #f0f9ff;
     touch-action: manipulation;
     transition:
@@ -208,11 +219,11 @@ canvas {
     gap: 8px;
     min-width: 220px;
     padding: 10px;
-    border: 1px solid rgba(148, 163, 184, 0.12);
+    border: 1px solid var(--ui-glass-panel-border);
     border-radius: 14px;
-    background: rgba(8, 13, 24, 0.72);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 16px 32px rgba(2, 6, 23, 0.28);
+    background: var(--ui-glass-panel-bg);
+    backdrop-filter: var(--ui-glass-panel-blur);
+    box-shadow: var(--ui-glass-panel-shadow);
 }
 
 .top-menu-dropdown[hidden] {
@@ -276,7 +287,7 @@ canvas {
     overflow: hidden;
     border: 1px solid rgba(148, 163, 184, 0.24);
     border-radius: 999px;
-    background: rgba(8, 13, 24, 0.58);
+    background: var(--ui-glass-label-bg);
 }
 
 .segmented-control-option {
@@ -426,13 +437,20 @@ canvas {
     gap: 16px;
     width: min(100%, 430px);
     padding: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    border: 1px solid var(--ui-glass-panel-border);
     border-radius: 16px;
-    background:
-        linear-gradient(180deg, rgba(15, 23, 42, 0.84), rgba(8, 13, 24, 0.74)),
-        rgba(8, 13, 24, 0.58);
-    box-shadow: 0 24px 54px rgba(2, 6, 23, 0.42);
-    backdrop-filter: blur(18px);
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+    backdrop-filter: var(--ui-glass-panel-blur);
+}
+
+.app-dialog-panel:focus {
+    outline: none;
+}
+
+.app-dialog-panel:focus-visible {
+    outline: 1px solid rgba(125, 211, 252, 0.38);
+    outline-offset: 3px;
 }
 
 .app-dialog-header {
@@ -460,9 +478,9 @@ canvas {
 
 .app-dialog-button {
     padding: 8px 11px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    border: 1px solid var(--ui-glass-control-border);
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.54);
+    background: var(--ui-glass-control-bg);
     color: #f0f9ff;
     font: inherit;
     font-size: 12px;
@@ -495,7 +513,7 @@ canvas {
     gap: 12px;
     padding: 10px;
     border-radius: 12px;
-    background: rgba(148, 163, 184, 0.07);
+    background: var(--ui-glass-row-bg);
 }
 
 .app-dialog-setting-name {
@@ -505,7 +523,6 @@ canvas {
     line-height: 1.2;
 }
 
-.app-dialog-panel:focus-visible,
 .app-dialog-button:focus-visible,
 .app-dialog .segmented-control-option:focus-visible {
     outline: 2px solid rgba(125, 211, 252, 0.8);
@@ -520,7 +537,7 @@ canvas {
 @media (hover: hover) and (pointer: fine) {
     .app-dialog-button:hover {
         border-color: rgba(125, 211, 252, 0.38);
-        background: rgba(56, 189, 248, 0.16);
+        background: rgba(148, 163, 184, 0.09);
     }
 
     .app-dialog .segmented-control-option:hover {
@@ -1054,11 +1071,11 @@ canvas {
     padding: 6px 10px;
     border: 1px solid rgba(103, 232, 249, 0.28);
     border-radius: 999px;
-    background: rgba(8, 13, 24, 0.56);
+    background: var(--ui-glass-control-bg);
     color: #dbeafe;
     font: inherit;
     font-size: 12px;
-    backdrop-filter: blur(12px);
+    backdrop-filter: var(--ui-glass-control-blur);
     cursor: pointer;
     z-index: var(--z-overlay-hud);
 }
@@ -1140,7 +1157,7 @@ canvas {
     padding: 2px 6px;
     border: 1px solid rgba(125, 211, 252, 0.35);
     border-radius: 4px;
-    background: rgba(8, 13, 24, 0.72);
+    background: var(--ui-glass-panel-bg);
 }
 
 .map-ripple {
@@ -1220,7 +1237,7 @@ canvas {
     padding: 2px 5px;
     border: 1px solid rgba(148, 163, 184, 0.22);
     border-radius: 4px;
-    background: rgba(8, 13, 24, 0.58);
+    background: var(--ui-glass-label-bg);
     color: #dbeafe;
     font-size: 10px;
     pointer-events: none;
