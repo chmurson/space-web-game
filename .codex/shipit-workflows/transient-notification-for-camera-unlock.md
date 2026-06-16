@@ -2,7 +2,7 @@
 
 Task: Transient notification for camera unlock
 Branch: transient-notification-for-camera-unlock
-Current Mode: review
+Current Mode: yeet
 Status: completed
 
 ## Checklist
@@ -15,7 +15,7 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated (not requested)
+- [ ] PR opened/updated
 
 ## Artifacts
 
@@ -199,10 +199,9 @@ Stale artifacts/docs:
 
 CodeRabbit:
 
-- Ran `coderabbit --base main --agent`.
-- Findings: 4 minor workflow-state consistency findings.
-- Fixed: artifact status mismatch, stale next-step text, and staging deploy wording.
-- Skipped: PR checkbox finding because no PR has been opened or requested.
+- Final run: `coderabbit --base main --agent`.
+- Findings: 0.
+- Earlier workflow-state consistency findings were handled before the final review.
 
 Self-review findings:
 
@@ -213,6 +212,7 @@ Self-review findings:
 - Set notice rail ordering so transient notices appear above durable notices.
 - Matched transient notice typography to durable notice typography.
 - Replaced the shared notice dark shadow with a restrained cyan glow and inset edge highlight.
+- Removed broad `src/style.css` formatting churn so the final merge diff keeps only the durable notice selector changes in that file.
 - No behavioral bug found in the touch unlock hook. It still fires only after `onCameraModeSelected('unlocked')` succeeds.
 
 Ponytail review lens:
@@ -230,6 +230,7 @@ Validation results:
 
 - `npm run build`: passed.
 - `npm test`: passed, 32 test files and 171 tests.
+- `git diff --check`: passed.
 - Browser playtest: passed using temporary headless Chrome over CDP because in-app Browser and Chrome DevTools MCP were unavailable/blocked. Verified centered-to-unlocked swipe, bottom notice rail placement, notice text, `pointer-events: none`, durable notice class, and auto-dismiss.
 - `npm run deploy:netlify`: passed.
 
@@ -246,4 +247,4 @@ Residual risk:
 
 ## Next Step
 
-Hand off completed branch status. PR creation was not requested.
+Push branch, open and merge PR, then record PR/merge status.
