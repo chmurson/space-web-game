@@ -31,9 +31,9 @@ export type OverlayUiRefs = {
   cameraUnlockNoticeTitle: HTMLSpanElement | null
   debugPanel: DebugPanel
   fpsIndicator: HTMLElement
-  headingTargetArc: SVGPathElement
   headingTargetLine: SVGLineElement
   headingTargetOverlay: SVGSVGElement
+  headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
   scenarioPrompt: HTMLElement
   scenarioPromptCloseButton: HTMLButtonElement | null
@@ -206,12 +206,12 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   headingTargetLine.classList.add('heading-target-line')
   headingTargetOverlay.appendChild(headingTargetLine)
 
-  const headingTargetArc = document.createElementNS(
+  const headingTargetTurnSlice = document.createElementNS(
     'http://www.w3.org/2000/svg',
     'path',
   )
-  headingTargetArc.classList.add('heading-target-arc')
-  headingTargetOverlay.appendChild(headingTargetArc)
+  headingTargetTurnSlice.classList.add('heading-target-turn-slice')
+  headingTargetOverlay.appendChild(headingTargetTurnSlice)
   options.app.appendChild(headingTargetOverlay)
 
   const offscreenIndicators = new Map<string, HTMLElement>()
@@ -243,9 +243,9 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
       cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-title'),
     debugPanel,
     fpsIndicator,
-    headingTargetArc,
     headingTargetLine,
     headingTargetOverlay,
+    headingTargetTurnSlice,
     offscreenIndicators,
     scenarioPrompt,
     scenarioPromptCloseButton: scenarioPrompt.querySelector<HTMLButtonElement>(
