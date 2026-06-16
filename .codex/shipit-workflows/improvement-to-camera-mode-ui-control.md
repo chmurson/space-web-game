@@ -3,7 +3,7 @@
 Task: Improvement to camera mode UI control
 Branch: improvement-to-camera-mode-ui-control
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] Branch merged/pushed
 
 ## Artifacts
 
@@ -51,7 +51,7 @@ Status: active
 
 ## Next Step
 
-Merge branch into `main`, deploy production, and report final state.
+Completed: merged into `main`, deployed production, and reported final state.
 
 ## Brainstorm Handoff
 
@@ -163,8 +163,13 @@ Validation results:
 - Final default-settings CodeRabbit run completed with zero findings.
 - Merge-preflight `coderabbit --base main --agent` hit CodeRabbit rate limit after the last zero-finding CodeRabbit run and no subsequent code changes.
 - `npm run deploy:netlify` passed. Staging URL: https://fanciful-bunny-d77b4b.netlify.app. Unique deploy URL: https://6a3192cb98bb75509ff55779--fanciful-bunny-d77b4b.netlify.app.
+- `npm run deploy:netlify:production` passed. Production URL: https://space-web-game.netlify.app. Unique deploy URL: https://6a3194a3aea2f7f825bd3875--space-web-game.netlify.app.
 
 ## Yeet Notes
 
 - Feature commit: `acf40ee` (`feat(ui): refine controls settings`)
+- Merge commit on `main`: `0eb0f96` (`Merge branch 'improvement-to-camera-mode-ui-control'`)
+- Direct push: `git push origin HEAD:main`
+- Production deploy: https://space-web-game.netlify.app
+- Unique production deploy: https://6a3194a3aea2f7f825bd3875--space-web-game.netlify.app
 - PR: not used; user requested direct review and merge.
