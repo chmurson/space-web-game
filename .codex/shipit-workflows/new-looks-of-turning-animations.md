@@ -44,11 +44,11 @@ Status: active
 
 - [x] npm run build
 - [x] Browser playtest screenshot/video-style check for the turning animation on desktop and mobile
-- [ ] npm run deploy:netlify
+- [x] npm run deploy:netlify
 
 ## Next Step
 
-Deploy to staging, then enter Shipit review when requested.
+Enter Shipit review when requested.
 
 ## Brainstorm Handoff
 
@@ -122,6 +122,7 @@ Stale artifacts/docs: Shipit state updated inline.
 
 - `npm run build` passed.
 - `git diff --check` passed.
+- `npm run deploy:netlify` passed. Staging URL: https://fanciful-bunny-d77b4b.netlify.app. Unique deploy URL: https://6a31aa9c8a46745482cb241b--fanciful-bunny-d77b4b.netlify.app.
 - Desktop browser check passed: real canvas `dblclick` creates the new marker DOM, keeps the target-heading overlay active, and renders a turn-slice SVG path with softened line styling.
 - Mobile browser check passed at mobile-sized viewport: real canvas `dblclick` creates one marker inside viewport bounds, keeps the target-heading overlay active, and renders the turn-slice SVG path without blocking HUD controls.
 - Screenshots captured for visual QA:
