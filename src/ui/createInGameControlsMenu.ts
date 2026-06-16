@@ -1,7 +1,6 @@
 import type { UIUserAction } from '../input/uiUserActions'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
 import { formatTrajectoryHorizonDuration } from './formatters'
-import { createSegmentedControl } from './segmentedControl'
 
 export type InGameControlsMenu = {
   close: () => void
@@ -9,8 +8,8 @@ export type InGameControlsMenu = {
   syncState: () => void
 }
 
-const getCameraModeLabel = (mode: CameraControlMode) =>
-  mode === 'centered' ? 'Centered' : 'Free roam'
+const getCameraModeDescription = (mode: CameraControlMode) =>
+  mode === 'centered' ? 'On spacecraft' : 'Free roam'
 
 export const createInGameControlsMenu = (options: {
   app: HTMLElement
@@ -23,6 +22,7 @@ export const createInGameControlsMenu = (options: {
   onOpenUiSettings: () => void
 }): InGameControlsMenu => {
   const menuId = 'in-game-controls-menu-popover'
+  const cameraControlLabelId = `${menuId}-camera`
   const trajectorySectionLabelId = `${menuId}-trajectory`
   const root = document.createElement('section')
   root.className = 'in-game-controls-menu'
@@ -45,12 +45,16 @@ export const createInGameControlsMenu = (options: {
   popover.setAttribute('aria-label', 'In-game controls')
   popover.innerHTML = `
     <div class="in-game-controls-menu-heading">Controls</div>
-    <div class="in-game-controls-menu-setting">
-      <div class="in-game-controls-menu-setting-copy">
-        <span class="in-game-controls-menu-setting-name">Camera mode</span>
-        <span class="in-game-controls-menu-setting-value" data-in-game-camera-status></span>
+    <div class="menu-stepper in-game-controls-menu-camera" role="group" aria-labelledby="${cameraControlLabelId}">
+      <div class="menu-stepper-copy">
+        <span class="menu-stepper-name" id="${cameraControlLabelId}">Camera locked</span>
+        <span class="menu-stepper-value" data-in-game-camera-status aria-live="polite"></span>
       </div>
-      <div data-in-game-camera-control></div>
+      <div class="menu-stepper-controls">
+        <button type="button" class="in-game-controls-menu-switch" role="switch" data-in-game-action="toggleCameraMode">
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
     </div>
     <button class="in-game-controls-menu-action" type="button" data-in-game-action="openUiSettings">
       <span>UI settings</span>
@@ -74,8 +78,8 @@ export const createInGameControlsMenu = (options: {
   const cameraStatus = popover.querySelector<HTMLElement>(
     '[data-in-game-camera-status]',
   )
-  const cameraControlContainer = popover.querySelector<HTMLElement>(
-    '[data-in-game-camera-control]',
+  const cameraModeSwitch = popover.querySelector<HTMLButtonElement>(
+    '[data-in-game-action="toggleCameraMode"]',
   )
   const uiSettingsButton = popover.querySelector<HTMLButtonElement>(
     '[data-in-game-action="openUiSettings"]',
@@ -91,7 +95,7 @@ export const createInGameControlsMenu = (options: {
   )
   if (
     !cameraStatus ||
-    !cameraControlContainer ||
+    !cameraModeSwitch ||
     !uiSettingsButton ||
     !decreaseCoastHorizonButton ||
     !increaseCoastHorizonButton ||
@@ -99,22 +103,6 @@ export const createInGameControlsMenu = (options: {
   ) {
     throw new Error('Failed to create in-game controls menu')
   }
-  const cameraModeControl = createSegmentedControl<CameraControlMode>({
-    ariaLabel: 'Camera mode',
-    onChange: (mode) => {
-      options.onAction(
-        mode === 'centered' ? 'setCameraCentered' : 'setCameraUnlocked',
-      )
-      syncState()
-    },
-    options: [
-      { label: 'Centered', value: 'centered' },
-      { label: 'Free roam', value: 'unlocked' },
-    ],
-    value: options.getCameraMode(),
-  })
-  cameraControlContainer.append(cameraModeControl.element)
-
   let lastMode: CameraControlMode | null = null
   let lastLocked: boolean | null = null
   let lastCoastHorizonLabel = ''
@@ -145,15 +133,22 @@ export const createInGameControlsMenu = (options: {
 
     if (modeChanged) {
       root.dataset.cameraMode = mode
-      cameraModeControl.sync(mode)
       lastMode = mode
     }
 
     if (lockedChanged || modeChanged) {
-      cameraModeControl.setDisabled(locked)
-      cameraStatus.textContent = locked
-        ? `${getCameraModeLabel(mode)} · locked`
-        : getCameraModeLabel(mode)
+      const cameraLocked = mode === 'centered'
+      const cameraModeDescription = getCameraModeDescription(mode)
+
+      cameraModeSwitch.disabled = locked
+      cameraModeSwitch.setAttribute('aria-checked', String(cameraLocked))
+      cameraModeSwitch.setAttribute(
+        'aria-label',
+        locked
+          ? `Camera locked changes unavailable: ${cameraModeDescription}`
+          : `Camera locked ${cameraLocked ? 'on' : 'off'}: ${cameraModeDescription}`,
+      )
+      cameraStatus.textContent = cameraModeDescription
       lastLocked = locked
     }
 
@@ -183,6 +178,15 @@ export const createInGameControlsMenu = (options: {
   uiSettingsButton.addEventListener('click', () => {
     setOpen(false)
     options.onOpenUiSettings()
+  })
+
+  cameraModeSwitch.addEventListener('click', () => {
+    options.onAction(
+      options.getCameraMode() === 'centered'
+        ? 'setCameraUnlocked'
+        : 'setCameraCentered',
+    )
+    syncState()
   })
 
   decreaseCoastHorizonButton.addEventListener('click', () => {
