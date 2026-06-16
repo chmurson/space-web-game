@@ -2,7 +2,7 @@
 
 Task: Pause game while UI settings modal is open
 Branch: pause-game-when-settings-open
-Current Mode: review
+Current Mode: yeet
 Status: completed
 
 ## Checklist
@@ -15,7 +15,7 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [x] PR opened/updated or explicitly skipped
+- [x] Merged to main
 
 ## Artifacts
 
@@ -161,13 +161,29 @@ Proposed follow-up issues:
 - [x] `npm run deploy:netlify` passed and deployed to staging.
 - [x] `coderabbit --base main --agent` first pass found 1 valid issue; fixed.
 - [x] `coderabbit --base main --agent` second pass passed with 0 findings.
+- [x] Synced with latest `origin/main` using `git rebase origin/main`.
+- [x] Post-sync `npm test` passed: 32 files, 171 tests.
+- [x] Post-sync `npm run build` passed.
+- [x] Post-sync `coderabbit --base main --agent` passed with 0 findings.
+- [x] Post-sync `npm run deploy:netlify` passed and deployed to staging.
+- [x] Fast-forward merged into `main`.
+- [x] Pushed `main` to `origin`.
+- [x] Production `npm run deploy:netlify` passed.
 - [x] `git diff --check` passed.
 
 ## Deployment
 
 - Staging URL: https://fanciful-bunny-d77b4b.netlify.app
-- Unique deploy URL: https://6a312047ddfe0c84e11b3c2a--fanciful-bunny-d77b4b.netlify.app
+- Latest staging deploy URL: https://6a3139918e4f771616561c80--fanciful-bunny-d77b4b.netlify.app
+- Production URL: https://space-web-game.netlify.app
+- Production deploy URL: https://6a3139f8bb002013c5789d31--space-web-game.netlify.app
+
+## Merge
+
+- Feature branch commit after sync: `86dc403 feat(settings): pause game while ui settings is open`
+- Merge method: fast-forward into `main`
+- Main pushed: `86dc403`
 
 ## Next Step
 
-Sync with latest `main` when requested, then rerun validation/deploy as needed before yeet/PR.
+Complete.
