@@ -2,8 +2,8 @@
 
 Task: Further tutorial improvement
 Branch: further-tutorial-improvement
-Current Mode: merge
-Status: active
+Current Mode: complete
+Status: complete
 
 ## Checklist
 
@@ -59,6 +59,8 @@ Status: active
 - [x] `npm run build`
 - [x] `git diff --check`
 - [x] `npm run deploy:netlify`
+- [x] Merged to `main` at `371ecc1`
+- [x] Production deploy: `https://space-web-game.netlify.app`
 
 ## Brainstorm Handoff
 
