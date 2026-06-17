@@ -242,8 +242,8 @@ Integrated branch commit:
 - `b08340e Merge branch 'main' into improvement-of-the-turning-behavior`
 
 Main merge:
-- `main` fast-forwarded to `b08340e`.
-- `main` pushed to `origin/main`.
+- `main` fast-forwarded to `b08340e` for the app-code merge and production deploy.
+- After production deploy, this docs-only Shipit completion note was pushed to `main`; no redeploy was required.
 
 Production deploy:
 - Production URL: `https://space-web-game.netlify.app`
