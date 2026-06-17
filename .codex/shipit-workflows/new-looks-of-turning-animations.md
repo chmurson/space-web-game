@@ -129,7 +129,7 @@ Stale artifacts/docs: Shipit state updated inline.
 
 - `npm run build` passed after the initial implementation, after simplifying the visuals, after increasing animation opacity, and after keeping the center dot steady.
 - `git diff --check` passed after the initial implementation, after simplifying the visuals, after increasing animation opacity, and after keeping the center dot steady.
-- `npm run deploy:netlify` passed after the initial implementation, after simplifying the visuals, and after increasing animation opacity. Latest staging URL: https://fanciful-bunny-d77b4b.netlify.app. Latest unique deploy URL: https://6a31af595a703ebec78129e4--fanciful-bunny-d77b4b.netlify.app.
+- `npm run deploy:netlify` passed after the initial implementation, after simplifying the visuals, after increasing animation opacity, and after keeping the center dot steady. Latest staging URL: https://fanciful-bunny-d77b4b.netlify.app. Latest unique deploy URL: https://6a323cd5871422be8be91451--fanciful-bunny-d77b4b.netlify.app.
 - Desktop browser check passed: real canvas `dblclick` creates the new marker DOM, keeps the target-heading overlay active, and renders a turn-slice SVG path with softened line styling.
 - Mobile browser check passed at mobile-sized viewport: real canvas `dblclick` creates one marker inside viewport bounds, keeps the target-heading overlay active, and renders the turn-slice SVG path without blocking HUD controls.
 - Simplified-visual browser checks passed: desktop and mobile real canvas `dblclick` produce only one `.map-ripple-ring` and one `.map-ripple-center`, no ripple crosshair pseudo-elements, and `.heading-target-turn-slice` has computed `stroke: none`.
