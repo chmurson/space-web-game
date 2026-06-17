@@ -3,7 +3,7 @@
 Task: Improvement of the turning behavior
 Branch: improvement-of-the-turning-behavior
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] Main merge completed; PR not requested
 
 ## Artifacts
 
@@ -61,6 +61,11 @@ Status: active
 - [x] `npm run deploy:netlify` deployed branch `improvement-of-the-turning-behavior` to the shared non-main staging site.
 - [x] Staging URL HTTP check passed: `https://fanciful-bunny-d77b4b.netlify.app`.
 - [x] Unique deploy URL HTTP check passed: `https://6a327aa23b952f0b5c3c2078--fanciful-bunny-d77b4b.netlify.app`.
+- [x] Final integrated branch validation passed after merging latest `main`: `npm test` passed 34 files / 201 tests, `npm run build` passed, and `git diff --check` passed.
+- [x] `main` validation passed after fast-forward merge: `npm test` passed 34 files / 201 tests, `npm run build` passed, and `git diff --check` passed.
+- [x] `main` pushed to `origin/main`.
+- [x] Production deploy passed: `https://space-web-game.netlify.app`.
+- [x] Production unique deploy URL HTTP check passed: `https://6a328d9a5756bc21bb187b8f--space-web-game.netlify.app`.
 
 ## Brainstorm Handoff
 
@@ -228,6 +233,23 @@ Residual risk:
 Proposed follow-up issues:
 - None.
 
+## Merge Handoff
+
+Branch commit:
+- `8c4f6e9 feat(runtime): improve target-heading turn behavior`
+
+Integrated branch commit:
+- `b08340e Merge branch 'main' into improvement-of-the-turning-behavior`
+
+Main merge:
+- `main` fast-forwarded to `b08340e`.
+- `main` pushed to `origin/main`.
+
+Production deploy:
+- Production URL: `https://space-web-game.netlify.app`
+- Unique deploy URL: `https://6a328d9a5756bc21bb187b8f--space-web-game.netlify.app`
+- HTTP checks passed for both URLs.
+
 ## Next Step
 
-Commit the branch, merge it to `main`, push `main`, and deploy production.
+No remaining action.
