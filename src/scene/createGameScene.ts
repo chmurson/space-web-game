@@ -3,10 +3,17 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 
+import earthTextureUrl from '../assets/bodies/earth-stylized.webp'
+import moonTextureUrl from '../assets/bodies/moon-stylized.webp'
 import type { GameConfig } from '../config/types'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
 import { createStarfield, type Starfield } from './starfield'
+
+const bodyDiffuseTextureUrls: Record<string, string> = {
+  earth: earthTextureUrl,
+  moon: moonTextureUrl,
+}
 
 export type SpacecraftTrailPoint = {
   elapsed: number
@@ -84,6 +91,7 @@ export const createGameScene = (
   scene.add(debugGrid)
 
   const bodyMeshes = new Map<string, THREE.Mesh>()
+  const textureLoader = new THREE.TextureLoader()
 
   for (const body of bodies) {
     const geometry = new THREE.SphereGeometry(
@@ -96,6 +104,24 @@ export const createGameScene = (
       roughness: 0.82,
       metalness: 0.02,
     })
+    const diffuseTextureUrl = bodyDiffuseTextureUrls[body.id]
+    if (diffuseTextureUrl) {
+      textureLoader.load(
+        diffuseTextureUrl,
+        (diffuseTexture) => {
+          diffuseTexture.colorSpace = THREE.SRGBColorSpace
+          material.color.set('#ffffff')
+          material.map = diffuseTexture
+          material.needsUpdate = true
+        },
+        undefined,
+        () => {
+          material.color.set(body.color)
+          material.map = null
+          material.needsUpdate = true
+        },
+      )
+    }
     const mesh = new THREE.Mesh(geometry, material)
     mesh.name = body.name
     bodyMeshes.set(body.id, mesh)
