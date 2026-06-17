@@ -49,7 +49,7 @@ Status: completed
 
 ## Next Step
 
-Push committed changes to `main`.
+Complete.
 
 ## Brainstorm Handoff
 
@@ -141,9 +141,9 @@ Follow-up issues:
 ## Yeet Notes
 
 - Code commit: `9197e24178c3b304da365213d5ce97cce682bb3a`
-- Shipit state commit: `8a300e4`
+- Shipit state commits: `8a300e4` and the final docs-only commit containing this completed state.
 - Branch: `main`
-- Push: `origin/main` updated through `8a300e4`.
+- Push: `origin/main` updated with the code commit and completed Shipit state.
 - PR: not applicable; user requested direct commit to `main`.
 - Production deploy after code commit:
   - Production URL: https://space-web-game.netlify.app
