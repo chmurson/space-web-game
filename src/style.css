@@ -1093,7 +1093,7 @@ canvas {
     color: #dbeafe;
     font-size: 11px;
     text-shadow: 0 0 8px rgba(56, 189, 248, 0.75);
-    z-index: var(--z-in-game-elements);
+    z-index: var(--z-in-game-floating-elements);
 }
 
 .spacecraft-callout::before {
@@ -1139,18 +1139,27 @@ canvas {
 }
 
 .heading-target-line {
-    stroke: rgba(125, 211, 252, 0.9);
-    stroke-width: 1.5;
-    stroke-dasharray: 8 7;
-    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.34));
+    stroke: rgba(125, 211, 252, 0.3);
+    stroke-width: 1;
+    stroke-dasharray: 3 9;
+    stroke-linecap: round;
 }
 
-.heading-target-arc {
-    fill: none;
-    stroke: rgba(186, 230, 253, 0.94);
-    stroke-width: 4;
-    stroke-linecap: round;
-    filter: drop-shadow(0 0 8px rgba(125, 211, 252, 0.4));
+.heading-target-turn-slice {
+    fill: rgba(56, 189, 248, 0.18);
+    stroke: none;
+}
+
+.heading-target-dot {
+    position: fixed;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(186, 230, 253, 0.72);
+    opacity: 0.68;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    z-index: var(--z-in-game-floating-elements);
 }
 
 .spacecraft-callout span {
@@ -1162,19 +1171,20 @@ canvas {
 
 .map-ripple {
     position: fixed;
-    width: 8px;
-    height: 8px;
+    width: 28px;
+    height: 28px;
     pointer-events: none;
     transform: translate(-50%, -50%);
-    z-index: var(--z-in-game-elements);
+    z-index: var(--z-in-game-floating-elements);
 }
 
-.map-ripple span {
+.map-ripple-ring {
     position: absolute;
-    inset: 0;
-    border: 2px solid #67e8f9;
+    inset: 5px;
+    border: 1px solid rgba(125, 211, 252, 0.68);
     border-radius: 50%;
-    box-shadow: 0 0 10px rgba(103, 232, 249, 0.9);
+    opacity: 0;
+    transform: scale(0.78);
 }
 
 #app .offscreen-indicator {
@@ -1405,6 +1415,7 @@ canvas {
 #app.app-main-menu .scenario-prompt-backdrop,
 #app.app-main-menu .crash-menu,
 #app.app-main-menu .spacecraft-icon-thrust,
+#app.app-main-menu .heading-target-dot,
 #app.app-main-menu .heading-target-overlay,
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,

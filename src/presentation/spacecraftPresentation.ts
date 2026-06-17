@@ -15,13 +15,66 @@ const maxTrailPoints = 450
 const trailLifetimeSeconds = 24 * 60 * 60
 const trailOldestColor = new THREE.Color('#0b1220')
 const trailNewestColor = new THREE.Color('#7c8fa8')
-const headingTargetArcRadiusPx = 44
+const headingTargetSliceInnerRadiusPx = 20
+const headingTargetSliceOuterRadiusPx = 52
 const normalizeAngleDelta = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 const unwrapAngle = (angle: number, previousAngle: number | null) =>
   previousAngle === null
     ? angle
     : previousAngle + normalizeAngleDelta(angle - previousAngle)
+const getScreenCirclePoint = (
+  centerX: number,
+  centerY: number,
+  angle: number,
+  radius: number,
+) => ({
+  x: centerX + Math.cos(angle) * radius,
+  y: centerY + Math.sin(angle) * radius,
+})
+const getHeadingTargetSlicePath = (
+  centerX: number,
+  centerY: number,
+  startAngle: number,
+  deltaAngle: number,
+) => {
+  const endAngle = startAngle + deltaAngle
+  const largeArcFlag = Math.abs(deltaAngle) > Math.PI ? 1 : 0
+  const sweepFlag = deltaAngle >= 0 ? 1 : 0
+  const innerSweepFlag = sweepFlag === 1 ? 0 : 1
+  const outerStart = getScreenCirclePoint(
+    centerX,
+    centerY,
+    startAngle,
+    headingTargetSliceOuterRadiusPx,
+  )
+  const outerEnd = getScreenCirclePoint(
+    centerX,
+    centerY,
+    endAngle,
+    headingTargetSliceOuterRadiusPx,
+  )
+  const innerEnd = getScreenCirclePoint(
+    centerX,
+    centerY,
+    endAngle,
+    headingTargetSliceInnerRadiusPx,
+  )
+  const innerStart = getScreenCirclePoint(
+    centerX,
+    centerY,
+    startAngle,
+    headingTargetSliceInnerRadiusPx,
+  )
+
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${headingTargetSliceOuterRadiusPx} ${headingTargetSliceOuterRadiusPx} 0 ${largeArcFlag} ${sweepFlag} ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${headingTargetSliceInnerRadiusPx} ${headingTargetSliceInnerRadiusPx} 0 ${largeArcFlag} ${innerSweepFlag} ${innerStart.x} ${innerStart.y}`,
+    'Z',
+  ].join(' ')
+}
 
 const syncSpacecraftTrailGeometry = (
   gameScene: GameSceneRefs,
@@ -169,6 +222,7 @@ const updateSpacecraftCallout = (options: {
   if (!isVisible) {
     options.overlayUi.spacecraftCallout.style.display = 'none'
     options.overlayUi.spacecraftIconThrust.style.display = 'none'
+    options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
     return options.displayHeadingAngle
   }
@@ -240,13 +294,6 @@ const updateSpacecraftCallout = (options: {
     const remainingDelta = normalizeAngleDelta(
       targetHeadingAngle - headingAngle,
     )
-    const arcEndAngle = headingAngle + remainingDelta
-    const largeArcFlag = Math.abs(remainingDelta) > Math.PI ? 1 : 0
-    const sweepFlag = remainingDelta >= 0 ? 1 : 0
-    const startX = screenX + Math.cos(headingAngle) * headingTargetArcRadiusPx
-    const startY = screenY + Math.sin(headingAngle) * headingTargetArcRadiusPx
-    const endX = screenX + Math.cos(arcEndAngle) * headingTargetArcRadiusPx
-    const endY = screenY + Math.sin(arcEndAngle) * headingTargetArcRadiusPx
     const targetHeadingScreenPosition = options.targetHeadingWorldPosition
       ? (() => {
           const targetPosition = renderPosition(
@@ -277,11 +324,19 @@ const updateSpacecraftCallout = (options: {
       'y2',
       `${targetHeadingScreenPosition?.y ?? screenY}`,
     )
-    options.overlayUi.headingTargetArc.setAttribute(
+    options.overlayUi.headingTargetDot.style.display = 'block'
+    options.overlayUi.headingTargetDot.style.left = `${
+      targetHeadingScreenPosition?.x ?? screenX
+    }px`
+    options.overlayUi.headingTargetDot.style.top = `${
+      targetHeadingScreenPosition?.y ?? screenY
+    }px`
+    options.overlayUi.headingTargetTurnSlice.setAttribute(
       'd',
-      `M ${startX} ${startY} A ${headingTargetArcRadiusPx} ${headingTargetArcRadiusPx} 0 ${largeArcFlag} ${sweepFlag} ${endX} ${endY}`,
+      getHeadingTargetSlicePath(screenX, screenY, headingAngle, remainingDelta),
     )
   } else {
+    options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
   }
 

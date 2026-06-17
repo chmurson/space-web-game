@@ -20,7 +20,9 @@ export const createRipple = (
   ripple.className = 'map-ripple'
   ripple.style.left = `${screenX}px`
   ripple.style.top = `${screenY}px`
-  ripple.innerHTML = '<span></span><span></span><span></span>'
+  ripple.innerHTML = `
+    <span class="map-ripple-ring"></span>
+  `
   parent.appendChild(ripple)
   ripples.push({
     element: ripple,
@@ -57,7 +59,7 @@ export const updateRipples = (
     const ripple = ripples[index]
     ripple.age += dt
     const progress = ripple.age / maxAge
-    const rings = Array.from(ripple.element.children) as HTMLElement[]
+    const ring = ripple.element.querySelector<HTMLElement>('.map-ripple-ring')
 
     if (ripple.worldPosition && options?.camera) {
       const screenPosition = projectWorldPositionToScreen(
@@ -68,15 +70,10 @@ export const updateRipples = (
       ripple.element.style.top = `${screenPosition.y}px`
     }
 
-    for (let ringIndex = 0; ringIndex < rings.length; ringIndex += 1) {
-      const ring = rings[ringIndex]
-      const delayedProgress = THREE.MathUtils.clamp(
-        progress - ringIndex * 0.14,
-        0,
-        1,
-      )
+    if (ring) {
+      const delayedProgress = THREE.MathUtils.clamp(progress, 0, 1)
       ring.style.opacity = `${Math.max(0, 0.62 * (1 - delayedProgress))}`
-      ring.style.transform = `scale(${1 + delayedProgress * 4.33})`
+      ring.style.transform = `scale(${0.78 + delayedProgress * 1.45})`
     }
 
     if (ripple.age >= maxAge) {
