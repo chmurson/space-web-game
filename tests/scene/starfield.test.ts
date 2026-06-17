@@ -32,6 +32,9 @@ const getPositionValues = (starfield: Starfield, layerIndex = 0) =>
     getLayerPoints(starfield, layerIndex).geometry.attributes.position.array,
   )
 
+const getLayerOpacity = (starfield: Starfield, layerIndex: number) =>
+  getLayerPoints(starfield, layerIndex).material.opacity
+
 const updateStarfield = (
   starfield: Starfield,
   options: {
@@ -109,13 +112,35 @@ describe('createStarfield', () => {
     expect(closeLayerMaterial.opacity).toBe(0)
   })
 
-  it('crossfades from dense close layers to a sparse far layer at max zoom-out', () => {
+  it('does not fade layers away while zooming in', () => {
+    const starfield = createStarfield()
+    const zoomInViewportSizes = [2_500, 1_800, 1_000, 600, 300, 150, 75, 35, 8]
+    let previousOpacities: number[] | null = null
+
+    for (const viewportSize of zoomInViewportSizes) {
+      updateStarfield(starfield, { viewportSize })
+      const opacities = Array.from({ length: starfield.group.children.length })
+        .map((_, layerIndex) => getLayerOpacity(starfield, layerIndex))
+
+      if (previousOpacities) {
+        for (let index = 0; index < opacities.length; index += 1) {
+          expect(opacities[index]).toBeGreaterThanOrEqual(
+            previousOpacities[index],
+          )
+        }
+      }
+
+      previousOpacities = opacities
+    }
+  })
+
+  it('keeps sparse anchor stars available while thinning detail at max zoom-out', () => {
     const starfield = createStarfield()
 
     updateStarfield(starfield, { viewportSize: 4 })
 
     expect(getLayerGroup(starfield, 0).visible).toBe(true)
-    expect(getLayerGroup(starfield, 5).visible).toBe(false)
+    expect(getLayerGroup(starfield, 5).visible).toBe(true)
 
     updateStarfield(starfield, { viewportSize: 2_500 })
 
