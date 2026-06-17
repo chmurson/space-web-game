@@ -14,8 +14,6 @@ type StarfieldLayerConfig = {
   backgroundY: number
   chunkSize: number
   extraStarsPerChunk: number
-  fadeInEndViewport?: number
-  fadeInStartViewport?: number
   fadeOutEndViewport?: number
   fadeOutStartViewport?: number
   maxBrightness: number
@@ -44,7 +42,7 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
     fadeOutStartViewport: 8,
     maxBrightness: 0.64,
     minBrightness: 0.24,
-    opacity: 0.4,
+    opacity: 0.36,
     parallaxFactor: 0.006,
     seed: 0x27d4eb2d,
     sizePixels: 0.62,
@@ -58,7 +56,7 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
     fadeOutStartViewport: 40,
     maxBrightness: 0.58,
     minBrightness: 0.22,
-    opacity: 0.32,
+    opacity: 0.28,
     parallaxFactor: 0.012,
     seed: 0x165667b1,
     sizePixels: 0.7,
@@ -68,13 +66,11 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
     backgroundY: -0.4,
     chunkSize: 12,
     extraStarsPerChunk: 2,
-    fadeInEndViewport: 75,
-    fadeInStartViewport: 35,
-    fadeOutEndViewport: 360,
-    fadeOutStartViewport: 150,
+    fadeOutEndViewport: 420,
+    fadeOutStartViewport: 180,
     maxBrightness: 0.6,
     minBrightness: 0.22,
-    opacity: 0.3,
+    opacity: 0.22,
     parallaxFactor: 0.024,
     seed: 0xd3a2646c,
     sizePixels: 0.85,
@@ -84,13 +80,11 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
     backgroundY: -0.6,
     chunkSize: 150,
     extraStarsPerChunk: 2,
-    fadeInEndViewport: 90,
-    fadeInStartViewport: 45,
     fadeOutEndViewport: 2_100,
     fadeOutStartViewport: 900,
     maxBrightness: 0.62,
     minBrightness: 0.24,
-    opacity: 0.36,
+    opacity: 0.28,
     parallaxFactor: 0.018,
     seed: 0x41c64e6d,
     sizePixels: 0.95,
@@ -100,13 +94,11 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
     backgroundY: -0.8,
     chunkSize: 260,
     extraStarsPerChunk: 1,
-    fadeInEndViewport: 500,
-    fadeInStartViewport: 220,
-    fadeOutEndViewport: 1_600,
+    fadeOutEndViewport: 1_800,
     fadeOutStartViewport: 900,
     maxBrightness: 0.62,
     minBrightness: 0.25,
-    opacity: 0.3,
+    opacity: 0.18,
     parallaxFactor: 0.03,
     seed: 0x9e3779b9,
     sizePixels: 1.1,
@@ -116,11 +108,9 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
     backgroundY: -1,
     chunkSize: 420,
     extraStarsPerChunk: 1,
-    fadeInEndViewport: 1_100,
-    fadeInStartViewport: 600,
     maxBrightness: 0.64,
     minBrightness: 0.28,
-    opacity: 0.28,
+    opacity: 0.16,
     parallaxFactor: 0.018,
     seed: 0x85ebca6b,
     sizePixels: 1.25,
@@ -150,31 +140,6 @@ const smoothstep = (value: number) => {
   return t * t * (3 - 2 * t)
 }
 
-const getFadeInMultiplier = (
-  config: StarfieldLayerConfig,
-  viewportSize: number,
-) => {
-  if (
-    config.fadeInStartViewport === undefined ||
-    config.fadeInEndViewport === undefined
-  ) {
-    return 1
-  }
-
-  if (viewportSize <= config.fadeInStartViewport) {
-    return 0
-  }
-
-  if (viewportSize >= config.fadeInEndViewport) {
-    return 1
-  }
-
-  const fadeProgress =
-    (viewportSize - config.fadeInStartViewport) /
-    (config.fadeInEndViewport - config.fadeInStartViewport)
-  return smoothstep(fadeProgress)
-}
-
 const getFadeOutMultiplier = (
   config: StarfieldLayerConfig,
   viewportSize: number,
@@ -201,9 +166,7 @@ const getFadeOutMultiplier = (
 }
 
 const getLayerOpacity = (config: StarfieldLayerConfig, viewportSize: number) =>
-  config.opacity *
-  getFadeInMultiplier(config, viewportSize) *
-  getFadeOutMultiplier(config, viewportSize)
+  config.opacity * getFadeOutMultiplier(config, viewportSize)
 
 const pushStarColor = (
   colors: number[],
