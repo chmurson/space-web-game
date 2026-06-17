@@ -2,7 +2,7 @@
 
 Task: New looks of turning animations
 Branch: new-looks-of-turning-animations
-Current Mode: implement
+Current Mode: review
 Status: active
 
 ## Checklist
@@ -24,7 +24,7 @@ Status: active
 - Task slices: inline
 - Implementation: inline
 - Cleanup: inline
-- Review: pending
+- Review: inline pending
 
 ## Decisions
 
@@ -51,7 +51,7 @@ Status: active
 
 ## Next Step
 
-Enter Shipit review when requested.
+Run CodeRabbit review, self-review the diff, record findings, then merge to `main` if review passes.
 
 ## Brainstorm Handoff
 
