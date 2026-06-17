@@ -246,8 +246,14 @@ Validation:
 - `npm run build` passed.
 
 Merge/deploy status:
-- Pending feature commit, merge to `main`, merged-main validation, and production deploy.
+- Feature commit: `2f23cb5 feat(scene): improve star zoom density`.
+- Merge commit on `main`: `9581941 Merge branch 'improve-star-rendering'`.
+- Merged-main validation passed: `npm test` and `npm run build`.
+- Production deploy passed.
+- Production URL: https://space-web-game.netlify.app
+- Unique production deploy URL: https://6a330d71c522284c3664a906--space-web-game.netlify.app
+- Build logs: https://app.netlify.com/projects/space-web-game/deploys/6a330d71c522284c3664a906
 
 ## Next Step
 
-Commit feature branch, merge to `main`, validate, and deploy production.
+Task complete.
