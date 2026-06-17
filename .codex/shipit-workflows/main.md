@@ -141,10 +141,11 @@ Follow-up issues:
 ## Yeet Notes
 
 - Code commit: `9197e24178c3b304da365213d5ce97cce682bb3a`
+- Shipit state commit: `8a300e4`
 - Branch: `main`
+- Push: `origin/main` updated through `8a300e4`.
 - PR: not applicable; user requested direct commit to `main`.
 - Production deploy after code commit:
   - Production URL: https://space-web-game.netlify.app
   - Unique deploy URL: https://6a3272d2e97bd4583b19237a--space-web-game.netlify.app
   - Build logs: https://app.netlify.com/projects/space-web-game/deploys/6a3272d2e97bd4583b19237a
-- Pending: push local `main` to `origin/main`.
