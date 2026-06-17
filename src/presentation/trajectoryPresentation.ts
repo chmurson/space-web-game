@@ -322,7 +322,53 @@ export const createTrajectoryPresentation = (options: {
     syncInertialPredictionVisual()
   }
 
+  const getCoachAnchorScreenPoint = (): { x: number; y: number } | null => {
+    if (
+      options.runtime.scenario.directives.hiddenUIElements.has('trajectory')
+    ) {
+      return null
+    }
+
+    const predictionState = options.trajectoryPredictionRuntime.getState()
+    const points = predictionState.targetRelativePredictionPoints
+    if (points.length === 0) {
+      return null
+    }
+
+    const target = options.queries.getAssistTarget()
+    const point =
+      points[
+        Math.min(
+          points.length - 1,
+          Math.max(1, Math.floor(points.length * 0.18)),
+        )
+      ]
+    if (!point) {
+      return null
+    }
+
+    const screenPosition = renderPosition(
+      target.position.x + point.x,
+      target.position.y + point.y,
+      0.18,
+    )
+    screenPosition.project(options.gameScene.camera)
+
+    const x = (screenPosition.x * 0.5 + 0.5) * window.innerWidth
+    const y = (-screenPosition.y * 0.5 + 0.5) * window.innerHeight
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return null
+    }
+
+    const padding = 24
+    return {
+      x: THREE.MathUtils.clamp(x, padding, window.innerWidth - padding),
+      y: THREE.MathUtils.clamp(y, padding, window.innerHeight - padding),
+    }
+  }
+
   return {
+    getCoachAnchorScreenPoint,
     getPredictionState: () => options.trajectoryPredictionRuntime.getState(),
     maybeRefreshPrediction: (realDt: number) => {
       const refreshed = options.trajectoryPredictionRuntime.maybeRefresh(

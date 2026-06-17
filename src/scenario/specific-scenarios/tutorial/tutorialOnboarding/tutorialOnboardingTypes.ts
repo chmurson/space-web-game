@@ -10,7 +10,6 @@ export type TutorialOnboardingStepId =
   | 'intro-show-thrust-control'
   | 'intro-thrust'
   | 'intro-keep-thrusting'
-  | 'intro-thrusting-complete'
   | 'intro-thrusting-off'
   | 'intro-point-and-turn'
   | 'intro-timewarp'
@@ -34,6 +33,8 @@ export type TutorialOnboardingPromptContent = {
 export type TutorialOnboardingStepProgress = {
   accumulatedHeadingChangeRadians: number
   accumulatedMainThrustMs: number
+  accumulatedTrajectoryClearMs?: number
+  hasStartedMainBurn?: boolean
   lastSampleHeading: number | null
   lastSampleAtMs: number | null
   stepStartHeading: number | null

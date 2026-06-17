@@ -16,7 +16,6 @@ export const tutorialOnboardingStepOrder: TutorialOnboardingStepId[] = [
   'intro-show-thrust-control',
   'intro-thrust',
   'intro-keep-thrusting',
-  'intro-thrusting-complete',
   'intro-thrusting-off',
   'intro-point-and-turn',
   'intro-timewarp',
@@ -68,13 +67,13 @@ const tutorialOnboardingPromptDefinitions: Record<
   'intro-show-thrust-control': {
     id: 'intro-show-thrust-control',
     title: ({ inputMode }) =>
-      inputMode === 'mobile' ? 'Open Burn Control' : 'Show Thrust Control',
+      inputMode === 'mobile' ? 'Open Burn Control' : 'Start A Burn',
     shortLabel: ({ inputMode }) =>
-      inputMode === 'mobile' ? 'Open Burn Control' : 'Show Thrust Control',
+      inputMode === 'mobile' ? 'Open Burn Control' : 'Start A Burn',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Swipe inward from the Burn tab on the screen edge to open the thrust control.'
-        : 'Press W or Up Arrow to wake the main engine and start pushing your path away from Earth.',
+        ? 'Swipe inward from the Burn tab on the screen edge to open the burn control.'
+        : 'Press W or Up Arrow to start a burn.',
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -86,12 +85,12 @@ const tutorialOnboardingPromptDefinitions: Record<
   },
   'intro-thrust': {
     id: 'intro-thrust',
-    title: 'Use Thrust',
-    shortLabel: 'Use Thrust',
+    title: 'Start A Burn',
+    shortLabel: 'Start A Burn',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Drag the orange handle upward to turn thrust on. Hold it briefly while your path starts bending away from Earth.'
-        : 'Keep W or Up Arrow held briefly so the main engine can start widening your escape path.',
+        ? 'Drag the orange handle upward and hold it for a moment to give the ship a short burn.'
+        : 'Hold W or Up Arrow for a moment to give the ship a short burn.',
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -103,31 +102,10 @@ const tutorialOnboardingPromptDefinitions: Record<
   },
   'intro-keep-thrusting': {
     id: 'intro-keep-thrusting',
-    title: 'Keep Thrusting',
-    shortLabel: 'Keep Thrusting',
-    description: `That's it. Keep the burn going for ${formatDuration(requiredIntroKeepThrustMs / 1000)} so your path opens away from Earth.`,
+    title: 'Keep Burning',
+    shortLabel: 'Keep Burning',
+    description: `That's it. Keep the burn going for ${formatDuration(requiredIntroKeepThrustMs / 1000)}. Watch the speed pill while the ship picks up speed.`,
     buttons: [],
-    presentation: {
-      kind: 'coach',
-      anchor: 'speed-pill',
-      focusedHudElement: 'speed-pill',
-      focusedTouchControl: ({ inputMode }) =>
-        inputMode === 'mobile' ? 'burn' : undefined,
-    },
-  },
-  'intro-thrusting-complete': {
-    id: 'intro-thrusting-complete',
-    title: 'Nice!',
-    shortLabel: 'Nice!',
-    description:
-      "That's great. Here you can see if your thrust is active. Also, your current speed is displayed.",
-    buttons: [
-      {
-        action: { kind: 'scenario', id: 'advance-onboarding-step' },
-        label: 'Continue',
-        tone: 'primary',
-      },
-    ],
     presentation: {
       kind: 'coach',
       anchor: 'speed-pill',
@@ -138,13 +116,13 @@ const tutorialOnboardingPromptDefinitions: Record<
   },
   'intro-thrusting-off': {
     id: 'intro-thrusting-off',
-    title: 'Thrusting Off',
-    shortLabel: 'Thrusting Off',
+    title: 'Stop The Burn',
+    shortLabel: 'Stop The Burn',
     buttons: [],
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Drag the orange handle back down to turn thrust off.'
-        : 'Release W or Up Arrow so the main engine shuts down.',
+        ? 'Drag the orange handle back down to stop the burn.'
+        : 'Release W or Up Arrow to stop the burn.',
     presentation: {
       kind: 'coach',
       anchor: ({ inputMode }) =>
@@ -170,8 +148,8 @@ const tutorialOnboardingPromptDefinitions: Record<
     shortLabel: 'Raise Time Warp',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches at least x1m.'
-        : 'Increase time warp until the time pill reaches at least x1m.',
+        ? 'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches at least x30s.'
+        : 'Increase time warp until the time pill reaches at least x30s.',
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -183,32 +161,26 @@ const tutorialOnboardingPromptDefinitions: Record<
   },
   'intro-timewarp-thrust': {
     id: 'intro-timewarp-thrust',
-    title: 'Burn At x1m',
-    shortLabel: 'Burn At x1m',
+    title: 'Burn At x30s',
+    shortLabel: 'Burn At x30s',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'The tutorial is turning you outward from the nearest body. Keep the time pill at x1m, the one-minute warp notch, then open Burn and hold the orange handle upward for 2 seconds.'
-        : 'The tutorial is turning you outward from the nearest body. Keep the time pill at x1m, the one-minute warp notch, then hold W or Up Arrow for 2 seconds.',
+        ? 'Keep time warp at x30s, then open Burn and hold the handle up for a few seconds to move away from Earth.'
+        : 'Keep time warp at x30s, then hold W or Up Arrow for a few seconds to move away from Earth.',
     buttons: [],
     presentation: {
       kind: 'coach',
       anchor: 'trajectory',
+      layout: 'floating',
     },
   },
   'intro-trajectory': {
     id: 'intro-trajectory',
-    title: 'Read The Trajectory',
-    shortLabel: 'Read The Trajectory',
+    title: 'This Is Your Trajectory',
+    shortLabel: 'This Is Your Trajectory',
     description:
-      'The projected line shows where your current motion is taking you. Thrust, turning, and time warp let you inspect and reshape that future path.',
-    buttons: [
-      {
-        action: { kind: 'scenario', id: 'advance-onboarding-step' },
-        label: 'Continue',
-        tone: 'primary',
-      },
-    ],
-    pausesGameplay: true,
+      'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
+    buttons: [],
     presentation: { kind: 'coach', anchor: 'trajectory' },
   },
   'intro-complete': {
@@ -309,11 +281,7 @@ export const getHiddenOnboardingUIElements = (
 
   if (
     state.activeStepId === 'intro-show-thrust-control' ||
-    state.activeStepId === 'intro-thrust' ||
-    state.activeStepId === 'intro-keep-thrusting' ||
-    state.activeStepId === 'intro-thrusting-off' ||
-    state.activeStepId === 'intro-point-and-turn' ||
-    state.activeStepId === 'intro-thrusting-complete'
+    state.activeStepId === 'intro-thrust'
   ) {
     return new Set([
       'scenarioInfoButton',
@@ -325,15 +293,31 @@ export const getHiddenOnboardingUIElements = (
   }
 
   if (
-    state.activeStepId === 'intro-timewarp' ||
-    state.activeStepId === 'intro-timewarp-thrust'
+    state.activeStepId === 'intro-keep-thrusting' ||
+    state.activeStepId === 'intro-thrusting-off' ||
+    state.activeStepId === 'intro-point-and-turn'
   ) {
     return new Set([
       'scenarioInfoButton',
       'targetControl',
       'targetPill',
-      'trajectory',
+      'timeWarpPill',
     ])
+  }
+
+  if (state.activeStepId === 'intro-timewarp') {
+    return new Set(['scenarioInfoButton', 'targetControl', 'targetPill'])
+  }
+
+  if (state.activeStepId === 'intro-timewarp-thrust') {
+    const hiddenElements: RuntimeScenarioDirectives['hiddenUIElements'] =
+      new Set(['scenarioInfoButton', 'targetControl', 'targetPill'])
+
+    if (state.progress.hasStartedMainBurn !== true) {
+      hiddenElements.add('trajectory')
+    }
+
+    return hiddenElements
   }
 
   if (state.activeStepId === 'intro-trajectory') {

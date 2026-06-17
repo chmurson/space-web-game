@@ -44,6 +44,7 @@ export type OverlayUiRefs = {
   spacecraftCallout: HTMLElement
   spacecraftCalloutLabel: HTMLSpanElement | null
   spacecraftIconThrust: HTMLElement
+  trajectoryCoachAnchor: HTMLElement
   statAssist: HTMLElement | null
   statEngine: HTMLElement | null
   statFuel: HTMLElement | null
@@ -147,6 +148,12 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   `
   options.app.appendChild(scenarioPrompt)
 
+  const trajectoryCoachAnchor = document.createElement('div')
+  trajectoryCoachAnchor.className = 'scenario-trajectory-coach-anchor'
+  trajectoryCoachAnchor.setAttribute('aria-hidden', 'true')
+  trajectoryCoachAnchor.style.display = 'none'
+  options.app.appendChild(trajectoryCoachAnchor)
+
   const scenarioPromptReplayButton = document.createElement('button')
   scenarioPromptReplayButton.type = 'button'
   scenarioPromptReplayButton.className = 'scenario-prompt-pill'
@@ -247,6 +254,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     spacecraftCallout,
     spacecraftCalloutLabel,
     spacecraftIconThrust,
+    trajectoryCoachAnchor,
     statAssist: null,
     statEngine: null,
     statFuel: null,

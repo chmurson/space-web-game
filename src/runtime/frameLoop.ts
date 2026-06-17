@@ -20,6 +20,7 @@ import {
   applySimulationFrameResult,
 } from './runtimeStateTransitions'
 import { defaultMaxControlWarp, stepSimulationFrame } from './simulationStep'
+import { createTrajectoryPredictionRuntime } from './trajectoryPredictionRuntime'
 
 export const createFrameLoop = (options: {
   gameScene: GameSceneRefs
@@ -48,6 +49,10 @@ export const createFrameLoop = (options: {
   let lastTime = performance.now()
   let smoothedFps = 60
   let smoothedCpuMs = 0
+  const scenarioTrajectoryPredictionRuntime =
+    createTrajectoryPredictionRuntime()
+  let scenarioTrajectoryPredictionHorizonHours: number | null = null
+  let scenarioTrajectoryPredictionInitialized = false
 
   const refreshTrajectoryPrediction = () => {
     options.trajectoryPresentation.refreshPrediction()
@@ -96,14 +101,50 @@ export const createFrameLoop = (options: {
       applySimulationFrameResult(options.runtime, simulationStep)
     }
 
+    options.trajectoryPresentation.maybeRefreshPrediction(realDt)
+    const getTrajectoryPredictionForHorizonHours = (horizonHours: number) => {
+      const predictionOptions = {
+        assistMode: options.runtime.simulation.assistMode,
+        getAssistPredictionControls:
+          options.queries.getAssistPredictionControls,
+        getAssistTarget: options.queries.getAssistTarget,
+        getCaptureMetrics: options.queries.getCaptureMetrics,
+        physicsEngine: options.physicsEngine,
+        predictionConfig: options.queries.getPredictionConfig(
+          horizonHours * 60 * 60,
+        ),
+        state: options.runtime.simulation.state,
+      }
+
+      if (
+        !scenarioTrajectoryPredictionInitialized ||
+        scenarioTrajectoryPredictionHorizonHours !== horizonHours
+      ) {
+        scenarioTrajectoryPredictionRuntime.refresh(predictionOptions)
+        scenarioTrajectoryPredictionInitialized = true
+        scenarioTrajectoryPredictionHorizonHours = horizonHours
+      } else {
+        scenarioTrajectoryPredictionRuntime.maybeRefresh(
+          realDt,
+          predictionOptions,
+        )
+      }
+
+      return scenarioTrajectoryPredictionRuntime.getState()
+    }
+
     advanceRuntimeScenario(
       options.runtime,
       options.globalScenarioDirectiveLimits,
-      { shouldAdvance: !gameplayPaused },
+      {
+        getTrajectoryPredictionForHorizonHours,
+        shouldAdvance: !gameplayPaused,
+        trajectoryPrediction:
+          options.trajectoryPresentation.getPredictionState(),
+      },
     )
     options.runtimeActions.updateCamera()
     updateRipples(options.ripples, realDt, { camera: options.gameScene.camera })
-    options.trajectoryPresentation.maybeRefreshPrediction(realDt)
 
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
     options.bodyPresentation.updateVisuals({
