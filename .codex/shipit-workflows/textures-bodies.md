@@ -3,7 +3,7 @@
 Task: Textured Earth and Moon bodies
 Branch: textures-bodies
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -31,7 +31,7 @@ Status: active
 
 - Created branch `textures-bodies` from `main` in worktree `/Users/chmurson/Dev/priv/worktrees/space-web-game/textures-bodies/space-web-game`.
 - Existing `merge-policy` worktree had a modified `AGENTS.md`; it was left untouched.
-- No project-specific `.codex/shipit.config.md`, `.codex/delivery-flow.config.md`, or `.codex/workflow.config.md` exists.
+- No project-specific Shipit config existed at kickoff; this branch added `.codex/shipit.config.md`.
 - Game Studio routing: use `game-studio:three-webgl-game` for the Three.js material/runtime changes and `game-studio:web-3d-asset-pipeline` for texture source, size, packaging, and validation choices.
 - Repository deploy guidance applies after executable or user-visible implementation: non-`main` changes should deploy to the configured staging site before handoff.
 - Current body meshes are created in `src/scene/createGameScene.ts` with `MeshStandardMaterial` using `body.color`; body colors should remain available for HUD/devtools glyphs and fallback styling.
@@ -64,7 +64,7 @@ Status: active
 
 ## Next Step
 
-Commit the branch, squash merge to main, validate, and deploy production.
+Task complete. `textures-bodies` was squash-merged to `main`, validated, and deployed to production.
 
 ## Brainstorm Handoff
 
@@ -346,4 +346,42 @@ Validation results:
 Residual risk:
 
 - Texture grading remains a subjective first pass and may need visual tuning.
-- Production deploy is pending the main squash merge.
+- Production deploy completed after the main squash merge; details are recorded below.
+
+## Merge And Production Deploy
+
+Date: 2026-06-17
+
+Branch commit:
+
+- `textures-bodies` commit: `b5f038c feat(scene): texture Earth and Moon bodies`
+
+Main merge:
+
+- Squash-merged `textures-bodies` into local `main`.
+- Main commit: `7d187e7 feat(scene): texture Earth and Moon bodies`
+- No merge commit was created.
+- Local `main` was clean before merge and matched `origin/main`; after merge it is ahead of `origin/main`.
+
+Main validation:
+
+- `npm run generate:body-textures` passed.
+- `npx biome check scripts/generateBodyTextures.mjs src/scene/createGameScene.ts package.json` passed.
+- `git diff --check` passed.
+- `npm run build` passed; existing large JS chunk warning remains. Vite emitted `earth-stylized-OBilL9Sv.webp` at 96.82 kB and `moon-stylized-Be-gkYCJ.webp` at 284.91 kB.
+- `npm test` passed: 34 files, 204 tests.
+- Playwright/Chrome screenshots passed visual smoke checks from the merged main worktree:
+  - desktop `?scenario=earth-moon`
+  - desktop `?scenario=moon-capture-debug`
+  - mobile `?scenario=earth-moon&touchBurnSide=left&touchTargetSide=right&touchTrajectorySide=hidden&touchWarpSide=right`
+
+Production deploy:
+
+- `npm run deploy:netlify` passed on `main`.
+- Production URL: https://space-web-game.netlify.app
+- Unique deploy URL: https://6a32f8a236f4e8d7b0528dd0--space-web-game.netlify.app
+- Build logs: https://app.netlify.com/projects/space-web-game/deploys/6a32f8a236f4e8d7b0528dd0
+
+Post-merge notes:
+
+- This final Shipit-state update is docs-only and does not require another Netlify deploy under repository deployment rules.
