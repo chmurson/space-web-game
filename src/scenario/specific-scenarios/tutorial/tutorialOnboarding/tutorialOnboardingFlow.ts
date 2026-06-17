@@ -5,7 +5,7 @@ import type {
   PromptResolverContext,
   PromptValue,
 } from '../../../scenarioPromptTypes'
-import { requiredIntroKeepThrustMs } from './config'
+import { requiredIntroKeepThrustMs, requiredTimeWarpKeepMs } from './config'
 import type {
   TutorialOnboardingPromptContent,
   TutorialOnboardingState,
@@ -19,6 +19,7 @@ export const tutorialOnboardingStepOrder: TutorialOnboardingStepId[] = [
   'intro-thrusting-off',
   'intro-point-and-turn',
   'intro-timewarp',
+  'intro-keep-timewarp',
   'intro-timewarp-thrust',
   'intro-trajectory',
   'intro-complete',
@@ -138,23 +139,37 @@ const tutorialOnboardingPromptDefinitions: Record<
     title: 'Point By Double-Tapping',
     shortLabel: 'Point By Double-Tapping',
     description:
-      'Double-tap the playfield to set a heading directly. Wait until the ship finishes turning to that new heading.',
+      'Double-tap open space away from Earth to set a new heading. Wait while the ship turns to face it.',
     buttons: [],
-    presentation: { kind: 'coach', anchor: 'trajectory' },
+    presentation: { kind: 'coach', layout: 'playfield' },
   },
   'intro-timewarp': {
     id: 'intro-timewarp',
-    title: 'Raise Time Warp',
-    shortLabel: 'Raise Time Warp',
+    title: 'Set Time Warp',
+    shortLabel: 'Set Time Warp',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches at least x30s.'
-        : 'Increase time warp until the time pill reaches at least x30s.',
+        ? 'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches x30s.'
+        : 'Increase time warp until the time pill reaches x30s.',
     buttons: [],
     presentation: {
       kind: 'coach',
       anchor: ({ inputMode }) =>
         inputMode === 'mobile' ? 'time-warp-control' : 'trajectory',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'warp' : undefined,
+    },
+  },
+  'intro-keep-timewarp': {
+    id: 'intro-keep-timewarp',
+    title: 'Keep x30s',
+    shortLabel: 'Keep x30s',
+    description: `Keep time warp at x30s for ${formatDuration(requiredTimeWarpKeepMs / 1000)}. Time warp speeds up the simulation so you can see the orbit change without waiting in real time.`,
+    buttons: [],
+    presentation: {
+      kind: 'coach',
+      anchor: 'time-warp-pill',
+      focusedHudElement: 'time-warp-pill',
       focusedTouchControl: ({ inputMode }) =>
         inputMode === 'mobile' ? 'warp' : undefined,
     },
@@ -223,7 +238,7 @@ export const getTutorialOnboardingPromptContent = (
   const presentation = definition.presentation
   const primaryButton = definition.buttons[0]
   const anchor =
-    presentation.kind === 'coach'
+    presentation.kind === 'coach' && presentation.anchor
       ? resolvePromptValue(presentation.anchor, inputMode)
       : undefined
   const touchHintTarget =
@@ -305,7 +320,10 @@ export const getHiddenOnboardingUIElements = (
     ])
   }
 
-  if (state.activeStepId === 'intro-timewarp') {
+  if (
+    state.activeStepId === 'intro-timewarp' ||
+    state.activeStepId === 'intro-keep-timewarp'
+  ) {
     return new Set(['scenarioInfoButton', 'targetControl', 'targetPill'])
   }
 

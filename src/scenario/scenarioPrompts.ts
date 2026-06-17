@@ -70,7 +70,9 @@ const resolvePrompt = (
     return {
       ...basePrompt,
       kind: 'coach',
-      anchor: resolvePromptValue(presentation.anchor, context),
+      anchor: presentation.anchor
+        ? resolvePromptValue(presentation.anchor, context)
+        : undefined,
       focusedTouchControl: presentation.focusedTouchControl
         ? resolvePromptValue(presentation.focusedTouchControl, context)
         : undefined,

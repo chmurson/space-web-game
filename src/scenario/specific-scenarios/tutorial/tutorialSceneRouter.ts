@@ -53,7 +53,7 @@ import {
 
 const requiredMoonOrbitTurns = 3
 const fullTurnRadians = Math.PI * 2
-const escapeEarthPredictionHorizonHours = 72
+const escapeEarthPredictionHorizonHours = 48
 const escapeEarthCompletedOnboardingMaxTimeWarp = 300
 const escapeEarthOnboardingMaxTimeWarp = 30
 export const escapeEarthTrajectoryViewportSize =

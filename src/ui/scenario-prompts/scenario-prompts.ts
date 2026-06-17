@@ -286,7 +286,9 @@ const getPromptDisplayMode = (
   activePrompt: ResolvedPrompt | null,
 ): PromptDisplayMode | null =>
   activePrompt?.kind === 'coach' &&
-  (activePrompt.layout === 'anchored' || activePrompt.layout === 'floating')
+  (activePrompt.layout === 'anchored' ||
+    activePrompt.layout === 'floating' ||
+    activePrompt.layout === 'playfield')
     ? 'coach'
     : activePrompt
       ? 'modal'
@@ -320,7 +322,7 @@ const computePromptIdentity = (
     activePromptDescription: activePrompt?.description ?? '',
     activePromptMode: getPromptDisplayMode(activePrompt),
     activePromptAnchor:
-      activePrompt?.kind === 'coach' ? activePrompt.anchor : null,
+      activePrompt?.kind === 'coach' ? (activePrompt.anchor ?? null) : null,
     activePromptFocusedHudElement:
       activePrompt?.kind === 'coach'
         ? (activePrompt.focusedHudElement ?? null)
@@ -591,12 +593,18 @@ export const createScenarioPromptUpdater = (
       // Set prompt mode
       const promptMode = getPromptDisplayMode(activePrompt) ?? 'modal'
       refs.backdropElement.dataset.promptMode = promptMode
+      if (activePrompt?.kind === 'coach') {
+        refs.backdropElement.dataset.promptLayout = activePrompt.layout
+      } else {
+        delete refs.backdropElement.dataset.promptLayout
+      }
 
       // Set anchor if present
       const currentAnchorKey =
         activePrompt?.kind === 'coach' &&
         promptMode === 'coach' &&
-        activePrompt.layout === 'anchored'
+        activePrompt.layout === 'anchored' &&
+        activePrompt.anchor
           ? (activePrompt.anchor as AnchorKey)
           : undefined
       if (currentAnchorKey) {

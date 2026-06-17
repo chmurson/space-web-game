@@ -55,6 +55,14 @@
   margin: 0;
 }
 
+.scenario-prompt-backdrop[data-prompt-mode="coach"][data-prompt-layout="playfield"]
+  .scenario-prompt {
+  left: max(24px, env(safe-area-inset-left, 0px));
+  top: 56%;
+  transform: translateY(-50%);
+  width: min(340px, calc(100vw - 48px));
+}
+
 .scenario-prompt-header {
   display: flex;
   align-items: flex-start;
@@ -195,5 +203,14 @@
   .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
     width: calc(100vw - 20px);
     max-width: 360px;
+  }
+
+  .scenario-prompt-backdrop[data-prompt-mode="coach"][data-prompt-layout="playfield"]
+    .scenario-prompt {
+    left: 50%;
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+    transform: translateX(-50%);
+    width: calc(100vw - 24px);
   }
 }

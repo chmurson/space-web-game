@@ -159,17 +159,26 @@ describe('tutorialOnboardingProgress', () => {
     ).toMatchObject({
       anchor: 'time-warp-control',
       description:
-        'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches at least x30s.',
+        'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches x30s.',
       focusedTouchControl: 'warp',
-      title: 'Raise Time Warp',
+      title: 'Set Time Warp',
     })
     expect(
       getTutorialOnboardingPromptContent('intro-timewarp', 'desktop'),
     ).toMatchObject({
       anchor: 'trajectory',
+      description: 'Increase time warp until the time pill reaches x30s.',
+      title: 'Set Time Warp',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-keep-timewarp', 'mobile'),
+    ).toMatchObject({
+      anchor: 'time-warp-pill',
       description:
-        'Increase time warp until the time pill reaches at least x30s.',
-      title: 'Raise Time Warp',
+        'Keep time warp at x30s for 10s. Time warp speeds up the simulation so you can see the orbit change without waiting in real time.',
+      focusedHudElement: 'time-warp-pill',
+      focusedTouchControl: 'warp',
+      title: 'Keep x30s',
     })
   })
 
@@ -254,6 +263,21 @@ describe('tutorialOnboardingProgress', () => {
       anchor: 'speed-pill',
       description: 'Release W or Up Arrow to stop the burn.',
     })
+  })
+
+  it('uses current copy for direct heading selection', () => {
+    expect(
+      getTutorialOnboardingPromptContent('intro-point-and-turn', 'desktop'),
+    ).toMatchObject({
+      description:
+        'Double-tap open space away from Earth to set a new heading. Wait while the ship turns to face it.',
+      layout: 'playfield',
+      title: 'Point By Double-Tapping',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-point-and-turn', 'desktop')
+        .anchor,
+    ).toBeUndefined()
   })
 
   it('keeps the burn control focused for mobile thrust-control guidance', () => {
@@ -507,6 +531,12 @@ describe('tutorialOnboardingProgress', () => {
     expect(
       getHiddenOnboardingUIElements({
         ...onboarding,
+        activeStepId: 'intro-keep-timewarp',
+      }),
+    ).toEqual(new Set(['scenarioInfoButton', 'targetControl', 'targetPill']))
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
         activeStepId: 'intro-timewarp-thrust',
       }),
     ).toEqual(
@@ -550,6 +580,7 @@ describe('tutorialOnboardingProgress', () => {
     }
     runtime.ui.targetHeadingSelectionEpoch = 1
     runtime.simulation.targetHeading = Math.PI / 2
+    runtime.simulation.state.spacecraft.heading = Math.PI / 2
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
     expect(onboarding.activeStepId).toBe('intro-point-and-turn')
 
@@ -558,12 +589,15 @@ describe('tutorialOnboardingProgress', () => {
     expect(onboarding.activeStepId).toBe('intro-timewarp')
 
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 30)
+    expect(onboarding.activeStepId).toBe('intro-keep-timewarp')
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 11_200, 30)
     expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
     expect(runtime.simulation.targetHeading).toBeCloseTo(0, 6)
 
     runtime.simulation.state.spacecraft.heading = 0
     runtime.simulation.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_200, 30)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 12_200, 30)
 
     expect(onboarding.activeStepId).toBe('intro-trajectory')
     expect(onboarding.completedStepIds).toEqual([
@@ -572,7 +606,81 @@ describe('tutorialOnboardingProgress', () => {
       'intro-keep-thrusting',
       'intro-point-and-turn',
       'intro-timewarp',
+      'intro-keep-timewarp',
       'intro-timewarp-thrust',
+    ])
+  })
+
+  it('returns to time warp control guidance if x30s is lowered during the hold step', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-keep-timewarp',
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+        'intro-thrusting-off',
+        'intro-point-and-turn',
+        'intro-timewarp',
+      ],
+      progress: {
+        ...onboarding.progress,
+        accumulatedTimeWarpMs: 2_000,
+      },
+    }
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_500, 10)
+
+    expect(onboarding.activeStepId).toBe('intro-timewarp')
+    expect(onboarding.completedStepIds).toEqual([
+      'intro-show-thrust-control',
+      'intro-thrust',
+      'intro-keep-thrusting',
+      'intro-thrusting-off',
+      'intro-point-and-turn',
+      'intro-timewarp',
+    ])
+    expect(onboarding.progress.accumulatedTimeWarpMs).toBeUndefined()
+    expect(onboarding.progress.stepStartTimeWarpMultiplier).toBe(10)
+  })
+
+  it('waits for a meaningful heading change before completing the turning step', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-point-and-turn',
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+        'intro-thrusting-off',
+      ],
+    }
+
+    runtime.ui.targetHeadingSelectionEpoch = 1
+    runtime.simulation.state.spacecraft.heading = Math.PI / 8
+    runtime.simulation.targetHeading = null
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-point-and-turn')
+    expect(onboarding.progress.accumulatedHeadingChangeRadians).toBeCloseTo(
+      Math.PI / 8,
+      6,
+    )
+
+    runtime.simulation.state.spacecraft.heading = Math.PI / 2
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-timewarp')
+    expect(onboarding.completedStepIds).toEqual([
+      'intro-show-thrust-control',
+      'intro-thrust',
+      'intro-keep-thrusting',
+      'intro-thrusting-off',
+      'intro-point-and-turn',
     ])
   })
 

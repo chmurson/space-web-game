@@ -415,7 +415,7 @@ describe('tutorialScenario', () => {
     ).toBe(escapeEarthTrajectoryViewportSize)
   })
 
-  it('keeps trajectory guidance active when the 3-day prediction crashes into Earth', () => {
+  it('keeps trajectory guidance active when the 2-day prediction crashes into Earth', () => {
     const runtime = createTrajectoryGateRuntime()
     const resolvedScene = resolveCurrentScenarioScene(runtime)
 
@@ -436,7 +436,7 @@ describe('tutorialScenario', () => {
     })
   })
 
-  it('keeps trajectory guidance active when the 3-day prediction loops around Earth', () => {
+  it('keeps trajectory guidance active when the 2-day prediction loops around Earth', () => {
     const runtime = createTrajectoryGateRuntime()
     const resolvedScene = resolveCurrentScenarioScene(runtime)
 
@@ -482,7 +482,7 @@ describe('tutorialScenario', () => {
     })
   })
 
-  it('advances after the 3-day prediction avoids Earth impact and Earth loops for 3s', () => {
+  it('advances after the 2-day prediction avoids Earth impact and Earth loops for 3s', () => {
     const runtime = createTrajectoryGateRuntime()
     const resolvedScene = resolveCurrentScenarioScene(runtime)
 
@@ -504,7 +504,7 @@ describe('tutorialScenario', () => {
     })
   })
 
-  it('uses a private 3-day prediction for the trajectory gate while visible trajectory controls stay capped', () => {
+  it('uses a private 2-day prediction for the trajectory gate while visible trajectory controls stay capped', () => {
     const runtime = createTrajectoryGateRuntime()
     const resolvedScene = resolveCurrentScenarioScene(runtime)
     const requestedHorizons: number[] = []
@@ -523,7 +523,7 @@ describe('tutorialScenario', () => {
         state: resolvedScene.state,
       }) ?? null
 
-    expect(requestedHorizons).toEqual([72])
+    expect(requestedHorizons).toEqual([48])
     expect(
       resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
         .maxCoastPredictionHorizonHours,

@@ -6,6 +6,8 @@ import {
   requiredHighWarpThrustMs,
   requiredIntroKeepThrustMs,
   requiredIntroThrustMs,
+  requiredTimeWarpKeepMs,
+  requiredTurnRadians,
   requiredTrajectoryClearMs,
 } from './config'
 import {
@@ -26,6 +28,9 @@ const hasRevealedTouchThrustControl = (runtime: AppRuntimeState) =>
 
 const isTouchThrustEngaged = (runtime: AppRuntimeState) =>
   runtime.ui.touchThrustControl.engaged
+
+const normalizeAngleDelta = (angle: number) =>
+  Math.atan2(Math.sin(angle), Math.cos(angle))
 
 const createStepProgress = (
   runtime: AppRuntimeState,
@@ -125,7 +130,9 @@ const setStepId = (
   return {
     activeStepId: nextStepId,
     completedStepIds:
-      options.markCurrentStepCompleted && onboarding.activeStepId
+      options.markCurrentStepCompleted &&
+      onboarding.activeStepId &&
+      !onboarding.completedStepIds.includes(onboarding.activeStepId)
         ? [...onboarding.completedStepIds, onboarding.activeStepId]
         : onboarding.completedStepIds,
     gateActive: true,
@@ -292,10 +299,28 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-point-and-turn') {
+    const heading = runtime.simulation.state.spacecraft.heading
+    nextProgress.accumulatedHeadingChangeRadians =
+      onboarding.progress.lastSampleHeading === null
+        ? onboarding.progress.accumulatedHeadingChangeRadians
+        : onboarding.progress.accumulatedHeadingChangeRadians +
+          Math.abs(
+            normalizeAngleDelta(
+              heading - onboarding.progress.lastSampleHeading,
+            ),
+          )
+    nextProgress.lastSampleHeading = heading
+
     return runtime.ui.targetHeadingSelectionEpoch >
       onboarding.progress.stepStartTargetHeadingSelectionEpoch &&
+      nextProgress.accumulatedHeadingChangeRadians >= requiredTurnRadians &&
       runtime.simulation.targetHeading === null
-      ? advanceToNextStep(runtime, onboarding, nowMs, timeWarpMultiplier)
+      ? advanceToNextStep(
+          runtime,
+          { ...onboarding, progress: nextProgress },
+          nowMs,
+          timeWarpMultiplier,
+        )
       : { ...onboarding, progress: nextProgress }
   }
 
@@ -319,6 +344,37 @@ export const advanceTutorialOnboarding = (
             stepStartTimeWarpMultiplier: 0,
           },
         }
+      : { ...onboarding, progress: nextProgress }
+  }
+
+  if (onboarding.activeStepId === 'intro-keep-timewarp') {
+    if (timeWarpMultiplier < requiredHighWarpMultiplier) {
+      return goToStep(
+        runtime,
+        {
+          ...onboarding,
+          progress: {
+            ...nextProgress,
+            accumulatedTimeWarpMs: 0,
+            stepStartTimeWarpMultiplier: 0,
+          },
+        },
+        'intro-timewarp',
+        nowMs,
+        timeWarpMultiplier,
+      )
+    }
+
+    nextProgress.accumulatedTimeWarpMs =
+      (onboarding.progress.accumulatedTimeWarpMs ?? 0) + deltaMs
+
+    return nextProgress.accumulatedTimeWarpMs >= requiredTimeWarpKeepMs
+      ? advanceToNextStep(
+          runtime,
+          { ...onboarding, progress: nextProgress },
+          nowMs,
+          timeWarpMultiplier,
+        )
       : { ...onboarding, progress: nextProgress }
   }
 
