@@ -80,7 +80,7 @@ export const updateRipples = (
     }
 
     if (center) {
-      center.style.opacity = `${Math.max(0, 0.68 * (1 - progress))}`
+      center.style.opacity = '0.68'
     }
 
     if (ripple.age >= maxAge) {

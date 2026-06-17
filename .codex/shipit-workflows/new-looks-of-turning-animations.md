@@ -37,6 +37,7 @@ Status: active
 - Keep the target-heading behavior transient and avoid changing simulation, controls, or autopilot timing.
 - Iteration: simplify the visual treatment by removing the turn-slice border/glow and removing crosshair ticks from the click marker.
 - Iteration: make the simplified ripple, heading line, and turn slice slightly less transparent while keeping their shapes unchanged.
+- Iteration: keep the ripple center dot visible at steady opacity until the whole ripple animation is removed.
 
 ## Open Questions
 
@@ -94,6 +95,7 @@ Completion criteria: Ripple is visibly more delicate and transient. Heading-turn
 - [x] Simplify the click marker to one ring and one center dot.
 - [x] Remove the turn-slice border and glow.
 - [x] Increase opacity slightly for the ripple, heading line, and turn slice.
+- [x] Keep the ripple center dot steady until the ripple animation ends.
 
 ## Implementation Handoff
 
@@ -107,7 +109,7 @@ Changed files:
 
 Completed task slices: all implementation task slices completed.
 
-Behavior implemented: Double-click target markers still appear transiently and follow the selected world position, but now use a single thin ring and small center dot instead of bright expanding circles or crosshair ticks. The target-heading circular arc is replaced with a translucent annular slice between the ship's current heading and target heading. The slice has no border or glow. The straight target-heading line remains dashed and supporting, with slightly higher opacity after the latest tuning pass.
+Behavior implemented: Double-click target markers still appear transiently and follow the selected world position, but now use a single thin ring and small center dot instead of bright expanding circles or crosshair ticks. The ring still expands and fades, while the center dot stays at steady opacity until the whole marker is removed. The target-heading circular arc is replaced with a translucent annular slice between the ship's current heading and target heading. The slice has no border or glow. The straight target-heading line remains dashed and supporting, with slightly higher opacity after the latest tuning pass.
 
 Deviations from design: none.
 
@@ -125,13 +127,14 @@ Stale artifacts/docs: Shipit state updated inline.
 
 ## Validation Results
 
-- `npm run build` passed after the initial implementation, after simplifying the visuals, and after increasing animation opacity.
-- `git diff --check` passed after the initial implementation, after simplifying the visuals, and after increasing animation opacity.
+- `npm run build` passed after the initial implementation, after simplifying the visuals, after increasing animation opacity, and after keeping the center dot steady.
+- `git diff --check` passed after the initial implementation, after simplifying the visuals, after increasing animation opacity, and after keeping the center dot steady.
 - `npm run deploy:netlify` passed after the initial implementation, after simplifying the visuals, and after increasing animation opacity. Latest staging URL: https://fanciful-bunny-d77b4b.netlify.app. Latest unique deploy URL: https://6a31af595a703ebec78129e4--fanciful-bunny-d77b4b.netlify.app.
 - Desktop browser check passed: real canvas `dblclick` creates the new marker DOM, keeps the target-heading overlay active, and renders a turn-slice SVG path with softened line styling.
 - Mobile browser check passed at mobile-sized viewport: real canvas `dblclick` creates one marker inside viewport bounds, keeps the target-heading overlay active, and renders the turn-slice SVG path without blocking HUD controls.
 - Simplified-visual browser checks passed: desktop and mobile real canvas `dblclick` produce only one `.map-ripple-ring` and one `.map-ripple-center`, no ripple crosshair pseudo-elements, and `.heading-target-turn-slice` has computed `stroke: none`.
 - Opacity tuning browser check passed: real canvas `dblclick` renders ring border `rgba(125, 211, 252, 0.68)`, center background `rgba(186, 230, 253, 0.72)`, heading line `rgba(125, 211, 252, 0.3)`, turn slice fill `rgba(56, 189, 248, 0.18)`, and turn slice stroke `none`.
+- Center-dot browser check passed: real canvas `dblclick` renders ring opacity dropping from about `0.61` to `0.22`, while center dot opacity remains `0.68`; after the ripple lifetime ends, the whole marker is removed.
 - Screenshots captured for visual QA:
   - `/tmp/turn-animation-desktop-4.png`
   - `/tmp/turn-animation-mobile.png`
