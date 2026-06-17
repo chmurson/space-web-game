@@ -12,7 +12,7 @@ Status: active
 - [x] Implementation task slices created or explicitly waived
 - [x] Implementation complete
 - [x] Cleanup complete
-- [ ] Review complete
+- [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
 - [ ] PR opened/updated
@@ -24,7 +24,7 @@ Status: active
 - Task slices: inline
 - Implementation: inline
 - Cleanup: inline
-- Review: inline pending
+- Review: inline
 
 ## Decisions
 
@@ -51,7 +51,7 @@ Status: active
 
 ## Next Step
 
-Run CodeRabbit review, self-review the diff, record findings, then merge to `main` if review passes.
+Merge the reviewed branch into local `main`, validate, and deploy production.
 
 ## Brainstorm Handoff
 
@@ -115,7 +115,7 @@ Deviations from design: none.
 
 Blockers: none.
 
-Known gaps: Formal Shipit review and CodeRabbit have not run yet.
+Known gaps: CodeRabbit did not produce findings because the required review command timed out.
 
 ## Cleanup Notes
 
@@ -135,7 +135,18 @@ Stale artifacts/docs: Shipit state updated inline.
 - Simplified-visual browser checks passed: desktop and mobile real canvas `dblclick` produce only one `.map-ripple-ring`, no ripple crosshair pseudo-elements, and `.heading-target-turn-slice` has computed `stroke: none`.
 - Opacity tuning browser check passed: real canvas `dblclick` renders ring border `rgba(125, 211, 252, 0.68)`, target-dot background `rgba(186, 230, 253, 0.72)`, heading line `rgba(125, 211, 252, 0.3)`, turn slice fill `rgba(56, 189, 248, 0.18)`, and turn slice stroke `none`.
 - Target-dot browser check passed: real canvas `dblclick` renders ring opacity dropping from about `0.61` to `0.22`; after the ripple lifetime ends, the ring is removed while `.heading-target-dot` stays visible at `0.68`; when the turn completes and `targetHeading` becomes `null`, the dot hides.
+- Review validation passed: `git diff --check` and `npm run build`.
 - Screenshots captured for visual QA:
   - `/tmp/turn-animation-desktop-4.png`
   - `/tmp/turn-animation-mobile.png`
   - `/tmp/turn-animation-simple-mobile.png`
+
+## Review Notes
+
+Supplied findings: none. `coderabbit --base main --agent` was run as required by `AGENTS.md`, but it produced no output for several minutes and was stopped with exit code 130. This is recorded as an automated-review gap rather than a passing CodeRabbit result.
+
+Manual self-review: passed. The diff is scoped to the DOM/SVG overlay presentation and Shipit state. The ripple simplification removes the previous three-ring markup/update loop and keeps the existing transient lifetime. The new target dot is non-interactive, hides with the same target-heading lifecycle, and is hidden when the spacecraft is offscreen or the app is in the main menu. The turn-slice path generation is local to `spacecraftPresentation.ts` and does not alter simulation, input, or autopilot timing.
+
+Ponytail review lens: no speculative abstraction found. The small circle-point helper is justified by the annular SVG path math; no shared tactical marker component was added because there is still only one consumer.
+
+Solution retrospect: no rewrite warranted. Test coverage remains build plus browser behavior checks because this is a visual overlay change without a stable public unit-test seam. Residual risk is limited to subtle visual preference or browser SVG rendering differences.
