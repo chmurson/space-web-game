@@ -108,10 +108,24 @@ export const createHudPresentation = (options: {
     confirmButton: options.overlayUi.scenarioPromptConfirmButton,
     restartButton: options.overlayUi.scenarioPromptRestartButton,
     secondaryButton: options.overlayUi.scenarioPromptSecondaryButton,
+    trajectoryAnchorElement: options.overlayUi.trajectoryCoachAnchor,
     replayButton: options.overlayUi.scenarioPromptReplayButton,
     replayButtonLabel: options.overlayUi.scenarioPromptReplayButtonLabel,
   }
   const scenarioPromptUpdater = createScenarioPromptUpdater(scenarioPromptRefs)
+
+  const syncTrajectoryCoachAnchor = () => {
+    const screenPoint =
+      options.trajectoryPresentation.getCoachAnchorScreenPoint()
+    if (!screenPoint) {
+      options.overlayUi.trajectoryCoachAnchor.style.display = 'none'
+      return
+    }
+
+    options.overlayUi.trajectoryCoachAnchor.style.display = 'block'
+    options.overlayUi.trajectoryCoachAnchor.style.left = `${screenPoint.x}px`
+    options.overlayUi.trajectoryCoachAnchor.style.top = `${screenPoint.y}px`
+  }
 
   const triggerWarpFeedback = (variant: 'v2' | 'v4', strength = 1.18) => {
     const timePill =
@@ -201,6 +215,8 @@ export const createHudPresentation = (options: {
       const showThrustPill = !hiddenUIElements.has('thrustPill')
       const showTargetControl = !hiddenUIElements.has('targetControl')
       const showTrajectoryControl = !hiddenUIElements.has('trajectory')
+
+      syncTrajectoryCoachAnchor()
 
       // Update scenario prompt UI
       scenarioPromptUpdater.update(

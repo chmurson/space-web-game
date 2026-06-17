@@ -6,6 +6,7 @@ import {
   requiredHighWarpThrustMs,
   requiredIntroKeepThrustMs,
   requiredIntroThrustMs,
+  requiredTrajectoryClearMs,
 } from './config'
 import {
   getTutorialOnboardingPromptContent,
@@ -33,6 +34,8 @@ const createStepProgress = (
 ): TutorialOnboardingStepProgress => ({
   accumulatedHeadingChangeRadians: 0,
   accumulatedMainThrustMs: 0,
+  accumulatedTrajectoryClearMs: 0,
+  hasStartedMainBurn: hasMainThrust(runtime),
   lastSampleHeading: runtime.simulation.state.spacecraft.heading,
   lastSampleAtMs: nowMs,
   stepStartHeading: runtime.simulation.state.spacecraft.heading,
@@ -183,6 +186,9 @@ export const advanceTutorialOnboarding = (
   onboarding: TutorialOnboardingState,
   nowMs: number,
   timeWarpMultiplier: number,
+  options: {
+    trajectoryExitReady?: boolean
+  } = {},
 ): TutorialOnboardingState => {
   if (!onboarding.gateActive || !onboarding.activeStepId) {
     return onboarding
@@ -317,11 +323,29 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-timewarp-thrust') {
+    nextProgress.hasStartedMainBurn =
+      onboarding.progress.hasStartedMainBurn === true || hasMainThrust(runtime)
     nextProgress.accumulatedMainThrustMs =
       timeWarpMultiplier >= requiredHighWarpMultiplier && hasMainThrust(runtime)
         ? onboarding.progress.accumulatedMainThrustMs + deltaMs
         : 0
     return nextProgress.accumulatedMainThrustMs >= requiredHighWarpThrustMs
+      ? advanceToNextStep(
+          runtime,
+          { ...onboarding, progress: nextProgress },
+          nowMs,
+          timeWarpMultiplier,
+        )
+      : { ...onboarding, progress: nextProgress }
+  }
+
+  if (onboarding.activeStepId === 'intro-trajectory') {
+    nextProgress.accumulatedTrajectoryClearMs = options.trajectoryExitReady
+      ? (onboarding.progress.accumulatedTrajectoryClearMs ?? 0) + deltaMs
+      : 0
+
+    return nextProgress.accumulatedTrajectoryClearMs >=
+      requiredTrajectoryClearMs
       ? advanceToNextStep(
           runtime,
           { ...onboarding, progress: nextProgress },

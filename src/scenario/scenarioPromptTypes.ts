@@ -14,7 +14,7 @@ export type ScenarioHudFocusTarget =
   | 'thrust-pill'
 export type ScenarioTouchHintTarget = 'thrust-zone'
 export type ScenarioTouchControlFocusTarget = 'burn' | 'trajectory' | 'warp'
-export type ScenarioCoachPromptLayout = 'anchored' | 'bottom'
+export type ScenarioCoachPromptLayout = 'anchored' | 'bottom' | 'floating'
 
 export type PromptAction =
   | {

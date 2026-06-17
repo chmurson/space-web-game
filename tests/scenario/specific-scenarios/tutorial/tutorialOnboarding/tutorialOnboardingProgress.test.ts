@@ -119,7 +119,7 @@ describe('tutorialOnboardingProgress', () => {
     ).toMatchObject({
       anchor: 'thrust-control',
       description:
-        'Swipe inward from the Burn tab on the screen edge to open the thrust control.',
+        'Swipe inward from the Burn tab on the screen edge to open the burn control.',
       focusedTouchControl: 'burn',
       title: 'Open Burn Control',
     })
@@ -128,9 +128,27 @@ describe('tutorialOnboardingProgress', () => {
     ).toMatchObject({
       anchor: 'thrust-control',
       description:
-        'Drag the orange handle upward to turn thrust on. Hold it briefly while your path starts bending away from Earth.',
+        'Drag the orange handle upward and hold it for a moment to give the ship a short burn.',
       focusedTouchControl: 'burn',
-      title: 'Use Thrust',
+      title: 'Start A Burn',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-thrust', 'desktop'),
+    ).toMatchObject({
+      anchor: 'trajectory',
+      description:
+        'Hold W or Up Arrow for a moment to give the ship a short burn.',
+      title: 'Start A Burn',
+    })
+    expect(
+      getTutorialOnboardingPromptContent('intro-keep-thrusting', 'mobile'),
+    ).toMatchObject({
+      anchor: 'speed-pill',
+      description:
+        "That's it. Keep the burn going for 5s. Watch the speed pill while the ship picks up speed.",
+      focusedHudElement: 'speed-pill',
+      focusedTouchControl: 'burn',
+      title: 'Keep Burning',
     })
   })
 
@@ -140,7 +158,7 @@ describe('tutorialOnboardingProgress', () => {
     ).toMatchObject({
       anchor: 'time-warp-control',
       description:
-        'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches at least x1m.',
+        'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches at least x30s.',
       focusedTouchControl: 'warp',
       title: 'Raise Time Warp',
     })
@@ -149,7 +167,7 @@ describe('tutorialOnboardingProgress', () => {
     ).toMatchObject({
       anchor: 'trajectory',
       description:
-        'Increase time warp until the time pill reaches at least x1m.',
+        'Increase time warp until the time pill reaches at least x30s.',
       title: 'Raise Time Warp',
     })
   })
@@ -161,42 +179,43 @@ describe('tutorialOnboardingProgress', () => {
       anchor: 'trajectory',
       focusedHudElement: undefined,
       focusedTouchControl: undefined,
+      layout: 'floating',
       pausesGameplay: false,
-      title: 'Burn At x1m',
+      title: 'Burn At x30s',
     })
   })
 
-  it('explains that the high-warp burn needs the x1m time warp notch', () => {
+  it('explains that the high-warp burn needs the x30s time warp notch', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-timewarp-thrust', 'mobile')
         .description,
     ).toBe(
-      'The tutorial is turning you outward from the nearest body. Keep the time pill at x1m, the one-minute warp notch, then open Burn and hold the orange handle upward for 2 seconds.',
+      'Keep time warp at x30s, then open Burn and hold the handle up for a few seconds to move away from Earth.',
     )
     expect(
       getTutorialOnboardingPromptContent('intro-timewarp-thrust', 'desktop')
         .description,
     ).toBe(
-      'The tutorial is turning you outward from the nearest body. Keep the time pill at x1m, the one-minute warp notch, then hold W or Up Arrow for 2 seconds.',
+      'Keep time warp at x30s, then hold W or Up Arrow for a few seconds to move away from Earth.',
     )
   })
 
-  it('pauses gameplay for the final onboarding continue prompts', () => {
+  it('uses an automatic trajectory coach prompt before the final continue prompt', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-trajectory', 'desktop'),
     ).toMatchObject({
-      confirmAction: 'advance-step',
+      description:
+        'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
       layout: 'anchored',
-      pausesGameplay: true,
-      title: 'Read The Trajectory',
+      pausesGameplay: false,
+      title: 'This Is Your Trajectory',
     })
     expect(
       getTutorialOnboardingPromptContent('intro-trajectory', 'mobile'),
     ).toMatchObject({
-      confirmAction: 'advance-step',
-      layout: 'bottom',
-      pausesGameplay: true,
-      title: 'Read The Trajectory',
+      layout: 'anchored',
+      pausesGameplay: false,
+      title: 'This Is Your Trajectory',
     })
     expect(
       getTutorialOnboardingPromptContent('intro-complete', 'desktop'),
@@ -220,36 +239,19 @@ describe('tutorialOnboardingProgress', () => {
     ).toBe(false)
   })
 
-  it('uses bottom layout on mobile for button-driven onboarding prompts', () => {
-    expect(
-      getTutorialOnboardingPromptContent('intro-thrusting-complete', 'desktop'),
-    ).toMatchObject({
-      confirmAction: 'advance-step',
-      layout: 'anchored',
-      title: 'Nice!',
-    })
-    expect(
-      getTutorialOnboardingPromptContent('intro-thrusting-complete', 'mobile'),
-    ).toMatchObject({
-      confirmAction: 'advance-step',
-      layout: 'bottom',
-      title: 'Nice!',
-    })
-  })
-
   it('uses input-specific instructions for turning thrust off', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-thrusting-off', 'mobile'),
     ).toMatchObject({
       anchor: 'thrust-control',
-      description: 'Drag the orange handle back down to turn thrust off.',
+      description: 'Drag the orange handle back down to stop the burn.',
       focusedTouchControl: 'burn',
     })
     expect(
       getTutorialOnboardingPromptContent('intro-thrusting-off', 'desktop'),
     ).toMatchObject({
       anchor: 'speed-pill',
-      description: 'Release W or Up Arrow so the main engine shuts down.',
+      description: 'Release W or Up Arrow to stop the burn.',
     })
   })
 
@@ -267,10 +269,6 @@ describe('tutorialOnboardingProgress', () => {
         .focusedTouchControl,
     ).toBe('burn')
     expect(
-      getTutorialOnboardingPromptContent('intro-thrusting-complete', 'mobile')
-        .focusedTouchControl,
-    ).toBe('burn')
-    expect(
       getTutorialOnboardingPromptContent('intro-keep-thrusting', 'desktop')
         .focusedTouchControl,
     ).toBeUndefined()
@@ -279,10 +277,6 @@ describe('tutorialOnboardingProgress', () => {
   it('focuses HUD pills for speed-pill coach prompts', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-keep-thrusting', 'mobile')
-        .focusedHudElement,
-    ).toBe('speed-pill')
-    expect(
-      getTutorialOnboardingPromptContent('intro-thrusting-complete', 'mobile')
         .focusedHudElement,
     ).toBe('speed-pill')
     expect(
@@ -343,6 +337,26 @@ describe('tutorialOnboardingProgress', () => {
     expect(onboarding.completedStepIds).toEqual([
       'intro-show-thrust-control',
       'intro-thrust',
+    ])
+  })
+
+  it('advances from keep-burning directly to stopping the burn', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-keep-thrusting',
+      completedStepIds: ['intro-show-thrust-control', 'intro-thrust'],
+    }
+
+    runtime.simulation.state.controls.main = 1
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 6_100, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-thrusting-off')
+    expect(onboarding.completedStepIds).toEqual([
+      'intro-show-thrust-control',
+      'intro-thrust',
+      'intro-keep-thrusting',
     ])
   })
 
@@ -429,7 +443,6 @@ describe('tutorialOnboardingProgress', () => {
         'intro-show-thrust-control',
         'intro-thrust',
         'intro-keep-thrusting',
-        'intro-thrusting-complete',
       ],
       progress: {
         ...onboarding.progress,
@@ -454,12 +467,11 @@ describe('tutorialOnboardingProgress', () => {
       'intro-show-thrust-control',
       'intro-thrust',
       'intro-keep-thrusting',
-      'intro-thrusting-complete',
       'intro-thrusting-off',
     ])
   })
 
-  it('keeps target UI hidden until trajectory controls appear', () => {
+  it('shows trajectory after the first burn starts while keeping target UI hidden', () => {
     const runtime = createRuntime()
     const onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
@@ -475,7 +487,26 @@ describe('tutorialOnboardingProgress', () => {
     expect(
       getHiddenOnboardingUIElements({
         ...onboarding,
+        activeStepId: 'intro-keep-thrusting',
+      }),
+    ).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'timeWarpPill',
+      ]),
+    )
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
         activeStepId: 'intro-timewarp',
+      }),
+    ).toEqual(new Set(['scenarioInfoButton', 'targetControl', 'targetPill']))
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
+        activeStepId: 'intro-timewarp-thrust',
       }),
     ).toEqual(
       new Set([
@@ -485,6 +516,16 @@ describe('tutorialOnboardingProgress', () => {
         'trajectory',
       ]),
     )
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
+        activeStepId: 'intro-timewarp-thrust',
+        progress: {
+          ...onboarding.progress,
+          hasStartedMainBurn: true,
+        },
+      }),
+    ).toEqual(new Set(['scenarioInfoButton', 'targetControl', 'targetPill']))
     expect(
       getHiddenOnboardingUIElements({
         ...onboarding,
@@ -515,13 +556,13 @@ describe('tutorialOnboardingProgress', () => {
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_150, 1)
     expect(onboarding.activeStepId).toBe('intro-timewarp')
 
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 60)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 30)
     expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
     expect(runtime.simulation.targetHeading).toBeCloseTo(0, 6)
 
     runtime.simulation.state.spacecraft.heading = 0
     runtime.simulation.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_250, 60)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_200, 30)
 
     expect(onboarding.activeStepId).toBe('intro-trajectory')
     expect(onboarding.completedStepIds).toEqual([
@@ -532,6 +573,46 @@ describe('tutorialOnboardingProgress', () => {
       'intro-timewarp',
       'intro-timewarp-thrust',
     ])
+  })
+
+  it('shows trajectory during the high-warp burn prompt once burn starts', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-timewarp-thrust',
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+        'intro-thrusting-off',
+        'intro-point-and-turn',
+        'intro-timewarp',
+      ],
+      progress: {
+        ...onboarding.progress,
+        accumulatedMainThrustMs: 0,
+        hasStartedMainBurn: false,
+      },
+    }
+
+    expect(getHiddenOnboardingUIElements(onboarding)).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'trajectory',
+      ]),
+    )
+
+    runtime.simulation.state.controls.main = 1
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 30)
+
+    expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
+    expect(onboarding.progress.hasStartedMainBurn).toBe(true)
+    expect(getHiddenOnboardingUIElements(onboarding)).toEqual(
+      new Set(['scenarioInfoButton', 'targetControl', 'targetPill']),
+    )
   })
 
   it('counts high-warp thrust even while the ship is still turning outward', () => {
@@ -544,7 +625,6 @@ describe('tutorialOnboardingProgress', () => {
         'intro-show-thrust-control',
         'intro-thrust',
         'intro-keep-thrusting',
-        'intro-thrusting-complete',
         'intro-thrusting-off',
         'intro-point-and-turn',
         'intro-timewarp',
@@ -554,14 +634,13 @@ describe('tutorialOnboardingProgress', () => {
     runtime.simulation.state.spacecraft.heading = Math.PI / 2
     runtime.simulation.targetHeading = 0
     runtime.simulation.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 3_050, 60)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_000, 30)
 
     expect(onboarding.activeStepId).toBe('intro-trajectory')
     expect(onboarding.completedStepIds).toEqual([
       'intro-show-thrust-control',
       'intro-thrust',
       'intro-keep-thrusting',
-      'intro-thrusting-complete',
       'intro-thrusting-off',
       'intro-point-and-turn',
       'intro-timewarp',
@@ -569,7 +648,7 @@ describe('tutorialOnboardingProgress', () => {
     ])
   })
 
-  it('requires acknowledgement for the trajectory and completion explanation steps', () => {
+  it('requires a clear trajectory for 3s before the completion explanation', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
     onboarding = {
@@ -585,20 +664,46 @@ describe('tutorialOnboardingProgress', () => {
       ],
     }
 
-    const acknowledgedTrajectory = acknowledgeTutorialOnboardingPrompt(
-      runtime,
-      onboarding,
-      1_050,
-      60,
-    )
-    expect(acknowledgedTrajectory?.activeStepId).toBe('intro-complete')
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_000, 30, {
+      trajectoryExitReady: true,
+    })
+    expect(onboarding.activeStepId).toBe('intro-trajectory')
+    expect(onboarding.progress.accumulatedTrajectoryClearMs).toBe(1_000)
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 2_500, 30, {
+      trajectoryExitReady: false,
+    })
+    expect(onboarding.activeStepId).toBe('intro-trajectory')
+    expect(onboarding.progress.accumulatedTrajectoryClearMs).toBe(0)
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 5_500, 30, {
+      trajectoryExitReady: true,
+    })
+    expect(onboarding.activeStepId).toBe('intro-complete')
+  })
+
+  it('requires acknowledgement for the completion explanation step', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-complete',
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+        'intro-point-and-turn',
+        'intro-timewarp',
+        'intro-timewarp-thrust',
+        'intro-trajectory',
+      ],
+    }
 
     const acknowledgedComplete = acknowledgeTutorialOnboardingPrompt(
       runtime,
-      // biome-ignore lint/style/noNonNullAssertion: acknowledgedTrajectory is guaranteed to exist after previous assertion
-      acknowledgedTrajectory!,
-      1_100,
-      60,
+      onboarding,
+      1_050,
+      30,
     )
     expect(acknowledgedComplete).toMatchObject({
       activeStepId: null,

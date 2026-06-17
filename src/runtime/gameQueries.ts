@@ -44,7 +44,7 @@ export type GameQueries = {
   getCaptureMetrics(target: Body): CaptureMetrics
   getCircularizePlan(target: Body): CircularizePlan
   getCoastPredictionHorizonSeconds(): number
-  getPredictionConfig(): TrajectoryPredictionConfig
+  getPredictionConfig(horizonSeconds?: number): TrajectoryPredictionConfig
   shouldCaptureBurn(target: Body): boolean
 }
 
@@ -155,9 +155,10 @@ export const createGameQueries = (options: {
       getCircularizePlanForState(options.runtime.simulation.state, target),
     getCoastPredictionHorizonSeconds: () =>
       options.runtime.simulation.coastPredictionHorizonHours * 60 * 60,
-    getPredictionConfig: () =>
+    getPredictionConfig: (horizonSeconds) =>
       getTrajectoryPredictionConfig(
-        options.runtime.simulation.coastPredictionHorizonHours * 60 * 60,
+        horizonSeconds ??
+          options.runtime.simulation.coastPredictionHorizonHours * 60 * 60,
         options.predictionSampling,
         options.maxPredictionLoopRevolutions,
       ),

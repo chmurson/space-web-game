@@ -13,6 +13,7 @@ import {
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from '@/scenario/scenarioRegistry'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import { escapeEarthTrajectoryViewportSize } from '@/scenario/specific-scenarios/tutorial/tutorialSceneRouter'
 
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,
@@ -222,7 +223,7 @@ describe('scenarioDirectives', () => {
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
-      maxTimeWarp: 300,
+      maxTimeWarp: 30,
       maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })
@@ -256,5 +257,47 @@ describe('scenarioDirectives', () => {
 
     expect(directives.cameraMode).toBeNull()
     expect(directives.cameraModeChangesLocked).toBe(false)
+    expect(directives.maxCoastPredictionHorizonHours).toBe(2)
+    expect(directives.maxTimeWarp).toBe(300)
+    expect(directives.maxViewportSize).toBe(escapeEarthTrajectoryViewportSize)
+  })
+
+  it('raises the tutorial zoom cap at the trajectory coach step', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+      onboarding: {
+        activeStepId: 'intro-trajectory',
+        completedStepIds: [
+          'intro-show-thrust-control',
+          'intro-thrust',
+          'intro-keep-thrusting',
+          'intro-thrusting-off',
+          'intro-point-and-turn',
+          'intro-timewarp',
+          'intro-timewarp-thrust',
+        ],
+        gateActive: true,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 0,
+          accumulatedTrajectoryClearMs: 0,
+          hasStartedMainBurn: true,
+          lastSampleHeading: 0,
+          lastSampleAtMs: 0,
+          stepStartHeading: 0,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 30,
+          stepStartTouchThrustControlEngaged: false,
+        },
+      },
+    })
+
+    const directives = resolveRuntimeScenarioDirectives(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
+
+    expect(directives.maxViewportSize).toBe(escapeEarthTrajectoryViewportSize)
   })
 })
