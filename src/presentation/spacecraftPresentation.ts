@@ -222,6 +222,7 @@ const updateSpacecraftCallout = (options: {
   if (!isVisible) {
     options.overlayUi.spacecraftCallout.style.display = 'none'
     options.overlayUi.spacecraftIconThrust.style.display = 'none'
+    options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
     return options.displayHeadingAngle
   }
@@ -323,11 +324,19 @@ const updateSpacecraftCallout = (options: {
       'y2',
       `${targetHeadingScreenPosition?.y ?? screenY}`,
     )
+    options.overlayUi.headingTargetDot.style.display = 'block'
+    options.overlayUi.headingTargetDot.style.left = `${
+      targetHeadingScreenPosition?.x ?? screenX
+    }px`
+    options.overlayUi.headingTargetDot.style.top = `${
+      targetHeadingScreenPosition?.y ?? screenY
+    }px`
     options.overlayUi.headingTargetTurnSlice.setAttribute(
       'd',
       getHeadingTargetSlicePath(screenX, screenY, headingAngle, remainingDelta),
     )
   } else {
+    options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
   }
 

@@ -1150,6 +1150,18 @@ canvas {
     stroke: none;
 }
 
+.heading-target-dot {
+    position: fixed;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(186, 230, 253, 0.72);
+    opacity: 0.68;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    z-index: var(--z-in-game-floating-elements);
+}
+
 .spacecraft-callout span {
     padding: 2px 6px;
     border: 1px solid rgba(125, 211, 252, 0.35);
@@ -1173,18 +1185,6 @@ canvas {
     border-radius: 50%;
     opacity: 0;
     transform: scale(0.78);
-}
-
-.map-ripple-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: rgba(186, 230, 253, 0.72);
-    opacity: 0;
-    transform: translate(-50%, -50%);
 }
 
 #app .offscreen-indicator {
@@ -1415,6 +1415,7 @@ canvas {
 #app.app-main-menu .scenario-prompt-backdrop,
 #app.app-main-menu .crash-menu,
 #app.app-main-menu .spacecraft-icon-thrust,
+#app.app-main-menu .heading-target-dot,
 #app.app-main-menu .heading-target-overlay,
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,

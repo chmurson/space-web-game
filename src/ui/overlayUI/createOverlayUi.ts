@@ -31,6 +31,7 @@ export type OverlayUiRefs = {
   cameraUnlockNoticeTitle: HTMLSpanElement | null
   debugPanel: DebugPanel
   fpsIndicator: HTMLElement
+  headingTargetDot: HTMLElement
   headingTargetLine: SVGLineElement
   headingTargetOverlay: SVGSVGElement
   headingTargetTurnSlice: SVGPathElement
@@ -214,6 +215,11 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   headingTargetOverlay.appendChild(headingTargetTurnSlice)
   options.app.appendChild(headingTargetOverlay)
 
+  const headingTargetDot = document.createElement('div')
+  headingTargetDot.className = 'heading-target-dot'
+  headingTargetDot.style.display = 'none'
+  options.app.appendChild(headingTargetDot)
+
   const offscreenIndicators = new Map<string, HTMLElement>()
   const bodyLabels = new Map<string, HTMLElement>()
 
@@ -243,6 +249,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
       cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-title'),
     debugPanel,
     fpsIndicator,
+    headingTargetDot,
     headingTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
