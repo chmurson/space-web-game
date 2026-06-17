@@ -19,7 +19,10 @@ import {
   advanceRuntimeScenario,
   applySimulationFrameResult,
 } from './runtimeStateTransitions'
+import { createBrowserGcProbe } from './browserGcProbe'
+import type { FpsMeterFrameSample } from '../ui/hudText'
 import { defaultMaxControlWarp, stepSimulationFrame } from './simulationStep'
+import { createTrajectoryPredictionRuntime } from './trajectoryPredictionRuntime'
 
 export const createFrameLoop = (options: {
   gameScene: GameSceneRefs
@@ -49,15 +52,57 @@ export const createFrameLoop = (options: {
   let lastTime = performance.now()
   let smoothedFps = 60
   let smoothedCpuMs = 0
+  const scenarioTrajectoryPredictionRuntime =
+    createTrajectoryPredictionRuntime()
+  let scenarioTrajectoryPredictionHorizonHours: number | null = null
+  let scenarioTrajectoryPredictionInitialized = false
+  const browserGcProbe = createBrowserGcProbe()
+  const fpsFrameSamples: FpsMeterFrameSample[] = []
+  const fpsFrameSampleWindowMs = 5_000
+
+  const syncDebugSceneVisibility = () => {
+    options.gameScene.debugGrid.visible = options.runtime.debug.debugModeEnabled
+  }
 
   const refreshTrajectoryPrediction = () => {
     options.trajectoryPresentation.refreshPrediction()
   }
 
+  const shouldProbeBrowserGc = () =>
+    options.runtime.debug.debugModeEnabled ||
+    options.runtime.debug.fpsIndicatorEnabled
+
+  const recordFpsFrameSample = (
+    nowMs: number,
+    frameIntervalMs: number,
+    enabled: boolean,
+  ) => {
+    if (!enabled) {
+      fpsFrameSamples.length = 0
+      return
+    }
+
+    fpsFrameSamples.push({
+      atMs: nowMs,
+      frameMs: frameIntervalMs,
+    })
+
+    const sampleCutoffMs = nowMs - fpsFrameSampleWindowMs
+    while (
+      fpsFrameSamples.length > 0 &&
+      fpsFrameSamples[0].atMs < sampleCutoffMs
+    ) {
+      fpsFrameSamples.shift()
+    }
+  }
+
   const animate = (time: number) => {
     const frameStart = performance.now()
-    const realDt = Math.min((time - lastTime) / 1000, 0.1)
+    const frameIntervalMs = time - lastTime
+    const realDt = Math.min(frameIntervalMs / 1000, 0.1)
     lastTime = time
+    const browserGcProbeEnabled = shouldProbeBrowserGc()
+    browserGcProbe.setEnabled(browserGcProbeEnabled)
     smoothedFps = THREE.MathUtils.lerp(
       smoothedFps,
       1 / Math.max(realDt, 1 / 240),
@@ -99,14 +144,50 @@ export const createFrameLoop = (options: {
       applySimulationFrameResult(options.runtime, simulationStep)
     }
 
+    options.trajectoryPresentation.maybeRefreshPrediction(realDt)
+    const getTrajectoryPredictionForHorizonHours = (horizonHours: number) => {
+      const predictionOptions = {
+        assistMode: options.runtime.simulation.assistMode,
+        getAssistPredictionControls:
+          options.queries.getAssistPredictionControls,
+        getAssistTarget: options.queries.getAssistTarget,
+        getCaptureMetrics: options.queries.getCaptureMetrics,
+        physicsEngine: options.physicsEngine,
+        predictionConfig: options.queries.getPredictionConfig(
+          horizonHours * 60 * 60,
+        ),
+        state: options.runtime.simulation.state,
+      }
+
+      if (
+        !scenarioTrajectoryPredictionInitialized ||
+        scenarioTrajectoryPredictionHorizonHours !== horizonHours
+      ) {
+        scenarioTrajectoryPredictionRuntime.refresh(predictionOptions)
+        scenarioTrajectoryPredictionInitialized = true
+        scenarioTrajectoryPredictionHorizonHours = horizonHours
+      } else {
+        scenarioTrajectoryPredictionRuntime.maybeRefresh(
+          realDt,
+          predictionOptions,
+        )
+      }
+
+      return scenarioTrajectoryPredictionRuntime.getState()
+    }
+
     advanceRuntimeScenario(
       options.runtime,
       options.globalScenarioDirectiveLimits,
-      { shouldAdvance: !gameplayPaused },
+      {
+        getTrajectoryPredictionForHorizonHours,
+        shouldAdvance: !gameplayPaused,
+        trajectoryPrediction:
+          options.trajectoryPresentation.getPredictionState(),
+      },
     )
     options.runtimeActions.updateCamera()
     updateRipples(options.ripples, realDt, { camera: options.gameScene.camera })
-    options.trajectoryPresentation.maybeRefreshPrediction(realDt)
 
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
     options.bodyPresentation.updateVisuals({
@@ -130,9 +211,16 @@ export const createFrameLoop = (options: {
     })
 
     options.trajectoryPresentation.updateVisuals()
-    options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
+    options.hudPresentation.update({
+      browserGcStats: browserGcProbe.getStats(),
+      fpsFrameSamples,
+      fpsGraphNowMs: performance.now(),
+      smoothedCpuMs,
+      smoothedFps,
+    })
     options.crashMenu?.syncState()
     options.topMenu?.syncState()
+    syncDebugSceneVisibility()
     options.rendererProfiler.render(
       options.gameScene.scene,
       options.gameScene.camera,
@@ -140,11 +228,20 @@ export const createFrameLoop = (options: {
         options.runtime.debug.fpsIndicatorEnabled,
     )
 
-    smoothedCpuMs = THREE.MathUtils.lerp(
-      smoothedCpuMs,
-      performance.now() - frameStart,
-      0.15,
+    const frameCpuMs = performance.now() - frameStart
+    const frameEndMs = performance.now()
+    if (browserGcProbeEnabled) {
+      browserGcProbe.recordFrame({
+        frameIntervalMs,
+        nowMs: frameEndMs,
+      })
+    }
+    recordFpsFrameSample(
+      frameEndMs,
+      frameIntervalMs,
+      options.runtime.debug.fpsIndicatorEnabled,
     )
+    smoothedCpuMs = THREE.MathUtils.lerp(smoothedCpuMs, frameCpuMs, 0.15)
     requestAnimationFrame(animate)
   }
 
@@ -155,6 +252,7 @@ export const createFrameLoop = (options: {
         options.runtime,
         options.globalScenarioDirectiveLimits,
       )
+      browserGcProbe.setEnabled(shouldProbeBrowserGc())
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
@@ -177,9 +275,16 @@ export const createFrameLoop = (options: {
           options.runtime.ui.targetHeadingWorldPosition ?? null,
         viewportSize: options.runtime.simulation.viewportSize,
       })
-      options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
+      options.hudPresentation.update({
+        browserGcStats: browserGcProbe.getStats(),
+        fpsFrameSamples,
+        fpsGraphNowMs: performance.now(),
+        smoothedCpuMs,
+        smoothedFps,
+      })
       options.crashMenu?.syncState()
       options.topMenu?.syncState()
+      syncDebugSceneVisibility()
       requestAnimationFrame(animate)
     },
   }

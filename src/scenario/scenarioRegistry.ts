@@ -1,6 +1,7 @@
 import type { RuntimeScenario } from '../debugScenarioSnapshot'
 import { EARTH_MOON_VIEWPORT_SIZE } from '../domain/viewportPresets'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
+import type { TrajectoryPredictionState } from '../runtime/trajectoryPredictionRuntime'
 import {
   createEarthMoonScenario,
   createMoonCaptureDebugScenario,
@@ -29,6 +30,10 @@ export type ScenarioPromptActionDispatchResult<
 export type ScenarioSceneContext<
   TState extends ScenarioSessionValue = ScenarioSessionValue,
 > = {
+  getTrajectoryPredictionForHorizonHours?: (
+    horizonHours: number,
+  ) => TrajectoryPredictionState
+  trajectoryPrediction?: TrajectoryPredictionState
   runtime: AppRuntimeState
   state: TState
 }

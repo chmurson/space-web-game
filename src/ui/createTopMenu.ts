@@ -8,6 +8,15 @@ export type TopMenu = {
 }
 
 export type TopMenuAction = UIUserAction | 'enterMainMenu'
+type ConfirmableTopMenuAction = Extract<
+  TopMenuAction,
+  'enterMainMenu' | 'resetScenario'
+>
+
+const isConfirmableAction = (
+  action: TopMenuAction,
+): action is ConfirmableTopMenuAction =>
+  action === 'enterMainMenu' || action === 'resetScenario'
 
 export const createTopMenu = (options: {
   app: HTMLElement
@@ -34,10 +43,6 @@ export const createTopMenu = (options: {
       <span></span>
     </button>
     <div class="top-menu-dropdown" id="${menuId}" role="menu" hidden>
-      <button type="button" role="menuitem" data-menu-action="enterMainMenu">Exit</button>
-
-      <hr class="menu-separator" />
-
       <section class="menu-section" aria-labelledby="${debugSectionLabelId}">
         <div class="menu-section-label" id="${debugSectionLabelId}">Debug</div>
         <button type="button" role="menuitemcheckbox" data-menu-action="toggleDebugMode" data-menu-debug-toggle></button>
@@ -51,6 +56,7 @@ export const createTopMenu = (options: {
       <section class="menu-section" aria-labelledby="${scenarioSectionLabelId}">
         <div class="menu-section-label" id="${scenarioSectionLabelId}">Scenario</div>
         <button type="button" role="menuitem" data-menu-action="resetScenario">Restart</button>
+        <button type="button" role="menuitem" data-menu-action="enterMainMenu">Exit</button>
       </section>
     </div>
   `
@@ -69,6 +75,9 @@ export const createTopMenu = (options: {
   const exitButton = dropdown.querySelector<HTMLButtonElement>(
     '[data-menu-action="enterMainMenu"]',
   )
+  const restartButton = dropdown.querySelector<HTMLButtonElement>(
+    '[data-menu-action="resetScenario"]',
+  )
   const loadSnapshotButton = dropdown.querySelector<HTMLButtonElement>(
     '[data-menu-action="loadDebugSnapshot"]',
   )
@@ -83,7 +92,7 @@ export const createTopMenu = (options: {
       'button[role="menuitem"], button[role="menuitemcheckbox"], button[role="menuitemradio"]',
     ),
   )
-  let exitConfirmationPending = false
+  let pendingConfirmationAction: ConfirmableTopMenuAction | null = null
   let lastDebugToggleLabel = ''
   let lastDebugToggleChecked: boolean | null = null
   let lastFpsToggleLabel = ''
@@ -91,16 +100,21 @@ export const createTopMenu = (options: {
   const focusItem = (index: number) => {
     menuItems.at(index)?.focus()
   }
-  const syncExitConfirmation = () => {
-    if (!exitButton) {
-      return
+  const syncConfirmationLabels = () => {
+    if (restartButton) {
+      restartButton.textContent =
+        pendingConfirmationAction === 'resetScenario'
+          ? 'Confirm restart'
+          : 'Restart'
     }
-
-    exitButton.textContent = exitConfirmationPending ? 'Confirm exit' : 'Exit'
+    if (exitButton) {
+      exitButton.textContent =
+        pendingConfirmationAction === 'enterMainMenu' ? 'Confirm exit' : 'Exit'
+    }
   }
-  const resetExitConfirmation = () => {
-    exitConfirmationPending = false
-    syncExitConfirmation()
+  const resetConfirmation = () => {
+    pendingConfirmationAction = null
+    syncConfirmationLabels()
   }
   const syncSnapshotAvailability = () => {
     if (!loadSnapshotButton) {
@@ -156,7 +170,7 @@ export const createTopMenu = (options: {
     root.classList.toggle('top-menu-open', open)
 
     if (!open) {
-      resetExitConfirmation()
+      resetConfirmation()
     }
 
     if (open && focusTarget === 'first-item') {
@@ -183,9 +197,9 @@ export const createTopMenu = (options: {
       return
     }
 
-    if (action === 'enterMainMenu' && !exitConfirmationPending) {
-      exitConfirmationPending = true
-      syncExitConfirmation()
+    if (isConfirmableAction(action) && pendingConfirmationAction !== action) {
+      pendingConfirmationAction = action
+      syncConfirmationLabels()
       return
     }
 
@@ -194,7 +208,7 @@ export const createTopMenu = (options: {
       syncSnapshotAvailability()
     }
     syncState()
-    resetExitConfirmation()
+    resetConfirmation()
     setOpen(false, 'button')
   })
 
@@ -245,7 +259,7 @@ export const createTopMenu = (options: {
   })
 
   syncState()
-  syncExitConfirmation()
+  syncConfirmationLabels()
 
   return {
     close: () => setOpen(false),

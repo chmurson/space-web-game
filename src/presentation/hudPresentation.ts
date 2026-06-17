@@ -1,4 +1,5 @@
 import type { RendererProfiler } from '../render/rendererProfiler'
+import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type {
   AssistTargetSelectionSource,
@@ -15,10 +16,13 @@ import {
   formatTimeWarpLabel,
 } from '../ui/formatters'
 import {
+  getFpsMeterGraphModel,
   getDebugPanelLines,
   getFpsMeterStatus,
   getFpsMeterText,
   getGuidanceText,
+  type FpsMeterFrameSample,
+  type FpsMeterGraphModel,
 } from '../ui/hudText'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import {
@@ -38,6 +42,62 @@ const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
 const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
   element.className = 'target-body-sphere'
   element.style.setProperty('--target-body-color', body.color)
+}
+
+const svgNamespace = 'http://www.w3.org/2000/svg'
+
+const syncFpsIndicator = (
+  element: HTMLElement,
+  view: {
+    graph: FpsMeterGraphModel
+    text: string
+  },
+) => {
+  const textElement = document.createElement('div')
+  textElement.className = 'fps-indicator-text'
+  textElement.textContent = view.text
+
+  const graphElement = document.createElementNS(svgNamespace, 'svg')
+  graphElement.classList.add('fps-meter-graph')
+  graphElement.setAttribute('aria-hidden', 'true')
+  graphElement.setAttribute(
+    'viewBox',
+    `0 0 ${view.graph.width} ${view.graph.height}`,
+  )
+
+  const background = document.createElementNS(svgNamespace, 'rect')
+  background.classList.add('fps-meter-graph-bg')
+  background.setAttribute('x', '0')
+  background.setAttribute('y', '0')
+  background.setAttribute('width', `${view.graph.width}`)
+  background.setAttribute('height', `${view.graph.height}`)
+  graphElement.appendChild(background)
+
+  const budgetLine = document.createElementNS(svgNamespace, 'line')
+  budgetLine.classList.add('fps-meter-graph-budget')
+  budgetLine.setAttribute('x1', '0')
+  budgetLine.setAttribute('x2', `${view.graph.width}`)
+  budgetLine.setAttribute('y1', `${view.graph.budgetLineY}`)
+  budgetLine.setAttribute('y2', `${view.graph.budgetLineY}`)
+  graphElement.appendChild(budgetLine)
+
+  if (view.graph.path) {
+    const framePath = document.createElementNS(svgNamespace, 'path')
+    framePath.classList.add('fps-meter-graph-line')
+    framePath.setAttribute('d', view.graph.path)
+    graphElement.appendChild(framePath)
+  }
+
+  for (const x of view.graph.gcMarkerXs) {
+    const marker = document.createElementNS(svgNamespace, 'circle')
+    marker.classList.add('fps-meter-graph-gc')
+    marker.setAttribute('cx', `${x}`)
+    marker.setAttribute('cy', `${view.graph.height - 2}`)
+    marker.setAttribute('r', '1.6')
+    graphElement.appendChild(marker)
+  }
+
+  element.replaceChildren(textElement, graphElement)
 }
 
 export const createHudPresentation = (options: {
@@ -108,10 +168,24 @@ export const createHudPresentation = (options: {
     confirmButton: options.overlayUi.scenarioPromptConfirmButton,
     restartButton: options.overlayUi.scenarioPromptRestartButton,
     secondaryButton: options.overlayUi.scenarioPromptSecondaryButton,
+    trajectoryAnchorElement: options.overlayUi.trajectoryCoachAnchor,
     replayButton: options.overlayUi.scenarioPromptReplayButton,
     replayButtonLabel: options.overlayUi.scenarioPromptReplayButtonLabel,
   }
   const scenarioPromptUpdater = createScenarioPromptUpdater(scenarioPromptRefs)
+
+  const syncTrajectoryCoachAnchor = () => {
+    const screenPoint =
+      options.trajectoryPresentation.getCoachAnchorScreenPoint()
+    if (!screenPoint) {
+      options.overlayUi.trajectoryCoachAnchor.style.display = 'none'
+      return
+    }
+
+    options.overlayUi.trajectoryCoachAnchor.style.display = 'block'
+    options.overlayUi.trajectoryCoachAnchor.style.left = `${screenPoint.x}px`
+    options.overlayUi.trajectoryCoachAnchor.style.top = `${screenPoint.y}px`
+  }
 
   const triggerWarpFeedback = (variant: 'v2' | 'v4', strength = 1.18) => {
     const timePill =
@@ -149,7 +223,13 @@ export const createHudPresentation = (options: {
   }
 
   return {
-    update: (metrics: { smoothedCpuMs: number; smoothedFps: number }) => {
+    update: (metrics: {
+      browserGcStats: BrowserGcProbeStats
+      fpsFrameSamples: readonly FpsMeterFrameSample[]
+      fpsGraphNowMs: number
+      smoothedCpuMs: number
+      smoothedFps: number
+    }) => {
       const earth = options.runtime.simulation.state.bodies.find(
         (body) => body.id === 'earth',
       )
@@ -201,6 +281,8 @@ export const createHudPresentation = (options: {
       const showThrustPill = !hiddenUIElements.has('thrustPill')
       const showTargetControl = !hiddenUIElements.has('targetControl')
       const showTrajectoryControl = !hiddenUIElements.has('trajectory')
+
+      syncTrajectoryCoachAnchor()
 
       // Update scenario prompt UI
       scenarioPromptUpdater.update(
@@ -356,6 +438,7 @@ export const createHudPresentation = (options: {
             predictedImpact: predictionState.predictedImpact,
             predictedTargetClosestApproach:
               predictionState.predictedTargetClosestApproach,
+            browserGcStats: metrics.browserGcStats,
             smoothedCpuMs: metrics.smoothedCpuMs,
             smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
             targetMetrics,
@@ -374,6 +457,7 @@ export const createHudPresentation = (options: {
             specificEnergy: targetMetrics.specificEnergy,
             surfaceDistance: targetMetrics.surfaceDistance,
           },
+          browserGc: metrics.browserGcStats,
           scenarioId,
           state,
         })
@@ -384,12 +468,19 @@ export const createHudPresentation = (options: {
         ? 'block'
         : 'none'
       const fpsMeterInput = {
+        browserGcStats: metrics.browserGcStats,
         smoothedCpuMs: metrics.smoothedCpuMs,
         smoothedFps: metrics.smoothedFps,
         smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
       }
-      options.overlayUi.fpsIndicator.textContent =
-        getFpsMeterText(fpsMeterInput)
+      syncFpsIndicator(options.overlayUi.fpsIndicator, {
+        graph: getFpsMeterGraphModel({
+          browserGcStats: metrics.browserGcStats,
+          frameSamples: metrics.fpsFrameSamples,
+          nowMs: metrics.fpsGraphNowMs,
+        }),
+        text: getFpsMeterText(fpsMeterInput),
+      })
       options.overlayUi.fpsIndicator.dataset.status =
         getFpsMeterStatus(fpsMeterInput)
     },

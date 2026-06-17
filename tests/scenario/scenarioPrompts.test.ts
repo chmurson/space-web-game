@@ -142,48 +142,6 @@ describe('scenarioPrompts', () => {
     })
   })
 
-  it('resolves focused HUD pills for coach prompts', () => {
-    const runtime = createRuntime()
-    runtime.scenario.session = createRuntimeScenarioSession(
-      'tutorial',
-      {
-        phase: 'escape-earth',
-        onboarding: {
-          activeStepId: 'intro-thrusting-complete',
-          completedStepIds: [
-            'intro-show-thrust-control',
-            'intro-thrust',
-            'intro-keep-thrusting',
-          ],
-          gateActive: true,
-          progress: {
-            accumulatedHeadingChangeRadians: 0,
-            accumulatedMainThrustMs: 0,
-            lastSampleHeading: runtime.simulation.state.spacecraft.heading,
-            lastSampleAtMs: 1_000,
-            stepStartHeading: runtime.simulation.state.spacecraft.heading,
-            stepStartTouchThrustControlEngaged: false,
-            stepStartTargetHeadingSelectionEpoch: 0,
-            stepStartTimeWarpMultiplier: 1,
-          },
-        },
-      },
-      {
-        activePromptId: 'intro-thrusting-complete',
-        replayPromptId: 'phase-one-intro',
-      },
-    )
-
-    expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
-      kind: 'coach',
-      id: 'intro-thrusting-complete',
-      anchor: 'speed-pill',
-      focusedHudElement: 'speed-pill',
-      focusedTouchControl: 'burn',
-      layout: 'bottom',
-    })
-  })
-
   it('resolves mobile focused touch controls for coach prompts', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession(
@@ -243,7 +201,6 @@ describe('scenarioPrompts', () => {
             'intro-show-thrust-control',
             'intro-thrust',
             'intro-keep-thrusting',
-            'intro-thrusting-complete',
             'intro-thrusting-off',
             'intro-point-and-turn',
           ],
@@ -291,7 +248,6 @@ describe('scenarioPrompts', () => {
             'intro-show-thrust-control',
             'intro-thrust',
             'intro-keep-thrusting',
-            'intro-thrusting-complete',
             'intro-thrusting-off',
             'intro-point-and-turn',
             'intro-timewarp',
@@ -305,7 +261,7 @@ describe('scenarioPrompts', () => {
             stepStartHeading: runtime.simulation.state.spacecraft.heading,
             stepStartTouchThrustControlEngaged: false,
             stepStartTargetHeadingSelectionEpoch: 0,
-            stepStartTimeWarpMultiplier: 60,
+            stepStartTimeWarpMultiplier: 30,
           },
         },
       },
@@ -320,6 +276,7 @@ describe('scenarioPrompts', () => {
       kind: 'coach',
       id: 'intro-timewarp-thrust',
       anchor: 'trajectory',
+      layout: 'floating',
       pausesGameplay: false,
     })
     expect(prompt?.kind === 'coach' ? prompt.focusedTouchControl : null).toBe(
@@ -330,7 +287,7 @@ describe('scenarioPrompts', () => {
     )
   })
 
-  it('resolves final onboarding continue prompts as pausing coach prompts', () => {
+  it('resolves trajectory guidance as an automatic coach before final continue prompts', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession(
       'tutorial',
@@ -342,7 +299,6 @@ describe('scenarioPrompts', () => {
             'intro-show-thrust-control',
             'intro-thrust',
             'intro-keep-thrusting',
-            'intro-thrusting-complete',
             'intro-thrusting-off',
             'intro-point-and-turn',
             'intro-timewarp',
@@ -357,7 +313,7 @@ describe('scenarioPrompts', () => {
             stepStartHeading: runtime.simulation.state.spacecraft.heading,
             stepStartTouchThrustControlEngaged: false,
             stepStartTargetHeadingSelectionEpoch: 0,
-            stepStartTimeWarpMultiplier: 60,
+            stepStartTimeWarpMultiplier: 30,
           },
         },
       },
@@ -371,13 +327,15 @@ describe('scenarioPrompts', () => {
       kind: 'coach',
       id: 'intro-trajectory',
       layout: 'anchored',
-      pausesGameplay: true,
+      pausesGameplay: false,
+      title: 'This Is Your Trajectory',
     })
     expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
       kind: 'coach',
       id: 'intro-trajectory',
-      layout: 'bottom',
-      pausesGameplay: true,
+      layout: 'anchored',
+      pausesGameplay: false,
+      title: 'This Is Your Trajectory',
     })
 
     runtime.scenario.session = createRuntimeScenarioSession(
@@ -390,7 +348,6 @@ describe('scenarioPrompts', () => {
             'intro-show-thrust-control',
             'intro-thrust',
             'intro-keep-thrusting',
-            'intro-thrusting-complete',
             'intro-thrusting-off',
             'intro-point-and-turn',
             'intro-timewarp',
@@ -406,7 +363,7 @@ describe('scenarioPrompts', () => {
             stepStartHeading: runtime.simulation.state.spacecraft.heading,
             stepStartTouchThrustControlEngaged: false,
             stepStartTargetHeadingSelectionEpoch: 0,
-            stepStartTimeWarpMultiplier: 60,
+            stepStartTimeWarpMultiplier: 30,
           },
         },
       },

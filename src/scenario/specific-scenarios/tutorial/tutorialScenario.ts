@@ -1,10 +1,17 @@
 import type { RuntimeScenario } from '../../../debugScenarioSnapshot'
+import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
+import { EARTH_RADIUS } from '../../../simulation/constants'
 import { createEarthMoonScenario } from '../../../simulation/scenarios/earthMoon'
+import { length, sub } from '../../../simulation/vector'
 import type { PromptDefinition } from '../../scenarioPromptTypes'
 import type { RuntimeScenarioDefinition } from '../../scenarioRegistry'
 import { createRuntimeScenarioSession } from '../../scenarioSession'
 import { getTutorialOnboardingPromptDefinitions } from './tutorialOnboarding/tutorialOnboardingFlow'
-import { getTutorialSceneDefinition } from './tutorialSceneRouter'
+import {
+  escapeEarthPhaseThresholdRadiusMultiplier,
+  escapeEarthVisiblePredictionHorizonHours,
+  getTutorialSceneDefinition,
+} from './tutorialSceneRouter'
 import {
   createInitialTutorialScenarioState,
   isTutorialScenarioState,
@@ -27,9 +34,36 @@ const createTutorialScenario = (): RuntimeScenario => {
     id: 'tutorial',
     name: 'Tutorial: Escape Earth',
     description: "Leave low Earth orbit and break free from Earth's pull.",
-    coastPredictionHorizonHours: 2,
+    coastPredictionHorizonHours: escapeEarthVisiblePredictionHorizonHours,
     scenarioSession: createTutorialScenarioSession(),
   }
+}
+
+const getCurrentEarthRadiiDistance = (
+  runtime: AppRuntimeState,
+): string | null => {
+  const earth = runtime.simulation.state.bodies.find(
+    (body) => body.id === 'earth',
+  )
+
+  if (!earth) {
+    return null
+  }
+
+  const distance = length(
+    sub(runtime.simulation.state.spacecraft.position, earth.position),
+  )
+
+  return (distance / EARTH_RADIUS).toFixed(1)
+}
+
+const getEscapeEarthObjectiveDescription = (runtime: AppRuntimeState) => {
+  const currentDistance = getCurrentEarthRadiiDistance(runtime)
+  const currentDistanceSentence = currentDistance
+    ? ` You are about ${currentDistance} Earth radii out now.`
+    : ''
+
+  return `Keep flying until you reach ${escapeEarthPhaseThresholdRadiusMultiplier} Earth radii from Earth's center.${currentDistanceSentence} Use burns, time warp, and the projected path to keep opening the gap.`
 }
 
 const tutorialPromptDefinitions = {
@@ -38,11 +72,25 @@ const tutorialPromptDefinitions = {
     title: 'Leave Earth Orbit',
     shortLabel: 'Leave Earth Orbit',
     description:
-      'Use thrust, turning, double-click heading, and the projected path. Fly far enough away from Earth to move on.',
+      "We'll start simple: learn the ship and game controls, use them to leave Earth orbit, circle the Moon, then make it back home.",
     buttons: [
       {
         action: { kind: 'scenario', id: 'start-phase-one-onboarding' },
         label: 'Start',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'phase-one-objective': {
+    id: 'phase-one-objective',
+    title: 'Escape Earth',
+    shortLabel: 'Escape Earth',
+    description: ({ runtime }) => getEscapeEarthObjectiveDescription(runtime),
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
         tone: 'primary',
       },
     ],

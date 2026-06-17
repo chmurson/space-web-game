@@ -23,6 +23,7 @@ export type ScenarioPromptUiRefs = {
   confirmButton: HTMLButtonElement | null
   restartButton: HTMLButtonElement | null
   secondaryButton: HTMLButtonElement | null
+  trajectoryAnchorElement: HTMLElement
   replayButton: HTMLButtonElement
   replayButtonLabel: HTMLSpanElement | null
 }
@@ -74,7 +75,15 @@ const getEdgeRevealControlAnchor = (
   return revealControl ?? control
 }
 
-const getAnchorElement = (anchor: AnchorKey): HTMLElement | null => {
+const getAnchorElement = (
+  refs: ScenarioPromptUiRefs,
+  anchor: AnchorKey,
+): HTMLElement | null => {
+  if (anchor === 'trajectory') {
+    return hasVisibleRect(refs.trajectoryAnchorElement)
+      ? refs.trajectoryAnchorElement
+      : null
+  }
   if (anchor === 'speed-pill') {
     return getTelemetryPillElement('speed')
   }
@@ -144,6 +153,12 @@ export const createScenarioPromptUI = (
   `
   topBar.appendChild(replayButton)
 
+  const trajectoryAnchorElement = document.createElement('div')
+  trajectoryAnchorElement.className = 'scenario-trajectory-coach-anchor'
+  trajectoryAnchorElement.setAttribute('aria-hidden', 'true')
+  trajectoryAnchorElement.style.display = 'none'
+  app.appendChild(trajectoryAnchorElement)
+
   const promptElement =
     backdropElement.querySelector<HTMLElement>('.scenario-prompt')
 
@@ -170,6 +185,7 @@ export const createScenarioPromptUI = (
     secondaryButton: backdropElement.querySelector<HTMLButtonElement>(
       '[data-role="secondary"]',
     ),
+    trajectoryAnchorElement,
     replayButton,
     replayButtonLabel: replayButton.querySelector<HTMLSpanElement>(
       '.scenario-prompt-pill-label',
@@ -269,7 +285,8 @@ const getPromptButtonLabel = (options: {
 const getPromptDisplayMode = (
   activePrompt: ResolvedPrompt | null,
 ): PromptDisplayMode | null =>
-  activePrompt?.kind === 'coach' && activePrompt.layout === 'anchored'
+  activePrompt?.kind === 'coach' &&
+  (activePrompt.layout === 'anchored' || activePrompt.layout === 'floating')
     ? 'coach'
     : activePrompt
       ? 'modal'
@@ -414,7 +431,7 @@ export const createScenarioPromptUpdater = (
       return
     }
 
-    const anchorElement = getAnchorElement(anchorKey)
+    const anchorElement = getAnchorElement(refs, anchorKey)
     if (!anchorElement || refs.backdropElement.style.display === 'none') {
       // Anchor not found, use CSS default positioning
       resetPromptToDefault()
@@ -543,6 +560,9 @@ export const createScenarioPromptUpdater = (
         lastPromptIdentity !== null &&
         identitiesEqual(lastPromptIdentity, currentPromptIdentity)
       ) {
+        if (refs.promptElement.dataset.anchor === 'trajectory') {
+          updatePromptPosition()
+        }
         return
       }
 
@@ -574,7 +594,9 @@ export const createScenarioPromptUpdater = (
 
       // Set anchor if present
       const currentAnchorKey =
-        activePrompt?.kind === 'coach' && promptMode === 'coach'
+        activePrompt?.kind === 'coach' &&
+        promptMode === 'coach' &&
+        activePrompt.layout === 'anchored'
           ? (activePrompt.anchor as AnchorKey)
           : undefined
       if (currentAnchorKey) {
@@ -625,7 +647,7 @@ export const createScenarioPromptUpdater = (
 
       // Update anchor positioning for coach prompts with anchors
       if (promptMode === 'coach' && currentAnchorKey) {
-        const anchorElement = getAnchorElement(currentAnchorKey)
+        const anchorElement = getAnchorElement(refs, currentAnchorKey)
         if (anchorElement) {
           setupAnchorObserver(anchorElement)
           updatePromptPosition()

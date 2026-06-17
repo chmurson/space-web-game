@@ -3,6 +3,7 @@ import type {
   CaptureMetrics,
   CircularizePlan,
 } from '../assist/orbitalAssist'
+import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
 import {
   shouldCaptureBurnForMetrics,
   shouldCircularizeBurn,
@@ -92,10 +93,54 @@ export type DebugPanelTextInput = {
   predictionStepSeconds: number
   predictedImpact: PredictedImpact | null
   predictedTargetClosestApproach: PredictedClosestApproach | null
+  browserGcStats: BrowserGcProbeStats
   smoothedCpuMs: number
   smoothedGpuMs: number | null
   targetMetrics: CaptureMetrics
   targetName: string
+}
+
+const formatReclaimedBytes = (bytes: number) => {
+  const megabytes = bytes / (1024 * 1024)
+
+  if (megabytes >= 10) {
+    return `${megabytes.toFixed(1)} MB`
+  }
+
+  return `${megabytes.toFixed(2)} MB`
+}
+
+const getGcProbeMode = (stats: BrowserGcProbeStats) => {
+  if (stats.nativeObserverSupported) {
+    return 'native'
+  }
+
+  return stats.heapSamplingSupported ? 'heap-drop' : 'frame-gap'
+}
+
+const getGcProbeLines = (stats: BrowserGcProbeStats) => {
+  const mode = getGcProbeMode(stats)
+  const label = mode === 'native' ? 'gc' : 'probable gc'
+
+  if (stats.eventCount === 0) {
+    return [`${label}: ${mode} | count 0`]
+  }
+
+  const lines = [
+    `${label}: ${mode} | count ${stats.eventCount} | last ${stats.lastEstimatedPauseMs?.toFixed(1) ?? 'n/a'} ms | max ${stats.longestEstimatedPauseMs.toFixed(1)} ms`,
+  ]
+
+  if (stats.totalReclaimedBytes !== null && stats.totalReclaimedBytes > 0) {
+    lines.push(
+      `heap reclaimed: last ${
+        stats.lastReclaimedBytes === null
+          ? 'n/a'
+          : formatReclaimedBytes(stats.lastReclaimedBytes)
+      } | total ${formatReclaimedBytes(stats.totalReclaimedBytes)}`,
+    )
+  }
+
+  return lines
 }
 
 export const getDebugPanelLines = (input: DebugPanelTextInput) => {
@@ -130,6 +175,7 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
     lines.push(
       `cpu: ${input.smoothedCpuMs.toFixed(2)} ms | gpu: ${input.smoothedGpuMs === null ? 'n/a' : `${input.smoothedGpuMs.toFixed(2)} ms`}`,
       `headroom60: ${(frameBudgetMs60 - limitingFrameMs).toFixed(2)} ms | headroom30: ${(frameBudgetMs30 - limitingFrameMs).toFixed(2)} ms`,
+      ...getGcProbeLines(input.browserGcStats),
     )
   }
 
@@ -138,23 +184,117 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
 
 export type FpsMeterStatus = 'good' | 'warning' | 'danger'
 
-export type FpsMeterTextInput = {
+export type FpsMeterStatusInput = {
   smoothedCpuMs: number
   smoothedFps: number
   smoothedGpuMs: number | null
 }
 
+export type FpsMeterTextInput = FpsMeterStatusInput & {
+  browserGcStats: BrowserGcProbeStats
+}
+
+export type FpsMeterFrameSample = {
+  atMs: number
+  frameMs: number
+}
+
+export type FpsMeterGraphInput = {
+  browserGcStats: BrowserGcProbeStats
+  frameSamples: readonly FpsMeterFrameSample[]
+  nowMs: number
+}
+
+export type FpsMeterGraphModel = {
+  budgetLineY: number
+  gcMarkerXs: number[]
+  height: number
+  path: string
+  width: number
+}
+
 const frameBudgetMs60 = 1000 / 60
+const fpsMeterGraphWindowMs = 5_000
+const fpsMeterGraphWidth = 112
+const fpsMeterGraphHeight = 28
+const fpsMeterGraphMaxFrameMs = 80
 
 const formatSignedMs = (value: number) =>
   `${value >= 0 ? '+' : ''}${value.toFixed(1)}ms`
 
-const getLimitingWorkMs = (input: FpsMeterTextInput) =>
+const getLimitingWorkMs = (input: FpsMeterStatusInput) =>
   input.smoothedGpuMs === null
     ? input.smoothedCpuMs
     : Math.max(input.smoothedCpuMs, input.smoothedGpuMs)
 
-export const getFpsMeterStatus = (input: FpsMeterTextInput): FpsMeterStatus => {
+const getCompactGcProbeText = (stats: BrowserGcProbeStats) => {
+  const mode = getGcProbeMode(stats)
+  const label = mode === 'native' ? 'gc' : 'gc?'
+
+  if (!stats.isEnabled) {
+    return `${label} off`
+  }
+
+  if (stats.eventCount === 0) {
+    return `${label} 0`
+  }
+
+  return `${label} ${stats.eventCount} l${
+    stats.lastEstimatedPauseMs?.toFixed(1) ?? 'n/a'
+  } m${stats.longestEstimatedPauseMs.toFixed(1)}`
+}
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
+
+const formatGraphNumber = (value: number) => value.toFixed(1)
+
+export const getFpsMeterGraphModel = (
+  input: FpsMeterGraphInput,
+): FpsMeterGraphModel => {
+  const windowStartMs = input.nowMs - fpsMeterGraphWindowMs
+  const toX = (atMs: number) =>
+    clamp(
+      ((atMs - windowStartMs) / fpsMeterGraphWindowMs) * fpsMeterGraphWidth,
+      0,
+      fpsMeterGraphWidth,
+    )
+  const toY = (frameMs: number) =>
+    fpsMeterGraphHeight -
+    clamp(frameMs / fpsMeterGraphMaxFrameMs, 0, 1) * fpsMeterGraphHeight
+
+  const points = input.frameSamples
+    .filter(
+      (sample) => sample.atMs >= windowStartMs && sample.atMs <= input.nowMs,
+    )
+    .map((sample) => ({
+      x: toX(sample.atMs),
+      y: toY(sample.frameMs),
+    }))
+
+  const path = points
+    .map(
+      (point, index) =>
+        `${index === 0 ? 'M' : 'L'} ${formatGraphNumber(point.x)} ${formatGraphNumber(point.y)}`,
+    )
+    .join(' ')
+
+  return {
+    budgetLineY: toY(frameBudgetMs60),
+    gcMarkerXs: input.browserGcStats.recentEvents
+      .filter(
+        (event) => event.atMs >= windowStartMs && event.atMs <= input.nowMs,
+      )
+      .map((event) => toX(event.atMs)),
+    height: fpsMeterGraphHeight,
+    path,
+    width: fpsMeterGraphWidth,
+  }
+}
+
+export const getFpsMeterStatus = (
+  input: FpsMeterStatusInput,
+): FpsMeterStatus => {
   const limitingWorkMs = getLimitingWorkMs(input)
 
   if (input.smoothedFps < 45 || limitingWorkMs > frameBudgetMs60) {
@@ -182,5 +322,6 @@ export const getFpsMeterText = (input: FpsMeterTextInput) => {
     `cpu ${input.smoothedCpuMs.toFixed(1)}ms`,
     gpuText,
     `60Hz ${formatSignedMs(headroomMs)}`,
+    getCompactGcProbeText(input.browserGcStats),
   ].join('\n')
 }

@@ -120,6 +120,15 @@
   display: block;
 }
 
+.scenario-trajectory-coach-anchor {
+  position: fixed;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 .scenario-prompt-backdrop[data-prompt-mode="modal"] .scenario-prompt-arrow {
   display: none;
 }

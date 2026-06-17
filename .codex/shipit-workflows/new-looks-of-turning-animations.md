@@ -2,8 +2,8 @@
 
 Task: New looks of turning animations
 Branch: new-looks-of-turning-animations
-Current Mode: review
-Status: active
+Current Mode: yeet
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated/direct merge completed
 
 ## Artifacts
 
@@ -30,6 +30,8 @@ Status: active
 
 - Use git-safe branch slug `new-looks-of-turning-animations` for the requested branch focus "new looks of turning animations".
 - Branch from `origin/main` at `b6feb43`.
+- User requested direct merge to `main`; no PR was opened.
+- Local `main` already contained nine commits ahead of `origin/main`; the branch was merged on top of that local main history.
 - Follow AGENTS.md deployment rules: this is a non-`main` branch, so executable/user-visible changes should be deployed to the configured staging target before handoff.
 - Follow AGENTS.md verification rules for gameplay, camera, rendering, HUD, input, or responsive-layout changes.
 - Likely relevant skills for later phases: `game-studio:three-webgl-game` for runtime turning animation behavior, `game-studio:web-game-foundations` if the change touches simulation/render boundaries, and `game-studio:game-playtest` for browser verification.
@@ -51,7 +53,7 @@ Status: active
 
 ## Next Step
 
-Merge the reviewed branch into local `main`, validate, and deploy production.
+Completed. Branch merged into local `main` and deployed to production.
 
 ## Brainstorm Handoff
 
@@ -136,6 +138,8 @@ Stale artifacts/docs: Shipit state updated inline.
 - Opacity tuning browser check passed: real canvas `dblclick` renders ring border `rgba(125, 211, 252, 0.68)`, target-dot background `rgba(186, 230, 253, 0.72)`, heading line `rgba(125, 211, 252, 0.3)`, turn slice fill `rgba(56, 189, 248, 0.18)`, and turn slice stroke `none`.
 - Target-dot browser check passed: real canvas `dblclick` renders ring opacity dropping from about `0.61` to `0.22`; after the ripple lifetime ends, the ring is removed while `.heading-target-dot` stays visible at `0.68`; when the turn completes and `targetHeading` becomes `null`, the dot hides.
 - Review validation passed: `git diff --check` and `npm run build`.
+- Main merge validation passed: `npm run build`.
+- Production deploy passed after merge. Production URL: https://space-web-game.netlify.app. Unique deploy URL: https://6a3263bdb90f550ec39ec668--space-web-game.netlify.app.
 - Screenshots captured for visual QA:
   - `/tmp/turn-animation-desktop-4.png`
   - `/tmp/turn-animation-mobile.png`
@@ -150,3 +154,9 @@ Manual self-review: passed. The diff is scoped to the DOM/SVG overlay presentati
 Ponytail review lens: no speculative abstraction found. The small circle-point helper is justified by the annular SVG path math; no shared tactical marker component was added because there is still only one consumer.
 
 Solution retrospect: no rewrite warranted. Test coverage remains build plus browser behavior checks because this is a visual overlay change without a stable public unit-test seam. Residual risk is limited to subtle visual preference or browser SVG rendering differences.
+
+## Merge Notes
+
+Merged into local `main` with merge commit `c4563ab35168e126393d6292f2a922bf60ffd076`.
+
+Production deploy completed with `npm run deploy:netlify`.

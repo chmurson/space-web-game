@@ -5,6 +5,7 @@ import {
   EARTH_VIEWPORT_SIZE,
 } from '../../../domain/viewportPresets'
 import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
+import type { TrajectoryPredictionState } from '../../../runtime/trajectoryPredictionRuntime'
 import {
   EARTH_MOON_DISTANCE,
   EARTH_RADIUS,
@@ -52,6 +53,13 @@ import {
 
 const requiredMoonOrbitTurns = 3
 const fullTurnRadians = Math.PI * 2
+const escapeEarthPredictionHorizonHours = 72
+const escapeEarthCompletedOnboardingMaxTimeWarp = 300
+const escapeEarthOnboardingMaxTimeWarp = 30
+export const escapeEarthTrajectoryViewportSize =
+  (EARTH_VIEWPORT_SIZE + EARTH_MOON_VIEWPORT_SIZE) / 2
+export const escapeEarthVisiblePredictionHorizonHours = 2
+export const escapeEarthPhaseThresholdRadiusMultiplier = 5
 const earthOrbitPhaseThresholdRadiusMultiplier = 20
 const moonOrbitPhaseThresholdRadiusMultiplier = 35
 const tutorialTimeWarps = gameConfig.controls.timeWarps
@@ -63,6 +71,60 @@ const getTutorialTimeWarpMultiplier = (runtime: AppRuntimeState) =>
   tutorialTimeWarps[runtime.simulation.timeWarpIndex] ??
   tutorialTimeWarps[0] ??
   1
+
+const hasCompletedLoopAroundTarget = (
+  relativePoints: Array<{ x: number; y: number }>,
+) => {
+  if (relativePoints.length < 2) {
+    return false
+  }
+
+  let previousAngle = Math.atan2(relativePoints[0].y, relativePoints[0].x)
+  let angularTravel = 0
+
+  for (const point of relativePoints.slice(1)) {
+    const angle = Math.atan2(point.y, point.x)
+    angularTravel += normalizeAngleDelta(angle - previousAngle)
+    previousAngle = angle
+
+    if (Math.abs(angularTravel) >= fullTurnRadians) {
+      return true
+    }
+  }
+
+  return false
+}
+
+const isEscapeTrajectoryReady = (
+  runtime: AppRuntimeState,
+  trajectoryPrediction?: TrajectoryPredictionState,
+) => {
+  if (!trajectoryPrediction) {
+    return false
+  }
+
+  const earth = runtime.simulation.state.bodies.find(
+    (body) => body.id === 'earth',
+  )
+  if (!earth) {
+    return false
+  }
+
+  const earthImpact =
+    trajectoryPrediction.predictedImpact?.bodyName === earth.name
+  if (earthImpact) {
+    return false
+  }
+
+  const currentRelativePosition = sub(
+    runtime.simulation.state.spacecraft.position,
+    earth.position,
+  )
+  return !hasCompletedLoopAroundTarget([
+    currentRelativePosition,
+    ...trajectoryPrediction.targetRelativePredictionPoints,
+  ])
+}
 
 const createDefaultRuntimeScenarioCheckpoint = (
   runtime: AppRuntimeState,
@@ -128,6 +190,14 @@ const resolveOnboardingPromptUi = (
 
   return currentPromptUi
 }
+
+const hasReachedTrajectoryCoach = (
+  state: EscapeEarthTutorialSceneState,
+): boolean =>
+  state.onboarding?.activeStepId === 'intro-trajectory' ||
+  state.onboarding?.activeStepId === 'intro-complete' ||
+  state.onboarding?.gateActive === false ||
+  state.onboarding?.completedStepIds.includes('intro-trajectory') === true
 
 const createEarthFocusDirectives = (options: {
   cameraMode?: RuntimeScenarioDirectives['cameraMode']
@@ -274,7 +344,11 @@ const advanceOrbitScene = <
 }
 
 type TutorialSceneContext<TState extends TutorialScenarioState> = {
+  getTrajectoryPredictionForHorizonHours?: (
+    horizonHours: number,
+  ) => TrajectoryPredictionState
   nowMs: number
+  trajectoryPrediction?: TrajectoryPredictionState
   runtime: AppRuntimeState
   state: TState
   timeWarpMultiplier: number
@@ -294,11 +368,23 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
         createTutorialSceneContext(context)
       const onboarding = state.onboarding
       if (onboarding?.gateActive) {
+        const trajectoryPrediction =
+          onboarding.activeStepId === 'intro-trajectory'
+            ? (context.getTrajectoryPredictionForHorizonHours?.(
+                escapeEarthPredictionHorizonHours,
+              ) ?? context.trajectoryPrediction)
+            : undefined
         const advancedOnboarding = advanceTutorialOnboarding(
           runtime,
           onboarding,
           nowMs,
           timeWarpMultiplier,
+          {
+            trajectoryExitReady: isEscapeTrajectoryReady(
+              runtime,
+              trajectoryPrediction,
+            ),
+          },
         )
         const nextState: EscapeEarthTutorialSceneState = {
           ...state,
@@ -324,7 +410,10 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
       const distanceFromEarth = length(
         sub(runtime.simulation.state.spacecraft.position, earth.position),
       )
-      if (distanceFromEarth < EARTH_RADIUS * 5) {
+      if (
+        distanceFromEarth <
+        EARTH_RADIUS * escapeEarthPhaseThresholdRadiusMultiplier
+      ) {
         return null
       }
 
@@ -371,10 +460,15 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
               checkpoint: acknowledgedOnboarding.gateActive
                 ? undefined
                 : createDefaultRuntimeScenarioCheckpoint(runtime),
-              promptUi: resolveOnboardingPromptUi(
-                acknowledgedOnboarding,
-                runtime.scenario.session.promptUi,
-              ),
+              promptUi: acknowledgedOnboarding.gateActive
+                ? resolveOnboardingPromptUi(
+                    acknowledgedOnboarding,
+                    runtime.scenario.session.promptUi,
+                  )
+                : {
+                    activePromptId: null,
+                    replayPromptId: 'phase-one-objective',
+                  },
             },
           ),
         }
@@ -417,9 +511,15 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
         cameraModeChangesLocked: state.onboarding?.gateActive !== false,
         hiddenBodyIds: ['moon'],
         hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
-        maxCoastPredictionHorizonHours: 2,
-        maxTimeWarp: 300,
-        maxViewportSize: EARTH_VIEWPORT_SIZE,
+        maxCoastPredictionHorizonHours:
+          escapeEarthVisiblePredictionHorizonHours,
+        maxTimeWarp:
+          state.onboarding?.gateActive === false
+            ? escapeEarthCompletedOnboardingMaxTimeWarp
+            : escapeEarthOnboardingMaxTimeWarp,
+        maxViewportSize: hasReachedTrajectoryCoach(state)
+          ? escapeEarthTrajectoryViewportSize
+          : EARTH_VIEWPORT_SIZE,
       }),
   },
   'reach-moon': {
@@ -530,7 +630,10 @@ export const getTutorialSceneDefinition = <
 const createTutorialSceneContext = <TState extends TutorialScenarioState>(
   context: ScenarioSceneContext<TState>,
 ): TutorialSceneContext<TState> => ({
+  getTrajectoryPredictionForHorizonHours:
+    context.getTrajectoryPredictionForHorizonHours,
   nowMs: performance.now(),
+  trajectoryPrediction: context.trajectoryPrediction,
   runtime: context.runtime,
   state: context.state,
   timeWarpMultiplier: getTutorialTimeWarpMultiplier(context.runtime),

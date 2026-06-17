@@ -15,6 +15,7 @@ import {
 import type { ScenarioRuntimeTransition } from './createScenarioRuntimeController'
 import type { RuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 import type { StepSimulationFrameResult } from './simulationStep'
+import type { TrajectoryPredictionState } from './trajectoryPredictionRuntime'
 
 type ClearTransientScenarioState = () => void
 
@@ -140,7 +141,13 @@ export const applyScenarioRuntimeTransition = (
 export const advanceRuntimeScenario = (
   runtime: AppRuntimeState,
   limits: GlobalScenarioDirectiveLimits,
-  options: { shouldAdvance?: boolean } = {},
+  options: {
+    getTrajectoryPredictionForHorizonHours?: (
+      horizonHours: number,
+    ) => TrajectoryPredictionState
+    shouldAdvance?: boolean
+    trajectoryPrediction?: TrajectoryPredictionState
+  } = {},
 ) => {
   const resolvedScene =
     (options.shouldAdvance ?? true)
@@ -148,8 +155,11 @@ export const advanceRuntimeScenario = (
       : null
   const transition =
     resolvedScene?.scene.advance?.({
+      getTrajectoryPredictionForHorizonHours:
+        options.getTrajectoryPredictionForHorizonHours,
       runtime,
       state: resolvedScene.state,
+      trajectoryPrediction: options.trajectoryPrediction,
     }) ?? null
 
   applyScenarioRuntimeTransition(runtime, transition)

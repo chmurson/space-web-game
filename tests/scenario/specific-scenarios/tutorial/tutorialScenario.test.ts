@@ -13,10 +13,11 @@ import {
 } from '@/scenario/scenarioSession'
 import { tutorialOnboardingStepOrder } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow'
 import { registerTutorialScenario } from '@/scenario/specific-scenarios/tutorial/tutorialScenario'
+import { escapeEarthTrajectoryViewportSize } from '@/scenario/specific-scenarios/tutorial/tutorialSceneRouter'
 import { EARTH_MOON_DISTANCE, G } from '@/simulation/constants'
 
 const globalScenarioDirectiveLimits = {
-  maxCoastPredictionHorizonHours: 48,
+  maxCoastPredictionHorizonHours: 72,
   defaultViewportSize: 520,
   maxViewportSize: 800,
   minViewportSize: EARTH_VIEWPORT_SIZE,
@@ -99,6 +100,59 @@ const createRuntime = (): AppRuntimeState => ({
     performanceDebugEnabled: false,
   },
 })
+
+const createTrajectoryPredictionState = (
+  targetRelativePredictionPoints: Array<{ x: number; y: number }>,
+  predictedImpact: { bodyName: string; time: number } | null = null,
+) => ({
+  absolutePredictionEnd: null,
+  absolutePredictionPoints: [],
+  predictedImpact,
+  predictedTargetClosestApproach: null,
+  targetRelativeAssistedPoints: [],
+  targetRelativePredictionEnd: targetRelativePredictionPoints.at(-1) ?? null,
+  targetRelativePredictionPoints,
+})
+
+const createTrajectoryGateRuntime = () => {
+  const runtime = createRuntime()
+  runtime.scenario.session = createRuntimeScenarioSession(
+    'tutorial',
+    {
+      phase: 'escape-earth',
+      onboarding: {
+        activeStepId: 'intro-trajectory',
+        completedStepIds: [
+          'intro-show-thrust-control',
+          'intro-thrust',
+          'intro-keep-thrusting',
+          'intro-thrusting-off',
+          'intro-point-and-turn',
+          'intro-timewarp',
+          'intro-timewarp-thrust',
+        ],
+        gateActive: true,
+        progress: {
+          accumulatedHeadingChangeRadians: 0,
+          accumulatedMainThrustMs: 0,
+          accumulatedTrajectoryClearMs: 0,
+          hasStartedMainBurn: true,
+          lastSampleHeading: runtime.simulation.state.spacecraft.heading,
+          lastSampleAtMs: performance.now() - 3_000,
+          stepStartHeading: runtime.simulation.state.spacecraft.heading,
+          stepStartTargetHeadingSelectionEpoch: 0,
+          stepStartTimeWarpMultiplier: 30,
+          stepStartTouchThrustControlEngaged: false,
+        },
+      },
+    },
+    {
+      activePromptId: 'intro-trajectory',
+      replayPromptId: 'phase-one-intro',
+    },
+  )
+  return runtime
+}
 
 const setMoonOrbitState = (runtime: AppRuntimeState, angle: number) => {
   const moon = runtime.simulation.state.bodies.find(
@@ -203,7 +257,7 @@ describe('tutorialScenario', () => {
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,
-      maxTimeWarp: 300,
+      maxTimeWarp: 30,
       maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })
@@ -211,7 +265,7 @@ describe('tutorialScenario', () => {
       kind: 'blocking',
       title: 'Leave Earth Orbit',
       description:
-        'Use thrust, turning, double-click heading, and the projected path. Fly far enough away from Earth to move on.',
+        "We'll start simple: learn the ship and game controls, use them to leave Earth orbit, circle the Moon, then make it back home.",
     })
   })
 
@@ -235,6 +289,10 @@ describe('tutorialScenario', () => {
       'phase-two-intro',
     )
     expect(runtime.scenario.session.checkpoint).not.toBeNull()
+    expect(
+      resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
+        .maxTimeWarp,
+    ).toBe(2000)
     expect(
       runtime.simulation.state.bodies.find((body) => body.id === 'moon')
         ?.position.y,
@@ -309,7 +367,7 @@ describe('tutorialScenario', () => {
             lastSampleAtMs: 1_000,
             stepStartHeading: runtime.simulation.state.spacecraft.heading,
             stepStartTargetHeadingSelectionEpoch: 0,
-            stepStartTimeWarpMultiplier: 60,
+            stepStartTimeWarpMultiplier: 30,
             stepStartTouchThrustControlEngaged: false,
           },
         },
@@ -337,7 +395,7 @@ describe('tutorialScenario', () => {
     })
     expect(runtime.scenario.session.promptUi).toEqual({
       activePromptId: null,
-      replayPromptId: 'phase-one-intro',
+      replayPromptId: 'phase-one-objective',
     })
     expect(runtime.scenario.session.checkpoint).not.toBeNull()
     expect(runtime.scenario.session.checkpoint?.world.elapsed).toBe(123)
@@ -347,6 +405,182 @@ describe('tutorialScenario', () => {
     expect(runtime.scenario.session.checkpoint?.world).not.toBe(
       runtime.simulation.state,
     )
+    expect(
+      resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
+        .maxTimeWarp,
+    ).toBe(300)
+    expect(
+      resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
+        .maxViewportSize,
+    ).toBe(escapeEarthTrajectoryViewportSize)
+  })
+
+  it('keeps trajectory guidance active when the 3-day prediction crashes into Earth', () => {
+    const runtime = createTrajectoryGateRuntime()
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
+
+    const transition =
+      resolvedScene?.scene.advance?.({
+        runtime,
+        state: resolvedScene.state,
+        trajectoryPrediction: createTrajectoryPredictionState(
+          [{ x: 40_000_000, y: 2_000_000 }],
+          { bodyName: 'Earth', time: 12_000 },
+        ),
+      }) ?? null
+
+    expect(transition?.nextState).toMatchObject({
+      onboarding: {
+        activeStepId: 'intro-trajectory',
+      },
+    })
+  })
+
+  it('keeps trajectory guidance active when the 3-day prediction loops around Earth', () => {
+    const runtime = createTrajectoryGateRuntime()
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
+
+    const transition =
+      resolvedScene?.scene.advance?.({
+        runtime,
+        state: resolvedScene.state,
+        trajectoryPrediction: createTrajectoryPredictionState([
+          { x: 0, y: 40_000_000 },
+          { x: -40_000_000, y: 0 },
+          { x: 0, y: -40_000_000 },
+          { x: 40_000_000, y: 0 },
+        ]),
+      }) ?? null
+
+    expect(transition?.nextState).toMatchObject({
+      onboarding: {
+        activeStepId: 'intro-trajectory',
+      },
+    })
+  })
+
+  it('does not treat angular backtracking as an Earth loop', () => {
+    const runtime = createTrajectoryGateRuntime()
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
+
+    const transition =
+      resolvedScene?.scene.advance?.({
+        runtime,
+        state: resolvedScene.state,
+        trajectoryPrediction: createTrajectoryPredictionState([
+          { x: 0, y: 40_000_000 },
+          { x: 40_000_000, y: 0 },
+          { x: 0, y: -40_000_000 },
+          { x: 40_000_000, y: 0 },
+        ]),
+      }) ?? null
+
+    expect(transition?.nextState).toMatchObject({
+      onboarding: {
+        activeStepId: 'intro-complete',
+      },
+    })
+  })
+
+  it('advances after the 3-day prediction avoids Earth impact and Earth loops for 3s', () => {
+    const runtime = createTrajectoryGateRuntime()
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
+
+    const transition =
+      resolvedScene?.scene.advance?.({
+        runtime,
+        state: resolvedScene.state,
+        trajectoryPrediction: createTrajectoryPredictionState([
+          { x: 45_000_000, y: 2_000_000 },
+          { x: 60_000_000, y: 5_000_000 },
+          { x: 80_000_000, y: 10_000_000 },
+        ]),
+      }) ?? null
+
+    expect(transition?.nextState).toMatchObject({
+      onboarding: {
+        activeStepId: 'intro-complete',
+      },
+    })
+  })
+
+  it('uses a private 3-day prediction for the trajectory gate while visible trajectory controls stay capped', () => {
+    const runtime = createTrajectoryGateRuntime()
+    const resolvedScene = resolveCurrentScenarioScene(runtime)
+    const requestedHorizons: number[] = []
+
+    const transition =
+      resolvedScene?.scene.advance?.({
+        getTrajectoryPredictionForHorizonHours: (horizonHours) => {
+          requestedHorizons.push(horizonHours)
+          return createTrajectoryPredictionState([
+            { x: 45_000_000, y: 2_000_000 },
+            { x: 60_000_000, y: 5_000_000 },
+            { x: 80_000_000, y: 10_000_000 },
+          ])
+        },
+        runtime,
+        state: resolvedScene.state,
+      }) ?? null
+
+    expect(requestedHorizons).toEqual([72])
+    expect(
+      resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
+        .maxCoastPredictionHorizonHours,
+    ).toBe(2)
+    expect(transition?.nextState).toMatchObject({
+      onboarding: {
+        activeStepId: 'intro-complete',
+      },
+    })
+  })
+
+  it('uses a replayable escape objective after onboarding completes', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      { phase: 'escape-earth' },
+      {
+        activePromptId: null,
+        replayPromptId: 'phase-one-objective',
+      },
+    )
+
+    const prompts = resolveScenarioPrompts(runtime, 'desktop')
+
+    expect(prompts.replay).toEqual({
+      id: 'phase-one-objective',
+      label: 'Escape Earth',
+    })
+
+    runtime.scenario.session.promptUi.activePromptId = 'phase-one-objective'
+    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+      buttons: [{ label: 'Continue' }],
+      description:
+        "Keep flying until you reach 5 Earth radii from Earth's center. You are about 5.2 Earth radii out now. Use burns, time warp, and the projected path to keep opening the gap.",
+      title: 'Escape Earth',
+    })
+  })
+
+  it('omits current escape distance when Earth is unavailable', () => {
+    const runtime = createRuntime()
+    runtime.simulation.state.bodies = runtime.simulation.state.bodies.filter(
+      (body) => body.id !== 'earth',
+    )
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      { phase: 'escape-earth' },
+      {
+        activePromptId: 'phase-one-objective',
+        replayPromptId: 'phase-one-objective',
+      },
+    )
+
+    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+      description:
+        "Keep flying until you reach 5 Earth radii from Earth's center. Use burns, time warp, and the projected path to keep opening the gap.",
+      title: 'Escape Earth',
+    })
   })
 
   it('resolves mobile onboarding prompts as coach prompts for the burn tab', () => {
@@ -385,7 +619,7 @@ describe('tutorialScenario', () => {
     })
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       kind: 'coach',
-      title: 'Show Thrust Control',
+      title: 'Start A Burn',
     })
   })
 
