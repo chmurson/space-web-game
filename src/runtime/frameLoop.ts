@@ -19,6 +19,8 @@ import {
   advanceRuntimeScenario,
   applySimulationFrameResult,
 } from './runtimeStateTransitions'
+import { createBrowserGcProbe } from './browserGcProbe'
+import type { FpsMeterFrameSample } from '../ui/hudText'
 import { defaultMaxControlWarp, stepSimulationFrame } from './simulationStep'
 import { createTrajectoryPredictionRuntime } from './trajectoryPredictionRuntime'
 
@@ -53,6 +55,9 @@ export const createFrameLoop = (options: {
     createTrajectoryPredictionRuntime()
   let scenarioTrajectoryPredictionHorizonHours: number | null = null
   let scenarioTrajectoryPredictionInitialized = false
+  const browserGcProbe = createBrowserGcProbe()
+  const fpsFrameSamples: FpsMeterFrameSample[] = []
+  const fpsFrameSampleWindowMs = 5_000
 
   const syncDebugSceneVisibility = () => {
     options.gameScene.debugGrid.visible = options.runtime.debug.debugModeEnabled
@@ -62,10 +67,41 @@ export const createFrameLoop = (options: {
     options.trajectoryPresentation.refreshPrediction()
   }
 
+  const shouldProbeBrowserGc = () =>
+    options.runtime.debug.debugModeEnabled ||
+    options.runtime.debug.fpsIndicatorEnabled
+
+  const recordFpsFrameSample = (
+    nowMs: number,
+    frameIntervalMs: number,
+    enabled: boolean,
+  ) => {
+    if (!enabled) {
+      fpsFrameSamples.length = 0
+      return
+    }
+
+    fpsFrameSamples.push({
+      atMs: nowMs,
+      frameMs: frameIntervalMs,
+    })
+
+    const sampleCutoffMs = nowMs - fpsFrameSampleWindowMs
+    while (
+      fpsFrameSamples.length > 0 &&
+      fpsFrameSamples[0].atMs < sampleCutoffMs
+    ) {
+      fpsFrameSamples.shift()
+    }
+  }
+
   const animate = (time: number) => {
     const frameStart = performance.now()
-    const realDt = Math.min((time - lastTime) / 1000, 0.1)
+    const frameIntervalMs = time - lastTime
+    const realDt = Math.min(frameIntervalMs / 1000, 0.1)
     lastTime = time
+    const browserGcProbeEnabled = shouldProbeBrowserGc()
+    browserGcProbe.setEnabled(browserGcProbeEnabled)
     smoothedFps = THREE.MathUtils.lerp(
       smoothedFps,
       1 / Math.max(realDt, 1 / 240),
@@ -172,7 +208,13 @@ export const createFrameLoop = (options: {
     })
 
     options.trajectoryPresentation.updateVisuals()
-    options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
+    options.hudPresentation.update({
+      browserGcStats: browserGcProbe.getStats(),
+      fpsFrameSamples,
+      fpsGraphNowMs: performance.now(),
+      smoothedCpuMs,
+      smoothedFps,
+    })
     options.crashMenu?.syncState()
     options.topMenu?.syncState()
     syncDebugSceneVisibility()
@@ -183,11 +225,20 @@ export const createFrameLoop = (options: {
         options.runtime.debug.fpsIndicatorEnabled,
     )
 
-    smoothedCpuMs = THREE.MathUtils.lerp(
-      smoothedCpuMs,
-      performance.now() - frameStart,
-      0.15,
+    const frameCpuMs = performance.now() - frameStart
+    const frameEndMs = performance.now()
+    if (browserGcProbeEnabled) {
+      browserGcProbe.recordFrame({
+        frameIntervalMs,
+        nowMs: frameEndMs,
+      })
+    }
+    recordFpsFrameSample(
+      frameEndMs,
+      frameIntervalMs,
+      options.runtime.debug.fpsIndicatorEnabled,
     )
+    smoothedCpuMs = THREE.MathUtils.lerp(smoothedCpuMs, frameCpuMs, 0.15)
     requestAnimationFrame(animate)
   }
 
@@ -198,6 +249,7 @@ export const createFrameLoop = (options: {
         options.runtime,
         options.globalScenarioDirectiveLimits,
       )
+      browserGcProbe.setEnabled(shouldProbeBrowserGc())
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
@@ -220,7 +272,13 @@ export const createFrameLoop = (options: {
           options.runtime.ui.targetHeadingWorldPosition ?? null,
         viewportSize: options.runtime.simulation.viewportSize,
       })
-      options.hudPresentation.update({ smoothedCpuMs, smoothedFps })
+      options.hudPresentation.update({
+        browserGcStats: browserGcProbe.getStats(),
+        fpsFrameSamples,
+        fpsGraphNowMs: performance.now(),
+        smoothedCpuMs,
+        smoothedFps,
+      })
       options.crashMenu?.syncState()
       options.topMenu?.syncState()
       syncDebugSceneVisibility()

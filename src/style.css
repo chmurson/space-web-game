@@ -1008,7 +1008,7 @@ canvas {
     position: fixed;
     top: calc(env(safe-area-inset-top, 0px) + 54px);
     right: 12px;
-    min-width: 108px;
+    width: 128px;
     max-width: calc(100vw - 24px);
     padding: 6px 8px 6px 9px;
     border: 1px solid rgba(148, 163, 184, 0.22);
@@ -1024,14 +1024,49 @@ canvas {
     font-variant-numeric: tabular-nums;
     line-height: 1.28;
     pointer-events: none;
-    white-space: pre;
+    white-space: normal;
     z-index: var(--z-overlay-debug);
 }
 
-#app .fps-indicator::first-line {
+#app .fps-indicator-text {
+    white-space: pre;
+}
+
+#app .fps-indicator-text::first-line {
     color: #f8fafc;
     font-size: 13px;
     font-weight: 800;
+}
+
+#app .fps-meter-graph {
+    display: block;
+    width: 112px;
+    height: 28px;
+    margin-top: 5px;
+    overflow: visible;
+}
+
+#app .fps-meter-graph-bg {
+    fill: rgba(15, 23, 42, 0.42);
+}
+
+#app .fps-meter-graph-budget {
+    stroke: rgba(148, 163, 184, 0.32);
+    stroke-width: 0.75;
+    vector-effect: non-scaling-stroke;
+}
+
+#app .fps-meter-graph-line {
+    fill: none;
+    stroke: var(--fps-meter-accent);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+}
+
+#app .fps-meter-graph-gc {
+    fill: rgba(248, 250, 252, 0.9);
 }
 
 #app .fps-indicator[data-status="warning"] {
