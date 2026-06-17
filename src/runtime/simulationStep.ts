@@ -1,8 +1,13 @@
-import { shouldCircularizeBurn, type AssistMode } from '../assist/orbitalAssist'
+import { type AssistMode, shouldCircularizeBurn } from '../assist/orbitalAssist'
 import type { KeyboardInput } from '../input/keyboardInput'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import { idleControls } from '../simulation/state'
-import type { Body, PhysicsEngine, SimulationState } from '../simulation/types'
+import type {
+  Body,
+  PhysicsEngine,
+  SimulationState,
+  TargetHeadingTurn,
+} from '../simulation/types'
 import {
   add,
   fromAngle,
@@ -24,22 +29,27 @@ type SimulationStepQueries = Pick<
 
 type ResolveSimulationControlsOptions = SimulationStepQueries & {
   assistMode: AssistMode
+  autopilotRotationRate?: number
   crashedBodyName: string | null
+  dt?: number
   keyboardInput: KeyboardInput
   state: SimulationState
   targetHeading: number | null
+  targetHeadingTurn?: TargetHeadingTurn | null
 }
 
 type ResolvedSimulationControls = {
   assistMode: AssistMode
   controls: SimulationState['controls']
   targetHeading: number | null
+  targetHeadingTurn: TargetHeadingTurn | null
 }
 
 export type TimeWarpConstraintReason = 'scenario-limit' | 'active-controls'
 
 export type StepSimulationFrameOptions = SimulationStepQueries & {
   assistMode: AssistMode
+  autopilotRotationRate: number
   crashedBodyName: string | null
   keyboardInput: KeyboardInput
   maxControlWarp: number
@@ -47,6 +57,7 @@ export type StepSimulationFrameOptions = SimulationStepQueries & {
   realDt: number
   state: SimulationState
   targetHeading: number | null
+  targetHeadingTurn?: TargetHeadingTurn | null
   timeWarpIndex: number
   timeWarps: number[]
 }
@@ -56,10 +67,224 @@ export type StepSimulationFrameResult = {
   crashedBodyName: string | null
   state: SimulationState
   targetHeading: number | null
+  targetHeadingTurn: TargetHeadingTurn | null
   timeWarpIndex: number
 }
 
 export const defaultMaxControlWarp = 100
+
+const targetHeadingDeadZone = 0.015
+const targetHeadingTurnBaseAccelerationSeconds = 0.65
+const targetHeadingTurnSpeedScale = 0.5
+const minAutopilotRotationRate = 0.001
+
+type TargetHeadingTurnProfile = {
+  acceleration: number
+  cruiseSeconds: number
+  durationSeconds: number
+  peakSpeed: number
+  rampDistance: number
+  rampSeconds: number
+  totalAngle: number
+}
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
+
+const normalizeAngle = (angle: number) =>
+  Math.atan2(Math.sin(angle), Math.cos(angle))
+
+const getSafeAutopilotRotationRate = (rotationRate: number | undefined) =>
+  Math.max(
+    Math.abs(rotationRate ?? minAutopilotRotationRate),
+    minAutopilotRotationRate,
+  )
+
+const getTargetHeadingTurnProfile = (
+  totalAngle: number,
+  maxSpeed: number,
+): TargetHeadingTurnProfile => {
+  const peakSpeedLimit = maxSpeed * targetHeadingTurnSpeedScale
+  const acceleration =
+    (maxSpeed / targetHeadingTurnBaseAccelerationSeconds) *
+    targetHeadingTurnSpeedScale ** 2
+  const rampSeconds = peakSpeedLimit / acceleration
+  const maxRampDistance = 0.5 * acceleration * rampSeconds ** 2
+
+  if (totalAngle <= maxRampDistance * 2) {
+    const peakSpeed = Math.sqrt(totalAngle * acceleration)
+    const triangularRampSeconds = peakSpeed / acceleration
+
+    return {
+      acceleration,
+      cruiseSeconds: 0,
+      durationSeconds: triangularRampSeconds * 2,
+      peakSpeed,
+      rampDistance: totalAngle / 2,
+      rampSeconds: triangularRampSeconds,
+      totalAngle,
+    }
+  }
+
+  const cruiseDistance = totalAngle - maxRampDistance * 2
+
+  return {
+    acceleration,
+    cruiseSeconds: cruiseDistance / peakSpeedLimit,
+    durationSeconds: rampSeconds * 2 + cruiseDistance / peakSpeedLimit,
+    peakSpeed: peakSpeedLimit,
+    rampDistance: maxRampDistance,
+    rampSeconds,
+    totalAngle,
+  }
+}
+
+const getTurnDistanceAtElapsed = (
+  profile: TargetHeadingTurnProfile,
+  elapsedSeconds: number,
+) => {
+  const elapsed = clamp(elapsedSeconds, 0, profile.durationSeconds)
+
+  if (elapsed <= profile.rampSeconds) {
+    return 0.5 * profile.acceleration * elapsed ** 2
+  }
+
+  if (elapsed <= profile.rampSeconds + profile.cruiseSeconds) {
+    return (
+      profile.rampDistance + profile.peakSpeed * (elapsed - profile.rampSeconds)
+    )
+  }
+
+  const remaining = profile.durationSeconds - elapsed
+  return profile.totalAngle - 0.5 * profile.acceleration * remaining ** 2
+}
+
+const createTargetHeadingTurn = (
+  currentHeading: number,
+  targetHeading: number,
+  autopilotRotationRate: number | undefined,
+): TargetHeadingTurn | null => {
+  const delta = normalizeAngle(targetHeading - currentHeading)
+
+  if (Math.abs(delta) < targetHeadingDeadZone) {
+    return null
+  }
+
+  const safeRotationRate = getSafeAutopilotRotationRate(autopilotRotationRate)
+  const profile = getTargetHeadingTurnProfile(Math.abs(delta), safeRotationRate)
+
+  return {
+    durationSeconds: profile.durationSeconds,
+    elapsedSeconds: 0,
+    startHeading: currentHeading,
+    targetHeading,
+  }
+}
+
+const resolveTargetHeadingTurn = (options: {
+  autopilotRotationRate: number | undefined
+  dt: number | undefined
+  getAutopilotTurn: (desiredHeading: number) => number
+  state: SimulationState
+  targetHeading: number
+  targetHeadingTurn: TargetHeadingTurn | null
+}): {
+  targetHeading: number | null
+  targetHeadingTurn: TargetHeadingTurn | null
+  turn: number
+} => {
+  if (options.dt === undefined) {
+    if (options.targetHeadingTurn) {
+      return {
+        targetHeading: options.targetHeading,
+        targetHeadingTurn: options.targetHeadingTurn,
+        turn:
+          Math.sign(
+            normalizeAngle(
+              options.targetHeadingTurn.targetHeading -
+                options.targetHeadingTurn.startHeading,
+            ),
+          ) || 0,
+      }
+    }
+
+    const turn = options.getAutopilotTurn(options.targetHeading)
+
+    return {
+      targetHeading: turn === 0 ? null : options.targetHeading,
+      targetHeadingTurn: turn === 0 ? null : options.targetHeadingTurn,
+      turn,
+    }
+  }
+
+  let targetHeadingTurn =
+    options.targetHeadingTurn &&
+    Math.abs(
+      normalizeAngle(
+        options.targetHeadingTurn.targetHeading - options.targetHeading,
+      ),
+    ) < targetHeadingDeadZone
+      ? options.targetHeadingTurn
+      : createTargetHeadingTurn(
+          options.state.spacecraft.heading,
+          options.targetHeading,
+          options.autopilotRotationRate,
+        )
+
+  if (!targetHeadingTurn) {
+    return {
+      targetHeading: null,
+      targetHeadingTurn: null,
+      turn: 0,
+    }
+  }
+
+  const nextElapsed = Math.min(
+    targetHeadingTurn.elapsedSeconds + options.dt,
+    targetHeadingTurn.durationSeconds,
+  )
+  const totalDelta = normalizeAngle(
+    targetHeadingTurn.targetHeading - targetHeadingTurn.startHeading,
+  )
+  const turnSign = Math.sign(totalDelta) || 1
+  const profile = getTargetHeadingTurnProfile(
+    Math.abs(totalDelta),
+    getSafeAutopilotRotationRate(options.autopilotRotationRate),
+  )
+  const completedAngle = getTurnDistanceAtElapsed(profile, nextElapsed)
+  const desiredHeading = normalizeAngle(
+    targetHeadingTurn.startHeading + turnSign * completedAngle,
+  )
+  const stepDelta = normalizeAngle(
+    desiredHeading - options.state.spacecraft.heading,
+  )
+  const safeRotationRate = getSafeAutopilotRotationRate(
+    options.autopilotRotationRate,
+  )
+  const turn =
+    options.dt > 0
+      ? clamp(stepDelta / (safeRotationRate * options.dt), -1, 1)
+      : 0
+
+  if (nextElapsed >= targetHeadingTurn.durationSeconds) {
+    return {
+      targetHeading: null,
+      targetHeadingTurn: null,
+      turn,
+    }
+  }
+
+  targetHeadingTurn = {
+    ...targetHeadingTurn,
+    elapsedSeconds: nextElapsed,
+  }
+
+  return {
+    targetHeading: targetHeadingTurn.targetHeading,
+    targetHeadingTurn,
+    turn,
+  }
+}
 
 const resolveSimulationControls = (
   options: ResolveSimulationControlsOptions,
@@ -69,6 +294,7 @@ const resolveSimulationControls = (
       assistMode: options.assistMode,
       controls: idleControls(),
       targetHeading: options.targetHeading,
+      targetHeadingTurn: null,
     }
   }
 
@@ -78,11 +304,14 @@ const resolveSimulationControls = (
   let turn = manualTurn
   let assistMode = options.assistMode
   let targetHeading = options.targetHeading
+  let targetHeadingTurn = options.targetHeadingTurn ?? null
 
   if (manualTurn !== 0) {
     assistMode = 'off'
     targetHeading = null
+    targetHeadingTurn = null
   } else if (assistMode === 'capture') {
+    targetHeadingTurn = null
     const target = options.getAssistTarget()
     const relativeVelocity = sub(
       options.state.spacecraft.velocity,
@@ -95,6 +324,7 @@ const resolveSimulationControls = (
       main = 1
     }
   } else if (assistMode === 'circularize') {
+    targetHeadingTurn = null
     const target = options.getAssistTarget()
     const plan = options.getCircularizePlan(target)
     const metrics = options.getCaptureMetrics(target)
@@ -104,11 +334,17 @@ const resolveSimulationControls = (
       main = 1
     }
   } else if (targetHeading !== null) {
-    turn = options.getAutopilotTurn(targetHeading)
-
-    if (turn === 0) {
-      targetHeading = null
-    }
+    const resolvedTargetHeadingTurn = resolveTargetHeadingTurn({
+      autopilotRotationRate: options.autopilotRotationRate,
+      dt: options.dt,
+      getAutopilotTurn: options.getAutopilotTurn,
+      state: options.state,
+      targetHeading,
+      targetHeadingTurn,
+    })
+    turn = resolvedTargetHeadingTurn.turn
+    targetHeading = resolvedTargetHeadingTurn.targetHeading
+    targetHeadingTurn = resolvedTargetHeadingTurn.targetHeadingTurn
   }
 
   return {
@@ -120,6 +356,7 @@ const resolveSimulationControls = (
       turn,
     },
     targetHeading,
+    targetHeadingTurn,
   }
 }
 
@@ -225,12 +462,14 @@ export const stepSimulationFrame = (
         controls: idleControls(),
       },
       targetHeading: options.targetHeading,
+      targetHeadingTurn: null,
       timeWarpIndex: options.timeWarpIndex,
     }
   }
 
   let assistMode = options.assistMode
   let targetHeading = options.targetHeading
+  let targetHeadingTurn = options.targetHeadingTurn ?? null
   let state = options.state
   let crashedBodyName = options.crashedBodyName
 
@@ -247,12 +486,14 @@ export const stepSimulationFrame = (
     shouldCaptureBurn: options.shouldCaptureBurn,
     state,
     targetHeading,
+    targetHeadingTurn,
     timeWarpIndex: options.timeWarpIndex,
     timeWarps: options.timeWarps,
   })
 
   assistMode = resolvedTimeWarp.simulationControls.assistMode
   targetHeading = resolvedTimeWarp.simulationControls.targetHeading
+  targetHeadingTurn = resolvedTimeWarp.simulationControls.targetHeadingTurn
   const timeWarpIndex = resolvedTimeWarp.timeWarpIndex
   const timeWarp = options.timeWarps[timeWarpIndex] ?? 1
   const physicsStep = 1
@@ -262,7 +503,9 @@ export const stepSimulationFrame = (
     const dt = Math.min(physicsStep, remaining)
     const controls = resolveSimulationControls({
       assistMode,
+      autopilotRotationRate: options.autopilotRotationRate,
       crashedBodyName,
+      dt,
       getAssistTarget: options.getAssistTarget,
       getAutopilotTurn: options.getAutopilotTurn,
       getCaptureMetrics: options.getCaptureMetrics,
@@ -271,10 +514,12 @@ export const stepSimulationFrame = (
       shouldCaptureBurn: options.shouldCaptureBurn,
       state,
       targetHeading,
+      targetHeadingTurn,
     })
 
     assistMode = controls.assistMode
     targetHeading = controls.targetHeading
+    targetHeadingTurn = controls.targetHeadingTurn
     state = {
       ...state,
       controls: controls.controls,
@@ -286,6 +531,7 @@ export const stepSimulationFrame = (
       crashedBodyName = collision.name
       assistMode = 'off'
       targetHeading = null
+      targetHeadingTurn = null
       state = createStoppedCollisionState(state, collision)
       break
     }
@@ -293,9 +539,10 @@ export const stepSimulationFrame = (
     remaining -= dt
   }
 
-  if (!crashedBodyName) {
+  if (!crashedBodyName && targetHeadingTurn === null) {
     const finalControls = resolveSimulationControls({
       assistMode,
+      autopilotRotationRate: options.autopilotRotationRate,
       crashedBodyName,
       getAssistTarget: options.getAssistTarget,
       getAutopilotTurn: options.getAutopilotTurn,
@@ -305,10 +552,12 @@ export const stepSimulationFrame = (
       shouldCaptureBurn: options.shouldCaptureBurn,
       state,
       targetHeading,
+      targetHeadingTurn,
     })
 
     assistMode = finalControls.assistMode
     targetHeading = finalControls.targetHeading
+    targetHeadingTurn = finalControls.targetHeadingTurn
     state = {
       ...state,
       controls: finalControls.controls,
@@ -320,6 +569,7 @@ export const stepSimulationFrame = (
     crashedBodyName,
     state,
     targetHeading,
+    targetHeadingTurn,
     timeWarpIndex,
   }
 }

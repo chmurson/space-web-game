@@ -42,6 +42,7 @@ export const createInitialAppRuntimeState = (
       crashedBodyName: null,
       state: initialScenarioTransition.state,
       targetHeading: null,
+      targetHeadingTurn: null,
       timeWarpIndex: 0,
       viewportSize: initialScenarioTransition.viewportSize,
     },

@@ -28,8 +28,8 @@ import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredicti
 import { parsePromptAction } from '../scenario/scenarioPrompts'
 import { createGameScene } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
-import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
+import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
 import {
   createTopMenu,
@@ -587,6 +587,7 @@ export const createAppComponents = (options: {
     },
     gameScene,
     hudPresentation,
+    autopilotRotationRate: options.config.controls.autopilotRotationRate,
     keyboardInput,
     physicsEngine: options.config.physicsEngine,
     queries,

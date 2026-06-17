@@ -40,6 +40,7 @@ const createRuntime = (): AppRuntimeState => ({
       },
     },
     targetHeading: 1,
+    targetHeadingTurn: null,
     timeWarpIndex: 4,
     viewportSize: 600,
   },

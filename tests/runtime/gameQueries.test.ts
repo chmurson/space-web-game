@@ -45,6 +45,7 @@ const createRuntime = (
       },
     },
     targetHeading: null,
+    targetHeadingTurn: null,
     timeWarpIndex: 0,
     viewportSize: 100,
   },

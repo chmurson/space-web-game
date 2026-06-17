@@ -282,6 +282,7 @@ export const createRuntimeActions = (options: {
               ? 'circularize'
               : 'off'
         options.runtime.simulation.targetHeading = null
+        options.runtime.simulation.targetHeadingTurn = null
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'toggleDebugMode') {
@@ -417,6 +418,7 @@ export const createRuntimeActions = (options: {
       worldPosition?: Vec2 | null,
     ) => {
       options.runtime.simulation.targetHeading = heading
+      options.runtime.simulation.targetHeadingTurn = null
       options.runtime.ui.targetHeadingScreenPosition = {
         x: clientX,
         y: clientY,
@@ -441,6 +443,7 @@ export const createRuntimeActions = (options: {
       options.runtime.simulation.targetHeading = normalizeAngle(
         baseHeading + deltaRadians,
       )
+      options.runtime.simulation.targetHeadingTurn = null
       options.runtime.simulation.assistMode = 'off'
     },
     returnToAutomaticAssistTargetSelection: () => {

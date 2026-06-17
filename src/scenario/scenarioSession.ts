@@ -1,6 +1,6 @@
 import type { AssistMode } from '../assist/orbitalAssist'
 import { cloneSimulationState } from '../simulation/state'
-import type { SimulationState } from '../simulation/types'
+import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import type { CameraControlMode } from './scenarioDirectiveTypes'
 
@@ -19,6 +19,7 @@ export type RuntimeScenarioCheckpoint = {
   cameraPanOffset?: Vec2
   coastPredictionHorizonHours: number
   targetHeading: number | null
+  targetHeadingTurn?: TargetHeadingTurn | null
   viewportSize: number
   world: SimulationState
 }
@@ -45,6 +46,7 @@ export type RuntimeScenarioCheckpointSource = {
   cameraPanOffset?: Vec2
   coastPredictionHorizonHours: number
   targetHeading: number | null
+  targetHeadingTurn?: TargetHeadingTurn | null
   viewportSize: number
   world: SimulationState
 }
@@ -81,6 +83,9 @@ export const cloneRuntimeScenarioSession = <
         cameraPanOffset: session.checkpoint.cameraPanOffset
           ? { ...session.checkpoint.cameraPanOffset }
           : undefined,
+        targetHeadingTurn: session.checkpoint.targetHeadingTurn
+          ? { ...session.checkpoint.targetHeadingTurn }
+          : null,
         world: cloneSimulationState(session.checkpoint.world),
       }
     : null,
@@ -98,6 +103,9 @@ export const createRuntimeScenarioCheckpoint = (
     assistTargetIndex: source.assistTargetIndex,
     coastPredictionHorizonHours: source.coastPredictionHorizonHours,
     targetHeading: source.targetHeading,
+    targetHeadingTurn: source.targetHeadingTurn
+      ? { ...source.targetHeadingTurn }
+      : null,
     viewportSize: source.viewportSize,
     world: cloneSimulationState(source.world),
   }

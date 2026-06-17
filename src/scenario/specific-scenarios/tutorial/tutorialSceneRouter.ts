@@ -74,6 +74,7 @@ const createDefaultRuntimeScenarioCheckpoint = (
     cameraPanOffset: runtime.ui.camera.panOffset,
     coastPredictionHorizonHours: runtime.simulation.coastPredictionHorizonHours,
     targetHeading: runtime.simulation.targetHeading,
+    targetHeadingTurn: runtime.simulation.targetHeadingTurn ?? null,
     viewportSize: runtime.simulation.viewportSize,
     world: runtime.simulation.state,
   })

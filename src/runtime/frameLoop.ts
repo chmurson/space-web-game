@@ -41,6 +41,7 @@ export const createFrameLoop = (options: {
   }
   bodyPresentation: BodyPresentation
   spacecraftPresentation: SpacecraftPresentation
+  autopilotRotationRate: number
   timeWarps: number[]
   touchControls?: boolean
   trajectoryPresentation: TrajectoryPresentation
@@ -78,6 +79,7 @@ export const createFrameLoop = (options: {
     if (!gameplayPaused) {
       const simulationStep = stepSimulationFrame({
         assistMode: options.runtime.simulation.assistMode,
+        autopilotRotationRate: options.autopilotRotationRate,
         crashedBodyName: options.runtime.simulation.crashedBodyName,
         getAssistTarget: options.queries.getAssistTarget,
         getAutopilotTurn: options.queries.getAutopilotTurn,
@@ -90,6 +92,7 @@ export const createFrameLoop = (options: {
         shouldCaptureBurn: options.queries.shouldCaptureBurn,
         state: options.runtime.simulation.state,
         targetHeading: options.runtime.simulation.targetHeading,
+        targetHeadingTurn: options.runtime.simulation.targetHeadingTurn ?? null,
         timeWarpIndex: options.runtime.simulation.timeWarpIndex,
         timeWarps: options.timeWarps,
       })

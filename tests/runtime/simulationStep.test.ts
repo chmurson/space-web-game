@@ -5,6 +5,20 @@ import {
   resolveSimulationTimeWarp,
   stepSimulationFrame,
 } from '@/runtime/simulationStep'
+import type { TargetHeadingTurn } from '@/simulation/types'
+
+const normalizeAngle = (angle: number) =>
+  Math.atan2(Math.sin(angle), Math.cos(angle))
+
+const getAutopilotTurn = (currentHeading: number, desiredHeading: number) => {
+  const error = normalizeAngle(desiredHeading - currentHeading)
+
+  if (Math.abs(error) < 0.015) {
+    return 0
+  }
+
+  return Math.min(1, Math.max(-1, error / 0.9))
+}
 
 const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
   elapsed: 0,
@@ -31,6 +45,91 @@ const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
     fuelCapacity: 32_000,
   },
 })
+
+const simulateTargetHeadingTurn = (targetHeadingRadians: number) => {
+  const recordedTurns: number[] = []
+  let state = createRuntimeState()
+  let targetHeading: number | null = targetHeadingRadians
+  let targetHeadingTurn: TargetHeadingTurn | null = null
+
+  for (let frame = 0; frame < 300 && targetHeading !== null; frame += 1) {
+    const result = stepSimulationFrame({
+      assistMode: 'off',
+      autopilotRotationRate: 0.9,
+      crashedBodyName: null,
+      getAssistTarget: () => createRuntimeState().bodies[0],
+      getAutopilotTurn: (desiredHeading) =>
+        getAutopilotTurn(state.spacecraft.heading, desiredHeading),
+      getCaptureMetrics: () => ({
+        circularSpeed: 0,
+        distance: 0,
+        insideRange: false,
+        relativeSpeed: 0,
+        roughAssistRange: 0,
+        specificEnergy: 0,
+        surfaceDistance: 0,
+      }),
+      getCircularizePlan: () => ({
+        burnHeading: 0,
+        deltaV: 0,
+        desiredVelocityHeading: 0,
+        distance: 0,
+        radialSpeed: 0,
+        tangentialSpeed: 0,
+      }),
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({
+          main: 0,
+          reverse: 0,
+          strafe: 0,
+          turn: 0,
+        }),
+        hasManualTurn: () => false,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+      },
+      maxControlWarp: 100,
+      physicsEngine: {
+        name: 'test',
+        step: (nextState, dt) => {
+          recordedTurns.push(nextState.controls.turn)
+
+          return {
+            ...nextState,
+            elapsed: nextState.elapsed + dt,
+            spacecraft: {
+              ...nextState.spacecraft,
+              heading: normalizeAngle(
+                nextState.spacecraft.heading +
+                  nextState.controls.turn * 0.9 * dt,
+              ),
+            },
+          }
+        },
+      },
+      realDt: 1 / 60,
+      shouldCaptureBurn: () => false,
+      state,
+      targetHeading,
+      targetHeadingTurn,
+      timeWarpIndex: 0,
+      timeWarps: [1, 10, 30, 60, 300, 1800],
+    })
+
+    state = result.state
+    targetHeading = result.targetHeading
+    targetHeadingTurn = result.targetHeadingTurn
+  }
+
+  return {
+    absoluteTurns: recordedTurns.map(Math.abs),
+    state,
+    targetHeading,
+    targetHeadingTurn,
+  }
+}
 
 describe('stepSimulationFrame', () => {
   it('reports an active-controls clamp at the highest configured safe warp', () => {
@@ -81,6 +180,7 @@ describe('stepSimulationFrame', () => {
   it('caps time warp when turning through target-heading guidance', () => {
     const result = stepSimulationFrame({
       assistMode: 'off',
+      autopilotRotationRate: 0.9,
       crashedBodyName: null,
       getAssistTarget: () => createRuntimeState().bodies[0],
       getAutopilotTurn: () => 1,
@@ -128,6 +228,7 @@ describe('stepSimulationFrame', () => {
   it('clears the target heading once target-heading rotation completes', () => {
     const result = stepSimulationFrame({
       assistMode: 'off',
+      autopilotRotationRate: 0.9,
       crashedBodyName: null,
       getAssistTarget: () => createRuntimeState().bodies[0],
       getAutopilotTurn: () => 0,
@@ -170,6 +271,47 @@ describe('stepSimulationFrame', () => {
     })
 
     expect(result.targetHeading).toBeNull()
+    expect(result.targetHeadingTurn).toBeNull()
     expect(result.state.controls.turn).toBe(0)
+  })
+
+  it('ramps target-heading turns in and out through runtime state', () => {
+    const { absoluteTurns, state, targetHeading, targetHeadingTurn } =
+      simulateTargetHeadingTurn(Math.PI / 2)
+    const peakTurn = Math.max(...absoluteTurns)
+    const peakIndex = absoluteTurns.indexOf(peakTurn)
+    const firstTurn = absoluteTurns[0]
+    const finalTurn = absoluteTurns.at(-1) ?? 0
+
+    expect(targetHeading).toBeNull()
+    expect(targetHeadingTurn).toBeNull()
+    expect(state.spacecraft.heading).toBeCloseTo(Math.PI / 2, 4)
+    expect(firstTurn).toBeLessThan(0.05)
+    expect(peakTurn).toBeGreaterThan(0.45)
+    expect(peakTurn).toBeLessThan(0.55)
+    expect(finalTurn).toBeLessThan(0.05)
+    expect(peakIndex).toBeGreaterThan(0)
+    expect(peakIndex).toBeLessThan(absoluteTurns.length * 0.5)
+  })
+
+  it('uses the same initial angular acceleration for short and long turns', () => {
+    const shortTurn = simulateTargetHeadingTurn(0.35)
+    const longTurn = simulateTargetHeadingTurn(Math.PI / 2)
+    const shortPeakTurn = Math.max(...shortTurn.absoluteTurns)
+    const longPeakTurn = Math.max(...longTurn.absoluteTurns)
+
+    expect(shortTurn.targetHeading).toBeNull()
+    expect(shortTurn.targetHeadingTurn).toBeNull()
+    expect(shortTurn.state.spacecraft.heading).toBeCloseTo(0.35, 4)
+    expect(shortPeakTurn).toBeLessThan(0.45)
+    expect(longPeakTurn).toBeGreaterThan(0.45)
+    expect(longPeakTurn).toBeLessThan(0.55)
+
+    for (let index = 0; index < 12; index += 1) {
+      expect(shortTurn.absoluteTurns[index]).toBeCloseTo(
+        longTurn.absoluteTurns[index],
+        6,
+      )
+    }
   })
 })

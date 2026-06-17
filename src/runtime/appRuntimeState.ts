@@ -4,7 +4,7 @@ import type {
   RuntimeScenarioDirectives,
 } from '../scenario/scenarioDirectiveTypes'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
-import type { SimulationState } from '../simulation/types'
+import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 
 export type AssistTargetSelectionMode = 'auto' | 'manual'
@@ -17,6 +17,7 @@ export type AppRuntimeSimulationSlice = {
   crashedBodyName: string | null
   state: SimulationState
   targetHeading: number | null
+  targetHeadingTurn: TargetHeadingTurn | null
   timeWarpIndex: number
   viewportSize: number
 }

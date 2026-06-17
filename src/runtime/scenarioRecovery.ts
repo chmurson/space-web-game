@@ -13,6 +13,7 @@ export type RuntimeCheckpointRestoreTransition = {
   coastPredictionHorizonHours: AppRuntimeSimulationSlice['coastPredictionHorizonHours']
   state: AppRuntimeSimulationSlice['state']
   targetHeading: AppRuntimeSimulationSlice['targetHeading']
+  targetHeadingTurn?: AppRuntimeSimulationSlice['targetHeadingTurn']
   timeWarpIndex: AppRuntimeSimulationSlice['timeWarpIndex']
   viewportSize: AppRuntimeSimulationSlice['viewportSize']
 }
@@ -35,6 +36,9 @@ export const createRuntimeCheckpointRestoreTransition = (
     coastPredictionHorizonHours: checkpoint.coastPredictionHorizonHours,
     state: cloneSimulationState(checkpoint.world, checkpoint.world.controls),
     targetHeading: checkpoint.targetHeading,
+    targetHeadingTurn: checkpoint.targetHeadingTurn
+      ? { ...checkpoint.targetHeadingTurn }
+      : null,
     timeWarpIndex: 0,
     viewportSize: checkpoint.viewportSize,
   }

@@ -28,6 +28,13 @@ export type ControlInput = {
   turn: number
 }
 
+export type TargetHeadingTurn = {
+  durationSeconds: number
+  elapsedSeconds: number
+  startHeading: number
+  targetHeading: number
+}
+
 export type Scenario = {
   id: string
   name: string

@@ -24,6 +24,7 @@ export const clearTransientScenarioRuntimeState = (
 ) => {
   clearTrailPoints?.()
   runtime.simulation.targetHeading = null
+  runtime.simulation.targetHeadingTurn = null
   runtime.simulation.assistMode = 'off'
   runtime.simulation.crashedBodyName = null
   runtime.ui.spacecraftLabelIntroUntil = performance.now() + 5_000
@@ -40,6 +41,7 @@ export const applySimulationFrameResult = (
   runtime.simulation.crashedBodyName = frameResult.crashedBodyName
   runtime.simulation.state = frameResult.state
   runtime.simulation.targetHeading = frameResult.targetHeading
+  runtime.simulation.targetHeadingTurn = frameResult.targetHeadingTurn ?? null
   runtime.simulation.timeWarpIndex = frameResult.timeWarpIndex
   if (frameResult.targetHeading === null) {
     runtime.ui.targetHeadingScreenPosition = null
@@ -89,6 +91,7 @@ export const applyCheckpointRestoreTransition = (
     transition.coastPredictionHorizonHours
   runtime.simulation.state = transition.state
   runtime.simulation.targetHeading = transition.targetHeading
+  runtime.simulation.targetHeadingTurn = transition.targetHeadingTurn ?? null
   runtime.simulation.timeWarpIndex = transition.timeWarpIndex
   runtime.simulation.viewportSize = transition.viewportSize
   runtime.ui.camera = createDefaultCameraControlUiState(
