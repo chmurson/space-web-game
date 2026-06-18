@@ -36,6 +36,13 @@
 - Planning-only, docs-only, and repository-instruction-only edits do not require test runs, build runs, or deploys unless the user explicitly asks for them.
 - When verification is skipped because the change is non-executable, say so briefly in the response.
 
+## GitHub Issue Intake
+
+- Every time an agent picks up work from GitHub, use the Shipit workflow from the start and apply the Ponytail lens throughout the work.
+- Before proceeding with a ticket, read the issue body and all comments, then make sure the scope is clear.
+- Record relevant issue comments, decisions, non-goals, and any scope uncertainty in the Shipit state before implementation.
+- If issue comments conflict or leave the requested behavior unclear, pause and clarify before changing product code.
+
 ## Shipit Reviews
 
 - Run CodeRabbit as part of Shipit review with `coderabbit --base main --agent`.

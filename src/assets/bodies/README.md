@@ -26,7 +26,7 @@ NASA imagery/media usage guidance: https://www.nasa.gov/nasa-brand-center/images
 ## Processing Notes
 
 - Output projection: equirectangular latitude-longitude map, 2:1 aspect ratio.
-- Output size: `2048x1024`.
+- Output sizes: Earth `4096x2048`; Moon `2048x1024`.
 - Runtime material: diffuse/base color only, high roughness, no normal/displacement/specular/cloud map stack.
 - Earth processing softens satellite detail, reduces contrast and saturation, and keeps oceans/continents readable.
 - Moon processing desaturates and warms the map, raises midtone readability, and softens harsh crater contrast.

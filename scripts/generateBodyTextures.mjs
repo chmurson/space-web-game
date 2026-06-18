@@ -68,7 +68,7 @@ download(sources.moon)
 run(magick, [
   sources.earth.path,
   '-resize',
-  '2048x1024!',
+  '4096x2048!',
   '-colorspace',
   'sRGB',
   '-blur',

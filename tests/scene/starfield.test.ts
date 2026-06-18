@@ -204,6 +204,18 @@ describe('createGameScene', () => {
 
       expect(rim).toBeInstanceOf(THREE.Mesh)
       expect(moon?.getObjectByName('earth-atmosphere-rim')).toBeUndefined()
+      expect(
+        (earth?.geometry as THREE.SphereGeometry).parameters.widthSegments,
+      ).toBe(64)
+      expect(
+        (earth?.geometry as THREE.SphereGeometry).parameters.heightSegments,
+      ).toBe(32)
+      expect(
+        (moon?.geometry as THREE.SphereGeometry).parameters.widthSegments,
+      ).toBe(64)
+      expect(
+        (moon?.geometry as THREE.SphereGeometry).parameters.heightSegments,
+      ).toBe(32)
 
       const material = (rim as THREE.Mesh).material
       const geometry = (rim as THREE.Mesh).geometry

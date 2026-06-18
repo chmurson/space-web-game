@@ -16,6 +16,8 @@ const bodyDiffuseTextureUrls: Record<string, string> = {
 }
 
 const EARTH_ATMOSPHERE_RIM_NAME = 'earth-atmosphere-rim'
+const BODY_WIDTH_SEGMENTS = 64
+const BODY_HEIGHT_SEGMENTS = 32
 const EARTH_ATMOSPHERE_RADIUS_MULTIPLIER = 1.045
 const EARTH_ATMOSPHERE_WIDTH_SEGMENTS = 96
 const EARTH_ATMOSPHERE_HEIGHT_SEGMENTS = 48
@@ -152,7 +154,11 @@ export const createGameScene = (
 
   for (const body of bodies) {
     const bodyRadius = Math.max(body.radius * RENDER_SCALE, 1)
-    const geometry = new THREE.SphereGeometry(bodyRadius, 32, 16)
+    const geometry = new THREE.SphereGeometry(
+      bodyRadius,
+      BODY_WIDTH_SEGMENTS,
+      BODY_HEIGHT_SEGMENTS,
+    )
     const material = new THREE.MeshStandardMaterial({
       color: body.color,
       roughness: 0.82,
