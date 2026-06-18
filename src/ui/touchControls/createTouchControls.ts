@@ -31,6 +31,7 @@ import {
 
 export type TouchControls = {
   element: HTMLElement
+  openTargetControl(): void
   setBurnControlSide(side: TouchControlRevealEdge): void
   setTargetControlSide(side: TouchControlRevealEdge): void
   setTargetControlVisible(visible: boolean): void
@@ -255,6 +256,7 @@ export const createTouchControls = (options: {
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
   onSelectTargetIndex(index: number): boolean
+  onTargetStateChange?(): void
   onTargetHeadingSelected(screenX: number, screenY: number): void
   onThrustControlUiStateChange(state: TouchThrustControlUiState): void
   onZoom(factor: number, focalPoint?: ScreenPoint): void
@@ -317,7 +319,10 @@ export const createTouchControls = (options: {
     onCommit: () => closeTargetControl(),
     onReturnToAutomaticTarget: options.onReturnToAutomaticTarget,
     onSelectTargetIndex: options.onSelectTargetIndex,
-    onStateChange: () => syncTargetRecommendationCue(),
+    onStateChange: () => {
+      syncTargetRecommendationCue()
+      options.onTargetStateChange?.()
+    },
   })
   targetDock.appendChild(targetControl.element)
 
@@ -1103,6 +1108,11 @@ export const createTouchControls = (options: {
 
   return {
     element: panel,
+    openTargetControl: () => {
+      targetRevealControl.setOpen(true)
+      syncTargetRecommendationCue()
+      targetControl.syncUi()
+    },
     setBurnControlSide: (side) => {
       thrustRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)

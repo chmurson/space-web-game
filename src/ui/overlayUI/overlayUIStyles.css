@@ -373,6 +373,92 @@
   color: rgba(125, 211, 252, 0.72);
 }
 
+.target-recommendation-notice {
+  order: 12;
+  display: inline-flex;
+  max-width: min(430px, calc(100vw - 116px));
+  min-width: 0;
+  padding: 0;
+  border-color: rgba(125, 211, 252, 0.32);
+  border-radius: 999px;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.target-recommendation-notice[data-notice-variant="transient"] {
+  border-color: rgba(140, 199, 255, 0.2);
+  pointer-events: none;
+}
+
+.target-recommendation-notice[hidden] {
+  display: none;
+}
+
+.target-recommendation-notice-open,
+.target-recommendation-notice-dismiss {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.target-recommendation-notice-open {
+  display: inline-flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  padding: 7px 9px 7px 11px;
+}
+
+.target-recommendation-notice[data-notice-variant="transient"]
+  .target-recommendation-notice-open {
+  cursor: default;
+}
+
+.target-recommendation-notice-open:disabled {
+  color: inherit;
+}
+
+.target-recommendation-notice-message {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(219, 234, 254, 0.92);
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target-recommendation-notice-dismiss {
+  display: inline-grid;
+  width: 30px;
+  min-width: 30px;
+  place-items: center;
+  border-left: 1px solid rgba(125, 211, 252, 0.18);
+  color: rgba(219, 234, 254, 0.72);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.target-recommendation-notice-dismiss[hidden] {
+  display: none;
+}
+
+.target-recommendation-notice-open:focus-visible,
+.target-recommendation-notice-dismiss:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.82);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .target-recommendation-notice-open:hover,
+  .target-recommendation-notice-dismiss:hover {
+    background: rgba(148, 163, 184, 0.09);
+  }
+}
+
 .scenario-prompt-pill-icon {
   width: 16px;
   height: 16px;
@@ -437,6 +523,10 @@
 
   .hud-notice-transient {
     max-width: min(320px, calc(100vw - 112px));
+  }
+
+  .target-recommendation-notice {
+    max-width: max(180px, min(260px, calc(100vw - 180px)));
   }
 
   .bottom-pill-area {
