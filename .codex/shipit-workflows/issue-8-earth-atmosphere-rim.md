@@ -3,7 +3,7 @@
 Task: Issue #8 subtle Earth atmosphere rim
 Branch: issue-8-earth-atmosphere-rim
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -261,3 +261,16 @@ Latest deploy result before merge review:
 - PR: https://github.com/chmurson/space-web-game/pull/10
 - Post-commit staging deploy: https://6a33bc217ac230090fc5e515--fanciful-bunny-d77b4b.netlify.app
 - Shared staging URL: https://fanciful-bunny-d77b4b.netlify.app
+
+## Final Merge And Issue Status
+
+- PR #10 was squash-merged into `main`.
+- Main commit: `4994106 feat(scene): add Earth atmosphere rim`
+- Production deploy passed: https://6a33bd8391f8a7128c62382a--space-web-game.netlify.app
+- Production URL: https://space-web-game.netlify.app
+- Issue #8: closed with completion comment on 2026-06-18.
+- Issue URL: https://github.com/chmurson/space-web-game/issues/8
+- Deferred follow-up ownership:
+  - issue #6 owns future surface atmosphere tinting with day/night body shading
+  - issue #7 owns the cloud shell
+  - issue #9 owns body geometry and texture quality tuning
