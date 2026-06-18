@@ -23,6 +23,7 @@ export type PointerCameraInputOptions = {
   getCameraMode: () => CameraControlMode
   getCameraModeChangesLocked: () => boolean
   getSpacecraftPosition: () => Vec2
+  getTargetHeadingSelectionEnabled?: () => boolean
   onCameraModeSelected: (mode: CameraControlMode) => boolean
   onCameraPan: (delta: Vec2) => boolean
   onResize: () => void
@@ -174,6 +175,9 @@ export const bindPointerCameraInput = (
     options.rendererElement,
     options.renderScale,
   )
+  const getTargetHeadingSelectionEnabled = () =>
+    options.getTargetHeadingSelectionEnabled?.() ??
+    options.getInteractionsEnabled()
   let lastTouchTap: {
     time: number
     x: number
@@ -364,7 +368,10 @@ export const bindPointerCameraInput = (
   )
 
   options.rendererElement.addEventListener('dblclick', (event) => {
-    if (!options.getInteractionsEnabled()) {
+    if (
+      !options.getInteractionsEnabled() ||
+      !getTargetHeadingSelectionEnabled()
+    ) {
       return
     }
 
@@ -394,7 +401,10 @@ export const bindPointerCameraInput = (
   options.rendererElement.addEventListener(
     'touchend',
     (event) => {
-      if (!options.getInteractionsEnabled()) {
+      if (
+        !options.getInteractionsEnabled() ||
+        !getTargetHeadingSelectionEnabled()
+      ) {
         return
       }
 

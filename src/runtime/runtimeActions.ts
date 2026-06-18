@@ -13,6 +13,7 @@ import type {
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { GameSceneRefs } from '../scene/createGameScene'
+import { RENDER_SCALE } from '../simulation/constants'
 import { add, type Vec2 } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
@@ -36,6 +37,8 @@ type RippleCreator = (
 export type RuntimeActionsResult = {
   refreshTrajectoryPrediction: boolean
 }
+
+const crashInspectionTargetNdcY = 0.38
 
 const getViewportDimensions = () => ({
   height: typeof window === 'undefined' ? 0 : window.innerHeight,
@@ -195,6 +198,36 @@ export const createRuntimeActions = (options: {
     options.runtime.ui.camera.mode = mode
     updateCamera()
     return true
+  }
+
+  const getCrashInspectionCameraTargetPosition = (
+    followTarget: Vec2,
+    targetNdcY = crashInspectionTargetNdcY,
+  ) => {
+    const screenUpOffset =
+      (options.runtime.simulation.viewportSize *
+        0.5 *
+        targetNdcY *
+        Math.sin(options.cameraElevation)) /
+      (Math.SQRT2 * RENDER_SCALE)
+    return {
+      x: followTarget.x + screenUpOffset,
+      y: followTarget.y + screenUpOffset,
+    }
+  }
+
+  const unlockCameraAtFollowTarget = (
+    targetNdcY = crashInspectionTargetNdcY,
+  ) => {
+    options.runtime.ui.camera.mode = 'centered'
+    updateCamera()
+    options.runtime.ui.camera.panOffset =
+      getCrashInspectionCameraTargetPosition(
+        getFollowCameraTargetPosition(),
+        targetNdcY,
+      )
+    options.runtime.ui.camera.mode = 'unlocked'
+    updateCamera()
   }
 
   const panCamera = (delta: { x: number; y: number }) => {
@@ -460,6 +493,7 @@ export const createRuntimeActions = (options: {
     startFreeRoam: scenarioRuntimeController.startFreeRoam,
     startReachMoon: scenarioRuntimeController.startReachMoon,
     startTutorial: scenarioRuntimeController.startTutorial,
+    unlockCameraAtFollowTarget,
     updateCamera,
     zoomCamera,
   }
