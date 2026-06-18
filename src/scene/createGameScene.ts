@@ -15,6 +15,63 @@ const bodyDiffuseTextureUrls: Record<string, string> = {
   moon: moonTextureUrl,
 }
 
+const EARTH_ATMOSPHERE_RIM_NAME = 'earth-atmosphere-rim'
+const EARTH_ATMOSPHERE_RADIUS_MULTIPLIER = 1.045
+const EARTH_ATMOSPHERE_WIDTH_SEGMENTS = 96
+const EARTH_ATMOSPHERE_HEIGHT_SEGMENTS = 48
+
+const createEarthAtmosphereRimMaterial = () =>
+  new THREE.ShaderMaterial({
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    fragmentShader: `
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+
+      void main() {
+        vec3 normal = normalize(vNormal);
+        vec3 viewDirection = normalize(vViewPosition);
+        float limb = 1.0 - abs(dot(normal, viewDirection));
+        float edgeGlow = pow(smoothstep(0.42, 1.0, limb), 2.2);
+        float alpha = edgeGlow * 0.42;
+        vec3 atmosphereColor = mix(
+          vec3(0.36, 0.72, 1.0),
+          vec3(0.93, 0.98, 1.0),
+          edgeGlow
+        );
+
+        gl_FragColor = vec4(atmosphereColor * alpha, alpha);
+      }
+    `,
+    side: THREE.BackSide,
+    toneMapped: false,
+    transparent: true,
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
+        vViewPosition = -modelViewPosition.xyz;
+        gl_Position = projectionMatrix * modelViewPosition;
+      }
+    `,
+  })
+
+const createEarthAtmosphereRim = (radius: number) => {
+  const rim = new THREE.Mesh(
+    new THREE.SphereGeometry(
+      radius * EARTH_ATMOSPHERE_RADIUS_MULTIPLIER,
+      EARTH_ATMOSPHERE_WIDTH_SEGMENTS,
+      EARTH_ATMOSPHERE_HEIGHT_SEGMENTS,
+    ),
+    createEarthAtmosphereRimMaterial(),
+  )
+  rim.name = EARTH_ATMOSPHERE_RIM_NAME
+  return rim
+}
+
 export type SpacecraftTrailPoint = {
   elapsed: number
   position: THREE.Vector3
@@ -94,11 +151,8 @@ export const createGameScene = (
   const textureLoader = new THREE.TextureLoader()
 
   for (const body of bodies) {
-    const geometry = new THREE.SphereGeometry(
-      Math.max(body.radius * RENDER_SCALE, 1),
-      32,
-      16,
-    )
+    const bodyRadius = Math.max(body.radius * RENDER_SCALE, 1)
+    const geometry = new THREE.SphereGeometry(bodyRadius, 32, 16)
     const material = new THREE.MeshStandardMaterial({
       color: body.color,
       roughness: 0.82,
@@ -124,6 +178,9 @@ export const createGameScene = (
     }
     const mesh = new THREE.Mesh(geometry, material)
     mesh.name = body.name
+    if (body.id === 'earth') {
+      mesh.add(createEarthAtmosphereRim(bodyRadius))
+    }
     bodyMeshes.set(body.id, mesh)
     scene.add(mesh)
   }
