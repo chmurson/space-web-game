@@ -140,8 +140,9 @@ describe('createStarfield', () => {
 
     for (const viewportSize of zoomInViewportSizes) {
       updateStarfield(starfield, { viewportSize })
-      const opacities = Array.from({ length: starfield.group.children.length })
-        .map((_, layerIndex) => getLayerOpacity(starfield, layerIndex))
+      const opacities = Array.from({
+        length: starfield.group.children.length,
+      }).map((_, layerIndex) => getLayerOpacity(starfield, layerIndex))
 
       if (previousOpacities) {
         for (let index = 0; index < opacities.length; index += 1) {
