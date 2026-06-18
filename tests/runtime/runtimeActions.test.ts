@@ -9,6 +9,7 @@ import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { GameHighLevelActionsMediator } from '@/runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { createRuntimeActions } from '@/runtime/runtimeActions'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { RENDER_SCALE } from '@/simulation/constants'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
@@ -260,6 +261,48 @@ describe('createRuntimeActions', () => {
     expect(updateCameraViewSpy).not.toHaveBeenCalled()
 
     vi.restoreAllMocks()
+  })
+
+  it('unlocks the camera with the follow target framed above the crash panel', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    runtime.scenario.directives.cameraModeChangesLocked = true
+    runtime.ui.camera.panOffset = { x: 999, y: 999 }
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      runtimeActions.unlockCameraAtFollowTarget()
+
+      const expectedOffset =
+        (runtime.simulation.viewportSize * 0.5 * 0.38 * Math.sin(1)) /
+        (Math.SQRT2 * RENDER_SCALE)
+
+      expect(runtime.ui.camera.mode).toBe('unlocked')
+      expect(runtime.ui.camera.panOffset.x).toBeCloseTo(
+        runtime.simulation.state.spacecraft.position.x + expectedOffset,
+      )
+      expect(runtime.ui.camera.panOffset.y).toBeCloseTo(
+        runtime.simulation.state.spacecraft.position.y + expectedOffset,
+      )
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: runtime.ui.camera.panOffset,
+        }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
   })
 
   it('stores a world-space target heading anchor for camera-relative feedback', () => {

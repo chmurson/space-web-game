@@ -120,6 +120,7 @@ const createRuntimeCoordinator = (options: {
     }
 
     options.crashMenu.syncState({
+      crashedBodyName: options.runtimeState.simulation.crashedBodyName,
       hasCheckpoint: options.runtimeState.scenario.session.checkpoint !== null,
     })
     options.topMenu.syncState()
@@ -373,9 +374,14 @@ export const createAppComponents = (options: {
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
   let uiSettingsOpen = false
+  let crashCameraFocusedBodyName: string | null = null
   let getAppMode = () => options.config.initialAppMode
-  const getGameInteractionsEnabled = () =>
+  const getBaseGameInteractionsEnabled = () =>
     getAppMode() === 'game' && !uiSettingsOpen && !scenarioTransitionLoading
+  const getGameInteractionsEnabled = () =>
+    getBaseGameInteractionsEnabled() &&
+    options.runtimeState.simulation.crashedBodyName === null
+  const getCameraInteractionsEnabled = getBaseGameInteractionsEnabled
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
@@ -584,9 +590,10 @@ export const createAppComponents = (options: {
     camera: gameScene.camera,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
-    getInteractionsEnabled: getGameInteractionsEnabled,
+    getInteractionsEnabled: getCameraInteractionsEnabled,
     getSpacecraftPosition: () =>
       options.runtimeState.simulation.state.spacecraft.position,
+    getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPan: runtimeActions.panCamera,
     onResize: runtimeActions.handleResize,
@@ -642,11 +649,35 @@ export const createAppComponents = (options: {
       })
     },
     onRestartFromCheckpoint: () => {
-      gameHighLevelActionsMediator.dispatch({
-        type: 'restartFromCheckpoint',
-      })
+      keyboardInput.clear()
+      if (runtimeActions.restartFromCheckpoint()) {
+        runtimeActions.dispatchScenarioPromptAction({
+          kind: 'builtin',
+          id: 'dismiss_to_replay',
+        })
+        crashCameraFocusedBodyName = null
+        crashMenu.setVisible(false)
+        options.app.classList.remove('app-crashed')
+        frameLoop.refreshTrajectoryPrediction()
+      }
     },
   })
+  const getCrashInspectionTargetNdcY = () => {
+    const panelTop =
+      crashMenu.element
+        .querySelector<HTMLElement>('.crash-menu-panel')
+        ?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY
+    const viewportHeight = Math.max(window.innerHeight, 1)
+    const desiredScreenY = Math.min(
+      viewportHeight * 0.32,
+      Math.max(24, panelTop - 72),
+    )
+    return THREE.MathUtils.clamp(
+      1 - (desiredScreenY / viewportHeight) * 2,
+      0.38,
+      0.9,
+    )
+  }
 
   const frameLoop = createFrameLoop({
     bodyPresentation: createBodyPresentation({
@@ -655,14 +686,29 @@ export const createAppComponents = (options: {
     }),
     crashMenu: {
       syncState: () => {
-        const visible =
-          getAppMode() === 'game' &&
-          options.runtimeState.simulation.crashedBodyName !== null
-        crashMenu.setVisible(visible)
+        const crashedBodyName = options.runtimeState.simulation.crashedBodyName
+        const visible = getAppMode() === 'game' && crashedBodyName !== null
         crashMenu.syncState({
+          crashedBodyName,
           hasCheckpoint:
             options.runtimeState.scenario.session.checkpoint !== null,
         })
+        if (!visible) {
+          crashCameraFocusedBodyName = null
+        }
+        crashMenu.setVisible(visible)
+        options.app.classList.toggle('app-crashed', visible)
+        if (visible) {
+          topMenu.close()
+          inGameControlsMenu.close()
+          uiSettingsDialog.close(false)
+          if (crashCameraFocusedBodyName !== crashedBodyName) {
+            runtimeActions.unlockCameraAtFollowTarget(
+              getCrashInspectionTargetNdcY(),
+            )
+            crashCameraFocusedBodyName = crashedBodyName
+          }
+        }
       },
     },
     gameScene,

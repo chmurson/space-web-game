@@ -285,6 +285,7 @@ export const createHudPresentation = (options: {
       const showThrustPill = !hiddenUIElements.has('thrustPill')
       const showTargetControl = !hiddenUIElements.has('targetControl')
       const showTrajectoryControl = !hiddenUIElements.has('trajectory')
+      const crashed = options.runtime.simulation.crashedBodyName !== null
 
       syncTrajectoryCoachAnchor()
 
@@ -329,9 +330,9 @@ export const createHudPresentation = (options: {
         if (lastTimeIconUpdateAt === null) {
           lastTimeIconUpdateAt = now
         }
-        const elapsedSeconds = (now - lastTimeIconUpdateAt) / 1000
+        const elapsedSeconds = crashed ? 0 : (now - lastTimeIconUpdateAt) / 1000
         lastTimeIconUpdateAt = now
-        if (!reducedMotion && options.overlayUi.timeIconHand) {
+        if (!crashed && !reducedMotion && options.overlayUi.timeIconHand) {
           timeIconAngle =
             (timeIconAngle + (elapsedSeconds / iconDurationSeconds) * 360) % 360
           options.overlayUi.timeIconHand.style.transform = `rotate(${timeIconAngle.toFixed(2)}deg)`
@@ -346,7 +347,6 @@ export const createHudPresentation = (options: {
         )
       }
       {
-        const crashed = options.runtime.simulation.crashedBodyName !== null
         const thrusting =
           !crashed &&
           options.runtime.simulation.state.controls.main > 0 &&

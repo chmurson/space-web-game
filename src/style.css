@@ -186,19 +186,59 @@ canvas {
 
 #app .crash-menu {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    justify-content: center;
-    padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
+    inset: 0;
+    display: grid;
+    align-items: end;
+    justify-items: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px)
+        calc(env(safe-area-inset-right, 0px) + 16px)
+        calc(env(safe-area-inset-bottom, 0px) + 18px)
+        calc(env(safe-area-inset-left, 0px) + 16px);
     pointer-events: none;
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0.04), rgba(2, 6, 23, 0.18));
     z-index: var(--z-overlay-modal-menu);
 }
 
-.crash-menu-actions {
+#app .crash-menu[hidden] {
+    display: none;
+}
+
+.crash-menu-panel {
     width: min(100%, 420px);
+    display: grid;
+    gap: 12px;
+    max-height: 100%;
+    padding: 18px;
+    overflow: auto;
     pointer-events: auto;
+    border: 1px solid var(--ui-glass-panel-border);
+    border-radius: 16px;
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+    backdrop-filter: var(--ui-glass-panel-blur);
+}
+
+.crash-menu-kicker {
+    margin: 0;
+    color: rgba(254, 205, 211, 0.78);
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.crash-menu-panel h2 {
+    margin: 0;
+    color: #fff7ed;
+    font-size: clamp(26px, 6vw, 38px);
+    line-height: 1;
+}
+
+.crash-menu-panel p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.82);
+    font-size: 14px;
+    line-height: 1.42;
 }
 
 .main-menu-actions button {
@@ -226,6 +266,10 @@ canvas {
     color: rgba(240, 249, 255, 0.42);
 }
 
+.main-menu-actions button[hidden] {
+    display: none;
+}
+
 .main-menu-actions button.main-menu-action-primary {
     border-color: rgba(125, 211, 252, 0.38);
     background:
@@ -235,6 +279,16 @@ canvas {
 
 .main-menu-actions button.main-menu-action-secondary {
     color: rgba(226, 232, 240, 0.78);
+}
+
+.main-menu-actions button.crash-menu-primary-action {
+    border-color: rgba(251, 113, 133, 0.36);
+    background:
+        linear-gradient(180deg, rgba(127, 29, 29, 0.74), rgba(63, 18, 33, 0.82)),
+        rgba(8, 13, 24, 0.72);
+    box-shadow:
+        0 0 0 1px rgba(251, 113, 133, 0.12),
+        0 16px 36px rgba(127, 29, 29, 0.28);
 }
 
 .main-menu-actions button:focus-visible {
@@ -1546,4 +1600,26 @@ canvas {
 #app.app-main-menu .fps-indicator,
 #app.app-main-menu .debug-panel {
     display: none;
+}
+
+#app.app-crashed canvas {
+    filter: none;
+}
+
+#app.app-crashed .top-menu,
+#app.app-crashed .in-game-controls-menu,
+#app.app-crashed .scenario-prompt-backdrop,
+#app.app-crashed .bottom-pill-area,
+#app.app-crashed .spacecraft-icon-thrust,
+#app.app-crashed .heading-target-dot,
+#app.app-crashed .heading-target-overlay,
+#app.app-crashed .offscreen-indicator,
+#app.app-crashed .body-label,
+#app.app-crashed .touch-controls,
+#app.app-crashed .touch-time-warp-feedback,
+#app.app-crashed .touch-step-selector,
+#app.app-crashed .fps-indicator,
+#app.app-crashed .debug-panel,
+#app.app-crashed .telemetry-strip {
+    display: none !important;
 }
