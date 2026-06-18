@@ -29,3 +29,18 @@ The raw snapshot starts collapsed, matching the original panel layout. Open
 **Raw snapshot** to see the compact syntax-highlighted preview, use **Full
 height** to expand it across the whole DevTools panel, **Esc** to close it, and
 **Copy JSON** to copy the unformatted underlying JSON text.
+
+## Extension version status
+
+The panel header compares the installed extension version with the version
+published by the inspected Space Web Game app at
+`/space-web-game-devtools-version.json`.
+
+- **up to date** means the installed unpacked extension matches the app.
+- **update to v...** means reload the unpacked extension in `chrome://extensions`.
+- **ahead of app** means the installed extension is newer than the inspected app
+  expects; no action is needed.
+- **cannot check** means the inspected page did not serve the version file.
+
+Older installed copies that predate this checker must be reloaded once before
+they can report future update status.

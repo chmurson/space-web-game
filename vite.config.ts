@@ -1,6 +1,24 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import { parse } from 'yaml'
+
+const devtoolsVersionFileName = 'space-web-game-devtools-version.json'
+const devtoolsManifestPath = fileURLToPath(
+  new URL('./extension/space-web-game-devtools/manifest.json', import.meta.url),
+)
+
+const getDevtoolsVersionPayload = () => {
+  const manifest = JSON.parse(readFileSync(devtoolsManifestPath, 'utf8')) as {
+    version?: unknown
+  }
+
+  if (typeof manifest.version !== 'string') {
+    throw new Error('DevTools extension manifest is missing a string version')
+  }
+
+  return `${JSON.stringify({ extensionVersion: manifest.version }, null, 2)}\n`
+}
 
 const yamlConfigPlugin = (): Plugin => ({
   name: 'space-game-yaml-config',
@@ -17,8 +35,32 @@ const yamlConfigPlugin = (): Plugin => ({
   },
 })
 
+const devtoolsVersionPlugin = (): Plugin => ({
+  name: 'space-game-devtools-version',
+  configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      const pathname = request.url?.split('?')[0]
+
+      if (pathname !== `/${devtoolsVersionFileName}`) {
+        next()
+        return
+      }
+
+      response.setHeader('Content-Type', 'application/json')
+      response.end(getDevtoolsVersionPayload())
+    })
+  },
+  generateBundle() {
+    this.emitFile({
+      fileName: devtoolsVersionFileName,
+      source: getDevtoolsVersionPayload(),
+      type: 'asset',
+    })
+  },
+})
+
 export default defineConfig({
-  plugins: [yamlConfigPlugin()],
+  plugins: [yamlConfigPlugin(), devtoolsVersionPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

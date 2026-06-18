@@ -6,6 +6,12 @@
 - Keep that summary focused on what changed and why it matters, without assuming the reader followed all internal details.
 - Keep the technical summary too; the plain-language summary is an addition, not a replacement.
 
+## Scoped Instructions
+
+- Before modifying source code, look for the nearest `AGENTS.md` that applies to the target files, starting in the target directory and walking upward.
+- When adding a new scoped `AGENTS.md`, add a link here with a brief explanation of its scope.
+- [extension/space-web-game-devtools/AGENTS.md](extension/space-web-game-devtools/AGENTS.md): Chrome DevTools extension guidance, including when to bump the extension manifest version.
+
 ## Deployment
 
 - This repository has one production Netlify target and multiple non-production staging targets:

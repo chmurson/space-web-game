@@ -82,7 +82,9 @@ pre {
 .header-actions {
     align-items: center;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    justify-content: flex-end;
 }
 
 .status {
@@ -95,7 +97,8 @@ pre {
     white-space: nowrap;
 }
 
-.status::before {
+.status::before,
+.version-status::before {
     border-radius: 999px;
     content: "";
     display: inline-block;
@@ -108,6 +111,46 @@ pre {
 }
 
 .status.disconnected::before {
+    background: var(--danger);
+}
+
+.version-status {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    display: inline-flex;
+    gap: 6px;
+    max-width: 100%;
+    padding: 3px 9px;
+    white-space: normal;
+}
+
+.version-status.current {
+    color: var(--ok);
+}
+
+.version-status.current::before {
+    background: var(--ok);
+}
+
+.version-status.ahead,
+.version-status.checking,
+.version-status.unavailable {
+    color: var(--warn);
+}
+
+.version-status.ahead::before,
+.version-status.checking::before,
+.version-status.unavailable::before {
+    background: var(--warn);
+}
+
+.version-status.outdated {
+    color: var(--danger);
+}
+
+.version-status.outdated::before {
     background: var(--danger);
 }
 

@@ -1,5 +1,6 @@
 const pollIntervalMs = 500
 const commandLogLimit = 24
+const devtoolsVersionFileName = 'space-web-game-devtools-version.json'
 
 const elements = {
     appMode: document.querySelector('#appMode'),
@@ -35,6 +36,7 @@ const elements = {
     targetHeading: document.querySelector('#targetHeading'),
     timeWarp: document.querySelector('#timeWarp'),
     timeWarpSelect: document.querySelector('#timeWarpSelect'),
+    versionStatus: document.querySelector('#versionStatus'),
     viewportSize: document.querySelector('#viewportSize'),
 }
 
@@ -110,6 +112,105 @@ const evalInInspectedPage = (expression) =>
             },
         )
     })
+
+const getInstalledExtensionVersion = () => {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.getManifest) {
+        return null
+    }
+
+    return chrome.runtime.getManifest().version
+}
+
+const getPublishedExtensionVersionExpression = () => `(() => {
+    try {
+      const request = new XMLHttpRequest();
+      const versionUrl = new URL('/${devtoolsVersionFileName}', window.location.href);
+      request.open('GET', versionUrl.href, false);
+      request.send();
+
+      if (request.status < 200 || request.status >= 300) {
+        return { ok: false, error: 'version file returned HTTP ' + request.status };
+      }
+
+      const body = JSON.parse(request.responseText);
+      if (typeof body.extensionVersion !== 'string') {
+        return { ok: false, error: 'version file is missing extensionVersion' };
+      }
+
+      return { ok: true, extensionVersion: body.extensionVersion };
+    } catch (error) {
+      return { ok: false, error: error && error.message ? error.message : String(error) };
+    }
+  })()`
+
+const compareVersions = (leftVersion, rightVersion) => {
+    const leftParts = leftVersion.split('.').map(Number)
+    const rightParts = rightVersion.split('.').map(Number)
+    const partCount = Math.max(leftParts.length, rightParts.length)
+
+    for (let index = 0; index < partCount; index += 1) {
+        const left = leftParts[index] || 0
+        const right = rightParts[index] || 0
+
+        if (left !== right) {
+            return left > right ? 1 : -1
+        }
+    }
+
+    return 0
+}
+
+const setVersionStatus = (state, text, title = text) => {
+    elements.versionStatus.textContent = text
+    elements.versionStatus.title = title
+    elements.versionStatus.className = `version-status ${state}`
+}
+
+const checkExtensionVersion = async () => {
+    const installedVersion = getInstalledExtensionVersion()
+
+    if (!installedVersion) {
+        setVersionStatus('unavailable', 'Ext version: unavailable')
+        return
+    }
+
+    try {
+        const response = await evalInInspectedPage(getPublishedExtensionVersionExpression())
+
+        if (response?.ok !== true) {
+            throw new Error(response?.error || 'version check failed')
+        }
+
+        const publishedVersion = response.extensionVersion
+        const comparison = compareVersions(installedVersion, publishedVersion)
+
+        if (comparison < 0) {
+            setVersionStatus(
+                'outdated',
+                `Ext v${installedVersion}: update to v${publishedVersion}`,
+                'Reload the unpacked Space Web Game DevTools extension in chrome://extensions.',
+            )
+            return
+        }
+
+        if (comparison > 0) {
+            setVersionStatus(
+                'ahead',
+                `Ext v${installedVersion}: ahead of app v${publishedVersion}`,
+                'The installed extension is newer than the inspected app.',
+            )
+            return
+        }
+
+        setVersionStatus('current', `Ext v${installedVersion}: up to date`)
+    } catch (error) {
+        setVersionStatus(
+            'unavailable',
+            `Ext v${installedVersion}: cannot check`,
+            error.message,
+        )
+    }
+}
 
 const sendBridgeRequest = async (request) => {
     const response = await evalInInspectedPage(getBridgeExpression(request))
@@ -338,6 +439,7 @@ document.addEventListener('change', (event) => {
 
 elements.refreshButton.addEventListener('click', () => {
     refreshSnapshot()
+    checkExtensionVersion()
 })
 
 elements.openRawSnapshotButton.addEventListener('click', () => {
@@ -359,4 +461,5 @@ document.addEventListener('keydown', (event) => {
 })
 
 refreshSnapshot()
+checkExtensionVersion()
 setInterval(refreshSnapshot, pollIntervalMs)
