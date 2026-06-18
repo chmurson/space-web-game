@@ -3,7 +3,7 @@
 Task: Issue #11 Add boot and scenario asset loading screens
 Branch: codex/issue-11-loading-screens
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -46,6 +46,12 @@ Status: active
 - Delayed boot fade follow-up deployed to woven-moth staging: https://space-web-game-woven-moth.netlify.app
 - Delayed boot fade unique deploy: https://6a340bddf2ddbc3faac28bbf--space-web-game-woven-moth.netlify.app
 - Delayed boot fade issue comment posted: https://github.com/chmurson/space-web-game/issues/11#issuecomment-4743431588
+- Feature commit: ea58ca1ca50c820a41fdaf9e207f0af0a6c16496
+- Pull request: https://github.com/chmurson/space-web-game/pull/13
+- Merged to `main` as 1730a49a8f5f8267cd38ec78b91c70351c0380cc.
+- Production deploy: https://space-web-game.netlify.app
+- Production unique deploy: https://6a341037eeb403041e1ccbc2--space-web-game.netlify.app
+- Issue #11 closed: https://github.com/chmurson/space-web-game/issues/11
 
 ## Open Questions
 
@@ -64,6 +70,7 @@ Status: active
 - [x] Browser verification for delayed initial boot panel fade with `/src/main.ts` paused
 - [x] `coderabbit --base main --agent`
 - [x] `npm run deploy:netlify`
+- [x] `npm run deploy:netlify:production`
 
 ## Brainstorm Handoff
 
@@ -219,6 +226,7 @@ CodeRabbit:
 - First run found one valid minor issue: the static boot title used a `<p>` where a heading was more semantic.
 - Fixed by changing the boot title to `<h1 class="boot-title">Space Web Game</h1>`.
 - Final `coderabbit --base main --agent` rerun completed with 0 findings.
+- GitHub's PR-side CodeRabbit check remained pending after several minutes, but the required local Shipit CodeRabbit run completed with 0 findings before merge.
 
 Ponytail lens:
 - Kept the implementation small: one render-side manifest/cache module, one DOM overlay helper, and no asset manager class.
@@ -249,6 +257,7 @@ Validation results:
 - Follow-up delayed boot fade verification passed with local Chrome/CDP: the boot panel stayed at opacity `0` initially and after 140ms, then reached opacity `1` after the delayed fade. Screenshot evidence was saved to `tmp/loading-screens-playtest/desktop-boot-delayed-fade.png`.
 - `npx biome format index.html` was attempted, but Biome ignores `index.html` under the current repo configuration.
 - Staging deploy passed: https://space-web-game-woven-moth.netlify.app.
+- Production deploy passed from a temporary detached `origin/main` worktree: https://space-web-game.netlify.app.
 
 Residual risk:
 - The loading overlay may only appear briefly on fast cached transitions; this is expected.
@@ -257,4 +266,4 @@ Residual risk:
 
 ## Next Step
 
-Commit, push, open PR, merge to `main`, close issue #11, and deploy production.
+Complete. PR #13 is merged, issue #11 is closed, and production is deployed.
