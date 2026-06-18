@@ -50,6 +50,15 @@ coderabbit --base main --agent
 
 ## GitHub Issue Status Gate
 
+When starting implementation for a GitHub issue, update every issue that the task explicitly targets before changing product code.
+
+- If the repo has no project status or `in progress` label, assign the issue to the authenticated user when appropriate and leave a concise start comment with:
+  - the implementation branch
+  - the Shipit state path
+  - the first planned scope
+  - what remains before the issue can close
+- Record the issue URL/comment and current issue state in the Shipit workflow state.
+
 Before marking Shipit work `completed`, update every GitHub issue that the task explicitly targets or materially changes.
 
 - If the work is still in progress, leave a concise issue comment with:

@@ -291,6 +291,16 @@ describe('createRuntimeActions', () => {
     expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
   })
 
+  it('starts the Reach the Moon scenario shell', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    runtimeActions.startReachMoon()
+
+    expect(runtime.scenario.session.scenarioId).toBe('reach-moon')
+    expect(runtime.scenario.metadata.title).toBe('Reach the Moon')
+  })
+
   it('changes coast horizon on the trajectory whole-day ladder', () => {
     const runtime = createRuntime()
     runtime.simulation.coastPredictionHorizonHours = 16

@@ -47,9 +47,29 @@ describe('scenarioAssets', () => {
     await Promise.all([
       loadScenarioAssets('tutorial'),
       loadScenarioAssets('earth-moon'),
+      loadScenarioAssets('reach-moon'),
     ])
 
     expect(loadTexture).toHaveBeenCalledTimes(2)
+  })
+
+  it('loads Earth and Moon body textures for Reach the Moon', async () => {
+    const loadTexture = vi
+      .spyOn(THREE.TextureLoader.prototype, 'load')
+      .mockImplementation((_url, onLoad) => {
+        const texture = createLoadedTexture()
+        onLoad?.(texture)
+        return texture
+      })
+    const { areScenarioAssetsCached, loadScenarioAssets } =
+      await loadScenarioAssetModule()
+
+    const assets = await loadScenarioAssets('reach-moon')
+
+    expect(loadTexture).toHaveBeenCalledTimes(2)
+    expect(assets.bodyDiffuseTextures.has('earth')).toBe(true)
+    expect(assets.bodyDiffuseTextures.has('moon')).toBe(true)
+    expect(areScenarioAssetsCached('reach-moon')).toBe(true)
   })
 
   it('resolves with fallback assets when a texture fails', async () => {

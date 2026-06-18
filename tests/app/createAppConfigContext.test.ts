@@ -39,6 +39,7 @@ describe('createAppConfigContext', () => {
   })
 
   it('uses configured default touch control settings without stored settings', () => {
+    expect(createAppConfigContext().featureFlags.reachMoon).toBe(false)
     expect(createAppConfigContext().userSettings).toMatchObject({
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -85,6 +86,7 @@ describe('createAppConfigContext', () => {
     const config = createAppConfigContext()
 
     expect(config.initialAppMode).toBe('game')
+    expect(config.requestedScenarioId).toBe('earth-moon')
     expect(config.userSettings).toMatchObject({
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
@@ -114,5 +116,29 @@ describe('createAppConfigContext', () => {
       touchTrajectoryControlSide: 'right',
       touchWarpControlSide: 'right',
     })
+  })
+
+  it('gates direct Reach the Moon startup behind the URL feature flag', () => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?scenario=reach-moon'),
+    })
+
+    const unflaggedConfig = createAppConfigContext()
+
+    expect(unflaggedConfig.initialAppMode).toBe('game')
+    expect(unflaggedConfig.featureFlags.reachMoon).toBe(false)
+    expect(unflaggedConfig.requestedScenarioId).toBe('earth-moon')
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?scenario=reach-moon&reachmoon=1'),
+    })
+
+    const flaggedConfig = createAppConfigContext()
+
+    expect(flaggedConfig.initialAppMode).toBe('game')
+    expect(flaggedConfig.featureFlags.reachMoon).toBe(true)
+    expect(flaggedConfig.requestedScenarioId).toBe('reach-moon')
   })
 })

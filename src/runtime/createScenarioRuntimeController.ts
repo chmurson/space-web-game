@@ -72,6 +72,7 @@ export type ScenarioRuntimeController = {
   resetScenario(): void
   restartFromCheckpoint(): boolean
   startFreeRoam(): void
+  startReachMoon(): void
   startTutorial(): void
 }
 
@@ -187,6 +188,9 @@ export const createScenarioRuntimeController = (options: {
           globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
         },
       )
+    },
+    startReachMoon: () => {
+      loadScenarioById('reach-moon')
     },
     startTutorial: () => {
       applyScenarioLoadTransition(

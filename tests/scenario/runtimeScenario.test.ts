@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { EARTH_VIEWPORT_SIZE } from '@/domain/viewportPresets'
 import {
+  createRequestedRuntimeScenario,
   createRuntimeScenarioState,
+  createRuntimeScenarioStateFromId,
   type RuntimeScenarioOptions,
 } from '@/scenario/runtimeScenario'
 
@@ -111,6 +113,21 @@ describe('createRuntimeScenarioState', () => {
     )
 
     expect(runtimeScenario.cameraMode).toBe('unlocked')
+  })
+
+  it('creates a Reach the Moon runtime scenario on the Earth-Moon world', () => {
+    const scenario = createRequestedRuntimeScenario('reach-moon')
+
+    expect(scenario.id).toBe('reach-moon')
+    expect(scenario.name).toBe('Reach the Moon')
+    expect(scenario.bodies.map((body) => body.id)).toEqual(['earth', 'moon'])
+
+    const runtimeScenario = createRuntimeScenarioStateFromId(
+      'reach-moon',
+      options,
+    )
+
+    expect(runtimeScenario.scenarioSession.scenarioId).toBe('reach-moon')
   })
 
   it('preserves provided scenario session metadata', () => {

@@ -7,13 +7,13 @@ import {
   createMoonCaptureDebugScenario,
 } from '../simulation/scenarios/earthMoon'
 import type {
+  GlobalScenarioDirectiveLimits,
+  RuntimeScenarioDirectives,
+} from './scenarioDirectiveTypes'
+import type {
   PromptActionEffect,
   PromptDefinition,
 } from './scenarioPromptTypes'
-import type {
-  RuntimeScenarioDirectives,
-  GlobalScenarioDirectiveLimits,
-} from './scenarioDirectiveTypes'
 import type { ScenarioRuntimeTransition } from './scenarioRuntimeTransition'
 import type { ScenarioSessionValue } from './scenarioSession'
 import { registerMenuBackgroundScenario } from './specific-scenarios/menuBackgroundScenario'
@@ -74,6 +74,17 @@ const earthMoonScenarioScene: ScenarioSceneDefinition = {
   }),
 }
 
+const createReachMoonScenario = (): RuntimeScenario => {
+  const scenario = createEarthMoonScenario()
+
+  return {
+    ...scenario,
+    id: 'reach-moon',
+    name: 'Reach the Moon',
+    description: 'Launch from Earth into the Earth-Moon mission route.',
+  }
+}
+
 const runtimeScenarioDefinitions = {
   'earth-moon': {
     id: 'earth-moon',
@@ -87,6 +98,11 @@ const runtimeScenarioDefinitions = {
   },
   'menu-background': registerMenuBackgroundScenario(),
   tutorial: registerTutorialScenario(),
+  'reach-moon': {
+    id: 'reach-moon',
+    createScenario: createReachMoonScenario,
+    getSceneDefinition: () => earthMoonScenarioScene,
+  },
 }
 
 export const getRuntimeScenarioDefinition = (

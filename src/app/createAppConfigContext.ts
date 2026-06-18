@@ -19,6 +19,9 @@ export type AppConfigContext = {
   requestedEngine: string
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
+  featureFlags: {
+    reachMoon: boolean
+  }
   userSettings: UserSettings
   controls: {
     timeWarps: number[]
@@ -77,7 +80,14 @@ export const createAppConfigContext = (): AppConfigContext => {
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
-  const requestedScenarioId = urlParams.get('scenario') ?? 'earth-moon'
+  const featureFlags = {
+    reachMoon: urlParams.get('reachmoon') === '1',
+  }
+  const requestedScenarioParam = urlParams.get('scenario')
+  const requestedScenarioId =
+    requestedScenarioParam === 'reach-moon' && !featureFlags.reachMoon
+      ? 'earth-moon'
+      : (requestedScenarioParam ?? 'earth-moon')
   const storedUserSettings = readUserSettings()
   const userSettings: UserSettings = {
     ...storedUserSettings,
@@ -151,6 +161,7 @@ export const createAppConfigContext = (): AppConfigContext => {
     requestedEngine,
     physicsEngine,
     requestedScenarioId,
+    featureFlags,
     userSettings: { ...userSettings },
     controls,
     assistTarget,

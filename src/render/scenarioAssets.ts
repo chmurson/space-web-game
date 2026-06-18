@@ -32,6 +32,7 @@ const scenarioBodyDiffuseTextureIds: Record<string, readonly string[]> = {
   'earth-moon': defaultBodyDiffuseTextureIds,
   'menu-background': ['earth'],
   'moon-capture-debug': defaultBodyDiffuseTextureIds,
+  'reach-moon': defaultBodyDiffuseTextureIds,
   'debug-snapshot': defaultBodyDiffuseTextureIds,
   tutorial: defaultBodyDiffuseTextureIds,
 }
