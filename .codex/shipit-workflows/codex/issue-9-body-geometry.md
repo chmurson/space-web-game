@@ -2,8 +2,8 @@
 
 Task: Issue #9 Tune body geometry and texture quality by zoom
 Branch: codex/issue-9-body-geometry
-Current Mode: review
-Status: active
+Current Mode: yeet
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated (direct main fast-forward requested; no PR)
 
 ## Artifacts
 
@@ -39,6 +39,9 @@ Status: active
 - Issue progress comment posted: https://github.com/chmurson/space-web-game/issues/9#issuecomment-4742272819
 - User requested extending Earth texture resolution after the fixed geometry pass. Moon texture remains intentionally unchanged.
 - Earth texture extension comment posted: https://github.com/chmurson/space-web-game/issues/9#issuecomment-4742511918
+- Merged to `main` by fast-forward push: `5b7ab41`.
+- Production deploy completed: https://space-web-game.netlify.app
+- Issue closed: https://github.com/chmurson/space-web-game/issues/9#issuecomment-4742602723
 
 ## Open Questions
 
@@ -56,6 +59,7 @@ Status: active
 - [x] `git diff --check`
 - [x] `coderabbit --base main --agent`
 - [x] `npm run deploy:netlify`
+- [x] `npm run deploy:netlify:production`
 
 ## Brainstorm Handoff
 
@@ -222,4 +226,4 @@ Residual risk:
 
 ## Next Step
 
-User review on staging, then commit/PR/merge when requested.
+Complete.
