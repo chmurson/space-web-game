@@ -1,14 +1,20 @@
 import * as THREE from 'three'
-
 import { renderPosition } from '../render/sceneUpdates'
+import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
-import type { GameSceneRefs } from '../scene/createGameScene'
+import { getBodyVisualRotationY } from './bodyRotation'
 
-const updateBodyWorldVisuals = (gameScene: GameSceneRefs, bodies: Body[]) => {
+const updateBodyWorldVisuals = (options: {
+  allBodies: Body[]
+  bodies: Body[]
+  elapsedSeconds: number
+  gameScene: GameSceneRefs
+}) => {
+  const { bodies, gameScene } = options
   const visibleBodyIds = new Set(bodies.map((body) => body.id))
 
   for (const [bodyId, mesh] of gameScene.bodyMeshes.entries()) {
@@ -20,6 +26,11 @@ const updateBodyWorldVisuals = (gameScene: GameSceneRefs, bodies: Body[]) => {
     if (mesh) {
       mesh.visible = true
       mesh.position.copy(renderPosition(body.position.x, body.position.y))
+      mesh.rotation.y = getBodyVisualRotationY({
+        bodies: options.allBodies,
+        body,
+        elapsedSeconds: options.elapsedSeconds,
+      })
     }
   }
 }
@@ -268,6 +279,7 @@ export const createBodyPresentation = (options: {
 }) => ({
   updateVisuals: (state: {
     bodies: Body[]
+    elapsed: number
     hiddenBodyIds: string[]
     spacecraftPosition: Vec2
     viewportSize: number
@@ -276,7 +288,12 @@ export const createBodyPresentation = (options: {
       (body) => !state.hiddenBodyIds.includes(body.id),
     )
 
-    updateBodyWorldVisuals(options.gameScene, visibleBodies)
+    updateBodyWorldVisuals({
+      allBodies: state.bodies,
+      bodies: visibleBodies,
+      elapsedSeconds: state.elapsed,
+      gameScene: options.gameScene,
+    })
     updateOffscreenIndicators({
       bodies: visibleBodies,
       gameScene: options.gameScene,

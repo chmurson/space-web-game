@@ -11,16 +11,16 @@ import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiv
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import type { PhysicsEngine } from '../simulation/types'
+import type { FpsMeterFrameSample } from '../ui/hudText'
 import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
+import { createBrowserGcProbe } from './browserGcProbe'
 import type { GameQueries } from './gameQueries'
 import type { RuntimeActions } from './runtimeActions'
 import {
   advanceRuntimeScenario,
   applySimulationFrameResult,
 } from './runtimeStateTransitions'
-import { createBrowserGcProbe } from './browserGcProbe'
-import type { FpsMeterFrameSample } from '../ui/hudText'
 import { defaultMaxControlWarp, stepSimulationFrame } from './simulationStep'
 import { createTrajectoryPredictionRuntime } from './trajectoryPredictionRuntime'
 
@@ -192,6 +192,7 @@ export const createFrameLoop = (options: {
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
     options.bodyPresentation.updateVisuals({
       bodies: options.runtime.simulation.state.bodies,
+      elapsed: options.runtime.simulation.state.elapsed,
       hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
       spacecraftPosition: options.runtime.simulation.state.spacecraft.position,
       viewportSize: options.runtime.simulation.viewportSize,
@@ -256,6 +257,7 @@ export const createFrameLoop = (options: {
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
+        elapsed: options.runtime.simulation.state.elapsed,
         hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
         spacecraftPosition:
           options.runtime.simulation.state.spacecraft.position,
