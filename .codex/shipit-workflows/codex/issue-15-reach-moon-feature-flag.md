@@ -2,8 +2,8 @@
 
 Task: Issue #15 - Gate Reach the Moon mission behind a feature flag and update menus
 Branch: codex/issue-15-reach-moon-feature-flag
-Current Mode: review
-Status: active
+Current Mode: yeet
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -32,6 +32,11 @@ Status: active
 - Issue URL: https://github.com/chmurson/space-web-game/issues/15
 - Issue start comment: https://github.com/chmurson/space-web-game/issues/15#issuecomment-4744166380
 - Issue progress comment: https://github.com/chmurson/space-web-game/issues/15#issuecomment-4744699568
+- Issue completion comment: https://github.com/chmurson/space-web-game/issues/15#issuecomment-4744780575
+- PR URL: https://github.com/chmurson/space-web-game/pull/26
+- Feature branch commit: `c8b310a71fdcb2c24499b27252c72bcdecc4b799`
+- Squash merge commit on `main`: `970f0f47db2028336d082fcba88f2f988229c000`
+- Issue #15 closed by merged PR #26 on 2026-06-18.
 - Started from `origin/main` in a clean worktree because the primary worktree had unrelated devtools changes.
 - Issue #15 is assigned to the authenticated GitHub user as the in-progress marker; this repo has no current `in progress` label or project status for this issue.
 - Apply repository guidance: Shipit from the start, Ponytail lens throughout, Game Studio UI/foundations guidance for menu and scenario-flow work.
@@ -52,10 +57,11 @@ Status: active
 - [x] Browser playtest for default and `?reachmoon=1` menu flows on desktop and mobile
 - [x] coderabbit --base main --agent attempted; stalled in review and was stopped after several minutes
 - [x] npm run deploy:netlify
+- [x] npm run deploy:netlify:production
 
 ## Next Step
 
-Commit, push, open and merge PR, then deploy production.
+Done. Issue #15 is merged, closed, and deployed to production.
 
 ## Brainstorm Handoff
 
@@ -250,6 +256,22 @@ Validation results:
   - `npm run build` passed with the existing Vite large-chunk warning.
   - `npx biome lint src tests scripts` passed.
   - `git diff --check` passed.
+- `npm run deploy:netlify:production` passed after PR #26 merged.
+- Production deploy: https://space-web-game.netlify.app
+- Unique production deploy: https://6a34323ac994ad8b6b2f0457--space-web-game.netlify.app
+- Production deploy logs: https://app.netlify.com/projects/space-web-game/deploys/6a34323ac994ad8b6b2f0457
 
 Residual risk:
 - CodeRabbit did not produce findings: the first run stalled in review and the user-requested pre-merge retry was rate-limited.
+
+## Yeet Handoff
+
+- Committed feature branch as `c8b310a71fdcb2c24499b27252c72bcdecc4b799`.
+- Pushed `codex/issue-15-reach-moon-feature-flag`.
+- Opened PR #26: https://github.com/chmurson/space-web-game/pull/26
+- Merged PR #26 with squash commit `970f0f47db2028336d082fcba88f2f988229c000`.
+- Deleted the remote feature branch after merge.
+- Confirmed issue #15 is closed.
+- Deployed production after the merge:
+  - Production URL: https://space-web-game.netlify.app
+  - Unique production deploy: https://6a34323ac994ad8b6b2f0457--space-web-game.netlify.app

@@ -40,9 +40,21 @@ Issue #15 needs a hidden entry point before the rest of the Reach the Moon missi
   - unflagged `?scenario=reach-moon` falls back to `earth-moon`;
   - mobile portrait menu and sub-menu fit without clipping or overlap.
 - `coderabbit --base main --agent` was attempted, but stalled in the reviewing phase and was stopped after several minutes without findings output.
+- A second CodeRabbit attempt before merge failed with a recoverable rate-limit response, so no CodeRabbit findings were available for this branch.
 - `npm run deploy:netlify`
   - Shared staging: https://fanciful-bunny-d77b4b.netlify.app
   - Unique deploy: https://6a343017eeb403876a1ccb23--fanciful-bunny-d77b4b.netlify.app
+- `npm run deploy:netlify:production`
+  - Production: https://space-web-game.netlify.app
+  - Unique deploy: https://6a34323ac994ad8b6b2f0457--space-web-game.netlify.app
+  - Logs: https://app.netlify.com/projects/space-web-game/deploys/6a34323ac994ad8b6b2f0457
+
+## Release
+
+- PR: https://github.com/chmurson/space-web-game/pull/26
+- Feature branch commit: `c8b310a71fdcb2c24499b27252c72bcdecc4b799`
+- Squash merge commit: `970f0f47db2028336d082fcba88f2f988229c000`
+- Issue #15 closed after merge.
 
 ## Follow-Ups
 
