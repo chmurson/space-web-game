@@ -3,7 +3,7 @@
 Task: GitHub #12 - Improve crashed-state UI and pause feedback
 Branch: codex/issue-12-crash-ui
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -41,7 +41,7 @@ Status: active
 - Follow-up bug report: crash-menu `Restart from checkpoint` click did nothing, while the persistent scenario prompt checkpoint restart worked.
 - Second follow-up bug report: crash-menu checkpoint click now appears to move the game/camera, but gameplay remains paused and menus stay visible.
 - Third follow-up accepted: initial crash inspection framing should put the spacecraft in the upper part of the screen so the bottom crash menu does not cover it.
-- GitHub issue #12 remains open because commit/PR/merge was not requested. Status comments posted: https://github.com/chmurson/space-web-game/issues/12#issuecomment-4744169068, https://github.com/chmurson/space-web-game/issues/12#issuecomment-4744325864, and https://github.com/chmurson/space-web-game/issues/12#issuecomment-4744651263
+- GitHub issue #12 was closed by merged PR #27 on 2026-06-18 after production deployment. Earlier status comments posted: https://github.com/chmurson/space-web-game/issues/12#issuecomment-4744169068, https://github.com/chmurson/space-web-game/issues/12#issuecomment-4744325864, and https://github.com/chmurson/space-web-game/issues/12#issuecomment-4744651263
 
 ## Validation
 
@@ -167,8 +167,10 @@ Known gaps: the automated browser could not deterministically produce a real phy
 - Actual-app crash camera framing check: passed using a debug snapshot that booted into an Earth crash. In the short headless viewport, the adaptive crash target resolved to `ndcY=0.8977`, placing the spacecraft at `24px` from the top while the crash panel started at `41.375px`.
 - CodeRabbit review: latest rerun completed with 0 findings.
 - Netlify deploy: `npm run deploy:netlify` deployed branch `codex/issue-12-crash-ui` to `https://space-web-game-woven-moth.netlify.app`; latest unique deploy `https://6a342eb4f88d11850d2991d7--space-web-game-woven-moth.netlify.app`.
-- GitHub issue status: #12 is still open; status comment posted at https://github.com/chmurson/space-web-game/issues/12#issuecomment-4744651263 because commit/PR/merge was not requested.
+- Pull request: https://github.com/chmurson/space-web-game/pull/27 merged to `main` at `c06edea` on 2026-06-18.
+- Production deploy: `BRANCH=main npm run deploy:netlify` deployed `main@c06edea` to `https://space-web-game.netlify.app`; unique deploy `https://6a34394e6a5a1f9166b3453d--space-web-game.netlify.app`.
+- GitHub issue status: #12 closed at https://github.com/chmurson/space-web-game/issues/12.
 
 ## Next Step
 
-Stage, commit, push, open PR, merge to `main`, deploy production, close issue #12, and record final GitHub state.
+Done.
