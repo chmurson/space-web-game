@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [x] PR opened/updated (not requested)
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -248,3 +248,11 @@ Latest deploy result before merge review:
 - Staging URL: https://fanciful-bunny-d77b4b.netlify.app
 - Unique deploy URL: https://6a33ba4bee2f6700968f8803--fanciful-bunny-d77b4b.netlify.app
 - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a33ba4bee2f6700968f8803
+
+## Yeet Notes
+
+- Commit: `d95730c` (`feat(scene): add Earth atmosphere rim`)
+- Branch pushed: `origin/issue-8-earth-atmosphere-rim`
+- PR: https://github.com/chmurson/space-web-game/pull/10
+- Post-commit staging deploy: https://6a33bc217ac230090fc5e515--fanciful-bunny-d77b4b.netlify.app
+- Shared staging URL: https://fanciful-bunny-d77b4b.netlify.app
