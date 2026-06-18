@@ -15,7 +15,7 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [x] PR opened/updated (not requested)
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -52,7 +52,7 @@ Status: completed
 
 ## Next Step
 
-Ready for user review or PR handoff.
+Merged to `main`, production deployed, and Shipit review recorded.
 
 ## Brainstorm Handoff
 
@@ -182,13 +182,17 @@ CodeRabbit:
 - Retry reported wait time: 12 minutes 10 seconds.
 - Retry after transient auto-notice follow-up also failed before producing findings because the service rate limit was exceeded.
 - Latest retry reported wait time: 2 minutes 18 seconds.
-- No CodeRabbit findings were available to triage.
+- Pre-merge retry before PR merge also failed before producing findings because the service rate limit was exceeded.
+- Pre-merge retry reported wait time: 15 minutes 6 seconds.
+- Post-merge CodeRabbit PR comment produced a walkthrough but failed the review because the PR was already closed.
+- No actionable CodeRabbit findings were available to triage.
 
 Ponytail review lens:
 
 - Kept the solution as a small notice-specific model/presenter and minimal app wiring.
 - Did not add a generic toast manager, notification queue, runtime target API expansion, or target-tab styling.
 - The new touch-control API is limited to opening the existing Target panel and reporting committed target-state changes.
+- Post-merge Ponytail review found nothing further to cut.
 
 Self-review findings:
 
@@ -196,6 +200,7 @@ Self-review findings:
 - Tightened mobile notice width and aligned it to the bottom HUD after follow-up feedback.
 - Added automatic-target-change notifications while preserving return-to-auto as a baseline instead of an immediate alert.
 - Changed automatic-target-change notifications to one-shot transient notices; manual recommendation notifications remain durable and dismissible.
+- Post-merge Shipit review found no additional correctness, behavior, test, or documentation fixes needed.
 - No remaining correctness issue found in the final diff.
 
 Solution retrospect:
@@ -232,6 +237,11 @@ Deployment:
 - `npm run deploy:netlify`: passed.
 - Staging URL: https://fanciful-bunny-d77b4b.netlify.app
 - Unique deploy URL: https://6a3422e8aa88e2523f12a513--fanciful-bunny-d77b4b.netlify.app
+- PR: https://github.com/chmurson/space-web-game/pull/25
+- Merge commit: f1f2cf17ca6f84ca5231c79fe769e6068a968793
+- `npm run deploy:netlify:production`: passed after merge.
+- Production URL: https://space-web-game.netlify.app
+- Production unique deploy URL: https://6a3424f0114aa959daa2bbbb--space-web-game.netlify.app
 
 GitHub issue status:
 
@@ -239,4 +249,4 @@ GitHub issue status:
 - Comment posted: https://github.com/chmurson/space-web-game/issues/2#issuecomment-4743903136
 - Follow-up comment posted: https://github.com/chmurson/space-web-game/issues/2#issuecomment-4744029937
 - Transient auto-notice follow-up comment posted: https://github.com/chmurson/space-web-game/issues/2#issuecomment-4744267922
-- Issue remains open pending PR/merge review.
+- Issue closed by PR #25 merge.
