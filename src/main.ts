@@ -16,4 +16,14 @@ if (tabTitleSuffix) {
   document.title = `${document.title} ${tabTitleSuffix}`
 }
 
-createGameApp(app)
+const showStartupError = () => {
+  const bootLabel = document.querySelector<HTMLElement>('.boot-label')
+  if (bootLabel) {
+    bootLabel.textContent = 'Startup failed'
+  }
+}
+
+void createGameApp(app).catch((error) => {
+  showStartupError()
+  console.error(error)
+})

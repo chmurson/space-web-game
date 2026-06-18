@@ -7,9 +7,116 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>Space Web Game</title>
+    <style>
+      html,
+      body,
+      #app {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #05070d;
+        color: #f4f7fb;
+        font-family:
+          "Segoe UI", "Avenir Next", "Helvetica Neue", ui-sans-serif,
+          system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      .boot-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+          radial-gradient(circle at 50% 46%, rgba(14, 165, 233, 0.16), transparent 34%),
+          linear-gradient(180deg, #070b14 0%, #05070d 100%);
+        opacity: 1;
+        transition:
+          opacity 180ms ease,
+          visibility 180ms ease;
+      }
+
+      .boot-screen[data-hidden="true"] {
+        visibility: hidden;
+        opacity: 0;
+      }
+
+      .boot-panel {
+        display: grid;
+        gap: 12px;
+        justify-items: center;
+        opacity: 0;
+        text-align: center;
+        transform: translateY(4px);
+        animation: boot-panel-fade-in 180ms ease 280ms forwards;
+      }
+
+      .boot-screen[data-hidden="true"] .boot-panel {
+        opacity: 0;
+        transform: translateY(4px);
+        animation: none;
+      }
+
+      .boot-orbit {
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(125, 211, 252, 0.55);
+        border-right-color: rgba(125, 211, 252, 0.12);
+        border-radius: 999px;
+        animation: boot-spin 900ms linear infinite;
+      }
+
+      .boot-title {
+        margin: 0;
+        color: #f0f9ff;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .boot-label {
+        margin: 0;
+        color: rgba(226, 232, 240, 0.76);
+        font-size: 13px;
+      }
+
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes boot-panel-fade-in {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-panel {
+          opacity: 1;
+          transform: none;
+          animation: none;
+        }
+
+        .boot-orbit {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <section class="boot-screen" data-boot-screen aria-label="Loading Space Web Game">
+        <div class="boot-panel">
+          <div class="boot-orbit" aria-hidden="true"></div>
+          <h1 class="boot-title">Space Web Game</h1>
+          <p class="boot-label">Preparing orbit</p>
+        </div>
+      </section>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

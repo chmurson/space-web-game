@@ -3,17 +3,11 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 
-import earthTextureUrl from '../assets/bodies/earth-stylized.webp'
-import moonTextureUrl from '../assets/bodies/moon-stylized.webp'
 import type { GameConfig } from '../config/types'
+import type { ScenarioAssets } from '../render/scenarioAssets'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
 import { createStarfield, type Starfield } from './starfield'
-
-const bodyDiffuseTextureUrls: Record<string, string> = {
-  earth: earthTextureUrl,
-  moon: moonTextureUrl,
-}
 
 const EARTH_ATMOSPHERE_RIM_NAME = 'earth-atmosphere-rim'
 const BODY_WIDTH_SEGMENTS = 64
@@ -126,9 +120,51 @@ export type GameSceneRefs = {
   trailPoints: SpacecraftTrailPoint[]
 }
 
+const applyBodyDiffuseTexture = (
+  material: THREE.MeshStandardMaterial,
+  body: Body,
+  diffuseTexture: THREE.Texture | undefined,
+) => {
+  if (!diffuseTexture) {
+    material.color.set(body.color)
+    material.map = null
+    material.needsUpdate = true
+    return
+  }
+
+  diffuseTexture.colorSpace = THREE.SRGBColorSpace
+  material.color.set('#ffffff')
+  material.map = diffuseTexture
+  material.needsUpdate = true
+}
+
+export const applyBodyTextureAssetsToScene = (
+  gameScene: Pick<GameSceneRefs, 'bodyMeshes'>,
+  bodies: Body[],
+  scenarioAssets: ScenarioAssets,
+) => {
+  for (const body of bodies) {
+    const mesh = gameScene.bodyMeshes.get(body.id)
+    const material = Array.isArray(mesh?.material)
+      ? mesh.material[0]
+      : mesh?.material
+
+    if (!(material instanceof THREE.MeshStandardMaterial)) {
+      continue
+    }
+
+    applyBodyDiffuseTexture(
+      material,
+      body,
+      scenarioAssets.bodyDiffuseTextures.get(body.id),
+    )
+  }
+}
+
 export const createGameScene = (
   bodies: Body[],
   trajectoryRenderingConfig: GameConfig['trajectory']['rendering'],
+  scenarioAssets: ScenarioAssets = { bodyDiffuseTextures: new Map() },
 ): GameSceneRefs => {
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000)
@@ -150,7 +186,6 @@ export const createGameScene = (
   scene.add(debugGrid)
 
   const bodyMeshes = new Map<string, THREE.Mesh>()
-  const textureLoader = new THREE.TextureLoader()
 
   for (const body of bodies) {
     const bodyRadius = Math.max(body.radius * RENDER_SCALE, 1)
@@ -164,24 +199,11 @@ export const createGameScene = (
       roughness: 0.82,
       metalness: 0.02,
     })
-    const diffuseTextureUrl = bodyDiffuseTextureUrls[body.id]
-    if (diffuseTextureUrl) {
-      textureLoader.load(
-        diffuseTextureUrl,
-        (diffuseTexture) => {
-          diffuseTexture.colorSpace = THREE.SRGBColorSpace
-          material.color.set('#ffffff')
-          material.map = diffuseTexture
-          material.needsUpdate = true
-        },
-        undefined,
-        () => {
-          material.color.set(body.color)
-          material.map = null
-          material.needsUpdate = true
-        },
-      )
-    }
+    applyBodyDiffuseTexture(
+      material,
+      body,
+      scenarioAssets.bodyDiffuseTextures.get(body.id),
+    )
     const mesh = new THREE.Mesh(geometry, material)
     mesh.name = body.name
     if (body.id === 'earth') {

@@ -12,6 +12,11 @@ import { createHudPresentation } from '../presentation/hudPresentation'
 import { createSpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import { createTrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import { createRendererProfiler } from '../render/rendererProfiler'
+import {
+  areScenarioAssetsCached,
+  loadScenarioAssets,
+  type ScenarioAssets,
+} from '../render/scenarioAssets'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import { createFrameLoop } from '../runtime/frameLoop'
 import { createGameQueries } from '../runtime/gameQueries'
@@ -26,11 +31,15 @@ import {
 import { getTrajectoryHorizonPreviews } from '../runtime/trajectoryHorizonControlPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import { parsePromptAction } from '../scenario/scenarioPrompts'
-import { createGameScene } from '../scene/createGameScene'
+import {
+  applyBodyTextureAssetsToScene,
+  createGameScene,
+} from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
 import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
+import { createScenarioLoadingOverlay } from '../ui/createScenarioLoadingOverlay'
 import {
   createTopMenu,
   type TopMenu,
@@ -86,6 +95,11 @@ const createRuntimeCoordinator = (options: {
   runtimeActions: ReturnType<typeof createRuntimeActions>
   runtimeState: AppRuntimeState
   gameHighLevelActionsMediator: GameHighLevelActionsMediator
+  prepareScenarioTransition(options: {
+    applyTransition(): boolean
+    label: string
+    scenarioId: string
+  }): Promise<boolean>
 }): AppRuntimeCoordinator => {
   let appMode = options.config.initialAppMode
 
@@ -121,6 +135,7 @@ const createRuntimeCoordinator = (options: {
     crashMenu: options.crashMenu,
     topMenu: options.topMenu,
     runtime: options.runtimeState,
+    prepareScenarioTransition: options.prepareScenarioTransition,
   })
 
   return {
@@ -190,19 +205,62 @@ export const createAppComponents = (options: {
   app: HTMLDivElement
   config: AppConfigContext
   runtimeState: AppRuntimeState
+  startupAssets: ScenarioAssets
 }): AppComponents => {
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setClearColor(0x05070d)
   options.app.appendChild(renderer.domElement)
+  const scenarioLoadingOverlay = createScenarioLoadingOverlay({
+    app: options.app,
+  })
 
   const keyboardInput = createKeyboardInput()
   const rendererProfiler = createRendererProfiler(renderer)
   const gameScene = createGameScene(
     options.runtimeState.simulation.state.bodies,
     options.config.trajectory.rendering,
+    options.startupAssets,
   )
+  let scenarioTransitionLoading = false
+  const prepareScenarioTransition = async (transitionOptions: {
+    applyTransition(): boolean
+    label: string
+    scenarioId: string
+  }) => {
+    if (scenarioTransitionLoading) {
+      return false
+    }
+
+    scenarioTransitionLoading = true
+    const showOverlay = !areScenarioAssetsCached(transitionOptions.scenarioId)
+    if (showOverlay) {
+      scenarioLoadingOverlay.setVisible(true, transitionOptions.label)
+    }
+
+    try {
+      const scenarioAssets = await loadScenarioAssets(
+        transitionOptions.scenarioId,
+      )
+      const transitionResult = transitionOptions.applyTransition()
+      if (transitionResult === false) {
+        return false
+      }
+
+      applyBodyTextureAssetsToScene(
+        gameScene,
+        options.runtimeState.simulation.state.bodies,
+        scenarioAssets,
+      )
+      return true
+    } finally {
+      scenarioTransitionLoading = false
+      if (showOverlay) {
+        scenarioLoadingOverlay.setVisible(false)
+      }
+    }
+  }
   const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime()
   const ripples: Ripple[] = []
   const overlayUi = createOverlayUi({
@@ -316,7 +374,7 @@ export const createAppComponents = (options: {
   let uiSettingsOpen = false
   let getAppMode = () => options.config.initialAppMode
   const getGameInteractionsEnabled = () =>
-    getAppMode() === 'game' && !uiSettingsOpen
+    getAppMode() === 'game' && !uiSettingsOpen && !scenarioTransitionLoading
   const touchControls = createTouchControls({
     app: options.app,
     automaticTargetingAvailable:
@@ -596,7 +654,7 @@ export const createAppComponents = (options: {
     runtime: options.runtimeState,
     runtimeActions,
     globalScenarioDirectiveLimits: options.config.globalScenarioDirectiveLimits,
-    getGameplayPaused: () => uiSettingsOpen,
+    getGameplayPaused: () => uiSettingsOpen || scenarioTransitionLoading,
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport: options.config.camera.defaultViewport,
       gameScene,
@@ -622,6 +680,7 @@ export const createAppComponents = (options: {
     runtimeActions,
     runtimeState: options.runtimeState,
     gameHighLevelActionsMediator,
+    prepareScenarioTransition,
   })
   getAppMode = coordinator.getAppMode
   dispatchRuntimeAction = coordinator.dispatchRuntimeAction
@@ -704,8 +763,9 @@ export const createAppComponents = (options: {
     keyboardInput.clear()
 
     if (restartAction === 'scenario') {
-      runtimeActions.resetScenario()
-      frameLoop.refreshTrajectoryPrediction()
+      gameHighLevelActionsMediator.dispatch({
+        type: 'restartScenario',
+      })
       return
     }
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createGameScene } from '@/scene/createGameScene'
 import { createStarfield, type Starfield } from '@/scene/starfield'
+import type { ScenarioAssets } from '@/render/scenarioAssets'
 import type { Body } from '@/simulation/types'
 
 const createBody = (overrides: Partial<Body> = {}): Body => ({
@@ -16,14 +17,21 @@ const createBody = (overrides: Partial<Body> = {}): Body => ({
   ...overrides,
 })
 
-const createTestGameScene = (bodies: Body[] = []) =>
-  createGameScene(bodies, {
-    dashPixels: 12,
-    endMarkerMinScreenRadius: 5.5,
-    endMarkerRadius: 0.17,
-    gapPixels: 8,
-    replaceLineGeometryOnUpdate: true,
-  })
+const createTestGameScene = (
+  bodies: Body[] = [],
+  scenarioAssets?: ScenarioAssets,
+) =>
+  createGameScene(
+    bodies,
+    {
+      dashPixels: 12,
+      endMarkerMinScreenRadius: 5.5,
+      endMarkerRadius: 0.17,
+      gapPixels: 8,
+      replaceLineGeometryOnUpdate: true,
+    },
+    scenarioAssets,
+  )
 
 const getLayerPoints = (starfield: Starfield, layerIndex: number) => {
   const layer = starfield.group.children[layerIndex]
@@ -182,59 +190,73 @@ describe('createGameScene', () => {
     expect(scene.scene.children).toContain(scene.starfield.group)
   })
 
-  it('adds a subtle atmosphere rim to Earth only', () => {
+  it('uses preloaded body textures without starting internal texture loads', () => {
+    const diffuseTexture = new THREE.Texture()
     const loadTexture = vi
       .spyOn(THREE.TextureLoader.prototype, 'load')
       .mockReturnValue(new THREE.Texture())
     try {
-      const scene = createTestGameScene([
-        createBody(),
-        createBody({
-          id: 'moon',
-          name: 'Moon',
-          color: '#d1d5db',
-          mass: 7.342e22,
-          radius: 1_737_400,
-        }),
-      ])
-
+      const scene = createTestGameScene([createBody()], {
+        bodyDiffuseTextures: new Map([['earth', diffuseTexture]]),
+      })
       const earth = scene.bodyMeshes.get('earth')
-      const moon = scene.bodyMeshes.get('moon')
-      const rim = earth?.getObjectByName('earth-atmosphere-rim')
+      const material = earth?.material
 
-      expect(rim).toBeInstanceOf(THREE.Mesh)
-      expect(moon?.getObjectByName('earth-atmosphere-rim')).toBeUndefined()
+      expect(loadTexture).not.toHaveBeenCalled()
+      expect(material).toBeInstanceOf(THREE.MeshStandardMaterial)
+      expect((material as THREE.MeshStandardMaterial).map).toBe(diffuseTexture)
       expect(
-        (earth?.geometry as THREE.SphereGeometry).parameters.widthSegments,
-      ).toBe(64)
-      expect(
-        (earth?.geometry as THREE.SphereGeometry).parameters.heightSegments,
-      ).toBe(32)
-      expect(
-        (moon?.geometry as THREE.SphereGeometry).parameters.widthSegments,
-      ).toBe(64)
-      expect(
-        (moon?.geometry as THREE.SphereGeometry).parameters.heightSegments,
-      ).toBe(32)
-
-      const material = (rim as THREE.Mesh).material
-      const geometry = (rim as THREE.Mesh).geometry
-      expect(geometry).toBeInstanceOf(THREE.SphereGeometry)
-      expect((geometry as THREE.SphereGeometry).parameters.widthSegments).toBe(
-        96,
-      )
-      expect((geometry as THREE.SphereGeometry).parameters.heightSegments).toBe(
-        48,
-      )
-      expect(material).toBeInstanceOf(THREE.ShaderMaterial)
-      expect((material as THREE.ShaderMaterial).transparent).toBe(true)
-      expect((material as THREE.ShaderMaterial).depthWrite).toBe(false)
-      expect((material as THREE.ShaderMaterial).side).toBe(THREE.BackSide)
-      expect((material as THREE.ShaderMaterial).fragmentShader).toContain(
-        'edgeGlow',
-      )
+        (material as THREE.MeshStandardMaterial).color.getHexString(),
+      ).toBe('ffffff')
     } finally {
       loadTexture.mockRestore()
     }
+  })
+
+  it('adds a subtle atmosphere rim to Earth only', () => {
+    const scene = createTestGameScene([
+      createBody(),
+      createBody({
+        id: 'moon',
+        name: 'Moon',
+        color: '#d1d5db',
+        mass: 7.342e22,
+        radius: 1_737_400,
+      }),
+    ])
+
+    const earth = scene.bodyMeshes.get('earth')
+    const moon = scene.bodyMeshes.get('moon')
+    const rim = earth?.getObjectByName('earth-atmosphere-rim')
+
+    expect(rim).toBeInstanceOf(THREE.Mesh)
+    expect(moon?.getObjectByName('earth-atmosphere-rim')).toBeUndefined()
+    expect(
+      (earth?.geometry as THREE.SphereGeometry).parameters.widthSegments,
+    ).toBe(64)
+    expect(
+      (earth?.geometry as THREE.SphereGeometry).parameters.heightSegments,
+    ).toBe(32)
+    expect(
+      (moon?.geometry as THREE.SphereGeometry).parameters.widthSegments,
+    ).toBe(64)
+    expect(
+      (moon?.geometry as THREE.SphereGeometry).parameters.heightSegments,
+    ).toBe(32)
+
+    const material = (rim as THREE.Mesh).material
+    const geometry = (rim as THREE.Mesh).geometry
+    expect(geometry).toBeInstanceOf(THREE.SphereGeometry)
+    expect((geometry as THREE.SphereGeometry).parameters.widthSegments).toBe(96)
+    expect((geometry as THREE.SphereGeometry).parameters.heightSegments).toBe(
+      48,
+    )
+    expect(material).toBeInstanceOf(THREE.ShaderMaterial)
+    expect((material as THREE.ShaderMaterial).transparent).toBe(true)
+    expect((material as THREE.ShaderMaterial).depthWrite).toBe(false)
+    expect((material as THREE.ShaderMaterial).side).toBe(THREE.BackSide)
+    expect((material as THREE.ShaderMaterial).fragmentShader).toContain(
+      'edgeGlow',
+    )
   })
 })
