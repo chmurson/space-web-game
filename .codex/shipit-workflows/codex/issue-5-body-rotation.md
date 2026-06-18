@@ -2,7 +2,7 @@
 
 Task: Issue #5 - render Earth spin and tidally locked Moon rotation
 Branch: codex/issue-5-body-rotation
-Current Mode: review
+Current Mode: completed
 Status: completed
 
 ## Checklist
@@ -15,7 +15,9 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [x] PR opened/updated (not requested; working tree handoff)
+- [x] Main merged by direct fast-forward push
+- [x] Production deploy complete
+- [x] GitHub issue closed
 
 ## Artifacts
 
@@ -49,10 +51,11 @@ Status: completed
 - [x] Browser smoke check mobile viewport
 - [x] coderabbit --base main --agent
 - [x] npm run deploy:netlify
+- [x] npm run deploy:netlify:production
 
 ## Next Step
 
-User review, then normal commit/PR/merge path if accepted.
+Complete.
 
 ## Brainstorm Handoff
 
@@ -224,4 +227,15 @@ Moon alignment validation:
 Issue status:
 - Issue URL: https://github.com/chmurson/space-web-game/issues/5
 - Progress comment: https://github.com/chmurson/space-web-game/issues/5#issuecomment-4743877086
-- Final issue state for this handoff: open, pending user review plus normal commit/PR/merge path.
+- Final issue state for this handoff: closed after merge to `main`.
+
+## Merge And Production Handoff
+
+- Merge commit on `main`: `d73c53e04ba3e534a1372a338730fc4f6c6c2c66`.
+- Merge method: direct fast-forward push from `codex/issue-5-body-rotation` to `origin/main`, requested by the user.
+- Production deploy command: `npm run deploy:netlify:production`.
+- Production URL: https://space-web-game.netlify.app.
+- Unique production deploy URL: https://6a341f6b53539c3c9aa10350--space-web-game.netlify.app.
+- Issue #5 closed with a merge/validation/deploy summary.
+- Final pre-merge validation rerun passed: Biome check, focused rotation tests, full `npm test`, and `npm run build`.
+- Final CodeRabbit rerun before merge was attempted and rate-limited. The last successful CodeRabbit run on this branch completed with 0 findings.

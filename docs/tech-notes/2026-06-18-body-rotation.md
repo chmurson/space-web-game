@@ -81,6 +81,11 @@ leaving physics, trajectory prediction, saves, and scenario data untouched.
   - `npm run deploy:netlify` deployed unique URL
     https://6a341c10e5c2722df0b99425--fanciful-bunny-d77b4b.netlify.app.
   - A final CodeRabbit rerun was attempted but rate-limited.
+- On merge to `main`, final validation was rerun and passed: Biome check,
+  focused rotation tests, full `npm test`, and `npm run build`.
+- `npm run deploy:netlify:production` deployed production URL
+  https://space-web-game.netlify.app and unique deploy URL
+  https://6a341f6b53539c3c9aa10350--space-web-game.netlify.app.
 
 ## Follow-Ups
 
