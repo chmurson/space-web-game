@@ -18,6 +18,7 @@ export const registerHighLevelActions = ({
   crashMenu,
   topMenu,
   runtime,
+  prepareScenarioTransition,
 }: {
   gameMediator: GameHighLevelActionsMediator
   keyboardInput: KeyboardInput
@@ -29,20 +30,41 @@ export const registerHighLevelActions = ({
   crashMenu: ReturnType<typeof createCrashMenu>
   topMenu: ReturnType<typeof createTopMenu>
   runtime: AppRuntimeState
+  prepareScenarioTransition(options: {
+    applyTransition(): boolean
+    label: string
+    scenarioId: string
+  }): Promise<boolean>
 }) => {
-  // Register action handlers with the mediator
-  gameMediator.registerAction('startFreeRoam', () => {
-    keyboardInput.clear()
-    runtimeActions.startFreeRoam()
+  const enterGameAfterTransition = () => {
     setAppMode('game')
     app.classList.remove('app-main-menu')
     frameLoop?.refreshTrajectoryPrediction()
+  }
+
+  gameMediator.registerAction('startFreeRoam', async () => {
+    keyboardInput.clear()
+    const loaded = await prepareScenarioTransition({
+      applyTransition: () => {
+        runtimeActions.startFreeRoam()
+        return true
+      },
+      label: 'Loading free roam',
+      scenarioId: 'earth-moon',
+    })
+    if (loaded) {
+      enterGameAfterTransition()
+    }
   })
 
-  gameMediator.registerAction('loadLastGame', (payload) => {
+  gameMediator.registerAction('loadLastGame', async (payload) => {
     const { fromMenu } = payload
     keyboardInput.clear()
-    const loaded = runtimeActions.loadDebugSnapshot()
+    const loaded = await prepareScenarioTransition({
+      applyTransition: runtimeActions.loadDebugSnapshot,
+      label: 'Loading saved scenario',
+      scenarioId: 'debug-snapshot',
+    })
     if (!loaded) {
       if (fromMenu === 'crashMenu') {
         crashMenu.syncState({
@@ -50,35 +72,50 @@ export const registerHighLevelActions = ({
         })
       } else if (fromMenu === 'mainMenu') {
         mainMenu.syncState()
+        mainMenu.setVisible(true)
       }
       return
     }
-    setAppMode('game')
-    app.classList.remove('app-main-menu')
-    frameLoop?.refreshTrajectoryPrediction()
+    enterGameAfterTransition()
   })
 
-  gameMediator.registerAction('startTutorial', () => {
+  gameMediator.registerAction('startTutorial', async () => {
     keyboardInput.clear()
-    runtimeActions.startTutorial()
-    setAppMode('game')
-    app.classList.remove('app-main-menu')
-    frameLoop?.refreshTrajectoryPrediction()
+    const loaded = await prepareScenarioTransition({
+      applyTransition: () => {
+        runtimeActions.startTutorial()
+        return true
+      },
+      label: 'Loading tutorial',
+      scenarioId: 'tutorial',
+    })
+    if (loaded) {
+      enterGameAfterTransition()
+    }
   })
 
   gameMediator.registerAction('confirmPrompt', (payload) => {
     const actionToTrigger = payload?.actionToTrigger
     if (actionToTrigger === 'exit-to-menu') {
-      // enterMainMenu()
       gameMediator.dispatch({ type: 'enterMainMenu' })
     } else if (actionToTrigger === 'start-free-roam') {
       gameMediator.dispatch({ type: 'startFreeRoam' })
     }
   })
 
-  gameMediator.registerAction('enterMainMenu', () => {
+  gameMediator.registerAction('enterMainMenu', async () => {
     keyboardInput.clear()
-    runtimeActions.enterMainMenuBackground()
+    const loaded = await prepareScenarioTransition({
+      applyTransition: () => {
+        runtimeActions.enterMainMenuBackground()
+        return true
+      },
+      label: 'Returning to menu',
+      scenarioId: 'menu-background',
+    })
+    if (!loaded) {
+      return
+    }
     setAppMode('menu')
     app.classList.add('app-main-menu')
     crashMenu?.setVisible(false)
@@ -88,15 +125,29 @@ export const registerHighLevelActions = ({
     frameLoop?.refreshTrajectoryPrediction()
   })
 
-  gameMediator.registerAction('restartScenario', () => {
+  gameMediator.registerAction('restartScenario', async () => {
     keyboardInput.clear()
-    runtimeActions.resetScenario()
-    frameLoop?.refreshTrajectoryPrediction()
+    const loaded = await prepareScenarioTransition({
+      applyTransition: () => {
+        runtimeActions.resetScenario()
+        return true
+      },
+      label: 'Restarting scenario',
+      scenarioId: runtime.scenario.session.scenarioId,
+    })
+    if (loaded) {
+      frameLoop?.refreshTrajectoryPrediction()
+    }
   })
 
-  gameMediator.registerAction('restartFromCheckpoint', () => {
+  gameMediator.registerAction('restartFromCheckpoint', async () => {
     keyboardInput.clear()
-    if (runtimeActions.restartFromCheckpoint()) {
+    const loaded = await prepareScenarioTransition({
+      applyTransition: runtimeActions.restartFromCheckpoint,
+      label: 'Loading checkpoint',
+      scenarioId: runtime.scenario.session.scenarioId,
+    })
+    if (loaded) {
       frameLoop?.refreshTrajectoryPrediction()
     }
   })

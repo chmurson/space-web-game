@@ -28,14 +28,17 @@ export type GameHighLevelAction<
 export class GameHighLevelActionsMediator {
   private actionHandlers = new Map<
     GameHighLevelActionType,
-    (payload: unknown) => void
+    (payload: unknown) => Promise<void> | void
   >()
 
   registerAction<T extends GameHighLevelActionType>(
     type: T,
-    handler: (payload: GameHighLevelActionPayloads[T]) => void,
+    handler: (payload: GameHighLevelActionPayloads[T]) => Promise<void> | void,
   ) {
-    this.actionHandlers.set(type, handler as (payload: unknown) => void)
+    this.actionHandlers.set(
+      type,
+      handler as (payload: unknown) => Promise<void> | void,
+    )
   }
 
   dispatch(action: GameHighLevelAction): void {
@@ -44,12 +47,15 @@ export class GameHighLevelActionsMediator {
       return
     }
 
-    if ('payload' in action) {
-      handler(action.payload)
-      return
+    try {
+      const result =
+        'payload' in action ? handler(action.payload) : handler(undefined)
+      void Promise.resolve(result).catch((error) => {
+        console.error(error)
+      })
+    } catch (error) {
+      console.error(error)
     }
-
-    handler(undefined)
   }
 }
 

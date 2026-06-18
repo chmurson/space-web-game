@@ -57,6 +57,77 @@ canvas {
     -webkit-user-drag: none;
 }
 
+.scenario-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay-modal);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    pointer-events: auto;
+    background: rgba(2, 6, 23, 0.48);
+    -webkit-backdrop-filter: blur(10px) saturate(0.75);
+    backdrop-filter: blur(10px) saturate(0.75);
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.scenario-loading-overlay[hidden] {
+    display: none;
+}
+
+.scenario-loading-overlay[data-visible="true"] {
+    opacity: 1;
+}
+
+.scenario-loading-panel {
+    display: inline-grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 10px;
+    max-width: min(88vw, 320px);
+    padding: 10px 12px;
+    border: 1px solid var(--ui-glass-panel-border);
+    border-radius: 12px;
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+    backdrop-filter: var(--ui-glass-panel-blur);
+}
+
+.scenario-loading-spinner {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid rgba(125, 211, 252, 0.7);
+    border-right-color: rgba(125, 211, 252, 0.16);
+    border-radius: 999px;
+    animation: scenario-loading-spin 900ms linear infinite;
+}
+
+.scenario-loading-label {
+    min-width: 0;
+    color: rgba(240, 249, 255, 0.92);
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+@keyframes scenario-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scenario-loading-overlay {
+        transition: none;
+    }
+
+    .scenario-loading-spinner {
+        animation: none;
+    }
+}
+
 .main-menu {
     position: fixed;
     inset: 0;
