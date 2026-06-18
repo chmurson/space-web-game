@@ -39,6 +39,7 @@
 ## GitHub Issue Intake
 
 - Every time an agent picks up work from GitHub, use the Shipit workflow from the start and apply the Ponytail lens throughout the work.
+- When starting implementation for a GitHub issue, mark the issue in progress before changing product code using the repo's current tracking mechanism, then record the issue URL/comment in Shipit state.
 - Before proceeding with a ticket, read the issue body and all comments, then make sure the scope is clear.
 - Record relevant issue comments, decisions, non-goals, and any scope uncertainty in the Shipit state before implementation.
 - If issue comments conflict or leave the requested behavior unclear, pause and clarify before changing product code.

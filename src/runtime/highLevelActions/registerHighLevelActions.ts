@@ -57,6 +57,21 @@ export const registerHighLevelActions = ({
     }
   })
 
+  gameMediator.registerAction('startReachMoon', async () => {
+    keyboardInput.clear()
+    const loaded = await prepareScenarioTransition({
+      applyTransition: () => {
+        runtimeActions.startReachMoon()
+        return true
+      },
+      label: 'Loading Reach the Moon',
+      scenarioId: 'reach-moon',
+    })
+    if (loaded) {
+      enterGameAfterTransition()
+    }
+  })
+
   gameMediator.registerAction('loadLastGame', async (payload) => {
     const { fromMenu } = payload
     keyboardInput.clear()

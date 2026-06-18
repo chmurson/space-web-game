@@ -1,5 +1,6 @@
 export type GameHighLevelActionType =
   | 'startFreeRoam'
+  | 'startReachMoon'
   | 'loadLastGame'
   | 'startTutorial'
   | 'confirmPrompt'
@@ -9,6 +10,7 @@ export type GameHighLevelActionType =
 
 export type GameHighLevelActionPayloads = {
   startFreeRoam: undefined
+  startReachMoon: undefined
   loadLastGame: { fromMenu: 'crashMenu' | 'mainMenu' }
   startTutorial: { scenarioId: string }
   confirmPrompt: { actionToTrigger?: string }

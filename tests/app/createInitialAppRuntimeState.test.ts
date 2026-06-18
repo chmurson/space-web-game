@@ -10,6 +10,9 @@ const createConfig = (
   requestedEngine: '',
   physicsEngine: { name: 'test-engine', step: (() => undefined) as never },
   requestedScenarioId: 'tutorial',
+  featureFlags: {
+    reachMoon: false,
+  },
   userSettings: {
     debugModeEnabled: false,
     touchBurnControlSide: 'right',

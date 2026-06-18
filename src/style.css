@@ -146,6 +146,10 @@ canvas {
     pointer-events: auto;
 }
 
+.main-menu-panel[hidden] {
+    display: none;
+}
+
 .main-menu-copy {
     display: grid;
     gap: 8px;
@@ -220,6 +224,17 @@ canvas {
 
 .main-menu-actions button:disabled {
     color: rgba(240, 249, 255, 0.42);
+}
+
+.main-menu-actions button.main-menu-action-primary {
+    border-color: rgba(125, 211, 252, 0.38);
+    background:
+        linear-gradient(180deg, rgba(14, 116, 144, 0.72), rgba(15, 23, 42, 0.82)),
+        var(--ui-glass-control-bg);
+}
+
+.main-menu-actions button.main-menu-action-secondary {
+    color: rgba(226, 232, 240, 0.78);
 }
 
 .main-menu-actions button:focus-visible {

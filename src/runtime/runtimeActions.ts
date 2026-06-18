@@ -458,6 +458,7 @@ export const createRuntimeActions = (options: {
     reopenScenarioPrompt,
     selectAssistTargetIndex,
     startFreeRoam: scenarioRuntimeController.startFreeRoam,
+    startReachMoon: scenarioRuntimeController.startReachMoon,
     startTutorial: scenarioRuntimeController.startTutorial,
     updateCamera,
     zoomCamera,
