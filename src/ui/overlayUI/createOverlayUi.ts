@@ -54,6 +54,10 @@ export type OverlayUiRefs = {
   statFuel: HTMLElement | null
   statGuidance: HTMLElement | null
   statSpeed: HTMLElement | null
+  targetRecommendationNotice: HTMLElement
+  targetRecommendationNoticeDismissButton: HTMLButtonElement | null
+  targetRecommendationNoticeMessage: HTMLSpanElement | null
+  targetRecommendationNoticeOpenButton: HTMLButtonElement | null
   statThrust: HTMLElement | null
   speedIcon: SVGSVGElement | null
   statTarget: HTMLElement | null
@@ -183,6 +187,24 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   `
   bottomPillArea.appendChild(cameraUnlockNotice)
 
+  const targetRecommendationNotice = document.createElement('div')
+  targetRecommendationNotice.className =
+    'hud-notice target-recommendation-notice'
+  targetRecommendationNotice.dataset.visible = 'false'
+  targetRecommendationNotice.setAttribute('aria-live', 'polite')
+  targetRecommendationNotice.setAttribute('aria-atomic', 'true')
+  targetRecommendationNotice.setAttribute('aria-hidden', 'true')
+  targetRecommendationNotice.hidden = true
+  targetRecommendationNotice.innerHTML = `
+    <button type="button" class="target-recommendation-notice-open">
+      <span class="target-recommendation-notice-message"></span>
+    </button>
+    <button type="button" class="target-recommendation-notice-dismiss" aria-label="Dismiss target recommendation">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  `
+  bottomPillArea.appendChild(targetRecommendationNotice)
+
   const spacecraftCallout = document.createElement('div')
   spacecraftCallout.className = 'spacecraft-callout'
   spacecraftCallout.innerHTML = '<span>Spacecraft</span>'
@@ -290,6 +312,19 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     statFuel: null,
     statGuidance: null,
     statSpeed: topBar.querySelector<HTMLElement>('[data-stat="speed"]'),
+    targetRecommendationNotice,
+    targetRecommendationNoticeDismissButton:
+      targetRecommendationNotice.querySelector<HTMLButtonElement>(
+        '.target-recommendation-notice-dismiss',
+      ),
+    targetRecommendationNoticeMessage:
+      targetRecommendationNotice.querySelector<HTMLSpanElement>(
+        '.target-recommendation-notice-message',
+      ),
+    targetRecommendationNoticeOpenButton:
+      targetRecommendationNotice.querySelector<HTMLButtonElement>(
+        '.target-recommendation-notice-open',
+      ),
     statThrust: topBar.querySelector<HTMLElement>('[data-stat="thrust"]'),
     speedIcon: topBar.querySelector<SVGSVGElement>('.telemetry-speed-icon'),
     statTarget: topBar.querySelector<HTMLElement>('[data-stat="target"]'),

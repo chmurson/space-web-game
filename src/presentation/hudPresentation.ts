@@ -108,6 +108,9 @@ export const createHudPresentation = (options: {
   queries: GameQueries
   rendererProfiler: RendererProfiler
   runtime: AppRuntimeState
+  targetRecommendationNotice?: {
+    sync(targetUiState: AssistTargetUiState): void
+  }
   timeWarps: number[]
   touchControls?: TouchControls
   trajectoryPresentation: TrajectoryPresentation
@@ -262,6 +265,7 @@ export const createHudPresentation = (options: {
       lastTimeWarpIndex = options.runtime.simulation.timeWarpIndex
 
       const targetUiState = options.queries.getAssistTargetUiState()
+      options.targetRecommendationNotice?.sync(targetUiState)
       const target = targetUiState.activeTarget
       const targetMetrics = options.queries.getCaptureMetrics(target)
       const circularizePlan =

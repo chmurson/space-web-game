@@ -40,6 +40,7 @@ import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
 import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
 import { createScenarioLoadingOverlay } from '../ui/createScenarioLoadingOverlay'
+import { createTargetRecommendationNoticePresenter } from '../ui/createTargetRecommendationNotice'
 import {
   createTopMenu,
   type TopMenu,
@@ -375,6 +376,9 @@ export const createAppComponents = (options: {
   let getAppMode = () => options.config.initialAppMode
   const getGameInteractionsEnabled = () =>
     getAppMode() === 'game' && !uiSettingsOpen && !scenarioTransitionLoading
+  let targetRecommendationNotice: ReturnType<
+    typeof createTargetRecommendationNoticePresenter
+  > | null = null
   const touchControls = createTouchControls({
     app: options.app,
     automaticTargetingAvailable:
@@ -463,6 +467,11 @@ export const createAppComponents = (options: {
     onReturnToAutomaticTarget:
       runtimeActions.returnToAutomaticAssistTargetSelection,
     onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
+    onTargetStateChange: () => {
+      targetRecommendationNotice?.acknowledgeCurrentTargetState(
+        queries.getAssistTargetUiState(),
+      )
+    },
     onTargetHeadingSelected: (screenX, screenY) => {
       const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
 
@@ -483,6 +492,15 @@ export const createAppComponents = (options: {
       options.runtimeState.ui.touchThrustControl = state
     },
     onZoom: zoomCameraAroundScreenPoint,
+  })
+  targetRecommendationNotice = createTargetRecommendationNoticePresenter({
+    onOpenTargetControl: touchControls.openTargetControl,
+    refs: {
+      dismissButton: overlayUi.targetRecommendationNoticeDismissButton,
+      element: overlayUi.targetRecommendationNotice,
+      message: overlayUi.targetRecommendationNoticeMessage,
+      openButton: overlayUi.targetRecommendationNoticeOpenButton,
+    },
   })
   const handleTopMenuAction = (action: TopMenuAction) => {
     if (action === 'enterMainMenu') {
@@ -557,6 +575,7 @@ export const createAppComponents = (options: {
     queries,
     rendererProfiler,
     runtime: options.runtimeState,
+    targetRecommendationNotice: targetRecommendationNotice ?? undefined,
     timeWarps: options.config.controls.timeWarps,
     touchControls,
     trajectoryPresentation,
