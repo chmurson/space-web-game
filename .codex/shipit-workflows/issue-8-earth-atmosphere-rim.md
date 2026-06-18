@@ -243,6 +243,8 @@ Final validation:
 - `npx biome check src/scene/createGameScene.ts tests/scene/starfield.test.ts` passed.
 - `git diff --check` passed.
 - Latest staging deploy before merge passed: https://6a33ba4bee2f6700968f8803--fanciful-bunny-d77b4b.netlify.app.
+- After publishing the previously completed local `main` texture/star-rendering history to `origin/main`, rebased this branch onto current `origin/main`.
+- Post-rebase validation passed: `npm test` passed with 206 tests, `npm run build` passed, scoped Biome passed after one formatting-only test fix, and `git diff --check` passed.
 
 Latest deploy result before merge review:
 - Staging URL: https://fanciful-bunny-d77b4b.netlify.app
@@ -251,7 +253,10 @@ Latest deploy result before merge review:
 
 ## Yeet Notes
 
-- Commit: `d95730c` (`feat(scene): add Earth atmosphere rim`)
+- Branch commits after rebase onto current `origin/main`:
+  - `2285248 feat(scene): add Earth atmosphere rim`
+  - `f426627 docs(shipit): record atmosphere rim PR`
+  - `3a52ad1 test(scene): format starfield opacity check`
 - Branch pushed: `origin/issue-8-earth-atmosphere-rim`
 - PR: https://github.com/chmurson/space-web-game/pull/10
 - Post-commit staging deploy: https://6a33bc217ac230090fc5e515--fanciful-bunny-d77b4b.netlify.app
