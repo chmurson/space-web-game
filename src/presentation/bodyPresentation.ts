@@ -7,8 +7,8 @@ import type { Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import {
-  getBodyVisualRotationY,
   getEarthCloudDriftRotationY,
+  setBodyVisualQuaternion,
 } from './bodyRotation'
 
 const updateBodyWorldVisuals = (options: {
@@ -29,7 +29,7 @@ const updateBodyWorldVisuals = (options: {
     if (mesh) {
       mesh.visible = true
       mesh.position.copy(renderPosition(body.position.x, body.position.y))
-      mesh.rotation.y = getBodyVisualRotationY({
+      setBodyVisualQuaternion(mesh.quaternion, {
         bodies: options.allBodies,
         body,
         elapsedSeconds: options.elapsedSeconds,

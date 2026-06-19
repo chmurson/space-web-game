@@ -1,9 +1,22 @@
+import * as THREE from 'three'
 import type { Body } from '../simulation/types'
 
 const FULL_ROTATION_RADIANS = Math.PI * 2
+const WORLD_UP_AXIS = new THREE.Vector3(0, 1, 0)
+const EARTH_PRESENTATION_TILT_AXIS = new THREE.Vector3(-1, 0, 1).normalize()
 
 export const EARTH_VISUAL_DAY_SECONDS = 24 * 60 * 60
 export const EARTH_CLOUD_DRIFT_SECONDS = EARTH_VISUAL_DAY_SECONDS * 5
+export const EARTH_PRESENTATION_TILT_DEGREES = 23.5
+export const EARTH_PRESENTATION_TILT_RADIANS =
+  (EARTH_PRESENTATION_TILT_DEGREES * Math.PI) / 180
+
+const EARTH_PRESENTATION_TILT_QUATERNION =
+  new THREE.Quaternion().setFromAxisAngle(
+    EARTH_PRESENTATION_TILT_AXIS,
+    EARTH_PRESENTATION_TILT_RADIANS,
+  )
+const yRotationQuaternion = new THREE.Quaternion()
 
 const wrapPositiveRadians = (radians: number) => {
   const wrapped = radians % FULL_ROTATION_RADIANS
@@ -56,4 +69,24 @@ export const getBodyVisualRotationY = (input: {
   }
 
   return 0
+}
+
+export const setBodyVisualQuaternion = (
+  target: THREE.Quaternion,
+  input: {
+    bodies: Body[]
+    body: Body
+    elapsedSeconds: number
+  },
+) => {
+  const rotationY = getBodyVisualRotationY(input)
+
+  if (input.body.id === 'earth') {
+    target.copy(EARTH_PRESENTATION_TILT_QUATERNION)
+    return target.multiply(
+      yRotationQuaternion.setFromAxisAngle(WORLD_UP_AXIS, rotationY),
+    )
+  }
+
+  return target.setFromAxisAngle(WORLD_UP_AXIS, rotationY)
 }
