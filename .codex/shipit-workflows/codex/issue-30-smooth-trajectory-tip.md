@@ -3,7 +3,7 @@
 Task: Issue #30 - Smooth trajectory tip rendering between fixed samples
 Branch: codex/issue-30-smooth-trajectory-tip
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -36,8 +36,12 @@ Status: active
 - High-warp follow-up issue comment: https://github.com/chmurson/space-web-game/issues/30#issuecomment-4751828322
 - Start-anchor follow-up issue comment: https://github.com/chmurson/space-web-game/issues/30#issuecomment-4752014404
 - Main-menu start-blend follow-up issue comment: https://github.com/chmurson/space-web-game/issues/30#issuecomment-4752074230
+- Final issue close comment: https://github.com/chmurson/space-web-game/issues/30#issuecomment-4752163774
+- Merged to `main` in commit `1107055d1077f50f824d13b4ebbc727d533ff5e5` via direct fast-forward merge; no PR was opened for this task.
+- Production deploy URL: https://space-web-game.netlify.app
+- Unique production deploy URL: https://6a3549fcb8a0ec165596fb0b--space-web-game.netlify.app
 - Issue #30 has no comments as of pickup on 2026-06-19, so there are no conflicting issue instructions.
-- Current issue state: open and assigned to `chmurson`; implementation is reviewed and validated locally, with close pending commit, main merge, production deploy, and final issue update.
+- Final issue state: closed on 2026-06-19 after merge and production deploy.
 - Follow root `AGENTS.md`, `.codex/shipit.config.md`, Shipit, Ponytail, and `game-studio:three-webgl-game` guidance.
 - Mark issue in progress before product-code edits by assigning `chmurson` and leaving a start comment because the repo has no project status or `in progress` label.
 - Keep trajectory calculation, sampling cadence, and simulation state unchanged.
@@ -61,7 +65,7 @@ Status: active
 
 ## Next Step
 
-Commit the branch, merge to `main`, deploy production, close issue #30, and record the final commit/deploy.
+Complete. Issue #30 was reviewed, merged to `main`, deployed to production, and closed.
 
 ## Brainstorm Handoff
 
@@ -261,13 +265,17 @@ Final validation results:
 - `coderabbit --base main --agent` stalled in review heartbeats and was stopped; final retry also stalled after a recoverable rate limit; no findings were produced.
 - `npm run deploy:netlify` deployed staging URL https://fanciful-bunny-d77b4b.netlify.app and unique deploy URL https://6a3546f667d5ad04692eee7c--fanciful-bunny-d77b4b.netlify.app.
 - Staging smoke check passed: `curl -I https://fanciful-bunny-d77b4b.netlify.app` returned `HTTP/2 200`.
+- `git switch main && git merge --ff-only codex/issue-30-smooth-trajectory-tip` merged commit `1107055d1077f50f824d13b4ebbc727d533ff5e5` to `main`.
+- `git push origin main` pushed `main` to GitHub.
+- `npm run deploy:netlify` deployed production URL https://space-web-game.netlify.app and unique deploy URL https://6a3549fcb8a0ec165596fb0b--space-web-game.netlify.app.
+- Production smoke check passed: `curl -I https://space-web-game.netlify.app` returned `HTTP/2 200`.
 
 GitHub issue update:
 - Left progress comment https://github.com/chmurson/space-web-game/issues/30#issuecomment-4751709806.
 - Left high-warp follow-up comment https://github.com/chmurson/space-web-game/issues/30#issuecomment-4751828322.
 - Left start-anchor follow-up comment https://github.com/chmurson/space-web-game/issues/30#issuecomment-4752014404.
 - Left main-menu start-blend follow-up comment https://github.com/chmurson/space-web-game/issues/30#issuecomment-4752074230.
-- Issue #30 remains open because commit/PR/merge was not requested.
+- Closed issue #30 with final merge/deploy comment https://github.com/chmurson/space-web-game/issues/30#issuecomment-4752163774.
 
 ## Follow-Up After User Playtest
 
