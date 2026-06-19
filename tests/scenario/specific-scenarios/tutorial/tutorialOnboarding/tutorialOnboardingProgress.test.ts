@@ -51,7 +51,7 @@ const createRuntime = (): AppRuntimeState => ({
         fuelUsed: 0,
         dryMass: 10_000,
         fuelMass: 8_000,
-        fuelCapacity: 32_000,
+        fuelCapacity: 0,
       },
     },
     targetHeading: null,

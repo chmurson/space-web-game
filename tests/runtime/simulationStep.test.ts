@@ -177,6 +177,61 @@ describe('stepSimulationFrame', () => {
     expect(result.simulationControls.controls.main).toBe(1)
   })
 
+  it('drops fuel-consuming controls when finite fuel is depleted', () => {
+    const state = createRuntimeState()
+    state.spacecraft.fuel = 0
+    state.spacecraft.fuelCapacity = 32_000
+
+    const result = resolveSimulationTimeWarp({
+      assistMode: 'off',
+      crashedBodyName: null,
+      getAssistTarget: () => createRuntimeState().bodies[0],
+      getAutopilotTurn: () => 1,
+      getCaptureMetrics: () => ({
+        circularSpeed: 0,
+        distance: 0,
+        insideRange: false,
+        relativeSpeed: 0,
+        roughAssistRange: 0,
+        specificEnergy: 0,
+        surfaceDistance: 0,
+      }),
+      getCircularizePlan: () => ({
+        burnHeading: 0,
+        deltaV: 0,
+        desiredVelocityHeading: 0,
+        distance: 0,
+        radialSpeed: 0,
+        tangentialSpeed: 0,
+      }),
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({ main: 1, reverse: 0, strafe: 0, turn: 1 }),
+        hasManualTurn: () => true,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+      },
+      maxControlWarp: 100,
+      maxTimeWarp: null,
+      shouldCaptureBurn: () => false,
+      state,
+      targetHeading: Math.PI / 2,
+      timeWarpIndex: 5,
+      timeWarps: [1, 10, 30, 60, 300, 1800],
+    })
+
+    expect(result.timeWarpIndex).toBe(5)
+    expect(result.simulationControls.controls).toEqual({
+      main: 0,
+      reverse: 0,
+      strafe: 0,
+      turn: 0,
+    })
+    expect(result.simulationControls.targetHeading).toBeNull()
+    expect(result.simulationControls.targetHeadingTurn).toBeNull()
+  })
+
   it('caps time warp when turning through target-heading guidance', () => {
     const result = stepSimulationFrame({
       assistMode: 'off',

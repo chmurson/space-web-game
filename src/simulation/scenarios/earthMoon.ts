@@ -8,7 +8,13 @@ import {
 } from '../constants'
 import type { Scenario } from '../types'
 
-export const createEarthMoonScenario = (): Scenario => {
+type EarthMoonScenarioOptions = {
+  fuelCapacity?: number
+}
+
+export const createEarthMoonScenario = (
+  options: EarthMoonScenarioOptions = {},
+): Scenario => {
   const totalMass = EARTH_MASS + MOON_MASS
   const earthOrbitRadius = (EARTH_MOON_DISTANCE * MOON_MASS) / totalMass
   const moonOrbitRadius = (EARTH_MOON_DISTANCE * EARTH_MASS) / totalMass
@@ -60,7 +66,7 @@ export const createEarthMoonScenario = (): Scenario => {
       fuelUsed: 0,
       dryMass: 10_000,
       fuelMass: 8_000,
-      fuelCapacity: 32_000,
+      fuelCapacity: options.fuelCapacity ?? 0,
     },
   }
 }
