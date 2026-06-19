@@ -73,9 +73,12 @@ const earthMoonScenarioScene: ScenarioSceneDefinition = {
     maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
   }),
 }
+const reachMoonFuelCapacity = 32_000
 
 const createReachMoonScenario = (): RuntimeScenario => {
-  const scenario = createEarthMoonScenario()
+  const scenario = createEarthMoonScenario({
+    fuelCapacity: reachMoonFuelCapacity,
+  })
 
   return {
     ...scenario,

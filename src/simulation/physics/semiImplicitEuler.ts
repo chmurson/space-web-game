@@ -11,6 +11,12 @@ const SOFTENING = 1_000
 const normalizeAngle = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 
+const isFiniteFuel = (spacecraft: Spacecraft) => spacecraft.fuelCapacity > 0
+const getRemainingFuelMass = (spacecraft: Spacecraft) =>
+  Math.max(0, spacecraft.fuel) * spacecraft.fuelCapacity
+const getSpacecraftMass = (spacecraft: Spacecraft) =>
+  spacecraft.dryMass + spacecraft.fuelMass * Math.max(0, spacecraft.fuel)
+
 const gravityAt = (
   position: Vec2,
   bodies: Body[],
@@ -42,20 +48,25 @@ const spacecraftThrustAcceleration = (
   dt: number,
 ) => {
   const { controls } = state
-  const fuelAvailable = spacecraft.fuel > 0
+  const requestedFuelUseRate =
+    Math.abs(controls.main) * FUEL_FLOW +
+    Math.abs(controls.reverse) * FUEL_FLOW * 0.4 +
+    Math.abs(controls.strafe) * FUEL_FLOW * 0.35 +
+    Math.abs(controls.turn) * FUEL_FLOW * 0.2
+  const requestedFuelUse = requestedFuelUseRate * dt
+  const finiteFuel = isFiniteFuel(spacecraft)
+  const usedFuel = finiteFuel
+    ? Math.min(getRemainingFuelMass(spacecraft), requestedFuelUse)
+    : 0
+  const fuelRatio =
+    requestedFuelUse > 0 && finiteFuel ? usedFuel / requestedFuelUse : 1
   const heading = normalizeAngle(
-    spacecraft.heading + controls.turn * ROTATION_RATE * dt,
+    spacecraft.heading + controls.turn * ROTATION_RATE * dt * fuelRatio,
   )
 
   const forward = fromAngle(heading)
   const right = { x: forward.y, y: -forward.x }
-  const throttleFuelUse =
-    Math.abs(controls.main) * FUEL_FLOW +
-    Math.abs(controls.reverse) * FUEL_FLOW * 0.4 +
-    Math.abs(controls.strafe) * FUEL_FLOW * 0.35
-  const fuelUsed = throttleFuelUse * dt
-  const fuelRatio = fuelAvailable || throttleFuelUse === 0 ? 1 : 0
-  const mass = spacecraft.dryMass + spacecraft.fuelMass * spacecraft.fuel
+  const mass = getSpacecraftMass(spacecraft)
   const forwardForce =
     MAIN_THRUST * controls.main - REVERSE_THRUST * controls.reverse
   const strafeForce = STRAFE_THRUST * controls.strafe
@@ -65,8 +76,10 @@ const spacecraftThrustAcceleration = (
       scale(forward, (forwardForce / mass) * fuelRatio),
       scale(right, (strafeForce / mass) * fuelRatio),
     ),
-    fuel: spacecraft.fuel,
-    fuelUsed: spacecraft.fuelUsed + fuelUsed,
+    fuel: finiteFuel
+      ? Math.max(0, spacecraft.fuel - usedFuel / spacecraft.fuelCapacity)
+      : spacecraft.fuel,
+    fuelUsed: spacecraft.fuelUsed + usedFuel,
     heading,
   }
 }

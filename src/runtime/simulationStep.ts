@@ -93,6 +93,8 @@ const clamp = (value: number, min: number, max: number) =>
 
 const normalizeAngle = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
+const hasUsableFuel = (state: SimulationState) =>
+  state.spacecraft.fuelCapacity <= 0 || state.spacecraft.fuel > 0
 
 const getSafeAutopilotRotationRate = (rotationRate: number | undefined) =>
   Math.max(
@@ -347,14 +349,25 @@ const resolveSimulationControls = (
     targetHeadingTurn = resolvedTargetHeadingTurn.targetHeadingTurn
   }
 
+  const controls = {
+    main,
+    reverse: manualControls.reverse,
+    strafe: manualControls.strafe,
+    turn,
+  }
+
+  if (!hasUsableFuel(options.state)) {
+    return {
+      assistMode,
+      controls: idleControls(),
+      targetHeading: null,
+      targetHeadingTurn: null,
+    }
+  }
+
   return {
     assistMode,
-    controls: {
-      main,
-      reverse: manualControls.reverse,
-      strafe: manualControls.strafe,
-      turn,
-    },
+    controls,
     targetHeading,
     targetHeadingTurn,
   }

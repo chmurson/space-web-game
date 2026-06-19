@@ -121,6 +121,8 @@ describe('createRuntimeScenarioState', () => {
     expect(scenario.id).toBe('reach-moon')
     expect(scenario.name).toBe('Reach the Moon')
     expect(scenario.bodies.map((body) => body.id)).toEqual(['earth', 'moon'])
+    expect(scenario.spacecraft.fuel).toBe(1)
+    expect(scenario.spacecraft.fuelCapacity).toBe(32_000)
 
     const runtimeScenario = createRuntimeScenarioStateFromId(
       'reach-moon',
@@ -128,6 +130,18 @@ describe('createRuntimeScenarioState', () => {
     )
 
     expect(runtimeScenario.scenarioSession.scenarioId).toBe('reach-moon')
+  })
+
+  it('keeps finite fuel opt-in scoped to Reach the Moon', () => {
+    expect(
+      createRequestedRuntimeScenario('earth-moon').spacecraft.fuelCapacity,
+    ).toBe(0)
+    expect(
+      createRequestedRuntimeScenario('tutorial').spacecraft.fuelCapacity,
+    ).toBe(0)
+    expect(
+      createRequestedRuntimeScenario('reach-moon').spacecraft.fuelCapacity,
+    ).toBeGreaterThan(0)
   })
 
   it('preserves provided scenario session metadata', () => {
