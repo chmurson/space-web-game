@@ -1,12 +1,11 @@
 import * as THREE from 'three'
 
 import type { CircularizePlan } from '../assist/orbitalAssist'
+import { renderPosition } from '../render/sceneUpdates'
 import {
   updateColoredLine2Geometry,
   updateLine2Geometry,
 } from '../rendering/line2Geometry'
-import { renderPosition } from '../render/sceneUpdates'
-import { getCoastPredictionFadeColors } from './predictionLineFade'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { GameQueries } from '../runtime/gameQueries'
 import type { TrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
@@ -14,6 +13,13 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, type Vec2 } from '../simulation/vector'
+import { getCoastPredictionFadeColors } from './predictionLineFade'
+import {
+  getBlendedTrajectoryPoints,
+  getSmoothedTrajectoryTipPoints,
+  getTrajectoryPointsWithStart,
+  getUnrevealedTrajectoryTipSeconds,
+} from './trajectoryLineSmoothing'
 
 const hideTrajectoryVisuals = (gameScene: GameSceneRefs) => {
   gameScene.assistedPredictionLine.visible = false
@@ -109,23 +115,50 @@ const updateTargetRelativePredictionVisuals = (options: {
   debugModeEnabled: boolean
   gameScene: GameSceneRefs
   predictedImpact: { bodyName: string; time: number } | null
+  predictionBlendRatio: number
+  previousTargetRelativePredictionPoints: Vec2[] | null
+  predictionStepSeconds: number
+  spacecraftPosition: Vec2
   target: Body
   targetRelativeAssistedPoints: Vec2[]
-  targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
+  unrevealedPredictionSeconds: number
   viewportHeight: number
   viewportSize: number
 }) => {
-  const gradientPointCount = Math.min(
-    18,
-    options.targetRelativePredictionPoints.length,
+  const anchoredPredictionPoints = getTrajectoryPointsWithStart(
+    options.targetRelativePredictionPoints,
+    {
+      x: options.spacecraftPosition.x - options.target.position.x,
+      y: options.spacecraftPosition.y - options.target.position.y,
+    },
   )
+  const previousAnchoredPredictionPoints =
+    options.previousTargetRelativePredictionPoints &&
+    anchoredPredictionPoints.length > 0
+      ? getTrajectoryPointsWithStart(
+          options.previousTargetRelativePredictionPoints,
+          anchoredPredictionPoints[0],
+        )
+      : null
+  const blendedPredictionPoints = getBlendedTrajectoryPoints(
+    anchoredPredictionPoints,
+    previousAnchoredPredictionPoints,
+    options.predictionBlendRatio,
+  )
+  const visiblePredictionPoints = getSmoothedTrajectoryTipPoints(
+    blendedPredictionPoints,
+    {
+      predictionStepSeconds: options.predictionStepSeconds,
+      unrevealedPredictionSeconds: options.unrevealedPredictionSeconds,
+    },
+  )
+  const gradientPointCount = Math.min(18, visiblePredictionPoints.length)
   const hasImpactGradient =
-    Boolean(options.predictedImpact) &&
-    options.targetRelativePredictionPoints.length >= 3
+    Boolean(options.predictedImpact) && visiblePredictionPoints.length >= 3
   const predictionPositions: number[] = []
 
-  for (const point of options.targetRelativePredictionPoints) {
+  for (const point of visiblePredictionPoints) {
     const renderedPoint = renderPosition(
       options.target.position.x + point.x,
       options.target.position.y + point.y,
@@ -136,7 +169,7 @@ const updateTargetRelativePredictionVisuals = (options: {
 
   applyTargetRelativePredictionLine(
     options.gameScene,
-    options.targetRelativePredictionPoints,
+    visiblePredictionPoints,
     'predictionGeometry',
     'predictionLine',
     0.18,
@@ -155,7 +188,9 @@ const updateTargetRelativePredictionVisuals = (options: {
     options.target,
   )
 
-  if (!options.targetRelativePredictionEnd) {
+  const visiblePredictionEnd = visiblePredictionPoints.at(-1) ?? null
+
+  if (!visiblePredictionEnd) {
     options.gameScene.predictionEndMarker.visible = false
     options.gameScene.impactGradientLine.visible = false
     return
@@ -163,8 +198,8 @@ const updateTargetRelativePredictionVisuals = (options: {
 
   options.gameScene.predictionEndMarker.position.copy(
     renderPosition(
-      options.target.position.x + options.targetRelativePredictionEnd.x,
-      options.target.position.y + options.targetRelativePredictionEnd.y,
+      options.target.position.x + visiblePredictionEnd.x,
+      options.target.position.y + visiblePredictionEnd.y,
       0.18,
     ),
   )
@@ -188,9 +223,7 @@ const updateTargetRelativePredictionVisuals = (options: {
     return
   }
 
-  const gradientPoints = options.targetRelativePredictionPoints.slice(
-    -gradientPointCount,
-  )
+  const gradientPoints = visiblePredictionPoints.slice(-gradientPointCount)
   const gradientPositions: number[] = []
   const gradientColors: number[] = []
   const startColor = new THREE.Color('#67e8f9')
@@ -292,8 +325,12 @@ export const createTrajectoryPresentation = (options: {
   physicsEngine: PhysicsEngine
   queries: GameQueries
   runtime: AppRuntimeState
+  timeWarps: number[]
   trajectoryPredictionRuntime: TrajectoryPredictionRuntime
 }) => {
+  let predictionVisualAgeSeconds = 0
+  let previousTargetRelativePredictionPoints: Vec2[] | null = null
+
   const syncInertialPredictionVisual = () => {
     updateInertialPredictionVisual({
       enabled:
@@ -319,6 +356,8 @@ export const createTrajectoryPresentation = (options: {
       predictionConfig: options.queries.getPredictionConfig(),
       state: options.runtime.simulation.state,
     })
+    previousTargetRelativePredictionPoints = null
+    predictionVisualAgeSeconds = 0
     syncInertialPredictionVisual()
   }
 
@@ -371,6 +410,12 @@ export const createTrajectoryPresentation = (options: {
     getCoachAnchorScreenPoint,
     getPredictionState: () => options.trajectoryPredictionRuntime.getState(),
     maybeRefreshPrediction: (realDt: number) => {
+      predictionVisualAgeSeconds = Math.max(
+        0,
+        predictionVisualAgeSeconds + realDt,
+      )
+      const previousPredictionState =
+        options.trajectoryPredictionRuntime.getState()
       const refreshed = options.trajectoryPredictionRuntime.maybeRefresh(
         realDt,
         {
@@ -386,6 +431,9 @@ export const createTrajectoryPresentation = (options: {
       )
 
       if (refreshed) {
+        previousTargetRelativePredictionPoints =
+          previousPredictionState.targetRelativePredictionPoints
+        predictionVisualAgeSeconds = 0
         syncInertialPredictionVisual()
       }
     },
@@ -399,6 +447,9 @@ export const createTrajectoryPresentation = (options: {
       }
 
       const predictionState = options.trajectoryPredictionRuntime.getState()
+      const predictionConfig = options.queries.getPredictionConfig()
+      const timeWarp =
+        options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1
       const target = options.queries.getAssistTarget()
 
       if (options.runtime.simulation.assistMode !== 'off') {
@@ -410,18 +461,28 @@ export const createTrajectoryPresentation = (options: {
       }
 
       updateTargetRelativePredictionVisuals({
-        coastPredictionHorizonSeconds:
-          options.queries.getCoastPredictionHorizonSeconds(),
+        coastPredictionHorizonSeconds: predictionConfig.horizonSeconds,
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
         gameScene: options.gameScene,
         predictedImpact: predictionState.predictedImpact,
+        predictionBlendRatio:
+          predictionConfig.refreshInterval <= 0
+            ? 1
+            : predictionVisualAgeSeconds / predictionConfig.refreshInterval,
+        previousTargetRelativePredictionPoints,
+        predictionStepSeconds: predictionConfig.stepSeconds,
+        spacecraftPosition:
+          options.runtime.simulation.state.spacecraft.position,
         target,
         targetRelativeAssistedPoints:
           predictionState.targetRelativeAssistedPoints,
-        targetRelativePredictionEnd:
-          predictionState.targetRelativePredictionEnd,
         targetRelativePredictionPoints:
           predictionState.targetRelativePredictionPoints,
+        unrevealedPredictionSeconds: getUnrevealedTrajectoryTipSeconds({
+          predictionRefreshAgeSeconds: predictionVisualAgeSeconds,
+          predictionRefreshIntervalSeconds: predictionConfig.refreshInterval,
+          timeWarp,
+        }),
         viewportHeight: window.innerHeight,
         viewportSize: options.runtime.simulation.viewportSize,
       })

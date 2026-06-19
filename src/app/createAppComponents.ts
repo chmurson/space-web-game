@@ -292,6 +292,7 @@ export const createAppComponents = (options: {
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
+    timeWarps: options.config.controls.timeWarps,
     trajectoryPredictionRuntime,
   })
   const pickWorldPointFromScreenPoint = createScreenPointWorldPicker(
