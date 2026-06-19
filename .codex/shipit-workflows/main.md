@@ -3,7 +3,7 @@
 Task: Earth cloud texture layer
 Branch: main
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -44,11 +44,12 @@ Status: active
 - [x] `coderabbit --base main --agent` attempted; interrupted after only heartbeats and no findings for roughly 3 minutes.
 - [x] `npm test`
 - [x] `sips -g pixelWidth -g pixelHeight src/assets/bodies/earth-clouds.webp`
-- [ ] production deploy after main commit
+- [x] production deploy after main commit
+- [x] production deploy smoke check with `curl -I https://space-web-game.netlify.app`
 
 ## Next Step
 
-Commit the reviewed changes on `main`, deploy production, record commit/deploy details, then push `main`.
+Complete.
 
 ## Brainstorm Handoff
 
@@ -147,6 +148,18 @@ Validation results:
 - `npm run build`: passed.
 - `sips -g pixelWidth -g pixelHeight src/assets/bodies/earth-clouds.webp`: confirmed `4096x2048`.
 - Browser visual check in Free Roam at high time warp: passed; no globe/cloud clipping observed after radius separation.
+- Production deploy after code commit: passed.
+- Production smoke check with `curl -I https://space-web-game.netlify.app`: returned `HTTP/2 200`.
 
 Follow-up issues:
 - None proposed.
+
+## Yeet Notes
+
+- Code commit: `5d644dc2866d501e53f1bca76205d551c67562d0`
+- Branch: `main`
+- PR: not applicable; user requested merge to `main`, and the worktree was already on `main`.
+- Production URL: https://space-web-game.netlify.app
+- Unique deploy URL: https://6a3516cd114aa96c45a2bae5--space-web-game.netlify.app
+- Build logs: https://app.netlify.com/projects/space-web-game/deploys/6a3516cd114aa96c45a2bae5
+- Push: origin/main updated with the code commit and completed Shipit state.
