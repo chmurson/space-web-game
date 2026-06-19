@@ -6,6 +6,8 @@ import { createStarfield, type Starfield } from '@/scene/starfield'
 import type { ScenarioAssets } from '@/render/scenarioAssets'
 import type { Body } from '@/simulation/types'
 
+const EARTH_CLOUD_LAYER_NAME = 'earth-cloud-layer'
+
 const createBody = (overrides: Partial<Body> = {}): Body => ({
   id: 'earth',
   name: 'Earth',
@@ -197,6 +199,7 @@ describe('createGameScene', () => {
       .mockReturnValue(new THREE.Texture())
     try {
       const scene = createTestGameScene([createBody()], {
+        bodyCloudTextures: new Map(),
         bodyDiffuseTextures: new Map([['earth', diffuseTexture]]),
       })
       const earth = scene.bodyMeshes.get('earth')
@@ -211,6 +214,46 @@ describe('createGameScene', () => {
     } finally {
       loadTexture.mockRestore()
     }
+  })
+
+  it('adds a transparent cloud layer to textured Earth only', () => {
+    const cloudTexture = new THREE.Texture()
+    const scene = createTestGameScene(
+      [
+        createBody(),
+        createBody({
+          id: 'moon',
+          name: 'Moon',
+          color: '#d1d5db',
+          mass: 7.342e22,
+          radius: 1_737_400,
+        }),
+      ],
+      {
+        bodyCloudTextures: new Map([['earth', cloudTexture]]),
+        bodyDiffuseTextures: new Map(),
+      },
+    )
+
+    const earthCloudLayer = scene.bodyCloudMeshes.get('earth')
+    const earth = scene.bodyMeshes.get('earth')
+    const moon = scene.bodyMeshes.get('moon')
+    const earthRadius = (earth?.geometry as THREE.SphereGeometry).parameters
+      .radius
+    const cloudRadius = earthCloudLayer?.geometry.parameters.radius
+
+    expect(earthCloudLayer).toBeInstanceOf(THREE.Mesh)
+    expect(earthCloudLayer?.name).toBe(EARTH_CLOUD_LAYER_NAME)
+    expect(earthCloudLayer?.visible).toBe(true)
+    expect(earthCloudLayer?.material).toBeInstanceOf(THREE.MeshStandardMaterial)
+    expect(earthCloudLayer?.material.map).toBe(cloudTexture)
+    expect(earthCloudLayer?.material.transparent).toBe(true)
+    expect(earthCloudLayer?.material.depthWrite).toBe(false)
+    expect(earthCloudLayer?.material.polygonOffset).toBe(false)
+    expect(cloudRadius).toBeGreaterThan(earthRadius)
+    expect(cloudRadius).toBeCloseTo(earthRadius * 1.001)
+    expect(scene.bodyCloudMeshes.has('moon')).toBe(false)
+    expect(moon?.getObjectByName(EARTH_CLOUD_LAYER_NAME)).toBeUndefined()
   })
 
   it('adds a subtle atmosphere rim to Earth only', () => {
@@ -230,6 +273,10 @@ describe('createGameScene', () => {
     const rim = earth?.getObjectByName('earth-atmosphere-rim')
 
     expect(rim).toBeInstanceOf(THREE.Mesh)
+    expect(earth?.getObjectByName(EARTH_CLOUD_LAYER_NAME)).toBeInstanceOf(
+      THREE.Mesh,
+    )
+    expect(moon?.getObjectByName(EARTH_CLOUD_LAYER_NAME)).toBeUndefined()
     expect(moon?.getObjectByName('earth-atmosphere-rim')).toBeUndefined()
     expect(
       (earth?.geometry as THREE.SphereGeometry).parameters.widthSegments,

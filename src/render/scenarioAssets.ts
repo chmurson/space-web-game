@@ -1,19 +1,21 @@
 import * as THREE from 'three'
 
+import earthCloudTextureUrl from '../assets/bodies/earth-clouds.webp'
 import earthTextureUrl from '../assets/bodies/earth-stylized.webp'
 import moonTextureUrl from '../assets/bodies/moon-stylized.webp'
 
 export type ScenarioAssets = {
+  bodyCloudTextures: ReadonlyMap<string, THREE.Texture>
   bodyDiffuseTextures: ReadonlyMap<string, THREE.Texture>
 }
 
-type BodyDiffuseTextureAsset = {
+type BodyTextureAsset = {
   bodyId: string
   key: string
   url: string
 }
 
-const bodyDiffuseTextureAssets: Record<string, BodyDiffuseTextureAsset> = {
+const bodyDiffuseTextureAssets: Record<string, BodyTextureAsset> = {
   earth: {
     bodyId: 'earth',
     key: 'body.earth.diffuse',
@@ -23,6 +25,14 @@ const bodyDiffuseTextureAssets: Record<string, BodyDiffuseTextureAsset> = {
     bodyId: 'moon',
     key: 'body.moon.diffuse',
     url: moonTextureUrl,
+  },
+}
+
+const bodyCloudTextureAssets: Record<string, BodyTextureAsset> = {
+  earth: {
+    bodyId: 'earth',
+    key: 'body.earth.clouds',
+    url: earthCloudTextureUrl,
   },
 }
 
@@ -39,19 +49,25 @@ const scenarioBodyDiffuseTextureIds: Record<string, readonly string[]> = {
 
 const textureLoadPromises = new Map<string, Promise<THREE.Texture | null>>()
 
-const getBodyDiffuseTextureAssetsForScenario = (
+const getBodyTextureAssetsForScenario = (
   scenarioId: string,
-): BodyDiffuseTextureAsset[] => {
+  textureAssets: Record<string, BodyTextureAsset>,
+): BodyTextureAsset[] => {
   const ids =
     scenarioBodyDiffuseTextureIds[scenarioId] ?? defaultBodyDiffuseTextureIds
 
   return ids
-    .map((id) => bodyDiffuseTextureAssets[id])
-    .filter((asset): asset is BodyDiffuseTextureAsset => Boolean(asset))
+    .map((id) => textureAssets[id])
+    .filter((asset): asset is BodyTextureAsset => Boolean(asset))
 }
 
+const getScenarioTextureAssets = (scenarioId: string) => [
+  ...getBodyTextureAssetsForScenario(scenarioId, bodyDiffuseTextureAssets),
+  ...getBodyTextureAssetsForScenario(scenarioId, bodyCloudTextureAssets),
+]
+
 const loadTextureAsset = (
-  asset: BodyDiffuseTextureAsset,
+  asset: BodyTextureAsset,
 ): Promise<THREE.Texture | null> => {
   const cached = textureLoadPromises.get(asset.key)
   if (cached) {
@@ -80,7 +96,7 @@ const loadTextureAsset = (
 }
 
 export const areScenarioAssetsCached = (scenarioId: string) =>
-  getBodyDiffuseTextureAssetsForScenario(scenarioId).every((asset) =>
+  getScenarioTextureAssets(scenarioId).every((asset) =>
     textureLoadPromises.has(asset.key),
   )
 
@@ -88,7 +104,15 @@ export const loadScenarioAssets = async (
   scenarioId: string,
 ): Promise<ScenarioAssets> => {
   const bodyTextureEntries = await Promise.all(
-    getBodyDiffuseTextureAssetsForScenario(scenarioId).map(
+    getBodyTextureAssetsForScenario(scenarioId, bodyDiffuseTextureAssets).map(
+      async (asset): Promise<[string, THREE.Texture | null]> => [
+        asset.bodyId,
+        await loadTextureAsset(asset),
+      ],
+    ),
+  )
+  const bodyCloudTextureEntries = await Promise.all(
+    getBodyTextureAssetsForScenario(scenarioId, bodyCloudTextureAssets).map(
       async (asset): Promise<[string, THREE.Texture | null]> => [
         asset.bodyId,
         await loadTextureAsset(asset),
@@ -96,6 +120,7 @@ export const loadScenarioAssets = async (
     ),
   )
   const bodyDiffuseTextures = new Map<string, THREE.Texture>()
+  const bodyCloudTextures = new Map<string, THREE.Texture>()
 
   for (const [bodyId, texture] of bodyTextureEntries) {
     if (texture) {
@@ -103,5 +128,11 @@ export const loadScenarioAssets = async (
     }
   }
 
-  return { bodyDiffuseTextures }
+  for (const [bodyId, texture] of bodyCloudTextureEntries) {
+    if (texture) {
+      bodyCloudTextures.set(bodyId, texture)
+    }
+  }
+
+  return { bodyCloudTextures, bodyDiffuseTextures }
 }

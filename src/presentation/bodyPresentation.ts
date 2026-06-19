@@ -6,7 +6,10 @@ import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
-import { getBodyVisualRotationY } from './bodyRotation'
+import {
+  getBodyVisualRotationY,
+  getEarthCloudDriftRotationY,
+} from './bodyRotation'
 
 const updateBodyWorldVisuals = (options: {
   allBodies: Body[]
@@ -31,6 +34,12 @@ const updateBodyWorldVisuals = (options: {
         body,
         elapsedSeconds: options.elapsedSeconds,
       })
+      const cloudMesh = gameScene.bodyCloudMeshes.get(body.id)
+      if (cloudMesh) {
+        cloudMesh.rotation.y = getEarthCloudDriftRotationY(
+          options.elapsedSeconds,
+        )
+      }
     }
   }
 }

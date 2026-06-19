@@ -1,9 +1,9 @@
 # Shipit State
 
-Task: GC and frame-time diagnostics in FPS/debug HUD
+Task: Earth cloud texture layer
 Branch: main
 Current Mode: yeet
-Status: completed
+Status: active
 
 ## Checklist
 
@@ -15,23 +15,23 @@ Status: completed
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [x] PR opened/updated
+- [ ] PR opened/updated
 
 ## Artifacts
 
 - Brainstorm: inline
 - Design: inline
-- Task slices: waived; task was already implemented before Shipit state was created.
+- Task slices: waived; narrow rendering/asset change already implemented before Shipit review was requested.
 - Implementation: inline
 - Cleanup: inline
 - Review: inline
 
 ## Decisions
 
-- Browser JavaScript cannot reliably expose exact GC events in all browsers, so the HUD reports native GC when exposed and otherwise labels detections as probable GC.
-- GC/frame diagnostics run only while the debug panel or FPS meter is enabled.
-- FPS meter shows a compact 5-second frame-time graph with GC/probable-GC markers as bottom dots.
-- Keep unrelated `.codex/shipit-workflows/visual-improvement-for-space-plane/` screenshots out of this commit.
+- Add Earth clouds as a separate transparent texture shell, not as a second diffuse map on the Earth material.
+- Keep cloud drift in presentation rotation code so simulation state stays independent from Three.js objects.
+- Avoid keeping the cloud shell coplanar with the Earth globe; raise it slightly to avoid transparent/opaque depth fighting while Earth and cloud textures rotate independently.
+- Current branch is already `main`, so the requested merge-to-main path is direct review, commit, deploy, and push on `main` rather than a PR merge.
 
 ## Open Questions
 
@@ -39,113 +39,114 @@ Status: completed
 
 ## Validation
 
-- [x] `npx biome lint src/presentation/hudPresentation.ts src/style.css`
-- [x] `npm test -- tests/ui/hudText.test.ts tests/runtime/browserGcProbe.test.ts`
-- [x] `npm test`
-- [x] `npm run build:dev`
+- [x] `npm test -- --run tests/scene/starfield.test.ts tests/render/scenarioAssets.test.ts tests/presentation/bodyRotation.test.ts`
 - [x] `npm run build`
-- [x] Production deploy smoke check with `curl -I https://space-web-game.netlify.app`
-- [x] `coderabbit --base main --agent` attempted; stopped after producing no output for about 90 seconds.
+- [x] `coderabbit --base main --agent` attempted; interrupted after only heartbeats and no findings for roughly 3 minutes.
+- [x] `npm test`
+- [x] `sips -g pixelWidth -g pixelHeight src/assets/bodies/earth-clouds.webp`
+- [ ] production deploy after main commit
 
 ## Next Step
 
-Complete.
+Commit the reviewed changes on `main`, deploy production, record commit/deploy details, then push `main`.
 
 ## Brainstorm Handoff
 
-Goal: make GC-related frame hitches easier to inspect in the browser game without adding normal-play overhead or cluttering the HUD.
+Problem:
+- Earth should show a moving cloud texture without the globe visually eating the cloud layer as Earth and clouds rotate.
 
-User-facing behavior:
-- Debug performance panel reports GC/probable-GC count, last/max estimated pause, and reclaimed heap where available.
-- FPS meter popup includes compact GC status plus a small frame-time graph.
-- GC events are marked as unobtrusive dots at the bottom of the graph.
+Goal:
+- Ship a readable Earth cloud layer that remains visually stable during normal play and high time warp.
 
 Non-goals:
-- Do not claim exact browser GC timing where the browser does not expose native GC events.
-- Do not add a new always-visible UI panel.
+- No change to simulation physics.
+- No new renderer architecture or material system.
+- No new shipped 3D model format.
 
 ## Design Handoff
 
 Scope:
-- `src/runtime/browserGcProbe.ts`: isolated browser GC/probable-GC probe.
-- `src/runtime/frameLoop.ts`: sample frame intervals and gate diagnostics by debug/FPS toggles.
-- `src/ui/hudText.ts`: format debug/FPS text and graph model.
-- `src/presentation/hudPresentation.ts`: render FPS meter text and SVG graph.
-- `src/style.css`: compact FPS graph styling.
-- Tests for probe behavior and graph model math.
+- `scripts/generateBodyTextures.mjs`: generate a transparent Earth cloud texture from source imagery.
+- `src/render/scenarioAssets.ts`: load cloud textures alongside body diffuse textures.
+- `src/scene/createGameScene.ts`: create a transparent Earth cloud mesh and apply cloud texture assets.
+- `src/presentation/bodyRotation.ts` and `src/presentation/bodyPresentation.ts`: drift clouds separately from the globe.
+- Tests for asset loading, cloud drift, and scene cloud mesh setup.
+- `docs/tech-notes/2026-06-19-earth-cloud-layer.md`: durable implementation note.
 
 Risks:
-- Browser GC data is heuristic when native entries are unavailable.
-- FPS graph must stay compact and not obscure playfield.
-- Diagnostics should not sample heap or maintain frame history while disabled.
+- Transparent cloud geometry can z-fight or depth-sort poorly if it shares the exact Earth sphere surface.
+- Cloud shell must not look detached from Earth.
+- Added cloud asset increases shipped texture payload.
+
+Validation plan:
+- Focused tests for scene, asset loading, and rotation.
+- Full test suite.
+- Release build.
+- Browser visual check at high time warp.
+- CodeRabbit plus self-review before commit.
 
 ## Implementation Handoff
 
 Implemented:
-- Added `createBrowserGcProbe` with lazy enable/disable, native observer support, heap-drop/frame-gap fallback, recent event retention, and copied stats.
-- Wired frame loop to enable GC probe only when debug panel or FPS indicator is visible.
-- Added 5-second FPS frame sample history only while FPS meter is enabled.
-- Rendered FPS text plus inline SVG sparkline with 60Hz budget line and bottom GC marker dots.
-- Added tests for probe behavior, copied recent events, FPS text, graph path mapping, and marker positioning.
+- Added generated `earth-clouds.webp` asset and texture-generation pipeline changes.
+- Loaded Earth cloud textures through scenario assets and cached them with diffuse textures.
+- Added `bodyCloudMeshes` to scene refs and created an Earth-only transparent cloud shell.
+- Raised the cloud shell with `EARTH_CLOUD_RADIUS_MULTIPLIER = 1.001`, avoiding coplanar depth conflict instead of relying on polygon offset.
+- Added slower independent cloud drift rotation.
+- Updated tests for cloud texture loading, cloud drift, and Earth-only cloud mesh creation.
 
 Known gaps:
-- Screenshot/browser visual QA was not available in this session; HTTP boot smoke checks were used.
+- No automated pixel-diff visual regression test exists for the WebGL globe.
 
 ## Cleanup Notes
 
 Cleanup performed:
-- Scoped CSS diff back to FPS meter rules after formatter churn.
-- Replaced graph GC vertical lines with bottom dots after visual readability feedback.
+- Removed the earlier polygon-offset workaround once the cloud shell was raised above the Earth mesh.
+- Kept the cloud shell implementation local to scene creation; no new abstraction was added for one body-specific layer.
+- Updated asset README wording to match the raised transparent cloud shell.
 
 Cleanup intentionally skipped:
-- No extraction of SVG graph renderer into a shared helper; it is currently specific to one HUD surface.
+- No shared shell/atmosphere layer factory; Earth cloud and atmosphere meshes still have different material behavior and only one current caller each.
 
 ## Review Notes
 
 Automated review:
-- CodeRabbit command `coderabbit --base main --agent` was run as required by repo guidance but produced no output for roughly 90 seconds. It was interrupted and treated as an automated-review gap.
-
-Self-review findings:
-- No correctness issues found in the current diff.
-- GC probe starts/stops with debug/FPS visibility and does not sample while disabled.
-- Native GC entries and probable-GC heuristic events are copied out in stats, avoiding mutable internal event exposure.
-- FPS graph filters both samples and GC markers to the last 5 seconds, so old markers do not reappear after toggling the FPS meter.
-- GC markers are bottom dots instead of full-height lines, reducing visual interference with frame-time reading.
+- `coderabbit --base main --agent` was run as required. It reached the reviewing phase and emitted heartbeats, but produced no findings or completion after roughly 3 minutes, so it was interrupted and treated as an automated-review gap.
 
 Ponytail review lens:
-- Kept the SVG graph renderer local to `hudPresentation`; no new shared abstraction is justified yet.
-- Used plain DOM/SVG APIs and existing HUD styling rather than adding a chart dependency.
-- Frame sample history is a simple bounded in-memory array; no extra state system or renderer layer added.
+- Found one repo-quality simplification: `EARTH_CLOUD_LAYER_NAME` was exported only for tests. Fixed by making the scene constant private and using a local test literal.
+- No dependency, abstraction, or generalized layer factory is justified for one Earth-only cloud shell.
+- Kept cloud presentation as plain Three.js mesh/material code; no new render subsystem added.
+
+Self-review findings:
+- Fixed the test-only API export described above.
+- Cloud shell now has real radius separation (`1.001`) instead of coplanar depth offset, addressing the observed globe/cloud depth conflict.
+- Cloud motion is presentation-only and does not mutate simulation state.
+- Asset caching covers both diffuse and cloud textures, and failed texture loads still fall back without blocking scenario creation.
+- Tests cover cloud asset loading, cloud drift, Earth-only cloud shell creation, and the non-coplanar radius.
+
+Solution retrospect:
+- The split between scenario asset loading, scene mesh creation, and presentation rotation is still the right boundary for this repo.
+- Keeping `bodyCloudMeshes` avoids per-frame scene-tree searches while staying narrowly scoped.
+- A future reusable shell helper would be premature until another body needs similar layered rendering.
 
 Requirement coverage:
-- Debug panel reports GC/probable-GC count and pause/reclaimed-heap stats.
-- FPS meter reports compact GC status and shows a 5-second frame-time graph.
-- GC/probable-GC events are represented as bottom dots on that graph.
-- Diagnostics run only while debug or FPS surfaces are enabled.
+- Earth clouds render as a separate transparent texture layer.
+- Clouds drift independently from the Earth globe.
+- The cloud shell is slightly raised to avoid the “Earth eating clouds” artifact.
+- Docs and tech note record the new cloud texture source, processing, and runtime behavior.
 
 Residual risk:
-- Browser fallback is still heuristic by design; exact GC execution is only available when the runtime exposes native GC performance entries.
-- Screenshot/browser visual QA was unavailable in this session, so validation relies on tests, builds, local HTTP boot checks, and production HTTP checks.
+- No automated pixel-diff visual regression exists for WebGL globe/cloud clipping.
+- CodeRabbit did not complete, so automated review coverage is missing.
+- The cloud WebP adds about 2.4 MB of shipped asset payload.
 
 Validation results:
-- `npx biome lint src/presentation/hudPresentation.ts src/style.css`: passed.
-- `npm test -- tests/ui/hudText.test.ts tests/runtime/browserGcProbe.test.ts`: passed.
-- `npm test`: passed, 34 files / 199 tests.
-- `npm run build:dev`: passed.
-- `npm run build`: passed after review.
-- Production deploys completed successfully, with `curl -I https://space-web-game.netlify.app` returning `HTTP 200`.
+- `npm test -- --run tests/scene/starfield.test.ts tests/render/scenarioAssets.test.ts tests/presentation/bodyRotation.test.ts`: passed, 3 files / 21 tests.
+- `npm test`: passed, 37 files / 230 tests.
+- `npm run build`: passed.
+- `sips -g pixelWidth -g pixelHeight src/assets/bodies/earth-clouds.webp`: confirmed `4096x2048`.
+- Browser visual check in Free Roam at high time warp: passed; no globe/cloud clipping observed after radius separation.
 
 Follow-up issues:
 - None proposed.
-
-## Yeet Notes
-
-- Code commit: `9197e24178c3b304da365213d5ce97cce682bb3a`
-- Shipit state commits: `8a300e4` and the final docs-only commit containing this completed state.
-- Branch: `main`
-- Push: `origin/main` updated with the code commit and completed Shipit state.
-- PR: not applicable; user requested direct commit to `main`.
-- Production deploy after code commit:
-  - Production URL: https://space-web-game.netlify.app
-  - Unique deploy URL: https://6a3272d2e97bd4583b19237a--space-web-game.netlify.app
-  - Build logs: https://app.netlify.com/projects/space-web-game/deploys/6a3272d2e97bd4583b19237a

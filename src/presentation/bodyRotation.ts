@@ -3,6 +3,7 @@ import type { Body } from '../simulation/types'
 const FULL_ROTATION_RADIANS = Math.PI * 2
 
 export const EARTH_VISUAL_DAY_SECONDS = 24 * 60 * 60
+export const EARTH_CLOUD_DRIFT_SECONDS = EARTH_VISUAL_DAY_SECONDS * 5
 
 const wrapPositiveRadians = (radians: number) => {
   const wrapped = radians % FULL_ROTATION_RADIANS
@@ -12,6 +13,11 @@ const wrapPositiveRadians = (radians: number) => {
 export const getEarthVisualRotationY = (elapsedSeconds: number) =>
   wrapPositiveRadians(
     (elapsedSeconds / EARTH_VISUAL_DAY_SECONDS) * FULL_ROTATION_RADIANS,
+  )
+
+export const getEarthCloudDriftRotationY = (elapsedSeconds: number) =>
+  wrapPositiveRadians(
+    (elapsedSeconds / EARTH_CLOUD_DRIFT_SECONDS) * FULL_ROTATION_RADIANS,
   )
 
 export const getTidallyLockedMoonRotationY = (input: {

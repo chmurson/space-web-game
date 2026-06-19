@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  EARTH_CLOUD_DRIFT_SECONDS,
   EARTH_VISUAL_DAY_SECONDS,
   getBodyVisualRotationY,
+  getEarthCloudDriftRotationY,
   getEarthVisualRotationY,
   getTidallyLockedMoonRotationY,
 } from '@/presentation/bodyRotation'
@@ -31,6 +33,17 @@ const expectMoonNearSideTowardEarth = (input: { earth: Body; moon: Body }) => {
 describe('bodyRotation', () => {
   it('uses an approximately real 24-hour Earth day for visual spin', () => {
     expect(EARTH_VISUAL_DAY_SECONDS).toBe(24 * 60 * 60)
+  })
+
+  it('uses a slower relative drift cycle for Earth clouds', () => {
+    expect(EARTH_CLOUD_DRIFT_SECONDS).toBe(EARTH_VISUAL_DAY_SECONDS * 5)
+    expect(getEarthCloudDriftRotationY(0)).toBe(0)
+    expect(
+      getEarthCloudDriftRotationY(EARTH_CLOUD_DRIFT_SECONDS / 2),
+    ).toBeCloseTo(Math.PI)
+    expect(getEarthCloudDriftRotationY(EARTH_CLOUD_DRIFT_SECONDS)).toBeCloseTo(
+      0,
+    )
   })
 
   it('derives Earth spin from elapsed simulation time', () => {

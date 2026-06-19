@@ -27,7 +27,9 @@ describe('scenarioAssets', () => {
     expect(areScenarioAssetsCached('menu-background')).toBe(false)
     const assets = await loadScenarioAssets('menu-background')
 
-    expect(loadTexture).toHaveBeenCalledTimes(1)
+    expect(loadTexture).toHaveBeenCalledTimes(2)
+    expect(assets.bodyCloudTextures.has('earth')).toBe(true)
+    expect(assets.bodyCloudTextures.has('moon')).toBe(false)
     expect(assets.bodyDiffuseTextures.has('earth')).toBe(true)
     expect(assets.bodyDiffuseTextures.has('moon')).toBe(false)
     expect(areScenarioAssetsCached('menu-background')).toBe(true)
@@ -50,7 +52,7 @@ describe('scenarioAssets', () => {
       loadScenarioAssets('reach-moon'),
     ])
 
-    expect(loadTexture).toHaveBeenCalledTimes(2)
+    expect(loadTexture).toHaveBeenCalledTimes(3)
   })
 
   it('loads Earth and Moon body textures for Reach the Moon', async () => {
@@ -66,7 +68,9 @@ describe('scenarioAssets', () => {
 
     const assets = await loadScenarioAssets('reach-moon')
 
-    expect(loadTexture).toHaveBeenCalledTimes(2)
+    expect(loadTexture).toHaveBeenCalledTimes(3)
+    expect(assets.bodyCloudTextures.has('earth')).toBe(true)
+    expect(assets.bodyCloudTextures.has('moon')).toBe(false)
     expect(assets.bodyDiffuseTextures.has('earth')).toBe(true)
     expect(assets.bodyDiffuseTextures.has('moon')).toBe(true)
     expect(areScenarioAssetsCached('reach-moon')).toBe(true)
@@ -92,7 +96,8 @@ describe('scenarioAssets', () => {
 
     const assets = await loadScenarioAssets('tutorial')
 
-    expect(loadTexture).toHaveBeenCalledTimes(2)
+    expect(loadTexture).toHaveBeenCalledTimes(3)
+    expect(assets.bodyCloudTextures.has('earth')).toBe(true)
     expect(assets.bodyDiffuseTextures.has('earth')).toBe(true)
     expect(assets.bodyDiffuseTextures.has('moon')).toBe(false)
     expect(areScenarioAssetsCached('tutorial')).toBe(false)

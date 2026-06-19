@@ -10,11 +10,14 @@ import type { Body } from '../simulation/types'
 import { createStarfield, type Starfield } from './starfield'
 
 const EARTH_ATMOSPHERE_RIM_NAME = 'earth-atmosphere-rim'
+const EARTH_CLOUD_LAYER_NAME = 'earth-cloud-layer'
 const BODY_WIDTH_SEGMENTS = 64
 const BODY_HEIGHT_SEGMENTS = 32
 const EARTH_ATMOSPHERE_RADIUS_MULTIPLIER = 1.045
 const EARTH_ATMOSPHERE_WIDTH_SEGMENTS = 96
 const EARTH_ATMOSPHERE_HEIGHT_SEGMENTS = 48
+const EARTH_CLOUD_RADIUS_MULTIPLIER = 1.001
+const EARTH_CLOUD_OPACITY = 0.95
 
 const createEarthAtmosphereRimMaterial = () =>
   new THREE.ShaderMaterial({
@@ -68,6 +71,27 @@ const createEarthAtmosphereRim = (radius: number) => {
   return rim
 }
 
+const createEarthCloudLayer = (radius: number) => {
+  const cloudLayer = new THREE.Mesh(
+    new THREE.SphereGeometry(
+      radius * EARTH_CLOUD_RADIUS_MULTIPLIER,
+      BODY_WIDTH_SEGMENTS,
+      BODY_HEIGHT_SEGMENTS,
+    ),
+    new THREE.MeshStandardMaterial({
+      color: '#ffffff',
+      depthWrite: false,
+      metalness: 0,
+      opacity: EARTH_CLOUD_OPACITY,
+      roughness: 0.92,
+      transparent: true,
+    }),
+  )
+  cloudLayer.name = EARTH_CLOUD_LAYER_NAME
+  cloudLayer.visible = false
+  return cloudLayer
+}
+
 export type SpacecraftTrailPoint = {
   elapsed: number
   position: THREE.Vector3
@@ -83,6 +107,10 @@ export type GameSceneRefs = {
   assistedPredictionGeometry: LineGeometry
   assistedPredictionLine: Line2
   assistedPredictionMaterial: LineMaterial
+  bodyCloudMeshes: Map<
+    string,
+    THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>
+  >
   bodyMeshes: Map<string, THREE.Mesh>
   camera: THREE.OrthographicCamera
   cameraTarget: THREE.Vector3
@@ -138,8 +166,31 @@ const applyBodyDiffuseTexture = (
   material.needsUpdate = true
 }
 
+const applyBodyCloudTexture = (
+  cloudMesh:
+    | THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>
+    | undefined,
+  cloudTexture: THREE.Texture | undefined,
+) => {
+  if (!cloudMesh) {
+    return
+  }
+
+  if (!cloudTexture) {
+    cloudMesh.material.map = null
+    cloudMesh.material.needsUpdate = true
+    cloudMesh.visible = false
+    return
+  }
+
+  cloudTexture.colorSpace = THREE.SRGBColorSpace
+  cloudMesh.material.map = cloudTexture
+  cloudMesh.material.needsUpdate = true
+  cloudMesh.visible = true
+}
+
 export const applyBodyTextureAssetsToScene = (
-  gameScene: Pick<GameSceneRefs, 'bodyMeshes'>,
+  gameScene: Pick<GameSceneRefs, 'bodyCloudMeshes' | 'bodyMeshes'>,
   bodies: Body[],
   scenarioAssets: ScenarioAssets,
 ) => {
@@ -158,13 +209,20 @@ export const applyBodyTextureAssetsToScene = (
       body,
       scenarioAssets.bodyDiffuseTextures.get(body.id),
     )
+    applyBodyCloudTexture(
+      gameScene.bodyCloudMeshes.get(body.id),
+      scenarioAssets.bodyCloudTextures.get(body.id),
+    )
   }
 }
 
 export const createGameScene = (
   bodies: Body[],
   trajectoryRenderingConfig: GameConfig['trajectory']['rendering'],
-  scenarioAssets: ScenarioAssets = { bodyDiffuseTextures: new Map() },
+  scenarioAssets: ScenarioAssets = {
+    bodyCloudTextures: new Map(),
+    bodyDiffuseTextures: new Map(),
+  },
 ): GameSceneRefs => {
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000)
@@ -186,6 +244,10 @@ export const createGameScene = (
   scene.add(debugGrid)
 
   const bodyMeshes = new Map<string, THREE.Mesh>()
+  const bodyCloudMeshes = new Map<
+    string,
+    THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>
+  >()
 
   for (const body of bodies) {
     const bodyRadius = Math.max(body.radius * RENDER_SCALE, 1)
@@ -207,6 +269,13 @@ export const createGameScene = (
     const mesh = new THREE.Mesh(geometry, material)
     mesh.name = body.name
     if (body.id === 'earth') {
+      const cloudLayer = createEarthCloudLayer(bodyRadius)
+      applyBodyCloudTexture(
+        cloudLayer,
+        scenarioAssets.bodyCloudTextures.get(body.id),
+      )
+      bodyCloudMeshes.set(body.id, cloudLayer)
+      mesh.add(cloudLayer)
       mesh.add(createEarthAtmosphereRim(bodyRadius))
     }
     bodyMeshes.set(body.id, mesh)
@@ -388,6 +457,7 @@ export const createGameScene = (
     assistedPredictionGeometry,
     assistedPredictionLine,
     assistedPredictionMaterial,
+    bodyCloudMeshes,
     bodyMeshes,
     camera,
     cameraTarget,
