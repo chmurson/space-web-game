@@ -3,7 +3,7 @@
 Task: Issue #16 - Add mission fuel capacity, mass contribution, and thruster depletion behavior
 Branch: codex/issue-16-reach-moon-fuel
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated
+- [x] PR opened/updated
 
 ## Artifacts
 
@@ -32,6 +32,11 @@ Status: active
 - Issue URL: https://github.com/chmurson/space-web-game/issues/16
 - Issue start comment: https://github.com/chmurson/space-web-game/issues/16#issuecomment-4751310938
 - Issue progress comment: https://github.com/chmurson/space-web-game/issues/16#issuecomment-4751426518
+- Issue completion comment: https://github.com/chmurson/space-web-game/issues/16#issuecomment-4751554052
+- PR URL: https://github.com/chmurson/space-web-game/pull/31
+- Feature branch commit: `71b7c8d`
+- Squash merge commit on `main`: `649c76031deecff9ef01d4f4ed828cbc62692310`
+- Issue #16 closed after PR #31 merged and production deploy completed on 2026-06-19.
 - Issue #16 is assigned to the authenticated GitHub user as the in-progress marker; this repo has no current `in progress` label or project status for this issue.
 - Issue #16 has no comments as of pickup on 2026-06-19.
 - Apply repository guidance: Shipit from the start, Ponytail lens throughout, and Game Studio foundations guidance for scenario/simulation boundaries.
@@ -56,7 +61,7 @@ Status: active
 
 ## Next Step
 
-Commit, push, open/merge PR, deploy production from main, and close issue #16.
+Done. Issue #16 is merged, closed, and deployed to production.
 
 ## Brainstorm Handoff
 
@@ -192,6 +197,11 @@ Validation so far:
 - Shared staging deploy: https://fanciful-bunny-d77b4b.netlify.app
 - Unique staging deploy: https://6a3532409f7e9b2304f24fb8--fanciful-bunny-d77b4b.netlify.app
 - Netlify logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a3532409f7e9b2304f24fb8
+- PR #31 merged with squash commit `649c76031deecff9ef01d4f4ed828cbc62692310`.
+- `npm run deploy:netlify` passed on `main`.
+- Production deploy: https://space-web-game.netlify.app
+- Unique production deploy: https://6a3535abe477f87ed9583685--space-web-game.netlify.app
+- Production logs: https://app.netlify.com/projects/space-web-game/deploys/6a3535abe477f87ed9583685
 
 ## Cleanup Notes
 
