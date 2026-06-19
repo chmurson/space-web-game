@@ -3,7 +3,7 @@
 Task: Issue #29 - fixed Earth presentation tilt
 Branch: codex/issue-29-earth-presentation-tilt
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] Merged to main
+- [x] Merged to main
 - [x] GitHub issue updated
 
 ## Artifacts
@@ -33,7 +33,8 @@ Status: active
 - Target GitHub issue: https://github.com/chmurson/space-web-game/issues/29
 - In-progress issue comment: https://github.com/chmurson/space-web-game/issues/29#issuecomment-4750715391
 - Progress issue comment: https://github.com/chmurson/space-web-game/issues/29#issuecomment-4750799619
-- Current issue state: assigned to `chmurson`; enhancement label; no project status.
+- Close issue comment: https://github.com/chmurson/space-web-game/issues/29#issuecomment-4751274529
+- Current issue state: closed on 2026-06-19 after direct fast-forward merge to `main`.
 - Issue #29 has no comments as of intake, so there are no conflicting issue instructions.
 - Follow root `AGENTS.md`, `.codex/shipit.config.md`, Shipit, Ponytail, and `game-studio:three-webgl-game` guidance.
 - Mark issue in progress before product-code edits by assigning `chmurson` and leaving a start comment because the repo has no project status or `in progress` label.
@@ -57,7 +58,7 @@ Status: active
 
 ## Next Step
 
-Commit the feature branch, fast-forward `main`, deploy production, close issue #29, and record final Shipit completion.
+Complete.
 
 ## Brainstorm Handoff
 
@@ -238,7 +239,21 @@ Final validation results:
   - `coderabbit --base main --agent`: 0 findings
   - `npm test`: 37 files, 232 tests
   - `npm run build`: passed with the existing large chunk warning
+- Production deploy after fast-forwarding `main` passed.
+  - Production URL: https://space-web-game.netlify.app
+  - Unique deploy URL: https://6a352d1239d8c8a60618ea1c--space-web-game.netlify.app
+  - Build logs: https://app.netlify.com/projects/space-web-game/deploys/6a352d1239d8c8a60618ea1c
+- Production smoke check passed: `curl -I https://space-web-game.netlify.app` returned `HTTP/2 200`.
 
 GitHub issue update:
 - Left progress comment https://github.com/chmurson/space-web-game/issues/29#issuecomment-4750799619.
-- Issue remains open because commit/PR/merge has not been requested yet.
+- Closed issue #29 with final merge/deploy comment https://github.com/chmurson/space-web-game/issues/29#issuecomment-4751274529.
+
+## Yeet Notes
+
+- Feature commit: `648bc33` (`feat(scene): add earth presentation tilt`)
+- Merge path: direct fast-forward of `codex/issue-29-earth-presentation-tilt` into `main`; PR not opened by user request to merge directly.
+- Production URL: https://space-web-game.netlify.app
+- Unique deploy URL: https://6a352d1239d8c8a60618ea1c--space-web-game.netlify.app
+- Issue: https://github.com/chmurson/space-web-game/issues/29 closed on 2026-06-19.
+- Push: origin/main updated with the feature commit and completed Shipit state.
