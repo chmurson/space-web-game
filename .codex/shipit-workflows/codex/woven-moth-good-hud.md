@@ -3,7 +3,7 @@
 Task: Review and merge woven moth HUD baseline
 Branch: codex/woven-moth-good-hud
 Current Mode: yeet
-Status: active
+Status: completed
 
 ## Checklist
 
@@ -15,7 +15,7 @@ Status: active
 - [x] Review complete
 - [x] Validation passed
 - [x] Artifacts/docs updated
-- [ ] PR opened/updated not requested
+- [x] PR opened/updated not requested
 
 ## Artifacts
 
@@ -107,6 +107,13 @@ Validation results:
 - `npm test`: 37 files passed, 228 tests passed.
 - `npm run build`: passed; existing Rollup large-chunk warning remains.
 
+Merge/deploy results:
+
+- Merged `codex/woven-moth-good-hud` into local `main`.
+- Merge commit: `9b389c370468d94cee65bf9d67dbc5a6a6a9266b`.
+- Production deploy: `https://space-web-game.netlify.app`.
+- Unique production deploy: `https://6a36f74c3dfc263a9e9c3ca3--space-web-game.netlify.app`.
+
 ## Next Step
 
-Commit the accepted review fix and Shipit state, then merge into local `main`.
+Completed. Push `main` if remote publication is desired.
