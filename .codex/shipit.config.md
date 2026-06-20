@@ -3,6 +3,9 @@
 ## State
 
 - State directory: `.codex/shipit-workflows`
+- Shipit workflow state is local-only and must not be committed.
+- At initial Shipit setup for a task, create/update state under `.codex/shipit-workflows/`, then verify it is ignored before product changes with `git check-ignore .codex/shipit-workflows/<state-file>`.
+- If any Shipit workflow state or artifact is already tracked, stop and remove it from the index before including it in a task commit.
 
 ## Tech Notes Gate
 

@@ -4,6 +4,9 @@ dist
 debug
 tmp
 
+# Local Codex/Shipit workflow notes
+.codex/shipit-workflows/
+
 # Local Netlify folder
 .netlify
 .netlify-deploy.local.json
