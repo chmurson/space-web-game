@@ -1,7 +1,7 @@
 #app {
     /* --bottom-safe-area-inset: optimized for IOS wrapper*/
     --bottom-safe-area-inset: calc(env(safe-area-inset-bottom, 0px) / 4);
-    --left-safe-area-inset: max(env(safe-area-inset-bottom) / 2, env(safe-area-inset-left, 0px));
+    --left-safe-area-inset: max(env(safe-area-inset-bottom, 0px) / 2, env(safe-area-inset-left, 0px));
 
     --bottom-hud-edge-gap: 6px;
 }

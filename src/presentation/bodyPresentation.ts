@@ -41,7 +41,7 @@ const updateOffscreenIndicators = (options: {
   overlayUi: OverlayUiRefs
   spacecraftPosition: Vec2
 }) => {
-  const edgePadding = 28
+  const edgePadding = 12
   const screenCenterX = window.innerWidth * 0.5
   const screenCenterY = window.innerHeight * 0.5
   const mobileViewport = window.matchMedia(
@@ -67,7 +67,7 @@ const updateOffscreenIndicators = (options: {
   const bottomPillTop =
     bottomPill?.getBoundingClientRect().top ?? window.innerHeight
   const reservedBottom =
-    bottomPillTop < window.innerHeight
+    bottomPillTop >= 0 && bottomPillTop < window.innerHeight
       ? window.innerHeight - bottomPillTop + 12
       : edgePadding
 

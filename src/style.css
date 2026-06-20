@@ -1052,7 +1052,7 @@ canvas {
     display: none;
     position: fixed;
     inset: 0;
-    z-index: var(--z-overlay-hud);
+    z-index: var(--z-overlay-floating);
     pointer-events: auto;
     touch-action: none;
 }
