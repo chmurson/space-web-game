@@ -50,7 +50,7 @@ const updateOffscreenIndicators = (options: {
   overlayUi: OverlayUiRefs
   spacecraftPosition: Vec2
 }) => {
-  const edgePadding = 28
+  const edgePadding = 12
   const screenCenterX = window.innerWidth * 0.5
   const screenCenterY = window.innerHeight * 0.5
   const mobileViewport = window.matchMedia(
@@ -62,16 +62,23 @@ const updateOffscreenIndicators = (options: {
   const telemetryStripBottom =
     telemetryStrip?.getBoundingClientRect().bottom ?? 0
   const reservedTop = telemetryStripBottom + 12
-  const scenarioPromptPill = document.querySelector<HTMLElement>(
-    '.bottom-pill-area .scenario-prompt-pill',
-  )
-  const scenarioPromptPillTop =
-    scenarioPromptPill?.style.display !== 'none'
-      ? (scenarioPromptPill?.getBoundingClientRect().top ?? window.innerHeight)
-      : window.innerHeight
+  const bottomPill = Array.from(
+    document.querySelectorAll<HTMLElement>('.bottom-pill-area > *'),
+  ).find((element) => {
+    const styles = window.getComputedStyle(element)
+
+    return (
+      styles.display !== 'none' &&
+      styles.visibility !== 'hidden' &&
+      element.getClientRects().length > 0
+    )
+  })
+  const bottomPillTop =
+    bottomPill?.getBoundingClientRect().top ?? window.innerHeight
   const reservedBottom =
-    scenarioPromptPillTop < window.innerHeight
-      ? window.innerHeight - scenarioPromptPillTop + 12
+    bottomPillTop >= window.innerHeight * 0.5 &&
+    bottomPillTop < window.innerHeight
+      ? window.innerHeight - bottomPillTop + 12
       : edgePadding
 
   const visibleIndicators: Array<{
