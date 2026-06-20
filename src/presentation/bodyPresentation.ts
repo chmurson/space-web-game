@@ -67,7 +67,8 @@ const updateOffscreenIndicators = (options: {
   const bottomPillTop =
     bottomPill?.getBoundingClientRect().top ?? window.innerHeight
   const reservedBottom =
-    bottomPillTop >= 0 && bottomPillTop < window.innerHeight
+    bottomPillTop >= window.innerHeight * 0.5 &&
+    bottomPillTop < window.innerHeight
       ? window.innerHeight - bottomPillTop + 12
       : edgePadding
 
