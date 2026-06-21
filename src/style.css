@@ -1196,6 +1196,33 @@ canvas {
     overflow-wrap: anywhere;
 }
 
+.debug-json-fold-button {
+    display: inline-grid;
+    width: 14px;
+    height: 14px;
+    margin: 0 3px 0 0;
+    padding: 0;
+    place-items: center;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 3px;
+    background: var(--ui-glass-control-bg);
+    color: #dbeafe;
+    font: inherit;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    vertical-align: 1px;
+}
+
+.debug-json-fold-button:hover {
+    border-color: rgba(103, 232, 249, 0.7);
+}
+
+.debug-json-fold-button:focus-visible {
+    outline: 2px solid rgba(125, 211, 252, 0.68);
+    outline-offset: 1px;
+}
+
 .debug-json-key {
     color: #7dd3fc;
 }

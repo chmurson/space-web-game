@@ -1,0 +1,231 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createDebugPanel } from '@/ui/debugPanel'
+
+class FakeElement {
+  className = ''
+  dataset: Record<string, string> = {}
+  hidden = false
+  title = ''
+  type = ''
+
+  private attributes = new Map<string, string>()
+  private children: Array<FakeElement | string> = []
+  private listeners = new Map<string, EventListener[]>()
+  private ownTextContent = ''
+
+  constructor(readonly tagName: string) {}
+
+  get textContent() {
+    return (
+      this.ownTextContent +
+      this.children
+        .map((child) =>
+          typeof child === 'string' ? child : (child.textContent ?? ''),
+        )
+        .join('')
+    )
+  }
+
+  set textContent(value: string | null) {
+    this.children = []
+    this.ownTextContent = value ?? ''
+  }
+
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+  ) {
+    if (!listener) {
+      return
+    }
+
+    const eventListeners = this.listeners.get(type) ?? []
+    eventListeners.push(
+      typeof listener === 'function'
+        ? listener
+        : (event) => listener.handleEvent(event),
+    )
+    this.listeners.set(type, eventListeners)
+  }
+
+  append(...nodes: Array<FakeElement | Node | string>) {
+    for (const node of nodes) {
+      this.children.push(
+        typeof node === 'string' ? node : (node as unknown as FakeElement),
+      )
+    }
+  }
+
+  appendChild<T extends FakeElement | Node>(node: T) {
+    this.children.push(node as unknown as FakeElement)
+    return node
+  }
+
+  click() {
+    const event = { stopPropagation: () => {} } as Event
+    for (const listener of this.listeners.get('click') ?? []) {
+      listener(event)
+    }
+  }
+
+  getAttribute(name: string) {
+    return this.attributes.get(name) ?? null
+  }
+
+  querySelector(selector: string) {
+    return this.querySelectorAll(selector)[0] ?? null
+  }
+
+  querySelectorAll(selector: string) {
+    const matches: FakeElement[] = []
+    const className = selector.startsWith('.') ? selector.slice(1) : null
+
+    const visit = (element: FakeElement) => {
+      for (const child of element.children) {
+        if (typeof child === 'string') {
+          continue
+        }
+
+        if (
+          className &&
+          child.className.split(/\s+/).filter(Boolean).includes(className)
+        ) {
+          matches.push(child)
+        }
+        visit(child)
+      }
+    }
+
+    visit(this)
+    return matches
+  }
+
+  replaceChildren(...nodes: Array<FakeElement | Node | string>) {
+    this.children = []
+    this.ownTextContent = ''
+    this.append(...nodes)
+  }
+
+  setAttribute(name: string, value: string) {
+    this.attributes.set(name, value)
+  }
+}
+
+const globals = globalThis as typeof globalThis & { document?: Document }
+const originalDocument = globals.document
+
+const installFakeDocument = () => {
+  globals.document = {
+    createElement: (tagName: string) =>
+      new FakeElement(tagName) as unknown as HTMLElement,
+  } as Document
+}
+
+const restoreDocument = () => {
+  if (originalDocument) {
+    globals.document = originalDocument
+    return
+  }
+
+  Reflect.deleteProperty(globals, 'document')
+}
+
+const createPanel = () => {
+  const parent = new FakeElement('div')
+  const panel = createDebugPanel(parent as unknown as HTMLElement)
+  return { panel, parent }
+}
+
+const getFoldButtons = (parent: FakeElement) =>
+  parent.querySelectorAll('.debug-json-fold-button')
+
+describe('debugPanel', () => {
+  beforeEach(() => {
+    installFakeDocument()
+  })
+
+  afterEach(() => {
+    restoreDocument()
+  })
+
+  it('adds fold buttons only to first-level object fields', () => {
+    const { panel, parent } = createPanel()
+
+    panel.setJson({
+      primitive: 'value',
+      nested: {
+        child: {
+          deep: true,
+        },
+        leaf: 'ok',
+      },
+      list: [{ id: 1 }],
+      nil: null,
+    })
+
+    expect(
+      getFoldButtons(parent).map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['Collapse nested', 'Collapse list'])
+    expect(parent.textContent).toContain('"primitive": "value"')
+    expect(parent.textContent).toContain('"child": {')
+    expect(parent.textContent).toContain('"deep": true')
+    expect(parent.textContent).toContain('"nil": null')
+  })
+
+  it('collapses a top-level object field and keeps it collapsed after updates', () => {
+    const { panel, parent } = createPanel()
+
+    panel.setJson({
+      nested: {
+        leaf: 'ok',
+      },
+      list: [{ id: 1 }],
+    })
+    getFoldButtons(parent)[0]?.click()
+
+    expect(parent.textContent).toContain('"nested": { ... }')
+    expect(parent.textContent).not.toContain('"leaf": "ok"')
+    expect(getFoldButtons(parent)[0]?.textContent).toBe('+')
+    expect(getFoldButtons(parent)[0]?.getAttribute('aria-expanded')).toBe(
+      'false',
+    )
+
+    panel.setJson({
+      nested: {
+        leaf: 'changed',
+      },
+      list: [{ id: 2 }],
+    })
+
+    expect(parent.textContent).toContain('"nested": { ... }')
+    expect(parent.textContent).not.toContain('"leaf": "changed"')
+    expect(parent.textContent).toContain('"list": [')
+  })
+
+  it('clears stale collapse state when a field stops being an object', () => {
+    const { panel, parent } = createPanel()
+
+    panel.setJson({
+      nested: {
+        leaf: 'ok',
+      },
+    })
+    getFoldButtons(parent)[0]?.click()
+
+    panel.setJson({
+      nested: 'flat',
+    })
+
+    expect(getFoldButtons(parent)).toHaveLength(0)
+    expect(parent.textContent).toContain('"nested": "flat"')
+
+    panel.setJson({
+      nested: {
+        leaf: 'again',
+      },
+    })
+
+    expect(getFoldButtons(parent)).toHaveLength(1)
+    expect(parent.textContent).toContain('"leaf": "again"')
+  })
+})

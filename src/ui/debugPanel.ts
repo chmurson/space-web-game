@@ -6,6 +6,7 @@ export type DebugPanel = {
 }
 
 type DebugPanelSize = 'small' | 'medium' | 'big'
+type JsonRenderParent = HTMLElement | DocumentFragment
 
 const debugPanelSizes: DebugPanelSize[] = ['small', 'medium', 'big']
 const debugPanelSizeLabels: Record<DebugPanelSize, string> = {
@@ -18,28 +19,160 @@ const stopEventPropagation = (event: Event) => {
   event.stopPropagation()
 }
 
-const escapeHtml = (value: string) =>
-  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+const isObjectJsonValue = (value: unknown) =>
+  typeof value === 'object' && value !== null
 
-const highlightJson = (json: string) =>
-  escapeHtml(json).replace(
-    /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
-    (token) => {
-      let tokenClass = 'debug-json-number'
+const isJsonRecord = (value: unknown): value is Record<string, unknown> =>
+  isObjectJsonValue(value) && !Array.isArray(value)
 
-      if (token.startsWith('"')) {
-        tokenClass = /:\s*$/.test(token)
-          ? 'debug-json-key'
-          : 'debug-json-string'
-      } else if (token === 'true' || token === 'false') {
-        tokenClass = 'debug-json-boolean'
-      } else if (token === 'null') {
-        tokenClass = 'debug-json-null'
-      }
+const appendToken = (
+  parent: JsonRenderParent,
+  tokenClass: string,
+  text: string,
+) => {
+  const token = document.createElement('span')
+  token.className = tokenClass
+  token.textContent = text
+  parent.append(token)
+}
 
-      return `<span class="${tokenClass}">${token}</span>`
-    },
+const appendIndent = (parent: JsonRenderParent, depth: number) => {
+  parent.append('  '.repeat(depth))
+}
+
+const appendJsonKey = (parent: JsonRenderParent, key: string) => {
+  appendToken(parent, 'debug-json-key', JSON.stringify(key))
+  parent.append(': ')
+}
+
+const appendPrimitiveJsonValue = (parent: JsonRenderParent, value: unknown) => {
+  if (typeof value === 'string') {
+    appendToken(parent, 'debug-json-string', JSON.stringify(value))
+    return
+  }
+
+  if (typeof value === 'number') {
+    appendToken(parent, 'debug-json-number', JSON.stringify(value))
+    return
+  }
+
+  if (typeof value === 'boolean') {
+    appendToken(parent, 'debug-json-boolean', JSON.stringify(value))
+    return
+  }
+
+  appendToken(parent, 'debug-json-null', 'null')
+}
+
+const getCollapsedJsonPreview = (value: unknown) =>
+  Array.isArray(value) ? '[ ... ]' : '{ ... }'
+
+const getCollapsedStateKey = (collapsedKeys: Set<string>) =>
+  Array.from(collapsedKeys).sort().join('\n')
+
+const pruneCollapsedKeys = (payload: unknown, collapsedKeys: Set<string>) => {
+  if (!isJsonRecord(payload)) {
+    collapsedKeys.clear()
+    return
+  }
+
+  for (const key of collapsedKeys) {
+    if (!isObjectJsonValue(payload[key])) {
+      collapsedKeys.delete(key)
+    }
+  }
+}
+
+type RenderJsonOptions = {
+  collapsedKeys: Set<string>
+  onToggleTopLevelKey: (key: string) => void
+}
+
+const createFoldButton = (
+  key: string,
+  collapsed: boolean,
+  options: RenderJsonOptions,
+) => {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'debug-json-fold-button'
+  button.textContent = collapsed ? '+' : '-'
+  button.title = collapsed ? `Expand ${key}` : `Collapse ${key}`
+  button.setAttribute(
+    'aria-label',
+    collapsed ? `Expand ${key}` : `Collapse ${key}`,
   )
+  button.setAttribute('aria-expanded', String(!collapsed))
+  button.addEventListener('click', (event) => {
+    event.stopPropagation()
+    options.onToggleTopLevelKey(key)
+  })
+
+  return button
+}
+
+const appendJsonValue = (
+  parent: JsonRenderParent,
+  value: unknown,
+  depth: number,
+  options: RenderJsonOptions,
+) => {
+  if (!isObjectJsonValue(value)) {
+    appendPrimitiveJsonValue(parent, value)
+    return
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      parent.append('[]')
+      return
+    }
+
+    parent.append('[\n')
+    value.forEach((item, index) => {
+      appendIndent(parent, depth + 1)
+      appendJsonValue(parent, item, depth + 1, options)
+      parent.append(index === value.length - 1 ? '\n' : ',\n')
+    })
+    appendIndent(parent, depth)
+    parent.append(']')
+    return
+  }
+
+  const entries = Object.entries(value)
+  if (entries.length === 0) {
+    parent.append('{}')
+    return
+  }
+
+  parent.append('{\n')
+  entries.forEach(([key, childValue], index) => {
+    const foldable = depth === 0 && isObjectJsonValue(childValue)
+    const collapsed = foldable && options.collapsedKeys.has(key)
+
+    appendIndent(parent, depth + 1)
+    if (foldable) {
+      parent.append(createFoldButton(key, collapsed, options), ' ')
+    }
+    appendJsonKey(parent, key)
+    if (collapsed) {
+      parent.append(getCollapsedJsonPreview(childValue))
+    } else {
+      appendJsonValue(parent, childValue, depth + 1, options)
+    }
+    parent.append(index === entries.length - 1 ? '\n' : ',\n')
+  })
+  appendIndent(parent, depth)
+  parent.append('}')
+}
+
+const parseRenderedJsonPayload = (json: string) => {
+  try {
+    return JSON.parse(json) as unknown
+  } catch {
+    return null
+  }
+}
 
 export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
   const element = document.createElement('div')
@@ -47,8 +180,11 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
   element.dataset.size = 'medium'
 
   let latestJson = ''
+  let latestJsonPayload: unknown = null
   let latestRenderedJson = ''
+  let latestRenderedCollapsedState = ''
   let closeHandler: (() => void) | null = null
+  const collapsedJsonKeys = new Set<string>()
   let panelSize: DebugPanelSize = 'medium'
 
   const toolbarElement = document.createElement('div')
@@ -95,6 +231,36 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
       'aria-label',
       `Debug window size: ${debugPanelSizeLabels[size]}. Tap to change size.`,
     )
+  }
+
+  const renderLatestJson = () => {
+    const collapsedState = getCollapsedStateKey(collapsedJsonKeys)
+    if (
+      latestJson === latestRenderedJson &&
+      collapsedState === latestRenderedCollapsedState
+    ) {
+      return
+    }
+
+    latestRenderedJson = latestJson
+    latestRenderedCollapsedState = collapsedState
+    jsonElement.replaceChildren()
+
+    if (!latestJson) {
+      return
+    }
+
+    appendJsonValue(jsonElement, latestJsonPayload, 0, {
+      collapsedKeys: collapsedJsonKeys,
+      onToggleTopLevelKey(key) {
+        if (collapsedJsonKeys.has(key)) {
+          collapsedJsonKeys.delete(key)
+        } else {
+          collapsedJsonKeys.add(key)
+        }
+        renderLatestJson()
+      },
+    })
   }
 
   setPanelSize(panelSize)
@@ -152,14 +318,15 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
   return {
     element,
     setJson(payload) {
-      latestJson = payload === null ? '' : JSON.stringify(payload, null, 2)
+      const nextJson =
+        payload === null ? '' : (JSON.stringify(payload, null, 2) ?? '')
+      latestJson = nextJson
+      latestJsonPayload = nextJson ? parseRenderedJsonPayload(nextJson) : null
+      pruneCollapsedKeys(latestJsonPayload, collapsedJsonKeys)
       jsonSectionElement.hidden = !latestJson
       copyButton.hidden = !latestJson
 
-      if (latestJson !== latestRenderedJson) {
-        latestRenderedJson = latestJson
-        jsonElement.innerHTML = latestJson ? highlightJson(latestJson) : ''
-      }
+      renderLatestJson()
     },
     setCloseHandler(handler) {
       closeHandler = handler
