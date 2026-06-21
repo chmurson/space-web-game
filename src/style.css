@@ -1104,10 +1104,11 @@ canvas {
     max-height: min(56vh, 520px);
     overflow: auto;
     padding: 8px;
-    border: 1px solid rgba(56, 189, 248, 0.18);
+    border: 1px solid var(--ui-glass-panel-border);
     border-radius: 6px;
-    background: rgba(8, 13, 24, 20.68);
-    backdrop-filter: blur(10px);
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+    backdrop-filter: var(--ui-glass-panel-blur);
     color: #a7c7dd;
     font-family:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -1115,13 +1116,38 @@ canvas {
     font-size: 11px;
     line-height: 1.45;
     pointer-events: auto;
+    user-select: text;
     z-index: var(--z-overlay-debug);
 }
 
-.debug-panel-copy {
+#app .debug-panel[data-size="small"] {
+    max-height: min(28vh, 260px);
+}
+
+#app .debug-panel[data-size="big"] {
+    top: 16px;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+    max-height: none;
+}
+
+.debug-panel-toolbar {
     position: sticky;
-    bottom: 0;
-    margin: 8px 0 0;
+    top: -8px;
+    z-index: 1;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin: -8px -8px 8px;
+    padding: 8px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(8, 13, 24, 0.92);
+    backdrop-filter: blur(12px);
+}
+
+.debug-panel-button {
     padding: 5px 8px;
     border: 1px solid rgba(56, 189, 248, 0.35);
     border-radius: 6px;
@@ -1131,8 +1157,18 @@ canvas {
     cursor: pointer;
 }
 
-.debug-panel-copy:hover {
+.debug-panel-button:hover {
     border-color: rgba(103, 232, 249, 0.7);
+}
+
+.debug-panel-close {
+    margin-left: auto;
+    border-color: rgba(251, 113, 133, 0.4);
+    color: #ffe4e6;
+}
+
+.debug-panel-content {
+    min-width: 0;
 }
 
 .debug-panel-text {
@@ -1140,6 +1176,44 @@ canvas {
     color: inherit;
     font: inherit;
     white-space: pre-wrap;
+}
+
+.debug-panel-json-section {
+    margin-top: 10px;
+}
+
+.debug-panel-section-label {
+    margin: 0 0 5px;
+    color: #bae6fd;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.debug-panel-json {
+    color: #cbd5e1;
+    overflow-wrap: anywhere;
+}
+
+.debug-json-key {
+    color: #7dd3fc;
+}
+
+.debug-json-string {
+    color: #86efac;
+}
+
+.debug-json-number {
+    color: #fbbf24;
+}
+
+.debug-json-boolean {
+    color: #c4b5fd;
+}
+
+.debug-json-null {
+    color: #fda4af;
 }
 
 #app .fps-indicator {
@@ -1572,11 +1646,34 @@ canvas {
     }
 
     #app .debug-panel {
+        top: calc(env(safe-area-inset-top, 0px) + 52px);
         right: 10px;
-        bottom: 72px;
+        bottom: auto;
         left: 10px;
         width: auto;
         max-height: 30vh;
+    }
+
+    #app .debug-panel[data-size="small"] {
+        max-height: 15vh;
+    }
+
+    #app .debug-panel[data-size="big"] {
+        top: env(safe-area-inset-top, 0px);
+        right: 0;
+        bottom: env(safe-area-inset-bottom, 0px);
+        left: 0;
+        width: auto;
+        max-height: none;
+        border-radius: 0;
+    }
+
+    .debug-panel-toolbar {
+        gap: 5px;
+    }
+
+    .debug-panel-button {
+        padding: 6px 7px;
     }
 
     .hud-notice-durable {
@@ -1599,7 +1696,7 @@ canvas {
 #app.app-main-menu .touch-step-selector,
 #app.app-main-menu .fps-indicator,
 #app.app-main-menu .debug-panel {
-    display: none;
+    display: none !important;
 }
 
 #app.app-crashed canvas {

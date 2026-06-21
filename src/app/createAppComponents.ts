@@ -752,6 +752,9 @@ export const createAppComponents = (options: {
   })
   getAppMode = coordinator.getAppMode
   dispatchRuntimeAction = coordinator.dispatchRuntimeAction
+  overlayUi.debugPanel.setCloseHandler(() => {
+    dispatchRuntimeAction('toggleDebugMode')
+  })
 
   installDevtoolsBridge({
     dispatchRuntimeAction,
