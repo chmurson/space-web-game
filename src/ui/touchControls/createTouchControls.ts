@@ -32,6 +32,7 @@ import {
 export type TouchControls = {
   element: HTMLElement
   openTargetControl(): void
+  setBurnControlVisible(visible: boolean): void
   setBurnControlSide(side: TouchControlRevealEdge): void
   setTargetControlSide(side: TouchControlRevealEdge): void
   setTargetControlVisible(visible: boolean): void
@@ -338,7 +339,7 @@ export const createTouchControls = (options: {
     onUiStateChange: (state) => {
       options.onThrustControlUiStateChange({
         ...state,
-        revealed: burnControlRevealed,
+        revealed: state.revealed && burnControlRevealed,
       })
     },
     panel,
@@ -533,6 +534,19 @@ export const createTouchControls = (options: {
       closeTargetControl()
     }
     targetRevealControl.setAvailable(visible)
+    syncRevealControlLayout(revealControls)
+  }
+
+  const setBurnControlVisible = (visible: boolean) => {
+    if (
+      !visible &&
+      (activeSession.kind === 'right-zone-pending' ||
+        activeSession.kind === 'right-zone-active')
+    ) {
+      clearRightZoneGesture()
+    }
+    thrustRevealControl.setAvailable(visible)
+    thrustControl.setAvailable(visible)
     syncRevealControlLayout(revealControls)
   }
 
@@ -1113,6 +1127,7 @@ export const createTouchControls = (options: {
       syncTargetRecommendationCue()
       targetControl.syncUi()
     },
+    setBurnControlVisible,
     setBurnControlSide: (side) => {
       thrustRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)

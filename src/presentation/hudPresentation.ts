@@ -282,6 +282,7 @@ export const createHudPresentation = (options: {
       const showTimePill = !hiddenUIElements.has('timeWarpPill')
       const showSpeedPill = !hiddenUIElements.has('speedPill')
       const showTargetPill = !hiddenUIElements.has('targetPill')
+      const showThrustControl = !hiddenUIElements.has('thrustControl')
       const showThrustPill = !hiddenUIElements.has('thrustPill')
       const showTargetControl = !hiddenUIElements.has('targetControl')
       const showTrajectoryControl = !hiddenUIElements.has('trajectory')
@@ -307,6 +308,7 @@ export const createHudPresentation = (options: {
       if (timePill) {
         timePill.style.display = showTimePill ? 'inline-flex' : 'none'
       }
+      options.touchControls?.setBurnControlVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
       options.touchControls?.setTargetControlVisible(showTargetControl)
       options.touchControls?.setTrajectoryControlVisible(showTrajectoryControl)

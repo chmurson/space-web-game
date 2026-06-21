@@ -309,8 +309,7 @@ export const getHiddenOnboardingUIElements = (
 
   if (
     state.activeStepId === 'intro-keep-thrusting' ||
-    state.activeStepId === 'intro-thrusting-off' ||
-    state.activeStepId === 'intro-point-and-turn'
+    state.activeStepId === 'intro-thrusting-off'
   ) {
     return new Set([
       'scenarioInfoButton',
@@ -320,11 +319,26 @@ export const getHiddenOnboardingUIElements = (
     ])
   }
 
+  if (state.activeStepId === 'intro-point-and-turn') {
+    return new Set([
+      'scenarioInfoButton',
+      'targetControl',
+      'targetPill',
+      'thrustControl',
+      'timeWarpPill',
+    ])
+  }
+
   if (
     state.activeStepId === 'intro-timewarp' ||
     state.activeStepId === 'intro-keep-timewarp'
   ) {
-    return new Set(['scenarioInfoButton', 'targetControl', 'targetPill'])
+    return new Set([
+      'scenarioInfoButton',
+      'targetControl',
+      'targetPill',
+      'thrustControl',
+    ])
   }
 
   if (state.activeStepId === 'intro-timewarp-thrust') {

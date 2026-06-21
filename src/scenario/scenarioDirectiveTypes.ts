@@ -5,6 +5,7 @@ export type RuntimeScenarioHiddenUIElement =
   | 'speedPill'
   | 'targetControl'
   | 'targetPill'
+  | 'thrustControl'
   | 'thrustPill'
   | 'timeWarpPill'
   | 'trajectory'

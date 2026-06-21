@@ -496,7 +496,7 @@ describe('tutorialOnboardingProgress', () => {
     ])
   })
 
-  it('shows trajectory after the first burn starts while keeping target UI hidden', () => {
+  it('hides the burn control between point-and-turn and high-warp burn guidance', () => {
     const runtime = createRuntime()
     const onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
@@ -525,15 +525,43 @@ describe('tutorialOnboardingProgress', () => {
     expect(
       getHiddenOnboardingUIElements({
         ...onboarding,
+        activeStepId: 'intro-point-and-turn',
+      }),
+    ).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'thrustControl',
+        'timeWarpPill',
+      ]),
+    )
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
         activeStepId: 'intro-timewarp',
       }),
-    ).toEqual(new Set(['scenarioInfoButton', 'targetControl', 'targetPill']))
+    ).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'thrustControl',
+      ]),
+    )
     expect(
       getHiddenOnboardingUIElements({
         ...onboarding,
         activeStepId: 'intro-keep-timewarp',
       }),
-    ).toEqual(new Set(['scenarioInfoButton', 'targetControl', 'targetPill']))
+    ).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'thrustControl',
+      ]),
+    )
     expect(
       getHiddenOnboardingUIElements({
         ...onboarding,
