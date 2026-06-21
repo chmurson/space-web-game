@@ -3,13 +3,15 @@
 ## State
 
 - State directory: `.codex/shipit-workflows`
-- Shipit workflow state is local-only and must not be committed.
+- Shipit workflow state is local-only, transient scratch for the current task/worktree, and must not be committed.
+- Shipit workflow state is not durable repository documentation and should not be relied on as durable project history.
 - At initial Shipit setup for a task, create/update state under `.codex/shipit-workflows/`, then verify it is ignored before product changes with `git check-ignore .codex/shipit-workflows/<state-file>`.
 - If any Shipit workflow state or artifact is already tracked, stop and remove it from the index before including it in a task commit.
 
 ## Tech Notes Gate
 
 - For substantial executable, runtime, rendering, asset, or user-visible changes, add or update a dated technical note before marking `Artifacts/docs updated`.
+- Useful durable parts of Shipit state should be converted into `docs/tech-notes/` before final handoff.
 - Put notes under `docs/tech-notes/`.
 - Name notes as `YYYY-MM-DD-<short-task-slug>.md`.
 - A tech note should record:
@@ -19,7 +21,12 @@
   - important implementation decisions
   - validation performed
   - follow-up issues or known gaps
-- Planning-only, docs-only, and tiny mechanical changes may waive this gate, but record the waiver in the Shipit state.
+- Skipping a tech note for substantial feature or fix work requires explicit human approval; record the approval and reason in transient Shipit state and mention the skip in the final handoff.
+- Planning-only, docs-only, repository-instruction-only, and tiny mechanical changes may skip this gate with a brief final note.
+
+## Main Branch Merge Gate
+
+- When merging a local branch into `main`, always use squash and merge so the completed branch lands on `main` as one commit.
 
 ## Shipit Review Gate
 

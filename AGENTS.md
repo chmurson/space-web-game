@@ -42,12 +42,21 @@
 - Planning-only, docs-only, and repository-instruction-only edits do not require test runs, build runs, or deploys unless the user explicitly asks for them.
 - When verification is skipped because the change is non-executable, say so briefly in the response.
 
+## Durable Work Notes
+
+- Shipit state is transient local worktree scratch for the current task, not durable repository documentation or past-work memory.
+- Convert durable parts of Shipit state into `docs/tech-notes/` when future "what changed, how, and why" context matters.
+- Substantial executable, runtime, rendering, asset, or user-visible feature or fix work requires a dated tech note unless the human explicitly approves skipping it.
+- Tech notes should include what changed, why it changed, key files and ownership boundaries, important decisions, validation performed, and follow-ups or known gaps.
+- Skipping a tech note for substantial work requires human approval; record the approval and reason in transient Shipit state while active, and mention it in the final response.
+- Planning-only, docs-only, repository-instruction-only, and tiny mechanical changes can skip tech notes with a brief final note.
+
 ## GitHub Issue Intake
 
 - Every time an agent picks up work from GitHub, use the Shipit workflow from the start and apply the Ponytail lens throughout the work.
 - When starting implementation for a GitHub issue, mark the issue in progress before changing product code using the repo's current tracking mechanism, then record the issue URL/comment in Shipit state.
 - Before proceeding with a ticket, read the issue body and all comments, then make sure the scope is clear.
-- Record relevant issue comments, decisions, non-goals, and any scope uncertainty in the Shipit state before implementation.
+- Record relevant issue comments, decisions, non-goals, and any scope uncertainty in transient Shipit state before implementation; move durable context into `docs/tech-notes/` when it should remain useful after the worktree scratch state is gone.
 - If issue comments conflict or leave the requested behavior unclear, pause and clarify before changing product code.
 
 ## Shipit Reviews
@@ -56,6 +65,10 @@
 - Apply the Ponytail review lens during Shipit review: look for code to delete, simplify, or replace with native/standard-library behavior, and call out YAGNI/speculative abstractions before approving the branch.
 - If CodeRabbit fails, times out, or cannot produce findings for any reason, explicitly alert the user so they can debug it or run it themselves.
 - Treat automated review findings, including CodeRabbit findings, as hypotheses rather than facts. Inspect the current code and diff before deciding whether each finding is valid, stale, out of scope, or based on an incorrect proposed fix.
+
+## Main Branch Merges
+
+- When an agent merges a local branch into `main`, always use squash and merge so `main` gets one commit for the completed branch.
 
 ## Code Quality
 
