@@ -4,6 +4,7 @@ import { createDebugPanel } from '@/ui/debugPanel'
 class FakeElement {
   className = ''
   dataset: Record<string, string> = {}
+  disabled = false
   hidden = false
   title = ''
   type = ''
@@ -66,6 +67,24 @@ class FakeElement {
     for (const listener of this.listeners.get('click') ?? []) {
       listener(event)
     }
+  }
+
+  dispatchTestEvent(type: string, init: Record<string, unknown> = {}) {
+    let prevented = false
+    let stopped = false
+    const event = {
+      ...init,
+      preventDefault: () => {
+        prevented = true
+      },
+      stopPropagation: () => {
+        stopped = true
+      },
+    } as Event
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener(event)
+    }
+    return { prevented, stopped }
   }
 
   getAttribute(name: string) {
@@ -227,5 +246,75 @@ describe('debugPanel', () => {
 
     expect(getFoldButtons(parent)).toHaveLength(1)
     expect(parent.textContent).toContain('"leaf": "again"')
+  })
+
+  it('keeps debug panel pointer and touch events from reaching gameplay layers', () => {
+    const { panel } = createPanel()
+    const element = panel.element as unknown as FakeElement
+
+    for (const eventName of [
+      'pointerdown',
+      'pointerup',
+      'pointercancel',
+      'touchstart',
+      'touchmove',
+      'touchend',
+      'touchcancel',
+      'click',
+      'wheel',
+    ]) {
+      expect(element.dispatchTestEvent(eventName).stopped).toBe(true)
+    }
+  })
+
+  it('activates toolbar buttons on touch pointerup without double running the synthetic click', () => {
+    const { panel, parent } = createPanel()
+    const sizeButton = parent.querySelector('.debug-panel-size')
+    const closeButton = parent.querySelector('.debug-panel-close')
+    let closeCount = 0
+
+    panel.setCloseHandler(() => {
+      closeCount += 1
+    })
+
+    expect(panel.element.dataset.size).toBe('medium')
+
+    expect(
+      sizeButton?.dispatchTestEvent('pointerup', { pointerType: 'touch' }),
+    ).toEqual({
+      prevented: true,
+      stopped: true,
+    })
+    expect(panel.element.dataset.size).toBe('big')
+
+    sizeButton?.dispatchTestEvent('click')
+    expect(panel.element.dataset.size).toBe('big')
+
+    sizeButton?.dispatchTestEvent('click')
+    expect(panel.element.dataset.size).toBe('small')
+
+    closeButton?.dispatchTestEvent('pointerup', { pointerType: 'touch' })
+    closeButton?.dispatchTestEvent('click')
+
+    expect(closeCount).toBe(1)
+  })
+
+  it('activates fold buttons on touch pointerup without double toggling from the synthetic click', () => {
+    const { panel, parent } = createPanel()
+
+    panel.setJson({
+      nested: {
+        leaf: 'ok',
+      },
+    })
+    const foldButton = getFoldButtons(parent)[0]
+
+    foldButton?.dispatchTestEvent('pointerup', { pointerType: 'touch' })
+    expect(parent.textContent).toContain('"nested": { ... }')
+    expect(parent.textContent).not.toContain('"leaf": "ok"')
+
+    foldButton?.dispatchTestEvent('click')
+    expect(parent.textContent).toContain('"nested": { ... }')
+    expect(parent.textContent).not.toContain('"leaf": "ok"')
   })
 })

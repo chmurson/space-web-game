@@ -1,3 +1,5 @@
+import { addTapSafeButtonHandler } from './tapSafeButtonHandler'
+
 export type DebugPanel = {
   element: HTMLElement
   setJson(payload: unknown | null): void
@@ -103,8 +105,7 @@ const createFoldButton = (
     collapsed ? `Expand ${key}` : `Collapse ${key}`,
   )
   button.setAttribute('aria-expanded', String(!collapsed))
-  button.addEventListener('click', (event) => {
-    event.stopPropagation()
+  addTapSafeButtonHandler(button, () => {
     options.onToggleTopLevelKey(key)
   })
 
@@ -273,6 +274,11 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
   for (const eventName of [
     'pointerdown',
     'pointerup',
+    'pointercancel',
+    'touchstart',
+    'touchmove',
+    'touchend',
+    'touchcancel',
     'mousedown',
     'mouseup',
     'click',
@@ -283,9 +289,7 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
     element.addEventListener(eventName, stopEventPropagation)
   }
 
-  copyButton.addEventListener('click', async (event) => {
-    event.stopPropagation()
-
+  addTapSafeButtonHandler(copyButton, async () => {
     try {
       await navigator.clipboard.writeText(latestJson)
       copyButton.textContent = 'Copied'
@@ -300,9 +304,7 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
     }
   })
 
-  sizeButton.addEventListener('click', (event) => {
-    event.stopPropagation()
-
+  addTapSafeButtonHandler(sizeButton, () => {
     const nextSize =
       debugPanelSizes[
         (debugPanelSizes.indexOf(panelSize) + 1) % debugPanelSizes.length
@@ -310,8 +312,7 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
     setPanelSize(nextSize)
   })
 
-  closeButton.addEventListener('click', (event) => {
-    event.stopPropagation()
+  addTapSafeButtonHandler(closeButton, () => {
     closeHandler?.()
   })
 

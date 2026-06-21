@@ -1,6 +1,7 @@
 import type { UIUserAction } from '../input/uiUserActions'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
 import { formatTrajectoryHorizonDuration } from './formatters'
+import { addTapSafeButtonHandler } from './tapSafeButtonHandler'
 
 export type InGameControlsMenu = {
   close: () => void
@@ -166,8 +167,7 @@ export const createInGameControlsMenu = (options: {
     }
   }
 
-  button.addEventListener('click', (event) => {
-    event.stopPropagation()
+  addTapSafeButtonHandler(button, () => {
     setOpen(!open)
   })
 
@@ -175,12 +175,12 @@ export const createInGameControlsMenu = (options: {
     event.stopPropagation()
   })
 
-  uiSettingsButton.addEventListener('click', () => {
+  addTapSafeButtonHandler(uiSettingsButton, () => {
     setOpen(false)
     options.onOpenUiSettings()
   })
 
-  cameraModeSwitch.addEventListener('click', () => {
+  addTapSafeButtonHandler(cameraModeSwitch, () => {
     options.onAction(
       options.getCameraMode() === 'centered'
         ? 'setCameraUnlocked'
@@ -189,12 +189,12 @@ export const createInGameControlsMenu = (options: {
     syncState()
   })
 
-  decreaseCoastHorizonButton.addEventListener('click', () => {
+  addTapSafeButtonHandler(decreaseCoastHorizonButton, () => {
     options.onAction('decreaseCoastHorizon')
     syncState()
   })
 
-  increaseCoastHorizonButton.addEventListener('click', () => {
+  addTapSafeButtonHandler(increaseCoastHorizonButton, () => {
     options.onAction('increaseCoastHorizon')
     syncState()
   })

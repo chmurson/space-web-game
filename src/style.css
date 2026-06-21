@@ -1098,7 +1098,7 @@ canvas {
 #app .debug-panel {
     position: fixed;
     bottom: 16px;
-    left: 16px;
+    right: 16px;
     display: none;
     width: min(420px, calc(100vw - 32px));
     max-height: min(56vh, 520px);
@@ -1116,6 +1116,7 @@ canvas {
     font-size: 11px;
     line-height: 1.45;
     pointer-events: auto;
+    touch-action: pan-y;
     user-select: text;
     z-index: var(--z-overlay-debug);
 }
@@ -1155,6 +1156,7 @@ canvas {
     color: #dbeafe;
     font: inherit;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 .debug-panel-button:hover {
@@ -1211,6 +1213,7 @@ canvas {
     font-size: 10px;
     line-height: 1;
     cursor: pointer;
+    touch-action: manipulation;
     vertical-align: 1px;
 }
 
