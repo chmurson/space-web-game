@@ -69,6 +69,7 @@
 ## Main Branch Merges
 
 - When an agent merges a local branch into `main`, always use squash and merge so `main` gets one commit for the completed branch.
+- After completing a local branch merge into `main`, including any required verification or deploy steps, push the local `main` branch to `origin/main` before handing work back to the user unless the user explicitly says not to.
 
 ## Code Quality
 
