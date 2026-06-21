@@ -17,6 +17,7 @@ import type {
 import type { ScenarioRuntimeTransition } from './scenarioRuntimeTransition'
 import type { ScenarioSessionValue } from './scenarioSession'
 import { registerMenuBackgroundScenario } from './specific-scenarios/menuBackgroundScenario'
+import { registerReachMoonScenario } from './specific-scenarios/reachMoonScenario'
 import { registerTutorialScenario } from './specific-scenarios/tutorial/tutorialScenario'
 
 export type ScenarioPromptActionDispatchResult<
@@ -73,20 +74,6 @@ const earthMoonScenarioScene: ScenarioSceneDefinition = {
     maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
   }),
 }
-const reachMoonFuelCapacity = 32_000
-
-const createReachMoonScenario = (): RuntimeScenario => {
-  const scenario = createEarthMoonScenario({
-    fuelCapacity: reachMoonFuelCapacity,
-  })
-
-  return {
-    ...scenario,
-    id: 'reach-moon',
-    name: 'Reach the Moon',
-    description: 'Launch from Earth into the Earth-Moon mission route.',
-  }
-}
 
 const runtimeScenarioDefinitions = {
   'earth-moon': {
@@ -101,11 +88,7 @@ const runtimeScenarioDefinitions = {
   },
   'menu-background': registerMenuBackgroundScenario(),
   tutorial: registerTutorialScenario(),
-  'reach-moon': {
-    id: 'reach-moon',
-    createScenario: createReachMoonScenario,
-    getSceneDefinition: () => earthMoonScenarioScene,
-  },
+  'reach-moon': registerReachMoonScenario(),
 }
 
 export const getRuntimeScenarioDefinition = (

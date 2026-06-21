@@ -86,6 +86,9 @@ export type DebugPanelTextInput = {
   assistMode: AssistMode
   bodyInfluences: BodyInfluence[]
   coastPredictionHorizonSeconds: number
+  scenarioCompleted: boolean
+  scenarioId: string
+  scenarioState: unknown
   debugNoGravityEnabled: boolean
   debugSnapshotStatus: string
   fpsIndicatorEnabled: boolean
@@ -143,11 +146,76 @@ const getGcProbeLines = (stats: BrowserGcProbeStats) => {
   return lines
 }
 
+const getRecordValue = (
+  value: unknown,
+  key: string,
+): string | number | boolean | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const entry = (value as Record<string, unknown>)[key]
+  return typeof entry === 'string' ||
+    typeof entry === 'number' ||
+    typeof entry === 'boolean'
+    ? entry
+    : null
+}
+
+const getRequiredOrbitTurns = (scenarioId: string, phase: string) => {
+  if (phase === 'orbit-moon') {
+    return 3
+  }
+
+  if (phase === 'orbit-earth') {
+    return scenarioId === 'reach-moon' ? 1 : 3
+  }
+
+  return null
+}
+
+const getScenarioProgressLine = (input: DebugPanelTextInput) => {
+  const phase = getRecordValue(input.scenarioState, 'phase')
+  const orbitTurnsCompleted = getRecordValue(
+    input.scenarioState,
+    'orbitTurnsCompleted',
+  )
+  const orbitProgressRadians = getRecordValue(
+    input.scenarioState,
+    'orbitProgressRadians',
+  )
+  const segments = [`scenario: ${input.scenarioId}`]
+
+  if (typeof phase === 'string') {
+    segments.push(`phase ${phase}`)
+
+    const requiredTurns = getRequiredOrbitTurns(input.scenarioId, phase)
+    if (requiredTurns !== null && typeof orbitTurnsCompleted === 'number') {
+      segments.push(`orbits ${orbitTurnsCompleted}/${requiredTurns}`)
+    }
+
+    if (requiredTurns !== null && typeof orbitProgressRadians === 'number') {
+      const progressPercent = Math.min(
+        100,
+        Math.abs(orbitProgressRadians / (Math.PI * 2 * requiredTurns)) * 100,
+      )
+      segments.push(`${progressPercent.toFixed(0)}%`)
+    }
+  }
+
+  if (input.scenarioCompleted) {
+    segments.push('complete')
+  }
+
+  return segments.join(' | ')
+}
+
 export const getDebugPanelLines = (input: DebugPanelTextInput) => {
   const lines = [
     `debug: [1] no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | [2] fps ${input.fpsIndicatorEnabled ? 'on' : 'off'} | [3] perf ${
       input.performanceDebugEnabled ? 'on' : 'off'
     }`,
+    getScenarioProgressLine(input),
     `coast horizon: [4]- [5]+ => ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
     `prediction step: ${formatDuration(input.predictionStepSeconds)}`,
     `snapshot: [6] save | [7] load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,

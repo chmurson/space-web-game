@@ -130,6 +130,9 @@ describe('createRuntimeScenarioState', () => {
     )
 
     expect(runtimeScenario.scenarioSession.scenarioId).toBe('reach-moon')
+    expect(runtimeScenario.scenarioSession.state).toEqual({
+      phase: 'reach-moon',
+    })
   })
 
   it('keeps finite fuel opt-in scoped to Reach the Moon', () => {

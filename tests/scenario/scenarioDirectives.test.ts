@@ -220,7 +220,7 @@ describe('scenarioDirectives', () => {
       cameraFollowOffset: { x: 0, y: 0 },
       cameraMode: 'centered',
       cameraModeChangesLocked: true,
-      forcedAssistTargetId: 'earth',
+      forcedAssistTargetId: null,
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
       maxCoastPredictionHorizonHours: 2,

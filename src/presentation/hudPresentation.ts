@@ -426,12 +426,17 @@ export const createHudPresentation = (options: {
         ? 'block'
         : 'none'
       if (options.runtime.debug.debugModeEnabled) {
+        const { completed, scenarioId, state } = options.runtime.scenario
+          .session as RuntimeScenarioSession
         options.overlayUi.debugPanel.setText(
           getDebugPanelLines({
             assistMode: options.runtime.simulation.assistMode,
             bodyInfluences: getBodyInfluences(options.runtime.simulation.state),
             coastPredictionHorizonSeconds:
               options.queries.getCoastPredictionHorizonSeconds(),
+            scenarioCompleted: completed,
+            scenarioId,
+            scenarioState: state,
             debugNoGravityEnabled: options.runtime.debug.debugNoGravityEnabled,
             debugSnapshotStatus: options.runtime.debug.debugSnapshotStatus,
             fpsIndicatorEnabled: options.runtime.debug.fpsIndicatorEnabled,
@@ -449,8 +454,6 @@ export const createHudPresentation = (options: {
             targetName: target.name,
           }).join('\n'),
         )
-        const { scenarioId, state } = options.runtime.scenario
-          .session as RuntimeScenarioSession
         options.overlayUi.debugPanel.setJson({
           assistTarget: target.id,
           captureMetrics: {
@@ -462,6 +465,7 @@ export const createHudPresentation = (options: {
             surfaceDistance: targetMetrics.surfaceDistance,
           },
           browserGc: metrics.browserGcStats,
+          debugModeEnabled: options.runtime.debug.debugModeEnabled,
           scenarioId,
           state,
         })

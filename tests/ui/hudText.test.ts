@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { BrowserGcProbeStats } from '@/runtime/browserGcProbe'
 import {
+  getDebugPanelLines,
   getFpsMeterGraphModel,
   getFpsMeterStatus,
   getFpsMeterText,
@@ -23,6 +24,78 @@ const createBrowserGcStats = (
   totalEstimatedPauseMs: 0,
   totalReclaimedBytes: null,
   ...overrides,
+})
+
+const createDebugPanelInput = (
+  overrides: Partial<Parameters<typeof getDebugPanelLines>[0]> = {},
+): Parameters<typeof getDebugPanelLines>[0] => ({
+  assistMode: 'off',
+  bodyInfluences: [],
+  browserGcStats: createBrowserGcStats(),
+  coastPredictionHorizonSeconds: 3600,
+  debugNoGravityEnabled: false,
+  debugSnapshotStatus: '',
+  fpsIndicatorEnabled: false,
+  performanceDebugEnabled: false,
+  predictedImpact: null,
+  predictedTargetClosestApproach: null,
+  predictionStepSeconds: 60,
+  scenarioCompleted: false,
+  scenarioId: 'reach-moon',
+  scenarioState: { phase: 'reach-moon' },
+  smoothedCpuMs: 1,
+  smoothedGpuMs: null,
+  targetMetrics: {
+    circularSpeed: 1000,
+    distance: 10_000,
+    insideRange: true,
+    relativeSpeed: 500,
+    roughAssistRange: 20_000,
+    specificEnergy: -1,
+    surfaceDistance: 4_000,
+  },
+  targetName: 'Moon',
+  ...overrides,
+})
+
+describe('getDebugPanelLines', () => {
+  it('shows scenario phase in the readable debug text', () => {
+    expect(getDebugPanelLines(createDebugPanelInput())).toContain(
+      'scenario: reach-moon | phase reach-moon',
+    )
+  })
+
+  it('shows Reach the Moon orbit progress with the one-Earth-orbit final target', () => {
+    expect(
+      getDebugPanelLines(
+        createDebugPanelInput({
+          scenarioCompleted: true,
+          scenarioState: {
+            phase: 'orbit-earth',
+            orbitProgressRadians: Math.PI,
+            orbitTurnsCompleted: 0,
+          },
+        }),
+      ),
+    ).toContain(
+      'scenario: reach-moon | phase orbit-earth | orbits 0/1 | 50% | complete',
+    )
+  })
+
+  it('shows tutorial Earth orbit progress with three required turns', () => {
+    expect(
+      getDebugPanelLines(
+        createDebugPanelInput({
+          scenarioId: 'tutorial',
+          scenarioState: {
+            phase: 'orbit-earth',
+            orbitProgressRadians: Math.PI * 3,
+            orbitTurnsCompleted: 1,
+          },
+        }),
+      ),
+    ).toContain('scenario: tutorial | phase orbit-earth | orbits 1/3 | 50%')
+  })
 })
 
 describe('getFpsMeterText', () => {

@@ -1,4 +1,3 @@
-import { getCaptureMetricsForState } from '../../../assist/orbitalAssist'
 import { gameConfig } from '../../../config/gameConfig'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
@@ -34,6 +33,12 @@ import {
   type ScenarioPromptUiState,
 } from '../../scenarioSession'
 import {
+  advanceScenarioOrbitProgress,
+  fullTurnRadians,
+  isWithinScenarioObjectiveRadius,
+  normalizeScenarioAngleDelta,
+} from '../../scenarioObjectiveProgress'
+import {
   getHiddenOnboardingUIElements,
   tutorialOnboardingStepOrder,
 } from './tutorialOnboarding/tutorialOnboardingFlow'
@@ -52,7 +57,6 @@ import {
 } from './tutorialScenarioTypes'
 
 const requiredMoonOrbitTurns = 3
-const fullTurnRadians = Math.PI * 2
 const escapeEarthPredictionHorizonHours = 48
 const escapeEarthCompletedOnboardingMaxTimeWarp = 300
 const escapeEarthOnboardingMaxTimeWarp = 30
@@ -63,9 +67,6 @@ export const escapeEarthPhaseThresholdRadiusMultiplier = 5
 const earthOrbitPhaseThresholdRadiusMultiplier = 20
 const moonOrbitPhaseThresholdRadiusMultiplier = 35
 const tutorialTimeWarps = gameConfig.controls.timeWarps
-
-const normalizeAngleDelta = (angle: number) =>
-  Math.atan2(Math.sin(angle), Math.cos(angle))
 
 const getTutorialTimeWarpMultiplier = (runtime: AppRuntimeState) =>
   tutorialTimeWarps[runtime.simulation.timeWarpIndex] ??
@@ -84,7 +85,7 @@ const hasCompletedLoopAroundTarget = (
 
   for (const point of relativePoints.slice(1)) {
     const angle = Math.atan2(point.y, point.x)
-    angularTravel += normalizeAngleDelta(angle - previousAngle)
+    angularTravel += normalizeScenarioAngleDelta(angle - previousAngle)
     previousAngle = angle
 
     if (Math.abs(angularTravel) >= fullTurnRadians) {
@@ -211,7 +212,6 @@ const createEarthFocusDirectives = (options: {
   ...createDefaultScenarioDirectives(),
   cameraMode: options.cameraMode ?? null,
   cameraModeChangesLocked: options.cameraModeChangesLocked ?? false,
-  forcedAssistTargetId: 'earth',
   hiddenBodyIds: options.hiddenBodyIds ?? [],
   hiddenUIElements: options.hiddenUIElements ?? new Set(),
   maxCoastPredictionHorizonHours: options.maxCoastPredictionHorizonHours,
@@ -221,7 +221,6 @@ const createEarthFocusDirectives = (options: {
 
 const createMoonFocusDirectives = (): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
-  forcedAssistTargetId: 'moon',
   maxCoastPredictionHorizonHours: 24,
   maxTimeWarp: 2000,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
@@ -266,22 +265,15 @@ const isWithinOrbitPhaseThreshold = (
   runtime: AppRuntimeState,
   targetId: 'earth' | 'moon',
 ) => {
-  const target = runtime.simulation.state.bodies.find(
-    (body) => body.id === targetId,
-  )
-  if (!target) {
-    return false
-  }
-
-  const captureMetrics = getCaptureMetricsForState(
-    runtime.simulation.state,
-    target,
-  )
   const radiusMultiplier =
     targetId === 'earth'
       ? earthOrbitPhaseThresholdRadiusMultiplier
       : moonOrbitPhaseThresholdRadiusMultiplier
-  return captureMetrics.distance < target.radius * radiusMultiplier
+
+  return isWithinScenarioObjectiveRadius(runtime, {
+    radiusMultiplier,
+    targetId,
+  })
 }
 
 const advanceOrbitScene = <
@@ -291,54 +283,34 @@ const advanceOrbitScene = <
   state: TState,
   targetId: 'earth' | 'moon',
 ): ScenarioRuntimeTransition<TutorialScenarioState> | null => {
-  const target = runtime.simulation.state.bodies.find(
-    (body) => body.id === targetId,
-  )
-  if (!target) {
+  const orbitProgress = advanceScenarioOrbitProgress(runtime, state, {
+    progressMode: 'absolute',
+    requiredTurns: requiredMoonOrbitTurns,
+    targetId,
+  })
+  if (!orbitProgress) {
     return null
   }
 
-  const captureMetrics = getCaptureMetricsForState(
-    runtime.simulation.state,
-    target,
-  )
-  const orbitAngle = Math.atan2(
-    runtime.simulation.state.spacecraft.position.y - target.position.y,
-    runtime.simulation.state.spacecraft.position.x - target.position.x,
-  )
-
-  if (captureMetrics.specificEnergy >= 0) {
-    return createTutorialTransition({
-      ...state,
-      ...createOrbitProgressState(),
-      previousOrbitAngle: orbitAngle,
-    })
+  if (orbitProgress.status === 'reset') {
+    return createTutorialTransition(orbitProgress.state)
   }
 
-  const additionalProgress =
-    typeof state.previousOrbitAngle === 'number'
-      ? Math.abs(normalizeAngleDelta(orbitAngle - state.previousOrbitAngle))
-      : 0
-  const orbitProgressRadians = state.orbitProgressRadians + additionalProgress
-  const orbitTurnsCompleted = Math.floor(orbitProgressRadians / fullTurnRadians)
   const shouldCaptureFirstOrbitAttemptCheckpoint =
-    state.orbitAttemptCheckpointCaptured !== true
+    orbitProgress.state.orbitAttemptCheckpointCaptured !== true
 
   return createTutorialTransition(
     {
-      ...state,
+      ...orbitProgress.state,
       ...(shouldCaptureFirstOrbitAttemptCheckpoint
         ? { orbitAttemptCheckpointCaptured: true }
         : {}),
-      orbitProgressRadians,
-      orbitTurnsCompleted,
-      previousOrbitAngle: orbitAngle,
     },
     {
       checkpoint: shouldCaptureFirstOrbitAttemptCheckpoint
         ? createDefaultRuntimeScenarioCheckpoint(runtime)
         : undefined,
-      completed: orbitTurnsCompleted >= requiredMoonOrbitTurns,
+      completed: orbitProgress.completed,
     },
   )
 }

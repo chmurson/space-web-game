@@ -1,3 +1,7 @@
+import {
+  createScenarioOrbitProgressState,
+  type ScenarioOrbitProgressState,
+} from '../../scenarioObjectiveProgress'
 import type { TutorialOnboardingState } from './tutorialOnboarding/tutorialOnboardingTypes'
 
 export type TutorialScenarioPhase =
@@ -8,11 +12,8 @@ export type TutorialScenarioPhase =
   | 'orbit-earth'
   | 'complete'
 
-export type TutorialOrbitProgressState = {
+export type TutorialOrbitProgressState = ScenarioOrbitProgressState & {
   orbitAttemptCheckpointCaptured?: boolean
-  orbitProgressRadians: number
-  orbitTurnsCompleted: number
-  previousOrbitAngle?: number
 }
 
 export type EscapeEarthTutorialSceneState = {
@@ -49,8 +50,7 @@ export type TutorialScenarioState =
   | CompleteTutorialSceneState
 
 export const createOrbitProgressState = (): TutorialOrbitProgressState => ({
-  orbitProgressRadians: 0,
-  orbitTurnsCompleted: 0,
+  ...createScenarioOrbitProgressState(),
 })
 
 export const createInitialTutorialScenarioState =
