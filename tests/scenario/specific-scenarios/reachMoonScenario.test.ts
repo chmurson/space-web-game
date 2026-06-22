@@ -6,13 +6,14 @@ import {
 } from '@/domain/viewportPresets'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { applyScenarioRuntimeTransition } from '@/runtime/runtimeStateTransitions'
-import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
-import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   createRequestedRuntimeScenario,
   createRuntimeScenarioStateFromId,
   type RuntimeScenarioOptions,
 } from '@/scenario/runtimeScenario'
+import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { resolveScenarioPrompts } from '@/scenario/scenarioPrompts'
 import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
 import { G } from '@/simulation/constants'
 import type { Body } from '@/simulation/types'
@@ -158,11 +159,22 @@ describe('reachMoonScenario', () => {
       checkpoint: null,
       completed: false,
       promptUi: {
-        activePromptId: null,
+        activePromptId: 'mission-start',
         replayPromptId: null,
       },
       scenarioId: 'reach-moon',
       state: { phase: 'reach-moon' },
+    })
+  })
+
+  it('resolves the initial mission prompt from prompt definitions', () => {
+    const runtime = createRuntime()
+
+    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+      id: 'mission-start',
+      kind: 'blocking',
+      title: 'Reach the Moon',
+      buttons: [{ label: 'Start mission' }],
     })
   })
 
@@ -183,12 +195,18 @@ describe('reachMoonScenario', () => {
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
+    expect(runtime.scenario.session.promptUi.activePromptId).toBe(
+      'moon-reached',
+    )
 
     completeOrbitTurns(runtime, 'moon', 3)
 
     expect(runtime.scenario.session.state).toEqual({
       phase: 'return-earth',
     })
+    expect(runtime.scenario.session.promptUi.activePromptId).toBe(
+      'lunar-orbits-complete',
+    )
 
     setOrbitState(runtime, 'earth', 0)
     advanceScenario(runtime)
@@ -198,6 +216,9 @@ describe('reachMoonScenario', () => {
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
+    expect(runtime.scenario.session.promptUi.activePromptId).toBe(
+      'earth-reached',
+    )
     expect(
       resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
         .forcedAssistTargetId,
@@ -207,6 +228,13 @@ describe('reachMoonScenario', () => {
 
     expect(runtime.scenario.session.completed).toBe(true)
     expect(runtime.scenario.session.state).toEqual({ phase: 'complete' })
+    expect(runtime.scenario.session.promptUi.activePromptId).toBe(
+      'mission-complete',
+    )
+    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+      title: 'Mission Complete',
+      buttons: [{ label: 'Free roam' }, { label: 'Exit' }],
+    })
   })
 
   it('does not count angular backtracking as completed lunar orbits', () => {

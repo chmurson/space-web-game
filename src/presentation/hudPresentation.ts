@@ -1,6 +1,6 @@
 import type { RendererProfiler } from '../render/rendererProfiler'
-import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
+import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
 import type {
   AssistTargetSelectionSource,
   AssistTargetUiState,
@@ -10,26 +10,26 @@ import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import { getBodyInfluences } from '../simulation/bodyInfluence'
 import type { Body } from '../simulation/types'
+import type { InGameControlsMenu } from '../ui/createInGameControlsMenu'
 import {
   formatCompactElapsed,
   formatSpeed,
   formatTimeWarpLabel,
 } from '../ui/formatters'
 import {
-  getFpsMeterGraphModel,
+  type FpsMeterFrameSample,
+  type FpsMeterGraphModel,
   getDebugPanelLines,
+  getFpsMeterGraphModel,
   getFpsMeterStatus,
   getFpsMeterText,
   getGuidanceText,
-  type FpsMeterFrameSample,
-  type FpsMeterGraphModel,
 } from '../ui/hudText'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import {
   createScenarioPromptUpdater,
   type ScenarioPromptUiRefs,
 } from '../ui/scenario-prompts/scenario-prompts'
-import type { InGameControlsMenu } from '../ui/createInGameControlsMenu'
 import type { TouchControls } from '../ui/touchControls/createTouchControls'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
 
@@ -38,6 +38,16 @@ const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
   forced: 'locked target',
   manual: 'pinned target',
 }
+
+const getFuelPercent = (fuel: number) => {
+  const clampedFuel = Math.max(0, Math.min(1, fuel))
+  return clampedFuel <= 0
+    ? 0
+    : Math.max(1, Math.min(100, Math.round(clampedFuel * 100)))
+}
+
+const getFuelState = (fuel: number, fuelPercent: number) =>
+  fuel <= 0 ? 'depleted' : fuelPercent <= 15 ? 'low' : 'available'
 
 const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
   element.className = 'target-body-sphere'
@@ -225,6 +235,17 @@ export const createHudPresentation = (options: {
     warpIncreaseStreak = 0
   }
 
+  const syncFuelDepletedNotice = (visible: boolean) => {
+    options.overlayUi.fuelDepletedNotice.hidden = !visible
+    options.overlayUi.fuelDepletedNotice.dataset.visible = visible
+      ? 'true'
+      : 'false'
+    options.overlayUi.fuelDepletedNotice.setAttribute(
+      'aria-hidden',
+      visible ? 'false' : 'true',
+    )
+  }
+
   return {
     update: (metrics: {
       browserGcStats: BrowserGcProbeStats
@@ -287,6 +308,9 @@ export const createHudPresentation = (options: {
       const showTargetControl = !hiddenUIElements.has('targetControl')
       const showTrajectoryControl = !hiddenUIElements.has('trajectory')
       const crashed = options.runtime.simulation.crashedBodyName !== null
+      const spacecraft = options.runtime.simulation.state.spacecraft
+      const finiteFuel = spacecraft.fuelCapacity > 0
+      const fuelPercent = getFuelPercent(spacecraft.fuel)
 
       syncTrajectoryCoachAnchor()
 
@@ -308,6 +332,21 @@ export const createHudPresentation = (options: {
       if (timePill) {
         timePill.style.display = showTimePill ? 'inline-flex' : 'none'
       }
+      if (options.overlayUi.fuelPill) {
+        options.overlayUi.fuelPill.style.display = finiteFuel
+          ? 'inline-flex'
+          : 'none'
+        options.overlayUi.fuelPill.dataset.fuelState = getFuelState(
+          spacecraft.fuel,
+          fuelPercent,
+        )
+        options.overlayUi.fuelPill.setAttribute(
+          'aria-label',
+          `Fuel remaining ${fuelPercent}%`,
+        )
+        options.overlayUi.fuelPill.title = `Fuel remaining ${fuelPercent}%`
+      }
+      syncFuelDepletedNotice(finiteFuel && spacecraft.fuel <= 0 && !crashed)
       options.touchControls?.setBurnControlVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
       options.touchControls?.setTargetControlVisible(showTargetControl)
@@ -379,7 +418,7 @@ export const createHudPresentation = (options: {
         }
       }
       if (options.overlayUi.statFuel) {
-        options.overlayUi.statFuel.textContent = `${options.runtime.simulation.state.spacecraft.fuelUsed.toFixed(1)} kg`
+        options.overlayUi.statFuel.textContent = `${fuelPercent}%`
       }
       if (options.overlayUi.statZoom) {
         options.overlayUi.statZoom.textContent = `${(options.defaultViewport / options.runtime.simulation.viewportSize).toFixed(1)}x`

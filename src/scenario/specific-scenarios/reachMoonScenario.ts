@@ -3,15 +3,16 @@ import { EARTH_MOON_VIEWPORT_SIZE } from '../../domain/viewportPresets'
 import type { AppRuntimeState } from '../../runtime/appRuntimeState'
 import { createEarthMoonScenario } from '../../simulation/scenarios/earthMoon'
 import {
+  createDefaultScenarioDirectives,
+  type RuntimeScenarioDirectives,
+} from '../scenarioDirectiveTypes'
+import {
   advanceScenarioOrbitProgress,
   createScenarioOrbitProgressState,
   isWithinScenarioObjectiveRadius,
   type ScenarioOrbitProgressState,
 } from '../scenarioObjectiveProgress'
-import {
-  createDefaultScenarioDirectives,
-  type RuntimeScenarioDirectives,
-} from '../scenarioDirectiveTypes'
+import type { PromptDefinition } from '../scenarioPromptTypes'
 import type {
   RuntimeScenarioDefinition,
   ScenarioSceneDefinition,
@@ -19,6 +20,7 @@ import type {
 import type { ScenarioRuntimeTransition } from '../scenarioRuntimeTransition'
 import {
   createRuntimeScenarioSession,
+  type ScenarioPromptUiState,
   type ScenarioSessionValue,
 } from '../scenarioSession'
 
@@ -34,6 +36,13 @@ type ReachMoonScenarioPhase =
   | 'return-earth'
   | 'orbit-earth'
   | 'complete'
+
+type ReachMoonPromptId =
+  | 'mission-start'
+  | 'moon-reached'
+  | 'lunar-orbits-complete'
+  | 'earth-reached'
+  | 'mission-complete'
 
 type ReachMoonApproachState = {
   phase: 'reach-moon'
@@ -66,6 +75,16 @@ const createInitialReachMoonScenarioState = (): ReachMoonApproachState => ({
   phase: 'reach-moon',
 })
 
+const createReachMoonScenarioSession = () =>
+  createRuntimeScenarioSession(
+    'reach-moon',
+    createInitialReachMoonScenarioState(),
+    {
+      activePromptId: 'mission-start',
+      replayPromptId: null,
+    },
+  )
+
 const isReachMoonScenarioPhase = (
   value: ScenarioSessionValue,
 ): value is ReachMoonScenarioPhase =>
@@ -95,10 +114,7 @@ const createReachMoonScenario = (): RuntimeScenario => {
     id: 'reach-moon',
     name: 'Reach the Moon',
     description: 'Launch from Earth into the Earth-Moon mission route.',
-    scenarioSession: createRuntimeScenarioSession(
-      'reach-moon',
-      createInitialReachMoonScenarioState(),
-    ),
+    scenarioSession: createReachMoonScenarioSession(),
   }
 }
 
@@ -106,10 +122,20 @@ const createReachMoonTransition = (
   state: ReachMoonScenarioState,
   options: {
     completed?: boolean
+    promptUi?: ScenarioPromptUiState
   } = {},
 ): ScenarioRuntimeTransition<ReachMoonScenarioState> => ({
   completed: options.completed,
   nextState: state,
+  promptUi: options.promptUi,
+})
+
+const createPromptUiWithActivePrompt = (
+  runtime: AppRuntimeState,
+  activePromptId: ReachMoonPromptId,
+): ScenarioPromptUiState => ({
+  ...runtime.scenario.session.promptUi,
+  activePromptId,
 })
 
 const getObjectiveRadiusMultiplier = (targetId: 'earth' | 'moon') =>
@@ -164,10 +190,15 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
   'reach-moon': {
     advance: ({ runtime }) =>
       isWithinObjectiveDistance(runtime, 'moon')
-        ? createReachMoonTransition({
-            phase: 'orbit-moon',
-            ...createScenarioOrbitProgressState(),
-          })
+        ? createReachMoonTransition(
+            {
+              phase: 'orbit-moon',
+              ...createScenarioOrbitProgressState(),
+            },
+            {
+              promptUi: createPromptUiWithActivePrompt(runtime, 'moon-reached'),
+            },
+          )
         : null,
     directives: createMissionDirectives,
   },
@@ -183,19 +214,35 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
         return orbitProgress
       }
 
-      return createReachMoonTransition({
-        phase: 'return-earth',
-      })
+      return createReachMoonTransition(
+        {
+          phase: 'return-earth',
+        },
+        {
+          promptUi: createPromptUiWithActivePrompt(
+            runtime,
+            'lunar-orbits-complete',
+          ),
+        },
+      )
     },
     directives: createMissionDirectives,
   },
   'return-earth': {
     advance: ({ runtime }) =>
       isWithinObjectiveDistance(runtime, 'earth')
-        ? createReachMoonTransition({
-            phase: 'orbit-earth',
-            ...createScenarioOrbitProgressState(),
-          })
+        ? createReachMoonTransition(
+            {
+              phase: 'orbit-earth',
+              ...createScenarioOrbitProgressState(),
+            },
+            {
+              promptUi: createPromptUiWithActivePrompt(
+                runtime,
+                'earth-reached',
+              ),
+            },
+          )
         : null,
     directives: createMissionDirectives,
   },
@@ -215,7 +262,10 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
         {
           phase: 'complete',
         },
-        { completed: true },
+        {
+          completed: true,
+          promptUi: createPromptUiWithActivePrompt(runtime, 'mission-complete'),
+        },
       )
     },
     directives: createMissionDirectives,
@@ -232,10 +282,94 @@ const getReachMoonSceneDefinition = <TState extends ReachMoonScenarioState>(
     state.phase
   ] as unknown as ScenarioSceneDefinition<TState>
 
+const reachMoonPromptDefinitions = {
+  'mission-start': {
+    id: 'mission-start',
+    title: 'Reach the Moon',
+    shortLabel: 'Mission Brief',
+    description:
+      'Launch from Earth, reach the Moon, complete three lunar orbits, return to Earth, then complete one final Earth orbit. Fuel is finite, so keep burns deliberate.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Start mission',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'moon-reached': {
+    id: 'moon-reached',
+    title: 'Moon Reached',
+    shortLabel: 'Moon Orbit',
+    description:
+      'You are inside the lunar objective zone. Stay bound to the Moon and complete three full orbits.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'lunar-orbits-complete': {
+    id: 'lunar-orbits-complete',
+    title: 'Return to Earth',
+    shortLabel: 'Return to Earth',
+    description:
+      'Three lunar orbits are complete. Head back toward Earth and enter the Earth objective zone.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'earth-reached': {
+    id: 'earth-reached',
+    title: 'Earth Reached',
+    shortLabel: 'Earth Orbit',
+    description:
+      'You are back in Earth range. Complete one bound Earth orbit to finish the mission.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'mission-complete': {
+    id: 'mission-complete',
+    title: 'Mission Complete',
+    shortLabel: 'Mission Complete',
+    description:
+      'You completed the Earth-Moon route. Start free roam immediately or return to the main menu.',
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'start_free_roam' },
+        label: 'Free roam',
+        tone: 'primary',
+      },
+      {
+        action: { kind: 'builtin', id: 'exit_to_menu' },
+        label: 'Exit',
+        tone: 'secondary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+} satisfies Record<ReachMoonPromptId, PromptDefinition>
+
 export const registerReachMoonScenario =
   (): RuntimeScenarioDefinition<ReachMoonScenarioState> => ({
     id: 'reach-moon',
     createScenario: createReachMoonScenario,
     getSceneDefinition: getReachMoonSceneDefinition,
     isState: isReachMoonScenarioState,
+    prompts: reachMoonPromptDefinitions,
   })

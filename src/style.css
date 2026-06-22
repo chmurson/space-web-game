@@ -744,6 +744,12 @@ canvas {
     gap: 3px;
 }
 
+.telemetry-fuel-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .telemetry-target-display {
     display: inline-flex;
     min-width: 0;
@@ -798,9 +804,35 @@ canvas {
     overflow: visible;
 }
 
+.telemetry-fuel-icon {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    overflow: visible;
+}
+
 .telemetry-speed-icon-body,
 .telemetry-speed-icon-wing {
     fill: rgba(224, 242, 254, 0.82);
+}
+
+.telemetry-fuel-icon-tank,
+.telemetry-fuel-icon-cap,
+.telemetry-fuel-icon-level {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.telemetry-fuel-icon-tank,
+.telemetry-fuel-icon-cap {
+    stroke: rgba(224, 242, 254, 0.76);
+    stroke-width: 1.1;
+}
+
+.telemetry-fuel-icon-level {
+    stroke: rgba(103, 232, 249, 0.86);
+    stroke-width: 1.35;
 }
 
 .telemetry-speed-icon-window {
@@ -868,6 +900,39 @@ canvas {
 
 .telemetry-pill-velocity {
     max-width: calc(100vw - 88px);
+}
+
+.telemetry-pill-fuel {
+    max-width: calc(100vw - 160px);
+}
+
+.telemetry-pill-fuel[data-fuel-state="low"] {
+    background: rgba(69, 46, 8, 0.58);
+    box-shadow:
+        0 0 0 1px rgba(250, 204, 21, 0.16),
+        0 10px 24px rgba(234, 179, 8, 0.14);
+    color: rgba(254, 249, 195, 0.96);
+}
+
+.telemetry-pill-fuel[data-fuel-state="low"] .telemetry-fuel-icon-level {
+    stroke: rgba(250, 204, 21, 0.9);
+}
+
+.telemetry-pill-fuel[data-fuel-state="depleted"] {
+    background: rgba(63, 18, 33, 0.64);
+    box-shadow:
+        0 0 0 1px rgba(244, 114, 182, 0.18),
+        0 10px 24px rgba(225, 29, 72, 0.18);
+    color: rgba(254, 205, 211, 0.95);
+}
+
+.telemetry-pill-fuel[data-fuel-state="depleted"] .telemetry-fuel-icon-tank,
+.telemetry-pill-fuel[data-fuel-state="depleted"] .telemetry-fuel-icon-cap {
+    stroke: rgba(254, 205, 211, 0.86);
+}
+
+.telemetry-pill-fuel[data-fuel-state="depleted"] .telemetry-fuel-icon-level {
+    stroke: rgba(251, 113, 133, 0.94);
 }
 
 .telemetry-pill-target {
@@ -962,6 +1027,7 @@ canvas {
 }
 
 .telemetry-pill-time>span,
+.telemetry-pill-fuel>span,
 .telemetry-pill-velocity>span,
 .telemetry-pill-target>span {
     padding-right: 2px;
@@ -1666,7 +1732,19 @@ canvas {
     }
 
     .telemetry-pill-target {
-        max-width: min(108px, calc(100vw - 156px));
+        flex-shrink: 0;
+        max-width: none;
+    }
+
+    .telemetry-pill-target [data-stat="target"] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 
     #app .fps-indicator {

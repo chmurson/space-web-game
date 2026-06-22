@@ -286,8 +286,16 @@
   flex-shrink: 1;
 }
 
-.telemetry-strip > .telemetry-pill-velocity {
+.telemetry-strip > .telemetry-pill-time,
+.telemetry-critical-cluster,
+.telemetry-critical-cluster > .telemetry-pill {
   flex-shrink: 0;
+}
+
+.telemetry-critical-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .hud-notice {
@@ -398,6 +406,29 @@
 
 .target-recommendation-notice[hidden] {
   display: none;
+}
+
+.fuel-depleted-notice {
+  order: 14;
+  max-width: min(420px, calc(100vw - 32px));
+  border-color: rgba(251, 113, 133, 0.34);
+  color: rgba(254, 226, 226, 0.96);
+  cursor: default;
+  pointer-events: none;
+}
+
+.fuel-depleted-notice[hidden] {
+  display: none;
+}
+
+.fuel-depleted-notice .hud-notice-body {
+  color: rgba(254, 226, 226, 0.82);
+}
+
+.fuel-depleted-notice .hud-notice-body::before {
+  content: "·";
+  margin: 0 6px 0 1px;
+  color: rgba(251, 113, 133, 0.72);
 }
 
 .target-recommendation-notice-open,
@@ -548,6 +579,10 @@
     max-width: min(360px, calc(100vw - 24px));
   }
 
+  .bottom-pill-area .fuel-depleted-notice {
+    max-width: min(300px, calc(100vw - 24px));
+  }
+
   .in-game-controls-menu-button {
     width: 42px;
     height: 34px;
@@ -564,6 +599,18 @@
 
   .telemetry-strip {
     gap: 5px;
+  }
+
+  .telemetry-critical-cluster {
+    gap: 5px;
+  }
+}
+
+@media (max-width: 370px) {
+  .telemetry-critical-cluster {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
 }
 
