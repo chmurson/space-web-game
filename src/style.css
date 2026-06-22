@@ -1776,6 +1776,18 @@ canvas {
         border-radius: 0;
     }
 
+    #app.app-debug-panel-open .debug-panel:not([data-size="big"]) ~ .fps-indicator {
+        top: calc(env(safe-area-inset-top, 0px) + 52px + 30vh + 10px);
+    }
+
+    #app.app-debug-panel-open .debug-panel[data-size="small"] ~ .fps-indicator {
+        top: calc(env(safe-area-inset-top, 0px) + 52px + 15vh + 10px);
+    }
+
+    #app.app-debug-panel-open .debug-panel[data-size="big"] ~ .fps-indicator {
+        display: none !important;
+    }
+
     .debug-panel-toolbar {
         gap: 5px;
     }

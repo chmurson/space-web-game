@@ -68,7 +68,6 @@ export const createInitialAppRuntimeState = (
       debugNoGravityEnabled: false,
       debugSnapshotStatus: '',
       fpsIndicatorEnabled: false,
-      performanceDebugEnabled: false,
     },
   }
 

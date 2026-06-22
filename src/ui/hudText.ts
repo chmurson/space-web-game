@@ -92,25 +92,11 @@ export type DebugPanelTextInput = {
   debugNoGravityEnabled: boolean
   debugSnapshotStatus: string
   fpsIndicatorEnabled: boolean
-  performanceDebugEnabled: boolean
   predictionStepSeconds: number
   predictedImpact: PredictedImpact | null
   predictedTargetClosestApproach: PredictedClosestApproach | null
-  browserGcStats: BrowserGcProbeStats
-  smoothedCpuMs: number
-  smoothedGpuMs: number | null
   targetMetrics: CaptureMetrics
   targetName: string
-}
-
-const formatReclaimedBytes = (bytes: number) => {
-  const megabytes = bytes / (1024 * 1024)
-
-  if (megabytes >= 10) {
-    return `${megabytes.toFixed(1)} MB`
-  }
-
-  return `${megabytes.toFixed(2)} MB`
 }
 
 const getGcProbeMode = (stats: BrowserGcProbeStats) => {
@@ -119,31 +105,6 @@ const getGcProbeMode = (stats: BrowserGcProbeStats) => {
   }
 
   return stats.heapSamplingSupported ? 'heap-drop' : 'frame-gap'
-}
-
-const getGcProbeLines = (stats: BrowserGcProbeStats) => {
-  const mode = getGcProbeMode(stats)
-  const label = mode === 'native' ? 'gc' : 'probable gc'
-
-  if (stats.eventCount === 0) {
-    return [`${label}: ${mode} | count 0`]
-  }
-
-  const lines = [
-    `${label}: ${mode} | count ${stats.eventCount} | last ${stats.lastEstimatedPauseMs?.toFixed(1) ?? 'n/a'} ms | max ${stats.longestEstimatedPauseMs.toFixed(1)} ms`,
-  ]
-
-  if (stats.totalReclaimedBytes !== null && stats.totalReclaimedBytes > 0) {
-    lines.push(
-      `heap reclaimed: last ${
-        stats.lastReclaimedBytes === null
-          ? 'n/a'
-          : formatReclaimedBytes(stats.lastReclaimedBytes)
-      } | total ${formatReclaimedBytes(stats.totalReclaimedBytes)}`,
-    )
-  }
-
-  return lines
 }
 
 const getRecordValue = (
@@ -211,10 +172,8 @@ const getScenarioProgressLine = (input: DebugPanelTextInput) => {
 }
 
 export const getDebugPanelLines = (input: DebugPanelTextInput) => {
-  const lines = [
-    `debug: [1] no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | [2] fps ${input.fpsIndicatorEnabled ? 'on' : 'off'} | [3] perf ${
-      input.performanceDebugEnabled ? 'on' : 'off'
-    }`,
+  return [
+    `debug: [1] no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | [2] fps ${input.fpsIndicatorEnabled ? 'on' : 'off'}`,
     getScenarioProgressLine(input),
     `coast horizon: [4]- [5]+ => ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
     `prediction step: ${formatDuration(input.predictionStepSeconds)}`,
@@ -232,22 +191,6 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
       ? `pred impact: ${input.predictedImpact.bodyName} in ${formatDuration(input.predictedImpact.time)}`
       : 'pred impact: none',
   ]
-
-  if (input.performanceDebugEnabled) {
-    const frameBudgetMs60 = 1000 / 60
-    const frameBudgetMs30 = 1000 / 30
-    const limitingFrameMs =
-      input.smoothedGpuMs === null
-        ? input.smoothedCpuMs
-        : Math.max(input.smoothedCpuMs, input.smoothedGpuMs)
-    lines.push(
-      `cpu: ${input.smoothedCpuMs.toFixed(2)} ms | gpu: ${input.smoothedGpuMs === null ? 'n/a' : `${input.smoothedGpuMs.toFixed(2)} ms`}`,
-      `headroom60: ${(frameBudgetMs60 - limitingFrameMs).toFixed(2)} ms | headroom30: ${(frameBudgetMs30 - limitingFrameMs).toFixed(2)} ms`,
-      ...getGcProbeLines(input.browserGcStats),
-    )
-  }
-
-  return lines
 }
 
 export type FpsMeterStatus = 'good' | 'warning' | 'danger'

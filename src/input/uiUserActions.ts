@@ -14,7 +14,6 @@ export const uiUserActions = [
   'toggleDebugMode',
   'toggleFpsIndicator',
   'toggleNoGravityDebug',
-  'togglePerformanceDebug',
   'zoomIn',
   'zoomOut',
 ] as const

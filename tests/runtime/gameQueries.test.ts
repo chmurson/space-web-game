@@ -74,7 +74,6 @@ const createRuntime = (
     debugNoGravityEnabled: false,
     debugSnapshotStatus: '',
     fpsIndicatorEnabled: false,
-    performanceDebugEnabled: false,
   },
 })
 

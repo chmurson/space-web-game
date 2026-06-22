@@ -105,7 +105,6 @@ const createRuntime = (): AppRuntimeState => ({
     debugNoGravityEnabled: false,
     debugSnapshotStatus: '',
     fpsIndicatorEnabled: false,
-    performanceDebugEnabled: false,
   },
 })
 

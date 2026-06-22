@@ -68,10 +68,6 @@ export const createFrameLoop = (options: {
     options.trajectoryPresentation.refreshPrediction()
   }
 
-  const shouldProbeBrowserGc = () =>
-    options.runtime.debug.debugModeEnabled ||
-    options.runtime.debug.fpsIndicatorEnabled
-
   const recordFpsFrameSample = (
     nowMs: number,
     frameIntervalMs: number,
@@ -101,7 +97,7 @@ export const createFrameLoop = (options: {
     const frameIntervalMs = time - lastTime
     const realDt = Math.min(frameIntervalMs / 1000, 0.1)
     lastTime = time
-    const browserGcProbeEnabled = shouldProbeBrowserGc()
+    const browserGcProbeEnabled = options.runtime.debug.fpsIndicatorEnabled
     browserGcProbe.setEnabled(browserGcProbeEnabled)
     smoothedFps = THREE.MathUtils.lerp(
       smoothedFps,
@@ -225,8 +221,7 @@ export const createFrameLoop = (options: {
     options.rendererProfiler.render(
       options.gameScene.scene,
       options.gameScene.camera,
-      options.runtime.debug.performanceDebugEnabled ||
-        options.runtime.debug.fpsIndicatorEnabled,
+      options.runtime.debug.fpsIndicatorEnabled,
     )
 
     const frameCpuMs = performance.now() - frameStart
@@ -253,7 +248,7 @@ export const createFrameLoop = (options: {
         options.runtime,
         options.globalScenarioDirectiveLimits,
       )
-      browserGcProbe.setEnabled(shouldProbeBrowserGc())
+      browserGcProbe.setEnabled(options.runtime.debug.fpsIndicatorEnabled)
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,

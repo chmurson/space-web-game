@@ -137,7 +137,6 @@ const debugFlagActions = {
   debugModeEnabled: 'toggleDebugMode',
   debugNoGravityEnabled: 'toggleNoGravityDebug',
   fpsIndicatorEnabled: 'toggleFpsIndicator',
-  performanceDebugEnabled: 'togglePerformanceDebug',
 } satisfies Record<WritableDebugFlag, UIUserAction>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

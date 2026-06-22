@@ -336,11 +336,6 @@ export const createRuntimeActions = (options: {
           !options.runtime.debug.fpsIndicatorEnabled
         return { refreshTrajectoryPrediction: false }
       }
-      if (action === 'togglePerformanceDebug') {
-        options.runtime.debug.performanceDebugEnabled =
-          !options.runtime.debug.performanceDebugEnabled
-        return { refreshTrajectoryPrediction: false }
-      }
       if (action === 'decreaseCoastHorizon') {
         options.runtime.simulation.coastPredictionHorizonHours =
           getNextTrajectoryHorizonHours({

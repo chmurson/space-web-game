@@ -31,20 +31,16 @@ const createDebugPanelInput = (
 ): Parameters<typeof getDebugPanelLines>[0] => ({
   assistMode: 'off',
   bodyInfluences: [],
-  browserGcStats: createBrowserGcStats(),
   coastPredictionHorizonSeconds: 3600,
   debugNoGravityEnabled: false,
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
-  performanceDebugEnabled: false,
   predictedImpact: null,
   predictedTargetClosestApproach: null,
   predictionStepSeconds: 60,
   scenarioCompleted: false,
   scenarioId: 'reach-moon',
   scenarioState: { phase: 'reach-moon' },
-  smoothedCpuMs: 1,
-  smoothedGpuMs: null,
   targetMetrics: {
     circularSpeed: 1000,
     distance: 10_000,
@@ -59,6 +55,12 @@ const createDebugPanelInput = (
 })
 
 describe('getDebugPanelLines', () => {
+  it('shows debug toggles without the removed performance switch', () => {
+    expect(getDebugPanelLines(createDebugPanelInput())[0]).toBe(
+      'debug: [1] no-gravity off | [2] fps off',
+    )
+  })
+
   it('shows scenario phase in the readable debug text', () => {
     expect(getDebugPanelLines(createDebugPanelInput())).toContain(
       'scenario: reach-moon | phase reach-moon',

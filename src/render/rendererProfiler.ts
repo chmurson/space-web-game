@@ -47,9 +47,9 @@ export const createRendererProfiler = (renderer: THREE.WebGLRenderer) => {
     render: (
       scene: THREE.Scene,
       camera: THREE.Camera,
-      performanceDebugEnabled: boolean,
+      gpuTimingEnabled: boolean,
     ) => {
-      if (performanceDebugEnabled && gpuTimerExtension) {
+      if (gpuTimingEnabled && gpuTimerExtension) {
         const disjoint = gl.getParameter(
           gpuTimerExtension.GPU_DISJOINT_EXT,
         ) as boolean

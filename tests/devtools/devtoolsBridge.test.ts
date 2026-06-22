@@ -84,7 +84,6 @@ const createRuntime = (): AppRuntimeState => ({
     debugNoGravityEnabled: false,
     debugSnapshotStatus: 'ready',
     fpsIndicatorEnabled: false,
-    performanceDebugEnabled: false,
   },
 })
 
@@ -240,6 +239,22 @@ describe('createDevtoolsBridge', () => {
 
     expect(response.ok).toBe(true)
     expect(runtime.debug.debugModeEnabled).toBe(false)
+    expect(dispatchedActions).toEqual([])
+  })
+
+  it('rejects the removed performance debug flag', () => {
+    const { bridge, dispatchedActions } = createBridgeHarness()
+
+    const response = bridge.handleRequest({
+      flag: 'performanceDebugEnabled',
+      type: 'set-debug-flag',
+      value: true,
+    })
+
+    expect(response.ok).toBe(false)
+    expect(response).toMatchObject({
+      error: 'set-debug-flag requires a writable debug flag',
+    })
     expect(dispatchedActions).toEqual([])
   })
 })

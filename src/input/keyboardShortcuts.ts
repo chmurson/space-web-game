@@ -39,9 +39,6 @@ export const getKeyboardShortcutAction = (
   if (!event.repeat && context.debugModeEnabled && event.code === 'Digit2') {
     return 'toggleFpsIndicator'
   }
-  if (!event.repeat && context.debugModeEnabled && event.code === 'Digit3') {
-    return 'togglePerformanceDebug'
-  }
   if (!event.repeat && context.debugModeEnabled && event.code === 'Digit4') {
     return 'decreaseCoastHorizon'
   }

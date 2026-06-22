@@ -79,7 +79,6 @@ export type AppRuntimeDebugSlice = {
   debugNoGravityEnabled: boolean
   debugSnapshotStatus: string
   fpsIndicatorEnabled: boolean
-  performanceDebugEnabled: boolean
 }
 
 export type AppRuntimeState = {

@@ -462,11 +462,15 @@ export const createHudPresentation = (options: {
         })
       }
 
-      options.overlayUi.debugPanel.element.style.display = options.runtime.debug
-        .debugModeEnabled
+      const debugPanelVisible = options.runtime.debug.debugModeEnabled
+      options.overlayUi.debugPanel.element.style.display = debugPanelVisible
         ? 'block'
         : 'none'
-      if (options.runtime.debug.debugModeEnabled) {
+      options.overlayUi.debugPanel.element.parentElement?.classList.toggle(
+        'app-debug-panel-open',
+        debugPanelVisible,
+      )
+      if (debugPanelVisible) {
         const { completed, scenarioId, state } = options.runtime.scenario
           .session as RuntimeScenarioSession
         options.overlayUi.debugPanel.setText(
@@ -481,16 +485,11 @@ export const createHudPresentation = (options: {
             debugNoGravityEnabled: options.runtime.debug.debugNoGravityEnabled,
             debugSnapshotStatus: options.runtime.debug.debugSnapshotStatus,
             fpsIndicatorEnabled: options.runtime.debug.fpsIndicatorEnabled,
-            performanceDebugEnabled:
-              options.runtime.debug.performanceDebugEnabled,
             predictionStepSeconds:
               options.queries.getPredictionConfig().stepSeconds,
             predictedImpact: predictionState.predictedImpact,
             predictedTargetClosestApproach:
               predictionState.predictedTargetClosestApproach,
-            browserGcStats: metrics.browserGcStats,
-            smoothedCpuMs: metrics.smoothedCpuMs,
-            smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
             targetMetrics,
             targetName: target.name,
           }).join('\n'),
@@ -505,7 +504,6 @@ export const createHudPresentation = (options: {
             specificEnergy: targetMetrics.specificEnergy,
             surfaceDistance: targetMetrics.surfaceDistance,
           },
-          browserGc: metrics.browserGcStats,
           debugModeEnabled: options.runtime.debug.debugModeEnabled,
           scenarioId,
           state,
