@@ -110,6 +110,32 @@ const syncFpsIndicator = (
   element.replaceChildren(textElement, graphElement)
 }
 
+const getFpsIndicatorApp = (overlayUi: OverlayUiRefs) =>
+  overlayUi.bottomPillArea.parentElement
+
+const syncFpsIndicatorMount = (overlayUi: OverlayUiRefs, visible: boolean) => {
+  const { fpsIndicator } = overlayUi
+
+  if (!visible) {
+    fpsIndicator.remove()
+    if (fpsIndicator.childNodes.length > 0) {
+      fpsIndicator.replaceChildren()
+    }
+    return false
+  }
+
+  const app = getFpsIndicatorApp(overlayUi)
+  if (!app) {
+    return false
+  }
+
+  if (!fpsIndicator.isConnected) {
+    app.appendChild(fpsIndicator)
+  }
+
+  return true
+}
+
 export const createHudPresentation = (options: {
   defaultViewport: number
   inGameControlsMenu?: InGameControlsMenu
@@ -251,6 +277,7 @@ export const createHudPresentation = (options: {
       browserGcStats: BrowserGcProbeStats
       fpsFrameSamples: readonly FpsMeterFrameSample[]
       fpsGraphNowMs: number
+      fpsMeterVisible: boolean
       smoothedCpuMs: number
       smoothedFps: number
     }) => {
@@ -510,10 +537,10 @@ export const createHudPresentation = (options: {
         })
       }
 
-      const fpsIndicatorVisible = options.runtime.debug.fpsIndicatorEnabled
-      options.overlayUi.fpsIndicator.style.display = fpsIndicatorVisible
-        ? 'block'
-        : 'none'
+      if (!syncFpsIndicatorMount(options.overlayUi, metrics.fpsMeterVisible)) {
+        return
+      }
+
       const fpsMeterInput = {
         browserGcStats: metrics.browserGcStats,
         smoothedCpuMs: metrics.smoothedCpuMs,

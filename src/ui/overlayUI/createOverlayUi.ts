@@ -153,8 +153,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
 
   const fpsIndicator = document.createElement('div')
   fpsIndicator.className = 'fps-indicator'
-  fpsIndicator.style.display = 'none'
-  options.app.appendChild(fpsIndicator)
 
   const scenarioPrompt = document.createElement('div')
   scenarioPrompt.className = 'scenario-prompt-backdrop'

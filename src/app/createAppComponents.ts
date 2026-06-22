@@ -714,6 +714,10 @@ export const createAppComponents = (options: {
     gameScene,
     hudPresentation,
     autopilotRotationRate: options.config.controls.autopilotRotationRate,
+    getFpsMeterVisible: () =>
+      options.runtimeState.debug.fpsIndicatorEnabled &&
+      getAppMode() === 'game' &&
+      options.runtimeState.simulation.crashedBodyName === null,
     keyboardInput,
     physicsEngine: options.config.physicsEngine,
     queries,

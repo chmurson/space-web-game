@@ -39,6 +39,7 @@ export const createFrameLoop = (options: {
   crashMenu?: {
     syncState(): void
   }
+  getFpsMeterVisible?: () => boolean
   topMenu?: {
     syncState(): void
   }
@@ -68,16 +69,10 @@ export const createFrameLoop = (options: {
     options.trajectoryPresentation.refreshPrediction()
   }
 
-  const recordFpsFrameSample = (
-    nowMs: number,
-    frameIntervalMs: number,
-    enabled: boolean,
-  ) => {
-    if (!enabled) {
-      fpsFrameSamples.length = 0
-      return
-    }
+  const isFpsMeterVisible = () =>
+    options.getFpsMeterVisible?.() ?? options.runtime.debug.fpsIndicatorEnabled
 
+  const recordFpsFrameSample = (nowMs: number, frameIntervalMs: number) => {
     fpsFrameSamples.push({
       atMs: nowMs,
       frameMs: frameIntervalMs,
@@ -97,13 +92,15 @@ export const createFrameLoop = (options: {
     const frameIntervalMs = time - lastTime
     const realDt = Math.min(frameIntervalMs / 1000, 0.1)
     lastTime = time
-    const browserGcProbeEnabled = options.runtime.debug.fpsIndicatorEnabled
-    browserGcProbe.setEnabled(browserGcProbeEnabled)
-    smoothedFps = THREE.MathUtils.lerp(
-      smoothedFps,
-      1 / Math.max(realDt, 1 / 240),
-      0.12,
-    )
+    const fpsMeterVisible = isFpsMeterVisible()
+    browserGcProbe.setEnabled(fpsMeterVisible)
+    if (fpsMeterVisible) {
+      smoothedFps = THREE.MathUtils.lerp(
+        smoothedFps,
+        1 / Math.max(realDt, 1 / 240),
+        0.12,
+      )
+    }
     const prompts = resolveScenarioPrompts(
       options.runtime,
       options.touchControls ? 'mobile' : 'desktop',
@@ -211,7 +208,8 @@ export const createFrameLoop = (options: {
     options.hudPresentation.update({
       browserGcStats: browserGcProbe.getStats(),
       fpsFrameSamples,
-      fpsGraphNowMs: performance.now(),
+      fpsGraphNowMs: fpsMeterVisible ? performance.now() : 0,
+      fpsMeterVisible,
       smoothedCpuMs,
       smoothedFps,
     })
@@ -221,23 +219,25 @@ export const createFrameLoop = (options: {
     options.rendererProfiler.render(
       options.gameScene.scene,
       options.gameScene.camera,
-      options.runtime.debug.fpsIndicatorEnabled,
+      fpsMeterVisible,
     )
 
     const frameCpuMs = performance.now() - frameStart
     const frameEndMs = performance.now()
-    if (browserGcProbeEnabled) {
+    if (fpsMeterVisible) {
       browserGcProbe.recordFrame({
         frameIntervalMs,
         nowMs: frameEndMs,
       })
     }
-    recordFpsFrameSample(
-      frameEndMs,
-      frameIntervalMs,
-      options.runtime.debug.fpsIndicatorEnabled,
-    )
-    smoothedCpuMs = THREE.MathUtils.lerp(smoothedCpuMs, frameCpuMs, 0.15)
+    if (fpsMeterVisible) {
+      recordFpsFrameSample(frameEndMs, frameIntervalMs)
+    } else if (fpsFrameSamples.length > 0) {
+      fpsFrameSamples.length = 0
+    }
+    if (fpsMeterVisible) {
+      smoothedCpuMs = THREE.MathUtils.lerp(smoothedCpuMs, frameCpuMs, 0.15)
+    }
     requestAnimationFrame(animate)
   }
 
@@ -248,7 +248,6 @@ export const createFrameLoop = (options: {
         options.runtime,
         options.globalScenarioDirectiveLimits,
       )
-      browserGcProbe.setEnabled(options.runtime.debug.fpsIndicatorEnabled)
       options.runtimeActions.updateCamera()
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
@@ -272,10 +271,13 @@ export const createFrameLoop = (options: {
           options.runtime.ui.targetHeadingWorldPosition ?? null,
         viewportSize: options.runtime.simulation.viewportSize,
       })
+      const fpsMeterVisible = isFpsMeterVisible()
+      browserGcProbe.setEnabled(fpsMeterVisible)
       options.hudPresentation.update({
         browserGcStats: browserGcProbe.getStats(),
         fpsFrameSamples,
-        fpsGraphNowMs: performance.now(),
+        fpsGraphNowMs: fpsMeterVisible ? performance.now() : 0,
+        fpsMeterVisible,
         smoothedCpuMs,
         smoothedFps,
       })
