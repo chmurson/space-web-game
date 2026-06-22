@@ -28,10 +28,14 @@ NASA imagery/media usage guidance: https://www.nasa.gov/nasa-brand-center/images
 ## Processing Notes
 
 - Output projection: equirectangular latitude-longitude map, 2:1 aspect ratio.
-- Output sizes: Earth `4096x2048`; Earth clouds `4096x2048`; Moon `2048x1024`.
+- Output sizes: Earth `4096x2048`; Earth clouds `2048x1024`; Moon `2048x1024`.
 - Runtime material: diffuse/base color with a slightly raised transparent Earth cloud shell; high roughness, no normal/displacement/specular stack.
 - Earth processing softens satellite detail, reduces contrast and saturation, and keeps oceans/continents readable.
-- Earth cloud processing converts the black-background cloud map into a white WebP texture with alpha from luminance, then fades cloud alpha near the poles to avoid equirectangular pole-stretch artifacts on the sphere.
+- Earth cloud processing converts the black-background cloud map into a white WebP texture with alpha from luminance, fades cloud alpha near the poles to avoid equirectangular pole-stretch artifacts on the sphere, and uses lower cloud resolution plus lossy alpha because the layer is a drifting overlay rather than the primary Earth surface.
 - Moon processing desaturates and warms the map, raises midtone readability, and softens harsh crater contrast.
+
+## Earth Cloud Quality Reference
+
+The original committed cloud texture was `4096x2048`, WebP `quality=88`, `webp:method=6`, with no explicit `webp:alpha-quality`; it was `2,499,940` bytes. If the smaller overlay ever looks too soft, raise quality in this order: increase `webp:alpha-quality`, then WebP `quality`, then restore `4096x2048` only if screenshots show the smaller texture is not enough.
 
 Use `scripts/generateBodyTextures.mjs` as the source of truth for exact ImageMagick commands.

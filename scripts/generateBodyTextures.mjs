@@ -117,7 +117,7 @@ run(magick, [
 run(magick, [
   sources.earthClouds.path,
   '-resize',
-  '4096x2048!',
+  '2048x1024!',
   '-colorspace',
   'Gray',
   '-blur',
@@ -150,9 +150,11 @@ run(magick, [
   '100',
   '-strip',
   '-quality',
-  '88',
+  '76',
   '-define',
   'webp:method=6',
+  '-define',
+  'webp:alpha-quality=70',
   outputs.earthClouds,
 ])
 
