@@ -31,6 +31,8 @@ const fuelIconMarkup = `
   </svg>
 `
 
+export const spacecraftOffscreenIndicatorId = '__spacecraft__'
+
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   bottomPillArea: HTMLElement
@@ -284,13 +286,17 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
 
   const offscreenIndicators = new Map<string, HTMLElement>()
   const bodyLabels = new Map<string, HTMLElement>()
-
-  for (const body of options.bodies) {
+  const createOffscreenIndicator = () => {
     const indicator = document.createElement('div')
     indicator.className = 'offscreen-indicator'
-    indicator.innerHTML = `<div class="pointer"></div><div class="label"></div>`
+    indicator.innerHTML = '<div class="pointer"></div><div class="label"></div>'
     indicator.style.display = 'none'
     options.app.appendChild(indicator)
+    return indicator
+  }
+
+  for (const body of options.bodies) {
+    const indicator = createOffscreenIndicator()
     offscreenIndicators.set(body.id, indicator)
 
     const label = document.createElement('div')
@@ -300,6 +306,11 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     options.app.appendChild(label)
     bodyLabels.set(body.id, label)
   }
+
+  offscreenIndicators.set(
+    spacecraftOffscreenIndicatorId,
+    createOffscreenIndicator(),
+  )
 
   return {
     bodyLabels,

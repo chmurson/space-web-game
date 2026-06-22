@@ -13,6 +13,11 @@ export type OffscreenIndicatorPlacement = {
   y: number
 }
 
+export type OffscreenIndicatorVector = {
+  direction: number
+  distancePixels: number
+}
+
 type PlacementBounds = {
   bottom: number
   left: number
@@ -324,4 +329,29 @@ export const resolveOffscreenIndicatorPlacement = (options: {
   }
 
   return { edge: hit.edge, x, y }
+}
+
+export const resolveOffscreenIndicatorVector = (options: {
+  placement: OffscreenIndicatorPlacement
+  projectedX: number
+  projectedY: number
+  viewportHeight: number
+  viewportWidth: number
+}): OffscreenIndicatorVector => {
+  const overflowX =
+    options.projectedX < 0
+      ? -options.projectedX
+      : Math.max(0, options.projectedX - options.viewportWidth)
+  const overflowY =
+    options.projectedY < 0
+      ? -options.projectedY
+      : Math.max(0, options.projectedY - options.viewportHeight)
+
+  return {
+    direction: Math.atan2(
+      options.projectedY - options.placement.y,
+      options.projectedX - options.placement.x,
+    ),
+    distancePixels: Math.hypot(overflowX, overflowY),
+  }
 }

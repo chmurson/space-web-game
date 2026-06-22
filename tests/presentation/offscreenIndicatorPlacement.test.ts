@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveOffscreenIndicatorPlacement } from '@/presentation/offscreenIndicatorPlacement'
+import {
+  resolveOffscreenIndicatorPlacement,
+  resolveOffscreenIndicatorVector,
+} from '@/presentation/offscreenIndicatorPlacement'
 
 const baseOptions = {
   blockerPadding: 6,
@@ -141,5 +144,75 @@ describe('offscreenIndicatorPlacement', () => {
       x: 32,
       y: 196,
     })
+  })
+
+  it('measures distance from the visible viewport edge', () => {
+    expect(
+      resolveOffscreenIndicatorVector({
+        placement: { edge: 'left', x: 32, y: 150 },
+        projectedX: 0,
+        projectedY: 150,
+        viewportHeight: 300,
+        viewportWidth: 400,
+      }).distancePixels,
+    ).toBe(0)
+
+    expect(
+      resolveOffscreenIndicatorVector({
+        placement: { edge: 'top', x: 80, y: 22 },
+        projectedX: -30,
+        projectedY: -40,
+        viewportHeight: 300,
+        viewportWidth: 400,
+      }).distancePixels,
+    ).toBe(50)
+  })
+
+  it.each([
+    {
+      name: 'left',
+      placement: { edge: 'left' as const, x: 32, y: 150 },
+      projectedX: -80,
+      projectedY: 170,
+    },
+    {
+      name: 'right',
+      placement: { edge: 'right' as const, x: 368, y: 150 },
+      projectedX: 460,
+      projectedY: 110,
+    },
+    {
+      name: 'top',
+      placement: { edge: 'top' as const, x: 180, y: 22 },
+      projectedX: 220,
+      projectedY: -90,
+    },
+    {
+      name: 'bottom',
+      placement: { edge: 'bottom' as const, x: 180, y: 278 },
+      projectedX: 130,
+      projectedY: 360,
+    },
+    {
+      name: 'corner',
+      placement: { edge: 'top' as const, x: 70, y: 22 },
+      projectedX: -40,
+      projectedY: -60,
+    },
+  ])('points from the final $name placement toward the target', (testCase) => {
+    const vector = resolveOffscreenIndicatorVector({
+      placement: testCase.placement,
+      projectedX: testCase.projectedX,
+      projectedY: testCase.projectedY,
+      viewportHeight: 300,
+      viewportWidth: 400,
+    })
+
+    expect(vector.direction).toBeCloseTo(
+      Math.atan2(
+        testCase.projectedY - testCase.placement.y,
+        testCase.projectedX - testCase.placement.x,
+      ),
+    )
   })
 })

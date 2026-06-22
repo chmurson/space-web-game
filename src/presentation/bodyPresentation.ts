@@ -5,7 +5,10 @@ import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
-import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
+import {
+  type OverlayUiRefs,
+  spacecraftOffscreenIndicatorId,
+} from '../ui/overlayUI/createOverlayUi'
 import {
   getEarthCloudDriftRotationY,
   setBodyVisualQuaternion,
@@ -15,6 +18,7 @@ import {
   type OffscreenIndicatorPlacement,
   type OffscreenIndicatorRect,
   resolveOffscreenIndicatorPlacement,
+  resolveOffscreenIndicatorVector,
 } from './offscreenIndicatorPlacement'
 
 const updateBodyWorldVisuals = (options: {
@@ -140,16 +144,23 @@ const getPreviousOffscreenIndicatorPlacement = (
   }
 }
 
+type OffscreenIndicatorTarget = {
+  id: string
+  lift: number
+  name: string
+  position: Vec2
+}
+
 const updateOffscreenIndicators = (options: {
   bodies: Body[]
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
   spacecraftPosition: Vec2
+  viewportSize: number
 }) => {
   const edgePadding = 12
   const blockerPadding = 6
   const screenCenterX = window.innerWidth * 0.5
-  const screenCenterY = window.innerHeight * 0.5
   const mobileViewport = window.matchMedia(
     '(hover: none), (pointer: coarse)',
   ).matches
@@ -178,23 +189,41 @@ const updateOffscreenIndicators = (options: {
       ? window.innerHeight - bottomPillTop + 12
       : edgePadding
   const blockerRects = getVisibleOffscreenIndicatorBlockerRects()
+  const metersPerPixel =
+    options.viewportSize / Math.max(window.innerHeight, 1) / RENDER_SCALE
+  const targets: OffscreenIndicatorTarget[] = [
+    ...options.bodies.map((body) => ({
+      id: body.id,
+      lift: body.radius * RENDER_SCALE,
+      name: body.name,
+      position: body.position,
+    })),
+    {
+      id: spacecraftOffscreenIndicatorId,
+      lift: 1.2,
+      name: 'Spacecraft',
+      position: options.spacecraftPosition,
+    },
+  ]
+  const activeTargetIds = new Set(targets.map((target) => target.id))
 
   const visibleIndicators: Array<{
     distance: number
     indicator: HTMLElement
+    priority: number
     rect: DOMRect
   }> = []
 
-  for (const body of options.bodies) {
-    const indicator = options.overlayUi.offscreenIndicators.get(body.id)
+  for (const target of targets) {
+    const indicator = options.overlayUi.offscreenIndicators.get(target.id)
     if (!indicator) {
       continue
     }
 
     const position = renderPosition(
-      body.position.x,
-      body.position.y,
-      body.radius * RENDER_SCALE,
+      target.position.x,
+      target.position.y,
+      target.lift,
     )
     position.project(options.gameScene.camera)
 
@@ -214,31 +243,30 @@ const updateOffscreenIndicators = (options: {
 
     const projectedX = (position.x * 0.5 + 0.5) * window.innerWidth
     const projectedY = (-position.y * 0.5 + 0.5) * window.innerHeight
-    const direction = Math.atan2(
-      projectedY - screenCenterY,
-      projectedX - screenCenterX,
-    )
-    const distance = Math.max(
-      0,
-      Math.hypot(
-        body.position.x - options.spacecraftPosition.x,
-        body.position.y - options.spacecraftPosition.y,
-      ) - body.radius,
-    )
     const pointer = indicator.querySelector<HTMLElement>('.pointer')
     const label = indicator.querySelector<HTMLElement>('.label')
-
-    if (pointer) {
-      pointer.style.transform = `rotate(${direction + Math.PI / 2}rad)`
+    const previousPlacement = getPreviousOffscreenIndicatorPlacement(indicator)
+    const provisionalPlacement = previousPlacement ?? {
+      edge: 'right' as const,
+      x: screenCenterX,
+      y: window.innerHeight * 0.5,
     }
+    const provisionalVector = resolveOffscreenIndicatorVector({
+      placement: provisionalPlacement,
+      projectedX,
+      projectedY,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    })
+
     if (label) {
-      label.textContent = `${body.name} ${formatDistance(distance)}`
+      label.textContent = `${target.name} ${formatDistance(
+        provisionalVector.distancePixels * metersPerPixel,
+      )}`
     }
-
     indicator.style.display = 'flex'
     indicator.style.visibility = 'hidden'
     indicator.classList.remove('offscreen-indicator-mobile-stack')
-    const previousPlacement = getPreviousOffscreenIndicatorPlacement(indicator)
     const resolvePlacement = (bounds: { height: number; width: number }) =>
       resolveOffscreenIndicatorPlacement({
         blockerPadding,
@@ -291,10 +319,28 @@ const updateOffscreenIndicators = (options: {
     indicator.style.left = `${placement.x}px`
     indicator.style.top = `${placement.y}px`
     indicator.dataset.offscreenIndicatorEdge = placement.edge
+
+    const vector = resolveOffscreenIndicatorVector({
+      placement,
+      projectedX,
+      projectedY,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    })
+    const distance = vector.distancePixels * metersPerPixel
+
+    if (pointer) {
+      pointer.style.transform = `rotate(${vector.direction + Math.PI / 2}rad)`
+    }
+    if (label) {
+      label.textContent = `${target.name} ${formatDistance(distance)}`
+    }
+
     indicator.style.visibility = 'visible'
     visibleIndicators.push({
       distance,
       indicator,
+      priority: target.id === spacecraftOffscreenIndicatorId ? 0 : 1,
       rect: indicator.getBoundingClientRect(),
     })
   }
@@ -308,7 +354,10 @@ const updateOffscreenIndicators = (options: {
     a.bottom > b.top - overlapPadding
 
   visibleIndicators
-    .sort((left, right) => left.distance - right.distance)
+    .sort(
+      (left, right) =>
+        left.priority - right.priority || left.distance - right.distance,
+    )
     .forEach(({ indicator, rect }) => {
       const collides = keptRects.some((keptRect) => overlaps(rect, keptRect))
       indicator.style.display = collides ? 'none' : 'flex'
@@ -318,10 +367,10 @@ const updateOffscreenIndicators = (options: {
     })
 
   for (const [
-    bodyId,
+    targetId,
     indicator,
   ] of options.overlayUi.offscreenIndicators.entries()) {
-    if (!options.bodies.some((body) => body.id === bodyId)) {
+    if (!activeTargetIds.has(targetId)) {
       indicator.style.display = 'none'
       delete indicator.dataset.offscreenIndicatorEdge
     }
@@ -428,6 +477,7 @@ export const createBodyPresentation = (options: {
       gameScene: options.gameScene,
       overlayUi: options.overlayUi,
       spacecraftPosition: state.spacecraftPosition,
+      viewportSize: state.viewportSize,
     })
     updateBodyLabels({
       bodies: visibleBodies,
