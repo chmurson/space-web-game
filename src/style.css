@@ -1545,29 +1545,24 @@ canvas {
     z-index: var(--z-in-game-floating-elements);
 }
 
-.offscreen-indicator-mobile-stack {
+#app .offscreen-indicator-arrow-left {
+    --offscreen-indicator-label-align: left;
+    --offscreen-indicator-stack-align: flex-start;
+}
+
+#app .offscreen-indicator-arrow-right {
+    --offscreen-indicator-label-align: right;
+    --offscreen-indicator-stack-align: flex-end;
+}
+
+#app .offscreen-indicator-arrow-right:not(.offscreen-indicator-mobile-stack) {
+    flex-direction: row-reverse;
+}
+
+#app .offscreen-indicator.offscreen-indicator-mobile-stack {
+    align-items: var(--offscreen-indicator-stack-align, center);
     flex-direction: column;
     gap: 4px;
-}
-
-.offscreen-indicator-mobile-stack.offscreen-indicator-edge-left {
-    align-items: flex-start;
-}
-
-.offscreen-indicator-mobile-stack.offscreen-indicator-edge-right {
-    align-items: flex-end;
-}
-
-.offscreen-indicator-mobile-stack .label {
-    text-align: inherit;
-}
-
-.offscreen-indicator-mobile-stack.offscreen-indicator-edge-left .label {
-    text-align: left;
-}
-
-.offscreen-indicator-mobile-stack.offscreen-indicator-edge-right .label {
-    text-align: right;
 }
 
 .offscreen-indicator .pointer {
@@ -1630,6 +1625,15 @@ canvas {
     #app .offscreen-indicator .label {
         padding: 1px 4px;
     }
+}
+
+#app .offscreen-indicator.offscreen-indicator-mobile-stack .label {
+    max-width: min(92px, calc(100vw - 48px));
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+    text-align: var(--offscreen-indicator-label-align, inherit);
+    white-space: normal;
+    width: max-content;
 }
 
 @media (prefers-reduced-motion: reduce) {

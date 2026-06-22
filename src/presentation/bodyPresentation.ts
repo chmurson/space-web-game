@@ -14,9 +14,11 @@ import {
   setBodyVisualQuaternion,
 } from './bodyRotation'
 import {
+  type OffscreenIndicatorArrowSide,
   type OffscreenIndicatorEdge,
   type OffscreenIndicatorPlacement,
   type OffscreenIndicatorRect,
+  resolveOffscreenIndicatorArrowSide,
   resolveOffscreenIndicatorPlacement,
   resolveOffscreenIndicatorVector,
 } from './offscreenIndicatorPlacement'
@@ -123,6 +125,10 @@ const isOffscreenIndicatorEdge = (
 ): value is OffscreenIndicatorEdge =>
   value === 'bottom' || value === 'left' || value === 'right' || value === 'top'
 
+const isOffscreenIndicatorArrowSide = (
+  value: string | undefined,
+): value is OffscreenIndicatorArrowSide => value === 'left' || value === 'right'
+
 const getPreviousOffscreenIndicatorPlacement = (
   indicator: HTMLElement,
 ): OffscreenIndicatorPlacement | undefined => {
@@ -143,6 +149,13 @@ const getPreviousOffscreenIndicatorPlacement = (
     y,
   }
 }
+
+const getPreviousOffscreenIndicatorArrowSide = (
+  indicator: HTMLElement,
+): OffscreenIndicatorArrowSide | undefined =>
+  isOffscreenIndicatorArrowSide(indicator.dataset.offscreenIndicatorArrowSide)
+    ? indicator.dataset.offscreenIndicatorArrowSide
+    : undefined
 
 type OffscreenIndicatorTarget = {
   id: string
@@ -238,6 +251,7 @@ const updateOffscreenIndicators = (options: {
     if (isVisible) {
       indicator.style.display = 'none'
       delete indicator.dataset.offscreenIndicatorEdge
+      delete indicator.dataset.offscreenIndicatorArrowSide
       continue
     }
 
@@ -246,6 +260,7 @@ const updateOffscreenIndicators = (options: {
     const pointer = indicator.querySelector<HTMLElement>('.pointer')
     const label = indicator.querySelector<HTMLElement>('.label')
     const previousPlacement = getPreviousOffscreenIndicatorPlacement(indicator)
+    const previousArrowSide = getPreviousOffscreenIndicatorArrowSide(indicator)
     const provisionalPlacement = previousPlacement ?? {
       edge: 'right' as const,
       x: screenCenterX,
@@ -295,6 +310,7 @@ const updateOffscreenIndicators = (options: {
       shouldStackIndicator,
     )
     const stackedBounds = indicator.getBoundingClientRect()
+    let placementBounds = stackedBounds
     let placement = resolvePlacement(stackedBounds)
     const correctedShouldStackIndicator = shouldStackPlacement(placement)
 
@@ -304,21 +320,30 @@ const updateOffscreenIndicators = (options: {
         'offscreen-indicator-mobile-stack',
         shouldStackIndicator,
       )
-      placement = resolvePlacement(indicator.getBoundingClientRect())
+      placementBounds = indicator.getBoundingClientRect()
+      placement = resolvePlacement(placementBounds)
     }
 
+    const arrowSide = resolveOffscreenIndicatorArrowSide({
+      indicatorWidth: placementBounds.width,
+      placement,
+      previousSide: previousArrowSide,
+      projectedX,
+    })
+
     indicator.classList.toggle(
-      'offscreen-indicator-edge-left',
-      placement.x < screenCenterX,
+      'offscreen-indicator-arrow-left',
+      arrowSide === 'left',
     )
     indicator.classList.toggle(
-      'offscreen-indicator-edge-right',
-      placement.x >= screenCenterX,
+      'offscreen-indicator-arrow-right',
+      arrowSide === 'right',
     )
 
     indicator.style.left = `${placement.x}px`
     indicator.style.top = `${placement.y}px`
     indicator.dataset.offscreenIndicatorEdge = placement.edge
+    indicator.dataset.offscreenIndicatorArrowSide = arrowSide
 
     const vector = resolveOffscreenIndicatorVector({
       placement,
@@ -373,6 +398,7 @@ const updateOffscreenIndicators = (options: {
     if (!activeTargetIds.has(targetId)) {
       indicator.style.display = 'none'
       delete indicator.dataset.offscreenIndicatorEdge
+      delete indicator.dataset.offscreenIndicatorArrowSide
     }
   }
 }

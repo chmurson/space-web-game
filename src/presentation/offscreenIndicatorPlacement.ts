@@ -1,5 +1,7 @@
 export type OffscreenIndicatorEdge = 'bottom' | 'left' | 'right' | 'top'
 
+export type OffscreenIndicatorArrowSide = 'left' | 'right'
+
 export type OffscreenIndicatorRect = {
   bottom: number
   left: number
@@ -39,6 +41,7 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
 const blockedIntervalSwitchRatio = 2 / 3
+const arrowSideSwitchRatio = 0.1
 
 const getPlacementBounds = (options: {
   edgePadding: number
@@ -329,6 +332,32 @@ export const resolveOffscreenIndicatorPlacement = (options: {
   }
 
   return { edge: hit.edge, x, y }
+}
+
+export const resolveOffscreenIndicatorArrowSide = (options: {
+  indicatorWidth: number
+  placement: OffscreenIndicatorPlacement
+  previousSide?: OffscreenIndicatorArrowSide
+  projectedX: number
+}): OffscreenIndicatorArrowSide => {
+  if (options.placement.edge === 'left') {
+    return 'left'
+  }
+  if (options.placement.edge === 'right') {
+    return 'right'
+  }
+
+  const offset = options.projectedX - options.placement.x
+  const switchThreshold = options.indicatorWidth * arrowSideSwitchRatio
+
+  if (options.previousSide === 'left' && offset <= switchThreshold) {
+    return 'left'
+  }
+  if (options.previousSide === 'right' && offset >= -switchThreshold) {
+    return 'right'
+  }
+
+  return offset < 0 ? 'left' : 'right'
 }
 
 export const resolveOffscreenIndicatorVector = (options: {

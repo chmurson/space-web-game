@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  resolveOffscreenIndicatorArrowSide,
   resolveOffscreenIndicatorPlacement,
   resolveOffscreenIndicatorVector,
 } from '@/presentation/offscreenIndicatorPlacement'
@@ -214,5 +215,85 @@ describe('offscreenIndicatorPlacement', () => {
         testCase.projectedX - testCase.placement.x,
       ),
     )
+  })
+
+  it.each([
+    {
+      edge: 'left' as const,
+      expectedSide: 'left' as const,
+      projectedX: -80,
+    },
+    {
+      edge: 'right' as const,
+      expectedSide: 'right' as const,
+      projectedX: 480,
+    },
+  ])('keeps the arrow nearest the $edge edge', (testCase) => {
+    expect(
+      resolveOffscreenIndicatorArrowSide({
+        indicatorWidth: 100,
+        placement: { edge: testCase.edge, x: 200, y: 150 },
+        previousSide: testCase.expectedSide === 'left' ? 'right' : 'left',
+        projectedX: testCase.projectedX,
+      }),
+    ).toBe(testCase.expectedSide)
+  })
+
+  it('chooses the top or bottom arrow side from the target position', () => {
+    expect(
+      resolveOffscreenIndicatorArrowSide({
+        indicatorWidth: 100,
+        placement: { edge: 'top', x: 200, y: 22 },
+        projectedX: 160,
+      }),
+    ).toBe('left')
+
+    expect(
+      resolveOffscreenIndicatorArrowSide({
+        indicatorWidth: 100,
+        placement: { edge: 'bottom', x: 200, y: 278 },
+        projectedX: 240,
+      }),
+    ).toBe('right')
+  })
+
+  it('keeps the previous top or bottom arrow side inside the ten percent middle band', () => {
+    expect(
+      resolveOffscreenIndicatorArrowSide({
+        indicatorWidth: 100,
+        placement: { edge: 'top', x: 200, y: 22 },
+        previousSide: 'left',
+        projectedX: 209,
+      }),
+    ).toBe('left')
+
+    expect(
+      resolveOffscreenIndicatorArrowSide({
+        indicatorWidth: 100,
+        placement: { edge: 'bottom', x: 200, y: 278 },
+        previousSide: 'right',
+        projectedX: 191,
+      }),
+    ).toBe('right')
+  })
+
+  it('switches the top or bottom arrow side after crossing the ten percent middle band', () => {
+    expect(
+      resolveOffscreenIndicatorArrowSide({
+        indicatorWidth: 100,
+        placement: { edge: 'top', x: 200, y: 22 },
+        previousSide: 'left',
+        projectedX: 211,
+      }),
+    ).toBe('right')
+
+    expect(
+      resolveOffscreenIndicatorArrowSide({
+        indicatorWidth: 100,
+        placement: { edge: 'bottom', x: 200, y: 278 },
+        previousSide: 'right',
+        projectedX: 189,
+      }),
+    ).toBe('left')
   })
 })
