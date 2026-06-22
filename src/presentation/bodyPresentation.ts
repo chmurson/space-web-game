@@ -10,6 +10,12 @@ import {
   getEarthCloudDriftRotationY,
   setBodyVisualQuaternion,
 } from './bodyRotation'
+import {
+  type OffscreenIndicatorEdge,
+  type OffscreenIndicatorPlacement,
+  type OffscreenIndicatorRect,
+  resolveOffscreenIndicatorPlacement,
+} from './offscreenIndicatorPlacement'
 
 const updateBodyWorldVisuals = (options: {
   allBodies: Body[]
@@ -44,6 +50,96 @@ const updateBodyWorldVisuals = (options: {
   }
 }
 
+const offscreenIndicatorBlockerSelectors = [
+  '.top-menu-button',
+  '.top-menu-dropdown',
+  '.telemetry-strip',
+  '.bottom-pill-area > *',
+  '.in-game-controls-menu-button',
+  '.in-game-controls-menu-popover',
+  '.debug-panel',
+  '.fps-indicator',
+  '.scenario-prompt',
+  '.app-dialog-panel',
+  '.crash-menu-panel',
+  '.touch-edge-reveal-tab',
+  '.touch-edge-reveal-control-open .touch-edge-reveal-content',
+  '.touch-controls-tutorial-hint',
+]
+
+const getVisibleOffscreenIndicatorBlockerRects =
+  (): OffscreenIndicatorRect[] => {
+    const elements = new Set<HTMLElement>()
+
+    for (const selector of offscreenIndicatorBlockerSelectors) {
+      for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+        elements.add(element)
+      }
+    }
+
+    return Array.from(elements).flatMap((element) => {
+      const styles = window.getComputedStyle(element)
+      const opacity = Number.parseFloat(styles.opacity)
+
+      if (
+        element.hidden ||
+        styles.display === 'none' ||
+        styles.visibility === 'hidden' ||
+        opacity === 0 ||
+        element.getClientRects().length === 0
+      ) {
+        return []
+      }
+
+      const rect = element.getBoundingClientRect()
+      if (
+        rect.width <= 0 ||
+        rect.height <= 0 ||
+        rect.right <= 0 ||
+        rect.left >= window.innerWidth ||
+        rect.bottom <= 0 ||
+        rect.top >= window.innerHeight
+      ) {
+        return []
+      }
+
+      return [
+        {
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+        },
+      ]
+    })
+  }
+
+const isOffscreenIndicatorEdge = (
+  value: string | undefined,
+): value is OffscreenIndicatorEdge =>
+  value === 'bottom' || value === 'left' || value === 'right' || value === 'top'
+
+const getPreviousOffscreenIndicatorPlacement = (
+  indicator: HTMLElement,
+): OffscreenIndicatorPlacement | undefined => {
+  const x = Number.parseFloat(indicator.style.left)
+  const y = Number.parseFloat(indicator.style.top)
+
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !isOffscreenIndicatorEdge(indicator.dataset.offscreenIndicatorEdge)
+  ) {
+    return undefined
+  }
+
+  return {
+    edge: indicator.dataset.offscreenIndicatorEdge,
+    x,
+    y,
+  }
+}
+
 const updateOffscreenIndicators = (options: {
   bodies: Body[]
   gameScene: GameSceneRefs
@@ -51,6 +147,7 @@ const updateOffscreenIndicators = (options: {
   spacecraftPosition: Vec2
 }) => {
   const edgePadding = 12
+  const blockerPadding = 6
   const screenCenterX = window.innerWidth * 0.5
   const screenCenterY = window.innerHeight * 0.5
   const mobileViewport = window.matchMedia(
@@ -80,6 +177,7 @@ const updateOffscreenIndicators = (options: {
     bottomPillTop < window.innerHeight
       ? window.innerHeight - bottomPillTop + 12
       : edgePadding
+  const blockerRects = getVisibleOffscreenIndicatorBlockerRects()
 
   const visibleIndicators: Array<{
     distance: number
@@ -110,6 +208,7 @@ const updateOffscreenIndicators = (options: {
 
     if (isVisible) {
       indicator.style.display = 'none'
+      delete indicator.dataset.offscreenIndicatorEdge
       continue
     }
 
@@ -138,47 +237,60 @@ const updateOffscreenIndicators = (options: {
 
     indicator.style.display = 'flex'
     indicator.style.visibility = 'hidden'
-    const bounds = indicator.getBoundingClientRect()
-    const edgeY = THREE.MathUtils.clamp(
-      projectedY,
-      bounds.height * 0.5 + Math.max(edgePadding, reservedTop),
-      window.innerHeight -
-        bounds.height * 0.5 -
-        Math.max(edgePadding, reservedBottom),
-    )
-    const shouldStackIndicator =
+    indicator.classList.remove('offscreen-indicator-mobile-stack')
+    const previousPlacement = getPreviousOffscreenIndicatorPlacement(indicator)
+    const resolvePlacement = (bounds: { height: number; width: number }) =>
+      resolveOffscreenIndicatorPlacement({
+        blockerPadding,
+        blockerRects,
+        edgePadding,
+        indicatorHeight: bounds.height,
+        indicatorWidth: bounds.width,
+        previousPlacement,
+        projectedY,
+        projectedX,
+        reservedBottom,
+        reservedTop,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      })
+    const shouldStackPlacement = (placement: OffscreenIndicatorPlacement) =>
       mobileViewport &&
       portraitViewport &&
-      edgeY > window.innerHeight * 0.2 &&
-      edgeY < window.innerHeight * 0.8
+      placement.y > window.innerHeight * 0.2 &&
+      placement.y < window.innerHeight * 0.8
+    const bounds = indicator.getBoundingClientRect()
+    const initialPlacement = resolvePlacement(bounds)
+    let shouldStackIndicator = shouldStackPlacement(initialPlacement)
     indicator.classList.toggle(
       'offscreen-indicator-mobile-stack',
       shouldStackIndicator,
     )
+    const stackedBounds = indicator.getBoundingClientRect()
+    let placement = resolvePlacement(stackedBounds)
+    const correctedShouldStackIndicator = shouldStackPlacement(placement)
+
+    if (correctedShouldStackIndicator !== shouldStackIndicator) {
+      shouldStackIndicator = correctedShouldStackIndicator
+      indicator.classList.toggle(
+        'offscreen-indicator-mobile-stack',
+        shouldStackIndicator,
+      )
+      placement = resolvePlacement(indicator.getBoundingClientRect())
+    }
+
     indicator.classList.toggle(
       'offscreen-indicator-edge-left',
-      projectedX < screenCenterX,
+      placement.x < screenCenterX,
     )
     indicator.classList.toggle(
       'offscreen-indicator-edge-right',
-      projectedX >= screenCenterX,
-    )
-    const stackedBounds = indicator.getBoundingClientRect()
-    const stackedEdgeX = THREE.MathUtils.clamp(
-      projectedX,
-      stackedBounds.width * 0.5 + edgePadding,
-      window.innerWidth - stackedBounds.width * 0.5 - edgePadding,
-    )
-    const stackedEdgeY = THREE.MathUtils.clamp(
-      projectedY,
-      stackedBounds.height * 0.5 + Math.max(edgePadding, reservedTop),
-      window.innerHeight -
-        stackedBounds.height * 0.5 -
-        Math.max(edgePadding, reservedBottom),
+      placement.x >= screenCenterX,
     )
 
-    indicator.style.left = `${stackedEdgeX}px`
-    indicator.style.top = `${stackedEdgeY}px`
+    indicator.style.left = `${placement.x}px`
+    indicator.style.top = `${placement.y}px`
+    indicator.dataset.offscreenIndicatorEdge = placement.edge
     indicator.style.visibility = 'visible'
     visibleIndicators.push({
       distance,
@@ -211,6 +323,7 @@ const updateOffscreenIndicators = (options: {
   ] of options.overlayUi.offscreenIndicators.entries()) {
     if (!options.bodies.some((body) => body.id === bodyId)) {
       indicator.style.display = 'none'
+      delete indicator.dataset.offscreenIndicatorEdge
     }
   }
 }
