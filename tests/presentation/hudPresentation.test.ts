@@ -395,6 +395,8 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     scenarioPromptRestartButton: null,
     scenarioPromptSecondaryButton: null,
     scenarioPromptTitle: null,
+    scenarioPromptTrajectoryGuide: null,
+    scenarioPromptTrajectoryGuideLine: null,
     spacecraftCallout: new FakeElement('div') as unknown as HTMLElement,
     spacecraftCalloutLabel: null,
     spacecraftIconThrust: new FakeElement('div') as unknown as HTMLElement,

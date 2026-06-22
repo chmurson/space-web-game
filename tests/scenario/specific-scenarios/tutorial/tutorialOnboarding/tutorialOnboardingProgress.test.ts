@@ -215,14 +215,14 @@ describe('tutorialOnboardingProgress', () => {
     ).toMatchObject({
       description:
         'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
-      layout: 'anchored',
+      layout: 'floating',
       pausesGameplay: false,
       title: 'This Is Your Trajectory',
     })
     expect(
       getTutorialOnboardingPromptContent('intro-trajectory', 'mobile'),
     ).toMatchObject({
-      layout: 'anchored',
+      layout: 'floating',
       pausesGameplay: false,
       title: 'This Is Your Trajectory',
     })
@@ -589,7 +589,13 @@ describe('tutorialOnboardingProgress', () => {
         ...onboarding,
         activeStepId: 'intro-trajectory',
       }),
-    ).toEqual(new Set(['scenarioInfoButton']))
+    ).toEqual(new Set(['scenarioInfoButton', 'targetControl']))
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
+        activeStepId: 'intro-complete',
+      }),
+    ).toEqual(new Set(['scenarioInfoButton', 'targetControl']))
   })
 
   it('uses direct heading selection, time warp, and high-warp thrust to reach trajectory explanation', () => {
@@ -711,7 +717,7 @@ describe('tutorialOnboardingProgress', () => {
     ])
   })
 
-  it('shows trajectory during the high-warp burn prompt once burn starts', () => {
+  it('keeps trajectory hidden during the high-warp burn prompt until x30s burn starts', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
     onboarding = {
@@ -742,7 +748,20 @@ describe('tutorialOnboardingProgress', () => {
     )
 
     runtime.simulation.state.controls.main = 1
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 30)
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
+
+    expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
+    expect(onboarding.progress.hasStartedMainBurn).toBe(false)
+    expect(getHiddenOnboardingUIElements(onboarding)).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'trajectory',
+      ]),
+    )
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 30)
 
     expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
     expect(onboarding.progress.hasStartedMainBurn).toBe(true)

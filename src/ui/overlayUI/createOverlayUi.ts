@@ -57,6 +57,8 @@ export type OverlayUiRefs = {
   scenarioPromptRestartButton: HTMLButtonElement | null
   scenarioPromptSecondaryButton: HTMLButtonElement | null
   scenarioPromptTitle: HTMLHeadingElement | null
+  scenarioPromptTrajectoryGuide: SVGSVGElement | null
+  scenarioPromptTrajectoryGuideLine: SVGPolylineElement | null
   spacecraftCallout: HTMLElement
   spacecraftCalloutLabel: HTMLSpanElement | null
   spacecraftIconThrust: HTMLElement
@@ -158,6 +160,9 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   scenarioPrompt.className = 'scenario-prompt-backdrop'
   scenarioPrompt.style.display = 'none'
   scenarioPrompt.innerHTML = `
+    <svg class="scenario-prompt-trajectory-guide" aria-hidden="true" focusable="false">
+      <polyline class="scenario-prompt-trajectory-guide-line" points=""></polyline>
+    </svg>
     <div class="scenario-prompt">
       <div class="scenario-prompt-arrow"></div>
       <div class="scenario-prompt-header">
@@ -347,6 +352,13 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
         '[data-role="secondary"]',
       ),
     scenarioPromptTitle: scenarioPrompt.querySelector<HTMLHeadingElement>('h2'),
+    scenarioPromptTrajectoryGuide: scenarioPrompt.querySelector<SVGSVGElement>(
+      '.scenario-prompt-trajectory-guide',
+    ),
+    scenarioPromptTrajectoryGuideLine:
+      scenarioPrompt.querySelector<SVGPolylineElement>(
+        '.scenario-prompt-trajectory-guide-line',
+      ),
     spacecraftCallout,
     spacecraftCalloutLabel,
     spacecraftIconThrust,

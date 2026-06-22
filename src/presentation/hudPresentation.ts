@@ -208,6 +208,9 @@ export const createHudPresentation = (options: {
     restartButton: options.overlayUi.scenarioPromptRestartButton,
     secondaryButton: options.overlayUi.scenarioPromptSecondaryButton,
     trajectoryAnchorElement: options.overlayUi.trajectoryCoachAnchor,
+    trajectoryGuideElement: options.overlayUi.scenarioPromptTrajectoryGuide,
+    trajectoryGuideLineElement:
+      options.overlayUi.scenarioPromptTrajectoryGuideLine,
     replayButton: options.overlayUi.scenarioPromptReplayButton,
     replayButtonLabel: options.overlayUi.scenarioPromptReplayButtonLabel,
   }

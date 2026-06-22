@@ -24,6 +24,8 @@ export type ScenarioPromptUiRefs = {
   restartButton: HTMLButtonElement | null
   secondaryButton: HTMLButtonElement | null
   trajectoryAnchorElement: HTMLElement
+  trajectoryGuideElement: SVGSVGElement | null
+  trajectoryGuideLineElement: SVGPolylineElement | null
   replayButton: HTMLButtonElement
   replayButtonLabel: HTMLSpanElement | null
 }
@@ -122,6 +124,9 @@ export const createScenarioPromptUI = (
   backdropElement.className = 'scenario-prompt-backdrop'
   backdropElement.style.display = 'none'
   backdropElement.innerHTML = `
+    <svg class="scenario-prompt-trajectory-guide" aria-hidden="true" focusable="false">
+      <polyline class="scenario-prompt-trajectory-guide-line" points=""></polyline>
+    </svg>
     <div class="scenario-prompt">
       <div class="scenario-prompt-arrow"></div>
       <div class="scenario-prompt-header">
@@ -186,6 +191,13 @@ export const createScenarioPromptUI = (
       '[data-role="secondary"]',
     ),
     trajectoryAnchorElement,
+    trajectoryGuideElement: backdropElement.querySelector<SVGSVGElement>(
+      '.scenario-prompt-trajectory-guide',
+    ),
+    trajectoryGuideLineElement:
+      backdropElement.querySelector<SVGPolylineElement>(
+        '.scenario-prompt-trajectory-guide-line',
+      ),
     replayButton,
     replayButtonLabel: replayButton.querySelector<HTMLSpanElement>(
       '.scenario-prompt-pill-label',
@@ -398,6 +410,69 @@ export const createScenarioPromptUpdater = (
   let lastPromptMode: PromptDisplayMode | null = null
   let lastPromptIdentity: PromptIdentity | null = null
 
+  const hideTrajectoryGuide = (): void => {
+    if (!refs.trajectoryGuideElement || !refs.trajectoryGuideLineElement) {
+      return
+    }
+
+    refs.trajectoryGuideElement.style.display = 'none'
+    refs.trajectoryGuideLineElement.setAttribute('points', '')
+  }
+
+  const updateTrajectoryGuidePosition = (): void => {
+    if (!refs.trajectoryGuideElement || !refs.trajectoryGuideLineElement) {
+      return
+    }
+
+    if (
+      refs.backdropElement.style.display === 'none' ||
+      !hasVisibleRect(refs.promptElement) ||
+      !hasVisibleRect(refs.trajectoryAnchorElement)
+    ) {
+      hideTrajectoryGuide()
+      return
+    }
+
+    const promptRect = refs.promptElement.getBoundingClientRect()
+    const anchorRect = refs.trajectoryAnchorElement.getBoundingClientRect()
+    const anchorX = anchorRect.left + anchorRect.width / 2
+    const anchorY = anchorRect.top + anchorRect.height / 2
+    const startX = Math.min(
+      promptRect.right - 28,
+      Math.max(promptRect.left + 28, anchorX),
+    )
+    const startY = promptRect.bottom + 6
+    const deltaX = anchorX - startX
+    const deltaY = anchorY - startY
+
+    if (Math.hypot(deltaX, deltaY) < 28) {
+      hideTrajectoryGuide()
+      return
+    }
+
+    const padding = 12
+    const minX = Math.min(startX, anchorX) - padding
+    const minY = Math.min(startY, anchorY) - padding
+    const maxX = Math.max(startX, anchorX) + padding
+    const maxY = Math.max(startY, anchorY) + padding
+    const width = Math.max(1, maxX - minX)
+    const height = Math.max(1, maxY - minY)
+
+    refs.trajectoryGuideElement.style.display = 'block'
+    refs.trajectoryGuideElement.style.left = `${minX}px`
+    refs.trajectoryGuideElement.style.top = `${minY}px`
+    refs.trajectoryGuideElement.style.width = `${width}px`
+    refs.trajectoryGuideElement.style.height = `${height}px`
+    refs.trajectoryGuideElement.setAttribute(
+      'viewBox',
+      `0 0 ${width} ${height}`,
+    )
+    refs.trajectoryGuideLineElement.setAttribute(
+      'points',
+      `${startX - minX},${startY - minY} ${anchorX - minX},${anchorY - minY}`,
+    )
+  }
+
   const resetPromptToDefault = (): void => {
     refs.promptElement.style.position = ''
     refs.promptElement.style.left = ''
@@ -405,6 +480,8 @@ export const createScenarioPromptUpdater = (
     refs.promptElement.style.transform = ''
     refs.arrowElement.style.display = 'none'
     delete refs.promptElement.dataset.arrowPlacement
+    delete refs.promptElement.dataset.trajectoryGuide
+    hideTrajectoryGuide()
   }
 
   const setFocusedHudElement = (target: HudFocusKey | null): void => {
@@ -532,7 +609,12 @@ export const createScenarioPromptUpdater = (
       window.clearTimeout(windowResizeTimeoutId)
     }
     windowResizeTimeoutId = window.setTimeout(() => {
-      updatePromptPosition()
+      if (refs.promptElement.dataset.anchor) {
+        updatePromptPosition()
+      }
+      if (refs.promptElement.dataset.trajectoryGuide === 'true') {
+        updateTrajectoryGuidePosition()
+      }
       windowResizeTimeoutId = null
     }, 100)
   }
@@ -564,6 +646,9 @@ export const createScenarioPromptUpdater = (
       ) {
         if (refs.promptElement.dataset.anchor === 'trajectory') {
           updatePromptPosition()
+        }
+        if (refs.promptElement.dataset.trajectoryGuide === 'true') {
+          updateTrajectoryGuidePosition()
         }
         return
       }
@@ -720,6 +805,20 @@ export const createScenarioPromptUpdater = (
           ? getRestartButtonLabel(restartButtonAction)
           : ''
         refs.restartButton.dataset.restartAction = restartButtonAction ?? ''
+      }
+
+      const showTrajectoryGuide =
+        activePrompt?.kind === 'coach' &&
+        promptMode === 'coach' &&
+        activePrompt.id === 'intro-trajectory' &&
+        activePrompt.anchor === 'trajectory' &&
+        activePrompt.layout === 'floating'
+      if (showTrajectoryGuide) {
+        refs.promptElement.dataset.trajectoryGuide = 'true'
+        updateTrajectoryGuidePosition()
+      } else {
+        delete refs.promptElement.dataset.trajectoryGuide
+        hideTrajectoryGuide()
       }
 
       // Update replay button

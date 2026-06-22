@@ -196,7 +196,7 @@ const tutorialOnboardingPromptDefinitions: Record<
     description:
       'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
     buttons: [],
-    presentation: { kind: 'coach', anchor: 'trajectory' },
+    presentation: { kind: 'coach', anchor: 'trajectory', layout: 'floating' },
   },
   'intro-complete': {
     id: 'intro-complete',
@@ -353,7 +353,11 @@ export const getHiddenOnboardingUIElements = (
   }
 
   if (state.activeStepId === 'intro-trajectory') {
-    return new Set(['scenarioInfoButton'])
+    return new Set(['scenarioInfoButton', 'targetControl'])
+  }
+
+  if (state.activeStepId === 'intro-complete') {
+    return new Set(['scenarioInfoButton', 'targetControl'])
   }
 
   return emptyHiddenUIElements

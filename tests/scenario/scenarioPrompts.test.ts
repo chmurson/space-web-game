@@ -325,14 +325,14 @@ describe('scenarioPrompts', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       kind: 'coach',
       id: 'intro-trajectory',
-      layout: 'anchored',
+      layout: 'floating',
       pausesGameplay: false,
       title: 'This Is Your Trajectory',
     })
     expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
       kind: 'coach',
       id: 'intro-trajectory',
-      layout: 'anchored',
+      layout: 'floating',
       pausesGameplay: false,
       title: 'This Is Your Trajectory',
     })

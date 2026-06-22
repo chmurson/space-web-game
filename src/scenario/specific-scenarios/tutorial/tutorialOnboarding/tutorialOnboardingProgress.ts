@@ -7,8 +7,8 @@ import {
   requiredIntroKeepThrustMs,
   requiredIntroThrustMs,
   requiredTimeWarpKeepMs,
-  requiredTurnRadians,
   requiredTrajectoryClearMs,
+  requiredTurnRadians,
 } from './config'
 import {
   getTutorialOnboardingPromptContent,
@@ -379,12 +379,13 @@ export const advanceTutorialOnboarding = (
   }
 
   if (onboarding.activeStepId === 'intro-timewarp-thrust') {
-    nextProgress.hasStartedMainBurn =
-      onboarding.progress.hasStartedMainBurn === true || hasMainThrust(runtime)
-    nextProgress.accumulatedMainThrustMs =
+    const highWarpBurnActive =
       timeWarpMultiplier >= requiredHighWarpMultiplier && hasMainThrust(runtime)
-        ? onboarding.progress.accumulatedMainThrustMs + deltaMs
-        : 0
+    nextProgress.hasStartedMainBurn =
+      onboarding.progress.hasStartedMainBurn === true || highWarpBurnActive
+    nextProgress.accumulatedMainThrustMs = highWarpBurnActive
+      ? onboarding.progress.accumulatedMainThrustMs + deltaMs
+      : 0
     return nextProgress.accumulatedMainThrustMs >= requiredHighWarpThrustMs
       ? advanceToNextStep(
           runtime,
