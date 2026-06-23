@@ -223,16 +223,30 @@ describe('reachMoonScenario', () => {
         .forcedAssistTargetId,
     ).toBeNull()
 
+    runtime.simulation.state.elapsed = 90_000
+    runtime.simulation.state.spacecraft.fuel = 0.5
     completeOrbitTurns(runtime, 'earth', 1)
 
     expect(runtime.scenario.session.completed).toBe(true)
-    expect(runtime.scenario.session.state).toEqual({ phase: 'complete' })
+    expect(runtime.scenario.session.state).toEqual({
+      phase: 'complete',
+      score: {
+        baseScorePoints: 1_000,
+        fuelBonusPoints: 100,
+        fuelRemainingKg: 16_000,
+        missionElapsedSeconds: 90_000,
+        timePenaltyPoints: 100,
+        totalScore: 1_000,
+      },
+    })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'mission-complete',
     )
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
-      buttons: [{ label: 'Free roam' }, { label: 'Exit' }],
+      description:
+        'Score 1,000. Time used 1d 1h (-100). Fuel left 16,000 kg (+100). Base 1,000.',
+      buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
   })
 

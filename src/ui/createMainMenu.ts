@@ -3,6 +3,7 @@ import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
 export type MainMenu = {
   element: HTMLElement
   setVisible(visible: boolean): void
+  showReachMoonHighscores(): void
   syncState(): void
 }
 
@@ -98,8 +99,11 @@ export const createMainMenu = (options: {
   )
 
   const showView = (view: string) => {
+    const nextView = panels.some((panel) => panel.dataset.mainMenuView === view)
+      ? view
+      : 'main'
     for (const panel of panels) {
-      panel.hidden = panel.dataset.mainMenuView !== view
+      panel.hidden = panel.dataset.mainMenuView !== nextView
     }
   }
 
@@ -146,6 +150,10 @@ export const createMainMenu = (options: {
   return {
     element: root,
     setVisible,
+    showReachMoonHighscores: () => {
+      root.style.display = 'flex'
+      showView('reach-moon-highscores')
+    },
     syncState: () => {
       if (!loadGameButton) {
         return

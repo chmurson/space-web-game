@@ -5,6 +5,7 @@ export type GameHighLevelActionType =
   | 'startTutorial'
   | 'confirmPrompt'
   | 'enterMainMenu'
+  | 'showReachMoonHighscores'
   | 'restartScenario'
   | 'restartFromCheckpoint'
 
@@ -15,6 +16,7 @@ export type GameHighLevelActionPayloads = {
   startTutorial: { scenarioId: string }
   confirmPrompt: { actionToTrigger?: string }
   enterMainMenu: undefined
+  showReachMoonHighscores: undefined
   restartScenario: undefined
   restartFromCheckpoint: undefined
 }

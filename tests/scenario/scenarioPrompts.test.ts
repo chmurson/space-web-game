@@ -455,6 +455,16 @@ describe('scenarioPrompts', () => {
       handled: true,
       effect: 'exit-to-menu',
     })
+    runtime.scenario.session.promptUi.activePromptId = 'complete-intro'
+    expect(
+      dispatchScenarioPromptAction(runtime, {
+        kind: 'builtin',
+        id: 'show_reach_moon_highscores',
+      }),
+    ).toMatchObject({
+      handled: true,
+      effect: 'show-reach-moon-highscores',
+    })
   })
 
   it('dispatches scenario-specific prompt actions through the scenario definition', () => {

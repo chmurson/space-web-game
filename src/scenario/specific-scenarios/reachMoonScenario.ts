@@ -23,6 +23,12 @@ import {
   type ScenarioPromptUiState,
   type ScenarioSessionValue,
 } from '../scenarioSession'
+import {
+  calculateReachMoonScore,
+  formatReachMoonScoreSummary,
+  isReachMoonScoreSummary,
+  type ReachMoonScoreSummary,
+} from './reachMoonScore'
 
 const reachMoonFuelCapacity = 32_000
 const requiredMoonOrbitTurns = 3
@@ -62,6 +68,7 @@ type OrbitEarthState = {
 
 type CompleteReachMoonState = {
   phase: 'complete'
+  score?: ReachMoonScoreSummary
 }
 
 type ReachMoonScenarioState =
@@ -137,6 +144,24 @@ const createPromptUiWithActivePrompt = (
   ...runtime.scenario.session.promptUi,
   activePromptId,
 })
+
+const calculateReachMoonRuntimeScore = (runtime: AppRuntimeState) =>
+  calculateReachMoonScore({
+    fuelCapacityKg: runtime.simulation.state.spacecraft.fuelCapacity,
+    fuelRemainingRatio: runtime.simulation.state.spacecraft.fuel,
+    missionElapsedSeconds: runtime.simulation.state.elapsed,
+  })
+
+const getReachMoonCompletedScore = (
+  runtime: AppRuntimeState,
+): ReachMoonScoreSummary | null => {
+  const state = runtime.scenario.session.state
+  if (!state || typeof state !== 'object' || !('score' in state)) {
+    return null
+  }
+
+  return isReachMoonScoreSummary(state.score) ? state.score : null
+}
 
 const getObjectiveRadiusMultiplier = (targetId: 'earth' | 'moon') =>
   targetId === 'earth'
@@ -261,6 +286,7 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
       return createReachMoonTransition(
         {
           phase: 'complete',
+          score: calculateReachMoonRuntimeScore(runtime),
         },
         {
           completed: true,
@@ -347,17 +373,21 @@ const reachMoonPromptDefinitions = {
     id: 'mission-complete',
     title: 'Mission Complete',
     shortLabel: 'Mission Complete',
-    description:
-      'You completed the Earth-Moon route. Start free roam immediately or return to the main menu.',
+    description: ({ runtime }) => {
+      const score = getReachMoonCompletedScore(runtime)
+      return score
+        ? formatReachMoonScoreSummary(score)
+        : 'You completed the Earth-Moon route. Continue to highscores or start free roam.'
+    },
     buttons: [
       {
-        action: { kind: 'builtin', id: 'start_free_roam' },
-        label: 'Free roam',
+        action: { kind: 'builtin', id: 'show_reach_moon_highscores' },
+        label: 'Highscores',
         tone: 'primary',
       },
       {
-        action: { kind: 'builtin', id: 'exit_to_menu' },
-        label: 'Exit',
+        action: { kind: 'builtin', id: 'start_free_roam' },
+        label: 'Free roam',
         tone: 'secondary',
       },
     ],

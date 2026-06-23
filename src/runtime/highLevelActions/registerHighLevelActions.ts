@@ -42,6 +42,16 @@ export const registerHighLevelActions = ({
     frameLoop?.refreshTrajectoryPrediction()
   }
 
+  const enterMenuAfterTransition = (showMenu: () => void) => {
+    setAppMode('menu')
+    app.classList.add('app-main-menu')
+    crashMenu?.setVisible(false)
+    mainMenu.syncState()
+    showMenu()
+    topMenu?.close()
+    frameLoop?.refreshTrajectoryPrediction()
+  }
+
   gameMediator.registerAction('startFreeRoam', async () => {
     keyboardInput.clear()
     const loaded = await prepareScenarioTransition({
@@ -116,6 +126,8 @@ export const registerHighLevelActions = ({
       gameMediator.dispatch({ type: 'enterMainMenu' })
     } else if (actionToTrigger === 'start-free-roam') {
       gameMediator.dispatch({ type: 'startFreeRoam' })
+    } else if (actionToTrigger === 'show-reach-moon-highscores') {
+      gameMediator.dispatch({ type: 'showReachMoonHighscores' })
     }
   })
 
@@ -132,13 +144,27 @@ export const registerHighLevelActions = ({
     if (!loaded) {
       return
     }
-    setAppMode('menu')
-    app.classList.add('app-main-menu')
-    crashMenu?.setVisible(false)
-    mainMenu.syncState()
-    mainMenu.setVisible(true)
-    topMenu?.close()
-    frameLoop?.refreshTrajectoryPrediction()
+    enterMenuAfterTransition(() => {
+      mainMenu.setVisible(true)
+    })
+  })
+
+  gameMediator.registerAction('showReachMoonHighscores', async () => {
+    keyboardInput.clear()
+    const loaded = await prepareScenarioTransition({
+      applyTransition: () => {
+        runtimeActions.enterMainMenuBackground()
+        return true
+      },
+      label: 'Opening highscores',
+      scenarioId: 'menu-background',
+    })
+    if (!loaded) {
+      return
+    }
+    enterMenuAfterTransition(() => {
+      mainMenu.showReachMoonHighscores()
+    })
   })
 
   gameMediator.registerAction('restartScenario', async () => {

@@ -801,6 +801,12 @@ export const createAppComponents = (options: {
       })
     }
 
+    if (result.effect === 'show-reach-moon-highscores') {
+      gameHighLevelActionsMediator.dispatch({
+        type: 'showReachMoonHighscores',
+      })
+    }
+
     frameLoop.refreshTrajectoryPrediction()
   }
 

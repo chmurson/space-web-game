@@ -23,14 +23,22 @@ export type ScenarioCoachPromptLayout =
 export type PromptAction =
   | {
       kind: 'builtin'
-      id: 'dismiss' | 'dismiss_to_replay' | 'start_free_roam' | 'exit_to_menu'
+      id:
+        | 'dismiss'
+        | 'dismiss_to_replay'
+        | 'start_free_roam'
+        | 'exit_to_menu'
+        | 'show_reach_moon_highscores'
     }
   | {
       kind: 'scenario'
       id: string
     }
 
-export type PromptActionEffect = 'start-free-roam' | 'exit-to-menu'
+export type PromptActionEffect =
+  | 'start-free-roam'
+  | 'exit-to-menu'
+  | 'show-reach-moon-highscores'
 
 export type PromptButtonTone = 'primary' | 'secondary' | 'tertiary'
 

@@ -185,10 +185,25 @@ export const dispatchScenarioPromptAction = (
       }
     }
 
+    if (action.id === 'start_free_roam') {
+      return {
+        handled: true,
+        effect: 'start-free-roam',
+        transition: clearActivePrompt(runtime),
+      }
+    }
+
+    if (action.id === 'show_reach_moon_highscores') {
+      return {
+        handled: true,
+        effect: 'show-reach-moon-highscores',
+        transition: clearActivePrompt(runtime),
+      }
+    }
+
     return {
       handled: true,
-      effect:
-        action.id === 'start_free_roam' ? 'start-free-roam' : 'exit-to-menu',
+      effect: 'exit-to-menu',
       transition: clearActivePrompt(runtime),
     }
   }
@@ -231,7 +246,8 @@ export const parsePromptAction = (
     (id === 'dismiss' ||
       id === 'dismiss_to_replay' ||
       id === 'start_free_roam' ||
-      id === 'exit_to_menu')
+      id === 'exit_to_menu' ||
+      id === 'show_reach_moon_highscores')
   ) {
     return { kind, id }
   }
