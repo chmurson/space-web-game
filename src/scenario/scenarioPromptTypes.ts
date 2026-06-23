@@ -41,6 +41,14 @@ export type PromptActionEffect =
   | 'show-reach-moon-highscores'
 
 export type PromptButtonTone = 'primary' | 'secondary' | 'tertiary'
+export type PromptTextTone = 'concept' | 'constraint' | 'number'
+
+export type PromptTextFragment = {
+  text: string
+  tone: PromptTextTone
+}
+
+export type PromptText = string | ReadonlyArray<string | PromptTextFragment>
 
 export type PromptResolverContext = {
   inputMode: 'desktop' | 'mobile'
@@ -70,7 +78,7 @@ export type PromptPresentationDefinition =
 
 export type PromptDefinition = {
   buttons: PromptButtonDefinition[]
-  description: PromptValue<string>
+  description: PromptValue<PromptText>
   id: string
   pausesGameplay?: boolean
   presentation: PromptPresentationDefinition
@@ -86,7 +94,7 @@ export type ResolvedPromptButton = {
 
 export type ResolvedPrompt = {
   buttons: ResolvedPromptButton[]
-  description: string
+  description: PromptText
   id: string
   pausesGameplay: boolean
   title: string

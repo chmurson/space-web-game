@@ -83,6 +83,27 @@
   line-height: 1.5;
 }
 
+.scenario-prompt-emphasis {
+  font-weight: 700;
+}
+
+.scenario-prompt-emphasis[data-tone="concept"] {
+  color: #bfdbfe;
+}
+
+.scenario-prompt-emphasis[data-tone="number"] {
+  color: #fde68a;
+}
+
+.scenario-prompt-emphasis[data-tone="constraint"] {
+  padding: 0 3px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.14);
+  color: #fef3c7;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt h2 {
   font-size: 15px;
   letter-spacing: 0.02em;

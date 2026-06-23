@@ -1,6 +1,7 @@
 import type {
   ScenarioCoachPromptLayout,
   ScenarioHudFocusTarget,
+  PromptText,
   ScenarioPromptAnchor,
   ScenarioTouchControlFocusTarget,
   ScenarioTouchHintTarget,
@@ -21,7 +22,7 @@ export type TutorialOnboardingStepId =
 export type TutorialOnboardingPromptContent = {
   confirmAction?: 'advance-step'
   confirmLabel?: string
-  description: string
+  description: PromptText
   pausesGameplay: boolean
   title: string
   anchor?: ScenarioPromptAnchor

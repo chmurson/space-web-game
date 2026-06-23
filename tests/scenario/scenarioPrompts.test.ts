@@ -5,6 +5,8 @@ import { applyScenarioRuntimeTransition } from '@/runtime/runtimeStateTransition
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   dispatchScenarioPromptAction,
+  getPromptTextContent,
+  getPromptTextIdentity,
   reopenScenarioReplayPrompt,
   resolveScenarioPrompts,
 } from '@/scenario/scenarioPrompts'
@@ -94,13 +96,42 @@ const createRuntime = (): AppRuntimeState => ({
 describe('scenarioPrompts', () => {
   it('resolves active blocking prompts from prompt ids', () => {
     const runtime = createRuntime()
+    const prompt = resolveScenarioPrompts(runtime, 'desktop').active
 
-    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+    expect(prompt).toMatchObject({
       kind: 'blocking',
       id: 'phase-one-intro',
       pausesGameplay: true,
       title: 'Leave Earth Orbit',
     })
+    expect(getPromptTextContent(prompt?.description)).toBe(
+      "We'll start simple: learn the ship and game controls, use them to leave Earth orbit, circle the Moon, then make it back home.",
+    )
+  })
+
+  it('derives plain text and identity from emphasized prompt fragments', () => {
+    const plain = 'Plain prompt copy.'
+    const emphasized = [
+      'Reach ',
+      { text: 'the Moon', tone: 'concept' },
+      ' in ',
+      { text: 'three turns', tone: 'number' },
+      '.',
+    ] as const
+
+    expect(getPromptTextContent(plain)).toBe('Plain prompt copy.')
+    expect(getPromptTextContent(emphasized)).toBe(
+      'Reach the Moon in three turns.',
+    )
+    expect(getPromptTextIdentity(emphasized)).not.toBe(
+      getPromptTextIdentity([
+        'Reach ',
+        { text: 'the Moon', tone: 'constraint' },
+        ' in ',
+        { text: 'three turns', tone: 'number' },
+        '.',
+      ]),
+    )
   })
 
   it('resolves coach prompt anchor and mobile touch hint', () => {

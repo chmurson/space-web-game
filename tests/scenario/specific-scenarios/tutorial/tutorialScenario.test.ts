@@ -5,7 +5,10 @@ import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { applyScenarioRuntimeTransition } from '@/runtime/runtimeStateTransitions'
 import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
-import { resolveScenarioPrompts } from '@/scenario/scenarioPrompts'
+import {
+  getPromptTextContent,
+  resolveScenarioPrompts,
+} from '@/scenario/scenarioPrompts'
 import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
 import {
   createRuntimeScenarioCheckpoint,
@@ -260,12 +263,14 @@ describe('tutorialScenario', () => {
       maxViewportSize: EARTH_VIEWPORT_SIZE,
       minViewportSize: null,
     })
-    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+    const activePrompt = resolveScenarioPrompts(runtime, 'desktop').active
+    expect(activePrompt).toMatchObject({
       kind: 'blocking',
       title: 'Leave Earth Orbit',
-      description:
-        "We'll start simple: learn the ship and game controls, use them to leave Earth orbit, circle the Moon, then make it back home.",
     })
+    expect(getPromptTextContent(activePrompt?.description)).toBe(
+      "We'll start simple: learn the ship and game controls, use them to leave Earth orbit, circle the Moon, then make it back home.",
+    )
   })
 
   it('advances from phase 1 to phase 2 and activates the next prompt id', () => {
@@ -553,12 +558,14 @@ describe('tutorialScenario', () => {
     })
 
     runtime.scenario.session.promptUi.activePromptId = 'phase-one-objective'
-    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+    const activePrompt = resolveScenarioPrompts(runtime, 'desktop').active
+    expect(activePrompt).toMatchObject({
       buttons: [{ label: 'Continue' }],
-      description:
-        "Keep flying until you reach 5 Earth radii from Earth's center. You are about 5.2 Earth radii out now. Use burns, time warp, and the projected path to keep opening the gap.",
       title: 'Escape Earth',
     })
+    expect(getPromptTextContent(activePrompt?.description)).toBe(
+      "Keep flying until you reach 5 Earth radii from Earth's center. You are about 5.2 Earth radii out now. Use burns, time warp, and the projected path to keep opening the gap.",
+    )
   })
 
   it('omits current escape distance when Earth is unavailable', () => {
@@ -575,11 +582,13 @@ describe('tutorialScenario', () => {
       },
     )
 
-    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
-      description:
-        "Keep flying until you reach 5 Earth radii from Earth's center. Use burns, time warp, and the projected path to keep opening the gap.",
+    const activePrompt = resolveScenarioPrompts(runtime, 'desktop').active
+    expect(activePrompt).toMatchObject({
       title: 'Escape Earth',
     })
+    expect(getPromptTextContent(activePrompt?.description)).toBe(
+      "Keep flying until you reach 5 Earth radii from Earth's center. Use burns, time warp, and the projected path to keep opening the gap.",
+    )
   })
 
   it('resolves mobile onboarding prompts as coach prompts for the burn tab', () => {

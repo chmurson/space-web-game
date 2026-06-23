@@ -3,7 +3,7 @@ import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
 import { EARTH_RADIUS } from '../../../simulation/constants'
 import { createEarthMoonScenario } from '../../../simulation/scenarios/earthMoon'
 import { length, sub } from '../../../simulation/vector'
-import type { PromptDefinition } from '../../scenarioPromptTypes'
+import type { PromptDefinition, PromptText } from '../../scenarioPromptTypes'
 import type { RuntimeScenarioDefinition } from '../../scenarioRegistry'
 import { createRuntimeScenarioSession } from '../../scenarioSession'
 import { getTutorialOnboardingPromptDefinitions } from './tutorialOnboarding/tutorialOnboardingFlow'
@@ -57,13 +57,44 @@ const getCurrentEarthRadiiDistance = (
   return (distance / EARTH_RADIUS).toFixed(1)
 }
 
-const getEscapeEarthObjectiveDescription = (runtime: AppRuntimeState) => {
+const getEscapeEarthObjectiveDescription = (
+  runtime: AppRuntimeState,
+): PromptText => {
   const currentDistance = getCurrentEarthRadiiDistance(runtime)
-  const currentDistanceSentence = currentDistance
-    ? ` You are about ${currentDistance} Earth radii out now.`
-    : ''
 
-  return `Keep flying until you reach ${escapeEarthPhaseThresholdRadiusMultiplier} Earth radii from Earth's center.${currentDistanceSentence} Use burns, time warp, and the projected path to keep opening the gap.`
+  if (currentDistance) {
+    return [
+      'Keep flying until you reach ',
+      {
+        text: `${escapeEarthPhaseThresholdRadiusMultiplier} Earth radii`,
+        tone: 'number',
+      },
+      " from Earth's center. You are about ",
+      { text: `${currentDistance} Earth radii`, tone: 'number' },
+      ' out now. Use ',
+      { text: 'burns', tone: 'concept' },
+      ', ',
+      { text: 'time warp', tone: 'concept' },
+      ', and the ',
+      { text: 'projected path', tone: 'concept' },
+      ' to keep opening the gap.',
+    ]
+  }
+
+  return [
+    'Keep flying until you reach ',
+    {
+      text: `${escapeEarthPhaseThresholdRadiusMultiplier} Earth radii`,
+      tone: 'number',
+    },
+    " from Earth's center. Use ",
+    { text: 'burns', tone: 'concept' },
+    ', ',
+    { text: 'time warp', tone: 'concept' },
+    ', and the ',
+    { text: 'projected path', tone: 'concept' },
+    ' to keep opening the gap.',
+  ]
 }
 
 const tutorialPromptDefinitions = {
@@ -71,8 +102,15 @@ const tutorialPromptDefinitions = {
     id: 'phase-one-intro',
     title: 'Leave Earth Orbit',
     shortLabel: 'Leave Earth Orbit',
-    description:
-      "We'll start simple: learn the ship and game controls, use them to leave Earth orbit, circle the Moon, then make it back home.",
+    description: [
+      "We'll start simple: learn the ",
+      { text: 'ship and game controls', tone: 'concept' },
+      ', use them to leave ',
+      { text: 'Earth orbit', tone: 'concept' },
+      ', circle the ',
+      { text: 'Moon', tone: 'concept' },
+      ', then make it back home.',
+    ],
     buttons: [
       {
         action: { kind: 'scenario', id: 'start-phase-one-onboarding' },
@@ -100,8 +138,13 @@ const tutorialPromptDefinitions = {
     id: 'phase-two-intro',
     title: 'Reach the Moon',
     shortLabel: 'Reach the Moon',
-    description:
-      'The Moon is now your target. You can zoom out more and look farther ahead. Use that to line up an approach.',
+    description: [
+      'The ',
+      { text: 'Moon', tone: 'concept' },
+      ' is now your target. You can ',
+      { text: 'zoom out', tone: 'concept' },
+      ' more and look farther ahead. Use that to line up an approach.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -115,8 +158,13 @@ const tutorialPromptDefinitions = {
     id: 'orbit-moon-intro',
     title: 'Approach the Moon',
     shortLabel: 'Approach the Moon',
-    description:
-      'You are close to the Moon. Orbit around it three times to complete the lunar phase of the tutorial.',
+    description: [
+      'You are close to the ',
+      { text: 'Moon', tone: 'concept' },
+      '. Orbit around it ',
+      { text: 'three times', tone: 'number' },
+      ' to complete the lunar phase of the tutorial.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -130,8 +178,15 @@ const tutorialPromptDefinitions = {
     id: 'phase-three-intro',
     title: 'Return to Earth',
     shortLabel: 'Return to Earth',
-    description:
-      'You have completed three lunar orbits. The next goal is to head back toward Earth and get close enough to start the final orbit.',
+    description: [
+      'You have completed ',
+      { text: 'three lunar orbits', tone: 'number' },
+      '. The next goal is to head back toward ',
+      { text: 'Earth', tone: 'concept' },
+      ' and get close enough to start the ',
+      { text: 'final orbit', tone: 'constraint' },
+      '.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -145,8 +200,13 @@ const tutorialPromptDefinitions = {
     id: 'orbit-earth-intro',
     title: 'Back at Earth',
     shortLabel: 'Back at Earth',
-    description:
-      'You are back in Earth range. Stabilize and complete three Earth orbits to finish the tutorial.',
+    description: [
+      'You are back in ',
+      { text: 'Earth', tone: 'concept' },
+      ' range. Stabilize and complete ',
+      { text: 'three Earth orbits', tone: 'number' },
+      ' to finish the tutorial.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -160,8 +220,13 @@ const tutorialPromptDefinitions = {
     id: 'complete-intro',
     title: 'Tutorial Complete',
     shortLabel: 'Tutorial Complete',
-    description:
-      'You completed the Earth-Moon round trip. Start free roam immediately or return to the main menu.',
+    description: [
+      'You completed the ',
+      { text: 'Earth-Moon round trip', tone: 'concept' },
+      '. Start ',
+      { text: 'free roam', tone: 'concept' },
+      ' immediately or return to the main menu.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'start_free_roam' },

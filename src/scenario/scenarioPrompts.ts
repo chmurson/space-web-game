@@ -3,6 +3,7 @@ import type {
   PromptAction,
   PromptActionEffect,
   PromptDefinition,
+  PromptText,
   PromptResolverContext,
   PromptValue,
   ResolvedPrompt,
@@ -19,6 +20,24 @@ const resolvePromptValue = <T>(
   typeof value === 'function'
     ? (value as (context: PromptResolverContext) => T)(context)
     : value
+
+export const getPromptTextContent = (
+  text: PromptText | null | undefined,
+): string => {
+  if (!text) {
+    return ''
+  }
+  if (typeof text === 'string') {
+    return text
+  }
+  return text
+    .map((segment) => (typeof segment === 'string' ? segment : segment.text))
+    .join('')
+}
+
+export const getPromptTextIdentity = (
+  text: PromptText | null | undefined,
+): string => JSON.stringify(text ?? '')
 
 const getScenarioPromptDefinition = (
   runtime: AppRuntimeState,

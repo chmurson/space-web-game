@@ -313,8 +313,17 @@ const reachMoonPromptDefinitions = {
     id: 'mission-start',
     title: 'Reach the Moon',
     shortLabel: 'Mission Brief',
-    description:
-      'Launch from Earth, reach the Moon, complete three lunar orbits, return to Earth, then complete one final Earth orbit. Fuel is finite, so keep burns deliberate.',
+    description: [
+      'Launch from ',
+      { text: 'Earth', tone: 'concept' },
+      ', reach the ',
+      { text: 'Moon', tone: 'concept' },
+      ', complete ',
+      { text: 'three lunar orbits', tone: 'number' },
+      ', return to Earth, then complete one final Earth orbit. ',
+      { text: 'Fuel is finite', tone: 'constraint' },
+      ', so keep burns deliberate.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -328,8 +337,15 @@ const reachMoonPromptDefinitions = {
     id: 'moon-reached',
     title: 'Moon Reached',
     shortLabel: 'Moon Orbit',
-    description:
-      'You are inside the lunar objective zone. Stay bound to the Moon and complete three full orbits.',
+    description: [
+      'You are inside the ',
+      { text: 'lunar objective zone', tone: 'concept' },
+      '. ',
+      { text: 'Stay bound to the Moon', tone: 'constraint' },
+      ' and complete ',
+      { text: 'three full orbits', tone: 'number' },
+      '.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -343,8 +359,14 @@ const reachMoonPromptDefinitions = {
     id: 'lunar-orbits-complete',
     title: 'Return to Earth',
     shortLabel: 'Return to Earth',
-    description:
-      'Three lunar orbits are complete. Head back toward Earth and enter the Earth objective zone.',
+    description: [
+      { text: 'Three lunar orbits', tone: 'number' },
+      ' are complete. Head back toward ',
+      { text: 'Earth', tone: 'concept' },
+      ' and enter the ',
+      { text: 'Earth objective zone', tone: 'concept' },
+      '.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -358,8 +380,13 @@ const reachMoonPromptDefinitions = {
     id: 'earth-reached',
     title: 'Earth Reached',
     shortLabel: 'Earth Orbit',
-    description:
-      'You are back in Earth range. Complete one bound Earth orbit to finish the mission.',
+    description: [
+      'You are back in ',
+      { text: 'Earth', tone: 'concept' },
+      ' range. Complete ',
+      { text: 'one bound Earth orbit', tone: 'number' },
+      ' to finish the mission.',
+    ],
     buttons: [
       {
         action: { kind: 'builtin', id: 'dismiss_to_replay' },
@@ -377,7 +404,15 @@ const reachMoonPromptDefinitions = {
       const score = getReachMoonCompletedScore(runtime)
       return score
         ? formatReachMoonScoreSummary(score)
-        : 'You completed the Earth-Moon route. Continue to highscores or start free roam.'
+        : [
+            'You completed the ',
+            { text: 'Earth-Moon route', tone: 'concept' },
+            '. Continue to ',
+            { text: 'highscores', tone: 'concept' },
+            ' or start ',
+            { text: 'free roam', tone: 'concept' },
+            '.',
+          ]
     },
     buttons: [
       {

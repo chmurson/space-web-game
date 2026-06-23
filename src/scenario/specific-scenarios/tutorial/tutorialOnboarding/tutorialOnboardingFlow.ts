@@ -73,8 +73,16 @@ const tutorialOnboardingPromptDefinitions: Record<
       inputMode === 'mobile' ? 'Open Burn Control' : 'Start A Burn',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Swipe inward from the Burn tab on the screen edge to open the burn control.'
-        : 'Press W or Up Arrow to start a burn.',
+        ? [
+            'Swipe inward from the ',
+            { text: 'Burn tab', tone: 'concept' },
+            ' on the screen edge to open the burn control.',
+          ]
+        : [
+            'Press ',
+            { text: 'W or Up Arrow', tone: 'concept' },
+            ' to start a burn.',
+          ],
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -90,8 +98,16 @@ const tutorialOnboardingPromptDefinitions: Record<
     shortLabel: 'Start A Burn',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Drag the orange handle upward and hold it for a moment to give the ship a short burn.'
-        : 'Hold W or Up Arrow for a moment to give the ship a short burn.',
+        ? [
+            'Drag the ',
+            { text: 'orange handle', tone: 'concept' },
+            ' upward and hold it for a moment to give the ship a short burn.',
+          ]
+        : [
+            'Hold ',
+            { text: 'W or Up Arrow', tone: 'concept' },
+            ' for a moment to give the ship a short burn.',
+          ],
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -105,7 +121,18 @@ const tutorialOnboardingPromptDefinitions: Record<
     id: 'intro-keep-thrusting',
     title: 'Keep Burning',
     shortLabel: 'Keep Burning',
-    description: `That's it. Keep the burn going for ${formatDuration(requiredIntroKeepThrustMs / 1000)}. Watch the speed pill while the ship picks up speed.`,
+    description: [
+      "That's it. Keep the ",
+      { text: 'burn', tone: 'concept' },
+      ' going for ',
+      {
+        text: formatDuration(requiredIntroKeepThrustMs / 1000),
+        tone: 'number',
+      },
+      '. Watch the ',
+      { text: 'speed pill', tone: 'concept' },
+      ' while the ship picks up speed.',
+    ],
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -122,8 +149,16 @@ const tutorialOnboardingPromptDefinitions: Record<
     buttons: [],
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Drag the orange handle back down to stop the burn.'
-        : 'Release W or Up Arrow to stop the burn.',
+        ? [
+            'Drag the ',
+            { text: 'orange handle', tone: 'concept' },
+            ' back down to stop the burn.',
+          ]
+        : [
+            'Release ',
+            { text: 'W or Up Arrow', tone: 'concept' },
+            ' to stop the burn.',
+          ],
     presentation: {
       kind: 'coach',
       anchor: ({ inputMode }) =>
@@ -138,8 +173,12 @@ const tutorialOnboardingPromptDefinitions: Record<
     id: 'intro-point-and-turn',
     title: 'Point By Double-Tapping',
     shortLabel: 'Point By Double-Tapping',
-    description:
-      'Double-tap open space away from Earth to set a new heading. Wait while the ship turns to face it.',
+    description: [
+      { text: 'Double-tap open space', tone: 'concept' },
+      ' away from ',
+      { text: 'Earth', tone: 'concept' },
+      ' to set a new heading. Wait while the ship turns to face it.',
+    ],
     buttons: [],
     presentation: { kind: 'coach', layout: 'playfield' },
   },
@@ -149,8 +188,22 @@ const tutorialOnboardingPromptDefinitions: Record<
     shortLabel: 'Set Time Warp',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches x30s.'
-        : 'Increase time warp until the time pill reaches x30s.',
+        ? [
+            'Swipe inward from the ',
+            { text: 'Warp tab', tone: 'concept' },
+            ' on the screen edge, then drag the selector upward until the ',
+            { text: 'time pill', tone: 'concept' },
+            ' reaches ',
+            { text: 'x30s', tone: 'number' },
+            '.',
+          ]
+        : [
+            'Increase ',
+            { text: 'time warp', tone: 'concept' },
+            ' until the time pill reaches ',
+            { text: 'x30s', tone: 'number' },
+            '.',
+          ],
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -164,7 +217,18 @@ const tutorialOnboardingPromptDefinitions: Record<
     id: 'intro-keep-timewarp',
     title: 'Keep x30s',
     shortLabel: 'Keep x30s',
-    description: `Keep time warp at x30s for ${formatDuration(requiredTimeWarpKeepMs / 1000)}. Time warp speeds up the simulation so you can see the orbit change without waiting in real time.`,
+    description: [
+      'Keep ',
+      { text: 'time warp', tone: 'concept' },
+      ' at ',
+      { text: 'x30s', tone: 'number' },
+      ' for ',
+      {
+        text: formatDuration(requiredTimeWarpKeepMs / 1000),
+        tone: 'number',
+      },
+      '. Time warp speeds up the simulation so you can see the orbit change without waiting in real time.',
+    ],
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -180,8 +244,28 @@ const tutorialOnboardingPromptDefinitions: Record<
     shortLabel: 'Burn At x30s',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
-        ? 'Keep time warp at x30s, then open Burn and hold the handle up for a few seconds to move away from Earth.'
-        : 'Keep time warp at x30s, then hold W or Up Arrow for a few seconds to move away from Earth.',
+        ? [
+            'Keep ',
+            { text: 'time warp', tone: 'concept' },
+            ' at ',
+            { text: 'x30s', tone: 'number' },
+            ', then open ',
+            { text: 'Burn', tone: 'concept' },
+            ' and hold the handle up for a few seconds to move away from ',
+            { text: 'Earth', tone: 'concept' },
+            '.',
+          ]
+        : [
+            'Keep ',
+            { text: 'time warp', tone: 'concept' },
+            ' at ',
+            { text: 'x30s', tone: 'number' },
+            ', then hold ',
+            { text: 'W or Up Arrow', tone: 'concept' },
+            ' for a few seconds to move away from ',
+            { text: 'Earth', tone: 'concept' },
+            '.',
+          ],
     buttons: [],
     presentation: {
       kind: 'coach',
@@ -193,8 +277,15 @@ const tutorialOnboardingPromptDefinitions: Record<
     id: 'intro-trajectory',
     title: 'This Is Your Trajectory',
     shortLabel: 'This Is Your Trajectory',
-    description:
-      'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
+    description: [
+      'This line predicts your path from ',
+      { text: 'speed and gravity', tone: 'concept' },
+      '. Use it to tell whether your ',
+      { text: 'burn', tone: 'concept' },
+      ' is moving you away from ',
+      { text: 'Earth', tone: 'concept' },
+      '.',
+    ],
     buttons: [],
     presentation: { kind: 'coach', anchor: 'trajectory', layout: 'floating' },
   },
@@ -202,8 +293,13 @@ const tutorialOnboardingPromptDefinitions: Record<
     id: 'intro-complete',
     title: 'Free Flight Unlocked',
     shortLabel: 'Free Flight Unlocked',
-    description:
-      'You have the core controls. Keep flying until you get five Earth radii away from the planet.',
+    description: [
+      'You have the ',
+      { text: 'core controls', tone: 'concept' },
+      '. Keep flying until you get ',
+      { text: 'five Earth radii', tone: 'number' },
+      ' away from the planet.',
+    ],
     buttons: [
       {
         action: { kind: 'scenario', id: 'advance-onboarding-step' },

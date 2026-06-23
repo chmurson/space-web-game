@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { getPromptTextContent } from '@/scenario/scenarioPrompts'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import {
   getHiddenOnboardingUIElements,
@@ -89,6 +90,11 @@ const createRuntime = (): AppRuntimeState => ({
   },
 })
 
+const getOnboardingDescription = (
+  ...args: Parameters<typeof getTutorialOnboardingPromptContent>
+) =>
+  getPromptTextContent(getTutorialOnboardingPromptContent(...args).description)
+
 describe('tutorialOnboardingProgress', () => {
   it('does not use the old thrust-zone hint while mobile players are finding the thrust control', () => {
     expect(
@@ -118,38 +124,44 @@ describe('tutorialOnboardingProgress', () => {
       getTutorialOnboardingPromptContent('intro-show-thrust-control', 'mobile'),
     ).toMatchObject({
       anchor: 'thrust-control',
-      description:
-        'Swipe inward from the Burn tab on the screen edge to open the burn control.',
       focusedTouchControl: 'burn',
       title: 'Open Burn Control',
     })
     expect(
+      getOnboardingDescription('intro-show-thrust-control', 'mobile'),
+    ).toBe(
+      'Swipe inward from the Burn tab on the screen edge to open the burn control.',
+    )
+    expect(
       getTutorialOnboardingPromptContent('intro-thrust', 'mobile'),
     ).toMatchObject({
       anchor: 'thrust-control',
-      description:
-        'Drag the orange handle upward and hold it for a moment to give the ship a short burn.',
       focusedTouchControl: 'burn',
       title: 'Start A Burn',
     })
+    expect(getOnboardingDescription('intro-thrust', 'mobile')).toBe(
+      'Drag the orange handle upward and hold it for a moment to give the ship a short burn.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-thrust', 'desktop'),
     ).toMatchObject({
       anchor: 'trajectory',
-      description:
-        'Hold W or Up Arrow for a moment to give the ship a short burn.',
       title: 'Start A Burn',
     })
+    expect(getOnboardingDescription('intro-thrust', 'desktop')).toBe(
+      'Hold W or Up Arrow for a moment to give the ship a short burn.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-keep-thrusting', 'mobile'),
     ).toMatchObject({
       anchor: 'speed-pill',
-      description:
-        "That's it. Keep the burn going for 5s. Watch the speed pill while the ship picks up speed.",
       focusedHudElement: 'speed-pill',
       focusedTouchControl: 'burn',
       title: 'Keep Burning',
     })
+    expect(getOnboardingDescription('intro-keep-thrusting', 'mobile')).toBe(
+      "That's it. Keep the burn going for 5s. Watch the speed pill while the ship picks up speed.",
+    )
   })
 
   it('uses current mobile copy for opening and using the time warp control', () => {
@@ -157,28 +169,32 @@ describe('tutorialOnboardingProgress', () => {
       getTutorialOnboardingPromptContent('intro-timewarp', 'mobile'),
     ).toMatchObject({
       anchor: 'time-warp-control',
-      description:
-        'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches x30s.',
       focusedTouchControl: 'warp',
       title: 'Set Time Warp',
     })
+    expect(getOnboardingDescription('intro-timewarp', 'mobile')).toBe(
+      'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches x30s.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-timewarp', 'desktop'),
     ).toMatchObject({
       anchor: 'trajectory',
-      description: 'Increase time warp until the time pill reaches x30s.',
       title: 'Set Time Warp',
     })
+    expect(getOnboardingDescription('intro-timewarp', 'desktop')).toBe(
+      'Increase time warp until the time pill reaches x30s.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-keep-timewarp', 'mobile'),
     ).toMatchObject({
       anchor: 'time-warp-pill',
-      description:
-        'Keep time warp at x30s for 10s. Time warp speeds up the simulation so you can see the orbit change without waiting in real time.',
       focusedHudElement: 'time-warp-pill',
       focusedTouchControl: 'warp',
       title: 'Keep x30s',
     })
+    expect(getOnboardingDescription('intro-keep-timewarp', 'mobile')).toBe(
+      'Keep time warp at x30s for 10s. Time warp speeds up the simulation so you can see the orbit change without waiting in real time.',
+    )
   })
 
   it('does not focus or dim controls during the high-warp burn prompt', () => {
@@ -195,16 +211,10 @@ describe('tutorialOnboardingProgress', () => {
   })
 
   it('explains that the high-warp burn needs the x30s time warp notch', () => {
-    expect(
-      getTutorialOnboardingPromptContent('intro-timewarp-thrust', 'mobile')
-        .description,
-    ).toBe(
+    expect(getOnboardingDescription('intro-timewarp-thrust', 'mobile')).toBe(
       'Keep time warp at x30s, then open Burn and hold the handle up for a few seconds to move away from Earth.',
     )
-    expect(
-      getTutorialOnboardingPromptContent('intro-timewarp-thrust', 'desktop')
-        .description,
-    ).toBe(
+    expect(getOnboardingDescription('intro-timewarp-thrust', 'desktop')).toBe(
       'Keep time warp at x30s, then hold W or Up Arrow for a few seconds to move away from Earth.',
     )
   })
@@ -213,12 +223,13 @@ describe('tutorialOnboardingProgress', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-trajectory', 'desktop'),
     ).toMatchObject({
-      description:
-        'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
       layout: 'floating',
       pausesGameplay: false,
       title: 'This Is Your Trajectory',
     })
+    expect(getOnboardingDescription('intro-trajectory', 'desktop')).toBe(
+      'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-trajectory', 'mobile'),
     ).toMatchObject({
@@ -253,26 +264,31 @@ describe('tutorialOnboardingProgress', () => {
       getTutorialOnboardingPromptContent('intro-thrusting-off', 'mobile'),
     ).toMatchObject({
       anchor: 'thrust-control',
-      description: 'Drag the orange handle back down to stop the burn.',
       focusedTouchControl: 'burn',
     })
+    expect(getOnboardingDescription('intro-thrusting-off', 'mobile')).toBe(
+      'Drag the orange handle back down to stop the burn.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-thrusting-off', 'desktop'),
     ).toMatchObject({
       anchor: 'speed-pill',
-      description: 'Release W or Up Arrow to stop the burn.',
     })
+    expect(getOnboardingDescription('intro-thrusting-off', 'desktop')).toBe(
+      'Release W or Up Arrow to stop the burn.',
+    )
   })
 
   it('uses current copy for direct heading selection', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-point-and-turn', 'desktop'),
     ).toMatchObject({
-      description:
-        'Double-tap open space away from Earth to set a new heading. Wait while the ship turns to face it.',
       layout: 'playfield',
       title: 'Point By Double-Tapping',
     })
+    expect(getOnboardingDescription('intro-point-and-turn', 'desktop')).toBe(
+      'Double-tap open space away from Earth to set a new heading. Wait while the ship turns to face it.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-point-and-turn', 'desktop')
         .anchor,

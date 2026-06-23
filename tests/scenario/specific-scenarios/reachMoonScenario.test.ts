@@ -13,7 +13,10 @@ import {
 } from '@/scenario/runtimeScenario'
 import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
-import { resolveScenarioPrompts } from '@/scenario/scenarioPrompts'
+import {
+  getPromptTextContent,
+  resolveScenarioPrompts,
+} from '@/scenario/scenarioPrompts'
 import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
 import { G } from '@/simulation/constants'
 import type { Body } from '@/simulation/types'
@@ -168,13 +171,28 @@ describe('reachMoonScenario', () => {
 
   it('resolves the initial mission prompt from prompt definitions', () => {
     const runtime = createRuntime()
+    const prompt = resolveScenarioPrompts(runtime, 'desktop').active
 
-    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+    expect(prompt).toMatchObject({
       id: 'mission-start',
       kind: 'blocking',
       title: 'Reach the Moon',
       buttons: [{ label: 'Start mission' }],
     })
+    expect(prompt?.description).toEqual([
+      'Launch from ',
+      { text: 'Earth', tone: 'concept' },
+      ', reach the ',
+      { text: 'Moon', tone: 'concept' },
+      ', complete ',
+      { text: 'three lunar orbits', tone: 'number' },
+      ', return to Earth, then complete one final Earth orbit. ',
+      { text: 'Fuel is finite', tone: 'constraint' },
+      ', so keep burns deliberate.',
+    ])
+    expect(getPromptTextContent(prompt?.description)).toBe(
+      'Launch from Earth, reach the Moon, complete three lunar orbits, return to Earth, then complete one final Earth orbit. Fuel is finite, so keep burns deliberate.',
+    )
   })
 
   it('advances through Moon reach, three lunar orbits, Earth return, and one Earth orbit', () => {
@@ -197,6 +215,13 @@ describe('reachMoonScenario', () => {
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'moon-reached',
     )
+    expect(
+      getPromptTextContent(
+        resolveScenarioPrompts(runtime, 'desktop').active?.description,
+      ),
+    ).toBe(
+      'You are inside the lunar objective zone. Stay bound to the Moon and complete three full orbits.',
+    )
 
     completeOrbitTurns(runtime, 'moon', 3)
 
@@ -205,6 +230,13 @@ describe('reachMoonScenario', () => {
     })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'lunar-orbits-complete',
+    )
+    expect(
+      getPromptTextContent(
+        resolveScenarioPrompts(runtime, 'desktop').active?.description,
+      ),
+    ).toBe(
+      'Three lunar orbits are complete. Head back toward Earth and enter the Earth objective zone.',
     )
 
     setOrbitState(runtime, 'earth', 0)
@@ -217,6 +249,13 @@ describe('reachMoonScenario', () => {
     })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'earth-reached',
+    )
+    expect(
+      getPromptTextContent(
+        resolveScenarioPrompts(runtime, 'desktop').active?.description,
+      ),
+    ).toBe(
+      'You are back in Earth range. Complete one bound Earth orbit to finish the mission.',
     )
     expect(
       resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
@@ -248,6 +287,13 @@ describe('reachMoonScenario', () => {
         'Score 1,000. Time used 1d 1h (-100). Fuel left 16,000 kg (+100). Base 1,000.',
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
+    expect(
+      getPromptTextContent(
+        resolveScenarioPrompts(runtime, 'desktop').active?.description,
+      ),
+    ).toBe(
+      'Score 1,000. Time used 1d 1h (-100). Fuel left 16,000 kg (+100). Base 1,000.',
+    )
   })
 
   it('does not count angular backtracking as completed lunar orbits', () => {

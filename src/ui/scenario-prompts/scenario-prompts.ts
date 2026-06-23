@@ -2,10 +2,13 @@ import './scenario-prompts.css'
 import { arrow, computePosition, flip, offset, shift } from '@floating-ui/dom'
 import type { AppRuntimeState } from '../../runtime/appRuntimeState'
 import {
+  getPromptTextContent,
+  getPromptTextIdentity,
   resolveScenarioPrompts,
   serializePromptAction,
 } from '../../scenario/scenarioPrompts'
 import type {
+  PromptText,
   ResolvedPrompt,
   ResolvedPromptState,
   ScenarioHudFocusTarget,
@@ -306,6 +309,30 @@ const getPromptDisplayMode = (
       ? 'modal'
       : null
 
+const renderPromptText = (
+  element: HTMLElement,
+  text: PromptText | null | undefined,
+): void => {
+  if (!text || typeof text === 'string') {
+    element.textContent = getPromptTextContent(text)
+    return
+  }
+
+  element.replaceChildren(
+    ...text.map((segment) => {
+      if (typeof segment === 'string') {
+        return segment
+      }
+
+      const emphasis = document.createElement('span')
+      emphasis.className = 'scenario-prompt-emphasis'
+      emphasis.dataset.tone = segment.tone
+      emphasis.textContent = segment.text
+      return emphasis
+    }),
+  )
+}
+
 /**
  * Computes a compact identity key from the current runtime state.
  * This is used to detect meaningful changes in prompt content without relying on
@@ -331,7 +358,7 @@ const computePromptIdentity = (
 
   return {
     activePromptTitle: activePrompt?.title ?? '',
-    activePromptDescription: activePrompt?.description ?? '',
+    activePromptDescription: getPromptTextIdentity(activePrompt?.description),
     activePromptMode: getPromptDisplayMode(activePrompt),
     activePromptAnchor:
       activePrompt?.kind === 'coach' ? (activePrompt.anchor ?? null) : null,
@@ -752,7 +779,7 @@ export const createScenarioPromptUpdater = (
         refs.titleElement.textContent = activePrompt?.title ?? ''
       }
       if (refs.descriptionElement) {
-        refs.descriptionElement.textContent = activePrompt?.description ?? ''
+        renderPromptText(refs.descriptionElement, activePrompt?.description)
       }
 
       // Update buttons
