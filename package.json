@@ -18,6 +18,7 @@
     "commitlint": "commitlint --edit $1",
     "format": "biome format --write src tests scripts",
     "test": "vitest run --config vite.config.ts",
+    "test:gui": "playwright test --config playwright.config.ts",
     "test:watch": "vitest --config vite.config.ts",
     "prepare": "husky"
   },
@@ -29,6 +30,7 @@
     "@biomejs/biome": "^2.4.11",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
+    "@playwright/test": "^1.61.1",
     "@types/three": "^0.182.0",
     "husky": "^9.1.7",
     "typescript": "^5.9.3",
