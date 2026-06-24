@@ -39,6 +39,7 @@
 ## Verification
 
 - Run relevant tests, build checks, and validation commands when the change affects executable code, behavior, configuration, or shipped assets.
+- For HUD, menu, overlay, touch-control, or responsive UI changes, run `npm run test:gui` when relevant and visually inspect the generated screenshot artifact before accepting the change. Report the artifact path and whether it matched the expected UI state. This supplements, not replaces, browser/playtest checks for richer gameplay states.
 - Planning-only, docs-only, and repository-instruction-only edits do not require test runs, build runs, or deploys unless the user explicitly asks for them.
 - When verification is skipped because the change is non-executable, say so briefly in the response.
 
