@@ -1,0 +1,40 @@
+name: GUI Screenshots
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-gui-screenshots:
+    name: Mobile GUI screenshots
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run GUI screenshot harness
+        run: npm run test:gui
+
+      - name: Upload GUI screenshot artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-gui-screenshots
+          path: tmp/playwright-results/
+          if-no-files-found: error

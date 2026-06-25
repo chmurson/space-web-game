@@ -6,19 +6,22 @@ Run the mobile GUI screenshot harness with:
 npm run test:gui
 ```
 
-The first committed path boots the app at `/?reachmoon=1`, uses a `390x844`
-mobile Chromium viewport, waits for the main menu, hides the WebGL canvas and
-world-overlay elements with test-only CSS, and captures the visible UI.
-Playwright writes the artifact under `tmp/playwright-results/` and attaches it
-to the test result.
+The current paths boot the app at `/?reachmoon=1`, use a `390x844` mobile
+Chromium viewport, hide the WebGL canvas and world-overlay elements with
+test-only CSS, and capture visible HUD/menu states. Playwright writes the PNGs
+under `tmp/playwright-results/` and attaches them to the test result.
 
-This harness intentionally starts with one stable mobile menu path. Add new
-paths under `tests/gui/` when another HUD/menu state needs browser screenshot
-coverage. Keep DOM assertions minimal: they should prove the path was reached,
-while the screenshot remains the main verification artifact.
+Add new paths under `tests/gui/` when another HUD/menu state needs browser
+screenshot coverage. Keep DOM assertions minimal: they should prove the path
+was reached, while the screenshot remains the main verification artifact.
 
 If Playwright reports a missing browser locally, install the browser once:
 
 ```sh
 npx playwright install chromium
 ```
+
+GitHub Actions runs the same command on pushes and pull requests. The workflow
+installs Playwright Chromium, runs `npm run test:gui`, and uploads
+`tmp/playwright-results/` as the `mobile-gui-screenshots` artifact for human
+inspection. It does not use committed screenshot baselines or pixel comparisons.
