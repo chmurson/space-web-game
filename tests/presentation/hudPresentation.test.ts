@@ -571,6 +571,75 @@ describe('createHudPresentation', () => {
     expect(overlayUi.debugPanel.setJson).toHaveBeenCalledTimes(2)
   })
 
+  it('renders viewport and trail detail in the debug window', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    const runtime = createRuntime()
+    runtime.debug.debugModeEnabled = true
+    runtime.simulation.viewportSize = 25
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      getTrailRenderedSliceCount: () => 12,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler: {
+        getSmoothedGpuMs: vi.fn(() => 8),
+      } as unknown as RendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+
+    presentation.update(createMetrics())
+
+    const debugText = vi
+      .mocked(overlayUi.debugPanel.setText)
+      .mock.calls.at(-1)
+      ?.at(0)
+    const debugJson = vi
+      .mocked(overlayUi.debugPanel.setJson)
+      .mock.calls.at(-1)
+      ?.at(0) as
+      | {
+          trail?: {
+            captureSampleDistanceMeters?: number
+            renderedSliceCount?: number
+            renderSampleDistanceMeters?: number
+          }
+          viewport?: { size?: number; zoom?: number }
+        }
+      | undefined
+
+    expect(debugText).toContain('viewport: 25.00 | zoom: 4.0x')
+    expect(debugText).toContain(
+      'trail detail: L6/7 close | slices 12 | render 417 km | capture 250 km',
+    )
+    expect(debugJson?.viewport).toEqual({ size: 25, zoom: 4 })
+    expect(debugJson?.trail).toMatchObject({
+      captureSampleDistanceMeters: 250_000,
+      detailLabel: 'close',
+      detailLevel: 6,
+      detailLevelCount: 7,
+      renderedSliceCount: 12,
+    })
+    expect(debugJson?.trail?.renderSampleDistanceMeters).toBeCloseTo(
+      416_666.67,
+      2,
+    )
+  })
+
   it('throttles FPS meter content to every four visible frame cycles', async () => {
     const { createHudPresentation } = await import(
       '@/presentation/hudPresentation'

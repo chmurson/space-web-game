@@ -97,6 +97,16 @@ export type DebugPanelTextInput = {
   predictedTargetClosestApproach: PredictedClosestApproach | null
   targetMetrics: CaptureMetrics
   targetName: string
+  trailDetail: {
+    label: string
+    level: number
+    levelCount: number
+    captureSampleDistanceMeters: number
+    renderedSliceCount: number
+    renderSampleDistanceMeters: number
+  }
+  viewportSize: number
+  zoom: number
 }
 
 const getGcProbeMode = (stats: BrowserGcProbeStats) => {
@@ -178,6 +188,8 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
     `coast horizon: [4]- [5]+ => ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
     `prediction step: ${formatDuration(input.predictionStepSeconds)}`,
     `snapshot: [6] save | [7] load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
+    `viewport: ${input.viewportSize.toFixed(2)} | zoom: ${input.zoom.toFixed(1)}x`,
+    `trail detail: L${input.trailDetail.level}/${input.trailDetail.levelCount} ${input.trailDetail.label} | slices ${input.trailDetail.renderedSliceCount} | render ${formatDistance(input.trailDetail.renderSampleDistanceMeters)} | capture ${formatDistance(input.trailDetail.captureSampleDistanceMeters)}`,
     `target: ${input.targetName}`,
     `gravity: ${formatBodyInfluences(input.bodyInfluences)}`,
     `surface: ${formatDistance(input.targetMetrics.surfaceDistance)} | range: ${input.targetMetrics.insideRange ? 'inside' : 'outside'}`,

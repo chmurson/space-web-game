@@ -181,6 +181,9 @@ export const createFrameLoop = (options: {
     )
     options.runtimeActions.updateCamera()
     updateRipples(options.ripples, realDt, { camera: options.gameScene.camera })
+    const trailTarget = options.queries.getAssistTarget()
+    const trimTrailAroundTarget =
+      options.queries.getCaptureMetrics(trailTarget).specificEnergy < 0
 
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
     options.bodyPresentation.updateVisuals({
@@ -192,10 +195,13 @@ export const createFrameLoop = (options: {
     })
 
     options.spacecraftPresentation.updateVisuals({
+      bodies: options.runtime.simulation.state.bodies,
       elapsed: options.runtime.simulation.state.elapsed,
       isThrusting,
       spacecraft: options.runtime.simulation.state.spacecraft,
       spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+      trailTarget,
+      trimTrailAroundTarget,
       targetHeading: options.runtime.simulation.targetHeading,
       targetHeadingScreenPosition:
         options.runtime.ui.targetHeadingScreenPosition ?? null,
@@ -260,13 +266,18 @@ export const createFrameLoop = (options: {
           options.runtime.simulation.state.spacecraft.position,
         viewportSize: options.runtime.simulation.viewportSize,
       })
+      const trailTarget = options.queries.getAssistTarget()
       options.spacecraftPresentation.updateVisuals({
+        bodies: options.runtime.simulation.state.bodies,
         elapsed: options.runtime.simulation.state.elapsed,
         isThrusting:
           options.runtime.simulation.state.controls.main > 0 &&
           options.runtime.simulation.state.spacecraft.fuel > 0,
         spacecraft: options.runtime.simulation.state.spacecraft,
         spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+        trailTarget,
+        trimTrailAroundTarget:
+          options.queries.getCaptureMetrics(trailTarget).specificEnergy < 0,
         targetHeading: options.runtime.simulation.targetHeading,
         targetHeadingScreenPosition:
           options.runtime.ui.targetHeadingScreenPosition ?? null,

@@ -575,6 +575,7 @@ export const createAppComponents = (options: {
   })
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
+    getTrailRenderedSliceCount: () => gameScene.trailRenderedSliceCount,
     inGameControlsMenu,
     overlayUi,
     physicsEngineName: options.config.physicsEngine.name,

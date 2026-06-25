@@ -51,6 +51,16 @@ const createDebugPanelInput = (
     surfaceDistance: 4_000,
   },
   targetName: 'Moon',
+  trailDetail: {
+    captureSampleDistanceMeters: 250_000,
+    label: 'close',
+    level: 6,
+    levelCount: 7,
+    renderedSliceCount: 12,
+    renderSampleDistanceMeters: 500_000,
+  },
+  viewportSize: 25,
+  zoom: 4,
   ...overrides,
 })
 
@@ -64,6 +74,15 @@ describe('getDebugPanelLines', () => {
   it('shows scenario phase in the readable debug text', () => {
     expect(getDebugPanelLines(createDebugPanelInput())).toContain(
       'scenario: reach-moon | phase reach-moon',
+    )
+  })
+
+  it('shows viewport and trail detail in the readable debug text', () => {
+    const lines = getDebugPanelLines(createDebugPanelInput())
+
+    expect(lines).toContain('viewport: 25.00 | zoom: 4.0x')
+    expect(lines).toContain(
+      'trail detail: L6/7 close | slices 12 | render 500 km | capture 250 km',
     )
   })
 

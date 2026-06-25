@@ -7,6 +7,7 @@ import type { GameConfig } from '../config/types'
 import type { ScenarioAssets } from '../render/scenarioAssets'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
+import type { Vec2 } from '../simulation/vector'
 import { createStarfield, type Starfield } from './starfield'
 
 const EARTH_ATMOSPHERE_RIM_NAME = 'earth-atmosphere-rim'
@@ -94,7 +95,8 @@ const createEarthCloudLayer = (radius: number) => {
 
 export type SpacecraftTrailPoint = {
   elapsed: number
-  position: THREE.Vector3
+  position: Vec2
+  targetRelativePositions: Record<string, Vec2>
 }
 
 export type ScreenSpaceDashPattern = {
@@ -146,6 +148,7 @@ export type GameSceneRefs = {
   starfield: Starfield
   trail: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
   trailPoints: SpacecraftTrailPoint[]
+  trailRenderedSliceCount: number
 }
 
 const applyBodyDiffuseTexture = (
@@ -490,5 +493,6 @@ export const createGameScene = (
     starfield,
     trail,
     trailPoints,
+    trailRenderedSliceCount: 0,
   }
 }

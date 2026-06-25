@@ -31,6 +31,7 @@ import {
   type ScenarioPromptUiRefs,
 } from '../ui/scenario-prompts/scenario-prompts'
 import type { TouchControls } from '../ui/touchControls/createTouchControls'
+import { getSpacecraftTrailDetail } from './spacecraftTrail'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
 
 const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
@@ -144,6 +145,7 @@ export const createHudPresentation = (options: {
   inGameControlsMenu?: InGameControlsMenu
   overlayUi: OverlayUiRefs
   physicsEngineName: string
+  getTrailRenderedSliceCount?: () => number
   queries: GameQueries
   rendererProfiler: RendererProfiler
   runtime: AppRuntimeState
@@ -520,6 +522,11 @@ export const createHudPresentation = (options: {
         lastDebugPanelContentUpdateAt = metrics.nowMs
         const { completed, scenarioId, state } = options.runtime.scenario
           .session as RuntimeScenarioSession
+        const viewportSize = options.runtime.simulation.viewportSize
+        const zoom = options.defaultViewport / viewportSize
+        const trailDetail = getSpacecraftTrailDetail(viewportSize)
+        const trailRenderedSliceCount =
+          options.getTrailRenderedSliceCount?.() ?? 0
         options.overlayUi.debugPanel.setText(
           getDebugPanelLines({
             assistMode: options.runtime.simulation.assistMode,
@@ -539,6 +546,12 @@ export const createHudPresentation = (options: {
               predictionState.predictedTargetClosestApproach,
             targetMetrics,
             targetName: target.name,
+            trailDetail: {
+              ...trailDetail,
+              renderedSliceCount: trailRenderedSliceCount,
+            },
+            viewportSize,
+            zoom,
           }).join('\n'),
         )
         options.overlayUi.debugPanel.setJson({
@@ -554,6 +567,19 @@ export const createHudPresentation = (options: {
           debugModeEnabled: options.runtime.debug.debugModeEnabled,
           scenarioId,
           state,
+          trail: {
+            captureSampleDistanceMeters:
+              trailDetail.captureSampleDistanceMeters,
+            detailLabel: trailDetail.label,
+            detailLevel: trailDetail.level,
+            detailLevelCount: trailDetail.levelCount,
+            renderedSliceCount: trailRenderedSliceCount,
+            renderSampleDistanceMeters: trailDetail.renderSampleDistanceMeters,
+          },
+          viewport: {
+            size: viewportSize,
+            zoom,
+          },
         })
       }
 
