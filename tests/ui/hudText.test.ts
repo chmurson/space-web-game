@@ -101,7 +101,7 @@ describe('getDebugPanelLines', () => {
 })
 
 describe('getFpsMeterText', () => {
-  it('formats fps, frame time, cycle timings, and 60hz headroom', () => {
+  it('formats fps, frame time, combined cycle timings, and 60hz headroom', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats(),
@@ -109,7 +109,7 @@ describe('getFpsMeterText', () => {
         smoothedFps: 59.94,
         smoothedGpuMs: 8.4,
       }),
-    ).toBe('FPS 59.9\nframe 16.7ms\ncpu 5.3ms\ngpu 8.4ms\n60Hz +8.3ms\ngc? 0')
+    ).toBe('FPS 59.9\nframe 16.7ms\ncpu 5.3ms | gpu 8.4ms\n60Hz +8.3ms\ngc? 0')
   })
 
   it('marks gpu timing unavailable when the browser cannot provide it yet', () => {

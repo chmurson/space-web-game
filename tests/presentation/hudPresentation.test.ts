@@ -443,14 +443,25 @@ const createQueries = (): GameQueries =>
       specificEnergy: -1,
       surfaceDistance: 999,
     }),
+    getCoastPredictionHorizonSeconds: () => 3_600,
     getCircularizePlan: () => null,
+    getPredictionConfig: () => ({ stepSeconds: 30 }),
   }) as unknown as GameQueries
 
-const createMetrics = (fpsMeterVisible = false) => ({
+const createMetrics = (
+  fpsMeterVisible = false,
+  overrides: Partial<{
+    frameIntervalMs: number
+    fpsGraphNowMs: number
+    nowMs: number
+  }> = {},
+) => ({
   browserGcStats: createBrowserGcStats(),
+  frameIntervalMs: overrides.frameIntervalMs ?? 16,
   fpsFrameSamples: [{ atMs: 1_000, frameMs: 16 }],
-  fpsGraphNowMs: 1_000,
+  fpsGraphNowMs: overrides.fpsGraphNowMs ?? overrides.nowMs ?? 1_000,
   fpsMeterVisible,
+  nowMs: overrides.nowMs ?? 1_000,
   smoothedCpuMs: 4,
   smoothedFps: 60,
 })
@@ -521,5 +532,122 @@ describe('createHudPresentation', () => {
 
     expect(fpsIndicator.isConnected).toBe(false)
     expect(fpsIndicator.childNodes).toHaveLength(0)
+  })
+
+  it('throttles debug panel content updates while the panel stays open', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    const runtime = createRuntime()
+    runtime.debug.debugModeEnabled = true
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler: {
+        getSmoothedGpuMs: vi.fn(() => 8),
+      } as unknown as RendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+
+    presentation.update(createMetrics(false, { nowMs: 1_000 }))
+    presentation.update(createMetrics(false, { nowMs: 1_250 }))
+    presentation.update(createMetrics(false, { nowMs: 1_500 }))
+
+    expect(overlayUi.debugPanel.setText).toHaveBeenCalledTimes(2)
+    expect(overlayUi.debugPanel.setJson).toHaveBeenCalledTimes(2)
+  })
+
+  it('throttles FPS meter content to every four visible frame cycles', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    const runtime = createRuntime()
+    runtime.debug.fpsIndicatorEnabled = true
+    const rendererProfiler = {
+      getSmoothedGpuMs: vi.fn(() => 8),
+    } as unknown as RendererProfiler
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+
+    presentation.update(createMetrics(true, { nowMs: 1_000 }))
+    for (let cycle = 1; cycle < 4; cycle += 1) {
+      presentation.update(createMetrics(true, { nowMs: 1_000 + cycle * 16 }))
+    }
+
+    expect(rendererProfiler.getSmoothedGpuMs).toHaveBeenCalledOnce()
+
+    presentation.update(createMetrics(true, { nowMs: 1_064 }))
+
+    expect(rendererProfiler.getSmoothedGpuMs).toHaveBeenCalledTimes(2)
+  })
+
+  it('updates FPS meter content immediately after a slow visible frame', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    const runtime = createRuntime()
+    runtime.debug.fpsIndicatorEnabled = true
+    const rendererProfiler = {
+      getSmoothedGpuMs: vi.fn(() => 8),
+    } as unknown as RendererProfiler
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+
+    presentation.update(createMetrics(true, { nowMs: 1_000 }))
+    presentation.update(
+      createMetrics(true, { frameIntervalMs: 70, nowMs: 1_070 }),
+    )
+
+    expect(rendererProfiler.getSmoothedGpuMs).toHaveBeenCalledTimes(2)
   })
 })

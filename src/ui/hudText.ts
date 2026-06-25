@@ -3,7 +3,6 @@ import type {
   CaptureMetrics,
   CircularizePlan,
 } from '../assist/orbitalAssist'
-import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
 import {
   shouldCaptureBurnForMetrics,
   shouldCircularizeBurn,
@@ -12,6 +11,7 @@ import type {
   PredictedClosestApproach,
   PredictedImpact,
 } from '../prediction/trajectoryPrediction'
+import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
 import type { BodyInfluence } from '../simulation/bodyInfluence'
 import {
   formatBodyInfluences,
@@ -326,12 +326,12 @@ export const getFpsMeterText = (input: FpsMeterTextInput) => {
     input.smoothedGpuMs === null
       ? 'gpu n/a'
       : `gpu ${input.smoothedGpuMs.toFixed(1)}ms`
+  const cycleText = `cpu ${input.smoothedCpuMs.toFixed(1)}ms | ${gpuText}`
 
   return [
     `FPS ${input.smoothedFps.toFixed(1)}`,
     `frame ${frameMs.toFixed(1)}ms`,
-    `cpu ${input.smoothedCpuMs.toFixed(1)}ms`,
-    gpuText,
+    cycleText,
     `60Hz ${formatSignedMs(headroomMs)}`,
     getCompactGcProbeText(input.browserGcStats),
   ].join('\n')

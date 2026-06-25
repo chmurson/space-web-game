@@ -205,11 +205,14 @@ export const createFrameLoop = (options: {
     })
 
     options.trajectoryPresentation.updateVisuals()
+    const hudNowMs = performance.now()
     options.hudPresentation.update({
       browserGcStats: browserGcProbe.getStats(),
+      frameIntervalMs,
       fpsFrameSamples,
-      fpsGraphNowMs: fpsMeterVisible ? performance.now() : 0,
+      fpsGraphNowMs: fpsMeterVisible ? hudNowMs : 0,
       fpsMeterVisible,
+      nowMs: hudNowMs,
       smoothedCpuMs,
       smoothedFps,
     })
@@ -273,11 +276,14 @@ export const createFrameLoop = (options: {
       })
       const fpsMeterVisible = isFpsMeterVisible()
       browserGcProbe.setEnabled(fpsMeterVisible)
+      const hudNowMs = performance.now()
       options.hudPresentation.update({
         browserGcStats: browserGcProbe.getStats(),
+        frameIntervalMs: 0,
         fpsFrameSamples,
-        fpsGraphNowMs: fpsMeterVisible ? performance.now() : 0,
+        fpsGraphNowMs: fpsMeterVisible ? hudNowMs : 0,
         fpsMeterVisible,
+        nowMs: hudNowMs,
         smoothedCpuMs,
         smoothedFps,
       })

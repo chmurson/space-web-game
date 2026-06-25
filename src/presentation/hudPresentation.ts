@@ -55,6 +55,9 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
 }
 
 const svgNamespace = 'http://www.w3.org/2000/svg'
+const debugPanelUpdateIntervalMs = 500
+const fpsIndicatorUpdateFrameCycleInterval = 4
+const fpsIndicatorSlowFrameMs = 1000 / 15
 
 const syncFpsIndicator = (
   element: HTMLElement,
@@ -158,6 +161,10 @@ export const createHudPresentation = (options: {
   let lastWarpIncreaseAt = 0
   let warpIncreaseStreak = 0
   let warpFeedbackTimeoutId: number | null = null
+  let debugPanelWasVisible = false
+  let lastDebugPanelContentUpdateAt = Number.NEGATIVE_INFINITY
+  let fpsIndicatorWasVisible = false
+  let fpsIndicatorFrameCyclesSinceUpdate = 0
   const reducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
   ).matches
@@ -278,9 +285,11 @@ export const createHudPresentation = (options: {
   return {
     update: (metrics: {
       browserGcStats: BrowserGcProbeStats
+      frameIntervalMs: number
       fpsFrameSamples: readonly FpsMeterFrameSample[]
       fpsGraphNowMs: number
       fpsMeterVisible: boolean
+      nowMs: number
       smoothedCpuMs: number
       smoothedFps: number
     }) => {
@@ -500,7 +509,15 @@ export const createHudPresentation = (options: {
         'app-debug-panel-open',
         debugPanelVisible,
       )
-      if (debugPanelVisible) {
+      if (!debugPanelVisible) {
+        debugPanelWasVisible = false
+      } else if (
+        !debugPanelWasVisible ||
+        metrics.nowMs - lastDebugPanelContentUpdateAt >=
+          debugPanelUpdateIntervalMs
+      ) {
+        debugPanelWasVisible = true
+        lastDebugPanelContentUpdateAt = metrics.nowMs
         const { completed, scenarioId, state } = options.runtime.scenario
           .session as RuntimeScenarioSession
         options.overlayUi.debugPanel.setText(
@@ -541,25 +558,39 @@ export const createHudPresentation = (options: {
       }
 
       if (!syncFpsIndicatorMount(options.overlayUi, metrics.fpsMeterVisible)) {
+        fpsIndicatorWasVisible = false
+        fpsIndicatorFrameCyclesSinceUpdate = 0
         return
       }
 
-      const fpsMeterInput = {
-        browserGcStats: metrics.browserGcStats,
-        smoothedCpuMs: metrics.smoothedCpuMs,
-        smoothedFps: metrics.smoothedFps,
-        smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
-      }
-      syncFpsIndicator(options.overlayUi.fpsIndicator, {
-        graph: getFpsMeterGraphModel({
+      fpsIndicatorFrameCyclesSinceUpdate += 1
+      const shouldUpdateFpsIndicator =
+        !fpsIndicatorWasVisible ||
+        fpsIndicatorFrameCyclesSinceUpdate >=
+          fpsIndicatorUpdateFrameCycleInterval ||
+        metrics.frameIntervalMs > fpsIndicatorSlowFrameMs
+
+      fpsIndicatorWasVisible = true
+
+      if (shouldUpdateFpsIndicator) {
+        fpsIndicatorFrameCyclesSinceUpdate = 0
+        const fpsMeterInput = {
           browserGcStats: metrics.browserGcStats,
-          frameSamples: metrics.fpsFrameSamples,
-          nowMs: metrics.fpsGraphNowMs,
-        }),
-        text: getFpsMeterText(fpsMeterInput),
-      })
-      options.overlayUi.fpsIndicator.dataset.status =
-        getFpsMeterStatus(fpsMeterInput)
+          smoothedCpuMs: metrics.smoothedCpuMs,
+          smoothedFps: metrics.smoothedFps,
+          smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
+        }
+        syncFpsIndicator(options.overlayUi.fpsIndicator, {
+          graph: getFpsMeterGraphModel({
+            browserGcStats: metrics.browserGcStats,
+            frameSamples: metrics.fpsFrameSamples,
+            nowMs: metrics.fpsGraphNowMs,
+          }),
+          text: getFpsMeterText(fpsMeterInput),
+        })
+        options.overlayUi.fpsIndicator.dataset.status =
+          getFpsMeterStatus(fpsMeterInput)
+      }
     },
   }
 }
