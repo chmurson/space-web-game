@@ -1,4 +1,9 @@
-import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
+import {
+  CrashMenuSurface,
+  type CrashMenuSurfaceProps,
+} from './components/CrashMenuSurface'
+import { createPreactUiSurface } from './createPreactUiSurface'
+import { isLoadGameAvailable, runLoadGameAction } from './loadGameAvailability'
 
 export type CrashMenu = {
   element: HTMLElement
@@ -9,6 +14,8 @@ export type CrashMenu = {
   }): void
 }
 
+type CrashMenuRenderProps = Omit<CrashMenuSurfaceProps, 'rootRef'>
+
 export const createCrashMenu = (options: {
   app: HTMLElement
   onExit(): void
@@ -16,58 +23,36 @@ export const createCrashMenu = (options: {
   onRestart(): void
   onRestartFromCheckpoint(): void
 }): CrashMenu => {
-  const root = document.createElement('section')
-  root.className = 'crash-menu'
-  root.hidden = true
-  root.setAttribute('role', 'dialog')
-  root.setAttribute('aria-modal', 'true')
-  root.setAttribute('aria-labelledby', 'crash-menu-title')
-  root.setAttribute('aria-describedby', 'crash-menu-description')
-  root.setAttribute('aria-hidden', 'true')
-  root.innerHTML = `
-    <div class="crash-menu-panel">
-      <p class="crash-menu-kicker">Mission ended</p>
-      <h2 id="crash-menu-title">Crashed</h2>
-      <p id="crash-menu-description">Impact detected. Restart to try the approach again.</p>
-      <div class="menu-actions crash-menu-actions">
-        <button class="crash-menu-primary-action" type="button" data-crash-menu-action="checkpoint">Restart from checkpoint</button>
-        <button type="button" data-crash-menu-action="restart">Restart</button>
-        <button type="button" data-crash-menu-action="load">Load game</button>
-        <button type="button" data-crash-menu-action="exit">Exit to menu</button>
-      </div>
-    </div>
-  `
-  options.app.appendChild(root)
+  const surface = createPreactUiSurface<CrashMenuRenderProps>({
+    app: options.app,
+    component: CrashMenuSurface,
+    missingRootError: 'Failed to create crash menu',
+  })
 
-  const title = root.querySelector<HTMLHeadingElement>('#crash-menu-title')
-  const description = root.querySelector<HTMLParagraphElement>(
-    '#crash-menu-description',
-  )
-  const loadButton = root.querySelector<HTMLButtonElement>(
-    '[data-crash-menu-action="load"]',
-  )
-  const restartButton = root.querySelector<HTMLButtonElement>(
-    '[data-crash-menu-action="restart"]',
-  )
-  const restartFromCheckpointButton = root.querySelector<HTMLButtonElement>(
-    '[data-crash-menu-action="checkpoint"]',
-  )
-  const exitButton = root.querySelector<HTMLButtonElement>(
-    '[data-crash-menu-action="exit"]',
-  )
+  let crashedBodyName: string | null = null
+  let hasCheckpoint = false
+  let loadGameAvailable = isLoadGameAvailable()
   let visible = false
   let restoreFocusTarget: HTMLElement | null = null
 
+  const getButton = (action: string) =>
+    surface.element.querySelector<HTMLButtonElement>(
+      `[data-crash-menu-action="${action}"]`,
+    ) ?? null
+
   const getFocusableButtons = () =>
-    [restartFromCheckpointButton, restartButton, loadButton, exitButton].filter(
+    [
+      getButton('checkpoint'),
+      getButton('restart'),
+      getButton('load'),
+      getButton('exit'),
+    ].filter(
       (button): button is HTMLButtonElement =>
         button !== null && !button.hidden && !button.disabled,
     )
 
   const getPrimaryRecoveryButton = () =>
-    restartFromCheckpointButton && !restartFromCheckpointButton.hidden
-      ? restartFromCheckpointButton
-      : restartButton
+    hasCheckpoint ? getButton('checkpoint') : getButton('restart')
 
   const focusPrimaryAction = () => {
     const primaryButton = getPrimaryRecoveryButton() ?? getFocusableButtons()[0]
@@ -75,7 +60,7 @@ export const createCrashMenu = (options: {
   }
 
   const restartFromPrimaryAction = () => {
-    if (restartFromCheckpointButton && !restartFromCheckpointButton.hidden) {
+    if (hasCheckpoint) {
       options.onRestartFromCheckpoint()
       return
     }
@@ -83,18 +68,24 @@ export const createCrashMenu = (options: {
     options.onRestart()
   }
 
-  loadButton?.addEventListener('click', () => {
-    if (!loadButton.disabled && !loadButton.hidden) {
-      options.onLoadGame()
-    }
-  })
-  restartButton?.addEventListener('click', options.onRestart)
-  restartFromCheckpointButton?.addEventListener('click', () => {
-    if (!restartFromCheckpointButton.hidden) {
-      options.onRestartFromCheckpoint()
-    }
-  })
-  exitButton?.addEventListener('click', options.onExit)
+  const renderMenu = () => {
+    surface.render({
+      crashedBodyName,
+      hasCheckpoint,
+      loadGameAvailable,
+      visible,
+      onExit: options.onExit,
+      onLoadGame: () => {
+        runLoadGameAction(options.onLoadGame)
+      },
+      onRestart: options.onRestart,
+      onRestartFromCheckpoint: () => {
+        if (hasCheckpoint) {
+          options.onRestartFromCheckpoint()
+        }
+      },
+    })
+  }
 
   document.addEventListener('keydown', (event) => {
     if (!visible) {
@@ -130,7 +121,7 @@ export const createCrashMenu = (options: {
     const firstButton = buttons[0]
     const lastButton = buttons[buttons.length - 1]
     const activeElement = document.activeElement
-    if (!root.contains(activeElement)) {
+    if (!surface.element.contains(activeElement)) {
       event.preventDefault()
       focusPrimaryAction()
       return
@@ -148,16 +139,18 @@ export const createCrashMenu = (options: {
     }
   })
 
+  renderMenu()
+  const element = surface.element
+
   return {
-    element: root,
+    element,
     setVisible: (nextVisible) => {
       if (visible === nextVisible) {
         return
       }
 
       visible = nextVisible
-      root.hidden = !visible
-      root.setAttribute('aria-hidden', String(!visible))
+      renderMenu()
 
       if (visible) {
         restoreFocusTarget =
@@ -177,34 +170,11 @@ export const createCrashMenu = (options: {
       }
       restoreFocusTarget = null
     },
-    syncState: ({ crashedBodyName, hasCheckpoint }) => {
-      const crashTitle = crashedBodyName
-        ? `Crashed into ${crashedBodyName}`
-        : 'Crashed'
-      if (title) {
-        title.textContent = crashTitle
-      }
-      if (description) {
-        description.textContent = crashedBodyName
-          ? `Impact with ${crashedBodyName} ended this run. Restart to try the approach again.`
-          : 'Impact detected. Restart to try the approach again.'
-      }
-      if (loadButton) {
-        loadButton.hidden = readDebugScenarioSnapshot() === null
-      }
-      if (restartFromCheckpointButton) {
-        restartFromCheckpointButton.hidden = !hasCheckpoint
-        restartFromCheckpointButton.classList.toggle(
-          'crash-menu-primary-action',
-          hasCheckpoint,
-        )
-      }
-      if (restartButton) {
-        restartButton.classList.toggle(
-          'crash-menu-primary-action',
-          !hasCheckpoint,
-        )
-      }
+    syncState: (nextState) => {
+      crashedBodyName = nextState.crashedBodyName
+      hasCheckpoint = nextState.hasCheckpoint
+      loadGameAvailable = isLoadGameAvailable()
+      renderMenu()
     },
   }
 }

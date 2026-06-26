@@ -139,31 +139,40 @@ canvas {
     z-index: var(--z-overlay-modal-menu);
 }
 
-.main-menu-panel {
+.menu-panel {
     width: min(100%, 420px);
     display: grid;
-    gap: 16px;
     pointer-events: auto;
 }
 
-.main-menu-panel[hidden] {
+.menu-panel[hidden] {
     display: none;
 }
 
-.main-menu-copy {
+.main-menu-panel {
+    gap: 16px;
+}
+
+.menu-copy {
     display: grid;
     gap: 8px;
+}
+
+.main-menu-copy {
     padding: 0 8px;
     text-align: center;
     text-shadow: 0 12px 28px rgba(2, 6, 23, 0.45);
 }
 
-.main-menu-kicker {
-    color: rgba(191, 219, 254, 0.72);
+.menu-kicker {
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
+}
+
+.main-menu-kicker {
+    color: rgba(191, 219, 254, 0.72);
 }
 
 .main-menu-copy h1 {
@@ -172,7 +181,7 @@ canvas {
     line-height: 0.95;
 }
 
-.main-menu-copy p {
+.menu-description {
     margin: 0;
     color: rgba(226, 232, 240, 0.84);
     font-size: 14px;
@@ -204,8 +213,6 @@ canvas {
 }
 
 .crash-menu-panel {
-    width: min(100%, 420px);
-    display: grid;
     gap: 12px;
     max-height: 100%;
     padding: 18px;
@@ -221,10 +228,8 @@ canvas {
 .crash-menu-kicker {
     margin: 0;
     color: rgba(254, 205, 211, 0.78);
-    font-size: 11px;
     font-weight: 750;
     letter-spacing: 0.16em;
-    text-transform: uppercase;
 }
 
 .crash-menu-panel h2 {
@@ -235,9 +240,7 @@ canvas {
 }
 
 .crash-menu-panel p {
-    margin: 0;
     color: rgba(226, 232, 240, 0.82);
-    font-size: 14px;
     line-height: 1.42;
 }
 
@@ -270,6 +273,7 @@ canvas {
     display: none;
 }
 
+.menu-actions button.menu-action-primary,
 .menu-actions button.main-menu-action-primary {
     border-color: rgba(125, 211, 252, 0.38);
     background:
@@ -277,10 +281,12 @@ canvas {
         var(--ui-glass-control-bg);
 }
 
+.menu-actions button.menu-action-secondary,
 .menu-actions button.main-menu-action-secondary {
     color: rgba(226, 232, 240, 0.78);
 }
 
+.menu-actions button.menu-action-danger-primary,
 .menu-actions button.crash-menu-primary-action {
     border-color: rgba(251, 113, 133, 0.36);
     background:
