@@ -118,6 +118,8 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
   },
 ]
 
+const minimumVisibleLayerOpacity = 0.02
+
 const hashInt = (input: number) => {
   let value = input | 0
   value = Math.imul(value ^ (value >>> 16), 0x7feb352d)
@@ -341,7 +343,9 @@ export const createStarfield = (): Starfield => {
 
       for (const layer of layers) {
         const { config } = layer
-        const opacity = getLayerOpacity(config, options.viewportSize)
+        const rawOpacity = getLayerOpacity(config, options.viewportSize)
+        const opacity =
+          rawOpacity <= minimumVisibleLayerOpacity ? 0 : rawOpacity
         const centerX = targetX * config.parallaxFactor
         const centerZ = targetZ * config.parallaxFactor
 

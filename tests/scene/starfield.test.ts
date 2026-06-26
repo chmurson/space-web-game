@@ -1,9 +1,9 @@
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { ScenarioAssets } from '@/render/scenarioAssets'
 import { createGameScene } from '@/scene/createGameScene'
 import { createStarfield, type Starfield } from '@/scene/starfield'
-import type { ScenarioAssets } from '@/render/scenarioAssets'
 import type { Body } from '@/simulation/types'
 
 const EARTH_CLOUD_LAYER_NAME = 'earth-cloud-layer'
@@ -141,6 +141,25 @@ describe('createStarfield', () => {
 
     expect(closeLayer.visible).toBe(false)
     expect(closeLayerMaterial.opacity).toBe(0)
+  })
+
+  it('hides nearly transparent fading layers before building wide point clouds', () => {
+    const starfield = createStarfield()
+    const fadingLayerIndex = 1
+
+    updateStarfield(starfield, {
+      viewportHeight: 844,
+      viewportSize: 100,
+      viewportWidth: 390,
+    })
+
+    expect(getLayerGroup(starfield, fadingLayerIndex).visible).toBe(false)
+    expect(getLayerPoints(starfield, fadingLayerIndex).material.opacity).toBe(0)
+    expect(
+      getLayerPoints(starfield, fadingLayerIndex).geometry.getAttribute(
+        'position',
+      ),
+    ).toBeUndefined()
   })
 
   it('does not fade layers away while zooming in', () => {
