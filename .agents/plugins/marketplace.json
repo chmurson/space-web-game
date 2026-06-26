@@ -1,0 +1,20 @@
+{
+  "name": "space-web-game-local",
+  "interface": {
+    "displayName": "Space Web Game Local"
+  },
+  "plugins": [
+    {
+      "name": "space-web-game-startnewissue",
+      "source": {
+        "source": "local",
+        "path": "./plugins/space-web-game-startnewissue"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

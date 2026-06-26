@@ -1,0 +1,23 @@
+{
+  "name": "space-web-game-startnewissue",
+  "version": "0.1.0+codex.20260626080818",
+  "description": "Repo-local command and skill for selecting and starting GitHub issue work in Space Web Game.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Start GH issue",
+    "shortDescription": "Start issue work.",
+    "longDescription": "Adds a repo-local command and skill for picking an open GitHub issue, confirming it, creating a scoped branch, and continuing through Shipit.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Commands",
+      "Instructions"
+    ],
+    "defaultPrompt": [
+      "Use /issue to pick and start a GitHub issue."
+    ]
+  }
+}

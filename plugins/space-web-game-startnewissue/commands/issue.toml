@@ -1,0 +1,2 @@
+description = "Pick and start an open GitHub issue in this repo"
+prompt = "Use $space-web-game-startnewissue:startnewissue in this repository. First verify the current workspace is the Space Web Game repo by checking package.json name `space-web-game` or Git remote `chmurson/space-web-game`; if not, stop and explain this command is repo-local. Treat any command arguments as optional issue-selection preferences: {{args}}"
