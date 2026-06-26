@@ -250,6 +250,11 @@ const getLimitingWorkMs = (input: FpsMeterStatusInput) =>
     ? input.smoothedCpuMs
     : Math.max(input.smoothedCpuMs, input.smoothedGpuMs)
 
+const getFrameMsForFps = (fps: number) => 1000 / Math.max(fps, 1)
+
+const getEffectiveFrameBudgetMs = (fps: number) =>
+  Math.max(frameBudgetMs60, getFrameMsForFps(fps))
+
 const getCompactGcProbeText = (stats: BrowserGcProbeStats) => {
   const mode = getGcProbeMode(stats)
   const label = mode === 'native' ? 'gc' : 'gc?'
@@ -319,11 +324,12 @@ export const getFpsMeterStatus = (
   input: FpsMeterStatusInput,
 ): FpsMeterStatus => {
   const limitingWorkMs = getLimitingWorkMs(input)
+  const effectiveFrameBudgetMs = getEffectiveFrameBudgetMs(input.smoothedFps)
 
-  if (input.smoothedFps < 45 || limitingWorkMs > frameBudgetMs60) {
+  if (limitingWorkMs > effectiveFrameBudgetMs) {
     return 'danger'
   }
-  if (input.smoothedFps < 55 || limitingWorkMs > frameBudgetMs60 * 0.8) {
+  if (limitingWorkMs > effectiveFrameBudgetMs * 0.8) {
     return 'warning'
   }
 
@@ -331,8 +337,7 @@ export const getFpsMeterStatus = (
 }
 
 export const getFpsMeterText = (input: FpsMeterTextInput) => {
-  const safeFps = Math.max(input.smoothedFps, 1)
-  const frameMs = 1000 / safeFps
+  const frameMs = getFrameMsForFps(input.smoothedFps)
   const headroomMs = frameBudgetMs60 - getLimitingWorkMs(input)
   const gpuText =
     input.smoothedGpuMs === null

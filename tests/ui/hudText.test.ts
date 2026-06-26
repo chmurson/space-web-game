@@ -210,11 +210,31 @@ describe('getFpsMeterGraphModel', () => {
 })
 
 describe('getFpsMeterStatus', () => {
+  it('keeps stable capped 30 FPS with low measured work in the safe range', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 5.3,
+        smoothedFps: 30,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('good')
+  })
+
   it('warns before the 60hz frame budget is exhausted', () => {
     expect(
       getFpsMeterStatus({
         smoothedCpuMs: 14,
         smoothedFps: 58,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('warning')
+  })
+
+  it('warns before the effective 30 FPS frame budget is exhausted', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 27,
+        smoothedFps: 30,
         smoothedGpuMs: null,
       }),
     ).toBe('warning')
@@ -226,6 +246,16 @@ describe('getFpsMeterStatus', () => {
         smoothedCpuMs: 12,
         smoothedFps: 60,
         smoothedGpuMs: 18,
+      }),
+    ).toBe('danger')
+  })
+
+  it('reports danger when work exceeds the effective 30 FPS frame budget', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 34,
+        smoothedFps: 30,
+        smoothedGpuMs: null,
       }),
     ).toBe('danger')
   })
