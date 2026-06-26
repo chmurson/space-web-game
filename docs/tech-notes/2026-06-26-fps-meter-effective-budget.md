@@ -38,15 +38,12 @@ The previous status logic treated low FPS itself as danger, even when measured w
 - `npm run build`
 - `git diff --check`
 - `npm run test:gui`
-  - Inspected `tmp/playwright-results/mobileHudScreenshot-captur-92051-th-world-visuals-suppressed-mobile-chromium/mobile-main-menu.png`.
-- Local Playwright smoke check of the live FPS meter:
-  - Captured `.codex/shipit-workflows/codex/issue-50-fps-meter-smoke.png`.
-  - Meter rendered with `data-status="good"`, `gpu n/a`, and readable text.
+  - Verified the mobile HUD screenshot suite still rendered the expected menu and control states without layout overlap.
+- Local Playwright smoke check of the live FPS meter verified active gameplay renders the meter with `data-status="good"`, `gpu n/a`, and readable text.
 - `npm run deploy:netlify`
-  - Shared staging URL: `https://fanciful-bunny-d77b4b.netlify.app`
-  - Unique deploy URL: `https://6a3ef655f2f74f1ae06e2bef--fanciful-bunny-d77b4b.netlify.app`
+  - Verified the branch-aware staging deploy completed for manual testing.
 - `coderabbit --base main --agent`
-  - Attempted, but CodeRabbit returned a recoverable rate limit with a wait time of about 28 minutes.
+  - CodeRabbit reviewed the PR and requested replacing transient validation references with stable summaries; this note was updated accordingly.
 
 ## Follow-Ups
 
