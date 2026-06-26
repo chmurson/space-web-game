@@ -9,6 +9,7 @@ Issue: https://github.com/chmurson/space-web-game/issues/24
 - Extracted the shared Preact host/root-ref/render adapter into `src/ui/createPreactUiSurface.ts` and moved both migrated menu factories onto it.
 - Extracted shared Preact menu primitives into `src/ui/components/MenuSurfacePrimitives.tsx` for panels, copy, kickers, descriptions, action stacks, and action buttons.
 - Extracted shared load-game availability/guard logic into `src/ui/loadGameAvailability.ts`.
+- Added a shared debug snapshot clear helper and refreshed menu load-state when the guarded load action no-ops because a saved snapshot disappeared after the menu last synced.
 - Preserved crash menu ARIA attributes, button order, `data-crash-menu-action` selectors, primary-action class behavior, load/checkpoint visibility, focus restoration, `Escape`, `R`, and focus-trap keyboard handling.
 - Added a Playwright browser-component regression for the public crash menu factory.
 
@@ -24,6 +25,7 @@ The first issue #24 slice moved the main menu to Preact. The crash menu is the n
 - `src/ui/createCrashMenu.ts` remains the adapter boundary for runtime actions, visibility, state sync, focus restoration, and keyboard shortcuts.
 - `src/ui/createPreactUiSurface.ts` owns the reusable Preact host element, root ref capture, render call, and missing-root guard for Preact-backed UI factories.
 - `src/ui/loadGameAvailability.ts` owns the repeated debug-snapshot load availability check and guarded load-game callback.
+- `src/debugScenarioSnapshot.ts` owns read, write, and best-effort clear access for the debug snapshot storage key.
 - `src/ui/createMainMenu.ts` also uses `createPreactUiSurface` so the next migrated surface can follow one adapter pattern.
 - `src/app/createAppComponents.ts` still owns crash-state synchronization and queries `.crash-menu-panel` through the existing `CrashMenu.element`.
 - `src/style.css` owns the shared `.menu-panel`, `.menu-copy`, `.menu-kicker`, `.menu-description`, and menu action variant classes, plus the surface-specific menu layout hooks.
@@ -46,7 +48,7 @@ The first issue #24 slice moved the main menu to Preact. The crash menu is the n
 
 - `npm run build` passed with the existing Vite chunk-size warning.
 - `npm test -- --run` passed: 46 files, 305 tests.
-- `npm run test:gui` passed: 5 mobile Chromium tests, including the crash menu browser-component regression.
+- `npm run test:gui` passed: 6 mobile Chromium tests, including the crash menu browser-component regression and stale main-menu load-state regression.
 - Generated GUI screenshot artifacts were visually inspected and matched the expected mobile UI states:
   - `tmp/playwright-results/mobileHudScreenshot-captur-92051-th-world-visuals-suppressed-mobile-chromium/mobile-main-menu.png`
   - `tmp/playwright-results/mobileHudScreenshot-captur-d9652-ch-the-Moon-menu-transition-mobile-chromium/mobile-reach-moon-menu.png`
@@ -61,6 +63,8 @@ The first issue #24 slice moved the main menu to Preact. The crash menu is the n
 - After the reusable Preact adapter extraction, `coderabbit --base main --agent` completed with 0 findings.
 - After the shared menu primitive extraction, `coderabbit --base main --agent` found that the load action guard used a captured availability value. `runLoadGameAction` now re-checks live availability before invoking the callback.
 - Final `coderabbit --base main --agent` completed with 0 findings after the load guard fix.
+- PR review follow-up fixed CodeRabbit comments by refreshing main and crash menu load-state when a guarded load no-ops, replacing the hardcoded test storage key with debug snapshot helpers, and making snapshot clearing best-effort when storage is unavailable.
+- Final post-review `coderabbit --base main --agent` completed with 0 findings.
 - Staging deploy completed:
   - https://fanciful-bunny-d77b4b.netlify.app
   - https://6a3ec88f8f89ab8acf93b325--fanciful-bunny-d77b4b.netlify.app

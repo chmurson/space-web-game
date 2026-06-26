@@ -33,6 +33,16 @@ export const createMainMenu = (options: {
   let loadGameAvailable = isLoadGameAvailable()
   let visible = true
 
+  const refreshLoadGameAvailable = () => {
+    const nextLoadGameAvailable = isLoadGameAvailable()
+    if (loadGameAvailable === nextLoadGameAvailable) {
+      return false
+    }
+
+    loadGameAvailable = nextLoadGameAvailable
+    return true
+  }
+
   const setActiveView = (view: MainMenuView) => {
     activeView = options.reachMoonFeatureEnabled ? view : 'main'
   }
@@ -45,7 +55,12 @@ export const createMainMenu = (options: {
       visible,
       onFreeRoam: () => handleActionThatClosesMenu(options.onFreeRoam),
       onLoadGame: () => {
-        runLoadGameAction(() => handleActionThatClosesMenu(options.onLoadGame))
+        const didLoad = runLoadGameAction(() =>
+          handleActionThatClosesMenu(options.onLoadGame),
+        )
+        if (!didLoad && refreshLoadGameAvailable()) {
+          renderMenu()
+        }
       },
       onReachMoon: () => handleActionThatClosesMenu(options.onReachMoon),
       onReachMoonBack: () => {
@@ -89,13 +104,9 @@ export const createMainMenu = (options: {
       renderMenu()
     },
     syncState: () => {
-      const nextLoadGameAvailable = isLoadGameAvailable()
-      if (loadGameAvailable === nextLoadGameAvailable) {
-        return
+      if (refreshLoadGameAvailable()) {
+        renderMenu()
       }
-
-      loadGameAvailable = nextLoadGameAvailable
-      renderMenu()
     },
   }
 }

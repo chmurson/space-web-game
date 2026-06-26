@@ -119,3 +119,11 @@ export const readDebugScenarioSnapshot = (): DebugScenarioSnapshot | null => {
 export const writeDebugScenarioSnapshot = (snapshot: DebugScenarioSnapshot) => {
   window.localStorage.setItem(debugSnapshotStorageKey, JSON.stringify(snapshot))
 }
+
+export const clearDebugScenarioSnapshot = () => {
+  try {
+    window.localStorage.removeItem(debugSnapshotStorageKey)
+  } catch {
+    // Snapshot clearing is best-effort when storage is unavailable.
+  }
+}

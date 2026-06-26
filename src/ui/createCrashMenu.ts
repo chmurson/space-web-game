@@ -35,6 +35,16 @@ export const createCrashMenu = (options: {
   let visible = false
   let restoreFocusTarget: HTMLElement | null = null
 
+  const refreshLoadGameAvailable = () => {
+    const nextLoadGameAvailable = isLoadGameAvailable()
+    if (loadGameAvailable === nextLoadGameAvailable) {
+      return false
+    }
+
+    loadGameAvailable = nextLoadGameAvailable
+    return true
+  }
+
   const getButton = (action: string) =>
     surface.element.querySelector<HTMLButtonElement>(
       `[data-crash-menu-action="${action}"]`,
@@ -76,7 +86,11 @@ export const createCrashMenu = (options: {
       visible,
       onExit: options.onExit,
       onLoadGame: () => {
-        runLoadGameAction(options.onLoadGame)
+        const didLoad = runLoadGameAction(options.onLoadGame)
+        if (!didLoad && refreshLoadGameAvailable()) {
+          renderMenu()
+          focusPrimaryAction()
+        }
       },
       onRestart: options.onRestart,
       onRestartFromCheckpoint: () => {
@@ -173,7 +187,7 @@ export const createCrashMenu = (options: {
     syncState: (nextState) => {
       crashedBodyName = nextState.crashedBodyName
       hasCheckpoint = nextState.hasCheckpoint
-      loadGameAvailable = isLoadGameAvailable()
+      refreshLoadGameAvailable()
       renderMenu()
     },
   }

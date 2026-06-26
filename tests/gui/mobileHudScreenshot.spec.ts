@@ -134,6 +134,65 @@ test('captures the mobile Reach the Moon replay pill transition', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-replay-pill')
 })
 
+test('refreshes stale main menu load state when the snapshot disappears', async ({
+  page,
+}) => {
+  await page.goto('/?reachmoon=1')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(async () => {
+    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
+    const debugSnapshotModulePath = '/src/debugScenarioSnapshot.ts'
+    const { createMainMenu } = await import(mainMenuModulePath)
+    const { clearDebugScenarioSnapshot, writeDebugScenarioSnapshot } =
+      await import(debugSnapshotModulePath)
+    const app = document.createElement('div')
+    const events: string[] = []
+
+    document.body.append(app)
+    writeDebugScenarioSnapshot({
+      version: 1,
+      savedAt: new Date(0).toISOString(),
+      elapsed: 0,
+      bodies: [],
+      spacecraft: {},
+    })
+
+    const menu = createMainMenu({
+      app,
+      reachMoonFeatureEnabled: false,
+      onFreeRoam: () => events.push('free-roam'),
+      onLoadGame: () => events.push('load'),
+      onReachMoon: () => events.push('reach-moon'),
+      onTutorial: () => events.push('tutorial'),
+    })
+    const loadButton = menu.element.querySelector(
+      '[data-main-menu-action="load"]',
+    ) as HTMLButtonElement | null
+    const initiallyDisabled = loadButton?.disabled
+
+    clearDebugScenarioSnapshot()
+    loadButton?.click()
+    const refreshedLoadButton = menu.element.querySelector(
+      '[data-main-menu-action="load"]',
+    ) as HTMLButtonElement | null
+
+    return {
+      displayAfterStaleClick: menu.element.style.display,
+      disabledAfterStaleClick: refreshedLoadButton?.disabled,
+      events,
+      initiallyDisabled,
+    }
+  })
+
+  expect(result).toEqual({
+    displayAfterStaleClick: 'flex',
+    disabledAfterStaleClick: true,
+    events: [],
+    initiallyDisabled: false,
+  })
+})
+
 test('keeps the crash menu adapter state, focus, and keyboard behavior', async ({
   page,
 }) => {
@@ -142,7 +201,10 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
 
   const result = await page.evaluate(async () => {
     const crashMenuModulePath = '/src/ui/createCrashMenu.ts'
+    const debugSnapshotModulePath = '/src/debugScenarioSnapshot.ts'
     const { createCrashMenu } = await import(crashMenuModulePath)
+    const { clearDebugScenarioSnapshot, writeDebugScenarioSnapshot } =
+      await import(debugSnapshotModulePath)
     const app = document.createElement('div')
     const beforeButton = document.createElement('button')
     const events: string[] = []
@@ -150,16 +212,13 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     beforeButton.textContent = 'Before crash'
     document.body.append(beforeButton, app)
     beforeButton.focus()
-    window.localStorage.setItem(
-      'space-web-game.debugScenarioSnapshot.v1',
-      JSON.stringify({
-        version: 1,
-        savedAt: new Date(0).toISOString(),
-        elapsed: 0,
-        bodies: [],
-        spacecraft: {},
-      }),
-    )
+    writeDebugScenarioSnapshot({
+      version: 1,
+      savedAt: new Date(0).toISOString(),
+      elapsed: 0,
+      bodies: [],
+      spacecraft: {},
+    })
 
     const menu = createCrashMenu({
       app,
@@ -210,6 +269,13 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     const title = menu.element.querySelector('#crash-menu-title')?.textContent
 
     loadButton?.click()
+    clearDebugScenarioSnapshot()
+    loadButton?.click()
+    const loadHiddenAfterStaleClick = (
+      menu.element.querySelector(
+        '[data-crash-menu-action="load"]',
+      ) as HTMLButtonElement | null
+    )?.hidden
     dispatchKey({ code: 'KeyR', key: 'r' })
     exitButton?.focus()
     dispatchKey({ key: 'Tab' })
@@ -221,7 +287,7 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     menu.setVisible(false)
     const restoredFocusText = document.activeElement?.textContent
 
-    window.localStorage.removeItem('space-web-game.debugScenarioSnapshot.v1')
+    clearDebugScenarioSnapshot()
     menu.syncState({ crashedBodyName: null, hasCheckpoint: false })
     menu.setVisible(true)
     const activeAfterNoCheckpointShow = getAction()
@@ -236,6 +302,7 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
       events,
       focusAfterBackwardTrap,
       focusAfterForwardTrap,
+      loadHiddenAfterStaleClick,
       loadHidden,
       panelFound: Boolean(menu.element.querySelector('.crash-menu-panel')),
       restoredFocusText,
@@ -255,6 +322,7 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     events: ['load', 'checkpoint', 'exit', 'restart'],
     focusAfterBackwardTrap: 'exit',
     focusAfterForwardTrap: 'checkpoint',
+    loadHiddenAfterStaleClick: true,
     loadHidden: false,
     panelFound: true,
     restoredFocusText: 'Before crash',
