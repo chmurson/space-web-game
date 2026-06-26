@@ -1,4 +1,16 @@
+import {
+  MenuActionButton,
+  MenuActions,
+  MenuCopy,
+  MenuDescription,
+  MenuKicker,
+  MenuPanel,
+} from './MenuSurfacePrimitives'
+
 export type MainMenuView = 'main' | 'reach-moon' | 'reach-moon-highscores'
+
+const mainMenuActionAttribute = 'data-main-menu-action'
+const mainMenuViewAttribute = 'data-main-menu-view'
 
 export type MainMenuSurfaceProps = {
   activeView: MainMenuView
@@ -37,143 +49,157 @@ export const MainMenuSurface = ({
       ref={rootRef}
       style={{ display: visible ? 'flex' : 'none' }}
     >
-      <div
-        class="main-menu-panel"
-        data-main-menu-view="main"
+      <MenuPanel
+        className="main-menu-panel"
+        view="main"
+        viewAttribute={mainMenuViewAttribute}
         hidden={displayedView !== 'main'}
       >
-        <div class="main-menu-copy">
-          <div class="main-menu-kicker">Space Web Game</div>
-          <p>
+        <MenuCopy className="main-menu-copy">
+          <MenuKicker className="main-menu-kicker">Space Web Game</MenuKicker>
+          <MenuDescription>
             {reachMoonFeatureEnabled
               ? 'Learn the flight model, then take the Earth-Moon run.'
               : 'Drift above Earth, resume a saved snapshot, or jump straight into the tutorial.'}
-          </p>
-        </div>
-        <div class="menu-actions main-menu-actions">
+          </MenuDescription>
+        </MenuCopy>
+        <MenuActions className="main-menu-actions">
           {reachMoonFeatureEnabled ? (
             <>
-              <button
-                type="button"
-                class="main-menu-action-primary"
-                data-main-menu-action="tutorial"
+              <MenuActionButton
+                action="tutorial"
+                actionAttribute={mainMenuActionAttribute}
+                className="main-menu-action-primary"
+                variant="primary"
                 onClick={onTutorial}
               >
                 Tutorial
-              </button>
-              <button
-                type="button"
-                class="main-menu-action-primary"
-                data-main-menu-action="reach-moon-menu"
+              </MenuActionButton>
+              <MenuActionButton
+                action="reach-moon-menu"
+                actionAttribute={mainMenuActionAttribute}
+                className="main-menu-action-primary"
+                variant="primary"
                 onClick={onReachMoonMenu}
               >
                 Reach the Moon
-              </button>
-              <button
-                type="button"
-                class="main-menu-action-secondary"
-                data-main-menu-action="free-roam"
+              </MenuActionButton>
+              <MenuActionButton
+                action="free-roam"
+                actionAttribute={mainMenuActionAttribute}
+                className="main-menu-action-secondary"
+                variant="secondary"
                 onClick={onFreeRoam}
               >
                 Free Roam
-              </button>
-              <button
-                type="button"
-                class="main-menu-action-secondary"
-                data-main-menu-action="load"
+              </MenuActionButton>
+              <MenuActionButton
+                action="load"
+                actionAttribute={mainMenuActionAttribute}
+                className="main-menu-action-secondary"
                 disabled={!loadGameAvailable}
+                variant="secondary"
                 onClick={onLoadGame}
               >
                 Load Game
-              </button>
+              </MenuActionButton>
             </>
           ) : (
             <>
-              <button
-                type="button"
-                data-main-menu-action="load"
+              <MenuActionButton
+                action="load"
+                actionAttribute={mainMenuActionAttribute}
                 disabled={!loadGameAvailable}
                 onClick={onLoadGame}
               >
                 Load Game
-              </button>
-              <button
-                type="button"
-                data-main-menu-action="tutorial"
+              </MenuActionButton>
+              <MenuActionButton
+                action="tutorial"
+                actionAttribute={mainMenuActionAttribute}
                 onClick={onTutorial}
               >
                 Tutorial
-              </button>
-              <button
-                type="button"
-                data-main-menu-action="free-roam"
+              </MenuActionButton>
+              <MenuActionButton
+                action="free-roam"
+                actionAttribute={mainMenuActionAttribute}
                 onClick={onFreeRoam}
               >
                 Free Roam
-              </button>
+              </MenuActionButton>
             </>
           )}
-        </div>
-      </div>
+        </MenuActions>
+      </MenuPanel>
 
       {reachMoonFeatureEnabled ? (
         <>
-          <div
-            class="main-menu-panel"
-            data-main-menu-view="reach-moon"
+          <MenuPanel
+            className="main-menu-panel"
+            view="reach-moon"
+            viewAttribute={mainMenuViewAttribute}
             hidden={displayedView !== 'reach-moon'}
           >
-            <div class="main-menu-copy">
-              <div class="main-menu-kicker">Reach the Moon</div>
-              <p>Launch into the Earth-Moon mission route.</p>
-            </div>
-            <div class="menu-actions main-menu-actions">
-              <button
-                type="button"
-                class="main-menu-action-primary"
-                data-main-menu-action="reach-moon-start"
+            <MenuCopy className="main-menu-copy">
+              <MenuKicker className="main-menu-kicker">
+                Reach the Moon
+              </MenuKicker>
+              <MenuDescription>
+                Launch into the Earth-Moon mission route.
+              </MenuDescription>
+            </MenuCopy>
+            <MenuActions className="main-menu-actions">
+              <MenuActionButton
+                action="reach-moon-start"
+                actionAttribute={mainMenuActionAttribute}
+                className="main-menu-action-primary"
+                variant="primary"
                 onClick={onReachMoon}
               >
                 Start
-              </button>
-              <button
-                type="button"
-                data-main-menu-action="reach-moon-highscores"
+              </MenuActionButton>
+              <MenuActionButton
+                action="reach-moon-highscores"
+                actionAttribute={mainMenuActionAttribute}
                 onClick={onReachMoonHighscores}
               >
                 Highscores
-              </button>
-              <button
-                type="button"
-                class="main-menu-action-secondary"
-                data-main-menu-action="reach-moon-back"
+              </MenuActionButton>
+              <MenuActionButton
+                action="reach-moon-back"
+                actionAttribute={mainMenuActionAttribute}
+                className="main-menu-action-secondary"
+                variant="secondary"
                 onClick={onReachMoonBack}
               >
                 Back
-              </button>
-            </div>
-          </div>
+              </MenuActionButton>
+            </MenuActions>
+          </MenuPanel>
 
-          <div
-            class="main-menu-panel"
-            data-main-menu-view="reach-moon-highscores"
+          <MenuPanel
+            className="main-menu-panel"
+            view="reach-moon-highscores"
+            viewAttribute={mainMenuViewAttribute}
             hidden={displayedView !== 'reach-moon-highscores'}
           >
-            <div class="main-menu-copy">
-              <div class="main-menu-kicker">Highscores</div>
-              <p>No records yet.</p>
-            </div>
-            <div class="menu-actions main-menu-actions">
-              <button
-                type="button"
-                class="main-menu-action-secondary"
-                data-main-menu-action="reach-moon-back"
+            <MenuCopy className="main-menu-copy">
+              <MenuKicker className="main-menu-kicker">Highscores</MenuKicker>
+              <MenuDescription>No records yet.</MenuDescription>
+            </MenuCopy>
+            <MenuActions className="main-menu-actions">
+              <MenuActionButton
+                action="reach-moon-back"
+                actionAttribute={mainMenuActionAttribute}
+                className="main-menu-action-secondary"
+                variant="secondary"
                 onClick={onReachMoonBack}
               >
                 Back
-              </button>
-            </div>
-          </div>
+              </MenuActionButton>
+            </MenuActions>
+          </MenuPanel>
         </>
       ) : null}
     </section>

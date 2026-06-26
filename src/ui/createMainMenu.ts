@@ -1,9 +1,10 @@
-import { h, render } from 'preact'
-import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
 import {
   MainMenuSurface,
+  type MainMenuSurfaceProps,
   type MainMenuView,
 } from './components/MainMenuSurface'
+import { createPreactUiSurface } from './createPreactUiSurface'
+import { isLoadGameAvailable, runLoadGameAction } from './loadGameAvailability'
 
 export type MainMenu = {
   element: HTMLElement
@@ -11,6 +12,8 @@ export type MainMenu = {
   showReachMoonHighscores(): void
   syncState(): void
 }
+
+type MainMenuRenderProps = Omit<MainMenuSurfaceProps, 'rootRef'>
 
 export const createMainMenu = (options: {
   app: HTMLElement
@@ -20,51 +23,60 @@ export const createMainMenu = (options: {
   onReachMoon(): void
   onTutorial(): void
 }): MainMenu => {
-  const host = document.createElement('div')
-  options.app.appendChild(host)
+  const surface = createPreactUiSurface<MainMenuRenderProps>({
+    app: options.app,
+    component: MainMenuSurface,
+    missingRootError: 'Failed to create main menu',
+  })
 
   let activeView: MainMenuView = 'main'
-  let loadGameAvailable = readDebugScenarioSnapshot() !== null
-  let root: HTMLElement | null = null
+  let loadGameAvailable = isLoadGameAvailable()
   let visible = true
+
+  const refreshLoadGameAvailable = () => {
+    const nextLoadGameAvailable = isLoadGameAvailable()
+    if (loadGameAvailable === nextLoadGameAvailable) {
+      return false
+    }
+
+    loadGameAvailable = nextLoadGameAvailable
+    return true
+  }
 
   const setActiveView = (view: MainMenuView) => {
     activeView = options.reachMoonFeatureEnabled ? view : 'main'
   }
 
   const renderMenu = () => {
-    render(
-      h(MainMenuSurface, {
-        activeView,
-        loadGameAvailable,
-        reachMoonFeatureEnabled: options.reachMoonFeatureEnabled,
-        rootRef: (element) => {
-          root = element
-        },
-        visible,
-        onFreeRoam: () => handleActionThatClosesMenu(options.onFreeRoam),
-        onLoadGame: () => {
-          if (loadGameAvailable) {
-            handleActionThatClosesMenu(options.onLoadGame)
-          }
-        },
-        onReachMoon: () => handleActionThatClosesMenu(options.onReachMoon),
-        onReachMoonBack: () => {
-          setActiveView('main')
+    surface.render({
+      activeView,
+      loadGameAvailable,
+      reachMoonFeatureEnabled: options.reachMoonFeatureEnabled,
+      visible,
+      onFreeRoam: () => handleActionThatClosesMenu(options.onFreeRoam),
+      onLoadGame: () => {
+        const didLoad = runLoadGameAction(() =>
+          handleActionThatClosesMenu(options.onLoadGame),
+        )
+        if (!didLoad && refreshLoadGameAvailable()) {
           renderMenu()
-        },
-        onReachMoonHighscores: () => {
-          setActiveView('reach-moon-highscores')
-          renderMenu()
-        },
-        onReachMoonMenu: () => {
-          setActiveView('reach-moon')
-          renderMenu()
-        },
-        onTutorial: () => handleActionThatClosesMenu(options.onTutorial),
-      }),
-      host,
-    )
+        }
+      },
+      onReachMoon: () => handleActionThatClosesMenu(options.onReachMoon),
+      onReachMoonBack: () => {
+        setActiveView('main')
+        renderMenu()
+      },
+      onReachMoonHighscores: () => {
+        setActiveView('reach-moon-highscores')
+        renderMenu()
+      },
+      onReachMoonMenu: () => {
+        setActiveView('reach-moon')
+        renderMenu()
+      },
+      onTutorial: () => handleActionThatClosesMenu(options.onTutorial),
+    })
   }
 
   const setVisible = (nextVisible: boolean) => {
@@ -81,10 +93,7 @@ export const createMainMenu = (options: {
   }
 
   renderMenu()
-  const element = root
-  if (!element) {
-    throw new Error('Failed to create main menu')
-  }
+  const element = surface.element
 
   return {
     element,
@@ -95,13 +104,9 @@ export const createMainMenu = (options: {
       renderMenu()
     },
     syncState: () => {
-      const nextLoadGameAvailable = readDebugScenarioSnapshot() !== null
-      if (loadGameAvailable === nextLoadGameAvailable) {
-        return
+      if (refreshLoadGameAvailable()) {
+        renderMenu()
       }
-
-      loadGameAvailable = nextLoadGameAvailable
-      renderMenu()
     },
   }
 }
