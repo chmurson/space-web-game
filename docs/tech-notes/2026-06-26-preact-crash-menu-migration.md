@@ -48,7 +48,7 @@ The first issue #24 slice moved the main menu to Preact. The crash menu is the n
 
 - `npm run build` passed with the existing Vite chunk-size warning.
 - `npm test -- --run` passed: 46 files, 305 tests.
-- `npm run test:gui` passed: 6 mobile Chromium tests, including the crash menu browser-component regression and stale main-menu load-state regression.
+- `npm run test:gui` passed: 9 mobile Chromium tests after merging `main`, including the crash menu browser-component regression, stale main-menu load-state regression, and touch-control screenshot states.
 - Generated GUI screenshot artifacts were visually inspected and matched the expected mobile UI states:
   - `tmp/playwright-results/mobileHudScreenshot-captur-92051-th-world-visuals-suppressed-mobile-chromium/mobile-main-menu.png`
   - `tmp/playwright-results/mobileHudScreenshot-captur-d9652-ch-the-Moon-menu-transition-mobile-chromium/mobile-reach-moon-menu.png`
