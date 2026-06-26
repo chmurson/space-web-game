@@ -29,7 +29,7 @@ export const createCrashMenu = (options: {
       <p class="crash-menu-kicker">Mission ended</p>
       <h2 id="crash-menu-title">Crashed</h2>
       <p id="crash-menu-description">Impact detected. Restart to try the approach again.</p>
-      <div class="main-menu-actions">
+      <div class="menu-actions crash-menu-actions">
         <button class="crash-menu-primary-action" type="button" data-crash-menu-action="checkpoint">Restart from checkpoint</button>
         <button type="button" data-crash-menu-action="restart">Restart</button>
         <button type="button" data-crash-menu-action="load">Load game</button>

@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test'
+import { expect, type Page, type TestInfo, test } from '@playwright/test'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -57,6 +57,7 @@ const openReachMoonMainMenu = async (page: Page) => {
   await expect(
     page.getByRole('button', { name: 'Reach the Moon' }),
   ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Load Game' })).toBeDisabled()
   await expectWorldVisualsSuppressed(page)
 }
 
@@ -79,6 +80,10 @@ test('captures the mobile Reach the Moon menu transition', async ({
   await expect(page.getByRole('button', { name: 'Highscores' })).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-menu')
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="main"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
 })
 
 test('captures the mobile tutorial coach prompt transition', async ({

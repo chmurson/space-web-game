@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
+import preact from '@preact/preset-vite'
 import { defineConfig, type Plugin } from 'vite'
 import { parse } from 'yaml'
 
@@ -60,7 +61,7 @@ const devtoolsVersionPlugin = (): Plugin => ({
 })
 
 export default defineConfig({
-  plugins: [yamlConfigPlugin(), devtoolsVersionPlugin()],
+  plugins: [preact(), yamlConfigPlugin(), devtoolsVersionPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

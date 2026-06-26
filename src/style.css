@@ -179,7 +179,7 @@ canvas {
     line-height: 1.45;
 }
 
-.main-menu-actions {
+.menu-actions {
     display: grid;
     gap: 10px;
 }
@@ -241,7 +241,7 @@ canvas {
     line-height: 1.42;
 }
 
-.main-menu-actions button {
+.menu-actions button {
     width: 100%;
     padding: 15px 18px;
     border: 1px solid rgba(148, 163, 184, 0.22);
@@ -262,26 +262,26 @@ canvas {
         border-color 120ms ease;
 }
 
-.main-menu-actions button:disabled {
+.menu-actions button:disabled {
     color: rgba(240, 249, 255, 0.42);
 }
 
-.main-menu-actions button[hidden] {
+.menu-actions button[hidden] {
     display: none;
 }
 
-.main-menu-actions button.main-menu-action-primary {
+.menu-actions button.main-menu-action-primary {
     border-color: rgba(125, 211, 252, 0.38);
     background:
         linear-gradient(180deg, rgba(14, 116, 144, 0.72), rgba(15, 23, 42, 0.82)),
         var(--ui-glass-control-bg);
 }
 
-.main-menu-actions button.main-menu-action-secondary {
+.menu-actions button.main-menu-action-secondary {
     color: rgba(226, 232, 240, 0.78);
 }
 
-.main-menu-actions button.crash-menu-primary-action {
+.menu-actions button.crash-menu-primary-action {
     border-color: rgba(251, 113, 133, 0.36);
     background:
         linear-gradient(180deg, rgba(127, 29, 29, 0.74), rgba(63, 18, 33, 0.82)),
@@ -291,17 +291,17 @@ canvas {
         0 16px 36px rgba(127, 29, 29, 0.28);
 }
 
-.main-menu-actions button:focus-visible {
+.menu-actions button:focus-visible {
     outline: 2px solid rgba(125, 211, 252, 0.8);
     outline-offset: 2px;
 }
 
-.main-menu-actions button:active {
+.menu-actions button:active {
     transform: scale(0.985);
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .main-menu-actions button:hover:not(:disabled) {
+    .menu-actions button:hover:not(:disabled) {
         border-color: rgba(125, 211, 252, 0.42);
         background:
             linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(8, 13, 24, 0.82)),
