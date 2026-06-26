@@ -61,6 +61,24 @@ const openReachMoonMainMenu = async (page: Page) => {
   await expectWorldVisualsSuppressed(page)
 }
 
+const startReachMoonMission = async (page: Page) => {
+  await openReachMoonMainMenu(page)
+
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Start' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Reach the Moon' }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Start mission' }).click()
+  await expect(page.locator('.scenario-prompt')).toBeHidden()
+  await expect(page.locator('.touch-controls')).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Mission Brief' }),
+  ).toBeVisible()
+  await expectWorldVisualsSuppressed(page)
+}
+
 test('captures the mobile main menu HUD with world visuals suppressed', async ({
   page,
 }, testInfo) => {
@@ -116,20 +134,53 @@ test('captures the mobile tutorial coach prompt transition', async ({
 test('captures the mobile Reach the Moon replay pill transition', async ({
   page,
 }, testInfo) => {
-  await openReachMoonMainMenu(page)
-
-  await page.getByRole('button', { name: 'Reach the Moon' }).click()
-  await page.getByRole('button', { name: 'Start' }).click()
-  await expect(
-    page.getByRole('heading', { name: 'Reach the Moon' }),
-  ).toBeVisible()
-
-  await page.getByRole('button', { name: 'Start mission' }).click()
-  await expect(page.locator('.scenario-prompt')).toBeHidden()
+  await startReachMoonMission(page)
   await expect(page.locator('.scenario-prompt-pill')).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Mission Brief' }),
-  ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-replay-pill')
+})
+
+test('captures the mobile time warp touch control after reveal', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Reveal time warp control' }).click()
+  const timeWarpReveal = page.locator('#touch-time-warp-reveal')
+  await expect(timeWarpReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await expect(
+    timeWarpReveal.getByLabel('Time warp control', { exact: true }),
+  ).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
+})
+
+test('captures the mobile target selector side panel after reveal', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page
+    .getByRole('button', { name: /Reveal target body selector/ })
+    .click()
+  const targetReveal = page.locator('#touch-target-reveal')
+  await expect(targetReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await expect(
+    targetReveal.getByLabel('Target body selector', { exact: true }),
+  ).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-target-selector')
+})
+
+test('captures the mobile thrust touch control after reveal', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Reveal thrust control' }).click()
+  const thrustReveal = page.locator('#touch-thrust-reveal')
+  await expect(thrustReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await expect(thrustReveal.locator('.touch-thrust-control')).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-thrust-control')
 })
