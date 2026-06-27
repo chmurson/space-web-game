@@ -142,9 +142,7 @@ const getTutorialCompletionDescription = (
     ),
     tone: 'number',
   },
-  ' game time. Start ',
-  { text: 'free roam', tone: 'concept' },
-  ' immediately or return to the main menu.',
+  ' game time. Return to the main menu when you are ready.',
 ]
 
 const tutorialPromptDefinitions = {
@@ -273,14 +271,9 @@ const tutorialPromptDefinitions = {
     description: ({ runtime }) => getTutorialCompletionDescription(runtime),
     buttons: [
       {
-        action: { kind: 'builtin', id: 'start_free_roam' },
-        label: 'Free roam',
-        tone: 'primary',
-      },
-      {
         action: { kind: 'builtin', id: 'exit_to_menu' },
-        label: 'Exit',
-        tone: 'secondary',
+        label: 'Main menu',
+        tone: 'primary',
       },
     ],
     presentation: { kind: 'blocking' },
