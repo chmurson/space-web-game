@@ -1,3 +1,4 @@
+import type { AssistTargetSelectionMode } from './runtime/appRuntimeState'
 import type { CameraControlMode } from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
@@ -28,6 +29,8 @@ type DebugScenarioSnapshotV1 = {
 type DebugScenarioSnapshotV2 = {
   version: 2
   savedAt: string
+  assistTargetIndex?: number
+  assistTargetSelectionMode?: AssistTargetSelectionMode
   elapsed: number
   viewportSize?: number
   coastPredictionHorizonHours?: number
@@ -41,6 +44,8 @@ export type DebugScenarioSnapshot =
   | DebugScenarioSnapshotV2
 
 export type RuntimeScenario = Scenario & {
+  assistTargetIndex?: number
+  assistTargetSelectionMode?: AssistTargetSelectionMode
   cameraMode?: CameraControlMode
   coastPredictionHorizonHours?: number
   elapsed?: number
@@ -64,12 +69,28 @@ const getSnapshotScenarioSession = (
     ? cloneRuntimeScenarioSession(snapshot.runtimeScenario)
     : createRuntimeScenarioSession('legacy-debug-snapshot')
 
+const getSnapshotAssistTargetIndex = (snapshot: DebugScenarioSnapshot) =>
+  snapshot.version === 2 && Number.isInteger(snapshot.assistTargetIndex)
+    ? snapshot.assistTargetIndex
+    : undefined
+
+const getSnapshotAssistTargetSelectionMode = (
+  snapshot: DebugScenarioSnapshot,
+): AssistTargetSelectionMode | undefined =>
+  snapshot.version === 2 &&
+  (snapshot.assistTargetSelectionMode === 'auto' ||
+    snapshot.assistTargetSelectionMode === 'manual')
+    ? snapshot.assistTargetSelectionMode
+    : undefined
+
 export const createScenarioFromSnapshot = (
   snapshot: DebugScenarioSnapshot,
 ): RuntimeScenario => ({
   id: 'debug-snapshot',
   name: 'Debug snapshot',
   description: `Frozen debug state from ${new Date(snapshot.savedAt).toLocaleString()}.`,
+  assistTargetIndex: getSnapshotAssistTargetIndex(snapshot),
+  assistTargetSelectionMode: getSnapshotAssistTargetSelectionMode(snapshot),
   elapsed: snapshot.elapsed,
   viewportSize: snapshot.viewportSize,
   coastPredictionHorizonHours: getSnapshotCoastPredictionHorizonHours(snapshot),
@@ -81,6 +102,8 @@ export const createScenarioFromSnapshot = (
 export const createSnapshotFromState = (
   state: SimulationState,
   options: {
+    assistTargetIndex?: number
+    assistTargetSelectionMode?: AssistTargetSelectionMode
     coastPredictionHorizonHours?: number
     scenarioSession?: RuntimeScenarioSession
     viewportSize?: number
@@ -88,6 +111,8 @@ export const createSnapshotFromState = (
 ): DebugScenarioSnapshot => ({
   version: 2,
   savedAt: new Date().toISOString(),
+  assistTargetIndex: options.assistTargetIndex,
+  assistTargetSelectionMode: options.assistTargetSelectionMode,
   elapsed: state.elapsed,
   viewportSize: options.viewportSize,
   coastPredictionHorizonHours: options.coastPredictionHorizonHours,

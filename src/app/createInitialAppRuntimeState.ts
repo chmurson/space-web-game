@@ -30,13 +30,17 @@ export const createInitialAppRuntimeState = (
     }),
     config.runtimeScenarioOptions,
   )
+  const defaultAssistTargetSelectionMode = config.assistTarget
+    .autoSelectNearestSurface
+    ? 'auto'
+    : 'manual'
   const runtimeState: AppRuntimeState = {
     simulation: {
       assistMode: 'off',
-      assistTargetIndex: 1,
-      assistTargetSelectionMode: config.assistTarget.autoSelectNearestSurface
-        ? 'auto'
-        : 'manual',
+      assistTargetIndex: initialScenarioTransition.assistTargetIndex ?? 1,
+      assistTargetSelectionMode:
+        initialScenarioTransition.assistTargetSelectionMode ??
+        defaultAssistTargetSelectionMode,
       coastPredictionHorizonHours:
         initialScenarioTransition.coastPredictionHorizonHours,
       crashedBodyName: null,

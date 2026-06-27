@@ -115,4 +115,27 @@ describe('createScenarioFromSnapshot', () => {
         (snapshot.runtimeScenario?.state as { phase: string }).phase,
     ).toBe('escape-earth')
   })
+
+  it('preserves assist target selection state for version 2 snapshots', () => {
+    const snapshot = createSnapshotFromState(
+      {
+        elapsed: snapshotBase.elapsed,
+        bodies: snapshotBase.bodies,
+        spacecraft: snapshotBase.spacecraft,
+        controls: idleControls(),
+      },
+      {
+        assistTargetIndex: 1,
+        assistTargetSelectionMode: 'manual',
+      },
+    )
+    const scenario = createScenarioFromSnapshot(snapshot)
+
+    expect(snapshot).toMatchObject({
+      assistTargetIndex: 1,
+      assistTargetSelectionMode: 'manual',
+    })
+    expect(scenario.assistTargetIndex).toBe(1)
+    expect(scenario.assistTargetSelectionMode).toBe('manual')
+  })
 })

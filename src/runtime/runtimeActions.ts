@@ -140,6 +140,9 @@ export const createRuntimeActions = (options: {
     options.runtime.debug.debugSnapshotStatus = saveRuntimeDebugSnapshot(
       options.runtime.simulation.state,
       {
+        assistTargetIndex: options.runtime.simulation.assistTargetIndex,
+        assistTargetSelectionMode:
+          options.runtime.simulation.assistTargetSelectionMode,
         coastPredictionHorizonHours:
           options.runtime.simulation.coastPredictionHorizonHours,
         scenarioSession: options.runtime.scenario.session,

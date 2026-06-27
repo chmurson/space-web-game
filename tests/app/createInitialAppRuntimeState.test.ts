@@ -1,7 +1,25 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AppConfigContext } from '@/app/createAppConfigContext'
 import { createInitialAppRuntimeState } from '@/app/createInitialAppRuntimeState'
+
+const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
+
+const createWindowWithStorage = (storedSnapshot?: unknown) => {
+  const values = new Map<string, string>()
+  if (storedSnapshot !== undefined) {
+    values.set(debugSnapshotStorageKey, JSON.stringify(storedSnapshot))
+  }
+
+  return {
+    localStorage: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        values.set(key, value)
+      },
+    },
+  }
+}
 
 const createConfig = (
   overrides: Partial<AppConfigContext> = {},
@@ -74,6 +92,22 @@ const createConfig = (
 })
 
 describe('createInitialAppRuntimeState', () => {
+  const originalWindow = globalThis.window
+
+  beforeEach(() => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithStorage(),
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: originalWindow,
+    })
+  })
+
   it('boots the menu background scenario in menu mode', () => {
     const runtime = createInitialAppRuntimeState(
       createConfig({
@@ -143,5 +177,70 @@ describe('createInitialAppRuntimeState', () => {
     )
 
     expect(runtime.simulation.assistTargetSelectionMode).toBe('auto')
+  })
+
+  it('restores debug snapshot assist target selection on startup', () => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithStorage({
+        version: 2,
+        savedAt: '2026-06-27T10:00:00.000Z',
+        assistTargetIndex: 2,
+        assistTargetSelectionMode: 'manual',
+        elapsed: 42,
+        bodies: [
+          {
+            id: 'earth',
+            name: 'Earth',
+            mass: 1,
+            radius: 1,
+            position: { x: 0, y: 0 },
+            velocity: { x: 0, y: 0 },
+            color: '#2f80ed',
+          },
+          {
+            id: 'moon',
+            name: 'Moon',
+            mass: 1,
+            radius: 1,
+            position: { x: 1, y: 1 },
+            velocity: { x: 0, y: 0 },
+            color: '#9aa0a6',
+          },
+          {
+            id: 'mars',
+            name: 'Mars',
+            mass: 1,
+            radius: 1,
+            position: { x: 2, y: 2 },
+            velocity: { x: 0, y: 0 },
+            color: '#c1440e',
+          },
+        ],
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
+      }),
+    })
+
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        assistTarget: {
+          autoSelectNearestSurface: true,
+          switchRangeMultiplier: 1,
+        },
+        requestedScenarioId: 'debug-snapshot',
+      }),
+    )
+
+    expect(runtime.simulation.assistTargetIndex).toBe(2)
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
   })
 })

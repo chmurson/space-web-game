@@ -21,6 +21,8 @@ import {
 import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 
 export type ScenarioRuntimeTransition = {
+  assistTargetIndex?: AppRuntimeSimulationSlice['assistTargetIndex']
+  assistTargetSelectionMode?: AppRuntimeSimulationSlice['assistTargetSelectionMode']
   cameraMode: CameraControlMode
   coastPredictionHorizonHours: number
   scenario: Pick<AppRuntimeScenarioSlice, 'metadata' | 'session'>
@@ -47,6 +49,8 @@ export const createScenarioRuntimeTransition = (
   )
 
   return {
+    assistTargetIndex: runtimeScenarioState.assistTargetIndex,
+    assistTargetSelectionMode: runtimeScenarioState.assistTargetSelectionMode,
     cameraMode: runtimeScenarioState.cameraMode,
     coastPredictionHorizonHours:
       runtimeScenarioState.coastPredictionHorizonHours,
@@ -127,6 +131,9 @@ export const createScenarioRuntimeController = (options: {
       applyScenarioLoadTransition(
         options.runtime,
         {
+          assistTargetIndex: loadedDebugScenario.runtimeState.assistTargetIndex,
+          assistTargetSelectionMode:
+            loadedDebugScenario.runtimeState.assistTargetSelectionMode,
           coastPredictionHorizonHours:
             loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
           cameraMode: loadedDebugScenario.runtimeState.cameraMode,
@@ -145,10 +152,12 @@ export const createScenarioRuntimeController = (options: {
           globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
         },
       )
-      options.runtime.simulation.assistTargetIndex = Math.min(
-        options.runtime.simulation.assistTargetIndex,
-        Math.max(0, options.runtime.simulation.state.bodies.length - 1),
-      )
+      if (loadedDebugScenario.runtimeState.assistTargetIndex === undefined) {
+        options.runtime.simulation.assistTargetIndex = Math.min(
+          options.runtime.simulation.assistTargetIndex,
+          Math.max(0, options.runtime.simulation.state.bodies.length - 1),
+        )
+      }
       options.runtime.debug.debugSnapshotStatus = `loaded snapshot from ${new Date(loadedDebugScenario.snapshot.savedAt).toLocaleString()}`
       options.setTimeWarp(1)
       return true
