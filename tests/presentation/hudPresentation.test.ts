@@ -428,7 +428,11 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
   }
 }
 
-const createQueries = (): GameQueries =>
+const createQueries = (
+  captureMetricsOverrides: Partial<
+    ReturnType<GameQueries['getCaptureMetrics']>
+  > = {},
+): GameQueries =>
   ({
     getAssistTargetUiState: () => ({
       activeTarget: moon,
@@ -443,6 +447,7 @@ const createQueries = (): GameQueries =>
       roughAssistRange: 2_000,
       specificEnergy: -1,
       surfaceDistance: 999,
+      ...captureMetricsOverrides,
     }),
     getCoastPredictionHorizonSeconds: () => 3_600,
     getCircularizePlan: () => null,
@@ -583,12 +588,13 @@ describe('createHudPresentation', () => {
     const runtime = createRuntime()
     runtime.debug.debugModeEnabled = true
     runtime.simulation.viewportSize = 25
+    const captureMetricsOverrides = { specificEnergy: -1 }
     const presentation = createHudPresentation({
       defaultViewport: 100,
       getTrailRenderedSliceCount: () => 12,
       overlayUi,
       physicsEngineName: 'test',
-      queries: createQueries(),
+      queries: createQueries(captureMetricsOverrides),
       rendererProfiler: {
         getSmoothedGpuMs: vi.fn(() => 8),
       } as unknown as RendererProfiler,
@@ -618,8 +624,11 @@ describe('createHudPresentation', () => {
       | {
           trail?: {
             captureSampleDistanceMeters?: number
+            renderFrame?: string
             renderedSliceCount?: number
+            renderTargetId?: string | null
             renderSampleDistanceMeters?: number
+            targetBound?: boolean
           }
           viewport?: { size?: number; zoom?: number }
         }
@@ -637,12 +646,17 @@ describe('createHudPresentation', () => {
             targetId?: string
             targetRelativePredictionPoints?: Array<{ x: number; y: number }>
           }
+          trail?: {
+            renderFrame?: string
+            renderTargetId?: string | null
+            targetBound?: boolean
+          }
         }
       | undefined
 
     expect(debugText).toContain('viewport: 25.00 | zoom: 4.0x')
     expect(debugText).toContain(
-      'trail detail: L6/7 close | slices 12 | render 417 km | capture 250 km',
+      'trail detail: L6/7 close | slices 12 | render 417 km | capture 250 km | frame target-relative Moon',
     )
     expect(debugJson?.viewport).toEqual({ size: 25, zoom: 4 })
     expect(debugJson?.trail).toMatchObject({
@@ -650,7 +664,10 @@ describe('createHudPresentation', () => {
       detailLabel: 'close',
       detailLevel: 6,
       detailLevelCount: 7,
+      renderFrame: 'target-relative',
       renderedSliceCount: 12,
+      renderTargetId: 'moon',
+      targetBound: true,
     })
     expect(debugJson?.trail?.renderSampleDistanceMeters).toBeCloseTo(
       416_666.67,
@@ -661,6 +678,38 @@ describe('createHudPresentation', () => {
     expect(debugCopyJson?.trajectoryPrediction).toMatchObject({
       targetId: 'moon',
       targetRelativePredictionPoints: [{ x: 10, y: 20 }],
+    })
+    expect(debugCopyJson?.trail).toMatchObject({
+      renderFrame: 'target-relative',
+      renderTargetId: 'moon',
+      targetBound: true,
+    })
+
+    captureMetricsOverrides.specificEnergy = 1
+    presentation.update(createMetrics(false, { nowMs: 1_500 }))
+    const inertialDebugText = vi
+      .mocked(overlayUi.debugPanel.setText)
+      .mock.calls.at(-1)
+      ?.at(0)
+    const inertialDebugCopyJson = vi
+      .mocked(overlayUi.debugPanel.setCopyJson)
+      .mock.calls.at(-1)
+      ?.at(0) as
+      | {
+          trail?: {
+            renderFrame?: string
+            renderTargetId?: string | null
+            targetBound?: boolean
+          }
+        }
+      | undefined
+
+    expect(inertialDebugText).toContain('target: Moon')
+    expect(inertialDebugText).toContain('frame inertial')
+    expect(inertialDebugCopyJson?.trail).toMatchObject({
+      renderFrame: 'inertial',
+      renderTargetId: null,
+      targetBound: false,
     })
   })
 

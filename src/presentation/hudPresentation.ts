@@ -153,8 +153,11 @@ const createDebugStateCopyPayload = (options: {
     detailLabel: string
     detailLevel: number
     detailLevelCount: number
+    renderFrame: 'inertial' | 'target-relative'
     renderedSliceCount: number
+    renderTargetId: string | null
     renderSampleDistanceMeters: number
+    targetBound: boolean
   }
   viewport: {
     size: number
@@ -604,13 +607,20 @@ export const createHudPresentation = (options: {
         const trailDetail = getSpacecraftTrailDetail(viewportSize)
         const trailRenderedSliceCount =
           options.getTrailRenderedSliceCount?.() ?? 0
+        const targetBound = targetMetrics.specificEnergy < 0
+        const trailRenderFrame: 'inertial' | 'target-relative' = targetBound
+          ? 'target-relative'
+          : 'inertial'
         const trailDebugState = {
           captureSampleDistanceMeters: trailDetail.captureSampleDistanceMeters,
           detailLabel: trailDetail.label,
           detailLevel: trailDetail.level,
           detailLevelCount: trailDetail.levelCount,
+          renderFrame: trailRenderFrame,
           renderedSliceCount: trailRenderedSliceCount,
+          renderTargetId: targetBound ? target.id : null,
           renderSampleDistanceMeters: trailDetail.renderSampleDistanceMeters,
+          targetBound,
         }
         options.overlayUi.debugPanel.setText(
           getDebugPanelLines({
@@ -633,6 +643,7 @@ export const createHudPresentation = (options: {
             targetName: target.name,
             trailDetail: {
               ...trailDetail,
+              renderFrame: trailDebugState.renderFrame,
               renderedSliceCount: trailRenderedSliceCount,
             },
             viewportSize,

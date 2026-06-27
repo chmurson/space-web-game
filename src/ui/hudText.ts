@@ -102,6 +102,7 @@ export type DebugPanelTextInput = {
     level: number
     levelCount: number
     captureSampleDistanceMeters: number
+    renderFrame: 'inertial' | 'target-relative'
     renderedSliceCount: number
     renderSampleDistanceMeters: number
   }
@@ -182,6 +183,11 @@ const getScenarioProgressLine = (input: DebugPanelTextInput) => {
 }
 
 export const getDebugPanelLines = (input: DebugPanelTextInput) => {
+  const trailFrame =
+    input.trailDetail.renderFrame === 'target-relative'
+      ? `target-relative ${input.targetName}`
+      : 'inertial'
+
   return [
     `debug: [1] no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | [2] fps ${input.fpsIndicatorEnabled ? 'on' : 'off'}`,
     getScenarioProgressLine(input),
@@ -189,7 +195,7 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
     `prediction step: ${formatDuration(input.predictionStepSeconds)}`,
     `snapshot: [6] save | [7] load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
     `viewport: ${input.viewportSize.toFixed(2)} | zoom: ${input.zoom.toFixed(1)}x`,
-    `trail detail: L${input.trailDetail.level}/${input.trailDetail.levelCount} ${input.trailDetail.label} | slices ${input.trailDetail.renderedSliceCount} | render ${formatDistance(input.trailDetail.renderSampleDistanceMeters)} | capture ${formatDistance(input.trailDetail.captureSampleDistanceMeters)}`,
+    `trail detail: L${input.trailDetail.level}/${input.trailDetail.levelCount} ${input.trailDetail.label} | slices ${input.trailDetail.renderedSliceCount} | render ${formatDistance(input.trailDetail.renderSampleDistanceMeters)} | capture ${formatDistance(input.trailDetail.captureSampleDistanceMeters)} | frame ${trailFrame}`,
     `target: ${input.targetName}`,
     `gravity: ${formatBodyInfluences(input.bodyInfluences)}`,
     `surface: ${formatDistance(input.targetMetrics.surfaceDistance)} | range: ${input.targetMetrics.insideRange ? 'inside' : 'outside'}`,
