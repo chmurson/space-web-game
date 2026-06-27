@@ -250,6 +250,36 @@ describe('automationTaskClaim', () => {
     )
   })
 
+  it('fails closed when stored ttl metadata is not a strict integer', async () => {
+    await acquireClaim({
+      claimRoot,
+      id: '61',
+      kind: 'issue',
+      now: at('2026-06-27T10:00:00.000Z'),
+      owner: 'worker-a',
+      pid: null,
+      token: 'secret-a',
+      ttlSeconds: 60,
+    })
+
+    const claimPath = path.join(claimRoot, 'issue-61.json')
+    const record = JSON.parse(await readFile(claimPath, 'utf8'))
+    record.ttl_seconds = '60junk'
+    await writeFile(claimPath, `${JSON.stringify(record, null, 2)}\n`)
+
+    await assert.rejects(
+      () =>
+        verifyClaim({
+          claimRoot,
+          id: '61',
+          kind: 'issue',
+          now: at('2026-06-27T10:00:10.000Z'),
+          token: 'secret-a',
+        }),
+      { codeName: 'CLAIM_UNCERTAIN' },
+    )
+  })
+
   it('does not replace an expired claim while the recorded local pid is live', async () => {
     await acquireClaim({
       claimRoot,
@@ -275,6 +305,40 @@ describe('automationTaskClaim', () => {
           ttlSeconds: 60,
         }),
       { codeName: 'CLAIM_PID_LIVE' },
+    )
+  })
+
+  it('does not replace an expired claim when stored pid metadata is not a strict integer', async () => {
+    await acquireClaim({
+      claimRoot,
+      id: '72',
+      kind: 'pr',
+      now: at('2026-06-27T10:00:00.000Z'),
+      owner: 'worker-a',
+      pid: null,
+      token: 'secret-a',
+      ttlSeconds: 1,
+    })
+
+    const claimPath = path.join(claimRoot, 'pr-72.json')
+    const record = JSON.parse(await readFile(claimPath, 'utf8'))
+    record.hostname = hostname()
+    record.pid = '99999999junk'
+    await writeFile(claimPath, `${JSON.stringify(record, null, 2)}\n`)
+
+    await assert.rejects(
+      () =>
+        acquireClaim({
+          claimRoot,
+          id: '72',
+          kind: 'pr',
+          now: at('2026-06-27T10:00:02.000Z'),
+          owner: 'worker-b',
+          pid: null,
+          token: 'secret-b',
+          ttlSeconds: 60,
+        }),
+      { codeName: 'CLAIM_UNCERTAIN' },
     )
   })
 
@@ -360,6 +424,54 @@ describe('automationTaskClaim', () => {
     assert.equal(result.status, 'acquired')
   })
 
+  it('recovers an ownerless stale write mutex after the mutex timeout', async () => {
+    const mutexDir = path.join(claimRoot, '.mutexes', 'claims.lock')
+    await mkdir(mutexDir, { recursive: true })
+
+    const result = await acquireClaim({
+      claimRoot,
+      id: '74',
+      kind: 'pr',
+      mutexTimeoutMs: 1,
+      now: at('2026-06-27T10:00:00.000Z'),
+      owner: 'worker-a',
+      pid: null,
+      token: 'secret-a',
+      ttlSeconds: 60,
+    })
+
+    assert.equal(result.status, 'acquired')
+  })
+
+  it('does not reclaim a stale write mutex from a different host', async () => {
+    const mutexDir = path.join(claimRoot, '.mutexes', 'claims.lock')
+    await mkdir(mutexDir, { recursive: true })
+    await writeFile(
+      path.join(mutexDir, 'owner.json'),
+      `${JSON.stringify({
+        hostname: 'other-host.example',
+        pid: 99999999,
+        started_at: '2026-06-27T09:00:00.000Z',
+      })}\n`,
+    )
+
+    await assert.rejects(
+      () =>
+        acquireClaim({
+          claimRoot,
+          id: '74',
+          kind: 'pr',
+          mutexTimeoutMs: 1,
+          now: at('2026-06-27T10:00:00.000Z'),
+          owner: 'worker-a',
+          pid: null,
+          token: 'secret-a',
+          ttlSeconds: 60,
+        }),
+      { codeName: 'MUTEX_BUSY' },
+    )
+  })
+
   it('does not publish a claim when writing the token file fails', async () => {
     const blockedParent = path.join(claimRoot, 'blocked-parent')
     await writeFile(blockedParent, 'not a directory')
@@ -430,6 +542,17 @@ describe('automationTaskClaim', () => {
     assert.equal(result.token, undefined)
     assert.equal(result.token_file, tokenFile)
     assert.equal(result.token_redacted, true)
-    assert.match(await readFile(tokenFile, 'utf8'), /\S/)
+
+    const token = (await readFile(tokenFile, 'utf8')).trim()
+    assert.match(token, /\S/)
+
+    const verified = await verifyClaim({
+      claimRoot,
+      id: '77',
+      kind: 'pr',
+      now: at('2026-06-27T10:00:10.000Z'),
+      token,
+    })
+    assert.equal(verified.status, 'verified')
   })
 })

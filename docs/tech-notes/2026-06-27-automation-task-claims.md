@@ -4,9 +4,9 @@ Date: 2026-06-27
 
 ## What Changed
 
-- Added `scripts/automationTaskClaim.mjs`, a dependency-free Node CLI for `acquire`, `heartbeat`, `verify`, and `release` task claims.
-- Added focused Node tests in `scripts/automationTaskClaim.test.mjs`.
-- Added `npm run claim:task` and `npm run test:automation-claims`.
+- Introduced `scripts/automationTaskClaim.mjs`, a dependency-free Node CLI for `acquire`, `heartbeat`, `verify`, and `release` task claims.
+- Covered the helper with focused Node tests in `scripts/automationTaskClaim.test.mjs`.
+- Exposed `npm run claim:task` and `npm run test:automation-claims`.
 - Documented the automation claim workflow in `docs/automation-task-claims.md`, `AGENTS.md`, and `.codex/shipit.config.md`.
 
 ## Why

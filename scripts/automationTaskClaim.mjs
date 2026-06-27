@@ -6,6 +6,7 @@ import {
   readFile,
   rename,
   rm,
+  stat,
   writeFile,
 } from 'node:fs/promises'
 import { homedir, hostname } from 'node:os'
@@ -107,6 +108,16 @@ const parseDateMs = (value) => {
   return Date.parse(value)
 }
 
+const parseStoredPositiveInteger = (value) => {
+  const normalized = String(value)
+  if (!/^\d+$/.test(normalized)) {
+    return null
+  }
+
+  const parsed = Number.parseInt(normalized, 10)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
+}
+
 const getNow = (options) => options.now ?? new Date()
 
 const getOwner = (options) => {
@@ -153,7 +164,7 @@ const writeJsonAtomic = async (filePath, payload) => {
 const writeTokenFile = async (filePath, token) => {
   await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 })
   await writeFile(filePath, `${token}\n`, { mode: 0o600 })
-  await chmod(filePath, 0o600).catch(() => {})
+  await chmod(filePath, 0o600)
 }
 
 const readTokenFile = async (filePath) => {
@@ -221,12 +232,8 @@ const publicClaim = (claim, paths) => ({
 
 const getExpiryMs = (claim) => {
   const lastSeenMs = parseDateMs(claim.last_seen)
-  const ttlSeconds = Number.parseInt(String(claim.ttl_seconds), 10)
-  if (
-    !Number.isFinite(lastSeenMs) ||
-    !Number.isSafeInteger(ttlSeconds) ||
-    ttlSeconds <= 0
-  ) {
+  const ttlSeconds = parseStoredPositiveInteger(claim.ttl_seconds)
+  if (!Number.isFinite(lastSeenMs) || ttlSeconds === null) {
     return Number.NaN
   }
   return lastSeenMs + ttlSeconds * 1000
@@ -237,8 +244,8 @@ const getLocalPidLiveness = (claim) => {
     return 'not-recorded'
   }
 
-  const pid = Number.parseInt(String(claim.pid), 10)
-  if (!Number.isSafeInteger(pid) || pid <= 0) {
+  const pid = parseStoredPositiveInteger(claim.pid)
+  if (pid === null) {
     return 'unknown'
   }
 
@@ -265,10 +272,24 @@ const readMutexOwner = async (ownerFile) => {
   }
 }
 
-const reclaimStaleMutex = async (mutexDir) => {
+const getPathAgeMs = async (filePath) => {
+  try {
+    const stats = await stat(filePath)
+    return Math.max(0, Date.now() - stats.mtimeMs)
+  } catch {
+    return 0
+  }
+}
+
+const reclaimStaleMutex = async (mutexDir, staleAfterMs) => {
   const owner = await readMutexOwner(path.join(mutexDir, 'owner.json'))
   if (!owner) {
-    return false
+    if ((await getPathAgeMs(mutexDir)) < staleAfterMs) {
+      return false
+    }
+
+    await rm(mutexDir, { force: true, recursive: true })
+    return true
   }
 
   if (getLocalPidLiveness(owner) !== 'dead') {
@@ -283,7 +304,10 @@ const getAcquireDecision = (claim, paths, now) => {
   assertClaimShape(claim, paths)
 
   if (claim.status === 'released') {
-    return { canAcquire: true, reason: `previous claim status is ${claim.status}` }
+    return {
+      canAcquire: true,
+      reason: `previous claim status is ${claim.status}`,
+    }
   }
 
   if (claim.status !== 'active') {
@@ -453,7 +477,10 @@ const assertTokenMatches = (claim, token) => {
 
 const assertClaimUsable = (claim, paths, options = {}) => {
   if (!claim) {
-    throw new ClaimError('CLAIM_MISSING', `No claim exists for ${paths.taskKey}`)
+    throw new ClaimError(
+      'CLAIM_MISSING',
+      `No claim exists for ${paths.taskKey}`,
+    )
   }
 
   assertClaimShape(claim, paths)
@@ -477,7 +504,10 @@ const assertClaimUsable = (claim, paths, options = {}) => {
     }
 
     if (getNow(options).getTime() > expiryMs) {
-      throw new ClaimError('CLAIM_EXPIRED', `Claim expired for ${paths.taskKey}`)
+      throw new ClaimError(
+        'CLAIM_EXPIRED',
+        `Claim expired for ${paths.taskKey}`,
+      )
     }
   }
 }
@@ -500,7 +530,7 @@ const withTaskMutex = async (paths, options, callback) => {
         throw error
       }
 
-      if (await reclaimStaleMutex(paths.mutexDir)) {
+      if (await reclaimStaleMutex(paths.mutexDir, timeoutMs)) {
         continue
       }
 
@@ -541,7 +571,6 @@ const normalizeClaimOptions = async (options) => {
 export const acquireClaim = async (rawOptions) => {
   const options = rawOptions
   const paths = getTaskPaths(options)
-  const now = getNow(options)
   const token = options.token || generateToken()
   const ttlSeconds =
     options.ttlSeconds === undefined
@@ -550,6 +579,7 @@ export const acquireClaim = async (rawOptions) => {
   const env = options.env ?? process.env
 
   return withTaskMutex(paths, options, async () => {
+    const now = getNow(options)
     const existingClaim = await readClaim(paths.claimFile)
     let replaceReason = null
 
@@ -619,11 +649,11 @@ export const verifyClaim = async (rawOptions) => {
 export const heartbeatClaim = async (rawOptions) => {
   const options = await normalizeClaimOptions(rawOptions)
   const paths = getTaskPaths(options)
-  const now = getNow(options)
 
   return withTaskMutex(paths, options, async () => {
+    const now = getNow(options)
     const claim = await readClaim(paths.claimFile)
-    assertClaimUsable(claim, paths, options)
+    assertClaimUsable(claim, paths, { ...options, now })
 
     const nextClaim = {
       ...claim,
@@ -642,13 +672,14 @@ export const heartbeatClaim = async (rawOptions) => {
 export const releaseClaim = async (rawOptions) => {
   const options = await normalizeClaimOptions(rawOptions)
   const paths = getTaskPaths(options)
-  const now = getNow(options)
 
   return withTaskMutex(paths, options, async () => {
+    const now = getNow(options)
     const claim = await readClaim(paths.claimFile)
     assertClaimUsable(claim, paths, {
       ...options,
       allowExpired: true,
+      now,
     })
 
     const nextClaim = {
