@@ -768,6 +768,221 @@ test('keeps the in-game controls menu adapter state and actions', async ({
   })
 })
 
+test('keeps the UI settings dialog adapter state, focus, and change behavior', async ({
+  page,
+}) => {
+  await page.goto('/?reachmoon=1')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(async () => {
+    const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
+    const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
+    const app = document.createElement('div')
+    const beforeButton = document.createElement('button')
+    const events: string[] = []
+    const openEvents: boolean[] = []
+    let burnSide: 'left' | 'right' = 'right'
+    let targetSide: 'left' | 'right' = 'right'
+    let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
+    let warpSide: 'left' | 'right' = 'left'
+
+    beforeButton.textContent = 'Before settings'
+    document.body.append(beforeButton, app)
+    beforeButton.focus()
+
+    const dialog = createUiSettingsDialog({
+      app,
+      getTouchBurnControlSide: () => burnSide,
+      getTouchTargetControlSide: () => targetSide,
+      getTouchTrajectoryControlSide: () => trajectorySide,
+      getTouchWarpControlSide: () => warpSide,
+      onOpenChange: (open: boolean) => openEvents.push(open),
+      onTouchBurnControlSideChange: (side: 'left' | 'right') => {
+        events.push(`burn:${side}`)
+        burnSide = side
+      },
+      onTouchTargetControlSideChange: (side: 'left' | 'right') => {
+        events.push(`target:${side}`)
+        targetSide = side
+      },
+      onTouchTrajectoryControlSideChange: (
+        side: 'left' | 'right' | 'hidden',
+      ) => {
+        events.push(`trajectory:${side}`)
+        trajectorySide = side
+      },
+      onTouchWarpControlSideChange: (side: 'left' | 'right') => {
+        events.push(`warp:${side}`)
+        warpSide = side
+      },
+    })
+    const getCloseButton = () =>
+      dialog.element.querySelector(
+        '.app-dialog-close',
+      ) as HTMLButtonElement | null
+    const getControlButton = (ariaLabel: string, value: string) =>
+      dialog.element.querySelector(
+        `[aria-label="${ariaLabel}"] [data-segmented-control-value="${value}"]`,
+      ) as HTMLButtonElement | null
+    const getSelectedValue = (ariaLabel: string) =>
+      dialog.element
+        .querySelector(
+          `[aria-label="${ariaLabel}"] .segmented-control-option-selected`,
+        )
+        ?.getAttribute('data-segmented-control-value')
+    const getFocusableButtons = (): HTMLButtonElement[] =>
+      Array.from(
+        (dialog.element as HTMLElement).querySelectorAll('button'),
+      ) as HTMLButtonElement[]
+    const pressDocumentKey = (
+      key: string,
+      init: Omit<KeyboardEventInit, 'key'> = {},
+    ) =>
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          key,
+          ...init,
+        }),
+      )
+
+    dialog.open()
+    const activeAfterOpen = document.activeElement === getCloseButton()
+    const openAfterOpen = !dialog.element.hidden
+    const role = dialog.element
+      .querySelector('.app-dialog-panel')
+      ?.getAttribute('role')
+    const className = dialog.element.className
+    const selectedAfterOpen = {
+      burn: getSelectedValue('Burn control side'),
+      target: getSelectedValue('Target control side'),
+      trajectory: getSelectedValue('Trajectory control side'),
+      warp: getSelectedValue('Warp control side'),
+    }
+
+    getControlButton('Burn control side', 'left')?.click()
+    getControlButton('Trajectory control side', 'right')?.click()
+    warpSide = 'right'
+    dialog.syncState()
+    const selectedAfterChanges = {
+      burn: getSelectedValue('Burn control side'),
+      trajectory: getSelectedValue('Trajectory control side'),
+      warp: getSelectedValue('Warp control side'),
+    }
+    const burnLeftPressed = getControlButton(
+      'Burn control side',
+      'left',
+    )?.getAttribute('aria-pressed')
+    const burnRightPressed = getControlButton(
+      'Burn control side',
+      'right',
+    )?.getAttribute('aria-pressed')
+
+    getFocusableButtons().at(-1)?.focus()
+    pressDocumentKey('Tab')
+    const focusAfterForwardTrap = document.activeElement === getCloseButton()
+    getCloseButton()?.focus()
+    pressDocumentKey('Tab', { shiftKey: true })
+    const focusAfterBackwardTrap =
+      document.activeElement === getFocusableButtons().at(-1)
+
+    pressDocumentKey('Escape')
+    const hiddenAfterEscape = dialog.element.hidden
+    const focusRestoredAfterEscape = document.activeElement === beforeButton
+
+    targetSide = 'left'
+    beforeButton.focus()
+    dialog.open()
+    const targetSyncedOnOpen = getSelectedValue('Target control side')
+    dialog.element
+      .querySelector('.app-dialog-backdrop')
+      ?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      )
+    const hiddenAfterBackdrop = dialog.element.hidden
+    const focusRestoredAfterBackdrop = document.activeElement === beforeButton
+
+    beforeButton.focus()
+    dialog.open()
+    getCloseButton()?.click()
+    const hiddenAfterCloseButton = dialog.element.hidden
+    const focusRestoredAfterCloseButton =
+      document.activeElement === beforeButton
+
+    const hiddenTriggerWrapper = document.createElement('div')
+    const hiddenTriggerButton = document.createElement('button')
+    hiddenTriggerButton.textContent = 'Hidden settings trigger'
+    hiddenTriggerWrapper.append(hiddenTriggerButton)
+    document.body.append(hiddenTriggerWrapper)
+    hiddenTriggerButton.focus()
+    hiddenTriggerWrapper.hidden = true
+    const hiddenTriggerWasActiveBeforeOpen =
+      document.activeElement === hiddenTriggerButton
+    dialog.open()
+    getCloseButton()?.click()
+    const focusSkippedHiddenTrigger =
+      document.activeElement !== hiddenTriggerButton
+
+    return {
+      activeAfterOpen,
+      burnLeftPressed,
+      burnRightPressed,
+      className,
+      events,
+      focusAfterBackwardTrap,
+      focusAfterForwardTrap,
+      focusRestoredAfterBackdrop,
+      focusRestoredAfterCloseButton,
+      focusRestoredAfterEscape,
+      focusSkippedHiddenTrigger,
+      hiddenAfterBackdrop,
+      hiddenAfterCloseButton,
+      hiddenAfterEscape,
+      hiddenTriggerWasActiveBeforeOpen,
+      openAfterOpen,
+      openEvents,
+      role,
+      selectedAfterChanges,
+      selectedAfterOpen,
+      targetSyncedOnOpen,
+    }
+  })
+
+  expect(result).toEqual({
+    activeAfterOpen: true,
+    burnLeftPressed: 'true',
+    burnRightPressed: 'false',
+    className: 'app-dialog ui-settings-dialog',
+    events: ['burn:left', 'trajectory:right'],
+    focusAfterBackwardTrap: true,
+    focusAfterForwardTrap: true,
+    focusRestoredAfterBackdrop: true,
+    focusRestoredAfterCloseButton: true,
+    focusRestoredAfterEscape: true,
+    focusSkippedHiddenTrigger: true,
+    hiddenAfterBackdrop: true,
+    hiddenAfterCloseButton: true,
+    hiddenAfterEscape: true,
+    hiddenTriggerWasActiveBeforeOpen: true,
+    openAfterOpen: true,
+    openEvents: [true, false, true, false, true, false, true, false],
+    role: 'dialog',
+    selectedAfterChanges: {
+      burn: 'left',
+      trajectory: 'right',
+      warp: 'right',
+    },
+    selectedAfterOpen: {
+      burn: 'right',
+      target: 'right',
+      trajectory: 'hidden',
+      warp: 'left',
+    },
+    targetSyncedOnOpen: 'left',
+  })
+})
+
 test('captures the mobile top menu open over gameplay HUD', async ({
   page,
 }, testInfo) => {
@@ -794,6 +1009,20 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await expect(page.getByText('Prediction horizon')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
+})
+
+test('captures the mobile UI settings dialog opened from in-game controls', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Open in-game controls' }).click()
+  await page.getByRole('button', { name: 'UI settings' }).click()
+  await expect(page.getByRole('dialog', { name: 'UI settings' })).toBeVisible()
+  await expect(page.getByText('Burn side')).toBeVisible()
+  await expect(page.getByText('Trajectory side')).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-ui-settings-dialog')
 })
 
 test('captures the mobile time warp touch control after reveal', async ({
