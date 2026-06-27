@@ -385,6 +385,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
       'path',
     ) as unknown as SVGPathElement,
     offscreenIndicators: new Map(),
+    renderScenarioPromptSurface: vi.fn(),
     scenarioPrompt: createScenarioPrompt() as unknown as HTMLElement,
     scenarioPromptCloseButton: null,
     scenarioPromptConfirmButton: null,

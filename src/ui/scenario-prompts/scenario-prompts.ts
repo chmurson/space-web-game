@@ -2,19 +2,24 @@ import './scenario-prompts.css'
 import { arrow, computePosition, flip, offset, shift } from '@floating-ui/dom'
 import type { AppRuntimeState } from '../../runtime/appRuntimeState'
 import {
-  getPromptTextContent,
   getPromptTextIdentity,
   resolveScenarioPrompts,
   serializePromptAction,
 } from '../../scenario/scenarioPrompts'
 import type {
-  PromptText,
   ResolvedPrompt,
   ResolvedPromptState,
   ScenarioHudFocusTarget,
   ScenarioPromptAnchor,
   ScenarioTouchControlFocusTarget,
 } from '../../scenario/scenarioPromptTypes'
+import {
+  ScenarioPromptSurface,
+  ScenarioReplayPillSurface,
+  type ScenarioPromptDisplayMode,
+  type ScenarioPromptSurfaceView,
+} from '../components/ScenarioPromptSurface'
+import { createPreactUiSurface } from '../createPreactUiSurface'
 
 export type ScenarioPromptUiRefs = {
   backdropElement: HTMLElement
@@ -31,12 +36,17 @@ export type ScenarioPromptUiRefs = {
   trajectoryGuideLineElement: SVGPolylineElement | null
   replayButton: HTMLButtonElement
   replayButtonLabel: HTMLSpanElement | null
+  renderSurface: ScenarioPromptSurfaceRenderer
 }
+
+export type ScenarioPromptSurfaceRenderer = (
+  view: ScenarioPromptSurfaceView,
+) => void
 
 type AnchorKey = ScenarioPromptAnchor
 type HudFocusKey = ScenarioHudFocusTarget
 type TouchControlFocusKey = ScenarioTouchControlFocusTarget
-type PromptDisplayMode = 'coach' | 'modal'
+type PromptDisplayMode = ScenarioPromptDisplayMode
 
 const focusedHudElementClassName = 'telemetry-pill-tutorial-focused'
 
@@ -113,53 +123,90 @@ const getAnchorElement = (
   return null
 }
 
-const emptyElement = document.createElement('div')
+const hiddenScenarioPromptSurfaceView = (): ScenarioPromptSurfaceView => ({
+  prompt: {
+    closeButton: {
+      action: '',
+      label: '',
+      visible: false,
+    },
+    confirmButton: {
+      action: '',
+      label: '',
+      visible: false,
+    },
+    description: null,
+    mode: 'modal',
+    restartButton: {
+      action: '',
+      disabled: true,
+      label: '',
+      visible: false,
+    },
+    secondaryButton: {
+      action: '',
+      label: '',
+      visible: false,
+    },
+    title: '',
+    visible: false,
+  },
+  replayPill: {
+    label: '',
+    visible: false,
+  },
+})
+
+const getRequiredElement = <ElementType extends Element>(
+  element: ElementType | null,
+  message: string,
+): ElementType => {
+  if (!element) {
+    throw new Error(message)
+  }
+
+  return element
+}
+
 /**
  * Creates the scenario prompt UI elements and returns references to them.
  * This includes the main prompt backdrop/modal and the replay button.
  */
 export const createScenarioPromptUI = (
   app: HTMLElement,
-  topBar: HTMLElement,
+  replayPillParent: HTMLElement,
 ): ScenarioPromptUiRefs => {
-  // Create the main prompt backdrop
-  const backdropElement = document.createElement('div')
-  backdropElement.className = 'scenario-prompt-backdrop'
-  backdropElement.style.display = 'none'
-  backdropElement.innerHTML = `
-    <svg class="scenario-prompt-trajectory-guide" aria-hidden="true" focusable="false">
-      <polyline class="scenario-prompt-trajectory-guide-line" points=""></polyline>
-    </svg>
-    <div class="scenario-prompt">
-      <div class="scenario-prompt-arrow"></div>
-      <div class="scenario-prompt-header">
-        <h2></h2>
-        <button type="button" data-role="close" class="scenario-prompt-close-button" aria-label="Close scenario prompt">&times;</button>
-      </div>
-      <p></p>
-      <div class="scenario-prompt-actions">
-        <button type="button" data-role="confirm"></button>
-        <button type="button" data-role="secondary"></button>
-        <button type="button" data-role="restart" class="scenario-prompt-restart-button">Restart scenario</button>
-      </div>
-    </div>
-  `
-  app.appendChild(backdropElement)
+  const promptSurface = createPreactUiSurface<{
+    view: ScenarioPromptSurfaceView['prompt']
+  }>({
+    app,
+    component: ScenarioPromptSurface,
+    missingRootError: 'Failed to create scenario prompt surface',
+  })
+  const replayPillSurface = createPreactUiSurface<{
+    view: ScenarioPromptSurfaceView['replayPill']
+  }>({
+    app: replayPillParent,
+    component: ScenarioReplayPillSurface,
+    missingRootError: 'Failed to create scenario replay pill surface',
+  })
 
-  // Create the replay button pill
-  const replayButton = document.createElement('button')
-  replayButton.type = 'button'
-  replayButton.className = 'hud-notice hud-notice-durable scenario-prompt-pill'
-  replayButton.style.display = 'none'
-  replayButton.innerHTML = `
-    <svg class="scenario-prompt-pill-icon" viewBox="0 0 20 20" aria-hidden="true">
-      <path d="M10 1.75 16.3 5.4v9.2L10 18.25 3.7 14.6V5.4Z"></path>
-      <path d="M10 5.15v5.35"></path>
-      <circle cx="10" cy="13.65" r="0.9"></circle>
-    </svg>
-    <span class="scenario-prompt-pill-label"></span>
-  `
-  topBar.appendChild(replayButton)
+  const renderSurface: ScenarioPromptSurfaceRenderer = (view) => {
+    promptSurface.render({
+      view: view.prompt,
+    })
+    replayPillSurface.render({
+      view: view.replayPill,
+    })
+  }
+
+  renderSurface(hiddenScenarioPromptSurfaceView())
+
+  const backdropElement = promptSurface.element
+  const replayButton = replayPillSurface.element as HTMLButtonElement
+
+  backdropElement.parentElement?.style.setProperty('display', 'contents')
+  replayButton.parentElement?.style.setProperty('display', 'contents')
 
   const trajectoryAnchorElement = document.createElement('div')
   trajectoryAnchorElement.className = 'scenario-trajectory-coach-anchor'
@@ -170,14 +217,20 @@ export const createScenarioPromptUI = (
   const promptElement =
     backdropElement.querySelector<HTMLElement>('.scenario-prompt')
 
-  const arrowElement = promptElement?.querySelector<HTMLElement>(
-    '.scenario-prompt-arrow',
-  )
+  const arrowElement = promptElement
+    ? promptElement.querySelector<HTMLElement>('.scenario-prompt-arrow')
+    : null
 
   return {
     backdropElement,
-    promptElement: promptElement ?? emptyElement,
-    arrowElement: arrowElement ?? emptyElement,
+    promptElement: getRequiredElement(
+      promptElement,
+      'Failed to create scenario prompt element',
+    ),
+    arrowElement: getRequiredElement(
+      arrowElement,
+      'Failed to create scenario prompt arrow',
+    ),
     titleElement: backdropElement.querySelector<HTMLHeadingElement>('h2'),
     descriptionElement:
       backdropElement.querySelector<HTMLParagraphElement>('p'),
@@ -205,6 +258,7 @@ export const createScenarioPromptUI = (
     replayButtonLabel: replayButton.querySelector<HTMLSpanElement>(
       '.scenario-prompt-pill-label',
     ),
+    renderSurface,
   }
 }
 
@@ -308,30 +362,6 @@ const getPromptDisplayMode = (
     : activePrompt
       ? 'modal'
       : null
-
-const renderPromptText = (
-  element: HTMLElement,
-  text: PromptText | null | undefined,
-): void => {
-  if (!text || typeof text === 'string') {
-    element.textContent = getPromptTextContent(text)
-    return
-  }
-
-  element.replaceChildren(
-    ...text.map((segment) => {
-      if (typeof segment === 'string') {
-        return segment
-      }
-
-      const emphasis = document.createElement('span')
-      emphasis.className = 'scenario-prompt-emphasis'
-      emphasis.dataset.tone = segment.tone
-      emphasis.textContent = segment.text
-      return emphasis
-    }),
-  )
-}
 
 /**
  * Computes a compact identity key from the current runtime state.
@@ -699,19 +729,7 @@ export const createScenarioPromptUpdater = (
       const primaryButton = activePrompt?.buttons[0]
       const secondaryButton = activePrompt?.buttons[1]
 
-      // Show/hide backdrop
-      refs.backdropElement.style.display = activePrompt ? 'grid' : 'none'
-
-      // Set prompt mode
       const promptMode = getPromptDisplayMode(activePrompt) ?? 'modal'
-      refs.backdropElement.dataset.promptMode = promptMode
-      if (activePrompt?.kind === 'coach') {
-        refs.backdropElement.dataset.promptLayout = activePrompt.layout
-      } else {
-        delete refs.backdropElement.dataset.promptLayout
-      }
-
-      // Set anchor if present
       const currentAnchorKey =
         activePrompt?.kind === 'coach' &&
         promptMode === 'coach' &&
@@ -719,11 +737,6 @@ export const createScenarioPromptUpdater = (
         activePrompt.anchor
           ? (activePrompt.anchor as AnchorKey)
           : undefined
-      if (currentAnchorKey) {
-        refs.promptElement.dataset.anchor = currentAnchorKey
-      } else {
-        delete refs.promptElement.dataset.anchor
-      }
       const focusedTouchControl: TouchControlFocusKey | undefined =
         activePrompt?.kind === 'coach' && promptMode === 'coach'
           ? activePrompt.focusedTouchControl
@@ -733,16 +746,6 @@ export const createScenarioPromptUpdater = (
           ? activePrompt.focusedHudElement
           : undefined
 
-      if (focusedTouchControl) {
-        refs.backdropElement.dataset.focusedTouchControl = focusedTouchControl
-      } else {
-        delete refs.backdropElement.dataset.focusedTouchControl
-      }
-      if (focusedHudElementKey) {
-        refs.backdropElement.dataset.focusedHudElement = focusedHudElementKey
-      } else {
-        delete refs.backdropElement.dataset.focusedHudElement
-      }
       setFocusedHudElement(focusedHudElementKey ?? null)
 
       // Track if mode or anchor changed
@@ -765,6 +768,68 @@ export const createScenarioPromptUpdater = (
         }
       }
 
+      refs.renderSurface({
+        prompt: {
+          anchor: currentAnchorKey,
+          closeButton: {
+            action: replayPromptActive ? replayPromptCancelAction : '',
+            label: '',
+            visible: replayPromptActive,
+          },
+          confirmButton: {
+            action:
+              promptButtonsVisible && primaryButton
+                ? serializePromptAction(primaryButton.action)
+                : '',
+            label: promptButtonsVisible
+              ? getPromptButtonLabel({
+                  label: primaryButton?.label ?? '',
+                  replayPromptActive,
+                })
+              : '',
+            visible: promptButtonsVisible && Boolean(primaryButton),
+          },
+          description: activePrompt?.description,
+          focusedHudElement: focusedHudElementKey,
+          focusedTouchControl,
+          layout:
+            activePrompt?.kind === 'coach' ? activePrompt.layout : undefined,
+          mode: promptMode,
+          restartButton: {
+            action: restartButtonAction ?? '',
+            disabled: restartButtonAction === null,
+            label: restartButtonAction
+              ? getRestartButtonLabel(restartButtonAction)
+              : '',
+            visible: restartButtonAction !== null,
+          },
+          secondaryButton: {
+            action:
+              promptButtonsVisible && secondaryButton
+                ? serializePromptAction(secondaryButton.action)
+                : restartButtonAction === 'scenario'
+                  ? replayPromptCancelAction
+                  : '',
+            label: promptButtonsVisible
+              ? (secondaryButton?.label ?? '')
+              : restartButtonAction === 'scenario'
+                ? replayPromptCancelLabel
+                : '',
+            visible:
+              (promptButtonsVisible && Boolean(secondaryButton)) ||
+              restartButtonAction === 'scenario',
+          },
+          title: activePrompt?.title ?? '',
+          visible: activePrompt !== null,
+        },
+        replayPill: {
+          label: replayPrompt?.label ?? '',
+          visible: Boolean(
+            showScenarioInfoButton && !activePrompt && replayPrompt,
+          ),
+        },
+      })
+
       // Update anchor positioning for coach prompts with anchors
       if (promptMode === 'coach' && currentAnchorKey) {
         const anchorElement = getAnchorElement(refs, currentAnchorKey)
@@ -772,66 +837,6 @@ export const createScenarioPromptUpdater = (
           setupAnchorObserver(anchorElement)
           updatePromptPosition()
         }
-      }
-
-      // Update content
-      if (refs.titleElement) {
-        refs.titleElement.textContent = activePrompt?.title ?? ''
-      }
-      if (refs.descriptionElement) {
-        renderPromptText(refs.descriptionElement, activePrompt?.description)
-      }
-
-      // Update buttons
-      if (refs.closeButton) {
-        refs.closeButton.style.display = replayPromptActive
-          ? 'inline-flex'
-          : 'none'
-        refs.closeButton.dataset.promptAction = replayPromptActive
-          ? replayPromptCancelAction
-          : ''
-      }
-      if (refs.confirmButton) {
-        refs.confirmButton.style.display =
-          promptButtonsVisible && primaryButton ? 'inline-flex' : 'none'
-        refs.confirmButton.textContent = promptButtonsVisible
-          ? getPromptButtonLabel({
-              label: primaryButton?.label ?? '',
-              replayPromptActive,
-            })
-          : ''
-        refs.confirmButton.dataset.promptAction =
-          promptButtonsVisible && primaryButton
-            ? serializePromptAction(primaryButton.action)
-            : ''
-      }
-      if (refs.secondaryButton) {
-        refs.secondaryButton.style.display =
-          (promptButtonsVisible && secondaryButton) ||
-          restartButtonAction === 'scenario'
-            ? 'inline-flex'
-            : 'none'
-        refs.secondaryButton.textContent = promptButtonsVisible
-          ? (secondaryButton?.label ?? '')
-          : restartButtonAction === 'scenario'
-            ? replayPromptCancelLabel
-            : ''
-        refs.secondaryButton.dataset.promptAction =
-          promptButtonsVisible && secondaryButton
-            ? serializePromptAction(secondaryButton.action)
-            : restartButtonAction === 'scenario'
-              ? replayPromptCancelAction
-              : ''
-      }
-      if (refs.restartButton) {
-        refs.restartButton.style.display = restartButtonAction
-          ? 'inline-flex'
-          : 'none'
-        refs.restartButton.disabled = restartButtonAction === null
-        refs.restartButton.textContent = restartButtonAction
-          ? getRestartButtonLabel(restartButtonAction)
-          : ''
-        refs.restartButton.dataset.restartAction = restartButtonAction ?? ''
       }
 
       const showTrajectoryGuide =
@@ -846,15 +851,6 @@ export const createScenarioPromptUpdater = (
       } else {
         delete refs.promptElement.dataset.trajectoryGuide
         hideTrajectoryGuide()
-      }
-
-      // Update replay button
-      refs.replayButton.style.display =
-        showScenarioInfoButton && !activePrompt && replayPrompt
-          ? 'inline-flex'
-          : 'none'
-      if (refs.replayButtonLabel) {
-        refs.replayButtonLabel.textContent = replayPrompt?.label ?? ''
       }
     },
 
