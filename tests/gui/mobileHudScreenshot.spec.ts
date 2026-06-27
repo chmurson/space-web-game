@@ -338,6 +338,239 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
   })
 })
 
+test('keeps the top menu adapter state, focus, keyboard, and debug behavior', async ({
+  page,
+}) => {
+  await page.goto('/?reachmoon=1')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(async () => {
+    const topMenuModulePath = '/src/ui/createTopMenu.ts'
+    const debugSnapshotModulePath = '/src/debugScenarioSnapshot.ts'
+    const { createTopMenu } = await import(topMenuModulePath)
+    const { clearDebugScenarioSnapshot, writeDebugScenarioSnapshot } =
+      await import(debugSnapshotModulePath)
+    const app = document.createElement('div')
+    const topBar = document.createElement('div')
+    const telemetry = document.createElement('div')
+    const outsideButton = document.createElement('button')
+    const events: string[] = []
+    let debugModeEnabled = false
+    let fpsIndicatorEnabled = false
+
+    topBar.className = 'top-bar'
+    telemetry.className = 'telemetry-strip'
+    outsideButton.textContent = 'Outside'
+    topBar.append(telemetry)
+    app.append(topBar)
+    document.body.append(app, outsideButton)
+    clearDebugScenarioSnapshot()
+
+    const menu = createTopMenu({
+      app,
+      getDebugModeEnabled: () => debugModeEnabled,
+      getFpsIndicatorEnabled: () => fpsIndicatorEnabled,
+      onAction: (action: string) => {
+        events.push(action)
+        if (action === 'toggleDebugMode') {
+          debugModeEnabled = !debugModeEnabled
+        }
+        if (action === 'toggleFpsIndicator') {
+          fpsIndicatorEnabled = !fpsIndicatorEnabled
+        }
+      },
+    })
+    const getButton = () =>
+      menu.element.querySelector('.top-menu-button') as HTMLButtonElement | null
+    const getDropdown = () =>
+      menu.element.querySelector('.top-menu-dropdown') as HTMLDivElement | null
+    const getActionButton = (action: string) =>
+      menu.element.querySelector(
+        `[data-menu-action="${action}"]`,
+      ) as HTMLButtonElement | null
+    const getActiveAction = () =>
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement.dataset.menuAction
+        : undefined
+    const pressActiveKey = (key: string) =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          key,
+        }),
+      )
+    const pressDocumentKey = (key: string) =>
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          key,
+        }),
+      )
+    const openMenu = () => getButton()?.click()
+
+    openMenu()
+    const openAfterClick = !getDropdown()?.hidden
+    const expandedAfterClick = getButton()?.getAttribute('aria-expanded')
+    const activeAfterOpen = getActiveAction()
+    const loadDisabledWithoutSnapshot =
+      getActionButton('loadDebugSnapshot')?.disabled
+    const debugLabelInitial = getActionButton('toggleDebugMode')?.textContent
+    const debugCheckedInitial =
+      getActionButton('toggleDebugMode')?.getAttribute('aria-checked')
+
+    pressActiveKey('ArrowDown')
+    const activeAfterArrowDown = getActiveAction()
+    pressActiveKey('ArrowDown')
+    const activeAfterSave = getActiveAction()
+    pressActiveKey('ArrowDown')
+    const activeAfterDisabledSkip = getActiveAction()
+    pressActiveKey('End')
+    const activeAfterEnd = getActiveAction()
+    pressActiveKey('ArrowDown')
+    const activeAfterWrap = getActiveAction()
+    pressActiveKey('Home')
+    const activeAfterHome = getActiveAction()
+
+    getActionButton('resetScenario')?.click()
+    const restartLabelAfterFirstClick =
+      getActionButton('resetScenario')?.textContent
+    getActionButton('resetScenario')?.click()
+    const closedAfterRestart = getDropdown()?.hidden
+    const focusAfterRestart = document.activeElement === getButton()
+
+    openMenu()
+    getActionButton('enterMainMenu')?.click()
+    const exitLabelAfterFirstClick =
+      getActionButton('enterMainMenu')?.textContent
+    getActionButton('enterMainMenu')?.click()
+    const closedAfterExit = getDropdown()?.hidden
+
+    openMenu()
+    getActionButton('toggleDebugMode')?.click()
+    openMenu()
+    const debugLabelAfterToggle =
+      getActionButton('toggleDebugMode')?.textContent
+    const debugCheckedAfterToggle =
+      getActionButton('toggleDebugMode')?.getAttribute('aria-checked')
+    getActionButton('toggleFpsIndicator')?.click()
+    openMenu()
+    const fpsLabelAfterToggle =
+      getActionButton('toggleFpsIndicator')?.textContent
+    const fpsCheckedAfterToggle =
+      getActionButton('toggleFpsIndicator')?.getAttribute('aria-checked')
+
+    menu.close()
+    writeDebugScenarioSnapshot({
+      version: 1,
+      savedAt: new Date(0).toISOString(),
+      elapsed: 0,
+      bodies: [],
+      spacecraft: {},
+    })
+    openMenu()
+    const loadDisabledWithSnapshot =
+      getActionButton('loadDebugSnapshot')?.disabled
+    getActionButton('loadDebugSnapshot')?.click()
+
+    openMenu()
+    outsideButton.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, cancelable: true }),
+    )
+    const closedAfterOutsidePointer = getDropdown()?.hidden
+
+    openMenu()
+    pressDocumentKey('Escape')
+    const closedAfterEscape = getDropdown()?.hidden
+    const focusAfterEscape = document.activeElement === getButton()
+
+    openMenu()
+    pressActiveKey('Tab')
+    const closedAfterTab = getDropdown()?.hidden
+
+    return {
+      activeAfterArrowDown,
+      activeAfterDisabledSkip,
+      activeAfterEnd,
+      activeAfterHome,
+      activeAfterOpen,
+      activeAfterSave,
+      activeAfterWrap,
+      closedAfterEscape,
+      closedAfterExit,
+      closedAfterOutsidePointer,
+      closedAfterRestart,
+      closedAfterTab,
+      debugCheckedAfterToggle,
+      debugCheckedInitial,
+      debugLabelAfterToggle,
+      debugLabelInitial,
+      events,
+      expandedAfterClick,
+      exitLabelAfterFirstClick,
+      focusAfterEscape,
+      focusAfterRestart,
+      fpsCheckedAfterToggle,
+      fpsLabelAfterToggle,
+      loadDisabledWithSnapshot,
+      loadDisabledWithoutSnapshot,
+      openAfterClick,
+      restartLabelAfterFirstClick,
+    }
+  })
+
+  expect(result).toEqual({
+    activeAfterArrowDown: 'toggleFpsIndicator',
+    activeAfterDisabledSkip: 'resetScenario',
+    activeAfterEnd: 'enterMainMenu',
+    activeAfterHome: 'toggleDebugMode',
+    activeAfterOpen: 'toggleDebugMode',
+    activeAfterSave: 'saveDebugSnapshot',
+    activeAfterWrap: 'toggleDebugMode',
+    closedAfterEscape: true,
+    closedAfterExit: true,
+    closedAfterOutsidePointer: true,
+    closedAfterRestart: true,
+    closedAfterTab: true,
+    debugCheckedAfterToggle: 'true',
+    debugCheckedInitial: 'false',
+    debugLabelAfterToggle: 'Hide debug window',
+    debugLabelInitial: 'Show debug window',
+    events: [
+      'resetScenario',
+      'enterMainMenu',
+      'toggleDebugMode',
+      'toggleFpsIndicator',
+      'loadDebugSnapshot',
+    ],
+    expandedAfterClick: 'true',
+    exitLabelAfterFirstClick: 'Confirm exit',
+    focusAfterEscape: true,
+    focusAfterRestart: true,
+    fpsCheckedAfterToggle: 'true',
+    fpsLabelAfterToggle: 'Hide FPS meter',
+    loadDisabledWithSnapshot: false,
+    loadDisabledWithoutSnapshot: true,
+    openAfterClick: true,
+    restartLabelAfterFirstClick: 'Confirm restart',
+  })
+})
+
+test('captures the mobile top menu open over gameplay HUD', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByLabel('Open menu').click()
+  await expect(page.locator('.top-menu-dropdown')).toBeVisible()
+  await expect(
+    page.getByRole('menuitemcheckbox', { name: 'Show debug window' }),
+  ).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-open')
+})
+
 test('captures the mobile time warp touch control after reveal', async ({
   page,
 }, testInfo) => {
