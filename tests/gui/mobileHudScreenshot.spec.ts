@@ -862,11 +862,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     }
 
     getControlButton('Burn control side', 'left')?.click()
+    getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
-    warpSide = 'right'
+    getControlButton('Warp control side', 'right')?.click()
     dialog.syncState()
     const selectedAfterChanges = {
       burn: getSelectedValue('Burn control side'),
+      target: getSelectedValue('Target control side'),
       trajectory: getSelectedValue('Trajectory control side'),
       warp: getSelectedValue('Warp control side'),
     }
@@ -954,7 +956,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     burnLeftPressed: 'true',
     burnRightPressed: 'false',
     className: 'app-dialog ui-settings-dialog',
-    events: ['burn:left', 'trajectory:right'],
+    events: ['burn:left', 'target:left', 'trajectory:right', 'warp:right'],
     focusAfterBackwardTrap: true,
     focusAfterForwardTrap: true,
     focusRestoredAfterBackdrop: true,
@@ -970,6 +972,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     role: 'dialog',
     selectedAfterChanges: {
       burn: 'left',
+      target: 'left',
       trajectory: 'right',
       warp: 'right',
     },
