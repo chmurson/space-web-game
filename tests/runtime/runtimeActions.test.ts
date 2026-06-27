@@ -9,11 +9,11 @@ import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { GameHighLevelActionsMediator } from '@/runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { createRuntimeActions } from '@/runtime/runtimeActions'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
-import { RENDER_SCALE } from '@/simulation/constants'
 import {
   createRuntimeScenarioCheckpoint,
   createRuntimeScenarioSession,
 } from '@/scenario/scenarioSession'
+import { RENDER_SCALE } from '@/simulation/constants'
 
 const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,
@@ -361,6 +361,18 @@ describe('createRuntimeActions', () => {
 
     runtimeActions.handleUIUserAction('decreaseCoastHorizon')
     expect(runtime.simulation.coastPredictionHorizonHours).toBe(16)
+  })
+
+  it('requests a trajectory refresh when cycling the assist target', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.handleUIUserAction('cycleAssistTarget')).toEqual({
+      refreshTrajectoryPrediction: true,
+    })
+
+    expect(runtime.simulation.assistTargetIndex).toBe(0)
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
   })
 
   it('selects a manual assist target by index', () => {

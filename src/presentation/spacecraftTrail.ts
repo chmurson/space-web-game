@@ -93,6 +93,14 @@ export const getSpacecraftTrailTargetRelativePosition = (
   point.targetRelativePositions[target.id] ??
   sub(point.position, target.position)
 
+export const getSpacecraftTrailRenderPosition = (
+  point: SpacecraftTrailPoint,
+  target: SpacecraftTrailReferenceTarget | null,
+): Vec2 =>
+  target
+    ? getSpacecraftTrailTargetRelativePosition(point, target)
+    : point.position
+
 export const getSpacecraftTrailRenderSampleDistanceMeters = (
   viewportSize: number,
 ) =>
@@ -142,7 +150,7 @@ export const selectSpacecraftTrailRenderPoints = (
   trailPoints: SpacecraftTrailPoint[],
   options: {
     renderSampleDistanceMeters: number
-    target: SpacecraftTrailReferenceTarget
+    target: SpacecraftTrailReferenceTarget | null
   },
 ) => {
   const newestPoint = trailPoints.at(-1)
@@ -153,23 +161,22 @@ export const selectSpacecraftTrailRenderPoints = (
   const renderSampleDistanceMetersSq =
     options.renderSampleDistanceMeters * options.renderSampleDistanceMeters
   const renderPoints: SpacecraftTrailPoint[] = []
-  let previousRenderedTargetRelativePosition: Vec2 | null = null
+  let previousRenderedPosition: Vec2 | null = null
 
   for (const point of trailPoints) {
-    const targetRelativePosition = getSpacecraftTrailTargetRelativePosition(
+    const renderPosition = getSpacecraftTrailRenderPosition(
       point,
       options.target,
     )
 
     if (
-      previousRenderedTargetRelativePosition === null ||
-      lengthSq(
-        sub(targetRelativePosition, previousRenderedTargetRelativePosition),
-      ) >= renderSampleDistanceMetersSq ||
+      previousRenderedPosition === null ||
+      lengthSq(sub(renderPosition, previousRenderedPosition)) >=
+        renderSampleDistanceMetersSq ||
       point === newestPoint
     ) {
       renderPoints.push(point)
-      previousRenderedTargetRelativePosition = targetRelativePosition
+      previousRenderedPosition = renderPosition
     }
   }
 

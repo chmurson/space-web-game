@@ -166,6 +166,10 @@ export const advanceRuntimeScenario = (
   if (shouldSyncDirectivesForScenarioTransition(transition)) {
     syncRuntimeScenarioDirectives(runtime, limits)
   }
+  return {
+    refreshTrajectoryPrediction:
+      transition?.refreshTrajectoryPrediction === true,
+  }
 }
 
 export const dispatchRuntimeScenarioPromptAction = (

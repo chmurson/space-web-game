@@ -302,10 +302,10 @@ export const createRuntimeActions = (options: {
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'cycleAssistTarget') {
-        selectAssistTargetIndex(
+        const selected = selectAssistTargetIndex(
           options.runtime.simulation.assistTargetIndex + 1,
         )
-        return { refreshTrajectoryPrediction: false }
+        return { refreshTrajectoryPrediction: selected }
       }
       if (action === 'cycleAssistMode') {
         options.runtime.simulation.assistMode =

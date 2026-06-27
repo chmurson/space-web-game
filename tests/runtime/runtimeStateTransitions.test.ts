@@ -263,9 +263,13 @@ describe('runtimeStateTransitions', () => {
       'syncRuntimeScenarioDirectives',
     )
 
-    advanceRuntimeScenario(runtime, globalScenarioDirectiveLimits)
+    const result = advanceRuntimeScenario(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
 
     expect(syncSpy).not.toHaveBeenCalled()
+    expect(result.refreshTrajectoryPrediction).toBe(false)
   })
 
   it('syncs directives when scenario advance includes nextState', () => {
@@ -304,6 +308,24 @@ describe('runtimeStateTransitions', () => {
       onboarding: {
         activeStepId: 'intro-keep-thrusting',
       },
+    })
+  })
+
+  it('returns a trajectory refresh request when scenario advance invalidates prediction state', () => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+    })
+    runtime.simulation.state.spacecraft.position = { x: 40_000_000, y: 0 }
+
+    const result = advanceRuntimeScenario(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
+
+    expect(result.refreshTrajectoryPrediction).toBe(true)
+    expect(runtime.scenario.session.state).toMatchObject({
+      phase: 'reach-moon',
     })
   })
 })

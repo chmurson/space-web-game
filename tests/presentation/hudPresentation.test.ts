@@ -371,6 +371,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     debugPanel: {
       element: new FakeElement('div') as unknown as HTMLElement,
       setCloseHandler: vi.fn(),
+      setCopyJson: vi.fn(),
       setJson: vi.fn(),
       setText: vi.fn(),
     },
@@ -596,8 +597,10 @@ describe('createHudPresentation', () => {
       trajectoryPresentation: {
         getCoachAnchorScreenPoint: () => null,
         getPredictionState: () => ({
+          targetId: 'moon',
           predictedImpact: null,
           predictedTargetClosestApproach: null,
+          targetRelativePredictionPoints: [{ x: 10, y: 20 }],
         }),
       } as never,
     })
@@ -621,6 +624,21 @@ describe('createHudPresentation', () => {
           viewport?: { size?: number; zoom?: number }
         }
       | undefined
+    const debugCopyJson = vi
+      .mocked(overlayUi.debugPanel.setCopyJson)
+      .mock.calls.at(-1)
+      ?.at(0) as
+      | {
+          simulation?: {
+            assistTarget?: { id?: string }
+            state?: { bodies?: unknown[] }
+          }
+          trajectoryPrediction?: {
+            targetId?: string
+            targetRelativePredictionPoints?: Array<{ x: number; y: number }>
+          }
+        }
+      | undefined
 
     expect(debugText).toContain('viewport: 25.00 | zoom: 4.0x')
     expect(debugText).toContain(
@@ -638,6 +656,12 @@ describe('createHudPresentation', () => {
       416_666.67,
       2,
     )
+    expect(debugCopyJson?.simulation?.assistTarget?.id).toBe('moon')
+    expect(debugCopyJson?.simulation?.state?.bodies).toHaveLength(2)
+    expect(debugCopyJson?.trajectoryPrediction).toMatchObject({
+      targetId: 'moon',
+      targetRelativePredictionPoints: [{ x: 10, y: 20 }],
+    })
   })
 
   it('throttles FPS meter content to every four visible frame cycles', async () => {

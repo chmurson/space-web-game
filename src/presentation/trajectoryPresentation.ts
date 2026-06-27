@@ -1,12 +1,11 @@
 import * as THREE from 'three'
 
 import type { CircularizePlan } from '../assist/orbitalAssist'
+import { renderPosition } from '../render/sceneUpdates'
 import {
   updateColoredLine2Geometry,
   updateLine2Geometry,
 } from '../rendering/line2Geometry'
-import { renderPosition } from '../render/sceneUpdates'
-import { getCoastPredictionFadeColors } from './predictionLineFade'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { GameQueries } from '../runtime/gameQueries'
 import type { TrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
@@ -14,6 +13,7 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, type Vec2 } from '../simulation/vector'
+import { getCoastPredictionFadeColors } from './predictionLineFade'
 
 const hideTrajectoryVisuals = (gameScene: GameSceneRefs) => {
   gameScene.assistedPredictionLine.visible = false
@@ -330,12 +330,16 @@ export const createTrajectoryPresentation = (options: {
     }
 
     const predictionState = options.trajectoryPredictionRuntime.getState()
+    const target = options.queries.getAssistTarget()
+    if (predictionState.targetId !== target.id) {
+      return null
+    }
+
     const points = predictionState.targetRelativePredictionPoints
     if (points.length === 0) {
       return null
     }
 
-    const target = options.queries.getAssistTarget()
     const point =
       points[
         Math.min(
@@ -400,6 +404,7 @@ export const createTrajectoryPresentation = (options: {
 
       const predictionState = options.trajectoryPredictionRuntime.getState()
       const target = options.queries.getAssistTarget()
+      const predictionTargetMatches = predictionState.targetId === target.id
 
       if (options.runtime.simulation.assistMode !== 'off') {
         options.gameScene.assistedPredictionMaterial.color.set(
@@ -414,14 +419,19 @@ export const createTrajectoryPresentation = (options: {
           options.queries.getCoastPredictionHorizonSeconds(),
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
         gameScene: options.gameScene,
-        predictedImpact: predictionState.predictedImpact,
+        predictedImpact: predictionTargetMatches
+          ? predictionState.predictedImpact
+          : null,
         target,
-        targetRelativeAssistedPoints:
-          predictionState.targetRelativeAssistedPoints,
-        targetRelativePredictionEnd:
-          predictionState.targetRelativePredictionEnd,
-        targetRelativePredictionPoints:
-          predictionState.targetRelativePredictionPoints,
+        targetRelativeAssistedPoints: predictionTargetMatches
+          ? predictionState.targetRelativeAssistedPoints
+          : [],
+        targetRelativePredictionEnd: predictionTargetMatches
+          ? predictionState.targetRelativePredictionEnd
+          : null,
+        targetRelativePredictionPoints: predictionTargetMatches
+          ? predictionState.targetRelativePredictionPoints
+          : [],
         viewportHeight: window.innerHeight,
         viewportSize: options.runtime.simulation.viewportSize,
       })
