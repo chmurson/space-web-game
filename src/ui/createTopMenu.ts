@@ -1,5 +1,10 @@
 import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
+import {
+  TopMenuSurface,
+  type TopMenuSurfaceProps,
+} from './components/TopMenuSurface'
+import { createPreactUiSurface } from './createPreactUiSurface'
 
 export type TopMenu = {
   close: () => void
@@ -12,6 +17,7 @@ type ConfirmableTopMenuAction = Extract<
   TopMenuAction,
   'enterMainMenu' | 'resetScenario'
 >
+type TopMenuRenderProps = Omit<TopMenuSurfaceProps, 'rootRef'>
 
 const isConfirmableAction = (
   action: TopMenuAction,
@@ -25,211 +31,113 @@ export const createTopMenu = (options: {
   onAction: (action: TopMenuAction) => void
 }): TopMenu => {
   const menuId = 'top-menu-dropdown'
-  const debugSectionLabelId = `${menuId}-debug`
-  const scenarioSectionLabelId = `${menuId}-scenario`
-  const root = document.createElement('div')
-  root.className = 'top-menu'
-  root.innerHTML = `
-    <button
-      class="top-menu-button"
-      type="button"
-      aria-label="Open menu"
-      aria-expanded="false"
-      aria-haspopup="menu"
-      aria-controls="${menuId}"
-    >
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
-    <div class="top-menu-dropdown" id="${menuId}" role="menu" hidden>
-      <section class="menu-section" aria-labelledby="${debugSectionLabelId}">
-        <div class="menu-section-label" id="${debugSectionLabelId}">Debug</div>
-        <button type="button" role="menuitemcheckbox" data-menu-action="toggleDebugMode" data-menu-debug-toggle></button>
-        <button type="button" role="menuitemcheckbox" data-menu-action="toggleFpsIndicator" data-menu-fps-toggle></button>
-        <button type="button" role="menuitem" data-menu-action="saveDebugSnapshot">Save debug snapshot</button>
-        <button type="button" role="menuitem" data-menu-action="loadDebugSnapshot">Load debug snapshot</button>
-      </section>
-
-      <hr class="menu-separator" />
-
-      <section class="menu-section" aria-labelledby="${scenarioSectionLabelId}">
-        <div class="menu-section-label" id="${scenarioSectionLabelId}">Scenario</div>
-        <button type="button" role="menuitem" data-menu-action="resetScenario">Restart</button>
-        <button type="button" role="menuitem" data-menu-action="enterMainMenu">Exit</button>
-      </section>
-    </div>
-  `
-  const topBar = options.app.querySelector('.top-bar')
+  const topBar = options.app.querySelector<HTMLElement>('.top-bar')
   if (!topBar) {
     throw new Error('Failed to find top bar')
   }
-  topBar.prepend(root)
 
-  const button = root.querySelector<HTMLButtonElement>('.top-menu-button')
-  const dropdown = root.querySelector<HTMLDivElement>('.top-menu-dropdown')
-  if (!button || !dropdown) {
-    throw new Error('Failed to create top menu')
-  }
+  const surface = createPreactUiSurface<TopMenuRenderProps>({
+    app: topBar,
+    component: TopMenuSurface,
+    missingRootError: 'Failed to create top menu',
+  })
 
-  const exitButton = dropdown.querySelector<HTMLButtonElement>(
-    '[data-menu-action="enterMainMenu"]',
-  )
-  const restartButton = dropdown.querySelector<HTMLButtonElement>(
-    '[data-menu-action="resetScenario"]',
-  )
-  const loadSnapshotButton = dropdown.querySelector<HTMLButtonElement>(
-    '[data-menu-action="loadDebugSnapshot"]',
-  )
-  const debugToggleButton = dropdown.querySelector<HTMLButtonElement>(
-    '[data-menu-debug-toggle]',
-  )
-  const fpsToggleButton = dropdown.querySelector<HTMLButtonElement>(
-    '[data-menu-fps-toggle]',
-  )
-  const menuItems = Array.from(
-    dropdown.querySelectorAll<HTMLButtonElement>(
-      'button[role="menuitem"], button[role="menuitemcheckbox"], button[role="menuitemradio"]',
-    ),
-  )
+  let open = false
+  let debugModeEnabled = options.getDebugModeEnabled()
+  let fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
+  let loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
   let pendingConfirmationAction: ConfirmableTopMenuAction | null = null
-  let lastDebugToggleLabel = ''
-  let lastDebugToggleChecked: boolean | null = null
-  let lastFpsToggleLabel = ''
-  let lastFpsToggleChecked: boolean | null = null
+
+  const getButton = () =>
+    surface.element.querySelector<HTMLButtonElement>('.top-menu-button')
+
+  const getDropdown = () =>
+    surface.element.querySelector<HTMLDivElement>('.top-menu-dropdown')
+
+  const getMenuItems = () =>
+    Array.from(
+      surface.element.querySelectorAll<HTMLButtonElement>(
+        'button[role="menuitem"], button[role="menuitemcheckbox"], button[role="menuitemradio"]',
+      ),
+    ).filter((menuItem) => !menuItem.disabled)
+
   const focusItem = (index: number) => {
+    const menuItems = getMenuItems()
     menuItems.at(index)?.focus()
   }
-  const syncConfirmationLabels = () => {
-    if (restartButton) {
-      restartButton.textContent =
-        pendingConfirmationAction === 'resetScenario'
-          ? 'Confirm restart'
-          : 'Restart'
-    }
-    if (exitButton) {
-      exitButton.textContent =
-        pendingConfirmationAction === 'enterMainMenu' ? 'Confirm exit' : 'Exit'
-    }
-  }
-  const resetConfirmation = () => {
-    pendingConfirmationAction = null
-    syncConfirmationLabels()
-  }
-  const syncSnapshotAvailability = () => {
-    if (!loadSnapshotButton) {
-      return
-    }
 
-    loadSnapshotButton.disabled = readDebugScenarioSnapshot() === null
+  const syncSnapshotAvailability = () => {
+    loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
   }
+
+  const syncToggleState = () => {
+    debugModeEnabled = options.getDebugModeEnabled()
+    fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
+  }
+
+  const renderMenu = () => {
+    surface.render({
+      debugModeEnabled,
+      fpsIndicatorEnabled,
+      loadSnapshotAvailable,
+      menuId,
+      open,
+      pendingConfirmationAction,
+      onAction: (action) => {
+        if (
+          isConfirmableAction(action) &&
+          pendingConfirmationAction !== action
+        ) {
+          pendingConfirmationAction = action
+          renderMenu()
+          return
+        }
+
+        options.onAction(action)
+        if (action === 'saveDebugSnapshot' || action === 'loadDebugSnapshot') {
+          syncSnapshotAvailability()
+        }
+        syncToggleState()
+        pendingConfirmationAction = null
+        setOpen(false, 'button')
+      },
+      onMenuButtonClick: () => {
+        setOpen(!open, open ? 'button' : 'first-item')
+      },
+    })
+  }
+
   const syncState = () => {
-    const debugModeEnabled = options.getDebugModeEnabled()
-    const fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
-    const debugToggleLabel = debugModeEnabled
-      ? 'Hide debug window'
-      : 'Show debug window'
-    const fpsToggleLabel = fpsIndicatorEnabled
-      ? 'Hide FPS meter'
-      : 'Show FPS meter'
-    if (debugToggleButton) {
-      if (debugToggleLabel !== lastDebugToggleLabel) {
-        debugToggleButton.textContent = debugToggleLabel
-        lastDebugToggleLabel = debugToggleLabel
-      }
-      if (debugModeEnabled !== lastDebugToggleChecked) {
-        debugToggleButton.setAttribute('aria-checked', String(debugModeEnabled))
-        lastDebugToggleChecked = debugModeEnabled
-      }
-    }
-    if (fpsToggleButton) {
-      if (fpsToggleLabel !== lastFpsToggleLabel) {
-        fpsToggleButton.textContent = fpsToggleLabel
-        lastFpsToggleLabel = fpsToggleLabel
-      }
-      if (fpsIndicatorEnabled !== lastFpsToggleChecked) {
-        fpsToggleButton.setAttribute(
-          'aria-checked',
-          String(fpsIndicatorEnabled),
-        )
-        lastFpsToggleChecked = fpsIndicatorEnabled
-      }
-    }
+    syncToggleState()
+    syncSnapshotAvailability()
+    renderMenu()
   }
 
   const setOpen = (
-    open: boolean,
+    nextOpen: boolean,
     focusTarget: 'button' | 'first-item' | 'none' = 'none',
   ) => {
-    if (open) {
+    open = nextOpen
+    if (nextOpen) {
       syncSnapshotAvailability()
-      syncState()
-    }
-    button.setAttribute('aria-expanded', String(open))
-    dropdown.hidden = !open
-    root.classList.toggle('top-menu-open', open)
-
-    if (!open) {
-      resetConfirmation()
+      syncToggleState()
     }
 
-    if (open && focusTarget === 'first-item') {
+    if (!nextOpen) {
+      pendingConfirmationAction = null
+    }
+    renderMenu()
+
+    if (nextOpen && focusTarget === 'first-item') {
       focusItem(0)
     }
-    if (!open && focusTarget === 'button') {
-      button.focus()
+    if (!nextOpen && focusTarget === 'button') {
+      getButton()?.focus()
     }
   }
 
-  button.addEventListener('click', (event) => {
-    event.stopPropagation()
-    setOpen(dropdown.hidden, dropdown.hidden ? 'first-item' : 'button')
-  })
-
-  dropdown.addEventListener('click', (event) => {
-    const target = event.target
-    if (!(target instanceof HTMLButtonElement)) {
-      return
-    }
-
-    const action = target.dataset.menuAction as TopMenuAction | undefined
-    if (!action) {
-      return
-    }
-
-    if (isConfirmableAction(action) && pendingConfirmationAction !== action) {
-      pendingConfirmationAction = action
-      syncConfirmationLabels()
-      return
-    }
-
-    options.onAction(action)
-    if (action === 'saveDebugSnapshot' || action === 'loadDebugSnapshot') {
-      syncSnapshotAvailability()
-    }
-    syncState()
-    resetConfirmation()
-    setOpen(false, 'button')
-  })
-
-  document.addEventListener('pointerdown', (event) => {
-    if (!root.contains(event.target as Node)) {
-      setOpen(false)
-    }
-  })
-
-  document.addEventListener('keydown', (event) => {
-    if (!root.classList.contains('top-menu-open')) {
-      return
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      setOpen(false, 'button')
-    }
-  })
-
-  dropdown.addEventListener('keydown', (event) => {
+  const handleDropdownKeyDown = (event: KeyboardEvent) => {
+    const menuItems = getMenuItems()
     const currentIndex = menuItems.indexOf(
       document.activeElement as HTMLButtonElement,
     )
@@ -256,10 +164,41 @@ export const createTopMenu = (options: {
     if (event.key === 'Tab') {
       setOpen(false)
     }
+  }
+
+  renderMenu()
+
+  const root = surface.element
+  const host = root.parentElement
+  const dropdown = getDropdown()
+  if (!host || !dropdown) {
+    throw new Error('Failed to create top menu')
+  }
+
+  host.style.display = 'contents'
+  topBar.prepend(host)
+  dropdown.addEventListener('keydown', handleDropdownKeyDown)
+
+  document.addEventListener('pointerdown', (event) => {
+    if (!open) {
+      return
+    }
+
+    if (event.target instanceof Node && !root.contains(event.target)) {
+      setOpen(false)
+    }
   })
 
-  syncState()
-  syncConfirmationLabels()
+  document.addEventListener('keydown', (event) => {
+    if (!open) {
+      return
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setOpen(false, 'button')
+    }
+  })
 
   return {
     close: () => setOpen(false),
