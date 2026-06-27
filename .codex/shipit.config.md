@@ -91,3 +91,14 @@ Before marking Shipit work `completed`, update every GitHub issue that the task 
   - the production or staging deploy URL when applicable
   - any follow-up issues that now own deferred work
 - Record the issue URL and final issue state in the Shipit workflow state before marking `Status: completed`.
+
+## Automation Task Claim Gate
+
+When Shipit work is started by the space-web-game automation monitor, the orchestrator or worker must hold a task-scoped claim before changing files or writing to GitHub.
+
+- Acquire the claim with `npm run claim:task -- acquire --kind pr|issue --id <id> --token-file <path>` before delegating or beginning automation-owned work. Include `--branch <branch>` when the PR/issue is tied to a branch so the helper can block duplicate branch ownership too.
+- Pass the generated token to the worker context. Do not store the raw token in committed files.
+- Before source/docs edits, verification commands, commits, pushes, deploys, or GitHub comments, verify the token with `npm run claim:task -- verify --kind pr|issue --id <id> --token <token>`.
+- During long-running implementation or review handling, refresh `last_seen` with `heartbeat` before the TTL expires.
+- Release the claim when the active automation handoff finishes or is intentionally abandoned.
+- If acquire, verify, or heartbeat fails, stop or skip the task. The task may be retried only after the helper reports that a stale claim was safely replaced.

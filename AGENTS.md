@@ -60,6 +60,15 @@
 - Record relevant issue comments, decisions, non-goals, and any scope uncertainty in transient Shipit state before implementation; move durable context into `docs/tech-notes/` when it should remain useful after the worktree scratch state is gone.
 - If issue comments conflict or leave the requested behavior unclear, pause and clarify before changing product code.
 
+## Automation Task Claims
+
+- Automation orchestrators and workers must use task-scoped claims for GitHub PRs/issues/branches instead of a single repository-wide automation lock.
+- Use `npm run claim:task -- acquire --kind pr|issue --id <id> --token-file <path>` before delegating or starting automation-owned work on a PR/issue. Include `--branch` when the task is tied to a branch, and keep the generated token file in the worker context.
+- Claim records live in the per-user shared directory `$CODEX_HOME/automation-locks/space-web-game/tasks/` by default, so separate worktrees coordinate with each other.
+- If acquiring, heartbeating, or verifying a claim fails, stop or skip the task. Do not edit, test, commit, push, deploy, or reply on GitHub for automation-owned work unless the matching claim token verifies first. When `--branch` is supplied, the helper also blocks concurrent claims for that same branch.
+- Workers called by automation must run `npm run claim:task -- verify --kind pr|issue --id <id> --token <token>` before source/docs edits, verification commands, commits, pushes, deploys, and GitHub comments. Use `heartbeat` during long-running work and `release` when the active automation handoff is finished or intentionally abandoned.
+- Only replace a stale claim through the helper's normal `acquire` path. The helper fails closed for live claims, unreadable claims, and uncertain liveness.
+
 ## Shipit Reviews
 
 - Run CodeRabbit as part of Shipit review with `coderabbit --base main --agent`.
