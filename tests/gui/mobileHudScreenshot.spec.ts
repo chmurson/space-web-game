@@ -1,4 +1,5 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test'
+import type { UIUserAction } from '../../src/input/uiUserActions'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -558,6 +559,215 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
   })
 })
 
+test('keeps the in-game controls menu adapter state and actions', async ({
+  page,
+}) => {
+  await page.goto('/?reachmoon=1')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(async () => {
+    const controlsMenuModulePath = '/src/ui/createInGameControlsMenu.ts'
+    const { createInGameControlsMenu } = await import(controlsMenuModulePath)
+    const app = document.createElement('div')
+    const outsideButton = document.createElement('button')
+    const events: string[] = []
+    let cameraMode: 'centered' | 'unlocked' = 'centered'
+    let cameraModeChangesLocked = false
+    let coastHorizonHours = 6
+    let settingsOpened = false
+
+    outsideButton.textContent = 'Outside controls'
+    document.body.append(app, outsideButton)
+
+    const menu = createInGameControlsMenu({
+      app,
+      getCameraMode: () => cameraMode,
+      getCameraModeChangesLocked: () => cameraModeChangesLocked,
+      getCoastPredictionHorizonHours: () => coastHorizonHours,
+      getMaxCoastPredictionHorizonHours: () => 8,
+      getMinCoastPredictionHorizonHours: () => 2,
+      onAction: (action: UIUserAction) => {
+        events.push(action)
+        if (action === 'setCameraUnlocked') {
+          cameraMode = 'unlocked'
+        }
+        if (action === 'setCameraCentered') {
+          cameraMode = 'centered'
+        }
+        if (action === 'decreaseCoastHorizon') {
+          coastHorizonHours = Math.max(2, coastHorizonHours - 2)
+        }
+        if (action === 'increaseCoastHorizon') {
+          coastHorizonHours = Math.min(8, coastHorizonHours + 2)
+        }
+      },
+      onOpenUiSettings: () => {
+        settingsOpened = true
+      },
+    })
+    const getMenuButton = () =>
+      menu.element.querySelector(
+        '.in-game-controls-menu-button',
+      ) as HTMLButtonElement | null
+    const getPopover = () =>
+      menu.element.querySelector(
+        '.in-game-controls-menu-popover',
+      ) as HTMLDivElement | null
+    const getActionButton = (action: string) =>
+      menu.element.querySelector(
+        `[data-in-game-action="${action}"]`,
+      ) as HTMLButtonElement | null
+    const getCameraStatus = () =>
+      menu.element.querySelector('[data-in-game-camera-status]')?.textContent
+    const getCoastHorizon = () =>
+      menu.element.querySelector('[data-in-game-coast-horizon]')?.textContent
+    const pressDocumentKey = (key: string) =>
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          key,
+        }),
+      )
+    const openMenu = () => getMenuButton()?.click()
+
+    openMenu()
+    const openAfterClick = !getPopover()?.hidden
+    const expandedAfterClick = getMenuButton()?.getAttribute('aria-expanded')
+    const menuButtonLabelAfterClick =
+      getMenuButton()?.getAttribute('aria-label')
+    const cameraModeDataInitial = menu.element.dataset.cameraMode
+    const cameraStatusInitial = getCameraStatus()
+    const cameraCheckedInitial =
+      getActionButton('toggleCameraMode')?.getAttribute('aria-checked')
+    const cameraLabelInitial =
+      getActionButton('toggleCameraMode')?.getAttribute('aria-label')
+    const coastHorizonInitial = getCoastHorizon()
+
+    getActionButton('toggleCameraMode')?.click()
+    const cameraModeDataAfterToggle = menu.element.dataset.cameraMode
+    const cameraStatusAfterToggle = getCameraStatus()
+    const cameraCheckedAfterToggle =
+      getActionButton('toggleCameraMode')?.getAttribute('aria-checked')
+    const cameraLabelAfterToggle =
+      getActionButton('toggleCameraMode')?.getAttribute('aria-label')
+
+    cameraModeChangesLocked = true
+    menu.syncState()
+    const switchDisabledWhenLocked =
+      getActionButton('toggleCameraMode')?.disabled
+    const switchLabelWhenLocked =
+      getActionButton('toggleCameraMode')?.getAttribute('aria-label')
+    getActionButton('toggleCameraMode')?.click()
+    const eventCountAfterLockedClick = events.length
+
+    getActionButton('decreaseCoastHorizon')?.click()
+    getActionButton('decreaseCoastHorizon')?.click()
+    const coastHorizonAtMin = getCoastHorizon()
+    const decreaseDisabledAtMin = getActionButton(
+      'decreaseCoastHorizon',
+    )?.disabled
+    getActionButton('decreaseCoastHorizon')?.click()
+    const eventCountAfterDisabledDecrease = events.length
+
+    getActionButton('increaseCoastHorizon')?.click()
+    getActionButton('increaseCoastHorizon')?.click()
+    getActionButton('increaseCoastHorizon')?.click()
+    const coastHorizonAtMax = getCoastHorizon()
+    const increaseDisabledAtMax = getActionButton(
+      'increaseCoastHorizon',
+    )?.disabled
+
+    getActionButton('openUiSettings')?.click()
+    const closedAfterSettings = getPopover()?.hidden
+
+    openMenu()
+    outsideButton.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, cancelable: true }),
+    )
+    const closedAfterOutsidePointer = getPopover()?.hidden
+
+    openMenu()
+    pressDocumentKey('Escape')
+    const closedAfterEscape = getPopover()?.hidden
+    const focusAfterEscape = document.activeElement === getMenuButton()
+    const menuButtonLabelAfterEscape =
+      getMenuButton()?.getAttribute('aria-label')
+
+    menu.close()
+    const closedAfterClose = getPopover()?.hidden
+
+    return {
+      cameraCheckedAfterToggle,
+      cameraCheckedInitial,
+      cameraLabelAfterToggle,
+      cameraLabelInitial,
+      cameraModeDataAfterToggle,
+      cameraModeDataInitial,
+      cameraStatusAfterToggle,
+      cameraStatusInitial,
+      closedAfterClose,
+      closedAfterEscape,
+      closedAfterOutsidePointer,
+      closedAfterSettings,
+      coastHorizonAtMax,
+      coastHorizonAtMin,
+      coastHorizonInitial,
+      decreaseDisabledAtMin,
+      eventCountAfterDisabledDecrease,
+      eventCountAfterLockedClick,
+      events,
+      expandedAfterClick,
+      focusAfterEscape,
+      increaseDisabledAtMax,
+      menuButtonLabelAfterClick,
+      menuButtonLabelAfterEscape,
+      openAfterClick,
+      settingsOpened,
+      switchDisabledWhenLocked,
+      switchLabelWhenLocked,
+    }
+  })
+
+  expect(result).toEqual({
+    cameraCheckedAfterToggle: 'false',
+    cameraCheckedInitial: 'true',
+    cameraLabelAfterToggle: 'Camera locked off: Free roam',
+    cameraLabelInitial: 'Camera locked on: On spacecraft',
+    cameraModeDataAfterToggle: 'unlocked',
+    cameraModeDataInitial: 'centered',
+    cameraStatusAfterToggle: 'Free roam',
+    cameraStatusInitial: 'On spacecraft',
+    closedAfterClose: true,
+    closedAfterEscape: true,
+    closedAfterOutsidePointer: true,
+    closedAfterSettings: true,
+    coastHorizonAtMax: '8h',
+    coastHorizonAtMin: '2h',
+    coastHorizonInitial: '6h',
+    decreaseDisabledAtMin: true,
+    eventCountAfterDisabledDecrease: 3,
+    eventCountAfterLockedClick: 1,
+    events: [
+      'setCameraUnlocked',
+      'decreaseCoastHorizon',
+      'decreaseCoastHorizon',
+      'increaseCoastHorizon',
+      'increaseCoastHorizon',
+      'increaseCoastHorizon',
+    ],
+    expandedAfterClick: 'true',
+    focusAfterEscape: true,
+    increaseDisabledAtMax: true,
+    menuButtonLabelAfterClick: 'Close in-game controls',
+    menuButtonLabelAfterEscape: 'Open in-game controls',
+    openAfterClick: true,
+    settingsOpened: true,
+    switchDisabledWhenLocked: true,
+    switchLabelWhenLocked: 'Camera locked changes unavailable: Free roam',
+  })
+})
+
 test('captures the mobile top menu open over gameplay HUD', async ({
   page,
 }, testInfo) => {
@@ -570,6 +780,20 @@ test('captures the mobile top menu open over gameplay HUD', async ({
   ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-open')
+})
+
+test('captures the mobile in-game controls menu open over gameplay HUD', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Open in-game controls' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'In-game controls' }),
+  ).toBeVisible()
+  await expect(page.getByText('Prediction horizon')).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
 })
 
 test('captures the mobile time warp touch control after reveal', async ({
