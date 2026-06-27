@@ -58,6 +58,16 @@ coderabbit --base main --agent
   - residual risk
   - validation results or explicitly accepted validation gaps
 
+## Shipit Yeet Gate
+
+When Shipit review is complete and the user asks to yeet the work, open or update the GitHub PR in ready-for-review state so CodeRabbit and other automated reviewers can run on the PR.
+
+- This repo-level rule intentionally overrides the generic Yeet skill's draft-PR default after review has passed.
+- Do not create a draft PR after the Shipit review gate has passed unless the human explicitly asks for a draft.
+- When creating a PR after review, omit `--draft` from `gh pr create`.
+- If a PR already exists as a draft after review, run `gh pr ready` before handing work back.
+- Record the ready-for-review PR URL in Shipit workflow state.
+
 ## GitHub Issue Status Gate
 
 When starting implementation for a GitHub issue, update every issue that the task explicitly targets before changing product code.
