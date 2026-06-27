@@ -835,13 +835,28 @@ describe('tutorialScenario', () => {
       'complete-intro',
     )
     runtime.simulation.state.elapsed = 999
-    const activePrompt = resolveScenarioPrompts(runtime, 'desktop').active
-    expect(activePrompt).toMatchObject({
+    const completionPrompt = resolveScenarioPrompts(runtime, 'desktop').active
+
+    expect(completionPrompt).toMatchObject({
       title: 'Tutorial Complete',
-      buttons: [{ label: 'Free roam' }, { label: 'Exit' }],
+      buttons: [
+        {
+          action: { kind: 'builtin', id: 'exit_to_menu' },
+          label: 'Main menu',
+        },
+      ],
     })
-    expect(getPromptTextContent(activePrompt?.description)).toBe(
-      'You completed the Earth-Moon round trip in 12m 34s game time. Start free roam immediately or return to the main menu.',
+    expect(getPromptTextContent(completionPrompt?.description)).toBe(
+      'You completed the Earth-Moon round trip in 12m 34s game time. Return to the main menu when you are ready.',
     )
+    expect(completionPrompt?.buttons).toHaveLength(1)
+    expect(
+      completionPrompt?.buttons.some(
+        (button) =>
+          button.label === 'Free roam' ||
+          (button.action.kind === 'builtin' &&
+            button.action.id === 'start_free_roam'),
+      ),
+    ).toBe(false)
   })
 })
