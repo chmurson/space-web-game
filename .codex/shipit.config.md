@@ -98,7 +98,7 @@ When Shipit work is started by the space-web-game automation monitor, the orches
 
 - Acquire the claim with `npm run claim:task -- acquire --kind pr|issue --id <id> --token-file <path>` before delegating or beginning automation-owned work. Include `--branch <branch>` when the PR/issue is tied to a branch so the helper can block duplicate branch ownership too.
 - Pass the generated token to the worker context. Do not store the raw token in committed files.
-- Before source/docs edits, verification commands, commits, pushes, deploys, or GitHub comments, verify the token with `npm run claim:task -- verify --kind pr|issue --id <id> --token <token>`.
+- Before source/docs edits, verification commands, commits, pushes, deploys, or GitHub comments, verify branch-bound work with `npm run claim:task -- verify --kind pr|issue --id <id> --branch <branch> --token-file <token-file>`. For unbound tasks, omit only the `--branch <branch>` pair. Use the same token-file flow for heartbeat and release.
 - During long-running implementation or review handling, refresh `last_seen` with `heartbeat` before the TTL expires.
 - Release the claim when the active automation handoff finishes or is intentionally abandoned.
 - If acquire, verify, or heartbeat fails, stop or skip the task. The task may be retried only after the helper reports that a stale claim was safely replaced.

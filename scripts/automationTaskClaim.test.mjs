@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { hostname, tmpdir } from 'node:os'
 import path from 'node:path'
@@ -59,7 +60,10 @@ describe('automationTaskClaim', () => {
     const record = JSON.parse(
       await readFile(path.join(claimRoot, 'pr-71.json'), 'utf8'),
     )
-    assert.equal(record.token_hash.startsWith('sha256:'), true)
+    assert.equal(
+      record.token_hash,
+      `sha256:${createHash('sha256').update('secret-a').digest('hex')}`,
+    )
     assert.equal(Object.hasOwn(record, 'token'), false)
   })
 
@@ -274,8 +278,9 @@ describe('automationTaskClaim', () => {
     )
   })
 
-  it('releases a claim with the matching token so the task can be acquired again', async () => {
+  it('releases a branch-scoped claim so another task can use the same branch', async () => {
     await acquireClaim({
+      branch: 'issue-73-automation-claim',
       claimRoot,
       id: '73',
       kind: 'pr',
@@ -286,7 +291,24 @@ describe('automationTaskClaim', () => {
       ttlSeconds: 60,
     })
 
+    await assert.rejects(
+      () =>
+        acquireClaim({
+          branch: 'issue-73-automation-claim',
+          claimRoot,
+          id: '74',
+          kind: 'issue',
+          now: at('2026-06-27T10:00:10.000Z'),
+          owner: 'worker-b',
+          pid: null,
+          token: 'secret-b',
+          ttlSeconds: 60,
+        }),
+      { codeName: 'BRANCH_CLAIM_ACTIVE' },
+    )
+
     const release = await releaseClaim({
+      branch: 'issue-73-automation-claim',
       claimRoot,
       id: '73',
       kind: 'pr',
@@ -297,9 +319,10 @@ describe('automationTaskClaim', () => {
     assert.equal(release.status, 'released')
 
     const reacquire = await acquireClaim({
+      branch: 'issue-73-automation-claim',
       claimRoot,
-      id: '73',
-      kind: 'pr',
+      id: '74',
+      kind: 'issue',
       now: at('2026-06-27T10:00:30.000Z'),
       owner: 'worker-b',
       pid: null,
