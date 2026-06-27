@@ -6,6 +6,7 @@ import {
   readDebugScenarioSnapshot,
   writeDebugScenarioSnapshot,
 } from '../debugScenarioSnapshot'
+import type { AssistTargetSelectionMode } from '../runtime/appRuntimeState'
 import { idleControls } from '../simulation/state'
 import type { SimulationState } from '../simulation/types'
 import type { CameraControlMode } from './scenarioDirectiveTypes'
@@ -25,6 +26,8 @@ export type RuntimeScenarioOptions = {
 }
 
 export type RuntimeScenarioState = {
+  assistTargetIndex?: number
+  assistTargetSelectionMode?: AssistTargetSelectionMode
   cameraMode: CameraControlMode
   coastPredictionHorizonHours: number
   scenarioSession: ReturnType<typeof createRuntimeScenarioSession>
@@ -40,6 +43,11 @@ export type LoadedDebugRuntimeScenario = {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+
+const getScenarioAssistTargetIndex = (scenario: RuntimeScenario) =>
+  typeof scenario.assistTargetIndex === 'number' && scenario.bodies.length > 0
+    ? clamp(scenario.assistTargetIndex, 0, scenario.bodies.length - 1)
+    : undefined
 
 export const createRequestedRuntimeScenario = (
   requestedScenario: string,
@@ -78,6 +86,8 @@ export const createRuntimeScenarioState = (
   scenario: RuntimeScenario,
   options: RuntimeScenarioOptions,
 ): RuntimeScenarioState => ({
+  assistTargetIndex: getScenarioAssistTargetIndex(scenario),
+  assistTargetSelectionMode: scenario.assistTargetSelectionMode,
   cameraMode: scenario.cameraMode ?? 'centered',
   coastPredictionHorizonHours: clamp(
     scenario.coastPredictionHorizonHours ??
@@ -105,6 +115,8 @@ export const saveRuntimeDebugSnapshot = (
   state: SimulationState,
   options: {
     coastPredictionHorizonHours: number
+    assistTargetIndex?: number
+    assistTargetSelectionMode?: AssistTargetSelectionMode
     scenarioSession: RuntimeScenarioState['scenarioSession']
     viewportSize: number
   },

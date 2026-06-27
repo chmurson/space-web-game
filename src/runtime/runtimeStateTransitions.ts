@@ -71,6 +71,13 @@ export const applyScenarioLoadTransition = (
   )
   runtime.ui.uiEffectEpoch += 1
   options.clearTransientScenarioState()
+  if (transition.assistTargetIndex !== undefined) {
+    runtime.simulation.assistTargetIndex = transition.assistTargetIndex
+  }
+  if (transition.assistTargetSelectionMode !== undefined) {
+    runtime.simulation.assistTargetSelectionMode =
+      transition.assistTargetSelectionMode
+  }
   syncRuntimeScenarioDirectives(runtime, options.globalScenarioDirectiveLimits)
 }
 

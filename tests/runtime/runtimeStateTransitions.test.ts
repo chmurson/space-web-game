@@ -157,6 +157,44 @@ describe('runtimeStateTransitions', () => {
     })
   })
 
+  it('applies scenario load assist target state after transient cleanup', () => {
+    const runtime = createRuntime()
+
+    applyScenarioLoadTransition(
+      runtime,
+      {
+        assistTargetIndex: 1,
+        assistTargetSelectionMode: 'manual',
+        cameraMode: 'centered',
+        coastPredictionHorizonHours: 2,
+        scenario: {
+          metadata: {
+            description: 'Debug snapshot description',
+            title: 'Debug snapshot',
+          },
+          session: createRuntimeScenarioSession('legacy-debug-snapshot'),
+        },
+        state: {
+          elapsed: 0,
+          bodies: runtime.simulation.state.bodies,
+          controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+          spacecraft: runtime.simulation.state.spacecraft,
+        },
+        viewportSize: EARTH_VIEWPORT_SIZE,
+      },
+      {
+        clearTransientScenarioState: () => {
+          runtime.simulation.assistTargetIndex = 0
+          runtime.simulation.assistTargetSelectionMode = 'auto'
+        },
+        globalScenarioDirectiveLimits,
+      },
+    )
+
+    expect(runtime.simulation.assistTargetIndex).toBe(1)
+    expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
+  })
+
   it('always syncs directives for checkpoint restores', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('tutorial', {

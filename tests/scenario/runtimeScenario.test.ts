@@ -189,4 +189,50 @@ describe('createRuntimeScenarioState', () => {
       state: { phase: 'return-earth' },
     })
   })
+
+  it('preserves scenario-defined assist target selection state', () => {
+    const runtimeScenario = createRuntimeScenarioState(
+      {
+        id: 'debug-snapshot',
+        name: 'Debug snapshot',
+        description: 'Debug snapshot',
+        assistTargetIndex: 5,
+        assistTargetSelectionMode: 'manual',
+        bodies: [
+          {
+            id: 'earth',
+            name: 'Earth',
+            mass: 1,
+            radius: 1,
+            position: { x: 0, y: 0 },
+            velocity: { x: 0, y: 0 },
+            color: '#2f80ed',
+          },
+          {
+            id: 'moon',
+            name: 'Moon',
+            mass: 1,
+            radius: 1,
+            position: { x: 1, y: 1 },
+            velocity: { x: 0, y: 0 },
+            color: '#9aa0a6',
+          },
+        ],
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
+      },
+      options,
+    )
+
+    expect(runtimeScenario.assistTargetIndex).toBe(1)
+    expect(runtimeScenario.assistTargetSelectionMode).toBe('manual')
+  })
 })
