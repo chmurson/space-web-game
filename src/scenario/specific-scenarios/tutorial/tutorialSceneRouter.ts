@@ -572,6 +572,7 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
 
       return createTutorialTransition(
         {
+          completedElapsedGameSeconds: runtime.simulation.state.elapsed,
           phase: 'complete',
         },
         {

@@ -797,6 +797,7 @@ describe('tutorialScenario', () => {
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
+    runtime.simulation.state.elapsed = 754
 
     const orbitAngles = [
       0,
@@ -826,13 +827,21 @@ describe('tutorialScenario', () => {
     }
 
     expect(runtime.scenario.session.completed).toBe(true)
-    expect(runtime.scenario.session.state).toEqual({ phase: 'complete' })
+    expect(runtime.scenario.session.state).toEqual({
+      completedElapsedGameSeconds: 754,
+      phase: 'complete',
+    })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'complete-intro',
     )
-    expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
+    runtime.simulation.state.elapsed = 999
+    const activePrompt = resolveScenarioPrompts(runtime, 'desktop').active
+    expect(activePrompt).toMatchObject({
       title: 'Tutorial Complete',
       buttons: [{ label: 'Free roam' }, { label: 'Exit' }],
     })
+    expect(getPromptTextContent(activePrompt?.description)).toBe(
+      'You completed the Earth-Moon round trip in 12m 34s game time. Start free roam immediately or return to the main menu.',
+    )
   })
 })
