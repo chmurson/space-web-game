@@ -36,8 +36,8 @@ Issue #56 is the next small follow-up slice under the #24 Preact UI migration um
 - CodeRabbit initial review completed with one finding: arrow-key roving focus included disabled buttons and could get stuck on disabled Load debug snapshot. Fixed by filtering disabled menu items out of the focus list and adding Playwright coverage for skipping disabled Load debug snapshot.
 - A post-fix CodeRabbit rerun did not produce output for several minutes after setup and was stopped; no clean post-fix CodeRabbit result was available from that rerun.
 - `npm run deploy:netlify` passed and deployed the branch to shared staging:
-  - Staging URL: `https://fanciful-bunny-d77b4b.netlify.app`
-  - Unique deploy URL: `https://6a3f9676ca43d6c7eedfe9dc--fanciful-bunny-d77b4b.netlify.app`
+  - Staging URL: `https://fanciful-bunny-d77b4b.netlify.app` (temporary; may no longer show this branch after later staging deploys)
+  - Unique deploy URL: `https://6a3f9676ca43d6c7eedfe9dc--fanciful-bunny-d77b4b.netlify.app` (temporary; may be unavailable after Netlify retention expires)
 
 ## Follow-Ups
 

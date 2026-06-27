@@ -109,6 +109,7 @@ export const createTopMenu = (options: {
 
   const syncState = () => {
     syncToggleState()
+    syncSnapshotAvailability()
     renderMenu()
   }
 
@@ -179,6 +180,10 @@ export const createTopMenu = (options: {
   dropdown.addEventListener('keydown', handleDropdownKeyDown)
 
   document.addEventListener('pointerdown', (event) => {
+    if (!open) {
+      return
+    }
+
     if (event.target instanceof Node && !root.contains(event.target)) {
       setOpen(false)
     }

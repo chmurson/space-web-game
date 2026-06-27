@@ -469,6 +469,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       bodies: [],
       spacecraft: {},
     })
+    menu.syncState()
     openMenu()
     const loadDisabledWithSnapshot =
       getActionButton('loadDebugSnapshot')?.disabled
