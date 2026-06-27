@@ -217,6 +217,15 @@ describe('createRuntimeScenarioState', () => {
             velocity: { x: 0, y: 0 },
             color: '#9aa0a6',
           },
+          {
+            id: 'mars',
+            name: 'Mars',
+            mass: 1,
+            radius: 1,
+            position: { x: 2, y: 2 },
+            velocity: { x: 0, y: 0 },
+            color: '#c1440e',
+          },
         ],
         spacecraft: {
           position: { x: 0, y: 0 },
@@ -232,7 +241,7 @@ describe('createRuntimeScenarioState', () => {
       options,
     )
 
-    expect(runtimeScenario.assistTargetIndex).toBe(1)
+    expect(runtimeScenario.assistTargetIndex).toBe(2)
     expect(runtimeScenario.assistTargetSelectionMode).toBe('manual')
   })
 })

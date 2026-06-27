@@ -185,7 +185,7 @@ describe('createInitialAppRuntimeState', () => {
       value: createWindowWithStorage({
         version: 2,
         savedAt: '2026-06-27T10:00:00.000Z',
-        assistTargetIndex: 1,
+        assistTargetIndex: 2,
         assistTargetSelectionMode: 'manual',
         elapsed: 42,
         bodies: [
@@ -206,6 +206,15 @@ describe('createInitialAppRuntimeState', () => {
             position: { x: 1, y: 1 },
             velocity: { x: 0, y: 0 },
             color: '#9aa0a6',
+          },
+          {
+            id: 'mars',
+            name: 'Mars',
+            mass: 1,
+            radius: 1,
+            position: { x: 2, y: 2 },
+            velocity: { x: 0, y: 0 },
+            color: '#c1440e',
           },
         ],
         spacecraft: {
@@ -231,7 +240,7 @@ describe('createInitialAppRuntimeState', () => {
       }),
     )
 
-    expect(runtime.simulation.assistTargetIndex).toBe(1)
+    expect(runtime.simulation.assistTargetIndex).toBe(2)
     expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
   })
 })

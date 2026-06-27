@@ -44,10 +44,14 @@ export type LoadedDebugRuntimeScenario = {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-const getScenarioAssistTargetIndex = (scenario: RuntimeScenario) =>
-  typeof scenario.assistTargetIndex === 'number' && scenario.bodies.length > 0
-    ? clamp(scenario.assistTargetIndex, 0, scenario.bodies.length - 1)
+const getScenarioAssistTargetIndex = (scenario: RuntimeScenario) => {
+  const assistTargetIndex = scenario.assistTargetIndex
+  return typeof assistTargetIndex === 'number' &&
+    Number.isInteger(assistTargetIndex) &&
+    scenario.bodies.length > 0
+    ? clamp(assistTargetIndex, 0, scenario.bodies.length - 1)
     : undefined
+}
 
 export const createRequestedRuntimeScenario = (
   requestedScenario: string,
