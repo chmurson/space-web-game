@@ -30,11 +30,10 @@ Trail diagnostics could previously show `target: Moon` without saying whether th
 - `npm run test`: passed, 47 files and 319 tests.
 - `npm run build`: passed.
 - `npm run test:gui`: passed, 11 Playwright GUI tests.
-- Inspected GUI artifact: `tmp/playwright-results/mobileHudScreenshot-captur-666fd-menu-open-over-gameplay-HUD-mobile-chromium/mobile-top-menu-open.png`; matched the expected mobile top-menu state without overlap.
-- Targeted Playwright debug-panel check: `tmp/issue-59-debug-panel-release.png`; visible debug text included `frame target-relative Earth` on the trail-detail line and remained readable.
+- Inspected the generated GUI screenshot artifact; it matched the expected mobile top-menu state without overlap.
+- Targeted Playwright debug-panel check passed; visible debug text included `frame target-relative Earth` on the trail-detail line and remained readable.
 - `coderabbit --base main --agent`: completed with 0 findings.
-- Staging deploy: https://space-web-game-woven-moth.netlify.app
-- Unique deploy: https://6a402eb24d98cb39a60876ef--space-web-game-woven-moth.netlify.app
+- Branch-aware staging deploy completed for the configured non-production target; deploy details are recorded in the PR and issue status comments.
 
 ## Follow-Ups
 

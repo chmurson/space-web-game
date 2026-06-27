@@ -188,7 +188,7 @@ const createDebugStateCopyPayload = (options: {
     assistTargetSelectionMode:
       options.runtime.simulation.assistTargetSelectionMode,
     captureMetrics: {
-      bound: options.targetMetrics.specificEnergy < 0,
+      bound: options.trail.targetBound,
       circularSpeed: options.targetMetrics.circularSpeed,
       distance: options.targetMetrics.distance,
       insideRange: options.targetMetrics.insideRange,
@@ -670,7 +670,7 @@ export const createHudPresentation = (options: {
         options.overlayUi.debugPanel.setJson({
           assistTarget: target.id,
           captureMetrics: {
-            bound: targetMetrics.specificEnergy < 0,
+            bound: targetBound,
             circularSpeed: targetMetrics.circularSpeed,
             distance: targetMetrics.distance,
             relativeSpeed: targetMetrics.relativeSpeed,
