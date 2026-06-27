@@ -11,7 +11,7 @@ import type { Vec2 } from '../simulation/vector'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import {
   getSpacecraftTrailDetail,
-  getSpacecraftTrailTargetRelativePosition,
+  getSpacecraftTrailRenderPosition,
   selectSpacecraftTrailRenderPoints,
   updateSpacecraftTrailPoints,
 } from './spacecraftTrail'
@@ -82,7 +82,7 @@ const getHeadingTargetSlicePath = (
 const syncSpacecraftTrailGeometry = (
   gameScene: GameSceneRefs,
   trailPoints: SpacecraftTrailPoint[],
-  target: Body,
+  target: Body | null,
   renderSampleDistanceMeters: number,
 ) => {
   const renderTrailPoints = selectSpacecraftTrailRenderPoints(trailPoints, {
@@ -92,11 +92,8 @@ const syncSpacecraftTrailGeometry = (
   gameScene.trailRenderedSliceCount = Math.max(renderTrailPoints.length - 1, 0)
   const trailGeometry = new THREE.BufferGeometry().setFromPoints(
     renderTrailPoints.map((point) => {
-      const relativePosition = getSpacecraftTrailTargetRelativePosition(
-        point,
-        target,
-      )
-      return renderPosition(relativePosition.x, relativePosition.y, 0.35)
+      const trailPosition = getSpacecraftTrailRenderPosition(point, target)
+      return renderPosition(trailPosition.x, trailPosition.y, 0.35)
     }),
   )
   const trailColors: number[] = []
@@ -162,8 +159,10 @@ const updateSpacecraftTrail = (options: {
   renderSampleDistanceMeters: number
 }) => {
   options.gameScene.engineGlow.material.opacity = options.isThrusting ? 0.8 : 0
+  const renderTarget = options.trimAroundTarget ? options.target : null
+  const trailOrigin = renderTarget?.position ?? { x: 0, y: 0 }
   options.gameScene.trail.position.copy(
-    renderPosition(options.target.position.x, options.target.position.y),
+    renderPosition(trailOrigin.x, trailOrigin.y),
   )
 
   const trailUpdate = updateSpacecraftTrailPoints(
@@ -182,7 +181,7 @@ const updateSpacecraftTrail = (options: {
     syncSpacecraftTrailGeometry(
       options.gameScene,
       options.gameScene.trailPoints,
-      options.target,
+      renderTarget,
       options.renderSampleDistanceMeters,
     )
   }
@@ -361,7 +360,7 @@ export const createSpacecraftPresentation = (options: {
 }) => {
   let lastMeshRotationY: number | null = null
   let lastHeadingAngle: number | null = null
-  let lastTrailTargetId: string | null = null
+  let lastTrailRenderTargetId: string | null = null
   let lastTrailRenderSampleDistanceMeters: number | null = null
 
   return {
@@ -391,7 +390,10 @@ export const createSpacecraftPresentation = (options: {
         viewportSize: state.viewportSize,
       })
       const trailDetail = getSpacecraftTrailDetail(state.viewportSize)
-      const trailTargetChanged = state.trailTarget.id !== lastTrailTargetId
+      const trailRenderTargetId = state.trimTrailAroundTarget
+        ? state.trailTarget.id
+        : null
+      const trailTargetChanged = trailRenderTargetId !== lastTrailRenderTargetId
       const trailRenderDistanceChanged =
         trailDetail.renderSampleDistanceMeters !==
         lastTrailRenderSampleDistanceMeters
@@ -406,7 +408,7 @@ export const createSpacecraftPresentation = (options: {
         target: state.trailTarget,
         trimAroundTarget: state.trimTrailAroundTarget,
       })
-      lastTrailTargetId = state.trailTarget.id
+      lastTrailRenderTargetId = trailRenderTargetId
       lastTrailRenderSampleDistanceMeters =
         trailDetail.renderSampleDistanceMeters
       lastHeadingAngle = updateSpacecraftCallout({

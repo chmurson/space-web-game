@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createSpacecraftTrailPoint,
   getSpacecraftTrailDetail,
+  getSpacecraftTrailRenderPosition,
   getSpacecraftTrailRenderSampleDistanceMeters,
   getSpacecraftTrailTargetRelativePosition,
   selectSpacecraftTrailRenderPoints,
@@ -68,6 +69,24 @@ describe('spacecraftTrail', () => {
       x: currentTarget.position.x + relativePosition.x,
       y: currentTarget.position.y + relativePosition.y,
     }).toEqual({ x: 225, y: 110 })
+  })
+
+  it('uses absolute sample positions when trail rendering has no target frame', () => {
+    const sampledEarth = createBody('earth', { x: 100, y: 50 })
+    const point = createSpacecraftTrailPoint({
+      bodies: [sampledEarth],
+      elapsed: 0,
+      spacecraftPosition: { x: 125, y: 70 },
+    })
+
+    expect(getSpacecraftTrailRenderPosition(point, null)).toEqual({
+      x: 125,
+      y: 70,
+    })
+    expect(getSpacecraftTrailRenderPosition(point, sampledEarth)).toEqual({
+      x: 25,
+      y: 20,
+    })
   })
 
   it('trims repeated target-bound orbits to roughly the latest two loops', () => {
@@ -224,6 +243,39 @@ describe('spacecraftTrail', () => {
     expect(renderPoints.map((point) => point.position.x)).toEqual([
       0, 2_100_000, 2_200_000,
     ])
+  })
+
+  it('decimates transfer render points by absolute position without a target frame', () => {
+    const moon = createBody('moon', { x: 100_000_000, y: 0 })
+    const trailPoints = [0, 1_000_000, 2_000_000].map((x, index) => ({
+      elapsed: index,
+      position: { x, y: 0 },
+      targetRelativePositions: {
+        moon: { x: 0, y: 0 },
+      },
+    }))
+
+    const inertialRenderPoints = selectSpacecraftTrailRenderPoints(
+      trailPoints,
+      {
+        renderSampleDistanceMeters: 1_000_000,
+        target: null,
+      },
+    )
+    const targetRelativeRenderPoints = selectSpacecraftTrailRenderPoints(
+      trailPoints,
+      {
+        renderSampleDistanceMeters: 1_000_000,
+        target: moon,
+      },
+    )
+
+    expect(inertialRenderPoints.map((point) => point.position.x)).toEqual([
+      0, 1_000_000, 2_000_000,
+    ])
+    expect(targetRelativeRenderPoints.map((point) => point.position.x)).toEqual(
+      [0, 2_000_000],
+    )
   })
 
   it('interpolates trail density between viewport stops', () => {

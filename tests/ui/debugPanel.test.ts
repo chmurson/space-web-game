@@ -248,6 +248,25 @@ describe('debugPanel', () => {
     expect(parent.textContent).toContain('"leaf": "again"')
   })
 
+  it('shows the copy-state button only when a separate copy payload exists', () => {
+    const { panel, parent } = createPanel()
+    const copyStateButton = parent.querySelector('.debug-panel-copy-state')
+
+    expect(copyStateButton?.hidden).toBe(true)
+
+    panel.setCopyJson({
+      simulation: {
+        state: 'full',
+      },
+    })
+
+    expect(copyStateButton?.hidden).toBe(false)
+
+    panel.setCopyJson(null)
+
+    expect(copyStateButton?.hidden).toBe(true)
+  })
+
   it('keeps debug panel pointer and touch events from reaching gameplay layers', () => {
     const { panel } = createPanel()
     const element = panel.element as unknown as FakeElement

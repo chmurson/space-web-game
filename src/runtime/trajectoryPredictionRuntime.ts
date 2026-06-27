@@ -1,9 +1,9 @@
 import type { AssistMode, CaptureMetrics } from '../assist/orbitalAssist'
 import {
-  predictAssistedTrajectory,
-  predictCoastTrajectory,
   type PredictedClosestApproach,
   type PredictedImpact,
+  predictAssistedTrajectory,
+  predictCoastTrajectory,
   type TrajectoryPredictionConfig,
 } from '../prediction/trajectoryPrediction'
 import type {
@@ -19,6 +19,7 @@ export type TrajectoryPredictionState = {
   absolutePredictionPoints: Vec2[]
   predictedImpact: PredictedImpact | null
   predictedTargetClosestApproach: PredictedClosestApproach | null
+  targetId: string | null
   targetRelativeAssistedPoints: Vec2[]
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
@@ -42,6 +43,7 @@ const emptyTrajectoryPredictionState = (): TrajectoryPredictionState => ({
   absolutePredictionPoints: [],
   predictedImpact: null,
   predictedTargetClosestApproach: null,
+  targetId: null,
   targetRelativeAssistedPoints: [],
   targetRelativePredictionEnd: null,
   targetRelativePredictionPoints: [],
@@ -51,8 +53,10 @@ export const createTrajectoryPredictionRuntime = () => {
   let predictionRefreshElapsed = 0
   let predictionState = emptyTrajectoryPredictionState()
 
-  const refresh = (options: RefreshTrajectoryPredictionOptions) => {
-    const target = options.getAssistTarget()
+  const refreshForTarget = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+  ) => {
     const predictionConfig = options.predictionConfig
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const coastPrediction = predictCoastTrajectory(
@@ -69,6 +73,7 @@ export const createTrajectoryPredictionRuntime = () => {
       absolutePredictionPoints: coastPrediction.absolutePoints,
       predictedImpact: coastPrediction.impact,
       predictedTargetClosestApproach: coastPrediction.closestApproach,
+      targetId: target.id,
       targetRelativeAssistedPoints:
         options.assistMode === 'off'
           ? []
@@ -86,6 +91,10 @@ export const createTrajectoryPredictionRuntime = () => {
     predictionRefreshElapsed = 0
   }
 
+  const refresh = (options: RefreshTrajectoryPredictionOptions) => {
+    refreshForTarget(options, options.getAssistTarget())
+  }
+
   return {
     getState: () => predictionState,
     maybeRefresh: (
@@ -93,10 +102,12 @@ export const createTrajectoryPredictionRuntime = () => {
       options: RefreshTrajectoryPredictionOptions,
     ) => {
       predictionRefreshElapsed += realDt
+      const target = options.getAssistTarget()
       if (
+        predictionState.targetId !== target.id ||
         predictionRefreshElapsed >= options.predictionConfig.refreshInterval
       ) {
-        refresh(options)
+        refreshForTarget(options, target)
         return true
       }
       return false

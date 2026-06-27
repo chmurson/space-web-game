@@ -11,4 +11,5 @@ export type ScenarioRuntimeTransition<
   completed?: boolean
   nextState?: TState
   promptUi?: ScenarioPromptUiState
+  refreshTrajectoryPrediction?: boolean
 }

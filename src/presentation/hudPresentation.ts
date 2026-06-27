@@ -140,6 +140,83 @@ const syncFpsIndicatorMount = (overlayUi: OverlayUiRefs, visible: boolean) => {
   return true
 }
 
+const createDebugStateCopyPayload = (options: {
+  capturedAtMs: number
+  physicsEngineName: string
+  predictionState: ReturnType<TrajectoryPresentation['getPredictionState']>
+  runtime: AppRuntimeState
+  target: Body
+  targetMetrics: ReturnType<GameQueries['getCaptureMetrics']>
+  timeWarp: number
+  trail: {
+    captureSampleDistanceMeters: number
+    detailLabel: string
+    detailLevel: number
+    detailLevelCount: number
+    renderedSliceCount: number
+    renderSampleDistanceMeters: number
+  }
+  viewport: {
+    size: number
+    zoom: number
+  }
+}) => ({
+  capturedAtMs: options.capturedAtMs,
+  debug: { ...options.runtime.debug },
+  physicsEngineName: options.physicsEngineName,
+  scenario: {
+    directives: {
+      ...options.runtime.scenario.directives,
+      hiddenBodyIds: [...options.runtime.scenario.directives.hiddenBodyIds],
+      hiddenUIElements: [
+        ...options.runtime.scenario.directives.hiddenUIElements.values(),
+      ],
+    },
+    metadata: { ...options.runtime.scenario.metadata },
+    session: options.runtime.scenario.session,
+  },
+  simulation: {
+    assistMode: options.runtime.simulation.assistMode,
+    assistTarget: {
+      id: options.target.id,
+      name: options.target.name,
+    },
+    assistTargetIndex: options.runtime.simulation.assistTargetIndex,
+    assistTargetSelectionMode:
+      options.runtime.simulation.assistTargetSelectionMode,
+    captureMetrics: {
+      bound: options.targetMetrics.specificEnergy < 0,
+      circularSpeed: options.targetMetrics.circularSpeed,
+      distance: options.targetMetrics.distance,
+      insideRange: options.targetMetrics.insideRange,
+      relativeSpeed: options.targetMetrics.relativeSpeed,
+      roughAssistRange: options.targetMetrics.roughAssistRange,
+      specificEnergy: options.targetMetrics.specificEnergy,
+      surfaceDistance: options.targetMetrics.surfaceDistance,
+    },
+    coastPredictionHorizonHours:
+      options.runtime.simulation.coastPredictionHorizonHours,
+    crashedBodyName: options.runtime.simulation.crashedBodyName,
+    state: options.runtime.simulation.state,
+    targetHeading: options.runtime.simulation.targetHeading,
+    targetHeadingTurn: options.runtime.simulation.targetHeadingTurn,
+    timeWarp: options.timeWarp,
+    timeWarpIndex: options.runtime.simulation.timeWarpIndex,
+    viewportSize: options.runtime.simulation.viewportSize,
+  },
+  trajectoryPrediction: options.predictionState,
+  trail: options.trail,
+  ui: {
+    camera: options.runtime.ui.camera,
+    targetHeadingScreenPosition: options.runtime.ui.targetHeadingScreenPosition,
+    targetHeadingSelectionEpoch: options.runtime.ui.targetHeadingSelectionEpoch,
+    targetHeadingWorldPosition: options.runtime.ui.targetHeadingWorldPosition,
+    touchThrustControl: options.runtime.ui.touchThrustControl,
+    uiEffectEpoch: options.runtime.ui.uiEffectEpoch,
+  },
+  viewport: options.viewport,
+})
+
 export const createHudPresentation = (options: {
   defaultViewport: number
   inGameControlsMenu?: InGameControlsMenu
@@ -527,6 +604,14 @@ export const createHudPresentation = (options: {
         const trailDetail = getSpacecraftTrailDetail(viewportSize)
         const trailRenderedSliceCount =
           options.getTrailRenderedSliceCount?.() ?? 0
+        const trailDebugState = {
+          captureSampleDistanceMeters: trailDetail.captureSampleDistanceMeters,
+          detailLabel: trailDetail.label,
+          detailLevel: trailDetail.level,
+          detailLevelCount: trailDetail.levelCount,
+          renderedSliceCount: trailRenderedSliceCount,
+          renderSampleDistanceMeters: trailDetail.renderSampleDistanceMeters,
+        }
         options.overlayUi.debugPanel.setText(
           getDebugPanelLines({
             assistMode: options.runtime.simulation.assistMode,
@@ -554,6 +639,23 @@ export const createHudPresentation = (options: {
             zoom,
           }).join('\n'),
         )
+        options.overlayUi.debugPanel.setCopyJson(
+          createDebugStateCopyPayload({
+            capturedAtMs: metrics.nowMs,
+            physicsEngineName: options.physicsEngineName,
+            predictionState,
+            runtime: options.runtime,
+            target,
+            targetMetrics,
+            timeWarp:
+              options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
+            trail: trailDebugState,
+            viewport: {
+              size: viewportSize,
+              zoom,
+            },
+          }),
+        )
         options.overlayUi.debugPanel.setJson({
           assistTarget: target.id,
           captureMetrics: {
@@ -568,13 +670,7 @@ export const createHudPresentation = (options: {
           scenarioId,
           state,
           trail: {
-            captureSampleDistanceMeters:
-              trailDetail.captureSampleDistanceMeters,
-            detailLabel: trailDetail.label,
-            detailLevel: trailDetail.level,
-            detailLevelCount: trailDetail.levelCount,
-            renderedSliceCount: trailRenderedSliceCount,
-            renderSampleDistanceMeters: trailDetail.renderSampleDistanceMeters,
+            ...trailDebugState,
           },
           viewport: {
             size: viewportSize,

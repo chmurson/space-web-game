@@ -169,7 +169,7 @@ export const createFrameLoop = (options: {
       return scenarioTrajectoryPredictionRuntime.getState()
     }
 
-    advanceRuntimeScenario(
+    const scenarioAdvanceResult = advanceRuntimeScenario(
       options.runtime,
       options.globalScenarioDirectiveLimits,
       {
@@ -179,6 +179,9 @@ export const createFrameLoop = (options: {
           options.trajectoryPresentation.getPredictionState(),
       },
     )
+    if (scenarioAdvanceResult.refreshTrajectoryPrediction) {
+      options.trajectoryPresentation.refreshPrediction()
+    }
     options.runtimeActions.updateCamera()
     updateRipples(options.ripples, realDt, { camera: options.gameScene.camera })
     const trailTarget = options.queries.getAssistTarget()

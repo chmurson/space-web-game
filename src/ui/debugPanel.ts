@@ -2,6 +2,7 @@ import { addTapSafeButtonHandler } from './tapSafeButtonHandler'
 
 export type DebugPanel = {
   element: HTMLElement
+  setCopyJson(payload: unknown | null): void
   setJson(payload: unknown | null): void
   setCloseHandler(handler: () => void): void
   setText(text: string): void
@@ -181,6 +182,7 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
   element.dataset.size = 'medium'
 
   let latestJson = ''
+  let latestCopyJson = ''
   let latestJsonPayload: unknown = null
   let latestRenderedJson = ''
   let latestRenderedCollapsedState = ''
@@ -210,6 +212,12 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
   copyButton.className = 'debug-panel-button debug-panel-copy'
   copyButton.textContent = 'Copy JSON'
   copyButton.hidden = true
+
+  const copyStateButton = document.createElement('button')
+  copyStateButton.type = 'button'
+  copyStateButton.className = 'debug-panel-button debug-panel-copy-state'
+  copyStateButton.textContent = 'Copy State'
+  copyStateButton.hidden = true
 
   const sizeButton = document.createElement('button')
   sizeButton.type = 'button'
@@ -265,7 +273,7 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
   }
 
   setPanelSize(panelSize)
-  toolbarElement.append(copyButton, sizeButton, closeButton)
+  toolbarElement.append(copyButton, copyStateButton, sizeButton, closeButton)
   jsonSectionElement.append(jsonLabelElement, jsonElement)
   contentElement.append(textElement, jsonSectionElement)
   element.append(toolbarElement, contentElement)
@@ -289,19 +297,31 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
     element.addEventListener(eventName, stopEventPropagation)
   }
 
-  addTapSafeButtonHandler(copyButton, async () => {
+  const copyTextToClipboard = async (
+    button: HTMLButtonElement,
+    text: string,
+    defaultLabel: string,
+  ) => {
     try {
-      await navigator.clipboard.writeText(latestJson)
-      copyButton.textContent = 'Copied'
+      await navigator.clipboard.writeText(text)
+      button.textContent = 'Copied'
       window.setTimeout(() => {
-        copyButton.textContent = 'Copy JSON'
+        button.textContent = defaultLabel
       }, 1_200)
     } catch {
-      copyButton.textContent = 'Copy failed'
+      button.textContent = 'Copy failed'
       window.setTimeout(() => {
-        copyButton.textContent = 'Copy JSON'
+        button.textContent = defaultLabel
       }, 1_800)
     }
+  }
+
+  addTapSafeButtonHandler(copyButton, () => {
+    void copyTextToClipboard(copyButton, latestJson, 'Copy JSON')
+  })
+
+  addTapSafeButtonHandler(copyStateButton, () => {
+    void copyTextToClipboard(copyStateButton, latestCopyJson, 'Copy State')
   })
 
   addTapSafeButtonHandler(sizeButton, () => {
@@ -318,6 +338,11 @@ export const createDebugPanel = (parent: HTMLElement): DebugPanel => {
 
   return {
     element,
+    setCopyJson(payload) {
+      latestCopyJson =
+        payload === null ? '' : (JSON.stringify(payload, null, 2) ?? '')
+      copyStateButton.hidden = !latestCopyJson
+    },
     setJson(payload) {
       const nextJson =
         payload === null ? '' : (JSON.stringify(payload, null, 2) ?? '')

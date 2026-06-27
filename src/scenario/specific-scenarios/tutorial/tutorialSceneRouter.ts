@@ -22,6 +22,12 @@ import {
   createDefaultScenarioDirectives,
   type RuntimeScenarioDirectives,
 } from '../../scenarioDirectiveTypes'
+import {
+  advanceScenarioOrbitProgress,
+  fullTurnRadians,
+  isWithinScenarioObjectiveRadius,
+  normalizeScenarioAngleDelta,
+} from '../../scenarioObjectiveProgress'
 import type {
   ScenarioSceneContext,
   ScenarioSceneDefinition,
@@ -32,12 +38,6 @@ import {
   type RuntimeScenarioCheckpoint,
   type ScenarioPromptUiState,
 } from '../../scenarioSession'
-import {
-  advanceScenarioOrbitProgress,
-  fullTurnRadians,
-  isWithinScenarioObjectiveRadius,
-  normalizeScenarioAngleDelta,
-} from '../../scenarioObjectiveProgress'
 import {
   getHiddenOnboardingUIElements,
   tutorialOnboardingStepOrder,
@@ -148,12 +148,14 @@ const createTutorialTransition = (
     checkpoint?: RuntimeScenarioCheckpoint | null
     completed?: boolean
     promptUi?: ScenarioPromptUiState
+    refreshTrajectoryPrediction?: boolean
   } = {},
 ): ScenarioRuntimeTransition<TutorialScenarioState> => ({
   checkpoint: options.checkpoint,
   completed: options.completed,
   nextState: state,
   promptUi: options.promptUi,
+  refreshTrajectoryPrediction: options.refreshTrajectoryPrediction,
 })
 
 const createPromptUiWithActivePrompt = (
@@ -399,6 +401,7 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
         {
           checkpoint: createDefaultRuntimeScenarioCheckpoint(runtime),
           promptUi: createPromptUiWithActivePrompt(runtime, 'phase-two-intro'),
+          refreshTrajectoryPrediction: true,
         },
       )
     },

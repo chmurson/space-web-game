@@ -111,6 +111,7 @@ const createTrajectoryPredictionState = (
   absolutePredictionPoints: [],
   predictedImpact,
   predictedTargetClosestApproach: null,
+  targetId: 'earth',
   targetRelativeAssistedPoints: [],
   targetRelativePredictionEnd: targetRelativePredictionPoints.at(-1) ?? null,
   targetRelativePredictionPoints,
@@ -293,6 +294,7 @@ describe('tutorialScenario', () => {
       'phase-two-intro',
     )
     expect(runtime.scenario.session.checkpoint).not.toBeNull()
+    expect(transition?.refreshTrajectoryPrediction).toBe(true)
     expect(
       resolveRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
         .maxTimeWarp,
