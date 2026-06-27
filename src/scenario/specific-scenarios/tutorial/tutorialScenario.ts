@@ -8,15 +8,15 @@ import type { RuntimeScenarioDefinition } from '../../scenarioRegistry'
 import { createRuntimeScenarioSession } from '../../scenarioSession'
 import { getTutorialOnboardingPromptDefinitions } from './tutorialOnboarding/tutorialOnboardingFlow'
 import {
-  escapeEarthPhaseThresholdRadiusMultiplier,
-  escapeEarthVisiblePredictionHorizonHours,
-  getTutorialSceneDefinition,
-} from './tutorialSceneRouter'
-import {
   createInitialTutorialScenarioState,
   isTutorialScenarioState,
   type TutorialScenarioState,
 } from './tutorialScenarioTypes'
+import {
+  escapeEarthPhaseThresholdRadiusMultiplier,
+  escapeEarthVisiblePredictionHorizonHours,
+  getTutorialSceneDefinition,
+} from './tutorialSceneRouter'
 
 const createTutorialScenarioSession = (
   state: TutorialScenarioState = createInitialTutorialScenarioState(),
@@ -96,6 +96,56 @@ const getEscapeEarthObjectiveDescription = (
     ' to keep opening the gap.',
   ]
 }
+
+const formatTutorialCompletionElapsed = (seconds: number) => {
+  const roundedSeconds = Math.max(0, Math.round(seconds))
+  const days = Math.floor(roundedSeconds / 86_400)
+  const hours = Math.floor((roundedSeconds % 86_400) / 3_600)
+  const minutes = Math.floor((roundedSeconds % 3_600) / 60)
+  const remainingSeconds = roundedSeconds % 60
+
+  if (days > 0) {
+    return `${days}d ${hours}h`
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`
+  }
+
+  return `${remainingSeconds}s`
+}
+
+const getTutorialCompletionElapsedSeconds = (runtime: AppRuntimeState) => {
+  const state = runtime.scenario.session.state
+  if (
+    isTutorialScenarioState(state) &&
+    state.phase === 'complete' &&
+    typeof state.completedElapsedGameSeconds === 'number'
+  ) {
+    return state.completedElapsedGameSeconds
+  }
+
+  return runtime.simulation.state.elapsed
+}
+
+const getTutorialCompletionDescription = (
+  runtime: AppRuntimeState,
+): PromptText => [
+  'You completed the ',
+  { text: 'Earth-Moon round trip', tone: 'concept' },
+  ' in ',
+  {
+    text: formatTutorialCompletionElapsed(
+      getTutorialCompletionElapsedSeconds(runtime),
+    ),
+    tone: 'number',
+  },
+  ' game time. Start ',
+  { text: 'free roam', tone: 'concept' },
+  ' immediately or return to the main menu.',
+]
 
 const tutorialPromptDefinitions = {
   'phase-one-intro': {
@@ -220,13 +270,7 @@ const tutorialPromptDefinitions = {
     id: 'complete-intro',
     title: 'Tutorial Complete',
     shortLabel: 'Tutorial Complete',
-    description: [
-      'You completed the ',
-      { text: 'Earth-Moon round trip', tone: 'concept' },
-      '. Start ',
-      { text: 'free roam', tone: 'concept' },
-      ' immediately or return to the main menu.',
-    ],
+    description: ({ runtime }) => getTutorialCompletionDescription(runtime),
     buttons: [
       {
         action: { kind: 'builtin', id: 'start_free_roam' },

@@ -38,6 +38,7 @@ export type OrbitEarthTutorialSceneState = {
 } & TutorialOrbitProgressState
 
 export type CompleteTutorialSceneState = {
+  completedElapsedGameSeconds?: number
   phase: 'complete'
 }
 
