@@ -33,6 +33,7 @@ import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredicti
 import { parsePromptAction } from '../scenario/scenarioPrompts'
 import {
   applyBodyTextureAssetsToScene,
+  applyScenarioRenderConfigToScene,
   createGameScene,
 } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
@@ -224,6 +225,7 @@ export const createAppComponents = (options: {
     options.runtimeState.simulation.state.bodies,
     options.config.trajectory.rendering,
     options.startupAssets,
+    options.runtimeState.scenario.render,
   )
   let scenarioTransitionLoading = false
   const prepareScenarioTransition = async (transitionOptions: {
@@ -254,6 +256,10 @@ export const createAppComponents = (options: {
         gameScene,
         options.runtimeState.simulation.state.bodies,
         scenarioAssets,
+      )
+      applyScenarioRenderConfigToScene(
+        gameScene,
+        options.runtimeState.scenario.render,
       )
       return true
     } finally {

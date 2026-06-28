@@ -53,6 +53,7 @@ export const createInitialAppRuntimeState = (
     scenario: {
       directives: createDefaultScenarioDirectives(),
       metadata: initialScenarioTransition.scenario.metadata,
+      render: initialScenarioTransition.scenario.render,
       session: initialScenarioTransition.scenario.session,
     },
     ui: {

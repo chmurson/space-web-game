@@ -59,6 +59,7 @@ export const applyScenarioLoadTransition = (
   },
 ) => {
   runtime.scenario.metadata = transition.scenario.metadata
+  runtime.scenario.render = transition.scenario.render
   runtime.simulation.timeWarpIndex = 0
   runtime.simulation.state = transition.state
   runtime.simulation.viewportSize = transition.viewportSize

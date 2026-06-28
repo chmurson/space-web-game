@@ -5,6 +5,10 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 
 import type { GameConfig } from '../config/types'
 import type { ScenarioAssets } from '../render/scenarioAssets'
+import {
+  resolveScenarioRenderConfig,
+  type ScenarioRenderConfig,
+} from '../scenario/scenarioRenderConfig'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
@@ -19,25 +23,175 @@ const EARTH_ATMOSPHERE_WIDTH_SEGMENTS = 96
 const EARTH_ATMOSPHERE_HEIGHT_SEGMENTS = 48
 const EARTH_CLOUD_RADIUS_MULTIPLIER = 1.001
 const EARTH_CLOUD_OPACITY = 0.95
+const SUN_SOURCE_VERTICAL_COMPONENT = 0.44
+const SUN_LIGHT_DISTANCE = 100
+const BODY_NIGHT_TEXTURE_STRENGTH = 0.05
+const CLOUD_NIGHT_TEXTURE_STRENGTH = 0.025
+const EARTH_SURFACE_ATMOSPHERE_TINT_STRENGTH = 0.09
 
-const createEarthAtmosphereRimMaterial = () =>
+type BodyDayNightLightingUserData = {
+  bodyAtmosphereTintStrength: number
+  bodyNightTextureStrength: number
+  bodySunDirection: THREE.Vector3
+}
+
+const replaceShaderChunk = (
+  shaderSource: string,
+  chunk: string,
+  replacement: string,
+  shaderStage: 'fragment' | 'vertex',
+) => {
+  if (!shaderSource.includes(chunk)) {
+    throw new Error(
+      `Unable to customize body day-night ${shaderStage} shader: missing Three.js shader chunk ${chunk}`,
+    )
+  }
+
+  return shaderSource.replace(chunk, replacement)
+}
+
+const setVisualSunDirection = (
+  target: THREE.Vector3,
+  renderConfig: ScenarioRenderConfig,
+) => {
+  const { sunlightDirection } = renderConfig
+  target
+    .set(
+      -sunlightDirection.x,
+      SUN_SOURCE_VERTICAL_COMPONENT,
+      -sunlightDirection.y,
+    )
+    .normalize()
+}
+
+const updateSunLight = (
+  sunLight: THREE.DirectionalLight,
+  sunDirection: THREE.Vector3,
+) => {
+  sunLight.position.copy(sunDirection).multiplyScalar(SUN_LIGHT_DISTANCE)
+  sunLight.updateMatrixWorld()
+}
+
+const addBodyDayNightShader = (
+  material: THREE.MeshStandardMaterial,
+  options: {
+    atmosphereTintStrength?: number
+    nightTextureStrength?: number
+    sunDirection: THREE.Vector3
+  },
+) => {
+  const atmosphereTintStrength = options.atmosphereTintStrength ?? 0
+  const nightTextureStrength =
+    options.nightTextureStrength ?? BODY_NIGHT_TEXTURE_STRENGTH
+
+  material.userData.bodyDayNightLighting = {
+    bodyAtmosphereTintStrength: atmosphereTintStrength,
+    bodyNightTextureStrength: nightTextureStrength,
+    bodySunDirection: options.sunDirection,
+  } satisfies BodyDayNightLightingUserData
+
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uBodySunDirection = { value: options.sunDirection }
+    shader.uniforms.uBodyNightTextureStrength = {
+      value: nightTextureStrength,
+    }
+    shader.uniforms.uBodyAtmosphereTintStrength = {
+      value: atmosphereTintStrength,
+    }
+
+    shader.vertexShader = replaceShaderChunk(
+      replaceShaderChunk(
+        shader.vertexShader,
+        '#include <common>',
+        [
+          '#include <common>',
+          'varying vec3 vBodyWorldNormal;',
+          'varying vec3 vBodyViewDirection;',
+        ].join('\n'),
+        'vertex',
+      ),
+      '#include <begin_vertex>',
+      [
+        '#include <begin_vertex>',
+        'vec4 bodyWorldPosition = modelMatrix * vec4(transformed, 1.0);',
+        'vBodyWorldNormal = normalize(mat3(modelMatrix) * objectNormal);',
+        'vBodyViewDirection = normalize(cameraPosition - bodyWorldPosition.xyz);',
+      ].join('\n'),
+      'vertex',
+    )
+    shader.fragmentShader = replaceShaderChunk(
+      replaceShaderChunk(
+        shader.fragmentShader,
+        '#include <common>',
+        [
+          '#include <common>',
+          'uniform vec3 uBodySunDirection;',
+          'uniform float uBodyNightTextureStrength;',
+          'uniform float uBodyAtmosphereTintStrength;',
+          'varying vec3 vBodyWorldNormal;',
+          'varying vec3 vBodyViewDirection;',
+        ].join('\n'),
+        'fragment',
+      ),
+      '#include <opaque_fragment>',
+      [
+        '#include <opaque_fragment>',
+        'float bodySunFacing = dot(normalize(vBodyWorldNormal), normalize(uBodySunDirection));',
+        'float bodyDaylight = smoothstep(-0.18, 0.36, bodySunFacing);',
+        'vec3 bodyReadableNight = diffuseColor.rgb * uBodyNightTextureStrength;',
+        'gl_FragColor.rgb = mix(bodyReadableNight, gl_FragColor.rgb, bodyDaylight);',
+        'float bodyLimb = 1.0 - abs(dot(normalize(vBodyWorldNormal), normalize(vBodyViewDirection)));',
+        'float bodyAtmosphereTint = pow(smoothstep(0.48, 1.0, bodyLimb), 1.8) * smoothstep(-0.08, 0.68, bodySunFacing) * uBodyAtmosphereTintStrength;',
+        'gl_FragColor.rgb += vec3(0.20, 0.45, 0.78) * bodyAtmosphereTint;',
+      ].join('\n'),
+      'fragment',
+    )
+  }
+  material.customProgramCacheKey = () => 'body-day-night-lighting-v1'
+}
+
+const createBodySurfaceMaterial = (body: Body, sunDirection: THREE.Vector3) => {
+  const material = new THREE.MeshStandardMaterial({
+    color: body.color,
+    roughness: 0.82,
+    metalness: 0.02,
+  })
+  addBodyDayNightShader(material, {
+    atmosphereTintStrength:
+      body.id === 'earth' ? EARTH_SURFACE_ATMOSPHERE_TINT_STRENGTH : 0,
+    sunDirection,
+  })
+  return material
+}
+
+const createEarthAtmosphereRimMaterial = (sunDirection: THREE.Vector3) =>
   new THREE.ShaderMaterial({
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    uniforms: {
+      uAtmosphereSunDirection: { value: sunDirection },
+    },
     fragmentShader: `
       varying vec3 vNormal;
       varying vec3 vViewPosition;
+      varying vec3 vWorldNormal;
+      uniform vec3 uAtmosphereSunDirection;
 
       void main() {
         vec3 normal = normalize(vNormal);
         vec3 viewDirection = normalize(vViewPosition);
         float limb = 1.0 - abs(dot(normal, viewDirection));
         float edgeGlow = pow(smoothstep(0.42, 1.0, limb), 2.2);
-        float alpha = edgeGlow * 0.42;
+        float sunFacing = smoothstep(
+          -0.22,
+          0.68,
+          dot(normalize(vWorldNormal), normalize(uAtmosphereSunDirection))
+        );
+        float alpha = edgeGlow * mix(0.16, 0.44, sunFacing);
         vec3 atmosphereColor = mix(
-          vec3(0.36, 0.72, 1.0),
+          vec3(0.12, 0.34, 0.72),
           vec3(0.93, 0.98, 1.0),
-          edgeGlow
+          max(edgeGlow * 0.78, sunFacing)
         );
 
         gl_FragColor = vec4(atmosphereColor * alpha, alpha);
@@ -49,9 +203,11 @@ const createEarthAtmosphereRimMaterial = () =>
     vertexShader: `
       varying vec3 vNormal;
       varying vec3 vViewPosition;
+      varying vec3 vWorldNormal;
 
       void main() {
         vNormal = normalize(normalMatrix * normal);
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
         vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
         vViewPosition = -modelViewPosition.xyz;
         gl_Position = projectionMatrix * modelViewPosition;
@@ -59,34 +215,43 @@ const createEarthAtmosphereRimMaterial = () =>
     `,
   })
 
-const createEarthAtmosphereRim = (radius: number) => {
+const createEarthAtmosphereRim = (
+  radius: number,
+  sunDirection: THREE.Vector3,
+) => {
   const rim = new THREE.Mesh(
     new THREE.SphereGeometry(
       radius * EARTH_ATMOSPHERE_RADIUS_MULTIPLIER,
       EARTH_ATMOSPHERE_WIDTH_SEGMENTS,
       EARTH_ATMOSPHERE_HEIGHT_SEGMENTS,
     ),
-    createEarthAtmosphereRimMaterial(),
+    createEarthAtmosphereRimMaterial(sunDirection),
   )
   rim.name = EARTH_ATMOSPHERE_RIM_NAME
   return rim
 }
 
-const createEarthCloudLayer = (radius: number) => {
+const createEarthCloudLayer = (radius: number, sunDirection: THREE.Vector3) => {
+  const material = new THREE.MeshStandardMaterial({
+    color: '#ffffff',
+    depthWrite: false,
+    metalness: 0,
+    opacity: EARTH_CLOUD_OPACITY,
+    roughness: 0.92,
+    transparent: true,
+  })
+  addBodyDayNightShader(material, {
+    nightTextureStrength: CLOUD_NIGHT_TEXTURE_STRENGTH,
+    sunDirection,
+  })
+
   const cloudLayer = new THREE.Mesh(
     new THREE.SphereGeometry(
       radius * EARTH_CLOUD_RADIUS_MULTIPLIER,
       BODY_WIDTH_SEGMENTS,
       BODY_HEIGHT_SEGMENTS,
     ),
-    new THREE.MeshStandardMaterial({
-      color: '#ffffff',
-      depthWrite: false,
-      metalness: 0,
-      opacity: EARTH_CLOUD_OPACITY,
-      roughness: 0.92,
-      transparent: true,
-    }),
+    material,
   )
   cloudLayer.name = EARTH_CLOUD_LAYER_NAME
   cloudLayer.visible = false
@@ -146,9 +311,20 @@ export type GameSceneRefs = {
   spacecraftMarker: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>
   spacecraftMesh: THREE.Group
   starfield: Starfield
+  sunLight: THREE.DirectionalLight
   trail: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
   trailPoints: SpacecraftTrailPoint[]
   trailRenderedSliceCount: number
+  visualSunDirection: THREE.Vector3
+}
+
+export const applyScenarioRenderConfigToScene = (
+  gameScene: Pick<GameSceneRefs, 'sunLight' | 'visualSunDirection'>,
+  scenarioRenderConfig?: ScenarioRenderConfig,
+) => {
+  const renderConfig = resolveScenarioRenderConfig(scenarioRenderConfig)
+  setVisualSunDirection(gameScene.visualSunDirection, renderConfig)
+  updateSunLight(gameScene.sunLight, gameScene.visualSunDirection)
 }
 
 const applyBodyDiffuseTexture = (
@@ -226,16 +402,22 @@ export const createGameScene = (
     bodyCloudTextures: new Map(),
     bodyDiffuseTextures: new Map(),
   },
+  scenarioRenderConfig?: ScenarioRenderConfig,
 ): GameSceneRefs => {
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000)
   const cameraTarget = new THREE.Vector3(0, 0, 0)
+  const visualSunDirection = new THREE.Vector3()
+  setVisualSunDirection(
+    visualSunDirection,
+    resolveScenarioRenderConfig(scenarioRenderConfig),
+  )
 
   const ambientLight = new THREE.AmbientLight(0x7f8fa6, 1.5)
   scene.add(ambientLight)
 
   const sunLight = new THREE.DirectionalLight(0xffffff, 3)
-  sunLight.position.set(-1, 2, 1)
+  updateSunLight(sunLight, visualSunDirection)
   scene.add(sunLight)
 
   const starfield = createStarfield()
@@ -259,11 +441,7 @@ export const createGameScene = (
       BODY_WIDTH_SEGMENTS,
       BODY_HEIGHT_SEGMENTS,
     )
-    const material = new THREE.MeshStandardMaterial({
-      color: body.color,
-      roughness: 0.82,
-      metalness: 0.02,
-    })
+    const material = createBodySurfaceMaterial(body, visualSunDirection)
     applyBodyDiffuseTexture(
       material,
       body,
@@ -272,14 +450,14 @@ export const createGameScene = (
     const mesh = new THREE.Mesh(geometry, material)
     mesh.name = body.name
     if (body.id === 'earth') {
-      const cloudLayer = createEarthCloudLayer(bodyRadius)
+      const cloudLayer = createEarthCloudLayer(bodyRadius, visualSunDirection)
       applyBodyCloudTexture(
         cloudLayer,
         scenarioAssets.bodyCloudTextures.get(body.id),
       )
       bodyCloudMeshes.set(body.id, cloudLayer)
       mesh.add(cloudLayer)
-      mesh.add(createEarthAtmosphereRim(bodyRadius))
+      mesh.add(createEarthAtmosphereRim(bodyRadius, visualSunDirection))
     }
     bodyMeshes.set(body.id, mesh)
     scene.add(mesh)
@@ -491,8 +669,10 @@ export const createGameScene = (
     spacecraftMarker,
     spacecraftMesh,
     starfield,
+    sunLight,
     trail,
     trailPoints,
     trailRenderedSliceCount: 0,
+    visualSunDirection,
   }
 }
