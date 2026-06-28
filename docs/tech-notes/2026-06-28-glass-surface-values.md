@@ -14,6 +14,7 @@ Issue #86 follows the #83 design audit. Several glass-like UI surfaces still car
 ## Key Files
 
 - `src/style.css`: root glass tokens and legacy menu action button styling.
+- `src/ui/overlayUI/overlayUIStyles.css`: in-game controls menu rows that consume the shared glass row token.
 - `src/ui/scenario-prompts/scenario-prompts.css`: modal and coach prompt surfaces and prompt buttons.
 - `src/ui/touchControls/swipeTimeWarpControl/swipeTimeWarpControl.css`: transient time-warp feedback pill styling.
 
