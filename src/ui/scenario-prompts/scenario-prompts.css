@@ -30,9 +30,11 @@
   gap: 12px;
   width: min(460px, calc(100vw - 32px));
   padding: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid var(--ui-glass-panel-border);
   border-radius: 8px;
-  background: rgba(8, 13, 24, 0.96);
+  background: var(--ui-glass-panel-bg);
+  box-shadow: var(--ui-glass-panel-shadow);
+  backdrop-filter: var(--ui-glass-panel-blur);
 }
 
 .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt {
@@ -43,15 +45,15 @@
   width: min(320px, calc(100vw - 28px));
   gap: 7px;
   padding: 11px 13px 11px 14px;
-  border: 1px solid rgba(140, 199, 255, 0.16);
+  border: 1px solid var(--ui-glass-panel-border);
   border-left: 3px solid rgba(103, 232, 249, 0.66);
   border-radius: 14px;
   background:
     linear-gradient(135deg, rgba(36, 56, 96, 0.16), rgba(12, 18, 31, 0) 40%),
-    rgba(7, 11, 20, 0.78);
-  box-shadow: 0 16px 38px rgba(2, 6, 18, 0.32);
+    var(--ui-glass-panel-bg);
+  box-shadow: var(--ui-glass-panel-shadow);
   pointer-events: auto;
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--ui-glass-panel-blur);
   margin: 0;
 }
 
@@ -126,23 +128,23 @@
 }
 
 .scenario-prompt-arrow[data-side="bottom"] {
-  border-right: 1px solid rgba(140, 199, 255, 0.16);
-  border-bottom: 1px solid rgba(140, 199, 255, 0.16);
+  border-right: 1px solid var(--ui-glass-panel-border);
+  border-bottom: 1px solid var(--ui-glass-panel-border);
 }
 
 .scenario-prompt-arrow[data-side="left"] {
-  border-bottom: 1px solid rgba(140, 199, 255, 0.16);
-  border-left: 1px solid rgba(140, 199, 255, 0.16);
+  border-bottom: 1px solid var(--ui-glass-panel-border);
+  border-left: 1px solid var(--ui-glass-panel-border);
 }
 
 .scenario-prompt-arrow[data-side="top"] {
-  border-top: 1px solid rgba(140, 199, 255, 0.16);
-  border-left: 1px solid rgba(140, 199, 255, 0.16);
+  border-top: 1px solid var(--ui-glass-panel-border);
+  border-left: 1px solid var(--ui-glass-panel-border);
 }
 
 .scenario-prompt-arrow[data-side="right"] {
-  border-top: 1px solid rgba(140, 199, 255, 0.16);
-  border-right: 1px solid rgba(140, 199, 255, 0.16);
+  border-top: 1px solid var(--ui-glass-panel-border);
+  border-right: 1px solid var(--ui-glass-panel-border);
 }
 
 .scenario-prompt-backdrop[data-prompt-mode="coach"] .scenario-prompt-arrow {
@@ -193,9 +195,9 @@
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
-  border: 1px solid rgba(103, 232, 249, 0.38);
+  border: 1px solid var(--ui-glass-control-border);
   border-radius: 6px;
-  background: rgba(15, 23, 42, 0.96);
+  background: var(--ui-glass-control-bg);
   color: #f8fafc;
   font: inherit;
   cursor: pointer;
@@ -216,7 +218,7 @@
   width: 30px;
   height: 30px;
   padding: 0;
-  border-color: rgba(148, 163, 184, 0.22);
+  border-color: var(--ui-glass-control-border);
   border-radius: 999px;
   color: rgba(226, 232, 240, 0.84);
   font-size: 20px;
