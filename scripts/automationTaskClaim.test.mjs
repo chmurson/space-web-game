@@ -433,18 +433,16 @@ describe('automationTaskClaim', () => {
 
   it('recovers an ownerless stale write mutex after the mutex timeout', async () => {
     const mutexDir = path.join(claimRoot, '.mutexes', 'claims.lock')
+    const mutexTimeoutMs = 1
+    const staleMutexTime = new Date(Date.now() - mutexTimeoutMs - 1_000)
     await mkdir(mutexDir, { recursive: true })
-    await utimes(
-      mutexDir,
-      at('2026-06-27T09:59:00.000Z'),
-      at('2026-06-27T09:59:00.000Z'),
-    )
+    await utimes(mutexDir, staleMutexTime, staleMutexTime)
 
     const result = await acquireClaim({
       claimRoot,
       id: '74',
       kind: 'pr',
-      mutexTimeoutMs: 1,
+      mutexTimeoutMs,
       now: at('2026-06-27T10:00:00.000Z'),
       owner: 'worker-a',
       pid: null,
