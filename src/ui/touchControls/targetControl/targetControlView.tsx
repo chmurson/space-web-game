@@ -119,6 +119,7 @@ const AutomaticTargetingRow = ({
   if (!automaticTargetingAvailable) {
     return (
       <button
+        aria-checked={false}
         class="touch-target-control-automatic-row"
         hidden
         role="switch"

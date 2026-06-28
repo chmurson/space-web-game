@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  utimes,
+  writeFile,
+} from 'node:fs/promises'
 import { hostname, tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, beforeEach, describe, it } from 'node:test'
@@ -427,6 +434,11 @@ describe('automationTaskClaim', () => {
   it('recovers an ownerless stale write mutex after the mutex timeout', async () => {
     const mutexDir = path.join(claimRoot, '.mutexes', 'claims.lock')
     await mkdir(mutexDir, { recursive: true })
+    await utimes(
+      mutexDir,
+      at('2026-06-27T09:59:00.000Z'),
+      at('2026-06-27T09:59:00.000Z'),
+    )
 
     const result = await acquireClaim({
       claimRoot,
