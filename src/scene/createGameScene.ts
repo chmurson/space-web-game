@@ -298,12 +298,15 @@ export const createGameScene = (
     new THREE.ConeGeometry(0.04, 0.11, 6),
     new THREE.MeshBasicMaterial({
       color: '#f59e0b',
+      depthWrite: false,
       transparent: true,
       opacity: 0,
     }),
   )
   engineGlow.position.z = -0.24
   engineGlow.rotation.x = -Math.PI / 2
+  engineGlow.renderOrder = 1
+  engineGlow.visible = false
   spacecraftMesh.add(engineGlow)
   scene.add(spacecraftMesh)
 
@@ -311,11 +314,13 @@ export const createGameScene = (
     new THREE.TorusGeometry(0.08, 0.003125, 8, 32),
     new THREE.MeshBasicMaterial({
       color: '#67e8f9',
+      depthWrite: false,
       transparent: true,
       opacity: 0.9,
     }),
   )
   spacecraftMarker.rotation.x = Math.PI / 2
+  spacecraftMarker.renderOrder = -1
   scene.add(spacecraftMarker)
 
   const trailPoints: SpacecraftTrailPoint[] = []

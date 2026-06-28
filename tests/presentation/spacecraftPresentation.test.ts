@@ -51,12 +51,13 @@ const createOverlayUiStub = () => {
   const headingTargetLine = createElementStub()
   const headingTargetOverlay = createElementStub()
   const headingTargetTurnSlice = createElementStub()
+  const spacecraftCallout = createElementStub()
   const refs = {
     headingTargetDot: createElementStub(),
     headingTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
-    spacecraftCallout: createElementStub(),
+    spacecraftCallout,
     spacecraftCalloutLabel: null,
     spacecraftIconThrust: createElementStub(),
   } as unknown as OverlayUiRefs
@@ -65,6 +66,7 @@ const createOverlayUiStub = () => {
     headingTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
+    spacecraftCallout,
     refs,
   }
 }
@@ -172,5 +174,61 @@ describe('createSpacecraftPresentation', () => {
     expect(
       Math.max(...outerDistances) - Math.min(...outerDistances),
     ).toBeGreaterThan(2)
+  })
+
+  it('places spacecraft indicators close to the trajectory plane', () => {
+    setWindowSize(800, 600)
+    const gameScene = createTestGameScene()
+    const overlayUi = createOverlayUiStub()
+    const trailTarget = createBody()
+    updateCameraView({
+      cameraDistance: 700,
+      cameraElevation: 1,
+      cameraTargetPosition: { x: 0, y: 0 },
+      gameScene,
+      viewportHeight: 600,
+      viewportSize: 480,
+      viewportWidth: 800,
+    })
+    const presentation = createSpacecraftPresentation({
+      defaultViewport: 480,
+      gameScene,
+      overlayUi: overlayUi.refs,
+      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      spacecraftModelZoomThreshold: 1,
+    })
+
+    presentation.updateVisuals({
+      bodies: [trailTarget],
+      elapsed: 0,
+      isThrusting: false,
+      spacecraft: createSpacecraft({ x: 0, y: 0 }),
+      spacecraftLabelIntroUntil: 0,
+      targetHeading: null,
+      targetHeadingScreenPosition: null,
+      targetHeadingWorldPosition: null,
+      trailTarget,
+      trimTrailAroundTarget: false,
+      viewportSize: 720,
+    })
+
+    expect(gameScene.spacecraftMesh.position.y).toBe(0.32)
+    expect(gameScene.spacecraftMarker.position.y).toBe(0.32)
+    expect(gameScene.engineGlow.visible).toBe(false)
+    expect(gameScene.engineGlow.material.depthWrite).toBe(false)
+    expect(gameScene.engineGlow.renderOrder).toBeGreaterThan(
+      gameScene.spacecraftMarker.renderOrder,
+    )
+    expect(gameScene.spacecraftMarker.material.depthWrite).toBe(false)
+
+    const projected = gameScene.spacecraftMesh.position
+      .clone()
+      .project(gameScene.camera)
+    expect(overlayUi.spacecraftCallout.style.left).toBe(
+      `${(projected.x * 0.5 + 0.5) * 800}px`,
+    )
+    expect(overlayUi.spacecraftCallout.style.top).toBe(
+      `${(-projected.y * 0.5 + 0.5) * 600}px`,
+    )
   })
 })
