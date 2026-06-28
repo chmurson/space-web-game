@@ -13,6 +13,7 @@ import {
   type ScenarioPromptSurfaceRenderer,
 } from '../scenario-prompts/scenario-prompts'
 import '../targetBodyGlyphs.css'
+import { createBottomHudNoticesSurface } from './createBottomHudNoticesSurface'
 import './overlayUIStyles.css'
 
 export const spacecraftOffscreenIndicatorId = '__spacecraft__'
@@ -132,9 +133,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   topBar.className = 'top-bar'
   options.app.appendChild(topBar)
 
-  const bottomPillArea = document.createElement('div')
-  bottomPillArea.className = 'bottom-pill-area'
-  options.app.appendChild(bottomPillArea)
+  const bottomHudNotices = createBottomHudNoticesSurface(options.app)
+  const { bottomPillArea } = bottomHudNotices
 
   const debugPanel = createDebugPanel(options.app)
 
@@ -143,54 +143,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     topBar,
   })
 
-  const fuelDepletedNotice = document.createElement('div')
-  fuelDepletedNotice.className =
-    'hud-notice hud-notice-durable fuel-depleted-notice'
-  fuelDepletedNotice.dataset.visible = 'false'
-  fuelDepletedNotice.setAttribute('role', 'status')
-  fuelDepletedNotice.setAttribute('aria-live', 'polite')
-  fuelDepletedNotice.setAttribute('aria-atomic', 'true')
-  fuelDepletedNotice.setAttribute('aria-hidden', 'true')
-  fuelDepletedNotice.hidden = true
-  fuelDepletedNotice.innerHTML = `
-    <span class="hud-notice-title">Fuel depleted</span>
-    <span class="hud-notice-body">Thrusters disabled</span>
-  `
-  bottomPillArea.appendChild(fuelDepletedNotice)
-
   const scenarioPromptUi = createScenarioPromptUI(options.app, bottomPillArea)
-
-  const cameraUnlockNotice = document.createElement('div')
-  cameraUnlockNotice.className = 'hud-notice hud-notice-transient'
-  cameraUnlockNotice.dataset.visible = 'false'
-  cameraUnlockNotice.setAttribute('role', 'status')
-  cameraUnlockNotice.setAttribute('aria-live', 'polite')
-  cameraUnlockNotice.setAttribute('aria-atomic', 'true')
-  cameraUnlockNotice.setAttribute('aria-hidden', 'true')
-  cameraUnlockNotice.hidden = true
-  cameraUnlockNotice.innerHTML = `
-    <span class="hud-notice-title"></span>
-    <span class="hud-notice-body"></span>
-  `
-  bottomPillArea.appendChild(cameraUnlockNotice)
-
-  const targetRecommendationNotice = document.createElement('div')
-  targetRecommendationNotice.className =
-    'hud-notice target-recommendation-notice'
-  targetRecommendationNotice.dataset.visible = 'false'
-  targetRecommendationNotice.setAttribute('aria-live', 'polite')
-  targetRecommendationNotice.setAttribute('aria-atomic', 'true')
-  targetRecommendationNotice.setAttribute('aria-hidden', 'true')
-  targetRecommendationNotice.hidden = true
-  targetRecommendationNotice.innerHTML = `
-    <button type="button" class="target-recommendation-notice-open">
-      <span class="target-recommendation-notice-message"></span>
-    </button>
-    <button type="button" class="target-recommendation-notice-dismiss" aria-label="Dismiss target recommendation">
-      <span aria-hidden="true">&times;</span>
-    </button>
-  `
-  bottomPillArea.appendChild(targetRecommendationNotice)
 
   const spacecraftCallout = document.createElement('div')
   spacecraftCallout.className = 'spacecraft-callout'
@@ -267,14 +220,12 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   return {
     bodyLabels,
     bottomPillArea,
-    cameraUnlockNotice,
-    cameraUnlockNoticeBody:
-      cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-body'),
-    cameraUnlockNoticeTitle:
-      cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-title'),
+    cameraUnlockNotice: bottomHudNotices.cameraUnlockNotice,
+    cameraUnlockNoticeBody: bottomHudNotices.cameraUnlockNoticeBody,
+    cameraUnlockNoticeTitle: bottomHudNotices.cameraUnlockNoticeTitle,
     debugPanel,
     fpsIndicator: hudTelemetry.fpsIndicator,
-    fuelDepletedNotice,
+    fuelDepletedNotice: bottomHudNotices.fuelDepletedNotice,
     fuelPill: hudTelemetry.telemetryRefs.fuelPill,
     headingTargetDot,
     headingTargetLine,
@@ -304,19 +255,13 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     statFuel: hudTelemetry.telemetryRefs.statFuel,
     statGuidance: null,
     statSpeed: hudTelemetry.telemetryRefs.statSpeed,
-    targetRecommendationNotice,
+    targetRecommendationNotice: bottomHudNotices.targetRecommendationNotice,
     targetRecommendationNoticeDismissButton:
-      targetRecommendationNotice.querySelector<HTMLButtonElement>(
-        '.target-recommendation-notice-dismiss',
-      ),
+      bottomHudNotices.targetRecommendationNoticeDismissButton,
     targetRecommendationNoticeMessage:
-      targetRecommendationNotice.querySelector<HTMLSpanElement>(
-        '.target-recommendation-notice-message',
-      ),
+      bottomHudNotices.targetRecommendationNoticeMessage,
     targetRecommendationNoticeOpenButton:
-      targetRecommendationNotice.querySelector<HTMLButtonElement>(
-        '.target-recommendation-notice-open',
-      ),
+      bottomHudNotices.targetRecommendationNoticeOpenButton,
     statThrust: hudTelemetry.telemetryRefs.statThrust,
     speedIcon: hudTelemetry.telemetryRefs.speedIcon,
     statTarget: hudTelemetry.telemetryRefs.statTarget,
