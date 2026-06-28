@@ -566,7 +566,7 @@ describe('tutorialScenario', () => {
       title: 'Escape Earth',
     })
     expect(getPromptTextContent(activePrompt?.description)).toBe(
-      "Keep flying until you reach 5 Earth radii from Earth's center. You are about 5.2 Earth radii out now. Use burns, time warp, and the projected path to keep opening the gap. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: lower speeds can still work on some arcs, and too much speed makes Moon capture harder.",
+      "Keep flying until you reach 5 Earth radii from Earth's center. You are about 5.2 Earth radii out now. Use burns, time warp, and the projected path to keep opening the gap. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: trajectory shape matters, and too much speed makes Moon capture harder.",
     )
   })
 
@@ -589,7 +589,7 @@ describe('tutorialScenario', () => {
       title: 'Escape Earth',
     })
     expect(getPromptTextContent(activePrompt?.description)).toBe(
-      "Keep flying until you reach 5 Earth radii from Earth's center. Use burns, time warp, and the projected path to keep opening the gap. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: lower speeds can still work on some arcs, and too much speed makes Moon capture harder.",
+      "Keep flying until you reach 5 Earth radii from Earth's center. Use burns, time warp, and the projected path to keep opening the gap. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: trajectory shape matters, and too much speed makes Moon capture harder.",
     )
   })
 

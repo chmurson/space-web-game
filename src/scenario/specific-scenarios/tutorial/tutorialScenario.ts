@@ -60,7 +60,7 @@ const getCurrentEarthRadiiDistance = (
 const escapeEarthSpeedGuidance = [
   ' Aim near ',
   { text: '10 km/s', tone: 'number' },
-  ' for the Earth-Moon setup, but treat it as guidance: lower speeds can still work on some arcs, and too much speed makes Moon capture harder.',
+  ' for the Earth-Moon setup, but treat it as guidance: trajectory shape matters, and too much speed makes Moon capture harder.',
 ] as const
 
 const getEscapeEarthObjectiveDescription = (
