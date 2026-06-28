@@ -18,64 +18,87 @@ import {
 
 const trailOldestColor = new THREE.Color('#0b1220')
 const trailNewestColor = new THREE.Color('#7c8fa8')
-const flightPlaneCueViewportScale = 0.055
 const headingTargetSliceInnerRadiusPx = 20
 const headingTargetSliceOuterRadiusPx = 52
+const headingTargetSliceArcSegmentRadians = Math.PI / 20
 const normalizeAngleDelta = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 const unwrapAngle = (angle: number, previousAngle: number | null) =>
   previousAngle === null
     ? angle
     : previousAngle + normalizeAngleDelta(angle - previousAngle)
-const getScreenCirclePoint = (
-  centerX: number,
-  centerY: number,
-  angle: number,
-  radius: number,
-) => ({
-  x: centerX + Math.cos(angle) * radius,
-  y: centerY + Math.sin(angle) * radius,
-})
-const getHeadingTargetSlicePath = (
-  centerX: number,
-  centerY: number,
-  startAngle: number,
-  deltaAngle: number,
+const projectRenderPositionToScreen = (
+  position: THREE.Vector3,
+  camera: THREE.Camera,
 ) => {
-  const endAngle = startAngle + deltaAngle
-  const largeArcFlag = Math.abs(deltaAngle) > Math.PI ? 1 : 0
-  const sweepFlag = deltaAngle >= 0 ? 1 : 0
-  const innerSweepFlag = sweepFlag === 1 ? 0 : 1
-  const outerStart = getScreenCirclePoint(
-    centerX,
-    centerY,
-    startAngle,
-    headingTargetSliceOuterRadiusPx,
+  const projected = position.clone().project(camera)
+  return {
+    x: (projected.x * 0.5 + 0.5) * window.innerWidth,
+    y: (-projected.y * 0.5 + 0.5) * window.innerHeight,
+  }
+}
+const getHeadingTargetPlanePoint = (options: {
+  camera: THREE.Camera
+  center: Vec2
+  lift: number
+  planeAngle: number
+  radiusPx: number
+  viewportSize: number
+}) => {
+  const renderUnitsPerPixel =
+    options.viewportSize / Math.max(window.innerHeight, 1)
+  const radius = options.radiusPx * renderUnitsPerPixel
+  const position = renderPosition(
+    options.center.x,
+    options.center.y,
+    options.lift,
   )
-  const outerEnd = getScreenCirclePoint(
-    centerX,
-    centerY,
-    endAngle,
-    headingTargetSliceOuterRadiusPx,
+  position.x += Math.cos(options.planeAngle) * radius
+  position.z += Math.sin(options.planeAngle) * radius
+  return projectRenderPositionToScreen(position, options.camera)
+}
+const getHeadingTargetSlicePath = (options: {
+  camera: THREE.Camera
+  center: Vec2
+  deltaAngle: number
+  lift: number
+  startAngle: number
+  viewportSize: number
+}) => {
+  const segmentCount = Math.max(
+    1,
+    Math.ceil(
+      Math.abs(options.deltaAngle) / headingTargetSliceArcSegmentRadians,
+    ),
   )
-  const innerEnd = getScreenCirclePoint(
-    centerX,
-    centerY,
-    endAngle,
-    headingTargetSliceInnerRadiusPx,
-  )
-  const innerStart = getScreenCirclePoint(
-    centerX,
-    centerY,
-    startAngle,
-    headingTargetSliceInnerRadiusPx,
-  )
+  const points: { x: number; y: number }[] = []
+
+  for (let index = 0; index <= segmentCount; index += 1) {
+    const progress = index / segmentCount
+    points.push(
+      getHeadingTargetPlanePoint({
+        ...options,
+        planeAngle: options.startAngle + options.deltaAngle * progress,
+        radiusPx: headingTargetSliceOuterRadiusPx,
+      }),
+    )
+  }
+
+  for (let index = segmentCount; index >= 0; index -= 1) {
+    const progress = index / segmentCount
+    points.push(
+      getHeadingTargetPlanePoint({
+        ...options,
+        planeAngle: options.startAngle + options.deltaAngle * progress,
+        radiusPx: headingTargetSliceInnerRadiusPx,
+      }),
+    )
+  }
 
   return [
-    `M ${outerStart.x} ${outerStart.y}`,
-    `A ${headingTargetSliceOuterRadiusPx} ${headingTargetSliceOuterRadiusPx} 0 ${largeArcFlag} ${sweepFlag} ${outerEnd.x} ${outerEnd.y}`,
-    `L ${innerEnd.x} ${innerEnd.y}`,
-    `A ${headingTargetSliceInnerRadiusPx} ${headingTargetSliceInnerRadiusPx} 0 ${largeArcFlag} ${innerSweepFlag} ${innerStart.x} ${innerStart.y}`,
+    ...points.map(
+      (point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`,
+    ),
     'Z',
   ].join(' ')
 }
@@ -146,17 +169,6 @@ const updateSpacecraftWorldVisuals = (options: {
     Math.max(1, options.viewportSize / 520),
   )
   options.gameScene.spacecraftMarker.visible = !useSymbolicShip
-  options.gameScene.flightPlaneCue.position.copy(
-    renderPosition(
-      options.spacecraft.position.x,
-      options.spacecraft.position.y,
-      0.08,
-    ),
-  )
-  options.gameScene.flightPlaneCue.scale.setScalar(
-    options.viewportSize * flightPlaneCueViewportScale,
-  )
-  options.gameScene.flightPlaneCue.visible = true
 }
 
 const updateSpacecraftTrail = (options: {
@@ -297,22 +309,8 @@ const updateSpacecraftCallout = (options: {
     options.targetHeading !== null &&
     (options.targetHeadingWorldPosition || options.targetHeadingScreenPosition)
   ) {
-    const targetForward = {
-      x: Math.cos(options.targetHeading),
-      y: Math.sin(options.targetHeading),
-    }
-    const targetForwardPosition = renderPosition(
-      options.spacecraft.position.x + targetForward.x * 1_000_000,
-      options.spacecraft.position.y + targetForward.y * 1_000_000,
-      1.2,
-    )
-    targetForwardPosition.project(options.gameScene.camera)
-    const targetHeadingAngle = Math.atan2(
-      (-targetForwardPosition.y * 0.5 + 0.5) * window.innerHeight - screenY,
-      (targetForwardPosition.x * 0.5 + 0.5) * window.innerWidth - screenX,
-    )
-    const remainingDelta = normalizeAngleDelta(
-      targetHeadingAngle - headingAngle,
+    const remainingPlaneDelta = normalizeAngleDelta(
+      options.targetHeading - options.spacecraft.heading,
     )
     const targetHeadingScreenPosition = options.targetHeadingWorldPosition
       ? (() => {
@@ -353,7 +351,14 @@ const updateSpacecraftCallout = (options: {
     }px`
     options.overlayUi.headingTargetTurnSlice.setAttribute(
       'd',
-      getHeadingTargetSlicePath(screenX, screenY, headingAngle, remainingDelta),
+      getHeadingTargetSlicePath({
+        camera: options.gameScene.camera,
+        center: options.spacecraft.position,
+        deltaAngle: remainingPlaneDelta,
+        lift: 1.2,
+        startAngle: options.spacecraft.heading,
+        viewportSize: options.viewportSize,
+      }),
     )
   } else {
     options.overlayUi.headingTargetDot.style.display = 'none'
