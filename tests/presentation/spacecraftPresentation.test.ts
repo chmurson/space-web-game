@@ -214,6 +214,13 @@ describe('createSpacecraftPresentation', () => {
 
     expect(gameScene.spacecraftMesh.position.y).toBe(0.32)
     expect(gameScene.spacecraftMarker.position.y).toBe(0.32)
+    expect(gameScene.trail.material.depthWrite).toBe(false)
+    expect(gameScene.trail.renderOrder).toBeLessThan(
+      gameScene.spacecraftMarker.renderOrder,
+    )
+    expect(
+      gameScene.trail.geometry.getAttribute('position').getY(0),
+    ).toBeCloseTo(0.24)
     expect(gameScene.engineGlow.visible).toBe(false)
     expect(gameScene.engineGlow.material.depthWrite).toBe(false)
     expect(gameScene.engineGlow.renderOrder).toBeGreaterThan(

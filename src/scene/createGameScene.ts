@@ -326,11 +326,13 @@ export const createGameScene = (
   const trailPoints: SpacecraftTrailPoint[] = []
   const trailGeometry = new THREE.BufferGeometry()
   const trailMaterial = new THREE.LineBasicMaterial({
+    depthWrite: false,
     vertexColors: true,
     transparent: true,
     opacity: 0.96,
   })
   const trail = new THREE.Line(trailGeometry, trailMaterial)
+  trail.renderOrder = -2
   scene.add(trail)
 
   const replacePredictionLineGeometryOnUpdate =

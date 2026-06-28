@@ -21,6 +21,7 @@ const trailNewestColor = new THREE.Color('#7c8fa8')
 const headingTargetSliceInnerRadiusPx = 20
 const headingTargetSliceOuterRadiusPx = 52
 const headingTargetSliceArcSegmentRadians = Math.PI / 20
+const spacecraftTrailLift = 0.24
 const spacecraftVisualLift = 0.32
 const spacecraftMarkerLift = spacecraftVisualLift
 const normalizeAngleDelta = (angle: number) =>
@@ -119,7 +120,11 @@ const syncSpacecraftTrailGeometry = (
   const trailGeometry = new THREE.BufferGeometry().setFromPoints(
     renderTrailPoints.map((point) => {
       const trailPosition = getSpacecraftTrailRenderPosition(point, target)
-      return renderPosition(trailPosition.x, trailPosition.y, 0.35)
+      return renderPosition(
+        trailPosition.x,
+        trailPosition.y,
+        spacecraftTrailLift,
+      )
     }),
   )
   const trailColors: number[] = []
