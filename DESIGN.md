@@ -288,11 +288,11 @@ Don't:
 - Put controls where they block steering, thrust, target selection, or scenario prompts.
 - Hide keyboard focus, remove accessible names, or make pointer-only controls.
 - Add new z-index numbers directly when a root token covers the layer.
-- Add a local design or lint CLI dependency until the `design.md` toolchain is stable enough for this repo.
+- Add a local design or lint CLI dependency until the design tooling is stable enough for this repo.
 
 ## Audit Note
 
-Checked on 2026-06-28 for issue #83:
+Checked for issue #83:
 
 - `src/style.css`: root z-index scale, shared glass variables, global font stack, menus, dialogs, telemetry, debug surfaces, in-world labels, offscreen indicators, reduced-motion rules.
 - `src/ui/components/*Surface*.tsx` and `src/ui/components/MenuSurfacePrimitives.tsx`: Preact menu/dialog component contracts, copy, action variants, ARIA roles, segmented controls, switches, steppers.
