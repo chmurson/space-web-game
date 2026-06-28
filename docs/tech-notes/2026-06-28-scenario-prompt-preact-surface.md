@@ -36,7 +36,6 @@ Issue #76 tracks the next slice of the DOM UI migration after the menu surfaces 
 - Inspected `tmp/playwright-results/mobileHudScreenshot-captur-5be36-ial-coach-prompt-transition-mobile-chromium/mobile-tutorial-coach-prompt.png`; it matched the expected mobile tutorial coach prompt state with the Burn edge control highlighted and no text overlap.
 - Inspected `tmp/playwright-results/mobileHudScreenshot-captur-8c0aa-Moon-replay-pill-transition-mobile-chromium/mobile-reach-moon-replay-pill.png`; it matched the expected Reach the Moon replay pill state with the Mission Brief pill visible and gameplay HUD unobstructed.
 - `git diff --check`: passed.
-- `coderabbit --base main --agent`: found one valid minor note that this Validation section was still pending; fixed here.
 
 ## Follow-Ups
 

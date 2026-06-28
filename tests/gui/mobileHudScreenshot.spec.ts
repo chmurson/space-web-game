@@ -153,6 +153,7 @@ test('keeps the Reach the Moon replay pill wired to the prompt adapter', async (
   )
 
   await replayPill.click()
+  await expect(replayPill).toBeHidden()
   await expect(
     page.getByRole('heading', { name: 'Reach the Moon' }),
   ).toBeVisible()

@@ -14,10 +14,10 @@ import type {
   ScenarioTouchControlFocusTarget,
 } from '../../scenario/scenarioPromptTypes'
 import {
-  ScenarioPromptSurface,
-  ScenarioReplayPillSurface,
   type ScenarioPromptDisplayMode,
+  ScenarioPromptSurface,
   type ScenarioPromptSurfaceView,
+  ScenarioReplayPillSurface,
 } from '../components/ScenarioPromptSurface'
 import { createPreactUiSurface } from '../createPreactUiSurface'
 
@@ -299,6 +299,7 @@ type PromptIdentity = {
   activePromptFocusedHudElement: string | null
   activePromptFocusedTouchControl: string | null
   activePromptLayout: string | null
+  showTrajectoryGuide: boolean
   activePromptPrimaryButtonLabel: string
   activePromptPrimaryButtonAction: string
   activePromptSecondaryButtonLabel: string
@@ -385,11 +386,18 @@ const computePromptIdentity = (
   const promptButtonsVisible = restartButtonAction !== 'scenario'
   const primaryButton = activePrompt?.buttons[0]
   const secondaryButton = activePrompt?.buttons[1]
+  const activePromptMode = getPromptDisplayMode(activePrompt)
+  const showTrajectoryGuide =
+    activePrompt?.kind === 'coach' &&
+    activePromptMode === 'coach' &&
+    activePrompt.id === 'intro-trajectory' &&
+    activePrompt.anchor === 'trajectory' &&
+    activePrompt.layout === 'floating'
 
   return {
     activePromptTitle: activePrompt?.title ?? '',
     activePromptDescription: getPromptTextIdentity(activePrompt?.description),
-    activePromptMode: getPromptDisplayMode(activePrompt),
+    activePromptMode,
     activePromptAnchor:
       activePrompt?.kind === 'coach' ? (activePrompt.anchor ?? null) : null,
     activePromptFocusedHudElement:
@@ -402,6 +410,7 @@ const computePromptIdentity = (
         : null,
     activePromptLayout:
       activePrompt?.kind === 'coach' ? activePrompt.layout : null,
+    showTrajectoryGuide,
     activePromptPrimaryButtonLabel: promptButtonsVisible
       ? getPromptButtonLabel({
           label: primaryButton?.label ?? '',
@@ -443,6 +452,7 @@ const identitiesEqual = (a: PromptIdentity, b: PromptIdentity): boolean => {
     a.activePromptFocusedHudElement === b.activePromptFocusedHudElement &&
     a.activePromptFocusedTouchControl === b.activePromptFocusedTouchControl &&
     a.activePromptLayout === b.activePromptLayout &&
+    a.showTrajectoryGuide === b.showTrajectoryGuide &&
     a.activePromptPrimaryButtonLabel === b.activePromptPrimaryButtonLabel &&
     a.activePromptPrimaryButtonAction === b.activePromptPrimaryButtonAction &&
     a.activePromptSecondaryButtonLabel === b.activePromptSecondaryButtonLabel &&
