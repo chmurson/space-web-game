@@ -1,4 +1,5 @@
 import './thrustControl.css'
+import { render } from 'preact'
 import type { TouchThrustControlUiState } from '../../runtime/appRuntimeState'
 import {
   createTouchInteractionModel,
@@ -9,6 +10,11 @@ import {
 type OverlaySize = {
   halfHeight: number
   halfWidth: number
+}
+
+type ThrustControlMarkupRefs = {
+  label: HTMLDivElement
+  thumb: HTMLDivElement
 }
 
 type PendingThrustSession = {
@@ -43,6 +49,44 @@ const pendingFadeInMs = thrustAppearHoldMs + 160
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
+const ThrustControlMarkup = () => (
+  <>
+    <div class="touch-thrust-control-track">
+      <div class="touch-thrust-control-thumb" />
+    </div>
+    <div class="touch-thrust-control-label">Thrust</div>
+  </>
+)
+
+const getThrustControlMarkupRefs = (
+  element: HTMLElement,
+): ThrustControlMarkupRefs => {
+  const label = element.querySelector<HTMLDivElement>(
+    '.touch-thrust-control-label',
+  )
+  const thumb = element.querySelector<HTMLDivElement>(
+    '.touch-thrust-control-thumb',
+  )
+
+  if (!label || !thumb) {
+    throw new Error('Failed to create thrust control markup')
+  }
+
+  return { label, thumb }
+}
+
+const createThrustControlElement = () => {
+  const element = document.createElement('div')
+  element.className = 'touch-thrust-control'
+  element.setAttribute('aria-hidden', 'true')
+  render(<ThrustControlMarkup />, element)
+
+  return {
+    element,
+    ...getThrustControlMarkupRefs(element),
+  }
+}
+
 const measureOverlaySize = (
   element: HTMLElement,
   fallback: OverlaySize,
@@ -67,28 +111,17 @@ export const createThrustControl = (options: {
   tapMoveTolerancePx: number
   vibrate(): void
 }) => {
-  const thrustControl = document.createElement('div')
-  thrustControl.className = 'touch-thrust-control'
-  thrustControl.setAttribute('aria-hidden', 'true')
-  thrustControl.innerHTML = `
-    <div class="touch-thrust-control-track">
-      <div class="touch-thrust-control-thumb"></div>
-    </div>
-    <div class="touch-thrust-control-label">Thrust</div>
-  `
+  const {
+    element: thrustControl,
+    label: thrustControlLabel,
+    thumb: thrustControlThumb,
+  } = createThrustControlElement()
   const isDocked = Boolean(options.container)
   if (isDocked) {
     thrustControl.classList.add('touch-thrust-control-docked')
   }
   const parentElement = options.container ?? options.panel
   parentElement.appendChild(thrustControl)
-
-  const thrustControlLabel = thrustControl.querySelector<HTMLDivElement>(
-    '.touch-thrust-control-label',
-  )
-  const thrustControlThumb = thrustControl.querySelector<HTMLDivElement>(
-    '.touch-thrust-control-thumb',
-  )
 
   const interactionModel = createTouchInteractionModel()
   let thrustLabelHideTimer: number | null = null
@@ -179,11 +212,9 @@ export const createThrustControl = (options: {
       'touch-thrust-control-pending',
       isPendingVisible,
     )
-    if (thrustControlLabel) {
-      thrustControlLabel.textContent = snapshot.thrust.engaged
-        ? 'Thrust On'
-        : 'Thrust Off'
-    }
+    thrustControlLabel.textContent = snapshot.thrust.engaged
+      ? 'Thrust On'
+      : 'Thrust Off'
     thrustControl.classList.toggle(
       'touch-thrust-control-label-hidden',
       !isThrustLabelVisible,
@@ -224,10 +255,6 @@ export const createThrustControl = (options: {
   }
 
   const isTouchOnThumb = (touch: Pick<Touch, 'clientX' | 'clientY'>) => {
-    if (!thrustControlThumb) {
-      return false
-    }
-
     const thumbRect = thrustControlThumb.getBoundingClientRect()
     return (
       touch.clientX >= thumbRect.left &&
