@@ -361,6 +361,19 @@ const createScenarioPrompt = () => {
 
 const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
   const bottomPillArea = new FakeElement('div')
+  const fpsIndicator = new FakeElement('div')
+  const renderFpsIndicator = vi.fn(
+    (view: Parameters<OverlayUiRefs['renderFpsIndicator']>[0]) => {
+      fpsIndicator.hidden = view === null
+      fpsIndicator.textContent = view?.text ?? ''
+      if (view) {
+        fpsIndicator.dataset.status = view.status
+      } else {
+        Reflect.deleteProperty(fpsIndicator.dataset, 'status')
+      }
+    },
+  )
+  fpsIndicator.hidden = true
   app.appendChild(bottomPillArea)
   return {
     bodyLabels: new Map(),
@@ -375,7 +388,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
       setJson: vi.fn(),
       setText: vi.fn(),
     },
-    fpsIndicator: new FakeElement('div') as unknown as HTMLElement,
+    fpsIndicator: fpsIndicator as unknown as HTMLElement,
     fuelDepletedNotice: new FakeElement('div') as unknown as HTMLElement,
     fuelPill: null,
     headingTargetDot: new FakeElement('div') as unknown as HTMLElement,
@@ -386,6 +399,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     ) as unknown as SVGPathElement,
     offscreenIndicators: new Map(),
     renderScenarioPromptSurface: vi.fn(),
+    renderFpsIndicator,
     scenarioPrompt: createScenarioPrompt() as unknown as HTMLElement,
     scenarioPromptCloseButton: null,
     scenarioPromptConfirmButton: null,
@@ -515,30 +529,36 @@ describe('createHudPresentation', () => {
     presentation.update(createMetrics())
 
     const fpsIndicator = overlayUi.fpsIndicator as unknown as FakeElement
-    expect(fpsIndicator.isConnected).toBe(false)
-    expect(fpsIndicator.childNodes).toHaveLength(0)
+    expect(fpsIndicator.hidden).toBe(true)
+    expect(overlayUi.renderFpsIndicator).not.toHaveBeenCalled()
     expect(rendererProfiler.getSmoothedGpuMs).not.toHaveBeenCalled()
 
     runtime.debug.fpsIndicatorEnabled = true
     presentation.update(createMetrics(false))
 
-    expect(fpsIndicator.isConnected).toBe(false)
-    expect(fpsIndicator.childNodes).toHaveLength(0)
+    expect(fpsIndicator.hidden).toBe(true)
+    expect(overlayUi.renderFpsIndicator).not.toHaveBeenCalled()
     expect(rendererProfiler.getSmoothedGpuMs).not.toHaveBeenCalled()
 
     presentation.update(createMetrics(true))
 
-    expect(fpsIndicator.parentElement).toBe(app)
-    expect(fpsIndicator.isConnected).toBe(true)
-    expect(fpsIndicator.childNodes).toHaveLength(2)
+    expect(fpsIndicator.hidden).toBe(false)
     expect(fpsIndicator.textContent).toContain('FPS 60.0')
+    expect(overlayUi.renderFpsIndicator).toHaveBeenCalledWith(
+      expect.objectContaining({
+        graph: expect.objectContaining({ height: 28, width: 112 }),
+        status: 'good',
+        text: expect.stringContaining('FPS 60.0'),
+      }),
+    )
     expect(rendererProfiler.getSmoothedGpuMs).toHaveBeenCalledOnce()
 
     runtime.debug.fpsIndicatorEnabled = false
     presentation.update(createMetrics())
 
-    expect(fpsIndicator.isConnected).toBe(false)
-    expect(fpsIndicator.childNodes).toHaveLength(0)
+    expect(overlayUi.renderFpsIndicator).toHaveBeenLastCalledWith(null)
+    expect(fpsIndicator.hidden).toBe(true)
+    expect(fpsIndicator.textContent).toBe('')
   })
 
   it('throttles debug panel content updates while the panel stays open', async () => {

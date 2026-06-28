@@ -18,7 +18,6 @@ import {
 } from '../ui/formatters'
 import {
   type FpsMeterFrameSample,
-  type FpsMeterGraphModel,
   getDebugPanelLines,
   getFpsMeterGraphModel,
   getFpsMeterStatus,
@@ -55,90 +54,9 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
   element.style.setProperty('--target-body-color', body.color)
 }
 
-const svgNamespace = 'http://www.w3.org/2000/svg'
 const debugPanelUpdateIntervalMs = 500
 const fpsIndicatorUpdateFrameCycleInterval = 4
 const fpsIndicatorSlowFrameMs = 1000 / 15
-
-const syncFpsIndicator = (
-  element: HTMLElement,
-  view: {
-    graph: FpsMeterGraphModel
-    text: string
-  },
-) => {
-  const textElement = document.createElement('div')
-  textElement.className = 'fps-indicator-text'
-  textElement.textContent = view.text
-
-  const graphElement = document.createElementNS(svgNamespace, 'svg')
-  graphElement.classList.add('fps-meter-graph')
-  graphElement.setAttribute('aria-hidden', 'true')
-  graphElement.setAttribute(
-    'viewBox',
-    `0 0 ${view.graph.width} ${view.graph.height}`,
-  )
-
-  const background = document.createElementNS(svgNamespace, 'rect')
-  background.classList.add('fps-meter-graph-bg')
-  background.setAttribute('x', '0')
-  background.setAttribute('y', '0')
-  background.setAttribute('width', `${view.graph.width}`)
-  background.setAttribute('height', `${view.graph.height}`)
-  graphElement.appendChild(background)
-
-  const budgetLine = document.createElementNS(svgNamespace, 'line')
-  budgetLine.classList.add('fps-meter-graph-budget')
-  budgetLine.setAttribute('x1', '0')
-  budgetLine.setAttribute('x2', `${view.graph.width}`)
-  budgetLine.setAttribute('y1', `${view.graph.budgetLineY}`)
-  budgetLine.setAttribute('y2', `${view.graph.budgetLineY}`)
-  graphElement.appendChild(budgetLine)
-
-  if (view.graph.path) {
-    const framePath = document.createElementNS(svgNamespace, 'path')
-    framePath.classList.add('fps-meter-graph-line')
-    framePath.setAttribute('d', view.graph.path)
-    graphElement.appendChild(framePath)
-  }
-
-  for (const x of view.graph.gcMarkerXs) {
-    const marker = document.createElementNS(svgNamespace, 'circle')
-    marker.classList.add('fps-meter-graph-gc')
-    marker.setAttribute('cx', `${x}`)
-    marker.setAttribute('cy', `${view.graph.height - 2}`)
-    marker.setAttribute('r', '1.6')
-    graphElement.appendChild(marker)
-  }
-
-  element.replaceChildren(textElement, graphElement)
-}
-
-const getFpsIndicatorApp = (overlayUi: OverlayUiRefs) =>
-  overlayUi.bottomPillArea.parentElement
-
-const syncFpsIndicatorMount = (overlayUi: OverlayUiRefs, visible: boolean) => {
-  const { fpsIndicator } = overlayUi
-
-  if (!visible) {
-    fpsIndicator.remove()
-    if (fpsIndicator.childNodes.length > 0) {
-      fpsIndicator.replaceChildren()
-    }
-    return false
-  }
-
-  const app = getFpsIndicatorApp(overlayUi)
-  if (!app) {
-    return false
-  }
-
-  if (!fpsIndicator.isConnected) {
-    app.appendChild(fpsIndicator)
-  }
-
-  return true
-}
 
 const createDebugStateCopyPayload = (options: {
   capturedAtMs: number
@@ -691,7 +609,10 @@ export const createHudPresentation = (options: {
         })
       }
 
-      if (!syncFpsIndicatorMount(options.overlayUi, metrics.fpsMeterVisible)) {
+      if (!metrics.fpsMeterVisible) {
+        if (fpsIndicatorWasVisible || !options.overlayUi.fpsIndicator.hidden) {
+          options.overlayUi.renderFpsIndicator(null)
+        }
         fpsIndicatorWasVisible = false
         fpsIndicatorFrameCyclesSinceUpdate = 0
         return
@@ -714,16 +635,15 @@ export const createHudPresentation = (options: {
           smoothedFps: metrics.smoothedFps,
           smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
         }
-        syncFpsIndicator(options.overlayUi.fpsIndicator, {
+        options.overlayUi.renderFpsIndicator({
           graph: getFpsMeterGraphModel({
             browserGcStats: metrics.browserGcStats,
             frameSamples: metrics.fpsFrameSamples,
             nowMs: metrics.fpsGraphNowMs,
           }),
+          status: getFpsMeterStatus(fpsMeterInput),
           text: getFpsMeterText(fpsMeterInput),
         })
-        options.overlayUi.fpsIndicator.dataset.status =
-          getFpsMeterStatus(fpsMeterInput)
       }
     },
   }
