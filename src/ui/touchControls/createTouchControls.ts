@@ -21,13 +21,14 @@ import {
   type TouchControlRevealPlacement,
 } from './edgeRevealControl'
 import type { StepSelectorGestureSession } from './stepSelectorControl/stepSelectorControlTypes'
-import { createThrustControl, type ThrustGestureSession } from './thrustControl'
-import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
-import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/createTrajectoryHorizonControl'
 import {
   createTargetControl,
   type TargetControlBodyRow,
 } from './targetControl/createTargetControl'
+import { createThrustControl, type ThrustGestureSession } from './thrustControl'
+import { createTouchControlsShell } from './touchControlsShell'
+import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
+import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/createTrajectoryHorizonControl'
 
 export type TouchControls = {
   element: HTMLElement
@@ -262,8 +263,14 @@ export const createTouchControls = (options: {
   onThrustControlUiStateChange(state: TouchThrustControlUiState): void
   onZoom(factor: number, focalPoint?: ScreenPoint): void
 }): TouchControls => {
-  const panel = document.createElement('section')
-  panel.className = 'touch-controls'
+  const touchControlsShell = createTouchControlsShell()
+  const panel = touchControlsShell.element
+  const {
+    burn: thrustDock,
+    target: targetDock,
+    trajectory: trajectoryHorizonDock,
+    warp: timeWarpDock,
+  } = touchControlsShell.docks
 
   const tutorialHint = createTouchControlsTutorialHint({ container: panel })
 
@@ -278,9 +285,6 @@ export const createTouchControls = (options: {
     options.keyboardInput.setVirtualKey('main', engaged)
   }
 
-  const timeWarpDock = document.createElement('div')
-  timeWarpDock.className = 'touch-edge-reveal-dock touch-time-warp-reveal-dock'
-  timeWarpDock.dataset.touchControlDock = 'warp'
   const timeWarpControl = createConfiguredTimeWarpControl({
     container: timeWarpDock,
     commitTimeWarp: options.commitTimeWarp,
@@ -293,10 +297,6 @@ export const createTouchControls = (options: {
     panel,
   })
 
-  const trajectoryHorizonDock = document.createElement('div')
-  trajectoryHorizonDock.className =
-    'touch-edge-reveal-dock touch-trajectory-horizon-reveal-dock'
-  trajectoryHorizonDock.dataset.touchControlDock = 'trajectory'
   const trajectoryHorizonControl = createTrajectoryHorizonControl({
     container: trajectoryHorizonDock,
     commitTrajectoryHorizon: options.commitTrajectoryHorizon,
@@ -308,9 +308,6 @@ export const createTouchControls = (options: {
     panel,
   })
 
-  const targetDock = document.createElement('div')
-  targetDock.className = 'touch-edge-reveal-dock touch-target-reveal-dock'
-  targetDock.dataset.touchControlDock = 'target'
   let closeTargetControl = () => {}
   const targetControl = createTargetControl({
     automaticTargetingAvailable: options.automaticTargetingAvailable,
@@ -326,9 +323,6 @@ export const createTouchControls = (options: {
   })
   targetDock.appendChild(targetControl.element)
 
-  const thrustDock = document.createElement('div')
-  thrustDock.className = 'touch-edge-reveal-dock touch-thrust-reveal-dock'
-  thrustDock.dataset.touchControlDock = 'burn'
   let burnControlRevealed = false
   const thrustControl = createThrustControl({
     container: thrustDock,
