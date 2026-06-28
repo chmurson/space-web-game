@@ -48,8 +48,11 @@ const expectWorldVisualsSuppressed = async (page: Page) => {
   )
 }
 
-const openReachMoonMainMenu = async (page: Page) => {
-  await page.goto('/?reachmoon=1')
+const getReachMoonUrl = (query = '') =>
+  query ? `/?reachmoon=1&${query}` : '/?reachmoon=1'
+
+const openReachMoonMainMenu = async (page: Page, query = '') => {
+  await page.goto(getReachMoonUrl(query))
   await page.addStyleTag({ content: screenshotCss })
 
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
@@ -62,8 +65,8 @@ const openReachMoonMainMenu = async (page: Page) => {
   await expectWorldVisualsSuppressed(page)
 }
 
-const startReachMoonMission = async (page: Page) => {
-  await openReachMoonMainMenu(page)
+const startReachMoonMission = async (page: Page, query = '') => {
+  await openReachMoonMainMenu(page, query)
 
   await page.getByRole('button', { name: 'Reach the Moon' }).click()
   await page.getByRole('button', { name: 'Start' }).click()
@@ -1070,6 +1073,31 @@ test('captures the mobile time warp touch control after reveal', async ({
   ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
+})
+
+test('captures the mobile trajectory horizon touch control after reveal', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page, 'touchTrajectorySide=right')
+
+  await page
+    .getByRole('button', {
+      name: 'Reveal trajectory prediction horizon control',
+    })
+    .click()
+  const trajectoryReveal = page.locator('#touch-trajectory-horizon-reveal')
+  await expect(trajectoryReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await expect(
+    trajectoryReveal.getByLabel('Trajectory prediction horizon control', {
+      exact: true,
+    }),
+  ).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-trajectory-horizon-control',
+  )
 })
 
 test('captures the mobile target selector side panel after reveal', async ({

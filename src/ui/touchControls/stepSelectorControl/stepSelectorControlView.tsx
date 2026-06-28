@@ -69,6 +69,17 @@ const StepSelectorControlSurface = ({
   </>
 )
 
+const getContentRenderKey = (renderState: StepSelectorControlRenderState) =>
+  JSON.stringify({
+    currentLabel: renderState.currentLabel,
+    downExtraStep: renderState.downExtraStep,
+    downFarStep: renderState.downFarStep,
+    downNearStep: renderState.downNearStep,
+    upExtraStep: renderState.upExtraStep,
+    upFarStep: renderState.upFarStep,
+    upNearStep: renderState.upNearStep,
+  })
+
 export const createStepSelectorControlView = (options: {
   ariaLabel: string
   className?: string
@@ -79,18 +90,11 @@ export const createStepSelectorControlView = (options: {
     .join(' ')
   element.setAttribute('role', 'group')
   element.setAttribute('aria-label', options.ariaLabel)
-  let lastRenderKey = ''
+  let lastContentRenderKey = ''
 
   return {
     element,
     render(renderState) {
-      const renderKey = JSON.stringify(renderState)
-      if (renderKey === lastRenderKey) {
-        return
-      }
-      lastRenderKey = renderKey
-
-      render(<StepSelectorControlSurface renderState={renderState} />, element)
       element.style.setProperty(
         '--touch-step-selector-drag-progress',
         renderState.dragProgress.toFixed(3),
@@ -119,6 +123,14 @@ export const createStepSelectorControlView = (options: {
         'touch-step-selector-step-down',
         renderState.animationDirection === 'down',
       )
+
+      const contentRenderKey = getContentRenderKey(renderState)
+      if (contentRenderKey === lastContentRenderKey) {
+        return
+      }
+      lastContentRenderKey = contentRenderKey
+
+      render(<StepSelectorControlSurface renderState={renderState} />, element)
     },
   }
 }
