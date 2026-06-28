@@ -1,3 +1,4 @@
+import { render } from 'preact'
 import type { TouchOverlayPoint } from './timeWarpFeedbackModel'
 import type { TimeWarpFeedbackRenderState } from './timeWarpFeedbackPresenter'
 
@@ -30,6 +31,12 @@ const measureOverlaySize = (
     halfWidth: rect.width / 2,
   }
 }
+
+const TimeWarpFeedbackContent = ({
+  renderState,
+}: {
+  renderState: TimeWarpFeedbackRenderState
+}) => <>{renderState.label}</>
 
 export const createTimeWarpFeedbackView = (options: {
   committedFadeMs: number
@@ -80,7 +87,7 @@ export const createTimeWarpFeedbackView = (options: {
     )
     delete options.element.dataset.timeWarpFeedbackState
     delete options.element.dataset.warpFeedbackVariant
-    options.element.textContent = ''
+    render(null, options.element)
     options.element.style.removeProperty('--touch-time-warp-feedback-opacity')
     options.element.style.removeProperty(
       '--touch-time-warp-feedback-transition-duration',
@@ -88,7 +95,7 @@ export const createTimeWarpFeedbackView = (options: {
     resetConfirmationState()
   }
 
-  const render = (renderState: TimeWarpFeedbackRenderState | null) => {
+  const renderFeedback = (renderState: TimeWarpFeedbackRenderState | null) => {
     if (renderState === null) {
       clear()
       return
@@ -97,7 +104,7 @@ export const createTimeWarpFeedbackView = (options: {
     clearFadeTimer()
     resetConfirmationState()
 
-    options.element.textContent = renderState.label
+    render(<TimeWarpFeedbackContent renderState={renderState} />, options.element)
     overlaySize = measureOverlaySize(options.element, overlaySize)
     const clampedPoint = clampPoint(renderState.anchor)
     options.element.style.left = `${clampedPoint.x}px`
@@ -138,6 +145,6 @@ export const createTimeWarpFeedbackView = (options: {
 
   return {
     clear,
-    render: (snapshot) => render(snapshot ? snapshot : null),
+    render: (snapshot) => renderFeedback(snapshot ? snapshot : null),
   }
 }
