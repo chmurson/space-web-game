@@ -1,44 +1,62 @@
+import {
+  ScenarioLoadingOverlaySurface,
+  type ScenarioLoadingOverlaySurfaceProps,
+} from './components/ScenarioLoadingOverlaySurface'
+import { createPreactUiSurface } from './createPreactUiSurface'
+
 export type ScenarioLoadingOverlay = {
   setVisible(visible: boolean, label?: string): void
 }
 
 const defaultLabel = 'Loading scenario'
+const hideDelayMs = 160
+
+type ScenarioLoadingOverlayRenderProps = Omit<
+  ScenarioLoadingOverlaySurfaceProps,
+  'rootRef'
+>
 
 export const createScenarioLoadingOverlay = (options: {
   app: HTMLElement
 }): ScenarioLoadingOverlay => {
-  const root = document.createElement('div')
-  root.className = 'scenario-loading-overlay'
-  root.hidden = true
-  root.setAttribute('aria-hidden', 'true')
-  root.innerHTML = `
-    <div class="scenario-loading-panel" role="status" aria-live="polite">
-      <div class="scenario-loading-spinner" aria-hidden="true"></div>
-      <div class="scenario-loading-label">${defaultLabel}</div>
-    </div>
-  `
-  options.app.appendChild(root)
+  const surface = createPreactUiSurface<ScenarioLoadingOverlayRenderProps>({
+    app: options.app,
+    component: ScenarioLoadingOverlaySurface,
+    missingRootError: 'Failed to create scenario loading overlay',
+  })
+  let hidden = true
+  let hideTimer: number | undefined
+  let label = defaultLabel
+  let visible = false
 
-  const labelElement = root.querySelector<HTMLElement>(
-    '.scenario-loading-label',
-  )
+  const renderOverlay = () => {
+    surface.render({ hidden, label, visible })
+  }
+
+  renderOverlay()
 
   return {
-    setVisible(visible, label = defaultLabel) {
-      if (labelElement) {
-        labelElement.textContent = label
+    setVisible(nextVisible, nextLabel = defaultLabel) {
+      const needsDelayedHide = !nextVisible && !hidden
+      label = nextLabel
+      visible = nextVisible
+      hidden = nextVisible ? false : hidden
+
+      if (hideTimer !== undefined) {
+        window.clearTimeout(hideTimer)
+        hideTimer = undefined
       }
 
-      root.hidden = false
-      root.dataset.visible = visible ? 'true' : 'false'
-      root.setAttribute('aria-hidden', visible ? 'false' : 'true')
+      renderOverlay()
 
-      if (!visible) {
-        window.setTimeout(() => {
-          if (root.dataset.visible !== 'true') {
-            root.hidden = true
+      if (needsDelayedHide) {
+        hideTimer = window.setTimeout(() => {
+          if (!visible) {
+            hidden = true
+            renderOverlay()
           }
-        }, 160)
+          hideTimer = undefined
+        }, hideDelayMs)
       }
     },
   }
