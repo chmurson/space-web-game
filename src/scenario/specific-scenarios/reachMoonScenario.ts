@@ -27,10 +27,10 @@ import {
   calculateReachMoonScore,
   formatReachMoonScoreSummary,
   isReachMoonScoreSummary,
+  REACH_MOON_FUEL_CAPACITY_KG,
   type ReachMoonScoreSummary,
 } from './reachMoonScore'
 
-const reachMoonFuelCapacity = 32_000
 const requiredMoonOrbitTurns = 3
 const requiredEarthOrbitTurns = 1
 const moonObjectiveRadiusMultiplier = 35
@@ -113,7 +113,7 @@ const isReachMoonScenarioState = (
 
 const createReachMoonScenario = (): RuntimeScenario => {
   const scenario = createEarthMoonScenario({
-    fuelCapacity: reachMoonFuelCapacity,
+    fuelCapacity: REACH_MOON_FUEL_CAPACITY_KG,
   })
 
   return {
