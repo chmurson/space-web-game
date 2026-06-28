@@ -14,6 +14,8 @@ import { validateReachMoonHighscoreSubmissionReceipt } from '../../src/server/re
 const storeName = 'reach-moon-highscores'
 const receiptSecretEnvName = 'REACH_MOON_RUN_RECEIPT_SECRET'
 const maxRollupEntries = 10
+const maxRepairRecordReads = 1_000
+const rollupWriteAttempts = 3
 const millisecondsPerDay = 86_400_000
 
 export const config = {
@@ -28,15 +30,26 @@ export const config = {
   },
 }
 
+type BlobListResult = {
+  blobs: { etag: string; key: string }[]
+  directories: string[]
+}
+
 type HighscoreBlobStore = {
   get(key: string, options: { type: 'json' }): Promise<unknown | null>
+  getWithMetadata(
+    key: string,
+    options: { type: 'json' },
+  ): Promise<{ data: unknown; etag?: string } | null>
+  list(options: { prefix?: string; paginate: true }): AsyncIterable<BlobListResult>
   list(options?: {
+    paginate?: false
     prefix?: string
-  }): Promise<{ blobs: { etag: string; key: string }[]; directories: string[] }>
+  }): Promise<BlobListResult>
   setJSON(
     key: string,
     data: unknown,
-    options?: { onlyIfNew?: boolean },
+    options?: { onlyIfMatch?: string; onlyIfNew?: boolean },
   ): Promise<{ modified: boolean }>
 }
 
@@ -192,6 +205,22 @@ const isHighscoreRecord = (value: unknown): value is ReachMoonHighscoreRecord =>
   typeof value.score.timePenaltyPoints === 'number' &&
   typeof value.score.totalScore === 'number'
 
+const isHighscoreRollup = (
+  value: unknown,
+  period: ReachMoonHighscorePeriod,
+): value is ReachMoonHighscoreRollup =>
+  isRecord(value) &&
+  value.period === period &&
+  typeof value.generatedAt === 'string' &&
+  Number.isFinite(Date.parse(value.generatedAt)) &&
+  Array.isArray(value.entries) &&
+  value.entries.every(
+    (entry) =>
+      isRecord(entry) &&
+      typeof entry.rank === 'number' &&
+      isHighscoreRecord(entry),
+  )
+
 const readRecord = async (
   store: HighscoreBlobStore,
   key: string,
@@ -201,18 +230,27 @@ const readRecord = async (
   return isHighscoreRecord(storedRecord) ? storedRecord : null
 }
 
-const readRecords = async (
+const readRecordsForRepair = async (
   store: HighscoreBlobStore,
   requiredRecord?: ReachMoonHighscoreRecord,
 ): Promise<ReachMoonHighscoreRecord[]> => {
-  const { blobs } = await store.list({ prefix: recordKeyPrefix })
   const records: ReachMoonHighscoreRecord[] = []
 
-  for (const { key } of blobs) {
-    const record = await readRecord(store, key)
-    if (record != null) {
-      records.push(record)
+  for await (const { blobs } of store.list({
+    paginate: true,
+    prefix: recordKeyPrefix,
+  })) {
+    for (const { key } of blobs) {
+      if (records.length >= maxRepairRecordReads) {
+        break
+      }
+
+      const record = await readRecord(store, key)
+      if (record != null) {
+        records.push(record)
+      }
     }
+    break
   }
 
   if (
@@ -223,6 +261,37 @@ const readRecords = async (
   }
 
   return records
+}
+
+const readRollupCache = async (
+  store: HighscoreBlobStore,
+  period: ReachMoonHighscorePeriod,
+  periodDate: Date,
+): Promise<ReachMoonHighscoreRollup | null> => {
+  const storedRollup = await store.get(getRollupKey(period, periodDate), {
+    type: 'json',
+  })
+
+  return isHighscoreRollup(storedRollup, period) ? storedRollup : null
+}
+
+const readRollupCacheWithEtag = async (
+  store: HighscoreBlobStore,
+  period: ReachMoonHighscorePeriod,
+  periodDate: Date,
+): Promise<{ etag?: string; rollup: ReachMoonHighscoreRollup } | null> => {
+  const storedRollup = await store.getWithMetadata(
+    getRollupKey(period, periodDate),
+    { type: 'json' },
+  )
+
+  return storedRollup != null &&
+    isHighscoreRollup(storedRollup.data, period)
+    ? {
+        etag: storedRollup.etag,
+        rollup: storedRollup.data,
+      }
+    : null
 }
 
 const filterRecordsForPeriod = (
@@ -269,6 +338,7 @@ const writeRollupCache = async (
   store: HighscoreBlobStore,
   rollups: PeriodRollups,
   periodDate: Date,
+  options: { onlyIfNew?: boolean } = {},
 ): Promise<void> => {
   await Promise.allSettled(
     reachMoonHighscorePeriods.map((period) => {
@@ -276,9 +346,94 @@ const writeRollupCache = async (
 
       return rollup == null
         ? Promise.resolve()
-        : store.setJSON(getRollupKey(period, periodDate), rollup)
+        : store.setJSON(getRollupKey(period, periodDate), rollup, options)
     }),
   )
+}
+
+const repairRollupsFromRecords = async (
+  store: HighscoreBlobStore,
+  periods: readonly ReachMoonHighscorePeriod[],
+  periodDate: Date,
+  generatedAt: Date,
+  requiredRecord?: ReachMoonHighscoreRecord,
+): Promise<PeriodRollups> =>
+  createRollupsFromRecords(
+    await readRecordsForRepair(store, requiredRecord),
+    periods,
+    periodDate,
+    generatedAt,
+  )
+
+const mergeRecordIntoRollup = (
+  period: ReachMoonHighscorePeriod,
+  rollup: ReachMoonHighscoreRollup,
+  record: ReachMoonHighscoreRecord,
+  generatedAt: Date,
+): ReachMoonHighscoreRollup =>
+  createTopTenRollup(
+    period,
+    [
+      ...rollup.entries.filter((entry) => entry.id !== record.id),
+      record,
+    ],
+    generatedAt,
+  )
+
+const updateRollupCache = async (
+  store: HighscoreBlobStore,
+  period: ReachMoonHighscorePeriod,
+  record: ReachMoonHighscoreRecord,
+  recordDate: Date,
+  now: Date,
+): Promise<ReachMoonHighscoreRollup> => {
+  const key = getRollupKey(period, recordDate)
+
+  for (let attempt = 0; attempt < rollupWriteAttempts; attempt += 1) {
+    const cached = await readRollupCacheWithEtag(store, period, recordDate)
+    if (cached == null) {
+      const repaired =
+        (
+          await repairRollupsFromRecords(
+            store,
+            [period],
+            recordDate,
+            now,
+            record,
+          )
+        )[period] ?? createTopTenRollup(period, [record], now)
+
+      try {
+        const write = await store.setJSON(key, repaired, { onlyIfNew: true })
+        if (write.modified) {
+          return repaired
+        }
+      } catch {
+        return repaired
+      }
+      continue
+    }
+
+    const rollup = mergeRecordIntoRollup(period, cached.rollup, record, now)
+
+    try {
+      const write =
+        cached.etag == null
+          ? await store.setJSON(key, rollup)
+          : await store.setJSON(key, rollup, { onlyIfMatch: cached.etag })
+      if (write.modified) {
+        return rollup
+      }
+    } catch {
+      return rollup
+    }
+  }
+
+  const current = await readRollupCache(store, period, recordDate)
+
+  return current == null
+    ? createTopTenRollup(period, [record], now)
+    : mergeRecordIntoRollup(period, current, record, now)
 }
 
 const getRequestedPeriods = (
@@ -322,16 +477,32 @@ const buildLeaderboardResponse = async (
   periodDate: Date,
   generatedAt: Date = periodDate,
 ): Promise<LeaderboardResponse> => {
-  const records = await readRecords(store)
+  const rollups: PeriodRollups = {}
+  const missingPeriods: ReachMoonHighscorePeriod[] = []
 
-  return {
-    rollups: createRollupsFromRecords(
-      records,
-      periods,
+  for (const period of periods) {
+    const cachedRollup = await readRollupCache(store, period, periodDate)
+    if (cachedRollup == null) {
+      missingPeriods.push(period)
+    } else {
+      rollups[period] = cachedRollup
+    }
+  }
+
+  if (missingPeriods.length > 0) {
+    const repairedRollups = await repairRollupsFromRecords(
+      store,
+      missingPeriods,
       periodDate,
       generatedAt,
-    ),
+    )
+    Object.assign(rollups, repairedRollups)
+    await writeRollupCache(store, repairedRollups, periodDate, {
+      onlyIfNew: true,
+    })
   }
+
+  return { rollups }
 }
 
 const updateRollups = async (
@@ -340,17 +511,18 @@ const updateRollups = async (
   now: Date,
 ): Promise<LeaderboardResponse> => {
   const recordDate = new Date(record.submittedAt)
-  const records = await readRecords(store, record)
-  const rollups = createRollupsFromRecords(
-    records,
-    reachMoonHighscorePeriods,
-    recordDate,
-    now,
+  const rollupEntries = await Promise.all(
+    reachMoonHighscorePeriods.map(
+      async (
+        period,
+      ): Promise<[ReachMoonHighscorePeriod, ReachMoonHighscoreRollup]> => [
+        period,
+        await updateRollupCache(store, period, record, recordDate, now),
+      ],
+    ),
   )
 
-  await writeRollupCache(store, rollups, recordDate)
-
-  return { rollups }
+  return { rollups: Object.fromEntries(rollupEntries) as PeriodRollups }
 }
 
 const handleGet = async (request: Request, now: Date): Promise<Response> => {
