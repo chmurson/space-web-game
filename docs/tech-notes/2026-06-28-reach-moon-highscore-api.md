@@ -55,5 +55,5 @@ Issue #115 is the backend API slice for Reach the Moon highscores. It provides t
 - CodeRabbit was run with `coderabbit --base main --agent` after the follow-up fix and completed with 0 findings.
 - `npm run deploy:netlify` deployed the non-main branch to the shared staging site:
   - Shared staging URL: https://fanciful-bunny-d77b4b.netlify.app
-  - Unique deploy URL: https://6a418ae229f5ccfdab1610fc--fanciful-bunny-d77b4b.netlify.app
-  - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a418ae229f5ccfdab1610fc
+  - Unique deploy URL: https://6a4190c396403e07e0d7e8a4--fanciful-bunny-d77b4b.netlify.app
+  - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a4190c396403e07e0d7e8a4
