@@ -14,25 +14,24 @@ type StepSelectorValueProps = {
   step: StepSelectorRenderStep
 }
 
-const getStepClassName = (className: string, step: StepSelectorRenderStep) =>
-  [
-    'touch-step-selector-value',
-    className,
-    step.hidden ? 'touch-step-selector-value-hidden' : '',
-    !step.hidden && step.tone === 'blocked'
-      ? 'touch-step-selector-value-disabled'
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-
 const StepSelectorValue = ({ className, step }: StepSelectorValueProps) => (
-  <div class={getStepClassName(className, step)}>
+  <div
+    class={[
+      'touch-step-selector-value',
+      className,
+      step.hidden ? 'touch-step-selector-value-hidden' : '',
+      !step.hidden && step.tone === 'blocked'
+        ? 'touch-step-selector-value-disabled'
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ')}
+  >
     {step.hidden ? '' : step.label}
   </div>
 )
 
-const StepSelectorControlContent = ({
+const StepSelectorControlSurface = ({
   renderState,
 }: {
   renderState: StepSelectorControlRenderState
@@ -89,6 +88,7 @@ export const createStepSelectorControlView = (options: {
   element.className = ['touch-step-selector', options.className ?? '']
     .filter(Boolean)
     .join(' ')
+  element.setAttribute('role', 'group')
   element.setAttribute('aria-label', options.ariaLabel)
   let lastContentRenderKey = ''
 
@@ -130,7 +130,7 @@ export const createStepSelectorControlView = (options: {
       }
       lastContentRenderKey = contentRenderKey
 
-      render(<StepSelectorControlContent renderState={renderState} />, element)
+      render(<StepSelectorControlSurface renderState={renderState} />, element)
     },
   }
 }
