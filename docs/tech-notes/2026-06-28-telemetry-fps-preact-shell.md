@@ -27,14 +27,18 @@ Issue #79 is part of the Preact DOM UI migration. The telemetry strip and FPS me
 
 ## Validation
 
+- `npx vitest run --config vite.config.ts tests/presentation/hudPresentation.test.ts` passed with 5 focused HUD presentation tests.
 - `npm run build` passed, including config validation, TypeScript, and release Vite build. Vite still reports the existing chunk-size warning.
-- `npm test` passed on final rerun; earlier runs hit the pre-existing timing-sensitive `automationTaskClaim` stale-mutex test, and standalone reruns passed.
 - `npm run test:gui` passed with 17 Playwright GUI screenshot/adapter tests.
 - GUI screenshot inspection confirmed the migrated top telemetry strip remained compact and clear in the mobile gameplay HUD screenshots:
   - `tmp/playwright-results/mobileHudScreenshot-captur-666fd-menu-open-over-gameplay-HUD-mobile-chromium/mobile-top-menu-open.png`
-  - `tmp/playwright-results/mobileHudScreenshot-captur-144e3-menu-open-over-gameplay-HUD-mobile-chromium/mobile-in-game-controls-menu.png`
-- Manual Playwright FPS smoke on a temporary local Vite server confirmed the Preact-rendered FPS meter became visible, showed `data-status="good"`, and stayed in the expected top-right HUD position. Artifact: `tmp/playwright-results/manual-fps-meter-smoke.png`.
-- `coderabbit --base main --agent` completed with two minor findings; both were addressed, and a rerun completed with zero findings.
+  - `tmp/playwright-results/mobileHudScreenshot-captur-51097--touch-control-after-reveal-mobile-chromium/mobile-time-warp-control.png`
+  - `tmp/playwright-results/mobileHudScreenshot-captur-37d0d-tor-side-panel-after-reveal-mobile-chromium/mobile-target-selector.png`
+- Manual Playwright FPS smoke on a temporary local Vite server confirmed the Preact-rendered FPS meter became visible, showed `data-status="good"`, and stayed in the expected top-right HUD position. Artifact: `tmp/playwright-results/manual-fps-meter-visible.png`.
+- `coderabbit --base main --agent` initially completed with zero findings. A final rerun after a hidden-state simplification hit a recoverable CodeRabbit rate limit and reported a 33-minute wait.
+- `npm run deploy:netlify` passed and deployed the non-main branch to staging:
+  - Shared staging URL: `https://fanciful-bunny-d77b4b.netlify.app`
+  - Unique deploy URL: `https://6a40b377af6b11fe34710cbc--fanciful-bunny-d77b4b.netlify.app`
 
 ## Follow-Ups
 
