@@ -7,9 +7,10 @@ export type ReachMoonScoreSummary = {
   totalScore: number
 }
 
-const baseScorePoints = 1_000
-const maxFuelBonusPoints = 200
-const timePenaltyPointsPerHour = 4
+export const REACH_MOON_FUEL_CAPACITY_KG = 32_000
+export const REACH_MOON_BASE_SCORE_POINTS = 1_000
+export const REACH_MOON_MAX_FUEL_BONUS_POINTS = 200
+export const REACH_MOON_TIME_PENALTY_POINTS_PER_HOUR = 4
 
 const clampFinite = (value: number) =>
   Number.isFinite(value) ? Math.max(0, value) : 0
@@ -48,22 +49,35 @@ export const calculateReachMoonScore = (input: {
   const fuelRemainingRatio =
     fuelCapacityKg > 0 ? Math.min(1, clampFinite(input.fuelRemainingRatio)) : 0
   const fuelRemainingKg = fuelCapacityKg * fuelRemainingRatio
-  const fuelBonusPoints = Math.round(fuelRemainingRatio * maxFuelBonusPoints)
+  const fuelBonusPoints = Math.round(
+    fuelRemainingRatio * REACH_MOON_MAX_FUEL_BONUS_POINTS,
+  )
   const timePenaltyPoints =
-    Math.floor(missionElapsedSeconds / 3_600) * timePenaltyPointsPerHour
+    Math.floor(missionElapsedSeconds / 3_600) *
+    REACH_MOON_TIME_PENALTY_POINTS_PER_HOUR
 
   return {
-    baseScorePoints,
+    baseScorePoints: REACH_MOON_BASE_SCORE_POINTS,
     fuelBonusPoints,
     fuelRemainingKg,
     missionElapsedSeconds,
     timePenaltyPoints,
     totalScore: Math.max(
       0,
-      baseScorePoints - timePenaltyPoints + fuelBonusPoints,
+      REACH_MOON_BASE_SCORE_POINTS - timePenaltyPoints + fuelBonusPoints,
     ),
   }
 }
+
+export const calculateReachMoonMissionScore = (input: {
+  fuelRemainingRatio: number
+  missionElapsedSeconds: number
+}): ReachMoonScoreSummary =>
+  calculateReachMoonScore({
+    fuelCapacityKg: REACH_MOON_FUEL_CAPACITY_KG,
+    fuelRemainingRatio: input.fuelRemainingRatio,
+    missionElapsedSeconds: input.missionElapsedSeconds,
+  })
 
 export const formatReachMoonScoreSummary = (
   score: ReachMoonScoreSummary,
