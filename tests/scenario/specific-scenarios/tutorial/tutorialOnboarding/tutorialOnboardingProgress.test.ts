@@ -228,7 +228,7 @@ describe('tutorialOnboardingProgress', () => {
       title: 'This Is Your Trajectory',
     })
     expect(getOnboardingDescription('intro-trajectory', 'desktop')).toBe(
-      'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth.',
+      'This line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: trajectory shape matters, and too much speed makes Moon capture harder.',
     )
     expect(
       getTutorialOnboardingPromptContent('intro-trajectory', 'mobile'),

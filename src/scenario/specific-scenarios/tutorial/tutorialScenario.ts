@@ -57,6 +57,12 @@ const getCurrentEarthRadiiDistance = (
   return (distance / EARTH_RADIUS).toFixed(1)
 }
 
+const escapeEarthSpeedGuidance = [
+  ' Aim near ',
+  { text: '10 km/s', tone: 'number' },
+  ' for the Earth-Moon setup, but treat it as guidance: trajectory shape matters, and too much speed makes Moon capture harder.',
+] as const
+
 const getEscapeEarthObjectiveDescription = (
   runtime: AppRuntimeState,
 ): PromptText => {
@@ -78,6 +84,7 @@ const getEscapeEarthObjectiveDescription = (
       ', and the ',
       { text: 'projected path', tone: 'concept' },
       ' to keep opening the gap.',
+      ...escapeEarthSpeedGuidance,
     ]
   }
 
@@ -94,6 +101,7 @@ const getEscapeEarthObjectiveDescription = (
     ', and the ',
     { text: 'projected path', tone: 'concept' },
     ' to keep opening the gap.',
+    ...escapeEarthSpeedGuidance,
   ]
 }
 
@@ -211,7 +219,9 @@ const tutorialPromptDefinitions = {
       { text: 'Moon', tone: 'concept' },
       '. Orbit around it ',
       { text: 'three times', tone: 'number' },
-      ' to complete the lunar phase of the tutorial.',
+      ' to complete the lunar phase of the tutorial. A stable Moon orbit is often around ',
+      { text: '500 m/s to 1.5 km/s', tone: 'number' },
+      '; use that as guidance because closer orbits generally need more speed than wider ones.',
     ],
     buttons: [
       {
@@ -253,7 +263,9 @@ const tutorialPromptDefinitions = {
       { text: 'Earth', tone: 'concept' },
       ' range. Stabilize and complete ',
       { text: 'three Earth orbits', tone: 'number' },
-      ' to finish the tutorial.',
+      ' to finish the tutorial. Earth orbit is often around ',
+      { text: '4 to 7 km/s', tone: 'number' },
+      '; use that as guidance because lower-altitude orbits generally need more speed than wider ones.',
     ],
     buttons: [
       {
