@@ -3,12 +3,13 @@
 ## What Changed
 
 - Debug copy-state payloads now include `trail.renderFrame`, `trail.renderTargetId`, and `trail.targetBound`.
-- The compact visible debug panel trail-detail line now includes the active trail frame, such as `frame inertial` or `frame target-relative Moon`.
+- The compact visible debug panel trail-detail line now labels the active trail frame, such as `trail frame: inertial` or `trail frame: target-relative Moon`.
+- The active trajectory/assist target line is labeled `assist target` so it is not confused with the trail reference frame.
 - Focused tests cover both the target-relative and inertial debug outputs.
 
 ## Why
 
-Trail diagnostics could previously show `target: Moon` without saying whether the trail itself was rendered in the Moon-relative frame. During unbound transfers, that distinction matters because the active assist target can be Moon while the trail remains inertial.
+Trail diagnostics could previously show `target: Moon` without saying whether the trail itself was rendered in the Moon-relative frame. During unbound transfers, that distinction matters because the active assist target can be Moon while the trail remains inertial. Labeling the target as `assist target` and the frame as `trail frame` keeps that distinction visible in the compact debug panel.
 
 ## Key Files
 
@@ -25,17 +26,17 @@ Trail diagnostics could previously show `target: Moon` without saying whether th
 
 ## Validation
 
-- `npx biome check src/presentation/hudPresentation.ts src/ui/hudText.ts tests/ui/hudText.test.ts tests/presentation/hudPresentation.test.ts docs/tech-notes/2026-06-27-trail-render-frame-debug-state.md`: passed.
-- `npx vitest run --config vite.config.ts tests/ui/hudText.test.ts tests/presentation/hudPresentation.test.ts`: passed.
-- `npm run test`: passed, 47 files and 319 tests.
+- `npx biome check src/ui/hudText.ts tests/ui/hudText.test.ts tests/presentation/hudPresentation.test.ts docs/tech-notes/2026-06-27-trail-render-frame-debug-state.md`: passed.
+- `npx vitest run --config vite.config.ts tests/ui/hudText.test.ts tests/presentation/hudPresentation.test.ts`: passed, 2 files and 22 tests.
+- `npm run test`: passed, 47 Vitest files, 319 app tests, and 16 automation-claim tests.
 - `npm run build`: passed.
-- `npm run test:gui`: passed, 11 Playwright GUI tests.
-- Inspected the generated GUI screenshot artifact; it matched the expected mobile top-menu state without overlap.
-- Targeted Playwright debug-panel check passed; visible debug text included `frame target-relative Earth` on the trail-detail line and remained readable.
+- `npm run test:gui`: passed, 15 Playwright GUI tests.
+- Inspected the generated mobile top-menu GUI screenshot artifact; it matched the expected state without overlap.
+- Targeted Playwright debug-panel check passed on `?scenario=moon-capture-debug`; visible debug text included `assist target: Moon`, `trail frame: inertial`, and unbound energy.
+- `git diff --check`: passed.
 - `coderabbit --base main --agent`: completed with 0 findings.
 - Branch-aware staging deploy completed for the configured non-production target; deploy details are recorded in the PR and issue status comments.
 
 ## Follow-Ups
 
-- Issue #61 can use these fields to further clarify target-versus-trail wording if more debug panel refinement is needed.
 - Issue #60 can assert `trail.renderFrame` when adding the Playwright debug replay regression.
