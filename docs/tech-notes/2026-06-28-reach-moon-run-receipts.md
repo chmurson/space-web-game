@@ -38,10 +38,7 @@ The highscore sequence needs a small receipt from the server when a Reach the Mo
 - `git diff --check` passed.
 - `npm test` passed: 50 Vitest files, 336 Vitest tests, and 16 automation-claim tests.
 - `npm run build` passed with the existing Vite large-chunk warning.
-- `npm run deploy:netlify` deployed the non-main branch to the shared staging site:
-  - Shared staging URL: https://fanciful-bunny-d77b4b.netlify.app
-  - Unique deploy URL: https://6a4175d3bea77496bf9292aa--fanciful-bunny-d77b4b.netlify.app
-  - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a4175d3bea77496bf9292aa
+- `npm run deploy:netlify` completed a non-main deploy to the shared staging site.
 
 ## Follow-Ups
 
