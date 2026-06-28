@@ -1,6 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTimeWarpFeedbackView } from '@/ui/touchControls/swipeTimeWarpControl/timeWarpFeedbackView'
 
+vi.mock('preact', () => ({
+  render: (vnode: unknown, element: HTMLElement) => {
+    const label =
+      vnode && typeof vnode === 'object' && 'props' in vnode
+        ? (vnode as { props?: { renderState?: { label?: string } } }).props
+            ?.renderState?.label
+        : ''
+    element.textContent = label ?? ''
+  },
+}))
+
 type FakeClassList = {
   add: (...tokens: string[]) => void
   contains: (token: string) => boolean
