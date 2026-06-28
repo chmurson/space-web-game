@@ -130,6 +130,37 @@ describe('reachMoonRunReceipts', () => {
     expectReceiptError(result, 'invalid_signature')
   })
 
+  it('rejects malformed or oversized run receipt fields before signature verification', async () => {
+    const receipt = await createReachMoonRunReceipt({
+      issuedAt,
+      secret,
+    })
+
+    const malformedSignature = await validateReachMoonRunReceipt(
+      {
+        ...receipt,
+        signature: `${receipt.signature}!`,
+      },
+      {
+        now: issuedAt,
+        secret,
+      },
+    )
+    const oversizedRunId = await validateReachMoonRunReceipt(
+      {
+        ...receipt,
+        runId: 'x'.repeat(65),
+      },
+      {
+        now: issuedAt,
+        secret,
+      },
+    )
+
+    expectReceiptError(malformedSignature, 'invalid_receipt')
+    expectReceiptError(oversizedRunId, 'invalid_receipt')
+  })
+
   it('rejects trivial receipt secrets before signing', async () => {
     await expect(
       createReachMoonRunReceipt({

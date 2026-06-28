@@ -27,6 +27,10 @@ type ReceiptPayload = Omit<ReachMoonRunReceipt, 'signature'>
 
 const textEncoder = new TextEncoder()
 const minRunReceiptSecretBytes = 32
+const maxReceiptIssuedAtLength = 32
+const maxReceiptRunIdLength = 64
+const maxReceiptScenarioIdLength = 64
+const hmacSha256Base64UrlPattern = /^[A-Za-z0-9_-]{43}$/u
 
 const createError = (
   code: ReachMoonRunReceiptValidationError['code'],
@@ -188,7 +192,11 @@ const readReceipt = (receipt: unknown): ReachMoonRunReceiptValidationResult => {
     issuedAt.length === 0 ||
     runId.length === 0 ||
     scenarioId.length === 0 ||
-    signature.length === 0
+    signature.length === 0 ||
+    issuedAt.length > maxReceiptIssuedAtLength ||
+    runId.length > maxReceiptRunIdLength ||
+    scenarioId.length > maxReceiptScenarioIdLength ||
+    !hmacSha256Base64UrlPattern.test(signature)
   ) {
     return invalid(
       'invalid_receipt',
