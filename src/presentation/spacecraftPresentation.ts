@@ -21,6 +21,9 @@ const trailNewestColor = new THREE.Color('#7c8fa8')
 const headingTargetSliceInnerRadiusPx = 20
 const headingTargetSliceOuterRadiusPx = 52
 const headingTargetSliceArcSegmentRadians = Math.PI / 20
+const spacecraftTrailLift = 0.24
+const spacecraftVisualLift = 0.32
+const spacecraftMarkerLift = spacecraftVisualLift
 const normalizeAngleDelta = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 const unwrapAngle = (angle: number, previousAngle: number | null) =>
@@ -117,7 +120,11 @@ const syncSpacecraftTrailGeometry = (
   const trailGeometry = new THREE.BufferGeometry().setFromPoints(
     renderTrailPoints.map((point) => {
       const trailPosition = getSpacecraftTrailRenderPosition(point, target)
-      return renderPosition(trailPosition.x, trailPosition.y, 0.35)
+      return renderPosition(
+        trailPosition.x,
+        trailPosition.y,
+        spacecraftTrailLift,
+      )
     }),
   )
   const trailColors: number[] = []
@@ -153,7 +160,7 @@ const updateSpacecraftWorldVisuals = (options: {
     renderPosition(
       options.spacecraft.position.x,
       options.spacecraft.position.y,
-      1.2,
+      spacecraftVisualLift,
     ),
   )
   options.gameScene.spacecraftMesh.rotation.y = options.displayRotationY
@@ -162,7 +169,7 @@ const updateSpacecraftWorldVisuals = (options: {
     renderPosition(
       options.spacecraft.position.x,
       options.spacecraft.position.y,
-      1.1,
+      spacecraftMarkerLift,
     ),
   )
   options.gameScene.spacecraftMarker.scale.setScalar(
@@ -183,6 +190,7 @@ const updateSpacecraftTrail = (options: {
   renderSampleDistanceMeters: number
 }) => {
   options.gameScene.engineGlow.material.opacity = options.isThrusting ? 0.8 : 0
+  options.gameScene.engineGlow.visible = options.isThrusting
   const renderTarget = options.trimAroundTarget ? options.target : null
   const trailOrigin = renderTarget?.position ?? { x: 0, y: 0 }
   options.gameScene.trail.position.copy(
@@ -229,7 +237,7 @@ const updateSpacecraftCallout = (options: {
   const position = renderPosition(
     options.spacecraft.position.x,
     options.spacecraft.position.y,
-    1.2,
+    spacecraftVisualLift,
   )
   position.project(options.gameScene.camera)
 
@@ -276,7 +284,7 @@ const updateSpacecraftCallout = (options: {
   const forwardPosition = renderPosition(
     options.spacecraft.position.x + forward.x * 1_000_000,
     options.spacecraft.position.y + forward.y * 1_000_000,
-    1.2,
+    spacecraftVisualLift,
   )
   forwardPosition.project(options.gameScene.camera)
   const forwardX = (forwardPosition.x * 0.5 + 0.5) * window.innerWidth
@@ -317,7 +325,7 @@ const updateSpacecraftCallout = (options: {
           const targetPosition = renderPosition(
             options.targetHeadingWorldPosition.x,
             options.targetHeadingWorldPosition.y,
-            1.2,
+            spacecraftVisualLift,
           )
           targetPosition.project(options.gameScene.camera)
           return {
@@ -355,7 +363,7 @@ const updateSpacecraftCallout = (options: {
         camera: options.gameScene.camera,
         center: options.spacecraft.position,
         deltaAngle: remainingPlaneDelta,
-        lift: 1.2,
+        lift: spacecraftVisualLift,
         startAngle: options.spacecraft.heading,
         viewportSize: options.viewportSize,
       }),

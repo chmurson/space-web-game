@@ -464,7 +464,7 @@ export const createGameScene = (
   }
 
   const spacecraftMesh = new THREE.Group()
-  spacecraftMesh.scale.setScalar(1.5)
+  spacecraftMesh.scale.setScalar(0.375)
   const shipBody = new THREE.Mesh(
     new THREE.ConeGeometry(0.08, 0.32, 4),
     new THREE.MeshStandardMaterial({ color: '#e8eef8', roughness: 0.5 }),
@@ -473,37 +473,44 @@ export const createGameScene = (
   spacecraftMesh.add(shipBody)
 
   const engineGlow = new THREE.Mesh(
-    new THREE.ConeGeometry(0.06, 0.16, 12),
+    new THREE.ConeGeometry(0.04, 0.11, 6),
     new THREE.MeshBasicMaterial({
-      color: '#38bdf8',
+      color: '#f59e0b',
+      depthWrite: false,
       transparent: true,
       opacity: 0,
     }),
   )
   engineGlow.position.z = -0.24
   engineGlow.rotation.x = -Math.PI / 2
+  engineGlow.renderOrder = 1
+  engineGlow.visible = false
   spacecraftMesh.add(engineGlow)
   scene.add(spacecraftMesh)
 
   const spacecraftMarker = new THREE.Mesh(
-    new THREE.TorusGeometry(0.25, 0.015, 8, 32),
+    new THREE.TorusGeometry(0.08, 0.003125, 8, 32),
     new THREE.MeshBasicMaterial({
       color: '#67e8f9',
+      depthWrite: false,
       transparent: true,
       opacity: 0.9,
     }),
   )
   spacecraftMarker.rotation.x = Math.PI / 2
+  spacecraftMarker.renderOrder = -1
   scene.add(spacecraftMarker)
 
   const trailPoints: SpacecraftTrailPoint[] = []
   const trailGeometry = new THREE.BufferGeometry()
   const trailMaterial = new THREE.LineBasicMaterial({
+    depthWrite: false,
     vertexColors: true,
     transparent: true,
     opacity: 0.96,
   })
   const trail = new THREE.Line(trailGeometry, trailMaterial)
+  trail.renderOrder = -2
   scene.add(trail)
 
   const replacePredictionLineGeometryOnUpdate =
