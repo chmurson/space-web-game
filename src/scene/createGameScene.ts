@@ -35,6 +35,21 @@ type BodyDayNightLightingUserData = {
   bodySunDirection: THREE.Vector3
 }
 
+const replaceShaderChunk = (
+  shaderSource: string,
+  chunk: string,
+  replacement: string,
+  shaderStage: 'fragment' | 'vertex',
+) => {
+  if (!shaderSource.includes(chunk)) {
+    throw new Error(
+      `Unable to customize body day-night ${shaderStage} shader: missing Three.js shader chunk ${chunk}`,
+    )
+  }
+
+  return shaderSource.replace(chunk, replacement)
+}
+
 const setVisualSunDirection = (
   target: THREE.Vector3,
   renderConfig: ScenarioRenderConfig,
@@ -84,26 +99,29 @@ const addBodyDayNightShader = (
       value: atmosphereTintStrength,
     }
 
-    shader.vertexShader = shader.vertexShader
-      .replace(
+    shader.vertexShader = replaceShaderChunk(
+      replaceShaderChunk(
+        shader.vertexShader,
         '#include <common>',
         [
           '#include <common>',
           'varying vec3 vBodyWorldNormal;',
           'varying vec3 vBodyViewDirection;',
         ].join('\n'),
-      )
-      .replace(
+        'vertex',
+      ),
+      '#include <begin_vertex>',
+      [
         '#include <begin_vertex>',
-        [
-          '#include <begin_vertex>',
-          'vec4 bodyWorldPosition = modelMatrix * vec4(transformed, 1.0);',
-          'vBodyWorldNormal = normalize(mat3(modelMatrix) * objectNormal);',
-          'vBodyViewDirection = normalize(cameraPosition - bodyWorldPosition.xyz);',
-        ].join('\n'),
-      )
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
+        'vec4 bodyWorldPosition = modelMatrix * vec4(transformed, 1.0);',
+        'vBodyWorldNormal = normalize(mat3(modelMatrix) * objectNormal);',
+        'vBodyViewDirection = normalize(cameraPosition - bodyWorldPosition.xyz);',
+      ].join('\n'),
+      'vertex',
+    )
+    shader.fragmentShader = replaceShaderChunk(
+      replaceShaderChunk(
+        shader.fragmentShader,
         '#include <common>',
         [
           '#include <common>',
@@ -113,20 +131,21 @@ const addBodyDayNightShader = (
           'varying vec3 vBodyWorldNormal;',
           'varying vec3 vBodyViewDirection;',
         ].join('\n'),
-      )
-      .replace(
+        'fragment',
+      ),
+      '#include <opaque_fragment>',
+      [
         '#include <opaque_fragment>',
-        [
-          '#include <opaque_fragment>',
-          'float bodySunFacing = dot(normalize(vBodyWorldNormal), normalize(uBodySunDirection));',
-          'float bodyDaylight = smoothstep(-0.18, 0.36, bodySunFacing);',
-          'vec3 bodyReadableNight = diffuseColor.rgb * uBodyNightTextureStrength;',
-          'gl_FragColor.rgb = mix(bodyReadableNight, gl_FragColor.rgb, bodyDaylight);',
-          'float bodyLimb = 1.0 - abs(dot(normalize(vBodyWorldNormal), normalize(vBodyViewDirection)));',
-          'float bodyAtmosphereTint = pow(smoothstep(0.48, 1.0, bodyLimb), 1.8) * smoothstep(-0.08, 0.68, bodySunFacing) * uBodyAtmosphereTintStrength;',
-          'gl_FragColor.rgb += vec3(0.20, 0.45, 0.78) * bodyAtmosphereTint;',
-        ].join('\n'),
-      )
+        'float bodySunFacing = dot(normalize(vBodyWorldNormal), normalize(uBodySunDirection));',
+        'float bodyDaylight = smoothstep(-0.18, 0.36, bodySunFacing);',
+        'vec3 bodyReadableNight = diffuseColor.rgb * uBodyNightTextureStrength;',
+        'gl_FragColor.rgb = mix(bodyReadableNight, gl_FragColor.rgb, bodyDaylight);',
+        'float bodyLimb = 1.0 - abs(dot(normalize(vBodyWorldNormal), normalize(vBodyViewDirection)));',
+        'float bodyAtmosphereTint = pow(smoothstep(0.48, 1.0, bodyLimb), 1.8) * smoothstep(-0.08, 0.68, bodySunFacing) * uBodyAtmosphereTintStrength;',
+        'gl_FragColor.rgb += vec3(0.20, 0.45, 0.78) * bodyAtmosphereTint;',
+      ].join('\n'),
+      'fragment',
+    )
   }
   material.customProgramCacheKey = () => 'body-day-night-lighting-v1'
 }

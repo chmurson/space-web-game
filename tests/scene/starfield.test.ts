@@ -88,6 +88,23 @@ const updateStarfield = (
   })
 }
 
+const createBodyShaderTestInput = () =>
+  ({
+    fragmentShader: [
+      'void main() {',
+      '#include <common>',
+      '#include <opaque_fragment>',
+      '}',
+    ].join('\n'),
+    uniforms: {},
+    vertexShader: [
+      'void main() {',
+      '#include <common>',
+      '#include <begin_vertex>',
+      '}',
+    ].join('\n'),
+  }) as Parameters<THREE.MeshStandardMaterial['onBeforeCompile']>[0]
+
 describe('createStarfield', () => {
   it('generates deterministic layer geometry for the same camera view', () => {
     const first = createStarfield()
@@ -359,6 +376,33 @@ describe('createGameScene', () => {
     ).toBe(scene.visualSunDirection)
   })
 
+  it('injects body day-night shader chunks explicitly', () => {
+    const scene = createTestGameScene([createBody()])
+    const earth = scene.bodyMeshes.get('earth')
+    const material = earth?.material
+    const shader = createBodyShaderTestInput()
+
+    expect(material).toBeInstanceOf(THREE.MeshStandardMaterial)
+    ;(material as THREE.MeshStandardMaterial).onBeforeCompile(
+      shader,
+      {} as THREE.WebGLRenderer,
+    )
+
+    expect(shader.vertexShader).toContain('varying vec3 vBodyWorldNormal;')
+    expect(shader.vertexShader).toContain(
+      'vec4 bodyWorldPosition = modelMatrix * vec4(transformed, 1.0);',
+    )
+    expect(shader.fragmentShader).toContain('uniform vec3 uBodySunDirection;')
+    expect(shader.fragmentShader).toContain(
+      'gl_FragColor.rgb = mix(bodyReadableNight, gl_FragColor.rgb, bodyDaylight);',
+    )
+    expect(shader.uniforms.uBodySunDirection.value).toBe(
+      scene.visualSunDirection,
+    )
+    expect(shader.uniforms.uBodyNightTextureStrength.value).toBeGreaterThan(0)
+    expect(shader.uniforms.uBodyAtmosphereTintStrength.value).toBeGreaterThan(0)
+  })
+
   it('applies configured scenario sun direction to scene lighting', () => {
     const scene = createTestGameScene([createBody()], undefined, {
       sunlightDirection: { x: 1, y: 0 },
@@ -375,6 +419,13 @@ describe('createGameScene', () => {
     })
 
     expect(scene.visualSunDirection.x).toBeCloseTo(0)
+    expect(scene.visualSunDirection.y).toBeGreaterThan(0)
     expect(scene.visualSunDirection.z).toBeLessThan(0)
+
+    const sunLightDirection = scene.sunLight.position.clone().normalize()
+    expect(sunLightDirection.x).toBeCloseTo(scene.visualSunDirection.x)
+    expect(sunLightDirection.y).toBeCloseTo(scene.visualSunDirection.y)
+    expect(sunLightDirection.z).toBeCloseTo(scene.visualSunDirection.z)
+    expect(scene.sunLight.position.y).toBeGreaterThan(0)
   })
 })
