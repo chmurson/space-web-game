@@ -2,7 +2,10 @@ import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ScenarioAssets } from '@/render/scenarioAssets'
-import { createGameScene } from '@/scene/createGameScene'
+import {
+  applyScenarioRenderConfigToScene,
+  createGameScene,
+} from '@/scene/createGameScene'
 import { createStarfield, type Starfield } from '@/scene/starfield'
 import type { Body } from '@/simulation/types'
 
@@ -22,6 +25,7 @@ const createBody = (overrides: Partial<Body> = {}): Body => ({
 const createTestGameScene = (
   bodies: Body[] = [],
   scenarioAssets?: ScenarioAssets,
+  scenarioRenderConfig?: Parameters<typeof createGameScene>[3],
 ) =>
   createGameScene(
     bodies,
@@ -33,6 +37,7 @@ const createTestGameScene = (
       replaceLineGeometryOnUpdate: true,
     },
     scenarioAssets,
+    scenarioRenderConfig,
   )
 
 const getLayerPoints = (starfield: Starfield, layerIndex: number) => {
@@ -324,5 +329,52 @@ describe('createGameScene', () => {
     expect((material as THREE.ShaderMaterial).fragmentShader).toContain(
       'edgeGlow',
     )
+    expect((material as THREE.ShaderMaterial).fragmentShader).toContain(
+      'uAtmosphereSunDirection',
+    )
+  })
+
+  it('drives body day-night materials from the default render sun direction', () => {
+    const scene = createTestGameScene([createBody()])
+    const earth = scene.bodyMeshes.get('earth')
+    const material = earth?.material
+
+    expect(scene.visualSunDirection.x).toBeCloseTo(0)
+    expect(scene.visualSunDirection.y).toBeGreaterThan(0)
+    expect(scene.visualSunDirection.z).toBeGreaterThan(0)
+    expect(scene.sunLight.position.z).toBeGreaterThan(0)
+    expect(material).toBeInstanceOf(THREE.MeshStandardMaterial)
+    expect(
+      (material as THREE.MeshStandardMaterial).customProgramCacheKey(),
+    ).toBe('body-day-night-lighting-v1')
+    expect(
+      (
+        (material as THREE.MeshStandardMaterial).userData
+          .bodyDayNightLighting as {
+          bodyAtmosphereTintStrength: number
+          bodyNightTextureStrength: number
+          bodySunDirection: THREE.Vector3
+        }
+      ).bodySunDirection,
+    ).toBe(scene.visualSunDirection)
+  })
+
+  it('applies configured scenario sun direction to scene lighting', () => {
+    const scene = createTestGameScene([createBody()], undefined, {
+      sunlightDirection: { x: 1, y: 0 },
+    })
+
+    expect(scene.visualSunDirection.x).toBeLessThan(0)
+    expect(scene.visualSunDirection.y).toBeGreaterThan(0)
+    expect(scene.visualSunDirection.z).toBeCloseTo(0)
+    expect(scene.sunLight.position.x).toBeLessThan(0)
+    expect(scene.sunLight.position.z).toBeCloseTo(0)
+
+    applyScenarioRenderConfigToScene(scene, {
+      sunlightDirection: { x: 0, y: 1 },
+    })
+
+    expect(scene.visualSunDirection.x).toBeCloseTo(0)
+    expect(scene.visualSunDirection.z).toBeLessThan(0)
   })
 })

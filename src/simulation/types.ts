@@ -35,12 +35,17 @@ export type TargetHeadingTurn = {
   targetHeading: number
 }
 
+export type ScenarioRenderConfigInput = {
+  sunlightDirection?: Vec2
+}
+
 export type Scenario = {
   id: string
   name: string
   description: string
   bodies: Body[]
   spacecraft: Spacecraft
+  render?: ScenarioRenderConfigInput
 }
 
 export type SimulationState = {

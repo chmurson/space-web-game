@@ -8,6 +8,7 @@ import type {
   CameraControlMode,
   GlobalScenarioDirectiveLimits,
 } from '../scenario/scenarioDirectiveTypes'
+import { resolveScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
 import type {
   AppRuntimeScenarioSlice,
   AppRuntimeSimulationSlice,
@@ -25,7 +26,7 @@ export type ScenarioRuntimeTransition = {
   assistTargetSelectionMode?: AppRuntimeSimulationSlice['assistTargetSelectionMode']
   cameraMode: CameraControlMode
   coastPredictionHorizonHours: number
-  scenario: Pick<AppRuntimeScenarioSlice, 'metadata' | 'session'>
+  scenario: Pick<AppRuntimeScenarioSlice, 'metadata' | 'render' | 'session'>
   state: AppRuntimeSimulationSlice['state']
   viewportSize: number
 }
@@ -59,6 +60,7 @@ export const createScenarioRuntimeTransition = (
         description: scenario.description,
         title: scenario.name,
       } satisfies RuntimeScenarioMetadata,
+      render: resolveScenarioRenderConfig(scenario.render),
       session: runtimeScenarioState.scenarioSession,
     },
     state: runtimeScenarioState.state,
@@ -142,6 +144,9 @@ export const createScenarioRuntimeController = (options: {
               description: loadedDebugScenario.scenario.description,
               title: loadedDebugScenario.scenario.name,
             },
+            render: resolveScenarioRenderConfig(
+              loadedDebugScenario.scenario.render,
+            ),
             session: loadedDebugScenario.runtimeState.scenarioSession,
           },
           state: loadedDebugScenario.runtimeState.state,

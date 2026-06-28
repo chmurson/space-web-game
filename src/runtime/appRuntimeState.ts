@@ -3,6 +3,7 @@ import type {
   CameraControlMode,
   RuntimeScenarioDirectives,
 } from '../scenario/scenarioDirectiveTypes'
+import type { ScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
@@ -58,6 +59,7 @@ export const createDefaultCameraControlUiState = (
 export type AppRuntimeScenarioSlice = {
   directives: RuntimeScenarioDirectives
   metadata: RuntimeScenarioMetadata
+  render?: ScenarioRenderConfig
   session: RuntimeScenarioSession
 }
 

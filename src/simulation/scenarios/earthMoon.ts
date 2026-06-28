@@ -10,6 +10,7 @@ import type { Scenario } from '../types'
 
 type EarthMoonScenarioOptions = {
   fuelCapacity?: number
+  render?: Scenario['render']
 }
 
 export const createEarthMoonScenario = (
@@ -32,6 +33,7 @@ export const createEarthMoonScenario = (
     id: 'earth-moon',
     name: 'Earth-Moon sandbox',
     description: 'Practice burns in a simplified Earth-Moon plane.',
+    render: options.render,
     bodies: [
       {
         id: 'earth',
