@@ -1,3 +1,5 @@
+import { createEdgeRevealControlView } from './edgeRevealControlView'
+
 export type TouchControlRevealEdge = 'left' | 'right'
 
 export type TouchControlRevealPlacement = {
@@ -41,31 +43,18 @@ const getTouchById = (touches: TouchList, touchId: number) =>
 export const createEdgeRevealControl = (
   options: EdgeRevealControlOptions,
 ): EdgeRevealControl => {
-  const root = document.createElement('section')
-  root.id = options.id
-  root.className = [
-    'touch-edge-reveal-control',
-    `touch-edge-reveal-control-${options.placement.edge}`,
-    options.className ?? '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-  root.dataset.edgeRevealId = options.id
-
-  const tab = document.createElement('button')
-  tab.className = 'touch-edge-reveal-tab'
-  tab.type = 'button'
-  tab.setAttribute('aria-controls', `${options.id}-content`)
-  tab.setAttribute('aria-expanded', 'false')
-  tab.setAttribute('aria-label', options.label)
-  tab.textContent = options.icon ?? options.label
-
-  const content = document.createElement('div')
-  content.id = `${options.id}-content`
-  content.className = 'touch-edge-reveal-content'
+  const view = createEdgeRevealControlView({
+    className: options.className,
+    contentId: `${options.id}-content`,
+    edge: options.placement.edge,
+    icon: options.icon ?? options.label,
+    id: options.id,
+    label: options.label,
+  })
+  const root = view.element
+  const tab = view.tab
+  const content = view.content
   content.appendChild(options.content)
-
-  root.append(tab, content)
 
   const revealThresholdPx =
     options.revealThresholdPx ?? defaultRevealThresholdPx
