@@ -217,10 +217,46 @@ test('preserves touch target selector semantics and activation behavior', async 
       stateChangeCount,
     }
 
+    targetState = {
+      activeTarget: bodies[0],
+      mode: 'auto',
+      recommendedTarget: bodies[1],
+    }
+    control.syncUi()
+    const marsButtonForForcedRerenderTap = rowButtons()[2]
+    dispatchTouch(marsButtonForForcedRerenderTap, 'touchstart', {
+      id: 11,
+      x: 10,
+      y: 10,
+    })
+    targetState = {
+      activeTarget: bodies[0],
+      mode: 'forced',
+      recommendedTarget: bodies[1],
+    }
+    control.syncUi()
+    const forcedRerenderTapTouchEndAllowed = dispatchTouch(
+      rowButtons()[2],
+      'touchend',
+      {
+        id: 11,
+        x: 12,
+        y: 12,
+      },
+    )
+    const afterForcedRerenderTouchTap = {
+      bubbledTouchEndCount,
+      commitCount,
+      forcedRerenderTapTouchEndAllowed,
+      selectedIndexes: [...selectedIndexes],
+      stateChangeCount,
+    }
+
     fixture.remove()
 
     return {
       afterAutomaticClickFromAuto,
+      afterForcedRerenderTouchTap,
       afterManualClick,
       afterMovedTouch,
       afterReturnToAutomatic,
@@ -307,6 +343,13 @@ test('preserves touch target selector semantics and activation behavior', async 
     bubbledTouchEndCount: 1,
     commitCount: 3,
     rerenderTapTouchEndAllowed: false,
+    selectedIndexes: [0, 2, 2, 2],
+    stateChangeCount: 5,
+  })
+  expect(result.afterForcedRerenderTouchTap).toEqual({
+    bubbledTouchEndCount: 1,
+    commitCount: 3,
+    forcedRerenderTapTouchEndAllowed: false,
     selectedIndexes: [0, 2, 2, 2],
     stateChangeCount: 5,
   })

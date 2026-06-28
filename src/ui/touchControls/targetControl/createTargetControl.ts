@@ -61,6 +61,9 @@ export const createTargetControl = (options: {
   }
 
   const commitManualTarget = (index: number) => {
+    if (options.getTargetState().mode === 'forced') {
+      return
+    }
     if (options.onSelectTargetIndex(index)) {
       syncAfterTargetStateChange()
       options.onCommit?.()
