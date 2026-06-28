@@ -265,8 +265,7 @@ export const createTouchControls = (options: {
   const panel = document.createElement('section')
   panel.className = 'touch-controls'
 
-  const tutorialHint = createTouchControlsTutorialHint()
-  panel.appendChild(tutorialHint.element)
+  const tutorialHint = createTouchControlsTutorialHint({ container: panel })
 
   const tapTouches = new Map<number, TapState>()
   let activeSession: ActiveGestureSession = { kind: 'none' }
