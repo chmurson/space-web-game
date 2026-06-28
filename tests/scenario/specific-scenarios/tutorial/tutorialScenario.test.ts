@@ -566,7 +566,7 @@ describe('tutorialScenario', () => {
       title: 'Escape Earth',
     })
     expect(getPromptTextContent(activePrompt?.description)).toBe(
-      "Keep flying until you reach 5 Earth radii from Earth's center. You are about 5.2 Earth radii out now. Use burns, time warp, and the projected path to keep opening the gap.",
+      "Keep flying until you reach 5 Earth radii from Earth's center. You are about 5.2 Earth radii out now. Use burns, time warp, and the projected path to keep opening the gap. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: lower speeds can still work on some arcs, and too much speed makes Moon capture harder.",
     )
   })
 
@@ -589,7 +589,51 @@ describe('tutorialScenario', () => {
       title: 'Escape Earth',
     })
     expect(getPromptTextContent(activePrompt?.description)).toBe(
-      "Keep flying until you reach 5 Earth radii from Earth's center. Use burns, time warp, and the projected path to keep opening the gap.",
+      "Keep flying until you reach 5 Earth radii from Earth's center. Use burns, time warp, and the projected path to keep opening the gap. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: lower speeds can still work on some arcs, and too much speed makes Moon capture harder.",
+    )
+  })
+
+  it('shows orbit speed guidance as approximate ranges', () => {
+    const runtime = createRuntime()
+
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      {
+        phase: 'orbit-moon',
+        orbitProgressRadians: 0,
+        orbitTurnsCompleted: 0,
+      },
+      {
+        activePromptId: 'orbit-moon-intro',
+        replayPromptId: 'phase-two-intro',
+      },
+    )
+    expect(
+      getPromptTextContent(
+        resolveScenarioPrompts(runtime, 'desktop').active?.description,
+      ),
+    ).toBe(
+      'You are close to the Moon. Orbit around it three times to complete the lunar phase of the tutorial. A stable Moon orbit is often around 500 m/s to 1.5 km/s; use that as guidance because closer orbits generally need more speed than wider ones.',
+    )
+
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      {
+        phase: 'orbit-earth',
+        orbitProgressRadians: 0,
+        orbitTurnsCompleted: 0,
+      },
+      {
+        activePromptId: 'orbit-earth-intro',
+        replayPromptId: 'phase-three-intro',
+      },
+    )
+    expect(
+      getPromptTextContent(
+        resolveScenarioPrompts(runtime, 'desktop').active?.description,
+      ),
+    ).toBe(
+      'You are back in Earth range. Stabilize and complete three Earth orbits to finish the tutorial. Earth orbit is often around 4 to 7 km/s; use that as guidance because lower-altitude orbits generally need more speed than wider ones.',
     )
   })
 
