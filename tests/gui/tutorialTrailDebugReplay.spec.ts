@@ -213,7 +213,7 @@ const getRenderedTrailSliceCount = (debugText: string | null) => {
 
 const expectWebglCanvasNonblank = async (page: Page) => {
   await page.waitForFunction(() => {
-    const canvas = document.querySelector('canvas')
+    const canvas = document.querySelector('#app > canvas')
     if (!(canvas instanceof HTMLCanvasElement)) {
       return false
     }
