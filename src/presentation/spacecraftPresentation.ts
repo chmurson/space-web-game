@@ -18,6 +18,7 @@ import {
 
 const trailOldestColor = new THREE.Color('#0b1220')
 const trailNewestColor = new THREE.Color('#7c8fa8')
+const flightPlaneCueViewportScale = 0.055
 const headingTargetSliceInnerRadiusPx = 20
 const headingTargetSliceOuterRadiusPx = 52
 const normalizeAngleDelta = (angle: number) =>
@@ -145,6 +146,17 @@ const updateSpacecraftWorldVisuals = (options: {
     Math.max(1, options.viewportSize / 520),
   )
   options.gameScene.spacecraftMarker.visible = !useSymbolicShip
+  options.gameScene.flightPlaneCue.position.copy(
+    renderPosition(
+      options.spacecraft.position.x,
+      options.spacecraft.position.y,
+      0.08,
+    ),
+  )
+  options.gameScene.flightPlaneCue.scale.setScalar(
+    options.viewportSize * flightPlaneCueViewportScale,
+  )
+  options.gameScene.flightPlaneCue.visible = true
 }
 
 const updateSpacecraftTrail = (options: {

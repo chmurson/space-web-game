@@ -19,6 +19,9 @@ const EARTH_ATMOSPHERE_WIDTH_SEGMENTS = 96
 const EARTH_ATMOSPHERE_HEIGHT_SEGMENTS = 48
 const EARTH_CLOUD_RADIUS_MULTIPLIER = 1.001
 const EARTH_CLOUD_OPACITY = 0.95
+const FLIGHT_PLANE_CUE_SEGMENTS = 64
+const FLIGHT_PLANE_CUE_AXIS_INNER_RADIUS = 0.52
+const FLIGHT_PLANE_CUE_AXIS_OUTER_RADIUS = 0.98
 
 const createEarthAtmosphereRimMaterial = () =>
   new THREE.ShaderMaterial({
@@ -93,6 +96,73 @@ const createEarthCloudLayer = (radius: number) => {
   return cloudLayer
 }
 
+const addLineSegment = (
+  positions: number[],
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+) => {
+  positions.push(start.x, start.y, start.z, end.x, end.y, end.z)
+}
+
+const createFlightPlaneCueGeometry = () => {
+  const positions: number[] = []
+
+  for (let index = 0; index < FLIGHT_PLANE_CUE_SEGMENTS; index += 1) {
+    const startAngle = (Math.PI * 2 * index) / FLIGHT_PLANE_CUE_SEGMENTS
+    const endAngle = (Math.PI * 2 * (index + 1)) / FLIGHT_PLANE_CUE_SEGMENTS
+    addLineSegment(
+      positions,
+      new THREE.Vector3(Math.cos(startAngle), 0, Math.sin(startAngle)),
+      new THREE.Vector3(Math.cos(endAngle), 0, Math.sin(endAngle)),
+    )
+  }
+
+  addLineSegment(
+    positions,
+    new THREE.Vector3(FLIGHT_PLANE_CUE_AXIS_INNER_RADIUS, 0, 0),
+    new THREE.Vector3(FLIGHT_PLANE_CUE_AXIS_OUTER_RADIUS, 0, 0),
+  )
+  addLineSegment(
+    positions,
+    new THREE.Vector3(-FLIGHT_PLANE_CUE_AXIS_INNER_RADIUS, 0, 0),
+    new THREE.Vector3(-FLIGHT_PLANE_CUE_AXIS_OUTER_RADIUS, 0, 0),
+  )
+  addLineSegment(
+    positions,
+    new THREE.Vector3(0, 0, FLIGHT_PLANE_CUE_AXIS_INNER_RADIUS),
+    new THREE.Vector3(0, 0, FLIGHT_PLANE_CUE_AXIS_OUTER_RADIUS),
+  )
+  addLineSegment(
+    positions,
+    new THREE.Vector3(0, 0, -FLIGHT_PLANE_CUE_AXIS_INNER_RADIUS),
+    new THREE.Vector3(0, 0, -FLIGHT_PLANE_CUE_AXIS_OUTER_RADIUS),
+  )
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(positions, 3),
+  )
+  return geometry
+}
+
+const createFlightPlaneCue = () => {
+  const cue = new THREE.LineSegments(
+    createFlightPlaneCueGeometry(),
+    new THREE.LineBasicMaterial({
+      color: '#7dd3fc',
+      depthWrite: false,
+      opacity: 0.24,
+      toneMapped: false,
+      transparent: true,
+    }),
+  )
+  cue.name = 'flight-plane-cue'
+  cue.scale.setScalar(0)
+  cue.visible = false
+  return cue
+}
+
 export type SpacecraftTrailPoint = {
   elapsed: number
   position: Vec2
@@ -124,6 +194,10 @@ export type GameSceneRefs = {
   desiredVelocityMaterial: LineMaterial
   debugGrid: THREE.GridHelper
   engineGlow: THREE.Mesh<THREE.ConeGeometry, THREE.MeshBasicMaterial>
+  flightPlaneCue: THREE.LineSegments<
+    THREE.BufferGeometry,
+    THREE.LineBasicMaterial
+  >
   impactGradientGeometry: LineGeometry
   impactGradientLine: Line2
   impactGradientMaterial: LineMaterial
@@ -318,6 +392,9 @@ export const createGameScene = (
   spacecraftMarker.rotation.x = Math.PI / 2
   scene.add(spacecraftMarker)
 
+  const flightPlaneCue = createFlightPlaneCue()
+  scene.add(flightPlaneCue)
+
   const trailPoints: SpacecraftTrailPoint[] = []
   const trailGeometry = new THREE.BufferGeometry()
   const trailMaterial = new THREE.LineBasicMaterial({
@@ -472,6 +549,7 @@ export const createGameScene = (
     desiredVelocityMaterial,
     debugGrid,
     engineGlow,
+    flightPlaneCue,
     impactGradientGeometry,
     impactGradientLine,
     impactGradientMaterial,
