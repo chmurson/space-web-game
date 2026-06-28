@@ -302,6 +302,7 @@ export const createHudPresentation = (options: {
       options.overlayUi.scenarioPromptTrajectoryGuideLine,
     replayButton: options.overlayUi.scenarioPromptReplayButton,
     replayButtonLabel: options.overlayUi.scenarioPromptReplayButtonLabel,
+    renderSurface: options.overlayUi.renderScenarioPromptSurface,
   }
   const scenarioPromptUpdater = createScenarioPromptUpdater(scenarioPromptRefs)
 

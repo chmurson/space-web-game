@@ -141,6 +141,35 @@ test('captures the mobile Reach the Moon replay pill transition', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-replay-pill')
 })
 
+test('keeps the Reach the Moon replay pill wired to the prompt adapter', async ({
+  page,
+}) => {
+  await startReachMoonMission(page)
+
+  const replayPill = page.getByRole('button', { name: 'Mission Brief' })
+  await expect(replayPill).toBeVisible()
+  await expect(page.locator('.scenario-prompt-pill-label')).toHaveText(
+    'Mission Brief',
+  )
+
+  await replayPill.click()
+  await expect(replayPill).toBeHidden()
+  await expect(
+    page.getByRole('heading', { name: 'Reach the Moon' }),
+  ).toBeVisible()
+
+  const closeButton = page.locator('.scenario-prompt [data-role="close"]')
+  await expect(closeButton).toBeVisible()
+  await expect(closeButton).toHaveAttribute(
+    'data-prompt-action',
+    /dismiss_to_replay/,
+  )
+
+  await closeButton.click()
+  await expect(page.locator('.scenario-prompt')).toBeHidden()
+  await expect(replayPill).toBeVisible()
+})
+
 test('refreshes stale main menu load state when the snapshot disappears', async ({
   page,
 }) => {

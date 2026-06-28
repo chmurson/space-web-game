@@ -1,15 +1,11 @@
 import type { Body } from '../../simulation/types'
 import { createDebugPanel, type DebugPanel } from '../debugPanel'
+import {
+  createScenarioPromptUI,
+  type ScenarioPromptSurfaceRenderer,
+} from '../scenario-prompts/scenario-prompts'
 import '../targetBodyGlyphs.css'
 import './overlayUIStyles.css'
-
-const replayPromptIconMarkup = `
-  <svg class="scenario-prompt-pill-icon" viewBox="0 0 20 20" aria-hidden="true">
-    <path d="M10 1.75 16.3 5.4v9.2L10 18.25 3.7 14.6V5.4Z"></path>
-    <path d="M10 5.15v5.35"></path>
-    <circle cx="10" cy="13.65" r="0.9"></circle>
-  </svg>
-`
 
 const crashIconMarkup = `
   <svg class="telemetry-crash-icon telemetry-crash-icon-burst" viewBox="0 0 16 16" aria-hidden="true">
@@ -48,6 +44,7 @@ export type OverlayUiRefs = {
   headingTargetOverlay: SVGSVGElement
   headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
+  renderScenarioPromptSurface: ScenarioPromptSurfaceRenderer
   scenarioPrompt: HTMLElement
   scenarioPromptCloseButton: HTMLButtonElement | null
   scenarioPromptConfirmButton: HTMLButtonElement | null
@@ -156,35 +153,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const fpsIndicator = document.createElement('div')
   fpsIndicator.className = 'fps-indicator'
 
-  const scenarioPrompt = document.createElement('div')
-  scenarioPrompt.className = 'scenario-prompt-backdrop'
-  scenarioPrompt.style.display = 'none'
-  scenarioPrompt.innerHTML = `
-    <svg class="scenario-prompt-trajectory-guide" aria-hidden="true" focusable="false">
-      <polyline class="scenario-prompt-trajectory-guide-line" points=""></polyline>
-    </svg>
-    <div class="scenario-prompt">
-      <div class="scenario-prompt-arrow"></div>
-      <div class="scenario-prompt-header">
-        <h2></h2>
-        <button type="button" data-role="close" class="scenario-prompt-close-button" aria-label="Close scenario prompt">&times;</button>
-      </div>
-      <p></p>
-      <div class="scenario-prompt-actions">
-        <button type="button" data-role="confirm"></button>
-        <button type="button" data-role="secondary"></button>
-        <button type="button" data-role="restart" class="scenario-prompt-restart-button">Restart scenario</button>
-      </div>
-    </div>
-  `
-  options.app.appendChild(scenarioPrompt)
-
-  const trajectoryCoachAnchor = document.createElement('div')
-  trajectoryCoachAnchor.className = 'scenario-trajectory-coach-anchor'
-  trajectoryCoachAnchor.setAttribute('aria-hidden', 'true')
-  trajectoryCoachAnchor.style.display = 'none'
-  options.app.appendChild(trajectoryCoachAnchor)
-
   const fuelDepletedNotice = document.createElement('div')
   fuelDepletedNotice.className =
     'hud-notice hud-notice-durable fuel-depleted-notice'
@@ -200,16 +168,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   `
   bottomPillArea.appendChild(fuelDepletedNotice)
 
-  const scenarioPromptReplayButton = document.createElement('button')
-  scenarioPromptReplayButton.type = 'button'
-  scenarioPromptReplayButton.className =
-    'hud-notice hud-notice-durable scenario-prompt-pill'
-  scenarioPromptReplayButton.style.display = 'none'
-  scenarioPromptReplayButton.innerHTML = `
-    ${replayPromptIconMarkup}
-    <span class="scenario-prompt-pill-label"></span>
-  `
-  bottomPillArea.appendChild(scenarioPromptReplayButton)
+  const scenarioPromptUi = createScenarioPromptUI(options.app, bottomPillArea)
 
   const cameraUnlockNotice = document.createElement('div')
   cameraUnlockNotice.className = 'hud-notice hud-notice-transient'
@@ -332,37 +291,23 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     headingTargetOverlay,
     headingTargetTurnSlice,
     offscreenIndicators,
-    scenarioPrompt,
-    scenarioPromptCloseButton: scenarioPrompt.querySelector<HTMLButtonElement>(
-      '[data-role="close"]',
-    ),
-    scenarioPromptConfirmButton:
-      scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="confirm"]'),
-    scenarioPromptDescription:
-      scenarioPrompt.querySelector<HTMLParagraphElement>('p'),
-    scenarioPromptReplayButton,
-    scenarioPromptReplayButtonLabel:
-      scenarioPromptReplayButton.querySelector<HTMLSpanElement>(
-        '.scenario-prompt-pill-label',
-      ),
-    scenarioPromptRestartButton:
-      scenarioPrompt.querySelector<HTMLButtonElement>('[data-role="restart"]'),
-    scenarioPromptSecondaryButton:
-      scenarioPrompt.querySelector<HTMLButtonElement>(
-        '[data-role="secondary"]',
-      ),
-    scenarioPromptTitle: scenarioPrompt.querySelector<HTMLHeadingElement>('h2'),
-    scenarioPromptTrajectoryGuide: scenarioPrompt.querySelector<SVGSVGElement>(
-      '.scenario-prompt-trajectory-guide',
-    ),
+    renderScenarioPromptSurface: scenarioPromptUi.renderSurface,
+    scenarioPrompt: scenarioPromptUi.backdropElement,
+    scenarioPromptCloseButton: scenarioPromptUi.closeButton,
+    scenarioPromptConfirmButton: scenarioPromptUi.confirmButton,
+    scenarioPromptDescription: scenarioPromptUi.descriptionElement,
+    scenarioPromptReplayButton: scenarioPromptUi.replayButton,
+    scenarioPromptReplayButtonLabel: scenarioPromptUi.replayButtonLabel,
+    scenarioPromptRestartButton: scenarioPromptUi.restartButton,
+    scenarioPromptSecondaryButton: scenarioPromptUi.secondaryButton,
+    scenarioPromptTitle: scenarioPromptUi.titleElement,
+    scenarioPromptTrajectoryGuide: scenarioPromptUi.trajectoryGuideElement,
     scenarioPromptTrajectoryGuideLine:
-      scenarioPrompt.querySelector<SVGPolylineElement>(
-        '.scenario-prompt-trajectory-guide-line',
-      ),
+      scenarioPromptUi.trajectoryGuideLineElement,
     spacecraftCallout,
     spacecraftCalloutLabel,
     spacecraftIconThrust,
-    trajectoryCoachAnchor,
+    trajectoryCoachAnchor: scenarioPromptUi.trajectoryAnchorElement,
     statAssist: null,
     statEngine: null,
     statFuel: topBar.querySelector<HTMLElement>('[data-stat="fuel"]'),
