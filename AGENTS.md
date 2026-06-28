@@ -12,6 +12,14 @@
 - When adding a new scoped `AGENTS.md`, add a link here with a brief explanation of its scope.
 - [extension/space-web-game-devtools/AGENTS.md](extension/space-web-game-devtools/AGENTS.md): Chrome DevTools extension guidance, including when to bump the extension manifest version.
 
+## Design Guidance
+
+- `DESIGN.md` is the repo-local source of truth for the current shipped game-surface visual system.
+- Before UI, HUD, menu, dialog, overlay, touch-control, visual style, copy tone, or responsive layout changes, read `DESIGN.md` before editing files.
+- If implementation intentionally diverges from `DESIGN.md`, update `DESIGN.md` in the same change or call out why the divergence should become a follow-up issue.
+- For HUD, menu, overlay, touch-control, and responsive UI work, continue using `npm run test:gui` when relevant and inspect the generated screenshot artifact.
+- Extension UI should also follow any scoped guidance in `extension/space-web-game-devtools/AGENTS.md`; if extension-specific design rules later diverge, add a scoped design note instead of overloading the game-surface guidance.
+
 ## Deployment
 
 - This repository has one production Netlify target and multiple non-production staging targets:
