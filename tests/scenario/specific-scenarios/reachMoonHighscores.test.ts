@@ -211,7 +211,7 @@ describe('reachMoonHighscores', () => {
     ])
   })
 
-  it('creates rollups with ranked entries', () => {
+  it('creates rollups with ranked entries and normalized generatedAt strings', () => {
     const rollup = createReachMoonHighscoreRollup(
       'daily',
       [
@@ -232,7 +232,7 @@ describe('reachMoonHighscores', () => {
           '2026-06-28T18:02:00.000Z',
         ),
       ],
-      '2026-06-28T19:00:00.000Z',
+      '2026-06-28T21:00:00+02:00',
     )
 
     expect(rollup).toEqual({
@@ -243,6 +243,12 @@ describe('reachMoonHighscores', () => {
       generatedAt: '2026-06-28T19:00:00.000Z',
       period: 'daily',
     })
+  })
+
+  it('rejects invalid rollup generatedAt strings', () => {
+    expect(() =>
+      createReachMoonHighscoreRollup('daily', [], 'not a date'),
+    ).toThrow('generatedAt must be a date.')
   })
 
   it('generates bounded two-word pilot-style fallback names', () => {

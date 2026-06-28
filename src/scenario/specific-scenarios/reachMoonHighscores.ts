@@ -207,7 +207,7 @@ const validateNumber = (
   return ok(value)
 }
 
-const toSubmittedAtIso = (value: Date | string): string | null => {
+const toDateIso = (value: Date | string): string | null => {
   const date = value instanceof Date ? value : new Date(value)
 
   return Number.isFinite(date.valueOf()) ? date.toISOString() : null
@@ -285,7 +285,7 @@ export const createReachMoonHighscoreRecord = (
     submittedAt?: Date | string
   },
 ): ReachMoonHighscoreValidationResult<ReachMoonHighscoreRecord> => {
-  const submittedAt = toSubmittedAtIso(options.submittedAt ?? new Date())
+  const submittedAt = toDateIso(options.submittedAt ?? new Date())
   if (submittedAt == null) {
     return invalid([
       createError('submittedAt', 'invalid_date', 'submittedAt must be a date.'),
@@ -329,9 +329,15 @@ export const createReachMoonHighscoreRollup = (
   period: ReachMoonHighscorePeriod,
   records: readonly ReachMoonHighscoreRecord[],
   generatedAt: Date | string = new Date(),
-): ReachMoonHighscoreRollup => ({
-  entries: rankReachMoonHighscoreRecords(records),
-  generatedAt:
-    generatedAt instanceof Date ? generatedAt.toISOString() : generatedAt,
-  period,
-})
+): ReachMoonHighscoreRollup => {
+  const generatedAtIso = toDateIso(generatedAt)
+  if (generatedAtIso == null) {
+    throw new RangeError('generatedAt must be a date.')
+  }
+
+  return {
+    entries: rankReachMoonHighscoreRecords(records),
+    generatedAt: generatedAtIso,
+    period,
+  }
+}
