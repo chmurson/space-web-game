@@ -34,6 +34,19 @@ const createStore = () => {
 
       return value == null ? null : structuredClone(value)
     }),
+    list: vi.fn(async (options: { prefix?: string } = {}) => {
+      const prefix = options.prefix ?? ''
+
+      return {
+        blobs: [...values.entries()]
+          .filter(([key]) => key.startsWith(prefix))
+          .map(([key, value]) => ({
+            etag: value.etag,
+            key,
+          })),
+        directories: [],
+      }
+    }),
     setJSON: vi.fn(
       async (
         key: string,
@@ -84,6 +97,16 @@ const seedRollup = (
   store.values.set(key, {
     data: createReachMoonHighscoreRollup(period, records, now),
     etag: `seed-${key}`,
+  })
+}
+
+const seedRecord = (
+  store: ReturnType<typeof createStore>,
+  record: ReachMoonHighscoreRecord,
+) => {
+  store.values.set(`records/by-run/${record.id}.json`, {
+    data: record,
+    etag: `seed-${record.id}`,
   })
 }
 
@@ -176,24 +199,28 @@ describe('reachMoonHighscores function', () => {
   it('stores a sanitized record and updates ordered top-ten rollups', async () => {
     const store = createStore()
     blobMocks.getStore.mockReturnValue(store)
-    seedRollup(store, 'rollups/daily/2026-06-28.json', 'daily', [
-      createRecord('daily-old', { elapsed: 120, total: 900 }, now),
-    ])
-    seedRollup(store, 'rollups/weekly/2026-W26.json', 'weekly', [
-      createRecord('weekly-old', { elapsed: 120, total: 900 }, now),
-    ])
-    seedRollup(
+    seedRecord(
       store,
-      'rollups/all-time.json',
-      'all-time',
-      Array.from({ length: 10 }, (_, index) =>
-        createRecord(
-          `all-time-${index}`,
-          { elapsed: 1_000 + index, total: 900 - index },
-          `2026-06-${String(18 + index).padStart(2, '0')}T12:00:00.000Z`,
-        ),
+      createRecord('daily-old', { elapsed: 120, total: 900 }, now),
+    )
+    seedRecord(
+      store,
+      createRecord(
+        'weekly-old',
+        { elapsed: 120, total: 900 },
+        '2026-06-27T20:30:00.000Z',
       ),
     )
+    for (const record of Array.from({ length: 10 }, (_, index) =>
+      createRecord(
+        `all-time-${index}`,
+        { elapsed: 1_000 + index, total: 900 - index },
+        `2026-06-${String(18 + index).padStart(2, '0')}T12:00:00.000Z`,
+      ),
+    )) {
+      seedRecord(store, record)
+    }
+    seedRollup(store, 'rollups/daily/2026-06-28.json', 'daily', [])
 
     const receipt = await createReceipt()
     const response = await handler(
@@ -223,40 +250,40 @@ describe('reachMoonHighscores function', () => {
       },
       submittedAt: now,
     })
+    expect(body.record.id).toBe(receipt.runId)
     expect(
       [...store.values.keys()].filter((key) =>
-        key.startsWith('records/2026-06-28/'),
+        key.startsWith('records/by-run/'),
       ),
-    ).toHaveLength(1)
+    ).toHaveLength(13)
     expect(
-      store.values.get('rollups/daily/2026-06-28.json')?.data,
-    ).toMatchObject({
-      entries: [
-        {
-          id: body.record.id,
-          rank: 1,
-          score: { totalScore: 1_200 },
-        },
-        {
-          id: 'daily-old',
-          rank: 2,
-        },
-      ],
+      store.values.get(`records/by-run/${receipt.runId}.json`),
+    ).toBeTruthy()
+    const dailyEntries = (
+      store.values.get('rollups/daily/2026-06-28.json')?.data as {
+        entries: { id: string; rank: number; score: { totalScore: number } }[]
+      }
+    ).entries
+    const weeklyEntries = (
+      store.values.get('rollups/weekly/2026-W26.json')?.data as {
+        entries: { id: string; rank: number }[]
+      }
+    ).entries
+
+    expect(dailyEntries[0]).toMatchObject({
+      id: body.record.id,
+      rank: 1,
+      score: { totalScore: 1_200 },
     })
-    expect(
-      store.values.get('rollups/weekly/2026-W26.json')?.data,
-    ).toMatchObject({
-      entries: [
-        {
-          id: body.record.id,
-          rank: 1,
-        },
-        {
-          id: 'weekly-old',
-          rank: 2,
-        },
-      ],
+    expect(dailyEntries[1]).toMatchObject({
+      id: 'daily-old',
+      rank: 2,
     })
+    expect(weeklyEntries[0]).toMatchObject({
+      id: body.record.id,
+      rank: 1,
+    })
+    expect(weeklyEntries.map((entry) => entry.id)).toContain('weekly-old')
     expect(
       (
         store.values.get('rollups/all-time.json')?.data as {
@@ -270,6 +297,130 @@ describe('reachMoonHighscores function', () => {
         rank: 1,
       }),
     )
+  })
+
+  it('treats receipt run IDs as idempotency keys for replayed submissions', async () => {
+    const store = createStore()
+    blobMocks.getStore.mockReturnValue(store)
+    const receipt = await createReceipt()
+    const requestBody = {
+      fuelRemainingRatio: 1,
+      missionElapsedSeconds: 0,
+      playerName: 'First Pilot',
+      runReceipt: receipt,
+    }
+
+    const firstResponse = await handler(
+      new Request('https://example.test/api/reach-moon/highscores', {
+        body: JSON.stringify(requestBody),
+        method: 'POST',
+      }),
+    )
+    const replayResponse = await handler(
+      new Request('https://example.test/api/reach-moon/highscores', {
+        body: JSON.stringify({
+          ...requestBody,
+          fuelRemainingRatio: 0,
+          missionElapsedSeconds: 999,
+          playerName: 'Replay Pilot',
+        }),
+        method: 'POST',
+      }),
+    )
+    const firstBody = await readJson<{ record: ReachMoonHighscoreRecord }>(
+      firstResponse,
+    )
+    const replayBody = await readJson<{ record: ReachMoonHighscoreRecord }>(
+      replayResponse,
+    )
+
+    expect(firstResponse.status).toBe(200)
+    expect(replayResponse.status).toBe(200)
+    expect(firstBody.record).toEqual(replayBody.record)
+    expect(firstBody.record).toMatchObject({
+      id: receipt.runId,
+      playerName: 'First Pilot',
+    })
+    expect(
+      [...store.values.keys()].filter((key) =>
+        key.startsWith('records/by-run/'),
+      ),
+    ).toEqual([`records/by-run/${receipt.runId}.json`])
+  })
+
+  it('rebuilds GET rollups from immutable records instead of stale rollup cache', async () => {
+    const store = createStore()
+    blobMocks.getStore.mockReturnValue(store)
+    const cachedOnlyRecord = createRecord(
+      'cached-only',
+      { elapsed: 60, total: 999 },
+      now,
+    )
+    seedRollup(store, 'rollups/daily/2026-06-28.json', 'daily', [
+      cachedOnlyRecord,
+    ])
+    seedRecord(
+      store,
+      createRecord('stored-run', { elapsed: 50, total: 1_200 }, now),
+    )
+
+    const response = await handler(
+      new Request(
+        'https://example.test/api/reach-moon/highscores?period=daily',
+      ),
+    )
+    const body = await readJson<{
+      rollups: Record<ReachMoonHighscorePeriod, { entries: { id: string }[] }>
+    }>(response)
+
+    expect(response.status).toBe(200)
+    expect(body.rollups.daily.entries.map((entry) => entry.id)).toEqual([
+      'stored-run',
+    ])
+  })
+
+  it('keeps accepted records authoritative when a rollup cache write fails', async () => {
+    const store = createStore()
+    const writeThroughSetJSON = store.setJSON
+    store.setJSON = vi.fn(
+      async (
+        key: string,
+        data: unknown,
+        options: { onlyIfNew?: boolean } = {},
+      ) => {
+        if (key === 'rollups/weekly/2026-W26.json') {
+          throw new Error('cache write failed')
+        }
+
+        return writeThroughSetJSON(key, data, options)
+      },
+    )
+    blobMocks.getStore.mockReturnValue(store)
+    const receipt = await createReceipt()
+
+    const response = await handler(
+      new Request('https://example.test/api/reach-moon/highscores', {
+        body: JSON.stringify({
+          fuelRemainingRatio: 1,
+          missionElapsedSeconds: 0,
+          playerName: 'Cache Pilot',
+          runReceipt: receipt,
+        }),
+        method: 'POST',
+      }),
+    )
+    const body = await readJson<{
+      record: ReachMoonHighscoreRecord
+      rollups: Record<ReachMoonHighscorePeriod, { entries: { id: string }[] }>
+    }>(response)
+
+    expect(response.status).toBe(200)
+    expect(
+      store.values.get(`records/by-run/${receipt.runId}.json`),
+    ).toBeTruthy()
+    expect(body.record.id).toBe(receipt.runId)
+    expect(body.rollups.weekly.entries[0]?.id).toBe(receipt.runId)
+    expect(store.values.get('rollups/weekly/2026-W26.json')).toBeUndefined()
   })
 
   it('returns typed JSON errors for method, body, input, receipt, and storage failures', async () => {
@@ -357,6 +508,9 @@ describe('reachMoonHighscores function', () => {
 
     blobMocks.getStore.mockReturnValue({
       get: vi.fn(async () => {
+        throw new Error('storage unavailable')
+      }),
+      list: vi.fn(async () => {
         throw new Error('storage unavailable')
       }),
       setJSON: vi.fn(),
