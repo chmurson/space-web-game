@@ -1,4 +1,12 @@
+import { h, render } from 'preact'
 import type { Body } from '../../simulation/types'
+import {
+  FpsIndicatorSurface,
+  type FpsIndicatorView,
+  type TelemetryStripRefs,
+  TelemetryStripSurface,
+} from '../components/HudTelemetrySurface'
+import { createPreactUiSurface } from '../createPreactUiSurface'
 import { createDebugPanel, type DebugPanel } from '../debugPanel'
 import {
   createScenarioPromptUI,
@@ -6,26 +14,6 @@ import {
 } from '../scenario-prompts/scenario-prompts'
 import '../targetBodyGlyphs.css'
 import './overlayUIStyles.css'
-
-const crashIconMarkup = `
-  <svg class="telemetry-crash-icon telemetry-crash-icon-burst" viewBox="0 0 16 16" aria-hidden="true">
-    <path class="telemetry-crash-icon-blast" d="M8 1.1 9 4.5 12.6 3.2 10.9 6.1 14.4 7.3 11.2 8.8 12.3 12 9.2 11.1 8 13.9 6.9 11.2 3.6 12.3 4.8 9.1 1.6 7.9 4.6 6.4 3.2 3.4 6.5 4.6Z"></path>
-    <g class="telemetry-crash-icon-rocket">
-      <path class="telemetry-crash-icon-rocket-body" d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"></path>
-      <path class="telemetry-crash-icon-rocket-wing" d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"></path>
-      <path class="telemetry-crash-icon-rocket-wing" d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"></path>
-      <circle class="telemetry-crash-icon-rocket-window" cx="8" cy="6.1" r="0.95"></circle>
-    </g>
-  </svg>
-`
-
-const fuelIconMarkup = `
-  <svg class="telemetry-fuel-icon" viewBox="0 0 16 16" aria-hidden="true">
-    <path class="telemetry-fuel-icon-tank" d="M5.1 2.2h5.8l1.25 1.7v8.4c0 .85-.55 1.5-1.42 1.5H5.27c-.87 0-1.42-.65-1.42-1.5V3.9Z"></path>
-    <path class="telemetry-fuel-icon-cap" d="M5.6 2.2V1.3h4.8v.9"></path>
-    <path class="telemetry-fuel-icon-level" d="M5.65 10.65h4.7"></path>
-  </svg>
-`
 
 export const spacecraftOffscreenIndicatorId = '__spacecraft__'
 
@@ -45,6 +33,7 @@ export type OverlayUiRefs = {
   headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
   renderScenarioPromptSurface: ScenarioPromptSurfaceRenderer
+  renderFpsIndicator(view: FpsIndicatorView | null): void
   scenarioPrompt: HTMLElement
   scenarioPromptCloseButton: HTMLButtonElement | null
   scenarioPromptConfirmButton: HTMLButtonElement | null
@@ -89,6 +78,55 @@ export type OverlayUiOptions = {
   showCycleTargetHint: boolean
 }
 
+const createEmptyTelemetryRefs = (): TelemetryStripRefs => ({
+  fuelPill: null,
+  speedIcon: null,
+  statFuel: null,
+  statSpeed: null,
+  statTarget: null,
+  statThrust: null,
+  statTime: null,
+  targetPill: null,
+  targetSphere: null,
+  targetStatus: null,
+  timeIcon: null,
+  timeIconHand: null,
+})
+
+const createHudTelemetryShells = (options: {
+  app: HTMLElement
+  topBar: HTMLElement
+}) => {
+  const telemetryHost = document.createElement('div')
+  const telemetryRefs = createEmptyTelemetryRefs()
+  options.topBar.appendChild(telemetryHost)
+  render(h(TelemetryStripSurface, { refs: telemetryRefs }), telemetryHost)
+  telemetryHost.style.display = 'contents'
+
+  const fpsSurface = createPreactUiSurface<{
+    view: FpsIndicatorView | null
+  }>({
+    app: options.app,
+    component: FpsIndicatorSurface,
+    missingRootError: 'Failed to create FPS indicator',
+  })
+  fpsSurface.render({ view: null })
+
+  const fpsHost = fpsSurface.element.parentElement
+  if (!fpsHost) {
+    throw new Error('Failed to create FPS indicator')
+  }
+  fpsHost.className = 'fps-indicator-host'
+  fpsHost.style.display = 'contents'
+
+  return {
+    fpsIndicator: fpsSurface.element,
+    renderFpsIndicator: (view: FpsIndicatorView | null) =>
+      fpsSurface.render({ view }),
+    telemetryRefs,
+  }
+}
+
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const topBar = document.createElement('div')
   topBar.className = 'top-bar'
@@ -98,60 +136,12 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   bottomPillArea.className = 'bottom-pill-area'
   options.app.appendChild(bottomPillArea)
 
-  const telemetryStrip = document.createElement('div')
-  telemetryStrip.className = 'telemetry-strip'
-
-  telemetryStrip.innerHTML = `
-    <div class="telemetry-pill telemetry-pill-time">
-      <span class="telemetry-time-display">
-        <svg class="telemetry-time-icon" viewBox="0 0 16 16" aria-hidden="true">
-          <circle class="telemetry-time-icon-face" cx="8" cy="8" r="6.25"></circle>
-          <line class="telemetry-time-icon-hand telemetry-time-icon-hand-minute" x1="8" y1="8" x2="8" y2="3.5"></line>
-          <circle class="telemetry-time-icon-center" cx="8" cy="8" r="0.9"></circle>
-        </svg>
-        <strong data-stat="time"></strong>
-      </span>
-    </div>
-    <div class="telemetry-pill telemetry-pill-thrust">
-      <span class="telemetry-thrust-display">
-        ${crashIconMarkup}
-        <strong data-stat="thrust"></strong>
-      </span>
-    </div>
-    <div class="telemetry-critical-cluster">
-      <div class="telemetry-pill telemetry-pill-fuel" style="display: none">
-        <span class="telemetry-fuel-display">
-          ${fuelIconMarkup}
-          <strong data-stat="fuel"></strong>
-        </span>
-      </div>
-      <div class="telemetry-pill telemetry-pill-velocity">
-        <span class="telemetry-speed-display">
-          <svg class="telemetry-speed-icon" viewBox="0 0 16 16" aria-hidden="true">
-            <path class="telemetry-speed-icon-body" d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"></path>
-            <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-left" d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"></path>
-            <path class="telemetry-speed-icon-wing telemetry-speed-icon-wing-right" d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"></path>
-            <circle class="telemetry-speed-icon-window" cx="8" cy="6.1" r="0.95"></circle>
-            <path class="telemetry-speed-icon-flame" d="M8 14.6 C8.9 13.6, 9.3 12.4, 8 11.1 C6.7 12.4, 7.1 13.6, 8 14.6 Z"></path>
-          </svg>
-          <strong data-stat="speed"></strong>
-        </span>
-      </div>
-    </div>
-    <div class="telemetry-pill telemetry-pill-target">
-      <span class="telemetry-target-display">
-        <span class="target-body-sphere" data-stat="target-sphere" aria-hidden="true"></span>
-        <strong data-stat="target"></strong>
-        <span class="target-status-mark" data-stat="target-status" aria-hidden="true"></span>
-      </span>
-    </div>
-  `
-  topBar.appendChild(telemetryStrip)
-
   const debugPanel = createDebugPanel(options.app)
 
-  const fpsIndicator = document.createElement('div')
-  fpsIndicator.className = 'fps-indicator'
+  const hudTelemetry = createHudTelemetryShells({
+    app: options.app,
+    topBar,
+  })
 
   const fuelDepletedNotice = document.createElement('div')
   fuelDepletedNotice.className =
@@ -283,15 +273,16 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     cameraUnlockNoticeTitle:
       cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-title'),
     debugPanel,
-    fpsIndicator,
+    fpsIndicator: hudTelemetry.fpsIndicator,
     fuelDepletedNotice,
-    fuelPill: topBar.querySelector<HTMLElement>('.telemetry-pill-fuel'),
+    fuelPill: hudTelemetry.telemetryRefs.fuelPill,
     headingTargetDot,
     headingTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
     offscreenIndicators,
     renderScenarioPromptSurface: scenarioPromptUi.renderSurface,
+    renderFpsIndicator: hudTelemetry.renderFpsIndicator,
     scenarioPrompt: scenarioPromptUi.backdropElement,
     scenarioPromptCloseButton: scenarioPromptUi.closeButton,
     scenarioPromptConfirmButton: scenarioPromptUi.confirmButton,
@@ -310,9 +301,9 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     trajectoryCoachAnchor: scenarioPromptUi.trajectoryAnchorElement,
     statAssist: null,
     statEngine: null,
-    statFuel: topBar.querySelector<HTMLElement>('[data-stat="fuel"]'),
+    statFuel: hudTelemetry.telemetryRefs.statFuel,
     statGuidance: null,
-    statSpeed: topBar.querySelector<HTMLElement>('[data-stat="speed"]'),
+    statSpeed: hudTelemetry.telemetryRefs.statSpeed,
     targetRecommendationNotice,
     targetRecommendationNoticeDismissButton:
       targetRecommendationNotice.querySelector<HTMLButtonElement>(
@@ -326,22 +317,16 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
       targetRecommendationNotice.querySelector<HTMLButtonElement>(
         '.target-recommendation-notice-open',
       ),
-    statThrust: topBar.querySelector<HTMLElement>('[data-stat="thrust"]'),
-    speedIcon: topBar.querySelector<SVGSVGElement>('.telemetry-speed-icon'),
-    statTarget: topBar.querySelector<HTMLElement>('[data-stat="target"]'),
-    targetPill: topBar.querySelector<HTMLElement>('.telemetry-pill-target'),
-    targetSphere: topBar.querySelector<HTMLElement>(
-      '[data-stat="target-sphere"]',
-    ),
-    targetStatus: topBar.querySelector<HTMLElement>(
-      '[data-stat="target-status"]',
-    ),
+    statThrust: hudTelemetry.telemetryRefs.statThrust,
+    speedIcon: hudTelemetry.telemetryRefs.speedIcon,
+    statTarget: hudTelemetry.telemetryRefs.statTarget,
+    targetPill: hudTelemetry.telemetryRefs.targetPill,
+    targetSphere: hudTelemetry.telemetryRefs.targetSphere,
+    targetStatus: hudTelemetry.telemetryRefs.targetStatus,
     statTargetSpeed: null,
-    statTime: topBar.querySelector<HTMLElement>('[data-stat="time"]'),
-    timeIcon: topBar.querySelector<SVGSVGElement>('.telemetry-time-icon'),
-    timeIconHand: topBar.querySelector<SVGLineElement>(
-      '.telemetry-time-icon-hand-minute',
-    ),
+    statTime: hudTelemetry.telemetryRefs.statTime,
+    timeIcon: hudTelemetry.telemetryRefs.timeIcon,
+    timeIconHand: hudTelemetry.telemetryRefs.timeIconHand,
     statWarp: null,
     statZoom: null,
   }
