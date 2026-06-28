@@ -657,7 +657,7 @@ describe('createHudPresentation', () => {
 
     expect(debugText).toContain('viewport: 25.00 | zoom: 4.0x')
     expect(debugText).toContain(
-      'trail detail: L6/7 close | slices 12 | render 417 km | capture 250 km | frame target-relative Moon',
+      'trail detail: L6/7 close | slices 12 | render 417 km | capture 250 km | trail frame: target-relative Moon',
     )
     expect(debugJson?.viewport).toEqual({ size: 25, zoom: 4 })
     expect(debugJson?.trail).toMatchObject({
@@ -705,8 +705,8 @@ describe('createHudPresentation', () => {
         }
       | undefined
 
-    expect(inertialDebugText).toContain('target: Moon')
-    expect(inertialDebugText).toContain('frame inertial')
+    expect(inertialDebugText).toContain('assist target: Moon')
+    expect(inertialDebugText).toContain('trail frame: inertial')
     expect(inertialDebugCopyJson?.trail).toMatchObject({
       renderFrame: 'inertial',
       renderTargetId: null,

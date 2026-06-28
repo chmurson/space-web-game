@@ -83,11 +83,11 @@ describe('getDebugPanelLines', () => {
 
     expect(lines).toContain('viewport: 25.00 | zoom: 4.0x')
     expect(lines).toContain(
-      'trail detail: L6/7 close | slices 12 | render 500 km | capture 250 km | frame target-relative Moon',
+      'trail detail: L6/7 close | slices 12 | render 500 km | capture 250 km | trail frame: target-relative Moon',
     )
   })
 
-  it('shows inertial trail frame separately from the active target', () => {
+  it('shows inertial trail frame separately from the active assist target', () => {
     const input = createDebugPanelInput()
 
     expect(
@@ -100,8 +100,8 @@ describe('getDebugPanelLines', () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        'trail detail: L6/7 close | slices 12 | render 500 km | capture 250 km | frame inertial',
-        'target: Moon',
+        'trail detail: L6/7 close | slices 12 | render 500 km | capture 250 km | trail frame: inertial',
+        'assist target: Moon',
       ]),
     )
   })
