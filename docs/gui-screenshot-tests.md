@@ -23,7 +23,9 @@ If Playwright reports a missing browser locally, install the browser once:
 npx playwright install chromium
 ```
 
-GitHub Actions runs the same command on pushes and pull requests. The workflow
-installs Playwright Chromium, runs `npm run test:gui`, and uploads
-`tmp/playwright-results/` as the `mobile-gui-screenshots` artifact for human
-inspection. It does not use committed screenshot baselines or pixel comparisons.
+GitHub Actions also has a manual `GUI Screenshots` workflow for this harness.
+When started with `workflow_dispatch`, it installs Playwright Chromium, runs
+`npm run test:gui`, and uploads `tmp/playwright-results/` as the
+`mobile-gui-screenshots` artifact for human inspection. It does not run
+automatically on pushes or pull requests, and it does not use committed
+screenshot baselines or pixel comparisons.
