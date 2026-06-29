@@ -19,8 +19,6 @@ import './overlayUIStyles.css'
 
 export const spacecraftOffscreenIndicatorId = '__spacecraft__'
 
-type TrajectoryEventMarkerLabelKind = TrajectoryPredictionEventMarkerKind
-
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   bottomPillArea: HTMLElement
@@ -74,7 +72,7 @@ export type OverlayUiRefs = {
   timeIcon: SVGSVGElement | null
   timeIconHand: SVGLineElement | null
   trajectoryEventMarkerLabels: Record<
-    TrajectoryEventMarkerLabelKind,
+    TrajectoryPredictionEventMarkerKind,
     HTMLElement
   >
   statWarp: HTMLElement | null
@@ -139,7 +137,7 @@ const createHudTelemetryShells = (options: {
 
 const createTrajectoryEventMarkerLabel = (
   app: HTMLElement,
-  kind: TrajectoryEventMarkerLabelKind,
+  kind: TrajectoryPredictionEventMarkerKind,
 ) => {
   const label = document.createElement('div')
   label.className = `trajectory-event-label trajectory-event-label-${kind}`
@@ -216,7 +214,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const trajectoryEventMarkerLabels = {
     apoapsis: createTrajectoryEventMarkerLabel(options.app, 'apoapsis'),
     periapsis: createTrajectoryEventMarkerLabel(options.app, 'periapsis'),
-  } satisfies Record<TrajectoryEventMarkerLabelKind, HTMLElement>
+  } satisfies Record<TrajectoryPredictionEventMarkerKind, HTMLElement>
   const createOffscreenIndicator = () => {
     const indicator = document.createElement('div')
     indicator.className = 'offscreen-indicator'

@@ -1606,13 +1606,12 @@ canvas {
 #app .trajectory-event-label {
     position: fixed;
     padding: 2px 5px;
-    border: 1px solid rgba(148, 163, 184, 0.22);
+    border: 1px solid var(--ui-glass-control-border);
     border-radius: 4px;
     background: var(--ui-glass-label-bg);
     color: #dbeafe;
     font-size: 10px;
     pointer-events: none;
-    text-shadow: 0 0 8px rgba(15, 23, 42, 0.9);
     transform: translateY(-50%);
     white-space: nowrap;
     z-index: var(--z-in-game-floating-elements);
