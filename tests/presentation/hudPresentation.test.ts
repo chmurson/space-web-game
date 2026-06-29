@@ -75,6 +75,10 @@ class FakeElement {
     return this.children
   }
 
+  getAttribute(name: string) {
+    return this.attributes.get(name) ?? null
+  }
+
   get textContent() {
     return (
       this.ownTextContent +
@@ -423,6 +427,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     statGuidance: null,
     statSpeed: null,
     statTarget: null,
+    statTargetAltitude: null,
     statTargetSpeed: null,
     statThrust: null,
     statTime: null,
@@ -596,6 +601,55 @@ describe('createHudPresentation', () => {
 
     expect(overlayUi.debugPanel.setText).toHaveBeenCalledTimes(2)
     expect(overlayUi.debugPanel.setJson).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows target altitude in the compact target pill', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    overlayUi.statTarget = new FakeElement('strong') as unknown as HTMLElement
+    overlayUi.statTargetAltitude = new FakeElement(
+      'span',
+    ) as unknown as HTMLElement
+    overlayUi.targetPill = new FakeElement('div') as unknown as HTMLElement
+    const runtime = createRuntime()
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries({
+        specificEnergy: 1,
+        surfaceDistance: 84_000_000,
+      }),
+      rendererProfiler: {
+        getSmoothedGpuMs: vi.fn(() => 8),
+      } as unknown as RendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+          targetId: 'moon',
+        }),
+      } as never,
+    })
+
+    presentation.update(createMetrics())
+
+    expect(overlayUi.statTarget.textContent).toBe('Moon')
+    expect(overlayUi.statTargetAltitude.textContent).toBe('84 Mm')
+    expect(overlayUi.targetPill.title).toBe(
+      'Moon, pinned target, altitude 84 Mm',
+    )
+    expect(overlayUi.targetPill.getAttribute('aria-label')).toBe(
+      overlayUi.targetPill.title,
+    )
   })
 
   it('renders viewport and trail detail in the debug window', async () => {

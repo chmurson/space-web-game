@@ -30,6 +30,7 @@ import {
   type ScenarioPromptUiRefs,
 } from '../ui/scenario-prompts/scenario-prompts'
 import type { TouchControls } from '../ui/touchControls/createTouchControls'
+import { createBodyDistanceContext } from './bodyDistanceContext'
 import { getSpacecraftTrailDetail } from './spacecraftTrail'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
 
@@ -172,7 +173,12 @@ export const createHudPresentation = (options: {
 
   const syncTargetPill = (targetUiState: AssistTargetUiState) => {
     const target = targetUiState.activeTarget
-    const targetLabel = `${target.name}, ${targetStatusLabels[targetUiState.mode]}`
+    const targetMetrics = options.queries.getCaptureMetrics(target)
+    const distanceContext = createBodyDistanceContext({
+      target,
+      targetMetrics,
+    })
+    const targetLabel = `${target.name}, ${targetStatusLabels[targetUiState.mode]}, ${distanceContext.detailAccessibleLabel}`
 
     if (options.overlayUi.targetPill) {
       options.overlayUi.targetPill.setAttribute('aria-label', targetLabel)
@@ -183,6 +189,14 @@ export const createHudPresentation = (options: {
       options.overlayUi.statTarget.textContent !== target.name
     ) {
       options.overlayUi.statTarget.textContent = target.name
+    }
+    if (
+      options.overlayUi.statTargetAltitude &&
+      options.overlayUi.statTargetAltitude.textContent !==
+        distanceContext.altitudeLabel
+    ) {
+      options.overlayUi.statTargetAltitude.textContent =
+        distanceContext.altitudeLabel
     }
     if (options.overlayUi.targetSphere) {
       syncTargetSphere(options.overlayUi.targetSphere, target)

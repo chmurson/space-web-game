@@ -6,6 +6,7 @@ export type TelemetryStripRefs = {
   statFuel: HTMLElement | null
   statSpeed: HTMLElement | null
   statTarget: HTMLElement | null
+  statTargetAltitude: HTMLElement | null
   statThrust: HTMLElement | null
   statTime: HTMLElement | null
   targetPill: HTMLElement | null
@@ -193,6 +194,13 @@ export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
           data-stat="target"
           ref={(element) => {
             refs.statTarget = element
+          }}
+        />
+        <span
+          class="target-altitude"
+          data-stat="target-altitude"
+          ref={(element) => {
+            refs.statTargetAltitude = element
           }}
         />
         <span
