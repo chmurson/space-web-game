@@ -1602,7 +1602,8 @@ canvas {
     white-space: nowrap;
 }
 
-#app .body-label {
+#app .body-label,
+#app .trajectory-event-label {
     position: fixed;
     padding: 2px 5px;
     border: 1px solid rgba(148, 163, 184, 0.22);
@@ -1617,7 +1618,12 @@ canvas {
     z-index: var(--z-in-game-floating-elements);
 }
 
-#app .body-label-distance-context {
+#app .body-label {
+    transform: translateY(-50%);
+}
+
+#app .body-label-distance-context,
+#app .trajectory-event-label {
     max-width: min(220px, calc(100vw - 16px));
     padding: 3px 6px;
     font-size: 11px;
@@ -1626,48 +1632,25 @@ canvas {
     white-space: normal;
 }
 
-#app .trajectory-event-label {
-    position: fixed;
-    max-width: min(240px, calc(100vw - 16px));
-    padding: 3px 6px;
-    border: 1px solid var(--ui-glass-control-border);
-    border-radius: 4px;
-    background: var(--ui-glass-label-bg);
-    box-shadow: var(--ui-glass-panel-shadow);
-    color: #f4f7fb;
-    font-size: 10px;
-    font-weight: 800;
-    line-height: 1.1;
-    overflow-wrap: anywhere;
-    pointer-events: none;
-    white-space: nowrap;
-    z-index: var(--z-in-game-floating-elements);
-}
-
 @media (hover: none),
 (pointer: coarse) {
     #app .touch-controls {
         display: block;
     }
 
-    #app .body-label {
+    #app .body-label,
+    #app .trajectory-event-label {
         padding: 2px 4px;
         border-radius: 3px;
         font-size: 9px;
         line-height: 1.1;
     }
 
-    #app .body-label-distance-context {
+    #app .body-label-distance-context,
+    #app .trajectory-event-label {
         max-width: min(164px, calc(100vw - 24px));
         padding: 2px 5px;
         font-size: 9.5px;
-    }
-
-    #app .trajectory-event-label {
-        max-width: min(184px, calc(100vw - 24px));
-        padding: 2px 5px;
-        font-size: 9.5px;
-        white-space: normal;
     }
 
     .body-label-mobile-wrap {
