@@ -28,6 +28,15 @@
 
 - When merging a local branch into `main`, always use squash and merge so the completed branch lands on `main` as one commit.
 
+## Netlify PR Preview Gate
+
+- PRs targeting `main` should rely on the automated Netlify PR preview workflow instead of agent-run manual staging deploys.
+- The preview workflow requires repository secrets `NETLIFY_AUTH_TOKEN` and `NETLIFY_PR_PREVIEW_SITE_ID`; the preview site ID must not be the production site ID.
+- The preview workflow covers same-repository PRs; forked PRs need explicit maintainer staging if a preview is required because repository secrets are not available to them.
+- For covered PRs, Shipit completion is not blocked on `npm run deploy:netlify`; record the workflow check state and preview URL when available.
+- Keep manual staging deploys available for explicit human requests, PRs targeting branches other than `main`, branches without PR preview coverage, or cases where a separate shared staging URL is needed.
+- If the preview workflow fails or required secrets are missing, record that as validation/deploy risk instead of masking it with an unrelated manual staging deploy unless the human explicitly asks for one.
+
 ## Shipit Review Gate
 
 These rules copy the durable Shipit review requirements from `AGENTS.md` into the project Shipit harness. They supplement the built-in Shipit review mode.
