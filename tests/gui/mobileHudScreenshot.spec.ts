@@ -51,6 +51,43 @@ const expectWorldVisualsSuppressed = async (page: Page) => {
 const getReachMoonUrl = (query = '') =>
   query ? `/?reachmoon=1&${query}` : '/?reachmoon=1'
 
+const highscoreScore = {
+  baseScorePoints: 1_000,
+  fuelBonusPoints: 196,
+  fuelRemainingKg: 31_360,
+  missionElapsedSeconds: 27_000,
+  timePenaltyPoints: 28,
+  totalScore: 1_168,
+}
+
+const createHighscoreRollup = (
+  period: 'all-time' | 'daily' | 'weekly',
+  entries = [
+    {
+      id: 'run-117',
+      playerName: 'Artemis Pathfinder With A Long Callsign',
+      rank: 1,
+      score: highscoreScore,
+      submittedAt: '2026-06-29T08:30:00.000Z',
+    },
+  ],
+) => ({
+  entries,
+  generatedAt: '2026-06-29T08:35:00.000Z',
+  period,
+})
+
+const getHighscorePeriodFromRequest = (
+  requestUrl: string,
+): 'all-time' | 'daily' | 'weekly' => {
+  const value = new URL(requestUrl).searchParams.get('period') ?? 'daily'
+  if (value === 'all-time' || value === 'daily' || value === 'weekly') {
+    return value
+  }
+
+  throw new Error(`Unexpected highscore period: ${value}`)
+}
+
 const openReachMoonMainMenu = async (page: Page, query = '') => {
   await page.goto(getReachMoonUrl(query))
   await page.addStyleTag({ content: screenshotCss })
@@ -106,6 +143,188 @@ test('captures the mobile Reach the Moon menu transition', async ({
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page.locator('[data-main-menu-view="main"]')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
+})
+
+test('captures the mobile Reach the Moon highscores leaderboard', async ({
+  page,
+}, testInfo) => {
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+    const entries =
+      period === 'daily' ? createHighscoreRollup(period).entries : []
+
+    await route.fulfill({
+      body: JSON.stringify({
+        rollups: {
+          [period]: createHighscoreRollup(period, entries),
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+  await openReachMoonMainMenu(page)
+
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  await expect(page.getByRole('button', { name: 'Today' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Weekly' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'All-time' })).toBeVisible()
+  await expect(
+    page.getByText('Artemis Pathfinder With A Long Callsign'),
+  ).toBeVisible()
+  await expect(page.getByText('1,168')).toBeVisible()
+  await expect(page.getByText('7h30m')).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-highscores')
+
+  await page.getByRole('button', { name: 'Weekly' }).click()
+  await expect(page.getByText('No weekly runs yet.')).toBeVisible()
+})
+
+test('autosubmits completion highscores and retries failures', async ({
+  page,
+}) => {
+  const postBodies: Array<Record<string, unknown>> = []
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON() as Record<string, unknown>
+      postBodies.push(body)
+
+      if (postBodies.length === 1) {
+        await route.fulfill({
+          body: JSON.stringify({
+            error: {
+              code: 'storage_error',
+              message: 'Storage offline.',
+            },
+          }),
+          contentType: 'application/json',
+          status: 503,
+        })
+        return
+      }
+
+      const playerName = String(body.playerName)
+      await route.fulfill({
+        body: JSON.stringify({
+          record: {
+            id: 'run-117',
+            playerName,
+            score: highscoreScore,
+            submittedAt: '2026-06-29T08:40:00.000Z',
+          },
+          rollups: {
+            'all-time': createHighscoreRollup('all-time', [
+              {
+                id: 'run-117',
+                playerName,
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+            ]),
+            daily: createHighscoreRollup('daily', [
+              {
+                id: 'run-117',
+                playerName,
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+            ]),
+            weekly: createHighscoreRollup('weekly', [
+              {
+                id: 'run-117',
+                playerName,
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+            ]),
+          },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    const period = getHighscorePeriodFromRequest(url.href)
+    await route.fulfill({
+      body: JSON.stringify({
+        rollups: {
+          [period]: createHighscoreRollup(period, []),
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.goto('/?reachmoon=1')
+  await page.addStyleTag({ content: screenshotCss })
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  await page.evaluate(async () => {
+    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
+    const { createMainMenu } = await import(mainMenuModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app')
+    }
+
+    app.replaceChildren()
+    const menu = createMainMenu({
+      app,
+      reachMoonFeatureEnabled: true,
+      onFreeRoam: () => undefined,
+      onLoadGame: () => undefined,
+      onReachMoon: () => undefined,
+      onTutorial: () => undefined,
+    })
+    menu.showReachMoonHighscores({
+      input: {
+        fuelRemainingRatio: 0.98,
+        missionElapsedSeconds: 27_000,
+      },
+      runReceipt: {
+        issuedAt: '2026-06-29T08:00:00.000Z',
+        runId: 'run-117',
+        scenarioId: 'reach-moon',
+        signature: 'signature',
+      },
+      runReceiptError: null,
+      score: {
+        baseScorePoints: 1_000,
+        fuelBonusPoints: 196,
+        fuelRemainingKg: 31_360,
+        missionElapsedSeconds: 27_000,
+        timePenaltyPoints: 28,
+        totalScore: 1_168,
+      },
+    })
+  })
+
+  const pilotName = page.getByLabel('Pilot name')
+  await expect(pilotName).toBeVisible()
+  await expect(
+    page.getByText('Submission failed: Storage offline.'),
+  ).toBeVisible()
+  expect(postBodies).toHaveLength(1)
+  expect(String(postBodies[0].playerName).split(' ')).toHaveLength(2)
+
+  await pilotName.fill('Retry Pilot')
+  await page.getByRole('button', { name: 'Retry submit' }).click()
+
+  await expect(page.getByText('Submitted as Retry Pilot at #1.')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Retry Pilot' })).toBeVisible()
+  expect(postBodies).toHaveLength(2)
+  expect(postBodies[1].playerName).toBe('Retry Pilot')
 })
 
 test('captures the mobile tutorial coach prompt transition', async ({

@@ -44,13 +44,17 @@ export type ReachMoonHighscoreRollup = {
   period: ReachMoonHighscorePeriod
 }
 
+export type ReachMoonHighscoreRollups = Partial<
+  Record<ReachMoonHighscorePeriod, ReachMoonHighscoreRollup>
+>
+
 export type ReachMoonHighscoreListResponse = {
-  rollup: ReachMoonHighscoreRollup
+  rollups: ReachMoonHighscoreRollups
 }
 
 export type ReachMoonHighscoreSubmitResponse = {
-  record: RankedReachMoonHighscoreRecord
-  rollup: ReachMoonHighscoreRollup
+  record: ReachMoonHighscoreRecord
+  rollups: ReachMoonHighscoreRollups
 }
 
 export type ReachMoonHighscoreValidationError = {
