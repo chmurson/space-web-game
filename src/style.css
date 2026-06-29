@@ -968,16 +968,15 @@ canvas {
 
 .telemetry-pill-target [data-stat="target-altitude"] {
     flex: 0 0 auto;
-    color: rgba(226, 232, 240, 0.74);
     font-size: 11px;
     font-weight: 650;
     line-height: 1;
+    opacity: 0.78;
     white-space: nowrap;
 }
 
 .telemetry-pill-target [data-stat="target-altitude"]::before {
     margin-right: 4px;
-    color: rgba(148, 163, 184, 0.62);
     content: "·";
 }
 
@@ -1621,13 +1620,9 @@ canvas {
 #app .body-label-distance-context {
     max-width: min(220px, calc(100vw - 16px));
     padding: 3px 6px;
-    border-color: rgba(56, 189, 248, 0.34);
-    background: var(--ui-glass-label-bg);
-    color: #e0f2fe;
     font-size: 11px;
     line-height: 1.15;
     overflow-wrap: anywhere;
-    text-shadow: 0 0 8px rgba(56, 189, 248, 0.52);
     white-space: normal;
 }
 
