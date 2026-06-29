@@ -56,12 +56,13 @@ Issue #115 is the backend API slice for Reach the Moon highscores. It provides t
 
 ## Validation
 
-- `npx vitest run --config vite.config.ts tests/netlify/reachMoonHighscoresFunction.test.ts tests/server/reachMoonRunReceipts.test.ts` passed after the function split and repair-pagination fix: 2 files, 17 tests.
-- `npm test` passed after the function split and repair-pagination fix: 52 Vitest files, 348 Vitest tests, and 16 automation-claim tests.
+- `npx vitest run --config vite.config.ts tests/netlify/reachMoonHighscoresFunction.test.ts tests/server/reachMoonRunReceipts.test.ts` passed after the CodeRabbit response/cache/body/fixture fixes: 2 files, 18 tests.
+- `npm test` passed after the CodeRabbit response/cache/body/fixture fixes: 52 Vitest files, 349 Vitest tests, and 16 automation-claim tests.
 - `npm run build` passed with the existing Vite large-chunk warning.
+- `npx biome lint netlify/functions/reach-moon-highscores/post.ts netlify/functions/reach-moon-highscores/storage.ts netlify/functions/reach-moon-highscores/validation.ts tests/netlify/reachMoonHighscoresFunction.test.ts` passed.
 - `git diff --check` passed.
-- CodeRabbit was run with `coderabbit --base main --agent` after the split and completed with 0 findings.
-- `npm run deploy:netlify` deployed the split Netlify function to the shared staging site:
+- CodeRabbit was attempted with `coderabbit --base main --agent` after the CodeRabbit response/cache/body/fixture fixes, but the service returned a recoverable rate limit instead of findings.
+- `npm run deploy:netlify` deployed the CodeRabbit response/cache/body/fixture fixes to the shared staging site:
   - Shared staging URL: https://fanciful-bunny-d77b4b.netlify.app
-  - Unique deploy URL: https://6a41b5c273528a757e14ab94--fanciful-bunny-d77b4b.netlify.app
-  - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a41b5c273528a757e14ab94
+  - Unique deploy URL: https://6a41b92c49ae3b740689435c--fanciful-bunny-d77b4b.netlify.app
+  - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a41b92c49ae3b740689435c
