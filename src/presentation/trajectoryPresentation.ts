@@ -21,6 +21,7 @@ import { formatDistance } from '../ui/formatters'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
 const trajectoryEventMarkerMaxViewportSize = 160
+const trajectoryEventMarkerMaxScreenViewportSize = 20
 const trajectoryEventMarkerLabelMaxViewportSize = 70
 const trajectoryEventMarkerLift = 0.22
 const trajectoryEventMarkerLabelOffsetX = 10
@@ -461,12 +462,18 @@ const updateTrajectoryEventMarkers = (options: {
       timeWarpSeconds: options.timeWarpSeconds,
     }),
   })
-  const markerRadius = Math.max(
-    options.gameScene.predictionEndMarkerRadius * 0.72,
-    options.gameScene.predictionEndMarkerMinScreenRadius *
-      0.72 *
-      renderUnitsPerPixel,
+  const markerScaleViewportSize = Math.max(
+    options.viewportSize,
+    trajectoryEventMarkerMaxScreenViewportSize,
   )
+  const markerRadius =
+    Math.max(
+      options.gameScene.predictionEndMarkerRadius * 0.72,
+      options.gameScene.predictionEndMarkerMinScreenRadius *
+        0.72 *
+        (markerScaleViewportSize / Math.max(options.viewportHeight, 1)),
+    ) *
+    (options.viewportSize / markerScaleViewportSize)
   const labelVisible =
     options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
   const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()

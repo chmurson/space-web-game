@@ -297,6 +297,25 @@ describe('createTrajectoryPresentation', () => {
       false,
     )
     expect(far.trajectoryEventMarkerLabels.periapsis.style.display).toBe('none')
+
+    const viewportTwenty = createTestPresentation({
+      eventMarkers,
+      viewportSize: 20,
+    })
+    viewportTwenty.presentation.updateVisuals()
+    const maxZoom = createTestPresentation({
+      eventMarkers,
+      viewportSize: 5,
+    })
+    maxZoom.presentation.updateVisuals()
+    const viewportTwentyScreenRadius =
+      viewportTwenty.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
+      (20 / 600)
+    const maxZoomScreenRadius =
+      maxZoom.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
+      (5 / 600)
+
+    expect(maxZoomScreenRadius).toBeCloseTo(viewportTwentyScreenRadius)
   })
 
   it('uses a larger display stability threshold at higher time warp', () => {
