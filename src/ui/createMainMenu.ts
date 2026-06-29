@@ -2,6 +2,7 @@ import {
   MainMenuSurface,
   type MainMenuSurfaceProps,
   type MainMenuView,
+  type ReachMoonHighscorePendingRun,
 } from './components/MainMenuSurface'
 import { createPreactUiSurface } from './createPreactUiSurface'
 import { isLoadGameAvailable, runLoadGameAction } from './loadGameAvailability'
@@ -9,7 +10,7 @@ import { isLoadGameAvailable, runLoadGameAction } from './loadGameAvailability'
 export type MainMenu = {
   element: HTMLElement
   setVisible(visible: boolean): void
-  showReachMoonHighscores(): void
+  showReachMoonHighscores(pendingRun?: ReachMoonHighscorePendingRun): void
   syncState(): void
 }
 
@@ -31,6 +32,7 @@ export const createMainMenu = (options: {
 
   let activeView: MainMenuView = 'main'
   let loadGameAvailable = isLoadGameAvailable()
+  let reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null = null
   let visible = true
 
   const refreshLoadGameAvailable = () => {
@@ -51,6 +53,7 @@ export const createMainMenu = (options: {
     surface.render({
       activeView,
       loadGameAvailable,
+      reachMoonHighscorePendingRun,
       reachMoonFeatureEnabled: options.reachMoonFeatureEnabled,
       visible,
       onFreeRoam: () => handleActionThatClosesMenu(options.onFreeRoam),
@@ -68,6 +71,7 @@ export const createMainMenu = (options: {
         renderMenu()
       },
       onReachMoonHighscores: () => {
+        reachMoonHighscorePendingRun = null
         setActiveView('reach-moon-highscores')
         renderMenu()
       },
@@ -98,8 +102,9 @@ export const createMainMenu = (options: {
   return {
     element,
     setVisible,
-    showReachMoonHighscores: () => {
+    showReachMoonHighscores: (pendingRun) => {
       visible = true
+      reachMoonHighscorePendingRun = pendingRun ?? null
       setActiveView('reach-moon-highscores')
       renderMenu()
     },

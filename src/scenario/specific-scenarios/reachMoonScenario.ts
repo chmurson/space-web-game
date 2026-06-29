@@ -30,6 +30,7 @@ import {
   REACH_MOON_FUEL_CAPACITY_KG,
   type ReachMoonScoreSummary,
 } from './reachMoonScore'
+import type { ReachMoonHighscoreSubmitInput } from './reachMoonHighscores'
 
 const requiredMoonOrbitTurns = 3
 const requiredEarthOrbitTurns = 1
@@ -68,6 +69,7 @@ type OrbitEarthState = {
 
 type CompleteReachMoonState = {
   phase: 'complete'
+  highscore?: ReachMoonCompletedHighscorePayload
   score?: ReachMoonScoreSummary
 }
 
@@ -77,6 +79,11 @@ type ReachMoonScenarioState =
   | ReturnEarthState
   | OrbitEarthState
   | CompleteReachMoonState
+
+export type ReachMoonCompletedHighscorePayload = {
+  input: ReachMoonHighscoreSubmitInput
+  score: ReachMoonScoreSummary
+}
 
 const createInitialReachMoonScenarioState = (): ReachMoonApproachState => ({
   phase: 'reach-moon',
@@ -145,22 +152,107 @@ const createPromptUiWithActivePrompt = (
   activePromptId,
 })
 
-const calculateReachMoonRuntimeScore = (runtime: AppRuntimeState) =>
-  calculateReachMoonScore({
-    fuelCapacityKg: runtime.simulation.state.spacecraft.fuelCapacity,
-    fuelRemainingRatio: runtime.simulation.state.spacecraft.fuel,
-    missionElapsedSeconds: runtime.simulation.state.elapsed,
-  })
+const clampReachMoonFuelRatio = (value: number): number =>
+  Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0
+
+const normalizeMissionElapsedSeconds = (value: number): number =>
+  Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0
+
+const createReachMoonCompletedHighscorePayload = (
+  runtime: AppRuntimeState,
+): ReachMoonCompletedHighscorePayload => {
+  const input = {
+    fuelRemainingRatio: clampReachMoonFuelRatio(
+      runtime.simulation.state.spacecraft.fuel,
+    ),
+    missionElapsedSeconds: normalizeMissionElapsedSeconds(
+      runtime.simulation.state.elapsed,
+    ),
+  }
+
+  return {
+    input,
+    score: calculateReachMoonScore({
+      fuelCapacityKg: runtime.simulation.state.spacecraft.fuelCapacity,
+      ...input,
+    }),
+  }
+}
+
+const isReachMoonHighscoreSubmitInput = (
+  value: unknown,
+): value is ReachMoonHighscoreSubmitInput => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+
+  const record = value as Record<keyof ReachMoonHighscoreSubmitInput, unknown>
+  return (
+    typeof record.fuelRemainingRatio === 'number' &&
+    Number.isFinite(record.fuelRemainingRatio) &&
+    record.fuelRemainingRatio >= 0 &&
+    record.fuelRemainingRatio <= 1 &&
+    typeof record.missionElapsedSeconds === 'number' &&
+    Number.isFinite(record.missionElapsedSeconds) &&
+    record.missionElapsedSeconds >= 0 &&
+    (record.playerName === undefined ||
+      record.playerName === null ||
+      typeof record.playerName === 'string')
+  )
+}
+
+const getLegacyHighscoreInputFromScore = (
+  score: ReachMoonScoreSummary,
+): ReachMoonHighscoreSubmitInput => ({
+  fuelRemainingRatio: clampReachMoonFuelRatio(
+    REACH_MOON_FUEL_CAPACITY_KG > 0
+      ? score.fuelRemainingKg / REACH_MOON_FUEL_CAPACITY_KG
+      : 0,
+  ),
+  missionElapsedSeconds: normalizeMissionElapsedSeconds(
+    score.missionElapsedSeconds,
+  ),
+})
+
+export const getReachMoonCompletedHighscorePayload = (
+  runtime: AppRuntimeState,
+): ReachMoonCompletedHighscorePayload | null => {
+  if (runtime.scenario.session.scenarioId !== 'reach-moon') {
+    return null
+  }
+
+  const state = runtime.scenario.session.state
+  if (
+    !state ||
+    typeof state !== 'object' ||
+    !('phase' in state) ||
+    state.phase !== 'complete'
+  ) {
+    return null
+  }
+
+  const completeState = state as CompleteReachMoonState
+  const score = isReachMoonScoreSummary(completeState.highscore?.score)
+    ? completeState.highscore.score
+    : isReachMoonScoreSummary(completeState.score)
+      ? completeState.score
+      : null
+  if (!score) {
+    return null
+  }
+
+  return {
+    input: isReachMoonHighscoreSubmitInput(completeState.highscore?.input)
+      ? completeState.highscore.input
+      : getLegacyHighscoreInputFromScore(score),
+    score,
+  }
+}
 
 const getReachMoonCompletedScore = (
   runtime: AppRuntimeState,
 ): ReachMoonScoreSummary | null => {
-  const state = runtime.scenario.session.state
-  if (!state || typeof state !== 'object' || !('score' in state)) {
-    return null
-  }
-
-  return isReachMoonScoreSummary(state.score) ? state.score : null
+  return getReachMoonCompletedHighscorePayload(runtime)?.score ?? null
 }
 
 const getObjectiveRadiusMultiplier = (targetId: 'earth' | 'moon') =>
@@ -283,10 +375,13 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
         return orbitProgress
       }
 
+      const highscore = createReachMoonCompletedHighscorePayload(runtime)
+
       return createReachMoonTransition(
         {
           phase: 'complete',
-          score: calculateReachMoonRuntimeScore(runtime),
+          highscore,
+          score: highscore.score,
         },
         {
           completed: true,

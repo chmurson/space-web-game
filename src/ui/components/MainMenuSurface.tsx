@@ -1,3 +1,6 @@
+import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
+import { formatReachMoonScoreSummary } from '../../scenario/specific-scenarios/reachMoonScore'
+import type { ReachMoonRunReceipt } from '../../server/reachMoonRunReceipts'
 import {
   MenuActionButton,
   MenuActions,
@@ -12,9 +15,16 @@ export type MainMenuView = 'main' | 'reach-moon' | 'reach-moon-highscores'
 const mainMenuActionAttribute = 'data-main-menu-action'
 const mainMenuViewAttribute = 'data-main-menu-view'
 
+export type ReachMoonHighscorePendingRun =
+  ReachMoonCompletedHighscorePayload & {
+    runReceipt: ReachMoonRunReceipt | null
+    runReceiptError: string | null
+  }
+
 export type MainMenuSurfaceProps = {
   activeView: MainMenuView
   loadGameAvailable: boolean
+  reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null
   reachMoonFeatureEnabled: boolean
   rootRef(element: HTMLElement | null): void
   visible: boolean
@@ -30,6 +40,7 @@ export type MainMenuSurfaceProps = {
 export const MainMenuSurface = ({
   activeView,
   loadGameAvailable,
+  reachMoonHighscorePendingRun,
   reachMoonFeatureEnabled,
   rootRef,
   visible,
@@ -42,6 +53,11 @@ export const MainMenuSurface = ({
   onTutorial,
 }: MainMenuSurfaceProps) => {
   const displayedView = reachMoonFeatureEnabled ? activeView : 'main'
+  const highscoreDescription = reachMoonHighscorePendingRun
+    ? reachMoonHighscorePendingRun.runReceipt
+      ? `Mission score ready: ${formatReachMoonScoreSummary(reachMoonHighscorePendingRun.score)}`
+      : `Mission score ready, but submission is unavailable: ${reachMoonHighscorePendingRun.runReceiptError ?? 'run receipt was not prepared.'}`
+    : 'No records yet.'
 
   return (
     <section
@@ -186,7 +202,7 @@ export const MainMenuSurface = ({
           >
             <MenuCopy className="main-menu-copy">
               <MenuKicker className="main-menu-kicker">Highscores</MenuKicker>
-              <MenuDescription>No records yet.</MenuDescription>
+              <MenuDescription>{highscoreDescription}</MenuDescription>
             </MenuCopy>
             <MenuActions className="main-menu-actions">
               <MenuActionButton
