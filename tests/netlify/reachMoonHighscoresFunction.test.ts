@@ -439,6 +439,64 @@ describe('reachMoonHighscores function', () => {
     expect(store.values.get('rollups/daily/2026-06-28.json')).toBeTruthy()
   })
 
+  it('continues repair reads across blob list pages until the cap', async () => {
+    const store = createStore()
+    blobMocks.getStore.mockReturnValue(store)
+    seedRecord(
+      store,
+      createRecord('page-one', { elapsed: 50, total: 800 }, now),
+    )
+    seedRecord(
+      store,
+      createRecord('page-two', { elapsed: 40, total: 1_200 }, now),
+    )
+    store.list = vi.fn(
+      (options: { paginate?: boolean; prefix?: string } = {}) => {
+        const prefix = options.prefix ?? ''
+        if (options.paginate) {
+          return (async function* () {
+            yield {
+              blobs: [{ etag: 'page-one-etag', key: `${prefix}page-one.json` }],
+              directories: [],
+            }
+            yield {
+              blobs: [{ etag: 'page-two-etag', key: `${prefix}page-two.json` }],
+              directories: [],
+            }
+          })()
+        }
+
+        return Promise.resolve({
+          blobs: [...store.values.keys()]
+            .filter((key) => key.startsWith(prefix))
+            .map((key) => ({ etag: 'etag', key })),
+          directories: [],
+        })
+      },
+    )
+
+    const response = await handler(
+      new Request(
+        'https://example.test/api/reach-moon/highscores?period=daily',
+      ),
+    )
+    const body = await readJson<{
+      rollups: Record<ReachMoonHighscorePeriod, { entries: { id: string }[] }>
+    }>(response)
+
+    expect(response.status).toBe(200)
+    expect(body.rollups.daily.entries.map((entry) => entry.id)).toEqual([
+      'page-two',
+      'page-one',
+    ])
+    expect(store.get).toHaveBeenCalledWith('records/by-run/page-one.json', {
+      type: 'json',
+    })
+    expect(store.get).toHaveBeenCalledWith('records/by-run/page-two.json', {
+      type: 'json',
+    })
+  })
+
   it('keeps accepted records authoritative when a rollup cache write fails', async () => {
     const store = createStore()
     const writeThroughSetJSON = store.setJSON
@@ -490,6 +548,7 @@ describe('reachMoonHighscores function', () => {
       }),
     )
     expect(methodResponse.status).toBe(405)
+    expect(methodResponse.headers.get('allow')).toBe('GET, POST')
     await expect(readJson(methodResponse)).resolves.toMatchObject({
       error: { code: 'method_not_allowed' },
     })
