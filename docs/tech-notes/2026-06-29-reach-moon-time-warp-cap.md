@@ -1,8 +1,6 @@
 # Reach the Moon Time Warp Cap
 
 Issue: https://github.com/chmurson/space-web-game/issues/133
-Branch: `codex/issue-133-time-warp-cap`
-Shipit state: `.codex/shipit-workflows/issue-133-time-warp-cap.md`
 
 ## What Changed
 
@@ -28,12 +26,10 @@ Shipit state: `.codex/shipit-workflows/issue-133-time-warp-cap.md`
 
 ## Validation
 
-- `npx vitest run --config vite.config.ts tests/scenario/specific-scenarios/reachMoonScenario.test.ts tests/runtime/trajectoryHorizonControlPolicy.test.ts` passed: 2 files, 14 tests.
-- `npm test` passed: 56 Vitest files with 373 tests plus 16 automation-claim node tests.
-- `npm run build` passed. Vite emitted the existing large-chunk warning.
+- Focused scenario and trajectory-horizon tests passed.
+- Full test suite passed.
+- Production build passed. Vite emitted the existing large-chunk warning.
 - `git diff --check` passed.
-- `coderabbit --base main --agent` connected and began analysis, then stalled for roughly two minutes without findings or completion and was stopped.
-- The same-repository PR is covered by the automated Netlify PR preview at https://pr-137--space-web-game.netlify.app.
 
 ## Follow-Ups
 

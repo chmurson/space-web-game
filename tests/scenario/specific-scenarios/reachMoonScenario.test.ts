@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { gameConfig } from '@/config/gameConfig'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
@@ -40,7 +41,7 @@ const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
+  timeWarps: [...gameConfig.controls.timeWarps],
 }
 
 const createRuntime = (): AppRuntimeState => {
