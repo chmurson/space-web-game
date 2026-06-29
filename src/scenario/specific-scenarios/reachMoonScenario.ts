@@ -291,7 +291,6 @@ const advanceOrbitProgress = <TState extends OrbitMoonState | OrbitEarthState>(
 
 const createMissionDirectives = (): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
-  maxTimeWarp: 2000,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
 })
 
