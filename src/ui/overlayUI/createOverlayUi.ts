@@ -1,4 +1,5 @@
 import { h, render } from 'preact'
+import type { TrajectoryPredictionEventMarkerKind } from '../../prediction/trajectoryPrediction'
 import type { Body } from '../../simulation/types'
 import {
   FpsIndicatorSurface,
@@ -18,7 +19,7 @@ import './overlayUIStyles.css'
 
 export const spacecraftOffscreenIndicatorId = '__spacecraft__'
 
-type TrajectoryEventMarkerLabelKind = 'apoapsis' | 'periapsis'
+type TrajectoryEventMarkerLabelKind = TrajectoryPredictionEventMarkerKind
 
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
