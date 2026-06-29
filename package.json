@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.6",
+    "@netlify/blobs": "^10.7.9",
     "preact": "^10.29.2",
     "three": "^0.182.0"
   },
