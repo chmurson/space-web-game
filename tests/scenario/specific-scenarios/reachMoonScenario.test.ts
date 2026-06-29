@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { gameConfig } from '@/config/gameConfig'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
@@ -13,6 +14,7 @@ import {
 } from '@/scenario/runtimeScenario'
 import {
   applyRuntimeScenarioDirectiveConstraints,
+  getConstrainedTimeWarpIndex,
   resolveRuntimeScenarioDirectives,
 } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
@@ -39,7 +41,7 @@ const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 50, 100, 500, 2000],
+  timeWarps: [...gameConfig.controls.timeWarps],
 }
 
 const createRuntime = (): AppRuntimeState => {
@@ -171,6 +173,30 @@ describe('reachMoonScenario', () => {
       scenarioId: 'reach-moon',
       state: { phase: 'reach-moon' },
     })
+  })
+
+  it('uses the global time warp cap while preserving the mission viewport directive', () => {
+    const runtime = createRuntime()
+    const globalMaxTimeWarpIndex =
+      globalScenarioDirectiveLimits.timeWarps.length - 1
+    const directives = resolveRuntimeScenarioDirectives(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
+
+    expect(directives.maxCoastPredictionHorizonHours).toBeNull()
+    expect(directives.maxTimeWarp).toBeNull()
+    expect(directives.maxViewportSize).toBe(EARTH_MOON_VIEWPORT_SIZE)
+    expect(globalScenarioDirectiveLimits.timeWarps[globalMaxTimeWarpIndex]).toBe(
+      18_000,
+    )
+    expect(
+      getConstrainedTimeWarpIndex(
+        globalMaxTimeWarpIndex,
+        globalScenarioDirectiveLimits.timeWarps,
+        directives.maxTimeWarp,
+      ),
+    ).toBe(globalMaxTimeWarpIndex)
   })
 
   it('resolves the initial mission prompt from prompt definitions', () => {
