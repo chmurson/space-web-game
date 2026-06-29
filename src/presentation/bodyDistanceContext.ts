@@ -14,7 +14,7 @@ export const createBodyDistanceContext = (options: {
   target: Body
   targetMetrics: CaptureMetrics
 }): BodyDistanceContext => {
-  const altitudeLabel = `alt ${formatDistance(options.targetMetrics.surfaceDistance)}`
+  const altitudeLabel = formatDistance(options.targetMetrics.surfaceDistance)
   const accessibleLabel = `altitude ${formatDistance(
     options.targetMetrics.surfaceDistance,
   )}`

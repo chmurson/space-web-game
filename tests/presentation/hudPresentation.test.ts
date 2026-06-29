@@ -643,7 +643,7 @@ describe('createHudPresentation', () => {
     presentation.update(createMetrics())
 
     expect(overlayUi.statTarget.textContent).toBe('Moon')
-    expect(overlayUi.statTargetAltitude.textContent).toBe('alt 84 Mm')
+    expect(overlayUi.statTargetAltitude.textContent).toBe('84 Mm')
     expect(overlayUi.targetPill.title).toBe(
       'Moon, pinned target, altitude 84 Mm',
     )

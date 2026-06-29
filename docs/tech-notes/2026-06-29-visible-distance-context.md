@@ -26,7 +26,7 @@ Offscreen indicators already gave players distance context before a body entered
 ## Decisions
 
 - Current altitude uses `CaptureMetrics.surfaceDistance`, so the readout is body-surface altitude rather than center-to-center range.
-- Owner feedback on PR #125 narrowed the anchored visible-body tooltip to body name plus altitude only.
+- Owner feedback on PR #125 narrowed the anchored visible-body tooltip to body name plus altitude value only.
 - Pe/Ap trajectory markers are intentionally not included in this pass. The current trajectory prediction state has sampled path points and closest-approach altitude/time, but not closest/farthest point positions for readable zoom-gated markers.
 
 ## Validation
@@ -35,9 +35,9 @@ Offscreen indicators already gave players distance context before a body entered
 - `npm test`: passed, 53 Vitest files with 349 tests plus 16 automation-claim node tests.
 - `npm run test:gui`: passed, 25 Playwright tests.
 - `coderabbit --base main --agent`: first run completed with two findings. The valid in-scope helper finding was fixed. The other finding targeted `tests/server/reachMoonRunReceipts.test.ts`, which this branch does not touch, so it remains outside issue #47 scope. A rerun after the fix hit the CodeRabbit rate limit.
-- Inspected `tmp/playwright-results/mobileHudScreenshot-captur-37d0d-tor-side-panel-after-reveal-mobile-chromium/mobile-target-selector.png`: target pill collapsed to glyph plus `alt 400 km` without top-bar overlap.
+- Inspected `tmp/playwright-results/mobileHudScreenshot-captur-37d0d-tor-side-panel-after-reveal-mobile-chromium/mobile-target-selector.png`: target pill collapsed to glyph plus `400 km` without top-bar overlap.
 - Inspected `tmp/playwright-results/tutorialTrailDebugReplay-r-a4f42-ate-from-a-fixed-checkpoint-mobile-chromium/tutorial-trail-debug-replay.png`: Moon remained offscreen with its existing offscreen indicator while the target pill showed altitude.
-- Captured and inspected `tmp/playwright-results/issue-47-visible-target-tooltip.png`: visible Earth showed `Earth · alt 400 km`, Earth offscreen indicator stayed hidden, and the Moon offscreen indicator stayed visible.
+- Captured and inspected `tmp/playwright-results/issue-47-visible-target-tooltip.png`: visible Earth showed `Earth · 400 km`, Earth offscreen indicator stayed hidden, and the Moon offscreen indicator stayed visible.
 
 ## Follow-ups
 

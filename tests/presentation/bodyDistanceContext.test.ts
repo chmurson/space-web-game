@@ -52,10 +52,10 @@ describe('createBodyDistanceContext', () => {
       }),
     ).toMatchObject({
       accessibleLabel: 'Earth, altitude 400 km',
-      altitudeLabel: 'alt 400 km',
+      altitudeLabel: '400 km',
       bodyId: 'earth',
       detailAccessibleLabel: 'altitude 400 km',
-      tooltipLabel: 'Earth · alt 400 km',
+      tooltipLabel: 'Earth · 400 km',
     })
   })
 })
