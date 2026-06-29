@@ -11,6 +11,7 @@ import {
   createRuntimeScenarioStateFromId,
   type RuntimeScenarioOptions,
 } from '@/scenario/runtimeScenario'
+import { getReachMoonCompletedHighscorePayload } from '@/scenario/specific-scenarios/reachMoonScenario'
 import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
@@ -269,6 +270,34 @@ describe('reachMoonScenario', () => {
     expect(runtime.scenario.session.completed).toBe(true)
     expect(runtime.scenario.session.state).toEqual({
       phase: 'complete',
+      highscore: {
+        input: {
+          fuelRemainingRatio: 0.5,
+          missionElapsedSeconds: 90_000,
+        },
+        score: {
+          baseScorePoints: 1_000,
+          fuelBonusPoints: 100,
+          fuelRemainingKg: 16_000,
+          missionElapsedSeconds: 90_000,
+          timePenaltyPoints: 100,
+          totalScore: 1_000,
+        },
+      },
+      score: {
+        baseScorePoints: 1_000,
+        fuelBonusPoints: 100,
+        fuelRemainingKg: 16_000,
+        missionElapsedSeconds: 90_000,
+        timePenaltyPoints: 100,
+        totalScore: 1_000,
+      },
+    })
+    expect(getReachMoonCompletedHighscorePayload(runtime)).toEqual({
+      input: {
+        fuelRemainingRatio: 0.5,
+        missionElapsedSeconds: 90_000,
+      },
       score: {
         baseScorePoints: 1_000,
         fuelBonusPoints: 100,

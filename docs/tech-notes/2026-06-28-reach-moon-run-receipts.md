@@ -27,7 +27,7 @@ The highscore sequence needs a small receipt from the server when a Reach the Mo
 - Require a nonblank HMAC secret of at least 32 bytes before signing or verifying receipts.
 - Used a 24-hour wall-clock TTL by default to avoid evergreen receipts while leaving room for a human run.
 - Kept the helper Reach-the-Moon-specific instead of adding a generic receipt framework.
-- Did not wire runtime/UI start or submit flows; those remain owned by later highscore child issues.
+- At issue #114 delivery time, runtime/UI start and submit flows remained owned by later highscore child issues. Issue #116 now wires the runtime receipt request lifecycle; later leaderboard UI/autosubmit work owns submit and retry UX.
 
 ## Validation
 

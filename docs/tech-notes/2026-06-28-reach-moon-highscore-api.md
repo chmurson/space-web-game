@@ -2,7 +2,7 @@
 
 Issue: https://github.com/chmurson/space-web-game/issues/115
 Branch: `codex/issue-115-highscore-api`
-Shipit state: `.codex/shipit-workflows/codex-issue-115-highscore-api.md`
+Shipit state: `.codex/shipit-workflows/codex/issue-115-highscore-api.md`
 
 ## What Changed
 
