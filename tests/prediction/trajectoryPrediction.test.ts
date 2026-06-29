@@ -11,8 +11,13 @@ import { EARTH_MASS, EARTH_RADIUS } from '@/simulation/constants'
 import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
 import { createEarthMoonScenario } from '@/simulation/scenarios/earthMoon'
 import { idleControls } from '@/simulation/state'
-import type { Body, SimulationState, Spacecraft } from '@/simulation/types'
-import { length, sub } from '@/simulation/vector'
+import type {
+  Body,
+  PhysicsEngine,
+  SimulationState,
+  Spacecraft,
+} from '@/simulation/types'
+import { length, sub, type Vec2 } from '@/simulation/vector'
 
 const productionPredictionSampling: TrajectoryPredictionSamplingConfig = {
   maxIntegrationStepSeconds: 8,
@@ -72,6 +77,76 @@ const createPredictionConfig = (
   ),
   maxIntegrationStepSeconds,
 })
+
+const createSampledPathPredictionConfig = (
+  horizonSeconds: number,
+): TrajectoryPredictionConfig => ({
+  horizonSeconds,
+  maxIntegrationStepSeconds: 1,
+  maxLoopRevolutions: 2.5,
+  refreshInterval: 0.4,
+  stepSeconds: 1,
+})
+
+const createSampledPathPhysicsEngine = (points: Vec2[]): PhysicsEngine => ({
+  name: 'sampled path',
+  step: (state, dt) => {
+    const elapsed = state.elapsed + dt
+    const index = Math.min(Math.round(elapsed), points.length - 1)
+
+    return {
+      ...state,
+      elapsed,
+      spacecraft: {
+        ...state.spacecraft,
+        position: points[index] ?? points.at(-1) ?? state.spacecraft.position,
+      },
+    }
+  },
+})
+
+const createSampledPathState = (
+  distances: number[],
+  targetRadius = 0,
+): SimulationState =>
+  createSimulationState(
+    [
+      {
+        ...createEarthBody(),
+        mass: 0,
+        radius: targetRadius,
+      },
+    ],
+    {
+      position: { x: distances[0], y: 0 },
+      velocity: { x: 0, y: 0 },
+      heading: 0,
+      fuel: 1,
+      fuelUsed: 0,
+      dryMass: 1,
+      fuelMass: 1,
+      fuelCapacity: 1,
+    },
+  )
+
+const predictSampledPath = (options: {
+  allowLoopTrim: boolean
+  distances: number[]
+  horizonSeconds: number
+  targetRadius?: number
+}) => {
+  const state = createSampledPathState(options.distances, options.targetRadius)
+  const target = getEarthTarget(state)
+  const points = options.distances.map((distance) => ({ x: distance, y: 0 }))
+
+  return predictCoastTrajectory(
+    state,
+    createSampledPathPhysicsEngine(points),
+    target,
+    createSampledPathPredictionConfig(options.horizonSeconds),
+    options.allowLoopTrim,
+  )
+}
 
 const getEarthTarget = (state: SimulationState): Body => {
   const earth = state.bodies.find((body) => body.id === 'earth')
@@ -142,5 +217,58 @@ describe('predictCoastTrajectory', () => {
 
     expect(finalPositionError).toBeLessThan(750_000)
     expect(closestApproachError).toBeLessThan(5_000)
+  })
+
+  it('reports Pe only after the sampled horizon includes the closest point', () => {
+    const shortPrediction = predictSampledPath({
+      allowLoopTrim: true,
+      distances: [12, 9, 6, 2, 4],
+      horizonSeconds: 3,
+    })
+    const extendedPrediction = predictSampledPath({
+      allowLoopTrim: true,
+      distances: [12, 9, 6, 2, 4],
+      horizonSeconds: 4,
+    })
+
+    expect(shortPrediction.eventMarkers).not.toContainEqual(
+      expect.objectContaining({ kind: 'periapsis' }),
+    )
+    expect(extendedPrediction.eventMarkers).toContainEqual({
+      kind: 'periapsis',
+      point: { x: 2, y: 0 },
+      time: 3,
+    })
+  })
+
+  it('reports Ap only for bound non-impacting sampled paths', () => {
+    const boundPrediction = predictSampledPath({
+      allowLoopTrim: true,
+      distances: [4, 8, 12, 9, 6],
+      horizonSeconds: 4,
+    })
+    const unboundPrediction = predictSampledPath({
+      allowLoopTrim: false,
+      distances: [4, 8, 12, 9, 6],
+      horizonSeconds: 4,
+    })
+    const impactPrediction = predictSampledPath({
+      allowLoopTrim: true,
+      distances: [4, 8, 12, 9, 0.5],
+      horizonSeconds: 4,
+      targetRadius: 1,
+    })
+
+    expect(boundPrediction.eventMarkers).toContainEqual({
+      kind: 'apoapsis',
+      point: { x: 12, y: 0 },
+      time: 2,
+    })
+    expect(unboundPrediction.eventMarkers).not.toContainEqual(
+      expect.objectContaining({ kind: 'apoapsis' }),
+    )
+    expect(impactPrediction.eventMarkers).not.toContainEqual(
+      expect.objectContaining({ kind: 'apoapsis' }),
+    )
   })
 })

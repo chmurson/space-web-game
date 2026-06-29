@@ -4,6 +4,7 @@ import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 
 import type { GameConfig } from '../config/types'
+import type { TrajectoryPredictionEventMarkerKind } from '../prediction/trajectoryPrediction'
 import type { ScenarioAssets } from '../render/scenarioAssets'
 import {
   resolveScenarioRenderConfig,
@@ -270,6 +271,11 @@ export type ScreenSpaceDashPattern = {
   material: LineMaterial | THREE.LineDashedMaterial
 }
 
+export type TrajectoryEventMarkerVisual = {
+  group: THREE.Group
+  label: THREE.Group
+}
+
 export type GameSceneRefs = {
   assistedPredictionGeometry: LineGeometry
   assistedPredictionLine: Line2
@@ -315,6 +321,10 @@ export type GameSceneRefs = {
   trail: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
   trailPoints: SpacecraftTrailPoint[]
   trailRenderedSliceCount: number
+  trajectoryEventMarkers: Record<
+    TrajectoryPredictionEventMarkerKind,
+    TrajectoryEventMarkerVisual
+  >
   visualSunDirection: THREE.Vector3
 }
 
@@ -392,6 +402,103 @@ export const applyBodyTextureAssetsToScene = (
       gameScene.bodyCloudMeshes.get(body.id),
       scenarioAssets.bodyCloudTextures.get(body.id),
     )
+  }
+}
+
+const createPredictionMarkerCircle = (fillOpacity = 0.5) => {
+  const group = new THREE.Group()
+  const backing = new THREE.Mesh(
+    new THREE.CircleGeometry(1, 24),
+    new THREE.MeshBasicMaterial({
+      color: '#05070d',
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  )
+  const fill = new THREE.Mesh(
+    new THREE.CircleGeometry(1, 24),
+    new THREE.MeshBasicMaterial({
+      color: '#67e8f9',
+      opacity: fillOpacity,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  )
+  backing.renderOrder = 10
+  fill.renderOrder = 11
+  backing.scale.setScalar(1.25)
+  group.add(backing, fill)
+  group.renderOrder = 10
+  return { fill, group }
+}
+
+const createTrajectoryEventLabel = (label: string) => {
+  const group = new THREE.Group()
+  group.renderOrder = 13
+  group.visible = false
+
+  if (typeof document === 'undefined') {
+    return group
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 32
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    return group
+  }
+
+  context.fillStyle = 'rgba(5, 7, 13, 0.78)'
+  context.fillRect(8, 5, 48, 22)
+  context.strokeStyle = 'rgba(125, 211, 252, 0.82)'
+  context.lineWidth = 2
+  context.strokeRect(8, 5, 48, 22)
+  context.fillStyle = '#f4f7fb'
+  context.font =
+    '800 18px Segoe UI, Avenir Next, Helvetica Neue, Arial, sans-serif'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.fillText(label, 32, 17)
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  const material = new THREE.SpriteMaterial({
+    depthTest: false,
+    depthWrite: false,
+    map: texture,
+    toneMapped: false,
+    transparent: true,
+  })
+  const sprite = new THREE.Sprite(material)
+  sprite.renderOrder = 13
+  sprite.scale.set(48, 24, 1)
+  group.add(sprite)
+
+  return group
+}
+
+const trajectoryEventMarkerLabels = {
+  apoapsis: 'Ap',
+  periapsis: 'Pe',
+} satisfies Record<TrajectoryPredictionEventMarkerKind, string>
+
+const createTrajectoryEventMarker = (
+  kind: TrajectoryPredictionEventMarkerKind,
+): TrajectoryEventMarkerVisual => {
+  const marker = createPredictionMarkerCircle(0.72)
+  marker.group.visible = false
+  const label = createTrajectoryEventLabel(trajectoryEventMarkerLabels[kind])
+
+  return {
+    group: marker.group,
+    label,
   }
 }
 
@@ -611,35 +718,21 @@ export const createGameScene = (
   const predictionEndMarkerRadius = trajectoryRenderingConfig.endMarkerRadius
   const predictionEndMarkerMinScreenRadius =
     trajectoryRenderingConfig.endMarkerMinScreenRadius
-  const predictionEndMarker = new THREE.Group()
-  const predictionEndMarkerBacking = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 24),
-    new THREE.MeshBasicMaterial({
-      color: '#05070d',
-      depthTest: false,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      toneMapped: false,
-    }),
-  )
-  const predictionEndMarkerFill = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 24),
-    new THREE.MeshBasicMaterial({
-      color: '#67e8f9',
-      opacity: 0.5,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      toneMapped: false,
-    }),
-  )
-  predictionEndMarkerBacking.renderOrder = 10
-  predictionEndMarkerFill.renderOrder = 11
-  predictionEndMarkerBacking.scale.setScalar(1.25)
-  predictionEndMarker.add(predictionEndMarkerBacking, predictionEndMarkerFill)
-  predictionEndMarker.renderOrder = 10
+  const predictionEndMarkerCircle = createPredictionMarkerCircle()
+  const predictionEndMarker = predictionEndMarkerCircle.group
+  const predictionEndMarkerFill = predictionEndMarkerCircle.fill
   scene.add(predictionEndMarker)
+  const trajectoryEventMarkers = {
+    apoapsis: createTrajectoryEventMarker('apoapsis'),
+    periapsis: createTrajectoryEventMarker('periapsis'),
+  } satisfies Record<
+    TrajectoryPredictionEventMarkerKind,
+    TrajectoryEventMarkerVisual
+  >
+
+  for (const marker of Object.values(trajectoryEventMarkers)) {
+    scene.add(marker.group, marker.label)
+  }
 
   return {
     assistedPredictionGeometry,
@@ -680,6 +773,7 @@ export const createGameScene = (
     trail,
     trailPoints,
     trailRenderedSliceCount: 0,
+    trajectoryEventMarkers,
     visualSunDirection,
   }
 }

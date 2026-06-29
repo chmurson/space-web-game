@@ -4,6 +4,7 @@ import {
   type PredictedImpact,
   predictAssistedTrajectory,
   predictCoastTrajectory,
+  type TrajectoryPredictionEventMarker,
   type TrajectoryPredictionConfig,
 } from '../prediction/trajectoryPrediction'
 import type {
@@ -20,6 +21,7 @@ export type TrajectoryPredictionState = {
   predictedImpact: PredictedImpact | null
   predictedTargetClosestApproach: PredictedClosestApproach | null
   targetId: string | null
+  targetRelativeEventMarkers: TrajectoryPredictionEventMarker[]
   targetRelativeAssistedPoints: Vec2[]
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
@@ -44,6 +46,7 @@ const emptyTrajectoryPredictionState = (): TrajectoryPredictionState => ({
   predictedImpact: null,
   predictedTargetClosestApproach: null,
   targetId: null,
+  targetRelativeEventMarkers: [],
   targetRelativeAssistedPoints: [],
   targetRelativePredictionEnd: null,
   targetRelativePredictionPoints: [],
@@ -74,6 +77,7 @@ export const createTrajectoryPredictionRuntime = () => {
       predictedImpact: coastPrediction.impact,
       predictedTargetClosestApproach: coastPrediction.closestApproach,
       targetId: target.id,
+      targetRelativeEventMarkers: coastPrediction.eventMarkers,
       targetRelativeAssistedPoints:
         options.assistMode === 'off'
           ? []

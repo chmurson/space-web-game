@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 
+import type { TrajectoryPredictionEventMarker } from '../prediction/trajectoryPrediction'
 import type { CircularizePlan } from '../assist/orbitalAssist'
 import { renderPosition } from '../render/sceneUpdates'
 import {
@@ -15,6 +16,17 @@ import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, type Vec2 } from '../simulation/vector'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
+const trajectoryEventMarkerMaxViewportSize = 160
+const trajectoryEventMarkerLabelMaxViewportSize = 70
+const trajectoryEventMarkerLift = 0.22
+
+const hideTrajectoryEventMarkers = (gameScene: GameSceneRefs) => {
+  for (const marker of Object.values(gameScene.trajectoryEventMarkers)) {
+    marker.group.visible = false
+    marker.label.visible = false
+  }
+}
+
 const hideTrajectoryVisuals = (gameScene: GameSceneRefs) => {
   gameScene.assistedPredictionLine.visible = false
   gameScene.circularOrbitLine.visible = false
@@ -23,6 +35,7 @@ const hideTrajectoryVisuals = (gameScene: GameSceneRefs) => {
   gameScene.inertialPredictionLine.visible = false
   gameScene.predictionEndMarker.visible = false
   gameScene.predictionLine.visible = false
+  hideTrajectoryEventMarkers(gameScene)
 }
 
 const updateInertialPredictionVisual = (options: {
@@ -110,6 +123,7 @@ const updateTargetRelativePredictionVisuals = (options: {
   gameScene: GameSceneRefs
   predictedImpact: { bodyName: string; time: number } | null
   target: Body
+  targetRelativeEventMarkers: TrajectoryPredictionEventMarker[]
   targetRelativeAssistedPoints: Vec2[]
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
@@ -154,6 +168,13 @@ const updateTargetRelativePredictionVisuals = (options: {
     0.2,
     options.target,
   )
+  updateTrajectoryEventMarkers({
+    eventMarkers: options.targetRelativeEventMarkers,
+    gameScene: options.gameScene,
+    target: options.target,
+    viewportHeight: options.viewportHeight,
+    viewportSize: options.viewportSize,
+  })
 
   if (!options.targetRelativePredictionEnd) {
     options.gameScene.predictionEndMarker.visible = false
@@ -220,6 +241,86 @@ const updateTargetRelativePredictionVisuals = (options: {
         options.gameScene.replacePredictionLineGeometryOnUpdate,
     },
   )
+}
+
+const updateTrajectoryEventMarkers = (options: {
+  eventMarkers: TrajectoryPredictionEventMarker[]
+  gameScene: GameSceneRefs
+  target: Body
+  viewportHeight: number
+  viewportSize: number
+}) => {
+  if (
+    options.eventMarkers.length === 0 ||
+    options.viewportSize > trajectoryEventMarkerMaxViewportSize
+  ) {
+    hideTrajectoryEventMarkers(options.gameScene)
+    return
+  }
+
+  const renderUnitsPerPixel =
+    options.viewportSize / Math.max(options.viewportHeight, 1)
+  const markerRadius = Math.max(
+    options.gameScene.predictionEndMarkerRadius * 0.72,
+    options.gameScene.predictionEndMarkerMinScreenRadius *
+      0.72 *
+      renderUnitsPerPixel,
+  )
+  const labelVisible =
+    options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
+  const labelRightOffset = 18 * renderUnitsPerPixel
+  const labelUpOffset = 10 * renderUnitsPerPixel
+  const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(
+    options.gameScene.camera.quaternion,
+  )
+  const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(
+    options.gameScene.camera.quaternion,
+  )
+  const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()
+
+  for (const eventMarker of options.eventMarkers) {
+    const marker = options.gameScene.trajectoryEventMarkers[eventMarker.kind]
+
+    if (
+      !Number.isFinite(eventMarker.point.x) ||
+      !Number.isFinite(eventMarker.point.y)
+    ) {
+      marker.group.visible = false
+      marker.label.visible = false
+      continue
+    }
+
+    const position = renderPosition(
+      options.target.position.x + eventMarker.point.x,
+      options.target.position.y + eventMarker.point.y,
+      trajectoryEventMarkerLift,
+    )
+
+    marker.group.position.copy(position)
+    marker.group.quaternion.copy(options.gameScene.camera.quaternion)
+    marker.group.scale.setScalar(markerRadius)
+    marker.group.visible = true
+    marker.label.visible = labelVisible
+
+    if (labelVisible) {
+      marker.label.position
+        .copy(position)
+        .addScaledVector(cameraRight, labelRightOffset)
+        .addScaledVector(cameraUp, labelUpOffset)
+      marker.label.scale.setScalar(renderUnitsPerPixel)
+    }
+
+    visibleKinds.add(eventMarker.kind)
+  }
+
+  for (const [kind, marker] of Object.entries(
+    options.gameScene.trajectoryEventMarkers,
+  )) {
+    if (!visibleKinds.has(kind as TrajectoryPredictionEventMarker['kind'])) {
+      marker.group.visible = false
+      marker.label.visible = false
+    }
+  }
 }
 
 const updateCircularizationVisuals = (options: {
@@ -423,6 +524,9 @@ export const createTrajectoryPresentation = (options: {
           ? predictionState.predictedImpact
           : null,
         target,
+        targetRelativeEventMarkers: predictionTargetMatches
+          ? predictionState.targetRelativeEventMarkers
+          : [],
         targetRelativeAssistedPoints: predictionTargetMatches
           ? predictionState.targetRelativeAssistedPoints
           : [],

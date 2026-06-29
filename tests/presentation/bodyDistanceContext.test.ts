@@ -45,18 +45,19 @@ describe('createBodyDistanceContext', () => {
       earth,
     )
 
-    expect(
-      createBodyDistanceContext({
-        target: earth,
-        targetMetrics,
-      }),
-    ).toMatchObject({
+    const distanceContext = createBodyDistanceContext({
+      target: earth,
+      targetMetrics,
+    })
+
+    expect(distanceContext).toMatchObject({
       accessibleLabel: 'Earth, altitude 400 km',
       altitudeLabel: '400 km',
       bodyId: 'earth',
       detailAccessibleLabel: 'altitude 400 km',
       tooltipLabel: 'Earth · 400 km',
     })
+    expect(distanceContext.tooltipLabel).not.toMatch(/\b(?:Ap|Pe)\b/)
   })
 
   it('formats megameter altitude context', () => {

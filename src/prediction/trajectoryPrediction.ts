@@ -6,7 +6,7 @@ import type {
   PhysicsEngine,
   SimulationState,
 } from '../simulation/types'
-import { length, sub, type Vec2 } from '../simulation/vector'
+import { length, lengthSq, sub, type Vec2 } from '../simulation/vector'
 
 export type TrajectoryPredictionConfig = {
   horizonSeconds: number
@@ -34,10 +34,19 @@ export type PredictedClosestApproach = {
   time: number
 }
 
+export type TrajectoryPredictionEventMarkerKind = 'apoapsis' | 'periapsis'
+
+export type TrajectoryPredictionEventMarker = {
+  kind: TrajectoryPredictionEventMarkerKind
+  point: Vec2
+  time: number
+}
+
 export type TrajectoryPredictionResult = {
   absoluteEndPoint: Vec2 | null
   absolutePoints: Vec2[]
   closestApproach: PredictedClosestApproach | null
+  eventMarkers: TrajectoryPredictionEventMarker[]
   impact: PredictedImpact | null
   relativePoints: Vec2[]
 }
@@ -127,6 +136,75 @@ const getAdaptiveIntegrationStepSeconds = (
   return Math.max(minIntegrationStepSeconds, gravityLimitedStepSeconds)
 }
 
+type TargetRelativePredictionSample = {
+  distanceSq: number
+  point: Vec2
+  time: number
+}
+
+const isInteriorSample = (
+  index: number,
+  samples: TargetRelativePredictionSample[],
+) => index > 0 && index < samples.length - 1
+
+const findTargetRelativeExtremum = (
+  samples: TargetRelativePredictionSample[],
+  compare: (candidate: number, current: number) => boolean,
+) => {
+  if (samples.length < 3) {
+    return null
+  }
+
+  let extremumIndex = 0
+  for (let index = 1; index < samples.length; index += 1) {
+    if (compare(samples[index].distanceSq, samples[extremumIndex].distanceSq)) {
+      extremumIndex = index
+    }
+  }
+
+  return isInteriorSample(extremumIndex, samples)
+    ? samples[extremumIndex]
+    : null
+}
+
+const getTargetRelativeEventMarkers = (
+  samples: TargetRelativePredictionSample[],
+  options: { includeApoapsis: boolean },
+): TrajectoryPredictionEventMarker[] => {
+  const eventMarkers: TrajectoryPredictionEventMarker[] = []
+  const periapsis = findTargetRelativeExtremum(
+    samples,
+    (candidate, current) => candidate < current,
+  )
+
+  if (periapsis) {
+    eventMarkers.push({
+      kind: 'periapsis',
+      point: { ...periapsis.point },
+      time: periapsis.time,
+    })
+  }
+
+  if (!options.includeApoapsis) {
+    return eventMarkers
+  }
+
+  const apoapsis = findTargetRelativeExtremum(
+    samples,
+    (candidate, current) => candidate > current,
+  )
+
+  if (apoapsis) {
+    eventMarkers.push({
+      kind: 'apoapsis',
+      point: { ...apoapsis.point },
+      time: apoapsis.time,
+    })
+  }
+
+  return eventMarkers
+}
+
 export const predictCoastTrajectory = (
   state: SimulationState,
   physicsEngine: PhysicsEngine,
@@ -137,6 +215,7 @@ export const predictCoastTrajectory = (
   let predictedState = cloneSimulationState(state)
   const absolutePoints: Vec2[] = [{ ...state.spacecraft.position }]
   const relativePoints: Vec2[] = []
+  const targetRelativeSamples: TargetRelativePredictionSample[] = []
   const maxLoopAngularTravel = predictionConfig.maxLoopRevolutions * Math.PI * 2
   let closestApproach: PredictedClosestApproach | null = null
   let impact: PredictedImpact | null = null
@@ -205,6 +284,11 @@ export const predictCoastTrajectory = (
     previousPredictionAngle = predictionAngle
     absolutePoints.push({ ...predictedState.spacecraft.position })
     relativePoints.push(relativePoint)
+    targetRelativeSamples.push({
+      distanceSq: lengthSq(relativePoint),
+      point: relativePoint,
+      time: predictionTime,
+    })
 
     if (allowLoopTrim && predictionAngularTravel >= maxLoopAngularTravel) {
       break
@@ -218,6 +302,9 @@ export const predictCoastTrajectory = (
         : null,
     absolutePoints,
     closestApproach,
+    eventMarkers: getTargetRelativeEventMarkers(targetRelativeSamples, {
+      includeApoapsis: allowLoopTrim && !impact,
+    }),
     impact,
     relativePoints,
   }
