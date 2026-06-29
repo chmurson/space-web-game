@@ -20,7 +20,8 @@ import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
-const trajectoryEventMarkerMaxViewportSize = 160
+const trajectoryEventMarkerFullSizeMaxViewportSize = 160
+const trajectoryEventMarkerMaxViewportSize = 500
 const trajectoryEventMarkerMaxScreenViewportSize = 20
 const trajectoryEventMarkerLabelMaxViewportSize = 70
 const trajectoryEventMarkerLift = 0.22
@@ -466,6 +467,12 @@ const updateTrajectoryEventMarkers = (options: {
     options.viewportSize,
     trajectoryEventMarkerMaxScreenViewportSize,
   )
+  const distantViewportScale =
+    options.viewportSize > trajectoryEventMarkerFullSizeMaxViewportSize
+      ? Math.sqrt(
+          trajectoryEventMarkerFullSizeMaxViewportSize / options.viewportSize,
+        )
+      : 1
   const markerRadius =
     Math.max(
       options.gameScene.predictionEndMarkerRadius * 0.72,
@@ -473,7 +480,8 @@ const updateTrajectoryEventMarkers = (options: {
         0.72 *
         (markerScaleViewportSize / Math.max(options.viewportHeight, 1)),
     ) *
-    (options.viewportSize / markerScaleViewportSize)
+    (options.viewportSize / markerScaleViewportSize) *
+    distantViewportScale
   const labelVisible =
     options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
   const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()

@@ -5,6 +5,7 @@
 - Coast trajectory prediction now emits optional target-relative event markers for sampled periapsis (`Pe`) and apoapsis (`Ap`) points.
 - Trajectory prediction includes each marker's center distance and surface altitude.
 - Trajectory presentation renders those events as small path-attached dots and only shows DOM labels at close zoom.
+- Marker dots stay visible through viewport size 500, shrinking after the old close-zoom gate so they remain secondary to the trajectory and ship at wider zoom.
 - Marker display positions are stabilized with a time-warp-scaled movement threshold so small prediction changes do not visibly wobble the Pe/Ap point.
 - The body distance tooltip remains body name plus altitude only.
 
@@ -29,6 +30,7 @@ Issue #129 moved Pe/Ap context out of dense body tooltip text and onto the rende
 - A marker is only emitted when the chosen extremum is inside the sampled path, not at the prediction horizon boundary. This keeps horizon changes meaningful and avoids labeling an event that has not been sampled yet.
 - `Ap` is emitted only for bound, non-impacting coast predictions. Unbound, flyby, and impact paths do not get an apoapsis marker.
 - Marker dots reuse the existing prediction end-marker circle style. Labels moved from WebGL canvas textures to DOM elements because DOM text is sharper and easier to make accessible.
+- Marker dots keep their full screen size through viewport size 160, remain visible through viewport size 500, and shrink smoothly between those ranges.
 - Label text shows center distance and surface altitude as `Pe 12 Mm -> alt 400 km`.
 - Presentation keeps the last displayed marker data until a newly calculated point moves beyond a screen-pixel-derived threshold. The threshold grows with the configured time warp value.
 - `updateCameraView` updates the camera matrix immediately after camera/projection changes because DOM labels project world positions before the next `renderer.render(...)` call.

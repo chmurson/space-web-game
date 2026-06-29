@@ -284,19 +284,45 @@ describe('createTrajectoryPresentation', () => {
     )
     expect(mid.trajectoryEventMarkerLabels.periapsis.style.display).toBe('none')
 
+    const threshold = createTestPresentation({
+      eventMarkers,
+      viewportSize: 160,
+    })
+    threshold.presentation.updateVisuals()
+    const thresholdScreenRadius =
+      threshold.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
+      (160 / 600)
+
     const far = createTestPresentation({
       eventMarkers,
-      viewportSize: 220,
+      viewportSize: 500,
     })
     far.presentation.updateVisuals()
+    const farScreenRadius =
+      far.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
+      (500 / 600)
 
     expect(far.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      false,
+      true,
     )
     expect(far.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
-      false,
+      true,
     )
     expect(far.trajectoryEventMarkerLabels.periapsis.style.display).toBe('none')
+    expect(farScreenRadius).toBeLessThan(thresholdScreenRadius)
+
+    const beyond = createTestPresentation({
+      eventMarkers,
+      viewportSize: 520,
+    })
+    beyond.presentation.updateVisuals()
+
+    expect(
+      beyond.gameScene.trajectoryEventMarkers.periapsis.group.visible,
+    ).toBe(false)
+    expect(
+      beyond.gameScene.trajectoryEventMarkers.apoapsis.group.visible,
+    ).toBe(false)
 
     const viewportTwenty = createTestPresentation({
       eventMarkers,
