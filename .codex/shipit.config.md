@@ -31,7 +31,7 @@
 ## Netlify PR Preview Gate
 
 - PRs targeting `main` should rely on the automated Netlify PR preview workflow instead of agent-run manual staging deploys.
-- The preview workflow requires repository secrets `NETLIFY_AUTH_TOKEN` and `NETLIFY_PR_PREVIEW_SITE_ID`; the preview site ID must not be the production site ID.
+- The preview workflow requires repository secret `NETLIFY_AUTH_TOKEN`; it reuses the production Netlify site ID for non-production `pr-<number>` alias deploys and does not pass `--prod`.
 - The preview workflow covers same-repository PRs; forked PRs need explicit maintainer staging if a preview is required because repository secrets are not available to them.
 - For covered PRs, Shipit completion is not blocked on `npm run deploy:netlify`; record the workflow check state and preview URL when available.
 - Keep manual staging deploys available for explicit human requests, PRs targeting branches other than `main`, branches without PR preview coverage, or cases where a separate shared staging URL is needed.

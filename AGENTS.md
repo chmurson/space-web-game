@@ -34,7 +34,7 @@
 - Woven moth staging site ID: `65b8db6a-f0cc-49e3-b4e4-cc994699ba6a`
 - PRs targeting `main` use the automated Netlify PR preview workflow in `.github/workflows/netlify-pr-preview.yml`.
 - The PR preview workflow builds the PR head, deploys `dist/` with a stable `pr-<number>` Netlify alias, and reports the preview URL in the workflow summary and a stable PR comment.
-- Required PR preview secrets are `NETLIFY_AUTH_TOKEN` and `NETLIFY_PR_PREVIEW_SITE_ID`; the preview site ID must not be the production site ID.
+- Required PR preview secret is `NETLIFY_AUTH_TOKEN`; preview deploys reuse the production Netlify site ID with a non-production `pr-<number>` alias and do not pass `--prod`.
 - The PR preview workflow runs for same-repository PRs; forked PRs do not receive repository secrets and need explicit maintainer staging if a preview is required.
 - Deploy scripts use explicit `--site` selection and do not rely on `.netlify/state.json`.
 - The default non-production staging target can be changed per worktree by creating the gitignored `.netlify-deploy.local.json` with `{ "defaultStagingTarget": "woven-moth" }` or another supported staging target key.

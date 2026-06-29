@@ -53,7 +53,7 @@ jobs:
         id: deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_PR_PREVIEW_SITE_ID: ${{ secrets.NETLIFY_PR_PREVIEW_SITE_ID }}
+          NETLIFY_SITE_ID: 0ed821be-c897-4f15-ad17-859ae866ca1d
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -64,20 +64,10 @@ jobs:
             exit 1
           fi
 
-          if [ -z "${NETLIFY_PR_PREVIEW_SITE_ID}" ]; then
-            echo "::error::Missing required NETLIFY_PR_PREVIEW_SITE_ID secret."
-            exit 1
-          fi
-
-          if [ "${NETLIFY_PR_PREVIEW_SITE_ID}" = "0ed821be-c897-4f15-ad17-859ae866ca1d" ]; then
-            echo "::error::NETLIFY_PR_PREVIEW_SITE_ID must not point at the production site."
-            exit 1
-          fi
-
           deploy_output="${RUNNER_TEMP}/netlify-pr-preview.json"
           netlify deploy \
             --dir=dist \
-            --site "${NETLIFY_PR_PREVIEW_SITE_ID}" \
+            --site "${NETLIFY_SITE_ID}" \
             --alias "pr-${PR_NUMBER}" \
             --message "PR #${PR_NUMBER} preview ${PR_HEAD_SHA}" \
             --json | tee "${deploy_output}"
