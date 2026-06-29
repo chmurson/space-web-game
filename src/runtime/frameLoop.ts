@@ -76,15 +76,9 @@ export const createFrameLoop = (options: {
   const getActiveTargetDistanceContext = () => {
     const target = options.queries.getAssistTarget()
     const targetMetrics = options.queries.getCaptureMetrics(target)
-    const predictionState = options.trajectoryPresentation.getPredictionState()
 
     return {
       distanceContext: createBodyDistanceContext({
-        predictedClosestApproach:
-          predictionState.targetId === target.id
-            ? predictionState.predictedTargetClosestApproach
-            : null,
-        spacecraft: options.runtime.simulation.state.spacecraft,
         target,
         targetMetrics,
       }),

@@ -174,13 +174,7 @@ export const createHudPresentation = (options: {
   const syncTargetPill = (targetUiState: AssistTargetUiState) => {
     const target = targetUiState.activeTarget
     const targetMetrics = options.queries.getCaptureMetrics(target)
-    const predictionState = options.trajectoryPresentation.getPredictionState()
     const distanceContext = createBodyDistanceContext({
-      predictedClosestApproach:
-        predictionState.targetId === target.id
-          ? predictionState.predictedTargetClosestApproach
-          : null,
-      spacecraft: options.runtime.simulation.state.spacecraft,
       target,
       targetMetrics,
     })

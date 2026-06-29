@@ -5,7 +5,7 @@ Branch: `codex/issue-47-visible-distance-context`
 
 ## What Changed
 
-- Added a shared distance-context presenter helper for active body altitude and compact orbit context.
+- Added a shared distance-context presenter helper for active body altitude context.
 - Added current altitude to the target/orbit telemetry pill.
 - Reused the existing in-world body label layer as a visible-only anchored tooltip for the active target/orbit body.
 - Kept existing offscreen indicator behavior: offscreen indicators still own offscreen body direction and distance, while the anchored tooltip only appears through the visible-body label path.
@@ -16,7 +16,7 @@ Offscreen indicators already gave players distance context before a body entered
 
 ## Key Files
 
-- `src/presentation/bodyDistanceContext.ts` owns altitude, Pe, and Ap label formatting.
+- `src/presentation/bodyDistanceContext.ts` owns active-body altitude label formatting.
 - `src/presentation/hudPresentation.ts` syncs target pill title, ARIA label, target name, and altitude.
 - `src/presentation/bodyPresentation.ts` upgrades the active body's visible label into a distance tooltip.
 - `src/runtime/frameLoop.ts` passes only the derived active body context into body presentation.
@@ -26,8 +26,8 @@ Offscreen indicators already gave players distance context before a body entered
 ## Decisions
 
 - Current altitude uses `CaptureMetrics.surfaceDistance`, so the readout is body-surface altitude rather than center-to-center range.
-- Bound orbit context uses current osculating two-body Pe/Ap estimates for the active body. Unbound flyby context uses the existing predicted closest approach when it is available and omits Ap.
-- Pe/Ap trajectory markers are intentionally not included in this pass; they need placement/crowding rules beyond the small HUD and tooltip change.
+- Owner feedback on PR #125 narrowed the anchored visible-body tooltip to body name plus altitude only.
+- Pe/Ap trajectory markers are intentionally not included in this pass. The current trajectory prediction state has sampled path points and closest-approach altitude/time, but not closest/farthest point positions for readable zoom-gated markers.
 
 ## Validation
 
@@ -37,7 +37,7 @@ Offscreen indicators already gave players distance context before a body entered
 - `coderabbit --base main --agent`: first run completed with two findings. The valid in-scope helper finding was fixed. The other finding targeted `tests/server/reachMoonRunReceipts.test.ts`, which this branch does not touch, so it remains outside issue #47 scope. A rerun after the fix hit the CodeRabbit rate limit.
 - Inspected `tmp/playwright-results/mobileHudScreenshot-captur-37d0d-tor-side-panel-after-reveal-mobile-chromium/mobile-target-selector.png`: target pill collapsed to glyph plus `alt 400 km` without top-bar overlap.
 - Inspected `tmp/playwright-results/tutorialTrailDebugReplay-r-a4f42-ate-from-a-fixed-checkpoint-mobile-chromium/tutorial-trail-debug-replay.png`: Moon remained offscreen with its existing offscreen indicator while the target pill showed altitude.
-- Captured and inspected `tmp/playwright-results/issue-47-visible-target-tooltip.png`: visible Earth showed `Earth · alt 400 km · Pe 400 km · Ap 400 km`, Earth offscreen indicator stayed hidden, and the Moon offscreen indicator stayed visible.
+- Captured and inspected `tmp/playwright-results/issue-47-visible-target-tooltip.png`: visible Earth showed `Earth · alt 400 km`, Earth offscreen indicator stayed hidden, and the Moon offscreen indicator stayed visible.
 
 ## Follow-ups
 
