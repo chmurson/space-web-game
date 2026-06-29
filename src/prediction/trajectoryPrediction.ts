@@ -37,6 +37,8 @@ export type PredictedClosestApproach = {
 export type TrajectoryPredictionEventMarkerKind = 'apoapsis' | 'periapsis'
 
 export type TrajectoryPredictionEventMarker = {
+  altitude: number
+  distance: number
   kind: TrajectoryPredictionEventMarkerKind
   point: Vec2
   time: number
@@ -169,7 +171,7 @@ const findTargetRelativeExtremum = (
 
 const getTargetRelativeEventMarkers = (
   samples: TargetRelativePredictionSample[],
-  options: { includeApoapsis: boolean },
+  options: { includeApoapsis: boolean; targetRadius: number },
 ): TrajectoryPredictionEventMarker[] => {
   const eventMarkers: TrajectoryPredictionEventMarker[] = []
   const periapsis = findTargetRelativeExtremum(
@@ -178,7 +180,10 @@ const getTargetRelativeEventMarkers = (
   )
 
   if (periapsis) {
+    const distance = Math.sqrt(periapsis.distanceSq)
     eventMarkers.push({
+      altitude: distance - options.targetRadius,
+      distance,
       kind: 'periapsis',
       point: { ...periapsis.point },
       time: periapsis.time,
@@ -195,7 +200,10 @@ const getTargetRelativeEventMarkers = (
   )
 
   if (apoapsis) {
+    const distance = Math.sqrt(apoapsis.distanceSq)
     eventMarkers.push({
+      altitude: distance - options.targetRadius,
+      distance,
       kind: 'apoapsis',
       point: { ...apoapsis.point },
       time: apoapsis.time,
@@ -304,6 +312,7 @@ export const predictCoastTrajectory = (
     closestApproach,
     eventMarkers: getTargetRelativeEventMarkers(targetRelativeSamples, {
       includeApoapsis: allowLoopTrim && !impact,
+      targetRadius: target.radius,
     }),
     impact,
     relativePoints,

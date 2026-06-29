@@ -20,6 +20,51 @@ const setWindowSize = (innerWidth: number, innerHeight: number) => {
   globals.window = { innerHeight, innerWidth }
 }
 
+class FakeTrajectoryEventLabel {
+  readonly style: Record<string, string> = {}
+  private readonly attributes = new Map<string, string>()
+  textContent = ''
+  title = ''
+
+  getAttribute(name: string) {
+    return this.attributes.get(name) ?? null
+  }
+
+  getBoundingClientRect() {
+    return {
+      bottom: 0,
+      height: 18,
+      left: 0,
+      right: 132,
+      top: 0,
+      width: 132,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }
+  }
+
+  setAttribute(name: string, value: string) {
+    this.attributes.set(name, value)
+  }
+}
+
+const createTrajectoryEventMarkerLabels = () => ({
+  apoapsis: new FakeTrajectoryEventLabel() as unknown as HTMLElement,
+  periapsis: new FakeTrajectoryEventLabel() as unknown as HTMLElement,
+})
+
+const createEventMarker = (
+  marker: Pick<TrajectoryPredictionEventMarker, 'kind' | 'point' | 'time'> &
+    Partial<Pick<TrajectoryPredictionEventMarker, 'altitude' | 'distance'>>,
+): TrajectoryPredictionEventMarker => ({
+  altitude: marker.altitude ?? Math.max(0, marker.point.x - 1),
+  distance: marker.distance ?? Math.max(0, marker.point.x),
+  kind: marker.kind,
+  point: marker.point,
+  time: marker.time,
+})
+
 const createTarget = (): Body => ({
   color: '#2f80ed',
   id: 'earth',
@@ -46,7 +91,11 @@ const createState = (target: Body): SimulationState => ({
   },
 })
 
-const createRuntime = (target: Body, viewportSize: number): AppRuntimeState =>
+const createRuntime = (
+  target: Body,
+  viewportSize: number,
+  timeWarpIndex = 0,
+): AppRuntimeState =>
   ({
     debug: {
       debugModeEnabled: false,
@@ -68,7 +117,7 @@ const createRuntime = (target: Body, viewportSize: number): AppRuntimeState =>
       state: createState(target),
       targetHeading: null,
       targetHeadingTurn: null,
-      timeWarpIndex: 0,
+      timeWarpIndex,
       viewportSize,
     },
     ui: {
@@ -130,10 +179,13 @@ const createPredictionRuntime = (
 
 const createTestPresentation = (options: {
   eventMarkers: TrajectoryPredictionEventMarker[]
+  timeWarpIndex?: number
+  timeWarps?: number[]
   viewportSize: number
 }) => {
   setWindowSize(800, 600)
   const target = createTarget()
+  const trajectoryEventMarkerLabels = createTrajectoryEventMarkerLabels()
   const gameScene = createGameScene([target], {
     dashPixels: 12,
     endMarkerMinScreenRadius: 5.5,
@@ -157,12 +209,19 @@ const createTestPresentation = (options: {
       gameScene,
       physicsEngine,
       queries: createQueries(target),
-      runtime: createRuntime(target, options.viewportSize),
+      runtime: createRuntime(
+        target,
+        options.viewportSize,
+        options.timeWarpIndex,
+      ),
+      timeWarps: options.timeWarps ?? [1],
+      trajectoryEventMarkerLabels,
       trajectoryPredictionRuntime: createPredictionRuntime(
         target.id,
         options.eventMarkers,
       ),
     }),
+    trajectoryEventMarkerLabels,
   }
 }
 
@@ -177,8 +236,20 @@ describe('createTrajectoryPresentation', () => {
 
   it('gates Pe/Ap marker dots and labels by zoom', () => {
     const eventMarkers: TrajectoryPredictionEventMarker[] = [
-      { kind: 'periapsis', point: { x: 12, y: 0 }, time: 30 },
-      { kind: 'apoapsis', point: { x: 20, y: 0 }, time: 60 },
+      createEventMarker({
+        altitude: 400_000,
+        distance: 12_000_000,
+        kind: 'periapsis',
+        point: { x: 12_000_000, y: 0 },
+        time: 30,
+      }),
+      createEventMarker({
+        altitude: 13_000_000,
+        distance: 20_000_000,
+        kind: 'apoapsis',
+        point: { x: 20_000_000, y: 0 },
+        time: 60,
+      }),
     ]
     const close = createTestPresentation({
       eventMarkers,
@@ -189,9 +260,15 @@ describe('createTrajectoryPresentation', () => {
     expect(close.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
       true,
     )
-    expect(close.gameScene.trajectoryEventMarkers.periapsis.label.visible).toBe(
-      true,
+    expect(close.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'block',
     )
+    expect(close.trajectoryEventMarkerLabels.periapsis.textContent).toBe(
+      'Pe 12 Mm -> alt 400 km',
+    )
+    expect(
+      close.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
+    ).toBe('Periapsis: distance 12 Mm, altitude 400 km')
     expect(close.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
       true,
     )
@@ -205,9 +282,7 @@ describe('createTrajectoryPresentation', () => {
     expect(mid.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
       true,
     )
-    expect(mid.gameScene.trajectoryEventMarkers.periapsis.label.visible).toBe(
-      false,
-    )
+    expect(mid.trajectoryEventMarkerLabels.periapsis.style.display).toBe('none')
 
     const far = createTestPresentation({
       eventMarkers,
@@ -221,5 +296,71 @@ describe('createTrajectoryPresentation', () => {
     expect(far.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
       false,
     )
+    expect(far.trajectoryEventMarkerLabels.periapsis.style.display).toBe('none')
+  })
+
+  it('uses a larger display stability threshold at higher time warp', () => {
+    const createMutableMarkers = () => [
+      createEventMarker({
+        altitude: 400_000,
+        distance: 12_000_000,
+        kind: 'periapsis',
+        point: { x: 12_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const lowWarpMarkers = createMutableMarkers()
+    const lowWarp = createTestPresentation({
+      eventMarkers: lowWarpMarkers,
+      timeWarps: [1],
+      viewportSize: 50,
+    })
+    lowWarp.presentation.updateVisuals()
+    lowWarpMarkers[0] = createEventMarker({
+      altitude: 1_400_000,
+      distance: 13_000_000,
+      kind: 'periapsis',
+      point: { x: 13_000_000, y: 0 },
+      time: 31,
+    })
+    lowWarp.presentation.updateVisuals()
+
+    expect(
+      lowWarp.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(13)
+
+    const highWarpMarkers = createMutableMarkers()
+    const highWarp = createTestPresentation({
+      eventMarkers: highWarpMarkers,
+      timeWarpIndex: 1,
+      timeWarps: [1, 1800],
+      viewportSize: 50,
+    })
+    highWarp.presentation.updateVisuals()
+    highWarpMarkers[0] = createEventMarker({
+      altitude: 1_400_000,
+      distance: 13_000_000,
+      kind: 'periapsis',
+      point: { x: 13_000_000, y: 0 },
+      time: 31,
+    })
+    highWarp.presentation.updateVisuals()
+
+    expect(
+      highWarp.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(12)
+
+    highWarpMarkers[0] = createEventMarker({
+      altitude: 3_400_000,
+      distance: 15_000_000,
+      kind: 'periapsis',
+      point: { x: 15_000_000, y: 0 },
+      time: 32,
+    })
+    highWarp.presentation.updateVisuals()
+
+    expect(
+      highWarp.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(15)
   })
 })

@@ -18,6 +18,8 @@ import './overlayUIStyles.css'
 
 export const spacecraftOffscreenIndicatorId = '__spacecraft__'
 
+type TrajectoryEventMarkerLabelKind = 'apoapsis' | 'periapsis'
+
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   bottomPillArea: HTMLElement
@@ -70,6 +72,10 @@ export type OverlayUiRefs = {
   statTime: HTMLElement | null
   timeIcon: SVGSVGElement | null
   timeIconHand: SVGLineElement | null
+  trajectoryEventMarkerLabels: Record<
+    TrajectoryEventMarkerLabelKind,
+    HTMLElement
+  >
   statWarp: HTMLElement | null
   statZoom: HTMLElement | null
 }
@@ -128,6 +134,19 @@ const createHudTelemetryShells = (options: {
       fpsSurface.render({ view }),
     telemetryRefs,
   }
+}
+
+const createTrajectoryEventMarkerLabel = (
+  app: HTMLElement,
+  kind: TrajectoryEventMarkerLabelKind,
+) => {
+  const label = document.createElement('div')
+  label.className = `trajectory-event-label trajectory-event-label-${kind}`
+  label.dataset.trajectoryEventMarker = kind
+  label.style.display = 'none'
+  label.setAttribute('aria-hidden', 'true')
+  app.appendChild(label)
+  return label
 }
 
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
@@ -193,6 +212,10 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
 
   const offscreenIndicators = new Map<string, HTMLElement>()
   const bodyLabels = new Map<string, HTMLElement>()
+  const trajectoryEventMarkerLabels = {
+    apoapsis: createTrajectoryEventMarkerLabel(options.app, 'apoapsis'),
+    periapsis: createTrajectoryEventMarkerLabel(options.app, 'periapsis'),
+  } satisfies Record<TrajectoryEventMarkerLabelKind, HTMLElement>
   const createOffscreenIndicator = () => {
     const indicator = document.createElement('div')
     indicator.className = 'offscreen-indicator'
@@ -275,6 +298,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     statTime: hudTelemetry.telemetryRefs.statTime,
     timeIcon: hudTelemetry.telemetryRefs.timeIcon,
     timeIconHand: hudTelemetry.telemetryRefs.timeIconHand,
+    trajectoryEventMarkerLabels,
     statWarp: null,
     statZoom: null,
   }

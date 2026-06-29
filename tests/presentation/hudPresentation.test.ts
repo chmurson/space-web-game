@@ -444,6 +444,10 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     targetStatus: null,
     timeIcon: null,
     timeIconHand: null,
+    trajectoryEventMarkerLabels: {
+      apoapsis: new FakeElement('div') as unknown as HTMLElement,
+      periapsis: new FakeElement('div') as unknown as HTMLElement,
+    },
     trajectoryCoachAnchor: new FakeElement('div') as unknown as HTMLElement,
   }
 }

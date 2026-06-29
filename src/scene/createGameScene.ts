@@ -273,7 +273,6 @@ export type ScreenSpaceDashPattern = {
 
 export type TrajectoryEventMarkerVisual = {
   group: THREE.Group
-  label: THREE.Group
 }
 
 export type GameSceneRefs = {
@@ -437,68 +436,14 @@ const createPredictionMarkerCircle = (fillOpacity = 0.5) => {
   return { fill, group }
 }
 
-const createTrajectoryEventLabel = (label: string) => {
-  const group = new THREE.Group()
-  group.renderOrder = 13
-  group.visible = false
-
-  if (typeof document === 'undefined') {
-    return group
-  }
-
-  const canvas = document.createElement('canvas')
-  canvas.width = 64
-  canvas.height = 32
-  const context = canvas.getContext('2d')
-
-  if (!context) {
-    return group
-  }
-
-  context.fillStyle = 'rgba(5, 7, 13, 0.78)'
-  context.fillRect(8, 5, 48, 22)
-  context.strokeStyle = 'rgba(125, 211, 252, 0.82)'
-  context.lineWidth = 2
-  context.strokeRect(8, 5, 48, 22)
-  context.fillStyle = '#f4f7fb'
-  context.font =
-    '800 18px Segoe UI, Avenir Next, Helvetica Neue, Arial, sans-serif'
-  context.textAlign = 'center'
-  context.textBaseline = 'middle'
-  context.fillText(label, 32, 17)
-
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  const material = new THREE.SpriteMaterial({
-    depthTest: false,
-    depthWrite: false,
-    map: texture,
-    toneMapped: false,
-    transparent: true,
-  })
-  const sprite = new THREE.Sprite(material)
-  sprite.renderOrder = 13
-  sprite.scale.set(48, 24, 1)
-  group.add(sprite)
-
-  return group
-}
-
-const trajectoryEventMarkerLabels = {
-  apoapsis: 'Ap',
-  periapsis: 'Pe',
-} satisfies Record<TrajectoryPredictionEventMarkerKind, string>
-
 const createTrajectoryEventMarker = (
-  kind: TrajectoryPredictionEventMarkerKind,
+  _kind: TrajectoryPredictionEventMarkerKind,
 ): TrajectoryEventMarkerVisual => {
   const marker = createPredictionMarkerCircle(0.72)
   marker.group.visible = false
-  const label = createTrajectoryEventLabel(trajectoryEventMarkerLabels[kind])
 
   return {
     group: marker.group,
-    label,
   }
 }
 
@@ -731,7 +676,7 @@ export const createGameScene = (
   >
 
   for (const marker of Object.values(trajectoryEventMarkers)) {
-    scene.add(marker.group, marker.label)
+    scene.add(marker.group)
   }
 
   return {

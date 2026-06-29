@@ -3,7 +3,9 @@
 ## What Changed
 
 - Coast trajectory prediction now emits optional target-relative event markers for sampled periapsis (`Pe`) and apoapsis (`Ap`) points.
-- Trajectory presentation renders those events as small path-attached dots and only shows short labels at close zoom.
+- Trajectory prediction includes each marker's center distance and surface altitude.
+- Trajectory presentation renders those events as small path-attached dots and only shows DOM labels at close zoom.
+- Marker display positions are stabilized with a time-warp-scaled movement threshold so small prediction changes do not visibly wobble the Pe/Ap point.
 - The body distance tooltip remains body name plus altitude only.
 
 ## Why
@@ -14,8 +16,11 @@ Issue #129 moved Pe/Ap context out of dense body tooltip text and onto the rende
 
 - `src/prediction/trajectoryPrediction.ts` owns event selection from target-relative coast samples.
 - `src/runtime/trajectoryPredictionRuntime.ts` carries event markers through the prediction state contract.
-- `src/scene/createGameScene.ts` owns reusable Three.js marker primitives and close-zoom label sprites.
-- `src/presentation/trajectoryPresentation.ts` positions and zoom-gates trajectory event markers.
+- `src/scene/createGameScene.ts` owns reusable Three.js marker dot primitives.
+- `src/render/sceneUpdates.ts` keeps camera matrices current when camera view parameters change so DOM projections use fresh camera data before render.
+- `src/ui/overlayUI/createOverlayUi.ts` owns the DOM label elements for Pe/Ap marker text.
+- `src/presentation/trajectoryPresentation.ts` positions and zoom-gates trajectory event markers, formats label text, and stabilizes displayed marker positions.
+- `src/style.css` owns the compact glass styling for DOM Pe/Ap labels.
 - `tests/prediction/trajectoryPrediction.test.ts`, `tests/presentation/trajectoryPresentation.test.ts`, and `tests/presentation/bodyDistanceContext.test.ts` cover marker rules and tooltip behavior.
 
 ## Decisions
@@ -23,7 +28,10 @@ Issue #129 moved Pe/Ap context out of dense body tooltip text and onto the rende
 - No separate orbital-elements solver was added. Pe/Ap are derived from the rendered sample path.
 - A marker is only emitted when the chosen extremum is inside the sampled path, not at the prediction horizon boundary. This keeps horizon changes meaningful and avoids labeling an event that has not been sampled yet.
 - `Ap` is emitted only for bound, non-impacting coast predictions. Unbound, flyby, and impact paths do not get an apoapsis marker.
-- Marker dots reuse the existing prediction end-marker circle style. Labels use the same compact glass/cyan visual language and are hidden at wider zoom levels.
+- Marker dots reuse the existing prediction end-marker circle style. Labels moved from WebGL canvas textures to DOM elements because DOM text is sharper and easier to make accessible.
+- Label text shows center distance and surface altitude as `Pe 12 Mm -> alt 400 km`.
+- Presentation keeps the last displayed marker data until a newly calculated point moves beyond a screen-pixel-derived threshold. The threshold grows with the configured time warp value.
+- `updateCameraView` updates the camera matrix immediately after camera/projection changes because DOM labels project world positions before the next `renderer.render(...)` call.
 
 ## Validation
 

@@ -229,12 +229,15 @@ describe('predictCoastTrajectory', () => {
       allowLoopTrim: true,
       distances: [12, 9, 6, 2, 4],
       horizonSeconds: 4,
+      targetRadius: 1,
     })
 
     expect(shortPrediction.eventMarkers).not.toContainEqual(
       expect.objectContaining({ kind: 'periapsis' }),
     )
     expect(extendedPrediction.eventMarkers).toContainEqual({
+      altitude: 1,
+      distance: 2,
       kind: 'periapsis',
       point: { x: 2, y: 0 },
       time: 3,
@@ -260,6 +263,8 @@ describe('predictCoastTrajectory', () => {
     })
 
     expect(boundPrediction.eventMarkers).toContainEqual({
+      altitude: 12,
+      distance: 12,
       kind: 'apoapsis',
       point: { x: 12, y: 0 },
       time: 2,

@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 
-import type { TrajectoryPredictionEventMarker } from '../prediction/trajectoryPrediction'
+import type {
+  TrajectoryPredictionEventMarker,
+  TrajectoryPredictionEventMarkerKind,
+} from '../prediction/trajectoryPrediction'
 import type { CircularizePlan } from '../assist/orbitalAssist'
 import { renderPosition } from '../render/sceneUpdates'
 import {
@@ -13,21 +16,60 @@ import type { TrajectoryPredictionRuntime } from '../runtime/trajectoryPredictio
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
-import { fromAngle, type Vec2 } from '../simulation/vector'
+import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
+import { formatDistance } from '../ui/formatters'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
 const trajectoryEventMarkerMaxViewportSize = 160
 const trajectoryEventMarkerLabelMaxViewportSize = 70
 const trajectoryEventMarkerLift = 0.22
+const trajectoryEventMarkerLabelOffsetX = 10
+const trajectoryEventMarkerLabelOffsetY = 10
+const trajectoryEventMarkerLabelViewportPadding = 8
 
-const hideTrajectoryEventMarkers = (gameScene: GameSceneRefs) => {
-  for (const marker of Object.values(gameScene.trajectoryEventMarkers)) {
-    marker.group.visible = false
-    marker.label.visible = false
+type TrajectoryEventMarkerLabelRefs = Record<
+  TrajectoryPredictionEventMarkerKind,
+  HTMLElement
+>
+
+const trajectoryEventMarkerShortLabels = {
+  apoapsis: 'Ap',
+  periapsis: 'Pe',
+} satisfies Record<TrajectoryPredictionEventMarkerKind, string>
+
+const trajectoryEventMarkerAccessibleNames = {
+  apoapsis: 'Apoapsis',
+  periapsis: 'Periapsis',
+} satisfies Record<TrajectoryPredictionEventMarkerKind, string>
+
+const hideTrajectoryEventMarkerLabel = (label: HTMLElement) => {
+  label.style.display = 'none'
+  label.style.visibility = 'hidden'
+  label.setAttribute('aria-hidden', 'true')
+}
+
+const hideTrajectoryEventMarkerLabels = (
+  labels: TrajectoryEventMarkerLabelRefs,
+) => {
+  for (const label of Object.values(labels)) {
+    hideTrajectoryEventMarkerLabel(label)
   }
 }
 
-const hideTrajectoryVisuals = (gameScene: GameSceneRefs) => {
+const hideTrajectoryEventMarkers = (
+  gameScene: GameSceneRefs,
+  labels: TrajectoryEventMarkerLabelRefs,
+) => {
+  for (const marker of Object.values(gameScene.trajectoryEventMarkers)) {
+    marker.group.visible = false
+  }
+  hideTrajectoryEventMarkerLabels(labels)
+}
+
+const hideTrajectoryVisuals = (
+  gameScene: GameSceneRefs,
+  labels: TrajectoryEventMarkerLabelRefs,
+) => {
   gameScene.assistedPredictionLine.visible = false
   gameScene.circularOrbitLine.visible = false
   gameScene.desiredVelocityLine.visible = false
@@ -35,7 +77,7 @@ const hideTrajectoryVisuals = (gameScene: GameSceneRefs) => {
   gameScene.inertialPredictionLine.visible = false
   gameScene.predictionEndMarker.visible = false
   gameScene.predictionLine.visible = false
-  hideTrajectoryEventMarkers(gameScene)
+  hideTrajectoryEventMarkers(gameScene, labels)
 }
 
 const updateInertialPredictionVisual = (options: {
@@ -120,13 +162,19 @@ const applyTargetRelativePredictionLine = (
 const updateTargetRelativePredictionVisuals = (options: {
   coastPredictionHorizonSeconds: number
   debugModeEnabled: boolean
+  eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
   predictedImpact: { bodyName: string; time: number } | null
+  stabilizedEventMarkers: Map<
+    TrajectoryPredictionEventMarkerKind,
+    TrajectoryPredictionEventMarker
+  >
   target: Body
   targetRelativeEventMarkers: TrajectoryPredictionEventMarker[]
   targetRelativeAssistedPoints: Vec2[]
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
+  timeWarpSeconds: number
   viewportHeight: number
   viewportSize: number
 }) => {
@@ -170,8 +218,11 @@ const updateTargetRelativePredictionVisuals = (options: {
   )
   updateTrajectoryEventMarkers({
     eventMarkers: options.targetRelativeEventMarkers,
+    eventMarkerLabels: options.eventMarkerLabels,
     gameScene: options.gameScene,
+    stabilizedEventMarkers: options.stabilizedEventMarkers,
     target: options.target,
+    timeWarpSeconds: options.timeWarpSeconds,
     viewportHeight: options.viewportHeight,
     viewportSize: options.viewportSize,
   })
@@ -243,23 +294,173 @@ const updateTargetRelativePredictionVisuals = (options: {
   )
 }
 
+const copyTrajectoryEventMarker = (
+  marker: TrajectoryPredictionEventMarker,
+): TrajectoryPredictionEventMarker => ({
+  ...marker,
+  point: { ...marker.point },
+})
+
+const getTrajectoryEventMarkerDisplayThresholdMeters = (options: {
+  renderUnitsPerPixel: number
+  timeWarpSeconds: number
+}) => {
+  const thresholdPixels = THREE.MathUtils.clamp(
+    4 + Math.log2(Math.max(1, options.timeWarpSeconds)) * 2,
+    4,
+    36,
+  )
+
+  return (thresholdPixels * options.renderUnitsPerPixel) / RENDER_SCALE
+}
+
+const getStabilizedTrajectoryEventMarkers = (options: {
+  eventMarkers: TrajectoryPredictionEventMarker[]
+  stabilizedEventMarkers: Map<
+    TrajectoryPredictionEventMarkerKind,
+    TrajectoryPredictionEventMarker
+  >
+  thresholdMeters: number
+}) => {
+  const currentKinds = new Set<TrajectoryPredictionEventMarkerKind>()
+  const eventMarkers: TrajectoryPredictionEventMarker[] = []
+
+  for (const eventMarker of options.eventMarkers) {
+    currentKinds.add(eventMarker.kind)
+
+    if (
+      !Number.isFinite(eventMarker.point.x) ||
+      !Number.isFinite(eventMarker.point.y)
+    ) {
+      options.stabilizedEventMarkers.delete(eventMarker.kind)
+      eventMarkers.push(eventMarker)
+      continue
+    }
+
+    const previous = options.stabilizedEventMarkers.get(eventMarker.kind)
+
+    if (
+      previous &&
+      length(sub(eventMarker.point, previous.point)) < options.thresholdMeters
+    ) {
+      eventMarkers.push(previous)
+      continue
+    }
+
+    const stabilizedEventMarker = copyTrajectoryEventMarker(eventMarker)
+    options.stabilizedEventMarkers.set(eventMarker.kind, stabilizedEventMarker)
+    eventMarkers.push(stabilizedEventMarker)
+  }
+
+  for (const kind of options.stabilizedEventMarkers.keys()) {
+    if (!currentKinds.has(kind)) {
+      options.stabilizedEventMarkers.delete(kind)
+    }
+  }
+
+  return eventMarkers
+}
+
+const getTrajectoryEventMarkerText = (
+  eventMarker: TrajectoryPredictionEventMarker,
+) => {
+  const distanceLabel = formatDistance(Math.max(0, eventMarker.distance))
+  const altitudeLabel = formatDistance(Math.max(0, eventMarker.altitude))
+
+  return {
+    accessibleLabel: `${trajectoryEventMarkerAccessibleNames[eventMarker.kind]}: distance ${distanceLabel}, altitude ${altitudeLabel}`,
+    text: `${trajectoryEventMarkerShortLabels[eventMarker.kind]} ${distanceLabel} -> alt ${altitudeLabel}`,
+  }
+}
+
+const updateTrajectoryEventMarkerLabel = (options: {
+  camera: THREE.Camera
+  eventMarker: TrajectoryPredictionEventMarker
+  label: HTMLElement
+  position: THREE.Vector3
+}) => {
+  const projectedPosition = options.position.clone().project(options.camera)
+
+  if (
+    projectedPosition.x < -1 ||
+    projectedPosition.x > 1 ||
+    projectedPosition.y < -1 ||
+    projectedPosition.y > 1 ||
+    projectedPosition.z <= -1 ||
+    projectedPosition.z >= 1
+  ) {
+    hideTrajectoryEventMarkerLabel(options.label)
+    return
+  }
+
+  const screenX = (projectedPosition.x * 0.5 + 0.5) * window.innerWidth
+  const screenY = (-projectedPosition.y * 0.5 + 0.5) * window.innerHeight
+  const { accessibleLabel, text } = getTrajectoryEventMarkerText(
+    options.eventMarker,
+  )
+
+  options.label.textContent = text
+  options.label.title = accessibleLabel
+  options.label.setAttribute('aria-label', accessibleLabel)
+  options.label.setAttribute('aria-hidden', 'false')
+  options.label.style.display = 'block'
+  options.label.style.visibility = 'hidden'
+
+  const bounds = options.label.getBoundingClientRect()
+  const labelX = THREE.MathUtils.clamp(
+    screenX + trajectoryEventMarkerLabelOffsetX,
+    trajectoryEventMarkerLabelViewportPadding,
+    window.innerWidth -
+      bounds.width -
+      trajectoryEventMarkerLabelViewportPadding,
+  )
+  const labelY = THREE.MathUtils.clamp(
+    screenY - bounds.height - trajectoryEventMarkerLabelOffsetY,
+    trajectoryEventMarkerLabelViewportPadding,
+    window.innerHeight -
+      bounds.height -
+      trajectoryEventMarkerLabelViewportPadding,
+  )
+
+  options.label.style.left = `${labelX}px`
+  options.label.style.top = `${labelY}px`
+  options.label.style.visibility = 'visible'
+}
+
 const updateTrajectoryEventMarkers = (options: {
   eventMarkers: TrajectoryPredictionEventMarker[]
+  eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
+  stabilizedEventMarkers: Map<
+    TrajectoryPredictionEventMarkerKind,
+    TrajectoryPredictionEventMarker
+  >
   target: Body
+  timeWarpSeconds: number
   viewportHeight: number
   viewportSize: number
 }) => {
-  if (
-    options.eventMarkers.length === 0 ||
-    options.viewportSize > trajectoryEventMarkerMaxViewportSize
-  ) {
-    hideTrajectoryEventMarkers(options.gameScene)
+  if (options.eventMarkers.length === 0) {
+    options.stabilizedEventMarkers.clear()
+    hideTrajectoryEventMarkers(options.gameScene, options.eventMarkerLabels)
+    return
+  }
+
+  if (options.viewportSize > trajectoryEventMarkerMaxViewportSize) {
+    hideTrajectoryEventMarkers(options.gameScene, options.eventMarkerLabels)
     return
   }
 
   const renderUnitsPerPixel =
     options.viewportSize / Math.max(options.viewportHeight, 1)
+  const eventMarkers = getStabilizedTrajectoryEventMarkers({
+    eventMarkers: options.eventMarkers,
+    stabilizedEventMarkers: options.stabilizedEventMarkers,
+    thresholdMeters: getTrajectoryEventMarkerDisplayThresholdMeters({
+      renderUnitsPerPixel,
+      timeWarpSeconds: options.timeWarpSeconds,
+    }),
+  })
   const markerRadius = Math.max(
     options.gameScene.predictionEndMarkerRadius * 0.72,
     options.gameScene.predictionEndMarkerMinScreenRadius *
@@ -268,25 +469,18 @@ const updateTrajectoryEventMarkers = (options: {
   )
   const labelVisible =
     options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
-  const labelRightOffset = 18 * renderUnitsPerPixel
-  const labelUpOffset = 10 * renderUnitsPerPixel
-  const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(
-    options.gameScene.camera.quaternion,
-  )
-  const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(
-    options.gameScene.camera.quaternion,
-  )
   const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()
 
-  for (const eventMarker of options.eventMarkers) {
+  for (const eventMarker of eventMarkers) {
     const marker = options.gameScene.trajectoryEventMarkers[eventMarker.kind]
+    const label = options.eventMarkerLabels[eventMarker.kind]
 
     if (
       !Number.isFinite(eventMarker.point.x) ||
       !Number.isFinite(eventMarker.point.y)
     ) {
       marker.group.visible = false
-      marker.label.visible = false
+      hideTrajectoryEventMarkerLabel(label)
       continue
     }
 
@@ -300,14 +494,16 @@ const updateTrajectoryEventMarkers = (options: {
     marker.group.quaternion.copy(options.gameScene.camera.quaternion)
     marker.group.scale.setScalar(markerRadius)
     marker.group.visible = true
-    marker.label.visible = labelVisible
 
     if (labelVisible) {
-      marker.label.position
-        .copy(position)
-        .addScaledVector(cameraRight, labelRightOffset)
-        .addScaledVector(cameraUp, labelUpOffset)
-      marker.label.scale.setScalar(renderUnitsPerPixel)
+      updateTrajectoryEventMarkerLabel({
+        camera: options.gameScene.camera,
+        eventMarker,
+        label,
+        position,
+      })
+    } else {
+      hideTrajectoryEventMarkerLabel(label)
     }
 
     visibleKinds.add(eventMarker.kind)
@@ -318,7 +514,11 @@ const updateTrajectoryEventMarkers = (options: {
   )) {
     if (!visibleKinds.has(kind as TrajectoryPredictionEventMarker['kind'])) {
       marker.group.visible = false
-      marker.label.visible = false
+      hideTrajectoryEventMarkerLabel(
+        options.eventMarkerLabels[
+          kind as TrajectoryPredictionEventMarker['kind']
+        ],
+      )
     }
   }
 }
@@ -393,8 +593,15 @@ export const createTrajectoryPresentation = (options: {
   physicsEngine: PhysicsEngine
   queries: GameQueries
   runtime: AppRuntimeState
+  timeWarps: number[]
+  trajectoryEventMarkerLabels: TrajectoryEventMarkerLabelRefs
   trajectoryPredictionRuntime: TrajectoryPredictionRuntime
 }) => {
+  const stabilizedTrajectoryEventMarkers = new Map<
+    TrajectoryPredictionEventMarkerKind,
+    TrajectoryPredictionEventMarker
+  >()
+
   const syncInertialPredictionVisual = () => {
     updateInertialPredictionVisual({
       enabled:
@@ -499,7 +706,11 @@ export const createTrajectoryPresentation = (options: {
       if (
         options.runtime.scenario.directives.hiddenUIElements.has('trajectory')
       ) {
-        hideTrajectoryVisuals(options.gameScene)
+        stabilizedTrajectoryEventMarkers.clear()
+        hideTrajectoryVisuals(
+          options.gameScene,
+          options.trajectoryEventMarkerLabels,
+        )
         return
       }
 
@@ -519,10 +730,12 @@ export const createTrajectoryPresentation = (options: {
         coastPredictionHorizonSeconds:
           options.queries.getCoastPredictionHorizonSeconds(),
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
+        eventMarkerLabels: options.trajectoryEventMarkerLabels,
         gameScene: options.gameScene,
         predictedImpact: predictionTargetMatches
           ? predictionState.predictedImpact
           : null,
+        stabilizedEventMarkers: stabilizedTrajectoryEventMarkers,
         target,
         targetRelativeEventMarkers: predictionTargetMatches
           ? predictionState.targetRelativeEventMarkers
@@ -536,6 +749,8 @@ export const createTrajectoryPresentation = (options: {
         targetRelativePredictionPoints: predictionTargetMatches
           ? predictionState.targetRelativePredictionPoints
           : [],
+        timeWarpSeconds:
+          options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
         viewportHeight: window.innerHeight,
         viewportSize: options.runtime.simulation.viewportSize,
       })
