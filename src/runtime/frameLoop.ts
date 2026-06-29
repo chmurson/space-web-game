@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import type { KeyboardInput } from '../input/keyboardInput'
+import { createBodyDistanceContext } from '../presentation/bodyDistanceContext'
 import type { BodyPresentation } from '../presentation/bodyPresentation'
 import type { HudPresentation } from '../presentation/hudPresentation'
 import type { SpacecraftPresentation } from '../presentation/spacecraftPresentation'
@@ -71,6 +72,26 @@ export const createFrameLoop = (options: {
 
   const isFpsMeterVisible = () =>
     options.getFpsMeterVisible?.() ?? options.runtime.debug.fpsIndicatorEnabled
+
+  const getActiveTargetDistanceContext = () => {
+    const target = options.queries.getAssistTarget()
+    const targetMetrics = options.queries.getCaptureMetrics(target)
+    const predictionState = options.trajectoryPresentation.getPredictionState()
+
+    return {
+      distanceContext: createBodyDistanceContext({
+        predictedClosestApproach:
+          predictionState.targetId === target.id
+            ? predictionState.predictedTargetClosestApproach
+            : null,
+        spacecraft: options.runtime.simulation.state.spacecraft,
+        target,
+        targetMetrics,
+      }),
+      target,
+      targetMetrics,
+    }
+  }
 
   const recordFpsFrameSample = (nowMs: number, frameIntervalMs: number) => {
     fpsFrameSamples.push({
@@ -184,13 +205,17 @@ export const createFrameLoop = (options: {
     }
     options.runtimeActions.updateCamera()
     updateRipples(options.ripples, realDt, { camera: options.gameScene.camera })
-    const trailTarget = options.queries.getAssistTarget()
-    const trimTrailAroundTarget =
-      options.queries.getCaptureMetrics(trailTarget).specificEnergy < 0
+    const {
+      distanceContext,
+      target: trailTarget,
+      targetMetrics: trailTargetMetrics,
+    } = getActiveTargetDistanceContext()
+    const trimTrailAroundTarget = trailTargetMetrics.specificEnergy < 0
 
     //todo: those two presentation could simply receive runtime, and we could just iterate over presentations objects here (altogether with trajectory - just need to change creatoin phase)
     options.bodyPresentation.updateVisuals({
       bodies: options.runtime.simulation.state.bodies,
+      distanceContext,
       elapsed: options.runtime.simulation.state.elapsed,
       hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
       spacecraftPosition: options.runtime.simulation.state.spacecraft.position,
@@ -261,15 +286,20 @@ export const createFrameLoop = (options: {
         options.globalScenarioDirectiveLimits,
       )
       options.runtimeActions.updateCamera()
+      const {
+        distanceContext,
+        target: trailTarget,
+        targetMetrics: trailTargetMetrics,
+      } = getActiveTargetDistanceContext()
       options.bodyPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
+        distanceContext,
         elapsed: options.runtime.simulation.state.elapsed,
         hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
         spacecraftPosition:
           options.runtime.simulation.state.spacecraft.position,
         viewportSize: options.runtime.simulation.viewportSize,
       })
-      const trailTarget = options.queries.getAssistTarget()
       options.spacecraftPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
         elapsed: options.runtime.simulation.state.elapsed,
@@ -279,8 +309,7 @@ export const createFrameLoop = (options: {
         spacecraft: options.runtime.simulation.state.spacecraft,
         spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
         trailTarget,
-        trimTrailAroundTarget:
-          options.queries.getCaptureMetrics(trailTarget).specificEnergy < 0,
+        trimTrailAroundTarget: trailTargetMetrics.specificEnergy < 0,
         targetHeading: options.runtime.simulation.targetHeading,
         targetHeadingScreenPosition:
           options.runtime.ui.targetHeadingScreenPosition ?? null,
