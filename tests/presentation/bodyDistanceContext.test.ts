@@ -58,4 +58,26 @@ describe('createBodyDistanceContext', () => {
       tooltipLabel: 'Earth · 400 km',
     })
   })
+
+  it('formats megameter altitude context', () => {
+    const spacecraft = createSpacecraft({
+      position: { x: EARTH_RADIUS + 84_000_000, y: 0 },
+    })
+    const targetMetrics = getCaptureMetricsForState(
+      createState(spacecraft),
+      earth,
+    )
+
+    expect(
+      createBodyDistanceContext({
+        target: earth,
+        targetMetrics,
+      }),
+    ).toMatchObject({
+      accessibleLabel: 'Earth, altitude 84 Mm',
+      altitudeLabel: '84 Mm',
+      detailAccessibleLabel: 'altitude 84 Mm',
+      tooltipLabel: 'Earth · 84 Mm',
+    })
+  })
 })
