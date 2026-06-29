@@ -42,6 +42,11 @@ Production deploy automation:
   in-flight runs are canceled so an older commit cannot overwrite a newer one.
 - The GitHub Actions repository secret `NETLIFY_AUTH_TOKEN` must be configured
   for production deploys.
+- `.github/workflows/netlify-pr-preview.yml` deploys same-repository PRs with
+  the Netlify `deploy-preview` context and stable `pr-<number>` aliases.
+- Reach the Moon highscore submissions on PR previews require
+  `REACH_MOON_RUN_RECEIPT_SECRET` in Netlify's `deploy-preview` environment,
+  using a staging/non-production value.
 
 Current Netlify targets:
 
