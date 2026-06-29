@@ -16,6 +16,7 @@ import {
   readJsonBody,
   receiptSecretEnvName,
 } from './validation'
+import type { PeriodRollups } from './types'
 
 export const handlePost = async (
   request: Request,
@@ -106,9 +107,16 @@ export const handlePost = async (
       )
     }
 
+    const leaderboard = await updateRollups(store, storedRecord, now)
+
+    const rollups: PeriodRollups = {}
+    for (const period of periodSelection.periods) {
+      rollups[period] = leaderboard.rollups[period]
+    }
+
     return createJsonResponse({
       record: storedRecord,
-      ...(await updateRollups(store, storedRecord, now)),
+      rollups,
     })
   } catch {
     return createErrorResponse(

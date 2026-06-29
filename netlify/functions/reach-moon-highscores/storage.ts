@@ -286,7 +286,7 @@ const updateRollupCache = async (
           return repaired
         }
       } catch {
-        return repaired
+        // Retry with the latest cache snapshot.
       }
       continue
     }
@@ -302,15 +302,11 @@ const updateRollupCache = async (
         return rollup
       }
     } catch {
-      return rollup
+      // Retry with the latest cache snapshot.
     }
   }
 
-  const current = await readRollupCache(store, period, recordDate)
-
-  return current == null
-    ? createTopTenRollup(period, [record], now)
-    : mergeRecordIntoRollup(period, current, record, now)
+  throw new Error(`Failed to persist ${period} rollup cache`)
 }
 
 export const buildLeaderboardResponse = async (

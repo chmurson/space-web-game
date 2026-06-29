@@ -236,7 +236,7 @@ describe('reachMoonHighscores function', () => {
       createRecord(
         `all-time-${index}`,
         { elapsed: 1_000 + index, total: 900 - index },
-        `2026-06-${String(18 + index).padStart(2, '0')}T12:00:00.000Z`,
+        `2026-06-${String(8 + index).padStart(2, '0')}T12:00:00.000Z`,
       ),
     )
 
@@ -328,6 +328,40 @@ describe('reachMoonHighscores function', () => {
       }),
     )
     expect(store.list).not.toHaveBeenCalled()
+  })
+
+  it('filters POST rollup responses by requested period after updating caches', async () => {
+    const store = createStore()
+    blobMocks.getStore.mockReturnValue(store)
+    const receipt = await createReceipt()
+
+    const response = await handler(
+      new Request(
+        'https://example.test/api/reach-moon/highscores?period=daily',
+        {
+          body: JSON.stringify({
+            fuelRemainingRatio: 1,
+            missionElapsedSeconds: 0,
+            playerName: 'Daily Pilot',
+            runReceipt: receipt,
+          }),
+          method: 'POST',
+        },
+      ),
+    )
+    const body = await readJson<{
+      record: ReachMoonHighscoreRecord
+      rollups: Partial<
+        Record<ReachMoonHighscorePeriod, { entries: { id: string }[] }>
+      >
+    }>(response)
+
+    expect(response.status).toBe(200)
+    expect(Object.keys(body.rollups)).toEqual(['daily'])
+    expect(body.rollups.daily?.entries[0]?.id).toBe(receipt.runId)
+    expect(store.values.get('rollups/daily/2026-06-28.json')).toBeTruthy()
+    expect(store.values.get('rollups/weekly/2026-W26.json')).toBeTruthy()
+    expect(store.values.get('rollups/all-time.json')).toBeTruthy()
   })
 
   it('treats receipt run IDs as idempotency keys for replayed submissions', async () => {
@@ -497,7 +531,7 @@ describe('reachMoonHighscores function', () => {
     })
   })
 
-  it('keeps accepted records authoritative when a rollup cache write fails', async () => {
+  it('surfaces storage errors when a rollup cache write is not confirmed', async () => {
     const store = createStore()
     const writeThroughSetJSON = store.setJSON
     store.setJSON = vi.fn(
@@ -507,7 +541,7 @@ describe('reachMoonHighscores function', () => {
         options: { onlyIfMatch?: string; onlyIfNew?: boolean } = {},
       ) => {
         if (key === 'rollups/weekly/2026-W26.json') {
-          throw new Error('cache write failed')
+          return { modified: false }
         }
 
         return writeThroughSetJSON(key, data, options)
@@ -527,17 +561,14 @@ describe('reachMoonHighscores function', () => {
         method: 'POST',
       }),
     )
-    const body = await readJson<{
-      record: ReachMoonHighscoreRecord
-      rollups: Record<ReachMoonHighscorePeriod, { entries: { id: string }[] }>
-    }>(response)
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(503)
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: { code: 'storage_error' },
+    })
     expect(
       store.values.get(`records/by-run/${receipt.runId}.json`),
     ).toBeTruthy()
-    expect(body.record.id).toBe(receipt.runId)
-    expect(body.rollups.weekly.entries[0]?.id).toBe(receipt.runId)
     expect(store.values.get('rollups/weekly/2026-W26.json')).toBeUndefined()
   })
 
@@ -562,6 +593,20 @@ describe('reachMoonHighscores function', () => {
     expect(jsonResponse.status).toBe(400)
     await expect(readJson(jsonResponse)).resolves.toMatchObject({
       error: { code: 'invalid_json' },
+    })
+
+    const scalarJsonResponse = await handler(
+      new Request('https://example.test/api/reach-moon/highscores', {
+        body: '[]',
+        method: 'POST',
+      }),
+    )
+    expect(scalarJsonResponse.status).toBe(400)
+    await expect(readJson(scalarJsonResponse)).resolves.toMatchObject({
+      error: {
+        code: 'invalid_json',
+        message: 'POST body must be a JSON object.',
+      },
     })
 
     const missingBodyResponse = await handler(

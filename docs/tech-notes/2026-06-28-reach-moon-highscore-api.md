@@ -41,7 +41,7 @@ Issue #115 is the backend API slice for Reach the Moon highscores. It provides t
 ## Decisions
 
 - `GET /api/reach-moon/highscores` returns cached rollups by default; `?period=daily|weekly|all-time` narrows the read and validates unsupported periods. Missing rollup blobs are repaired from a bounded paginated record read and written back best-effort.
-- `POST /api/reach-moon/highscores` validates the same period query if present but always returns all updated rollups because a submission affects daily, weekly, and all-time state. Existing rollup blobs are updated with Netlify Blob ETag compare-and-set retries so normal submissions do not scan every immutable record.
+- `POST /api/reach-moon/highscores` validates the same period query as `GET` and filters the response to that period when present. It still updates daily, weekly, and all-time rollup caches because every accepted submission affects all three periods. Existing rollup blobs are updated with Netlify Blob ETag compare-and-set retries so normal submissions do not scan every immutable record.
 - Stored scores are recomputed server-side with `createReachMoonHighscoreRecord`; client-provided score fields are ignored.
 - The signed receipt `runId` is the immutable record id and idempotency key. Replaying the same receipt reads the original record instead of creating a second score.
 - Rollups store only the current top 10 for each period. Immutable records remain the recovery source, but normal GET/POST paths read and update rollup blobs instead of rebuilding from all records.
@@ -52,7 +52,7 @@ Issue #115 is the backend API slice for Reach the Moon highscores. It provides t
 
 - Rollup cache-miss repair reads paginated Blob record results, capped at 1,000 attempted record reads. If submission volume grows, add a compact per-day/per-week record index or a queued full-cache rebuild path.
 - Signed receipts are still stateless run-start receipts, so this API validates authenticity and expiry but does not bind the final submitted run values to a server-derived result. A future integration issue can add server-authoritative run-result signing if needed.
-- Rollup cache writes are best-effort after a record is accepted; a transient existing-cache write failure can leave a period stale until a later backfill or repair path refreshes it.
+- Rollup cache writes must be confirmed before a POST returns success. If the immutable record write succeeds but a rollup cache update cannot be confirmed after retries, the API returns `storage_error`; the accepted record remains available for a later cache repair/backfill path.
 
 ## Validation
 

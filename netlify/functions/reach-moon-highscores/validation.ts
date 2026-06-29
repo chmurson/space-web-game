@@ -40,7 +40,17 @@ export const readJsonBody = async (
   }
 
   try {
-    return { ok: true, value: JSON.parse(body) }
+    const parsed = JSON.parse(body)
+    if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {
+        code: 'invalid_json',
+        message: 'POST body must be a JSON object.',
+        ok: false,
+        status: 400,
+      }
+    }
+
+    return { ok: true, value: parsed }
   } catch {
     return {
       code: 'invalid_json',
