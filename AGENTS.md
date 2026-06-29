@@ -32,11 +32,16 @@
 - Woven moth staging site: `space-web-game-woven-moth`
 - Woven moth staging URL: `https://space-web-game-woven-moth.netlify.app`
 - Woven moth staging site ID: `65b8db6a-f0cc-49e3-b4e4-cc994699ba6a`
+- PRs targeting `main` use the automated Netlify PR preview workflow in `.github/workflows/netlify-pr-preview.yml`.
+- The PR preview workflow builds the PR head, deploys `dist/` with a stable `pr-<number>` Netlify alias, and reports the preview URL in the workflow summary and a stable PR comment.
+- Required PR preview secret is `NETLIFY_AUTH_TOKEN`; preview deploys reuse the production Netlify site ID with a non-production `pr-<number>` alias and do not pass `--prod`.
+- The PR preview workflow runs for same-repository PRs; forked PRs do not receive repository secrets and need explicit maintainer staging if a preview is required.
 - Deploy scripts use explicit `--site` selection and do not rely on `.netlify/state.json`.
 - The default non-production staging target can be changed per worktree by creating the gitignored `.netlify-deploy.local.json` with `{ "defaultStagingTarget": "woven-moth" }` or another supported staging target key.
 - If the current branch is `main`, deploy to Netlify after each commit that changes executable app code, runtime behavior, or user-visible site output.
-- If the current branch is not `main`, deploy to the configured staging site after each meaningful code change unless there is a clear reason not to.
-- On non-`main` branches, deploy to the configured staging site before handing work back to the user when the work changed executable app code, runtime behavior, or user-visible site output.
+- For ordinary PR work targeting `main`, rely on the automated PR preview instead of running manual staging deploys.
+- On non-`main` branches not covered by a PR preview, deploy to the configured staging site after each meaningful code change unless there is a clear reason not to.
+- Before handing back non-`main` work that changed executable app code, runtime behavior, or user-visible site output, either confirm the automated PR preview covers the branch or deploy to the configured staging site.
 - Planning-only, docs-only, and repository-instruction-only edits do not require Netlify deploys.
 - Do not deploy non-`main` branches to the `main` production site.
 - Use `npm run deploy:netlify` for branch-aware deploys.
