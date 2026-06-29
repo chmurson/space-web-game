@@ -113,6 +113,7 @@ const createTrajectoryPredictionState = (
   predictedTargetClosestApproach: null,
   targetId: 'earth',
   targetRelativeAssistedPoints: [],
+  targetRelativeEventMarkers: [],
   targetRelativePredictionEnd: targetRelativePredictionPoints.at(-1) ?? null,
   targetRelativePredictionPoints,
 })

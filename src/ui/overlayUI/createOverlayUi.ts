@@ -1,4 +1,5 @@
 import { h, render } from 'preact'
+import type { TrajectoryPredictionEventMarkerKind } from '../../prediction/trajectoryPrediction'
 import type { Body } from '../../simulation/types'
 import {
   FpsIndicatorSurface,
@@ -70,6 +71,10 @@ export type OverlayUiRefs = {
   statTime: HTMLElement | null
   timeIcon: SVGSVGElement | null
   timeIconHand: SVGLineElement | null
+  trajectoryEventMarkerLabels: Record<
+    TrajectoryPredictionEventMarkerKind,
+    HTMLElement
+  >
   statWarp: HTMLElement | null
   statZoom: HTMLElement | null
 }
@@ -128,6 +133,19 @@ const createHudTelemetryShells = (options: {
       fpsSurface.render({ view }),
     telemetryRefs,
   }
+}
+
+const createTrajectoryEventMarkerLabel = (
+  app: HTMLElement,
+  kind: TrajectoryPredictionEventMarkerKind,
+) => {
+  const label = document.createElement('div')
+  label.className = `trajectory-event-label trajectory-event-label-${kind}`
+  label.dataset.trajectoryEventMarker = kind
+  label.style.display = 'none'
+  label.setAttribute('aria-hidden', 'true')
+  app.appendChild(label)
+  return label
 }
 
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
@@ -193,6 +211,10 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
 
   const offscreenIndicators = new Map<string, HTMLElement>()
   const bodyLabels = new Map<string, HTMLElement>()
+  const trajectoryEventMarkerLabels = {
+    apoapsis: createTrajectoryEventMarkerLabel(options.app, 'apoapsis'),
+    periapsis: createTrajectoryEventMarkerLabel(options.app, 'periapsis'),
+  } satisfies Record<TrajectoryPredictionEventMarkerKind, HTMLElement>
   const createOffscreenIndicator = () => {
     const indicator = document.createElement('div')
     indicator.className = 'offscreen-indicator'
@@ -275,6 +297,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     statTime: hudTelemetry.telemetryRefs.statTime,
     timeIcon: hudTelemetry.telemetryRefs.timeIcon,
     timeIconHand: hudTelemetry.telemetryRefs.timeIconHand,
+    trajectoryEventMarkerLabels,
     statWarp: null,
     statZoom: null,
   }
