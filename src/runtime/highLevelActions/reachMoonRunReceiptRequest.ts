@@ -34,11 +34,19 @@ export const requestReachMoonRunReceipt: ReachMoonRunReceiptRequester =
         method: 'POST',
         signal: abortController.signal,
       })
+      const body: unknown = await response.json().catch(() => null)
+
       if (!response.ok) {
-        throw new Error(`Run receipt request failed (${response.status}).`)
+        const message =
+          isRecord(body) &&
+          isRecord(body.error) &&
+          typeof body.error.message === 'string'
+            ? body.error.message
+            : `Run receipt request failed (${response.status}).`
+
+        throw new Error(message)
       }
 
-      const body: unknown = await response.json()
       if (!isRecord(body) || !isReachMoonRunReceipt(body.runReceipt)) {
         throw new Error('Run receipt response was invalid.')
       }
