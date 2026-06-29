@@ -73,6 +73,14 @@
 - Record relevant issue comments, decisions, non-goals, and any scope uncertainty in transient Shipit state before implementation; move durable context into `docs/tech-notes/` when it should remain useful after the worktree scratch state is gone.
 - If issue comments conflict or leave the requested behavior unclear, pause and clarify before changing product code.
 
+## Pull Requests
+
+- PR descriptions should keep a high-level description of what changed.
+- Link the related issue when one exists; otherwise include concise context for why the change was made.
+- Include important implementation details, ownership boundaries, and behavior changes when they matter for review.
+- Avoid validation steps, test-command output, and validation-result sections unless explicitly requested.
+- Avoid deployed-instance links in PR descriptions because GitHub workflows provide those separately.
+
 ## Automation Task Claims
 
 - Automation orchestrators and workers must use task-scoped claims for GitHub PRs/issues/branches instead of a single repository-wide automation lock.
