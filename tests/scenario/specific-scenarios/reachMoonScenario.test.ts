@@ -11,14 +11,17 @@ import {
   createRuntimeScenarioStateFromId,
   type RuntimeScenarioOptions,
 } from '@/scenario/runtimeScenario'
-import { getReachMoonCompletedHighscorePayload } from '@/scenario/specific-scenarios/reachMoonScenario'
-import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
+import {
+  applyRuntimeScenarioDirectiveConstraints,
+  resolveRuntimeScenarioDirectives,
+} from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   getPromptTextContent,
   resolveScenarioPrompts,
 } from '@/scenario/scenarioPrompts'
 import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
+import { getReachMoonCompletedHighscorePayload } from '@/scenario/specific-scenarios/reachMoonScenario'
 import { G } from '@/simulation/constants'
 import type { Body } from '@/simulation/types'
 
@@ -194,6 +197,25 @@ describe('reachMoonScenario', () => {
     expect(getPromptTextContent(prompt?.description)).toBe(
       'Launch from Earth, reach the Moon, complete three lunar orbits, return to Earth, then complete one final Earth orbit. Fuel is finite, so keep burns deliberate.',
     )
+  })
+
+  it('uses the global trajectory horizon cap for mission directives', () => {
+    const runtime = createRuntime()
+    const limits = {
+      ...globalScenarioDirectiveLimits,
+      maxCoastPredictionHorizonHours: 768,
+    }
+
+    const directives = resolveRuntimeScenarioDirectives(runtime, limits)
+
+    expect(directives.maxCoastPredictionHorizonHours).toBeNull()
+
+    runtime.scenario.directives = directives
+    runtime.simulation.coastPredictionHorizonHours = 800
+
+    applyRuntimeScenarioDirectiveConstraints(runtime, limits)
+
+    expect(runtime.simulation.coastPredictionHorizonHours).toBe(768)
   })
 
   it('advances through Moon reach, three lunar orbits, Earth return, and one Earth orbit', () => {

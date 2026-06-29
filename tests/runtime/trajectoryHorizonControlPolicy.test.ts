@@ -62,6 +62,26 @@ describe('trajectoryHorizonControlPolicy', () => {
     ])
   })
 
+  it('clamps controls at the global maximum horizon', () => {
+    expect(
+      getNextTrajectoryHorizonHours({
+        action: 'increaseCoastHorizon',
+        currentHours: 384,
+        maxHours: 768,
+        minHours: 0.5,
+      }),
+    ).toBe(768)
+
+    expect(
+      getTrajectoryHorizonPreview({
+        action: 'increaseCoastHorizon',
+        currentHours: 768,
+        maxHours: 768,
+        minHours: 0.5,
+      }),
+    ).toEqual({ canCommit: false, value: 768 })
+  })
+
   it('returns blocked edge previews at min and max limits', () => {
     expect(
       getTrajectoryHorizonPreview({
