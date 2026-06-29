@@ -34,10 +34,10 @@ The highscore backend and completed-run payload plumbing already existed, but pl
 
 ## Validation
 
-- `npx playwright test --config playwright.config.ts tests/gui/mobileHudScreenshot.spec.ts -g "highscores|autosubmits"` passed: 2 tests.
+- `npx playwright test --config playwright.config.ts tests/gui/mobileHudScreenshot.spec.ts -g "highscores|highscore requests|submit rollups"` passed: 4 tests.
 - `npm run build` passed with the existing Vite chunk-size warning.
 - `npm test` passed: 55 Vitest files / 367 tests, plus 16 automation-claim tests.
-- `npm run test:gui` passed: 27 Playwright tests.
+- `npm run test:gui` passed: 29 Playwright tests.
 - `git diff --check` passed.
 - `npm run deploy:netlify` passed and deployed to shared staging:
   - Staging URL: `https://fanciful-bunny-d77b4b.netlify.app`
@@ -45,7 +45,8 @@ The highscore backend and completed-run payload plumbing already existed, but pl
 - `coderabbit --base main --agent` completed with 12 findings:
   - Fixed the changed-file findings for active-period submit rank, clipped filter focus, mobile header accessibility, GUI mock period validation, and this validation section.
   - Skipped unchanged prerequisite/backend hardening findings as out of scope for this UI issue: receipt payload binding, highscore storage repair/cache hardening, receipt validation error mapping, run-receipt timeout normalization, Netlify storage mock shape, and recovered highscore input/score pairing.
-- Visually inspected `tmp/playwright-results/mobileHudScreenshot-captur-58df7-Moon-highscores-leaderboard-mobile-chromium/mobile-reach-moon-highscores.png`; the panel fit the mobile viewport, filters and rows were readable, and the long pilot name ellipsized without overlap.
+- A follow-up `coderabbit --base main --agent` rerun was interrupted after timing out during analysis without producing findings.
+- Visually inspected the `mobile-reach-moon-highscores.png` screenshot artifact from `npm run test:gui`; the panel fit the mobile viewport, filters and rows were readable, and the long pilot name ellipsized without overlap.
 
 ## Follow-Ups
 

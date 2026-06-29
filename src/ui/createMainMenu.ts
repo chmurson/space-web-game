@@ -1,4 +1,14 @@
 import {
+  generateReachMoonFallbackPilotName,
+  type ReachMoonHighscoreListResponse,
+  type ReachMoonHighscorePeriod,
+  type ReachMoonHighscoreRecord,
+  type ReachMoonHighscoreRollup,
+  type ReachMoonHighscoreRollups,
+  type ReachMoonHighscoreSubmitResponse,
+  reachMoonHighscorePeriods,
+} from '../scenario/specific-scenarios/reachMoonHighscores'
+import {
   MainMenuSurface,
   type MainMenuSurfaceProps,
   type MainMenuView,
@@ -7,16 +17,6 @@ import {
 } from './components/MainMenuSurface'
 import { createPreactUiSurface } from './createPreactUiSurface'
 import { isLoadGameAvailable, runLoadGameAction } from './loadGameAvailability'
-import {
-  generateReachMoonFallbackPilotName,
-  reachMoonHighscorePeriods,
-  type ReachMoonHighscoreListResponse,
-  type ReachMoonHighscorePeriod,
-  type ReachMoonHighscoreRecord,
-  type ReachMoonHighscoreRollup,
-  type ReachMoonHighscoreRollups,
-  type ReachMoonHighscoreSubmitResponse,
-} from '../scenario/specific-scenarios/reachMoonHighscores'
 
 export type MainMenu = {
   element: HTMLElement
@@ -168,8 +168,10 @@ export const createMainMenu = (options: {
         renderMenu()
       },
       onReachMoonHighscorePeriod: (period) => {
+        reachMoonHighscoreLoadRequestId += 1
         reachMoonHighscoreActivePeriod = period
         reachMoonHighscoreLoadError = null
+        reachMoonHighscoreLoadingPeriod = null
         renderMenu()
         if (!reachMoonHighscoreRollups[period]) {
           loadReachMoonHighscores(period)
@@ -202,6 +204,10 @@ export const createMainMenu = (options: {
   }
 
   const loadReachMoonHighscores = (period: ReachMoonHighscorePeriod) => {
+    if (!options.reachMoonFeatureEnabled) {
+      return
+    }
+
     reachMoonHighscoreLoadRequestId += 1
     const requestId = reachMoonHighscoreLoadRequestId
     reachMoonHighscoreLoadingPeriod = period
@@ -246,6 +252,10 @@ export const createMainMenu = (options: {
   }
 
   const submitReachMoonHighscore = () => {
+    if (!options.reachMoonFeatureEnabled) {
+      return
+    }
+
     const pendingRun = reachMoonHighscorePendingRun
     const runReceipt = pendingRun?.runReceipt
     reachMoonHighscoreSubmitRequestId += 1
@@ -289,8 +299,13 @@ export const createMainMenu = (options: {
           return
         }
 
-        reachMoonHighscoreLoadRequestId += 1
-        reachMoonHighscoreLoadingPeriod = null
+        if (
+          reachMoonHighscoreLoadingPeriod === reachMoonHighscoreActivePeriod &&
+          response.rollups[reachMoonHighscoreActivePeriod]
+        ) {
+          reachMoonHighscoreLoadRequestId += 1
+          reachMoonHighscoreLoadingPeriod = null
+        }
         mergeReachMoonHighscoreRollups(response.rollups)
         reachMoonHighscoreSubmittedRecord = response.record
         reachMoonHighscoreSubmitError = null
@@ -338,6 +353,14 @@ export const createMainMenu = (options: {
     setVisible,
     showReachMoonHighscores: (pendingRun) => {
       visible = true
+      if (!options.reachMoonFeatureEnabled) {
+        reachMoonHighscorePendingRun = null
+        resetReachMoonHighscoreSubmitState()
+        setActiveView('main')
+        renderMenu()
+        return
+      }
+
       reachMoonHighscorePendingRun = pendingRun ?? null
       resetReachMoonHighscoreSubmitState()
       reachMoonHighscoreActivePeriod = defaultReachMoonHighscorePeriod

@@ -2089,6 +2089,14 @@ canvas {
     }
 }
 
+@supports (height: 100dvh) {
+    @media (max-width: 720px) {
+        .main-menu-panel-highscores {
+            max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 36px);
+        }
+    }
+}
+
 #app.app-main-menu .top-bar,
 #app.app-main-menu .scenario-prompt-backdrop,
 #app.app-main-menu .crash-menu,
