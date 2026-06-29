@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { gameConfig } from '@/config/gameConfig'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
@@ -11,14 +12,18 @@ import {
   createRuntimeScenarioStateFromId,
   type RuntimeScenarioOptions,
 } from '@/scenario/runtimeScenario'
-import { getReachMoonCompletedHighscorePayload } from '@/scenario/specific-scenarios/reachMoonScenario'
-import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
+import {
+  applyRuntimeScenarioDirectiveConstraints,
+  getConstrainedTimeWarpIndex,
+  resolveRuntimeScenarioDirectives,
+} from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
   getPromptTextContent,
   resolveScenarioPrompts,
 } from '@/scenario/scenarioPrompts'
 import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
+import { getReachMoonCompletedHighscorePayload } from '@/scenario/specific-scenarios/reachMoonScenario'
 import { G } from '@/simulation/constants'
 import type { Body } from '@/simulation/types'
 
@@ -36,7 +41,7 @@ const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 50, 100, 500, 2000],
+  timeWarps: [...gameConfig.controls.timeWarps],
 }
 
 const createRuntime = (): AppRuntimeState => {
@@ -170,6 +175,30 @@ describe('reachMoonScenario', () => {
     })
   })
 
+  it('uses the global time warp cap while preserving the mission viewport directive', () => {
+    const runtime = createRuntime()
+    const globalMaxTimeWarpIndex =
+      globalScenarioDirectiveLimits.timeWarps.length - 1
+    const directives = resolveRuntimeScenarioDirectives(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
+
+    expect(directives.maxCoastPredictionHorizonHours).toBeNull()
+    expect(directives.maxTimeWarp).toBeNull()
+    expect(directives.maxViewportSize).toBe(EARTH_MOON_VIEWPORT_SIZE)
+    expect(globalScenarioDirectiveLimits.timeWarps[globalMaxTimeWarpIndex]).toBe(
+      18_000,
+    )
+    expect(
+      getConstrainedTimeWarpIndex(
+        globalMaxTimeWarpIndex,
+        globalScenarioDirectiveLimits.timeWarps,
+        directives.maxTimeWarp,
+      ),
+    ).toBe(globalMaxTimeWarpIndex)
+  })
+
   it('resolves the initial mission prompt from prompt definitions', () => {
     const runtime = createRuntime()
     const prompt = resolveScenarioPrompts(runtime, 'desktop').active
@@ -194,6 +223,25 @@ describe('reachMoonScenario', () => {
     expect(getPromptTextContent(prompt?.description)).toBe(
       'Launch from Earth, reach the Moon, complete three lunar orbits, return to Earth, then complete one final Earth orbit. Fuel is finite, so keep burns deliberate.',
     )
+  })
+
+  it('uses the global trajectory horizon cap for mission directives', () => {
+    const runtime = createRuntime()
+    const limits = {
+      ...globalScenarioDirectiveLimits,
+      maxCoastPredictionHorizonHours: 768,
+    }
+
+    const directives = resolveRuntimeScenarioDirectives(runtime, limits)
+
+    expect(directives.maxCoastPredictionHorizonHours).toBeNull()
+
+    runtime.scenario.directives = directives
+    runtime.simulation.coastPredictionHorizonHours = 800
+
+    applyRuntimeScenarioDirectiveConstraints(runtime, limits)
+
+    expect(runtime.simulation.coastPredictionHorizonHours).toBe(768)
   })
 
   it('advances through Moon reach, three lunar orbits, Earth return, and one Earth orbit', () => {

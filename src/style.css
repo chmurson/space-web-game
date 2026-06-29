@@ -1157,7 +1157,7 @@ canvas {
 }
 
 .telemetry-pill-target {
-    max-width: min(128px, calc(100vw - 168px));
+    max-width: min(176px, calc(100vw - 168px));
 }
 
 .telemetry-pill-target .target-body-sphere {
@@ -1179,6 +1179,20 @@ canvas {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.telemetry-pill-target [data-stat="target-altitude"] {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1;
+    opacity: 0.78;
+    white-space: nowrap;
+}
+
+.telemetry-pill-target [data-stat="target-altitude"]::before {
+    margin-right: 4px;
+    content: "·";
 }
 
 .telemetry-pill-thrust.telemetry-pill-thrust-active {
@@ -1803,19 +1817,33 @@ canvas {
     white-space: nowrap;
 }
 
-#app .body-label {
+#app .body-label,
+#app .trajectory-event-label {
     position: fixed;
     padding: 2px 5px;
-    border: 1px solid rgba(148, 163, 184, 0.22);
+    border: 1px solid var(--ui-glass-control-border);
     border-radius: 4px;
     background: var(--ui-glass-label-bg);
     color: #dbeafe;
     font-size: 10px;
     pointer-events: none;
-    text-shadow: 0 0 8px rgba(15, 23, 42, 0.9);
     transform: translateY(-50%);
     white-space: nowrap;
     z-index: var(--z-in-game-floating-elements);
+}
+
+#app .body-label {
+    transform: translateY(-50%);
+}
+
+#app .body-label-distance-context,
+#app .trajectory-event-label {
+    max-width: min(220px, calc(100vw - 16px));
+    padding: 3px 6px;
+    font-size: 11px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 @media (hover: none),
@@ -1824,11 +1852,19 @@ canvas {
         display: block;
     }
 
-    #app .body-label {
+    #app .body-label,
+    #app .trajectory-event-label {
         padding: 2px 4px;
         border-radius: 3px;
         font-size: 9px;
         line-height: 1.1;
+    }
+
+    #app .body-label-distance-context,
+    #app .trajectory-event-label {
+        max-width: min(164px, calc(100vw - 24px));
+        padding: 2px 5px;
+        font-size: 9.5px;
     }
 
     .body-label-mobile-wrap {
@@ -2028,6 +2064,15 @@ canvas {
         overflow: hidden;
         clip-path: inset(50%);
         white-space: nowrap;
+    }
+
+    .telemetry-pill-target [data-stat="target-altitude"] {
+        font-size: 10.5px;
+    }
+
+    .telemetry-pill-target [data-stat="target-altitude"]::before {
+        margin-right: 0;
+        content: "";
     }
 
     #app .fps-indicator {

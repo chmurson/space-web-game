@@ -9,6 +9,7 @@ import {
   type OverlayUiRefs,
   spacecraftOffscreenIndicatorId,
 } from '../ui/overlayUI/createOverlayUi'
+import type { BodyDistanceContext } from './bodyDistanceContext'
 import {
   getEarthCloudDriftRotationY,
   setBodyVisualQuaternion,
@@ -405,6 +406,7 @@ const updateOffscreenIndicators = (options: {
 
 const updateBodyLabels = (options: {
   bodies: Body[]
+  distanceContext: BodyDistanceContext | null
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
   viewportSize: number
@@ -440,11 +442,28 @@ const updateBodyLabels = (options: {
       position.z > -1 &&
       position.z < 1
 
-    if (!isVisible || apparentRadius > labelRadiusThreshold) {
+    const distanceContext =
+      options.distanceContext?.bodyId === body.id
+        ? options.distanceContext
+        : null
+
+    if (
+      !isVisible ||
+      (apparentRadius > labelRadiusThreshold && !distanceContext)
+    ) {
       label.style.display = 'none'
       continue
     }
 
+    label.textContent = distanceContext
+      ? distanceContext.tooltipLabel
+      : body.name
+    label.title = distanceContext ? distanceContext.accessibleLabel : body.name
+    label.setAttribute(
+      'aria-label',
+      distanceContext ? distanceContext.accessibleLabel : body.name,
+    )
+    label.classList.toggle('body-label-distance-context', !!distanceContext)
     const screenX = (position.x * 0.5 + 0.5) * window.innerWidth
     const screenY = (-position.y * 0.5 + 0.5) * window.innerHeight
     const shouldWrapLabel =
@@ -483,6 +502,7 @@ export const createBodyPresentation = (options: {
 }) => ({
   updateVisuals: (state: {
     bodies: Body[]
+    distanceContext?: BodyDistanceContext | null
     elapsed: number
     hiddenBodyIds: string[]
     spacecraftPosition: Vec2
@@ -507,6 +527,7 @@ export const createBodyPresentation = (options: {
     })
     updateBodyLabels({
       bodies: visibleBodies,
+      distanceContext: state.distanceContext ?? null,
       gameScene: options.gameScene,
       overlayUi: options.overlayUi,
       viewportSize: state.viewportSize,

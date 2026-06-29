@@ -23,6 +23,7 @@ import {
   type ScenarioPromptUiState,
   type ScenarioSessionValue,
 } from '../scenarioSession'
+import type { ReachMoonHighscoreSubmitInput } from './reachMoonHighscores'
 import {
   calculateReachMoonScore,
   formatReachMoonScoreSummary,
@@ -30,7 +31,6 @@ import {
   REACH_MOON_FUEL_CAPACITY_KG,
   type ReachMoonScoreSummary,
 } from './reachMoonScore'
-import type { ReachMoonHighscoreSubmitInput } from './reachMoonHighscores'
 
 const requiredMoonOrbitTurns = 3
 const requiredEarthOrbitTurns = 1
@@ -291,8 +291,6 @@ const advanceOrbitProgress = <TState extends OrbitMoonState | OrbitEarthState>(
 
 const createMissionDirectives = (): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
-  maxCoastPredictionHorizonHours: 24,
-  maxTimeWarp: 2000,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
 })
 

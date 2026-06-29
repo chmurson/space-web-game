@@ -53,6 +53,7 @@ export const updateCameraView = (options: {
   )
   options.gameScene.camera.lookAt(options.gameScene.cameraTarget)
   options.gameScene.camera.updateProjectionMatrix()
+  options.gameScene.camera.updateMatrixWorld()
   options.gameScene.predictionMaterial.resolution.set(
     options.viewportWidth,
     options.viewportHeight,
