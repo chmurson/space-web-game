@@ -39,9 +39,7 @@ The highscore backend and completed-run payload plumbing already existed, but pl
 - `npm test` passed: 55 Vitest files / 367 tests, plus 16 automation-claim tests.
 - `npm run test:gui` passed: 29 Playwright tests.
 - `git diff --check` passed.
-- `npm run deploy:netlify` passed and deployed to shared staging:
-  - Staging URL: `https://fanciful-bunny-d77b4b.netlify.app`
-  - Unique deploy URL: `https://6a423e432acaab0432a6f4d5--fanciful-bunny-d77b4b.netlify.app`
+- `npm run deploy:netlify` passed and deployed branch `codex/issue-117-leaderboard-ui` to shared staging: `https://fanciful-bunny-d77b4b.netlify.app`.
 - `coderabbit --base main --agent` completed with 12 findings:
   - Fixed the changed-file findings for active-period submit rank, clipped filter focus, mobile header accessibility, GUI mock period validation, and this validation section.
   - Skipped unchanged prerequisite/backend hardening findings as out of scope for this UI issue: receipt payload binding, highscore storage repair/cache hardening, receipt validation error mapping, run-receipt timeout normalization, Netlify storage mock shape, and recovered highscore input/score pairing.
