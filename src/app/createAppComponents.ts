@@ -298,7 +298,6 @@ export const createAppComponents = (options: {
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
-    timeWarps: options.config.controls.timeWarps,
     trajectoryEventMarkerLabels: overlayUi.trajectoryEventMarkerLabels,
     trajectoryPredictionRuntime,
   })

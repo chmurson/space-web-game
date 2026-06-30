@@ -28,6 +28,7 @@ const trajectoryEventMarkerLift = 0.22
 const trajectoryEventMarkerLabelOffsetX = 10
 const trajectoryEventMarkerLabelOffsetY = 10
 const trajectoryEventMarkerLabelViewportPadding = 8
+const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.05
 
 type TrajectoryEventMarkerLabelRefs = Record<
   TrajectoryPredictionEventMarkerKind,
@@ -176,7 +177,6 @@ const updateTargetRelativePredictionVisuals = (options: {
   targetRelativeAssistedPoints: Vec2[]
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
-  timeWarpSeconds: number
   viewportHeight: number
   viewportSize: number
 }) => {
@@ -224,7 +224,6 @@ const updateTargetRelativePredictionVisuals = (options: {
     gameScene: options.gameScene,
     stabilizedEventMarkers: options.stabilizedEventMarkers,
     target: options.target,
-    timeWarpSeconds: options.timeWarpSeconds,
     viewportHeight: options.viewportHeight,
     viewportSize: options.viewportSize,
   })
@@ -303,17 +302,17 @@ const copyTrajectoryEventMarker = (
   point: { ...marker.point },
 })
 
-const getTrajectoryEventMarkerDisplayThresholdMeters = (options: {
-  renderUnitsPerPixel: number
-  timeWarpSeconds: number
-}) => {
-  const thresholdPixels = THREE.MathUtils.clamp(
-    4 + Math.log2(Math.max(1, options.timeWarpSeconds)) * 2,
-    4,
-    36,
+const getTrajectoryEventMarkerPointChangeAltitudeRatio = (
+  eventMarker: TrajectoryPredictionEventMarker,
+  previous: TrajectoryPredictionEventMarker,
+) => {
+  const altitudeScale = Math.max(
+    Number.isFinite(eventMarker.altitude) ? Math.abs(eventMarker.altitude) : 0,
+    Number.isFinite(previous.altitude) ? Math.abs(previous.altitude) : 0,
+    1,
   )
 
-  return (thresholdPixels * options.renderUnitsPerPixel) / RENDER_SCALE
+  return length(sub(eventMarker.point, previous.point)) / altitudeScale
 }
 
 const getStabilizedTrajectoryEventMarkers = (options: {
@@ -322,7 +321,6 @@ const getStabilizedTrajectoryEventMarkers = (options: {
     TrajectoryPredictionEventMarkerKind,
     TrajectoryPredictionEventMarker
   >
-  thresholdMeters: number
 }) => {
   const currentKinds = new Set<TrajectoryPredictionEventMarkerKind>()
   const eventMarkers: TrajectoryPredictionEventMarker[] = []
@@ -343,7 +341,8 @@ const getStabilizedTrajectoryEventMarkers = (options: {
 
     if (
       previous &&
-      length(sub(eventMarker.point, previous.point)) < options.thresholdMeters
+      getTrajectoryEventMarkerPointChangeAltitudeRatio(eventMarker, previous) <=
+        trajectoryEventMarkerUpdateAltitudeRatioThreshold
     ) {
       eventMarkers.push(previous)
       continue
@@ -438,7 +437,6 @@ const updateTrajectoryEventMarkers = (options: {
     TrajectoryPredictionEventMarker
   >
   target: Body
-  timeWarpSeconds: number
   viewportHeight: number
   viewportSize: number
 }) => {
@@ -453,15 +451,9 @@ const updateTrajectoryEventMarkers = (options: {
     return
   }
 
-  const renderUnitsPerPixel =
-    options.viewportSize / Math.max(options.viewportHeight, 1)
   const eventMarkers = getStabilizedTrajectoryEventMarkers({
     eventMarkers: options.eventMarkers,
     stabilizedEventMarkers: options.stabilizedEventMarkers,
-    thresholdMeters: getTrajectoryEventMarkerDisplayThresholdMeters({
-      renderUnitsPerPixel,
-      timeWarpSeconds: options.timeWarpSeconds,
-    }),
   })
   const markerScaleViewportSize = Math.max(
     options.viewportSize,
@@ -608,7 +600,6 @@ export const createTrajectoryPresentation = (options: {
   physicsEngine: PhysicsEngine
   queries: GameQueries
   runtime: AppRuntimeState
-  timeWarps: number[]
   trajectoryEventMarkerLabels: TrajectoryEventMarkerLabelRefs
   trajectoryPredictionRuntime: TrajectoryPredictionRuntime
 }) => {
@@ -616,6 +607,10 @@ export const createTrajectoryPresentation = (options: {
     TrajectoryPredictionEventMarkerKind,
     TrajectoryPredictionEventMarker
   >()
+  let stabilizedTrajectoryEventMarkerSession:
+    | AppRuntimeState['scenario']['session']
+    | null = null
+  let stabilizedTrajectoryEventMarkerTargetId: string | null = null
 
   const syncInertialPredictionVisual = () => {
     updateInertialPredictionVisual({
@@ -721,6 +716,8 @@ export const createTrajectoryPresentation = (options: {
       if (
         options.runtime.scenario.directives.hiddenUIElements.has('trajectory')
       ) {
+        stabilizedTrajectoryEventMarkerSession = null
+        stabilizedTrajectoryEventMarkerTargetId = null
         stabilizedTrajectoryEventMarkers.clear()
         hideTrajectoryVisuals(
           options.gameScene,
@@ -732,6 +729,23 @@ export const createTrajectoryPresentation = (options: {
       const predictionState = options.trajectoryPredictionRuntime.getState()
       const target = options.queries.getAssistTarget()
       const predictionTargetMatches = predictionState.targetId === target.id
+      const trajectoryEventMarkerSession = predictionTargetMatches
+        ? options.runtime.scenario.session
+        : null
+      const trajectoryEventMarkerTargetId = predictionTargetMatches
+        ? target.id
+        : null
+
+      if (
+        trajectoryEventMarkerSession !==
+          stabilizedTrajectoryEventMarkerSession ||
+        trajectoryEventMarkerTargetId !==
+          stabilizedTrajectoryEventMarkerTargetId
+      ) {
+        stabilizedTrajectoryEventMarkers.clear()
+        stabilizedTrajectoryEventMarkerSession = trajectoryEventMarkerSession
+        stabilizedTrajectoryEventMarkerTargetId = trajectoryEventMarkerTargetId
+      }
 
       if (options.runtime.simulation.assistMode !== 'off') {
         options.gameScene.assistedPredictionMaterial.color.set(
@@ -764,8 +778,6 @@ export const createTrajectoryPresentation = (options: {
         targetRelativePredictionPoints: predictionTargetMatches
           ? predictionState.targetRelativePredictionPoints
           : [],
-        timeWarpSeconds:
-          options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
         viewportHeight: window.innerHeight,
         viewportSize: options.runtime.simulation.viewportSize,
       })
