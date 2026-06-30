@@ -125,6 +125,9 @@ describe('createInitialAppRuntimeState', () => {
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.scenario.metadata.title).toBe('Menu background')
+    expect(runtime.scenario.orbitPointDisplay).toEqual({
+      markersVisible: false,
+    })
     expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
     expect(runtime.simulation.timeWarpIndex).toBe(4)
   })
@@ -154,6 +157,7 @@ describe('createInitialAppRuntimeState', () => {
 
     expect(runtime.scenario.session.scenarioId).toBe('tutorial')
     expect(runtime.scenario.metadata.title).toBe('Tutorial: Escape Earth')
+    expect(runtime.scenario.orbitPointDisplay).toBeUndefined()
     expect(runtime.ui.camera.mode).toBe('centered')
     expect(runtime.ui.camera.panOffset).toEqual(
       runtime.simulation.state.spacecraft.position,

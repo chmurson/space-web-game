@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
   readUserSettings,
+  resolveOrbitPointDisplaySettings,
   updateUserSettings,
   writeUserSettings,
 } from '@/userSettingsStorage'
@@ -167,5 +168,22 @@ describe('userSettingsStorage', () => {
       touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
+  })
+
+  it('resolves scenario orbit point display overrides over user settings', () => {
+    expect(
+      resolveOrbitPointDisplaySettings(defaultOrbitPointDisplay, {
+        centerDistanceVisible: true,
+        markersVisible: false,
+      }),
+    ).toEqual({
+      ...defaultOrbitPointDisplay,
+      centerDistanceVisible: true,
+      markersVisible: false,
+    })
+
+    expect(resolveOrbitPointDisplaySettings(defaultOrbitPointDisplay)).toEqual(
+      defaultOrbitPointDisplay,
+    )
   })
 })

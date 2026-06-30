@@ -28,6 +28,7 @@ export const registerMenuBackgroundScenario =
           ...scenario,
           id: 'menu-background',
           name: 'Menu background',
+          orbitPointDisplay: { markersVisible: false },
           scenarioSession: createRuntimeScenarioSession('menu-background'),
         }
       }
@@ -39,6 +40,7 @@ export const registerMenuBackgroundScenario =
         ...scenario,
         id: 'menu-background',
         name: 'Menu background',
+        orbitPointDisplay: { markersVisible: false },
         viewportSize: EARTH_VIEWPORT_SIZE,
         scenarioSession: createRuntimeScenarioSession('menu-background', {
           cameraFollowBodyId: 'earth',

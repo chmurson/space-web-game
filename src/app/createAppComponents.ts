@@ -59,6 +59,7 @@ import { createRipple, type Ripple } from '../ui/overlayUpdates'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
   type OrbitPointDisplaySettings,
+  resolveOrbitPointDisplaySettings,
   type TouchControlSide,
   type TouchTrajectoryControlState,
   updateUserSettings,
@@ -294,12 +295,17 @@ export const createAppComponents = (options: {
     predictionSampling: options.config.trajectory.predictionSampling,
     runtime: options.runtimeState,
   })
-  let orbitPointDisplaySettings: OrbitPointDisplaySettings = {
+  let userOrbitPointDisplaySettings: OrbitPointDisplaySettings = {
     ...options.config.userSettings.orbitPointDisplay,
   }
+  const getEffectiveOrbitPointDisplaySettings = () =>
+    resolveOrbitPointDisplaySettings(
+      userOrbitPointDisplaySettings,
+      options.runtimeState.scenario.orbitPointDisplay,
+    )
   const trajectoryPresentation = createTrajectoryPresentation({
     gameScene,
-    getOrbitPointDisplaySettings: () => orbitPointDisplaySettings,
+    getOrbitPointDisplaySettings: getEffectiveOrbitPointDisplaySettings,
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
@@ -532,14 +538,14 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
-    getOrbitPointDisplay: () => orbitPointDisplaySettings,
+    getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
     getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTargetControlSide: () => touchTargetControlSide,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
     getTouchWarpControlSide: () => touchWarpControlSide,
     onOrbitPointDisplayChange: (settings) => {
-      orbitPointDisplaySettings = { ...settings }
-      updateUserSettings({ orbitPointDisplay: orbitPointDisplaySettings })
+      userOrbitPointDisplaySettings = { ...settings }
+      updateUserSettings({ orbitPointDisplay: userOrbitPointDisplaySettings })
     },
     onOpenChange: (open) => {
       uiSettingsOpen = open

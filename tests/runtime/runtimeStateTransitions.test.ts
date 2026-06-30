@@ -114,6 +114,7 @@ describe('runtimeStateTransitions', () => {
             description: 'Menu background description',
             title: 'Menu background',
           },
+          orbitPointDisplay: { markersVisible: false },
           session: createRuntimeScenarioSession('menu-background', {
             cameraFollowBodyId: 'earth',
             cameraFollowOffsetX: 4_000_000,
@@ -145,6 +146,9 @@ describe('runtimeStateTransitions', () => {
       description: 'Menu background description',
       title: 'Menu background',
     })
+    expect(runtime.scenario.orbitPointDisplay).toEqual({
+      markersVisible: false,
+    })
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.ui.uiEffectEpoch).toBe(1)
     expect(runtime.simulation.assistMode).toBe('off')
@@ -159,6 +163,7 @@ describe('runtimeStateTransitions', () => {
 
   it('applies scenario load assist target state after transient cleanup', () => {
     const runtime = createRuntime()
+    runtime.scenario.orbitPointDisplay = { markersVisible: false }
 
     applyScenarioLoadTransition(
       runtime,
@@ -193,6 +198,7 @@ describe('runtimeStateTransitions', () => {
 
     expect(runtime.simulation.assistTargetIndex).toBe(1)
     expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
+    expect(runtime.scenario.orbitPointDisplay).toBeUndefined()
   })
 
   it('always syncs directives for checkpoint restores', () => {
