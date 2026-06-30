@@ -160,7 +160,7 @@ const physicsEngine: PhysicsEngine = {
 }
 
 const createPredictionRuntime = (
-  targetId: string,
+  getTargetId: () => string,
   eventMarkers: TrajectoryPredictionEventMarker[],
 ): TrajectoryPredictionRuntime =>
   ({
@@ -169,7 +169,7 @@ const createPredictionRuntime = (
       absolutePredictionPoints: [],
       predictedImpact: null,
       predictedTargetClosestApproach: null,
-      targetId,
+      targetId: getTargetId(),
       targetRelativeAssistedPoints: [],
       targetRelativeEventMarkers: eventMarkers,
       targetRelativePredictionEnd: { x: 20, y: 0 },
@@ -220,11 +220,12 @@ const createTestPresentation = (options: {
       runtime,
       trajectoryEventMarkerLabels,
       trajectoryPredictionRuntime: createPredictionRuntime(
-        target.id,
+        () => target.id,
         options.eventMarkers,
       ),
     }),
     runtime,
+    target,
     trajectoryEventMarkerLabels,
   }
 }
@@ -533,6 +534,37 @@ describe('createTrajectoryPresentation', () => {
         time: 32,
       }),
     )
+    test.presentation.updateVisuals()
+
+    expect(
+      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(20.3)
+  })
+
+  it('resets stale stabilized markers when the event marker target changes', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 10_000_000,
+        distance: 20_000_000,
+        kind: 'periapsis',
+        point: { x: 20_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const test = createTestPresentation({
+      eventMarkers,
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    eventMarkers[0] = createEventMarker({
+      altitude: 10_000_000,
+      distance: 20_300_000,
+      kind: 'periapsis',
+      point: { x: 20_300_000, y: 0 },
+      time: 31,
+    })
+    test.target.id = 'moon'
     test.presentation.updateVisuals()
 
     expect(
