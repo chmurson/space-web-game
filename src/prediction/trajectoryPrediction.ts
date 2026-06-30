@@ -59,6 +59,8 @@ export type AssistedTrajectoryPredictionResult = {
 
 const normalizeAngle = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
+const closeBoundCoastPrecisionRadiusRatio = 3
+const closeBoundCoastMaxIntegrationStepSeconds = 2
 const gravityTimescaleStepRatio = 0.01
 const minIntegrationStepSeconds = 1
 
@@ -136,6 +138,29 @@ const getAdaptiveIntegrationStepSeconds = (
   }, maxStepSeconds)
 
   return Math.max(minIntegrationStepSeconds, gravityLimitedStepSeconds)
+}
+
+export const getCoastTrajectoryPredictionMaxIntegrationStepSeconds = (
+  state: SimulationState,
+  target: Body,
+  predictionConfig: TrajectoryPredictionConfig,
+  allowLoopTrim: boolean,
+) => {
+  if (!allowLoopTrim || target.radius <= 0) {
+    return predictionConfig.maxIntegrationStepSeconds
+  }
+
+  const currentTargetDistance = length(
+    sub(state.spacecraft.position, target.position),
+  )
+  const currentRadiusRatio = currentTargetDistance / target.radius
+
+  return currentRadiusRatio <= closeBoundCoastPrecisionRadiusRatio
+    ? Math.min(
+        closeBoundCoastMaxIntegrationStepSeconds,
+        predictionConfig.maxIntegrationStepSeconds,
+      )
+    : predictionConfig.maxIntegrationStepSeconds
 }
 
 type TargetRelativePredictionSample = {
@@ -224,6 +249,13 @@ export const predictCoastTrajectory = (
   const absolutePoints: Vec2[] = [{ ...state.spacecraft.position }]
   const relativePoints: Vec2[] = []
   const targetRelativeSamples: TargetRelativePredictionSample[] = []
+  const maxIntegrationStepSeconds =
+    getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
+      state,
+      target,
+      predictionConfig,
+      allowLoopTrim,
+    )
   const maxLoopAngularTravel = predictionConfig.maxLoopRevolutions * Math.PI * 2
   let closestApproach: PredictedClosestApproach | null = null
   let impact: PredictedImpact | null = null
@@ -243,7 +275,7 @@ export const predictCoastTrajectory = (
       const dt = Math.min(
         getAdaptiveIntegrationStepSeconds(
           predictedState,
-          predictionConfig.maxIntegrationStepSeconds,
+          maxIntegrationStepSeconds,
         ),
         sampleEndTime - predictionTime,
       )

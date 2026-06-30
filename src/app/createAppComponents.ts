@@ -303,7 +303,6 @@ export const createAppComponents = (options: {
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
-    timeWarps: options.config.controls.timeWarps,
     trajectoryEventMarkerLabels: overlayUi.trajectoryEventMarkerLabels,
     trajectoryPredictionRuntime,
   })
@@ -782,6 +781,9 @@ export const createAppComponents = (options: {
   installDevtoolsBridge({
     dispatchRuntimeAction,
     getAppMode,
+    maxPredictionLoopRevolutions:
+      options.config.trajectory.maxPredictionLoopRevolutions,
+    predictionSampling: options.config.trajectory.predictionSampling,
     runtime: options.runtimeState,
     runtimeActions,
     timeWarps: options.config.controls.timeWarps,

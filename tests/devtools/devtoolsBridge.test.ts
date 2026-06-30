@@ -10,6 +10,12 @@ import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTyp
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 
 const timeWarps = [1, 10, 30, 60]
+const predictionSampling = {
+  maxIntegrationStepSeconds: 8,
+  refreshInterval: 0.4,
+  stepOptionsSeconds: [30, 60],
+  targetMaxSteps: 1200,
+}
 
 const createRuntime = (): AppRuntimeState => ({
   simulation: {
@@ -106,6 +112,8 @@ const createBridgeHarness = (runtime = createRuntime()) => {
     },
     getAppMode: () => 'game',
     runtime,
+    maxPredictionLoopRevolutions: 2.5,
+    predictionSampling,
     runtimeActions: { setCameraMode },
     timeWarps,
   })
@@ -120,6 +128,8 @@ describe('createDevtoolsSnapshot', () => {
 
     const snapshot = createDevtoolsSnapshot({
       getAppMode: () => 'game',
+      maxPredictionLoopRevolutions: 2.5,
+      predictionSampling,
       runtime,
       timeWarps,
     })
@@ -138,6 +148,13 @@ describe('createDevtoolsSnapshot', () => {
       name: 'Moon',
     })
     expect(snapshot.simulation.timeWarp).toBe(30)
+    expect(snapshot.simulation.predictionSampling).toMatchObject({
+      currentMaxIntegrationStepSeconds: 8,
+      currentStepSeconds: 60,
+      maxIntegrationStepSeconds: 8,
+      refreshInterval: 0.4,
+      targetMaxSteps: 1200,
+    })
     expect(snapshot.simulation.spacecraft.speed).toBe(10)
     expect(snapshot.simulation.bodies[0]?.speed).toBe(5)
   })

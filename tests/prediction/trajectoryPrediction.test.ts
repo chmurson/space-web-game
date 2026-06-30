@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { getCaptureMetricsForState } from '@/assist/orbitalAssist'
 import {
+  getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
   getTrajectoryPredictionConfig,
   predictCoastTrajectory,
   type TrajectoryPredictionConfig,
@@ -159,6 +160,61 @@ const getEarthTarget = (state: SimulationState): Body => {
 }
 
 describe('predictCoastTrajectory', () => {
+  it('uses tighter integration for close bound coast predictions', () => {
+    const state = createEarthMoonSimulationState()
+    const target = getEarthTarget(state)
+    const predictionConfig = createPredictionConfig(2, 8)
+    const allowLoopTrim =
+      getCaptureMetricsForState(state, target).specificEnergy < 0
+
+    expect(
+      getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
+        state,
+        target,
+        predictionConfig,
+        allowLoopTrim,
+      ),
+    ).toBe(2)
+
+    const prediction = predictCoastTrajectory(
+      state,
+      semiImplicitEuler,
+      target,
+      predictionConfig,
+      allowLoopTrim,
+    )
+    const periapsis = prediction.eventMarkers.find(
+      (marker) => marker.kind === 'periapsis',
+    )
+    const apoapsis = prediction.eventMarkers.find(
+      (marker) => marker.kind === 'apoapsis',
+    )
+
+    expect(periapsis?.altitude ?? 0).toBeGreaterThan(390_000)
+    expect(apoapsis?.altitude ?? Number.POSITIVE_INFINITY).toBeLessThan(
+      410_000,
+    )
+  })
+
+  it('keeps default integration for distant bound coast predictions', () => {
+    const state = createEarthMoonSimulationState()
+    const target = getEarthTarget(state)
+    const predictionConfig = createPredictionConfig(2, 8)
+    state.spacecraft.position = {
+      x: target.position.x + target.radius * 4,
+      y: target.position.y,
+    }
+
+    expect(
+      getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
+        state,
+        target,
+        predictionConfig,
+        true,
+      ),
+    ).toBe(8)
+  })
+
   it('does not report false Earth impacts for long default Earth-Moon predictions', () => {
     for (const hours of [24, 48, 96]) {
       const state = createEarthMoonSimulationState()

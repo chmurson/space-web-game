@@ -7,6 +7,7 @@ import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import type { GameQueries } from '@/runtime/gameQueries'
 import type { TrajectoryPredictionRuntime } from '@/runtime/trajectoryPredictionRuntime'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import { createGameScene } from '@/scene/createGameScene'
 import { idleControls } from '@/simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '@/simulation/types'
@@ -100,11 +101,7 @@ const createState = (target: Body): SimulationState => ({
   },
 })
 
-const createRuntime = (
-  target: Body,
-  viewportSize: number,
-  timeWarpIndex = 0,
-): AppRuntimeState =>
+const createRuntime = (target: Body, viewportSize: number): AppRuntimeState =>
   ({
     debug: {
       debugModeEnabled: false,
@@ -115,7 +112,7 @@ const createRuntime = (
     scenario: {
       directives: createDefaultScenarioDirectives(),
       metadata: { description: '', title: '' },
-      session: { id: 'test' },
+      session: createRuntimeScenarioSession('test'),
     },
     simulation: {
       assistMode: 'off',
@@ -126,7 +123,7 @@ const createRuntime = (
       state: createState(target),
       targetHeading: null,
       targetHeadingTurn: null,
-      timeWarpIndex,
+      timeWarpIndex: 0,
       viewportSize,
     },
     ui: {
@@ -163,7 +160,7 @@ const physicsEngine: PhysicsEngine = {
 }
 
 const createPredictionRuntime = (
-  targetId: string,
+  getTargetId: () => string,
   eventMarkers: TrajectoryPredictionEventMarker[],
 ): TrajectoryPredictionRuntime =>
   ({
@@ -172,7 +169,7 @@ const createPredictionRuntime = (
       absolutePredictionPoints: [],
       predictedImpact: null,
       predictedTargetClosestApproach: null,
-      targetId,
+      targetId: getTargetId(),
       targetRelativeAssistedPoints: [],
       targetRelativeEventMarkers: eventMarkers,
       targetRelativePredictionEnd: { x: 20, y: 0 },
@@ -189,12 +186,11 @@ const createPredictionRuntime = (
 const createTestPresentation = (options: {
   orbitPointDisplaySettings?: OrbitPointDisplaySettings
   eventMarkers: TrajectoryPredictionEventMarker[]
-  timeWarpIndex?: number
-  timeWarps?: number[]
   viewportSize: number
 }) => {
   setWindowSize(800, 600)
   const target = createTarget()
+  const runtime = createRuntime(target, options.viewportSize)
   const trajectoryEventMarkerLabels = createTrajectoryEventMarkerLabels()
   const gameScene = createGameScene([target], {
     dashPixels: 12,
@@ -221,18 +217,15 @@ const createTestPresentation = (options: {
         options.orbitPointDisplaySettings ?? defaultOrbitPointDisplaySettings,
       physicsEngine,
       queries: createQueries(target),
-      runtime: createRuntime(
-        target,
-        options.viewportSize,
-        options.timeWarpIndex,
-      ),
-      timeWarps: options.timeWarps ?? [1],
+      runtime,
       trajectoryEventMarkerLabels,
       trajectoryPredictionRuntime: createPredictionRuntime(
-        target.id,
+        () => target.id,
         options.eventMarkers,
       ),
     }),
+    runtime,
+    target,
     trajectoryEventMarkerLabels,
   }
 }
@@ -451,68 +444,162 @@ describe('createTrajectoryPresentation', () => {
     )
   })
 
-  it('uses a larger display stability threshold at higher time warp', () => {
-    const createMutableMarkers = () => [
+  it('stabilizes Pe/Ap markers by altitude changes', () => {
+    const eventMarkers = [
       createEventMarker({
-        altitude: 400_000,
-        distance: 12_000_000,
+        altitude: 10_000_000,
+        distance: 20_000_000,
         kind: 'periapsis',
-        point: { x: 12_000_000, y: 0 },
+        point: { x: 20_000_000, y: 0 },
         time: 30,
       }),
     ]
-    const lowWarpMarkers = createMutableMarkers()
-    const lowWarp = createTestPresentation({
-      eventMarkers: lowWarpMarkers,
-      timeWarps: [1],
+    const test = createTestPresentation({
+      eventMarkers,
       viewportSize: 50,
     })
-    lowWarp.presentation.updateVisuals()
-    lowWarpMarkers[0] = createEventMarker({
-      altitude: 1_400_000,
-      distance: 13_000_000,
+    test.presentation.updateVisuals()
+
+    eventMarkers[0] = createEventMarker({
+      altitude: 10_000_000,
+      distance: 20_700_000,
       kind: 'periapsis',
-      point: { x: 13_000_000, y: 0 },
+      point: { x: 20_700_000, y: 0 },
       time: 31,
     })
-    lowWarp.presentation.updateVisuals()
+    test.presentation.updateVisuals()
 
     expect(
-      lowWarp.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(13)
+      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(20)
+    expect(test.trajectoryEventMarkerLabels.periapsis.textContent).toBe(
+      'Pe · alt 10 Mm',
+    )
 
-    const highWarpMarkers = createMutableMarkers()
-    const highWarp = createTestPresentation({
-      eventMarkers: highWarpMarkers,
-      timeWarpIndex: 1,
-      timeWarps: [1, 1800],
-      viewportSize: 50,
-    })
-    highWarp.presentation.updateVisuals()
-    highWarpMarkers[0] = createEventMarker({
-      altitude: 1_400_000,
-      distance: 13_000_000,
+    eventMarkers[0] = createEventMarker({
+      altitude: 10_700_000,
+      distance: 20_700_000,
       kind: 'periapsis',
-      point: { x: 13_000_000, y: 0 },
-      time: 31,
-    })
-    highWarp.presentation.updateVisuals()
-
-    expect(
-      highWarp.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(12)
-
-    highWarpMarkers[0] = createEventMarker({
-      altitude: 3_400_000,
-      distance: 15_000_000,
-      kind: 'periapsis',
-      point: { x: 15_000_000, y: 0 },
+      point: { x: 20_700_000, y: 0 },
       time: 32,
     })
-    highWarp.presentation.updateVisuals()
+    test.presentation.updateVisuals()
 
     expect(
-      highWarp.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(15)
+      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(20.7)
+  })
+
+  it('resets stale stabilized markers when a marker kind disappears', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 10_000_000,
+        distance: 20_000_000,
+        kind: 'periapsis',
+        point: { x: 20_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const test = createTestPresentation({
+      eventMarkers,
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    eventMarkers.splice(
+      0,
+      1,
+      createEventMarker({
+        altitude: 16_000_000,
+        distance: 26_000_000,
+        kind: 'apoapsis',
+        point: { x: 26_000_000, y: 0 },
+        time: 31,
+      }),
+    )
+    test.presentation.updateVisuals()
+
+    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
+      false,
+    )
+
+    eventMarkers.splice(
+      0,
+      1,
+      createEventMarker({
+        altitude: 10_000_000,
+        distance: 20_300_000,
+        kind: 'periapsis',
+        point: { x: 20_300_000, y: 0 },
+        time: 32,
+      }),
+    )
+    test.presentation.updateVisuals()
+
+    expect(
+      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(20.3)
+  })
+
+  it('resets stale stabilized markers when the event marker target changes', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 10_000_000,
+        distance: 20_000_000,
+        kind: 'periapsis',
+        point: { x: 20_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const test = createTestPresentation({
+      eventMarkers,
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    eventMarkers[0] = createEventMarker({
+      altitude: 10_000_000,
+      distance: 20_300_000,
+      kind: 'periapsis',
+      point: { x: 20_300_000, y: 0 },
+      time: 31,
+    })
+    test.target.id = 'moon'
+    test.presentation.updateVisuals()
+
+    expect(
+      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(20.3)
+  })
+
+  it('resets stale stabilized markers when the scenario session changes', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 10_000_000,
+        distance: 20_000_000,
+        kind: 'periapsis',
+        point: { x: 20_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const test = createTestPresentation({
+      eventMarkers,
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    eventMarkers[0] = createEventMarker({
+      altitude: 10_000_000,
+      distance: 20_300_000,
+      kind: 'periapsis',
+      point: { x: 20_300_000, y: 0 },
+      time: 31,
+    })
+    test.runtime.scenario.session = createRuntimeScenarioSession('test')
+    test.presentation.updateVisuals()
+
+    expect(
+      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
+    ).toBeCloseTo(20.3)
   })
 })
