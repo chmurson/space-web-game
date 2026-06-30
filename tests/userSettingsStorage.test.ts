@@ -8,6 +8,14 @@ import {
 
 const storageKey = 'space-web-game.userSettings.v1'
 
+const defaultOrbitPointDisplay = {
+  altitudeVisible: true,
+  centerDistanceVisible: false,
+  labelsVisible: true,
+  markersVisible: true,
+  pointNameVisible: true,
+}
+
 const createWindowWithStorage = () => {
   const values = new Map<string, string>()
   return {
@@ -40,6 +48,7 @@ describe('userSettingsStorage', () => {
   it('defaults touch controls to their configured sides', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: false,
+      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -50,6 +59,13 @@ describe('userSettingsStorage', () => {
   it('persists the selected touch control sides and trajectory hidden state', () => {
     writeUserSettings({
       debugModeEnabled: true,
+      orbitPointDisplay: {
+        altitudeVisible: false,
+        centerDistanceVisible: true,
+        labelsVisible: false,
+        markersVisible: false,
+        pointNameVisible: false,
+      },
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
@@ -58,6 +74,13 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
+      orbitPointDisplay: {
+        altitudeVisible: false,
+        centerDistanceVisible: true,
+        labelsVisible: false,
+        markersVisible: false,
+        pointNameVisible: false,
+      },
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
@@ -68,6 +91,7 @@ describe('userSettingsStorage', () => {
   it('keeps existing settings when updating one touch control side', () => {
     writeUserSettings({
       debugModeEnabled: true,
+      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -76,6 +100,7 @@ describe('userSettingsStorage', () => {
 
     expect(updateUserSettings({ touchBurnControlSide: 'left' })).toEqual({
       debugModeEnabled: true,
+      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -91,6 +116,7 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
+      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -109,10 +135,37 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
+      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'left',
       touchWarpControlSide: 'left',
+    })
+  })
+
+  it('fills missing orbit point display fields from defaults', () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        debugModeEnabled: true,
+        orbitPointDisplay: {
+          centerDistanceVisible: true,
+          labelsVisible: false,
+        },
+      }),
+    )
+
+    expect(readUserSettings()).toEqual({
+      debugModeEnabled: true,
+      orbitPointDisplay: {
+        ...defaultOrbitPointDisplay,
+        centerDistanceVisible: true,
+        labelsVisible: false,
+      },
+      touchBurnControlSide: 'right',
+      touchTargetControlSide: 'left',
+      touchTrajectoryControlSide: 'hidden',
+      touchWarpControlSide: 'right',
     })
   })
 })

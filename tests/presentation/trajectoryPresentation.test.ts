@@ -10,6 +10,7 @@ import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTyp
 import { createGameScene } from '@/scene/createGameScene'
 import { idleControls } from '@/simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '@/simulation/types'
+import type { OrbitPointDisplaySettings } from '@/userSettingsStorage'
 
 const globals = globalThis as unknown as {
   window?: { innerHeight: number; innerWidth: number }
@@ -53,6 +54,14 @@ const createTrajectoryEventMarkerLabels = () => ({
   apoapsis: new FakeTrajectoryEventLabel() as unknown as HTMLElement,
   periapsis: new FakeTrajectoryEventLabel() as unknown as HTMLElement,
 })
+
+const defaultOrbitPointDisplaySettings: OrbitPointDisplaySettings = {
+  altitudeVisible: true,
+  centerDistanceVisible: false,
+  labelsVisible: true,
+  markersVisible: true,
+  pointNameVisible: true,
+}
 
 const createEventMarker = (
   marker: Pick<TrajectoryPredictionEventMarker, 'kind' | 'point' | 'time'> &
@@ -178,6 +187,7 @@ const createPredictionRuntime = (
   }) as TrajectoryPredictionRuntime
 
 const createTestPresentation = (options: {
+  orbitPointDisplaySettings?: OrbitPointDisplaySettings
   eventMarkers: TrajectoryPredictionEventMarker[]
   timeWarpIndex?: number
   timeWarps?: number[]
@@ -207,6 +217,8 @@ const createTestPresentation = (options: {
     gameScene,
     presentation: createTrajectoryPresentation({
       gameScene,
+      getOrbitPointDisplaySettings: () =>
+        options.orbitPointDisplaySettings ?? defaultOrbitPointDisplaySettings,
       physicsEngine,
       queries: createQueries(target),
       runtime: createRuntime(
@@ -264,11 +276,11 @@ describe('createTrajectoryPresentation', () => {
       'block',
     )
     expect(close.trajectoryEventMarkerLabels.periapsis.textContent).toBe(
-      'Pe 12 Mm -> alt 400 km',
+      'Pe · alt 400 km',
     )
     expect(
       close.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
-    ).toBe('Periapsis: distance 12 Mm, altitude 400 km')
+    ).toBe('Periapsis: altitude 400 km')
     expect(close.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
       true,
     )
@@ -299,8 +311,7 @@ describe('createTrajectoryPresentation', () => {
     })
     far.presentation.updateVisuals()
     const farScreenRadius =
-      far.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
-      (500 / 600)
+      far.gameScene.trajectoryEventMarkers.periapsis.group.scale.x / (500 / 600)
 
     expect(far.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
       true,
@@ -320,9 +331,9 @@ describe('createTrajectoryPresentation', () => {
     expect(
       beyond.gameScene.trajectoryEventMarkers.periapsis.group.visible,
     ).toBe(false)
-    expect(
-      beyond.gameScene.trajectoryEventMarkers.apoapsis.group.visible,
-    ).toBe(false)
+    expect(beyond.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
+      false,
+    )
 
     const viewportTwenty = createTestPresentation({
       eventMarkers,
@@ -342,6 +353,102 @@ describe('createTrajectoryPresentation', () => {
       (5 / 600)
 
     expect(maxZoomScreenRadius).toBeCloseTo(viewportTwentyScreenRadius)
+  })
+
+  it('uses orbit point display settings for marker and label visibility', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 400_000,
+        distance: 12_000_000,
+        kind: 'periapsis',
+        point: { x: 12_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const hiddenMarkers = createTestPresentation({
+      eventMarkers,
+      orbitPointDisplaySettings: {
+        ...defaultOrbitPointDisplaySettings,
+        markersVisible: false,
+      },
+      viewportSize: 50,
+    })
+    hiddenMarkers.presentation.updateVisuals()
+
+    expect(
+      hiddenMarkers.gameScene.trajectoryEventMarkers.periapsis.group.visible,
+    ).toBe(false)
+    expect(
+      hiddenMarkers.trajectoryEventMarkerLabels.periapsis.style.display,
+    ).toBe('none')
+
+    const hiddenLabels = createTestPresentation({
+      eventMarkers,
+      orbitPointDisplaySettings: {
+        ...defaultOrbitPointDisplaySettings,
+        labelsVisible: false,
+      },
+      viewportSize: 50,
+    })
+    hiddenLabels.presentation.updateVisuals()
+
+    expect(
+      hiddenLabels.gameScene.trajectoryEventMarkers.periapsis.group.visible,
+    ).toBe(true)
+    expect(
+      hiddenLabels.trajectoryEventMarkerLabels.periapsis.style.display,
+    ).toBe('none')
+  })
+
+  it('composes orbit point labels from enabled fields', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 400_000,
+        distance: 12_000_000,
+        kind: 'periapsis',
+        point: { x: 12_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const centerOnly = createTestPresentation({
+      eventMarkers,
+      orbitPointDisplaySettings: {
+        ...defaultOrbitPointDisplaySettings,
+        altitudeVisible: false,
+        centerDistanceVisible: true,
+        pointNameVisible: false,
+      },
+      viewportSize: 50,
+    })
+    centerOnly.presentation.updateVisuals()
+
+    expect(centerOnly.trajectoryEventMarkerLabels.periapsis.textContent).toBe(
+      'center 12 Mm',
+    )
+    expect(
+      centerOnly.trajectoryEventMarkerLabels.periapsis.getAttribute(
+        'aria-label',
+      ),
+    ).toBe('Orbit point: center distance 12 Mm')
+
+    const noFields = createTestPresentation({
+      eventMarkers,
+      orbitPointDisplaySettings: {
+        ...defaultOrbitPointDisplaySettings,
+        altitudeVisible: false,
+        centerDistanceVisible: false,
+        pointNameVisible: false,
+      },
+      viewportSize: 50,
+    })
+    noFields.presentation.updateVisuals()
+
+    expect(
+      noFields.gameScene.trajectoryEventMarkers.periapsis.group.visible,
+    ).toBe(true)
+    expect(noFields.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'none',
+    )
   })
 
   it('uses a larger display stability threshold at higher time warp', () => {
