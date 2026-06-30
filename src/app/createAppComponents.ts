@@ -58,6 +58,7 @@ import {
 import { createRipple, type Ripple } from '../ui/overlayUpdates'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
+  type OrbitPointDisplaySettings,
   type TouchControlSide,
   type TouchTrajectoryControlState,
   updateUserSettings,
@@ -293,8 +294,12 @@ export const createAppComponents = (options: {
     predictionSampling: options.config.trajectory.predictionSampling,
     runtime: options.runtimeState,
   })
+  let orbitPointDisplaySettings: OrbitPointDisplaySettings = {
+    ...options.config.userSettings.orbitPointDisplay,
+  }
   const trajectoryPresentation = createTrajectoryPresentation({
     gameScene,
+    getOrbitPointDisplaySettings: () => orbitPointDisplaySettings,
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
@@ -527,10 +532,15 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
+    getOrbitPointDisplay: () => orbitPointDisplaySettings,
     getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTargetControlSide: () => touchTargetControlSide,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
     getTouchWarpControlSide: () => touchWarpControlSide,
+    onOrbitPointDisplayChange: (settings) => {
+      orbitPointDisplaySettings = { ...settings }
+      updateUserSettings({ orbitPointDisplay: orbitPointDisplaySettings })
+    },
     onOpenChange: (open) => {
       uiSettingsOpen = open
       if (open) {

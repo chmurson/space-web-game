@@ -18,6 +18,7 @@ import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
+import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
 const trajectoryEventMarkerFullSizeMaxViewportSize = 160
@@ -167,6 +168,7 @@ const updateTargetRelativePredictionVisuals = (options: {
   debugModeEnabled: boolean
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
+  orbitPointDisplaySettings: OrbitPointDisplaySettings
   predictedImpact: { bodyName: string; time: number } | null
   stabilizedEventMarkers: Map<
     TrajectoryPredictionEventMarkerKind,
@@ -222,6 +224,7 @@ const updateTargetRelativePredictionVisuals = (options: {
     eventMarkers: options.targetRelativeEventMarkers,
     eventMarkerLabels: options.eventMarkerLabels,
     gameScene: options.gameScene,
+    orbitPointDisplaySettings: options.orbitPointDisplaySettings,
     stabilizedEventMarkers: options.stabilizedEventMarkers,
     target: options.target,
     viewportHeight: options.viewportHeight,
@@ -364,13 +367,41 @@ const getStabilizedTrajectoryEventMarkers = (options: {
 
 const getTrajectoryEventMarkerText = (
   eventMarker: TrajectoryPredictionEventMarker,
+  settings: OrbitPointDisplaySettings,
 ) => {
   const distanceLabel = formatDistance(Math.max(0, eventMarker.distance))
   const altitudeLabel = formatDistance(Math.max(0, eventMarker.altitude))
+  const textParts: string[] = []
+  const accessibleDetails: string[] = []
+
+  if (settings.pointNameVisible) {
+    textParts.push(trajectoryEventMarkerShortLabels[eventMarker.kind])
+  }
+
+  if (settings.altitudeVisible) {
+    textParts.push(`alt ${altitudeLabel}`)
+    accessibleDetails.push(`altitude ${altitudeLabel}`)
+  }
+
+  if (settings.centerDistanceVisible) {
+    textParts.push(`center ${distanceLabel}`)
+    accessibleDetails.push(`center distance ${distanceLabel}`)
+  }
+
+  if (textParts.length === 0) {
+    return null
+  }
+
+  const name = settings.pointNameVisible
+    ? trajectoryEventMarkerAccessibleNames[eventMarker.kind]
+    : 'Orbit point'
 
   return {
-    accessibleLabel: `${trajectoryEventMarkerAccessibleNames[eventMarker.kind]}: distance ${distanceLabel}, altitude ${altitudeLabel}`,
-    text: `${trajectoryEventMarkerShortLabels[eventMarker.kind]} ${distanceLabel} -> alt ${altitudeLabel}`,
+    accessibleLabel:
+      accessibleDetails.length > 0
+        ? `${name}: ${accessibleDetails.join(', ')}`
+        : name,
+    text: textParts.join(' · '),
   }
 }
 
@@ -378,6 +409,7 @@ const updateTrajectoryEventMarkerLabel = (options: {
   camera: THREE.Camera
   eventMarker: TrajectoryPredictionEventMarker
   label: HTMLElement
+  orbitPointDisplaySettings: OrbitPointDisplaySettings
   position: THREE.Vector3
 }) => {
   const projectedPosition = options.position.clone().project(options.camera)
@@ -396,13 +428,18 @@ const updateTrajectoryEventMarkerLabel = (options: {
 
   const screenX = (projectedPosition.x * 0.5 + 0.5) * window.innerWidth
   const screenY = (-projectedPosition.y * 0.5 + 0.5) * window.innerHeight
-  const { accessibleLabel, text } = getTrajectoryEventMarkerText(
+  const markerText = getTrajectoryEventMarkerText(
     options.eventMarker,
+    options.orbitPointDisplaySettings,
   )
+  if (!markerText) {
+    hideTrajectoryEventMarkerLabel(options.label)
+    return
+  }
 
-  options.label.textContent = text
-  options.label.title = accessibleLabel
-  options.label.setAttribute('aria-label', accessibleLabel)
+  options.label.textContent = markerText.text
+  options.label.title = markerText.accessibleLabel
+  options.label.setAttribute('aria-label', markerText.accessibleLabel)
   options.label.setAttribute('aria-hidden', 'false')
   options.label.style.display = 'block'
   options.label.style.visibility = 'hidden'
@@ -432,6 +469,7 @@ const updateTrajectoryEventMarkers = (options: {
   eventMarkers: TrajectoryPredictionEventMarker[]
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
+  orbitPointDisplaySettings: OrbitPointDisplaySettings
   stabilizedEventMarkers: Map<
     TrajectoryPredictionEventMarkerKind,
     TrajectoryPredictionEventMarker
@@ -440,6 +478,12 @@ const updateTrajectoryEventMarkers = (options: {
   viewportHeight: number
   viewportSize: number
 }) => {
+  if (!options.orbitPointDisplaySettings.markersVisible) {
+    options.stabilizedEventMarkers.clear()
+    hideTrajectoryEventMarkers(options.gameScene, options.eventMarkerLabels)
+    return
+  }
+
   if (options.eventMarkers.length === 0) {
     options.stabilizedEventMarkers.clear()
     hideTrajectoryEventMarkers(options.gameScene, options.eventMarkerLabels)
@@ -475,6 +519,7 @@ const updateTrajectoryEventMarkers = (options: {
     (options.viewportSize / markerScaleViewportSize) *
     distantViewportScale
   const labelVisible =
+    options.orbitPointDisplaySettings.labelsVisible &&
     options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
   const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()
 
@@ -507,6 +552,7 @@ const updateTrajectoryEventMarkers = (options: {
         camera: options.gameScene.camera,
         eventMarker,
         label,
+        orbitPointDisplaySettings: options.orbitPointDisplaySettings,
         position,
       })
     } else {
@@ -597,6 +643,7 @@ const updateCircularizationVisuals = (options: {
 
 export const createTrajectoryPresentation = (options: {
   gameScene: GameSceneRefs
+  getOrbitPointDisplaySettings: () => OrbitPointDisplaySettings
   physicsEngine: PhysicsEngine
   queries: GameQueries
   runtime: AppRuntimeState
@@ -761,6 +808,7 @@ export const createTrajectoryPresentation = (options: {
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
         eventMarkerLabels: options.trajectoryEventMarkerLabels,
         gameScene: options.gameScene,
+        orbitPointDisplaySettings: options.getOrbitPointDisplaySettings(),
         predictedImpact: predictionTargetMatches
           ? predictionState.predictedImpact
           : null,
