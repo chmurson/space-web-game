@@ -1,9 +1,11 @@
 import type {
+  OrbitPointDisplaySettings,
   TouchControlSide,
   TouchTrajectoryControlState,
 } from '../userSettingsStorage'
 import {
   UiSettingsDialogSurface,
+  type UiSettingsDialogPane,
   type UiSettingsDialogSurfaceProps,
 } from './components/UiSettingsDialogSurface'
 import { createPreactUiSurface } from './createPreactUiSurface'
@@ -22,10 +24,12 @@ let activeDialogClose: ((restoreFocus?: boolean) => void) | null = null
 
 export const createUiSettingsDialog = (options: {
   app: HTMLElement
+  getOrbitPointDisplay: () => OrbitPointDisplaySettings
   getTouchBurnControlSide: () => TouchControlSide
   getTouchTargetControlSide: () => TouchControlSide
   getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
   getTouchWarpControlSide: () => TouchControlSide
+  onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onOpenChange?: (open: boolean) => void
   onTouchBurnControlSideChange(side: TouchControlSide): void
   onTouchTargetControlSideChange(side: TouchControlSide): void
@@ -40,16 +44,33 @@ export const createUiSettingsDialog = (options: {
   })
 
   let open = false
+  let activePane: UiSettingsDialogPane = 'main'
   let lastFocusedElement: HTMLElement | null = null
 
   const renderDialog = () => {
     surface.render({
+      activePane,
       dialogId,
+      orbitPointDisplay: options.getOrbitPointDisplay(),
       open,
       touchBurnControlSide: options.getTouchBurnControlSide(),
       touchTargetControlSide: options.getTouchTargetControlSide(),
       touchTrajectoryControlSide: options.getTouchTrajectoryControlSide(),
       touchWarpControlSide: options.getTouchWarpControlSide(),
+      onBackToMainSettings: () => {
+        activePane = 'main'
+        syncState()
+        focusFirstElement()
+      },
+      onOpenOrbitPointDisplaySettings: () => {
+        activePane = 'orbitPointDisplay'
+        syncState()
+        focusFirstElement()
+      },
+      onOrbitPointDisplayChange: (settings) => {
+        options.onOrbitPointDisplayChange(settings)
+        syncState()
+      },
       onTouchBurnControlSideChange: (side) => {
         options.onTouchBurnControlSideChange(side)
         syncState()
@@ -90,6 +111,11 @@ export const createUiSettingsDialog = (options: {
       ),
     )
 
+  function focusFirstElement() {
+    const focusTarget = getFocusableElements()[0] ?? getPanel()
+    focusTarget.focus()
+  }
+
   const getRestorableFocusElement = (element: Element | null) => {
     if (!(element instanceof HTMLElement)) {
       return null
@@ -104,6 +130,7 @@ export const createUiSettingsDialog = (options: {
     }
 
     open = false
+    activePane = 'main'
     renderDialog()
     options.onOpenChange?.(false)
 
@@ -126,14 +153,14 @@ export const createUiSettingsDialog = (options: {
     syncState()
     if (!open) {
       lastFocusedElement = getRestorableFocusElement(document.activeElement)
+      activePane = 'main'
       open = true
       renderDialog()
       options.onOpenChange?.(true)
     }
 
     activeDialogClose = close
-    const focusTarget = getFocusableElements()[0] ?? getPanel()
-    focusTarget.focus()
+    focusFirstElement()
   }
 
   renderDialog()

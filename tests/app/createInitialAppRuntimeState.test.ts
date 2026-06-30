@@ -33,6 +33,13 @@ const createConfig = (
   },
   userSettings: {
     debugModeEnabled: false,
+    orbitPointDisplay: {
+      altitudeVisible: true,
+      centerDistanceVisible: false,
+      labelsVisible: true,
+      markersVisible: true,
+      pointNameVisible: true,
+    },
     touchBurnControlSide: 'right',
     touchTargetControlSide: 'left',
     touchTrajectoryControlSide: 'left',
