@@ -16,7 +16,7 @@ import type { TrajectoryPredictionRuntime } from '../runtime/trajectoryPredictio
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
-import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
+import { fromAngle, type Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
 import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
@@ -29,7 +29,7 @@ const trajectoryEventMarkerLift = 0.22
 const trajectoryEventMarkerLabelOffsetX = 10
 const trajectoryEventMarkerLabelOffsetY = 10
 const trajectoryEventMarkerLabelViewportPadding = 8
-const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.05
+const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.025
 
 type TrajectoryEventMarkerLabelRefs = Record<
   TrajectoryPredictionEventMarkerKind,
@@ -305,7 +305,7 @@ const copyTrajectoryEventMarker = (
   point: { ...marker.point },
 })
 
-const getTrajectoryEventMarkerPointChangeAltitudeRatio = (
+const getTrajectoryEventMarkerAltitudeChangeRatio = (
   eventMarker: TrajectoryPredictionEventMarker,
   previous: TrajectoryPredictionEventMarker,
 ) => {
@@ -315,7 +315,7 @@ const getTrajectoryEventMarkerPointChangeAltitudeRatio = (
     1,
   )
 
-  return length(sub(eventMarker.point, previous.point)) / altitudeScale
+  return Math.abs(eventMarker.altitude - previous.altitude) / altitudeScale
 }
 
 const getStabilizedTrajectoryEventMarkers = (options: {
@@ -344,7 +344,7 @@ const getStabilizedTrajectoryEventMarkers = (options: {
 
     if (
       previous &&
-      getTrajectoryEventMarkerPointChangeAltitudeRatio(eventMarker, previous) <=
+      getTrajectoryEventMarkerAltitudeChangeRatio(eventMarker, previous) <=
         trajectoryEventMarkerUpdateAltitudeRatioThreshold
     ) {
       eventMarkers.push(previous)

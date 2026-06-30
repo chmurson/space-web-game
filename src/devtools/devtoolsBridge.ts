@@ -1,4 +1,10 @@
+import { getCaptureMetricsForState } from '../assist/orbitalAssist'
 import { isUIUserAction, type UIUserAction } from '../input/uiUserActions'
+import {
+  getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
+  getTrajectoryPredictionConfig,
+  type TrajectoryPredictionSamplingConfig,
+} from '../prediction/trajectoryPrediction'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
 import type {
@@ -22,6 +28,8 @@ type WritableDebugFlag = Exclude<
 type DevtoolsBridgeOptions = {
   dispatchRuntimeAction(action: UIUserAction): void
   getAppMode(): AppMode
+  maxPredictionLoopRevolutions: number
+  predictionSampling: TrajectoryPredictionSamplingConfig
   runtime: AppRuntimeState
   runtimeActions: Pick<RuntimeActions, 'setCameraMode'>
   timeWarps: number[]
@@ -93,6 +101,10 @@ export type SpaceGameDevtoolsSnapshot = {
     controls: ControlInput
     crashedBodyName: string | null
     elapsed: number
+    predictionSampling: TrajectoryPredictionSamplingConfig & {
+      currentMaxIntegrationStepSeconds: number
+      currentStepSeconds: number
+    }
     spacecraft: DevtoolsSpacecraftSnapshot
     targetHeading: number | null
     timeWarp: number
@@ -184,11 +196,34 @@ const cloneScenarioState = (state: unknown): unknown => {
 }
 
 export const createDevtoolsSnapshot = (
-  options: Pick<DevtoolsBridgeOptions, 'getAppMode' | 'runtime' | 'timeWarps'>,
+  options: Pick<
+    DevtoolsBridgeOptions,
+    | 'getAppMode'
+    | 'maxPredictionLoopRevolutions'
+    | 'predictionSampling'
+    | 'runtime'
+    | 'timeWarps'
+  >,
 ): SpaceGameDevtoolsSnapshot => {
   const { runtime, timeWarps } = options
   const bodies = runtime.simulation.state.bodies.map(createBodySnapshot)
+  const assistTargetBody =
+    runtime.simulation.state.bodies[runtime.simulation.assistTargetIndex]
   const assistTarget = bodies[runtime.simulation.assistTargetIndex]
+  const predictionConfig = getTrajectoryPredictionConfig(
+    runtime.simulation.coastPredictionHorizonHours * 60 * 60,
+    options.predictionSampling,
+    options.maxPredictionLoopRevolutions,
+  )
+  const coastMaxIntegrationStepSeconds = assistTargetBody
+    ? getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
+        runtime.simulation.state,
+        assistTargetBody,
+        predictionConfig,
+        getCaptureMetricsForState(runtime.simulation.state, assistTargetBody)
+          .specificEnergy < 0,
+      )
+    : predictionConfig.maxIntegrationStepSeconds
 
   return {
     appMode: options.getAppMode(),
@@ -242,6 +277,11 @@ export const createDevtoolsSnapshot = (
       controls: { ...runtime.simulation.state.controls },
       crashedBodyName: runtime.simulation.crashedBodyName,
       elapsed: runtime.simulation.state.elapsed,
+      predictionSampling: {
+        ...options.predictionSampling,
+        currentMaxIntegrationStepSeconds: coastMaxIntegrationStepSeconds,
+        currentStepSeconds: predictionConfig.stepSeconds,
+      },
       spacecraft: createSpacecraftSnapshot(runtime.simulation.state.spacecraft),
       targetHeading: runtime.simulation.targetHeading,
       timeWarp: timeWarps[runtime.simulation.timeWarpIndex] ?? 1,

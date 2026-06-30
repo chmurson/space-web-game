@@ -444,7 +444,7 @@ describe('createTrajectoryPresentation', () => {
     )
   })
 
-  it('stabilizes Pe/Ap markers by altitude-relative point changes', () => {
+  it('stabilizes Pe/Ap markers by altitude changes', () => {
     const eventMarkers = [
       createEventMarker({
         altitude: 10_000_000,
@@ -462,9 +462,9 @@ describe('createTrajectoryPresentation', () => {
 
     eventMarkers[0] = createEventMarker({
       altitude: 10_000_000,
-      distance: 20_300_000,
+      distance: 20_700_000,
       kind: 'periapsis',
-      point: { x: 20_300_000, y: 0 },
+      point: { x: 20_700_000, y: 0 },
       time: 31,
     })
     test.presentation.updateVisuals()
@@ -477,7 +477,7 @@ describe('createTrajectoryPresentation', () => {
     )
 
     eventMarkers[0] = createEventMarker({
-      altitude: 10_000_000,
+      altitude: 10_700_000,
       distance: 20_700_000,
       kind: 'periapsis',
       point: { x: 20_700_000, y: 0 },
