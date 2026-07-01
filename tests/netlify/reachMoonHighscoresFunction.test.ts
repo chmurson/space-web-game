@@ -101,7 +101,7 @@ const createRecord = (
   id,
   playerName: `Pilot ${id}`,
   score: {
-    baseScorePoints: 1_000,
+    baseScorePoints: 0,
     fuelBonusPoints: 0,
     fuelRemainingKg: 0,
     missionElapsedSeconds: score.elapsed,
@@ -224,18 +224,18 @@ describe('reachMoonHighscores function', () => {
     blobMocks.getStore.mockReturnValue(store)
     const dailyOldRecord = createRecord(
       'daily-old',
-      { elapsed: 120, total: 900 },
+      { elapsed: 120, total: 200 },
       now,
     )
     const weeklyOldRecord = createRecord(
       'weekly-old',
-      { elapsed: 120, total: 900 },
+      { elapsed: 120, total: 200 },
       '2026-06-27T20:30:00.000Z',
     )
     const allTimeRecords = Array.from({ length: 10 }, (_, index) =>
       createRecord(
         `all-time-${index}`,
-        { elapsed: 1_000 + index, total: 900 - index },
+        { elapsed: 1_000 + index, total: 200 - index },
         `2026-06-${String(8 + index).padStart(2, '0')}T12:00:00.000Z`,
       ),
     )
@@ -276,7 +276,8 @@ describe('reachMoonHighscores function', () => {
       score: {
         fuelBonusPoints: 200,
         missionElapsedSeconds: 0,
-        totalScore: 1_200,
+        timePenaltyPoints: 50,
+        totalScore: 250,
       },
       submittedAt: now,
     })
@@ -303,7 +304,7 @@ describe('reachMoonHighscores function', () => {
     expect(dailyEntries[0]).toMatchObject({
       id: body.record.id,
       rank: 1,
-      score: { totalScore: 1_200 },
+      score: { totalScore: 250 },
     })
     expect(dailyEntries[1]).toMatchObject({
       id: 'daily-old',

@@ -10,12 +10,12 @@ import {
 import type { ReachMoonRunReceipt } from '@/server/reachMoonRunReceipts'
 
 const completedScore = {
-  baseScorePoints: 1_000,
-  fuelBonusPoints: 100,
+  baseScorePoints: 0,
+  fuelBonusPoints: 121.5,
   fuelRemainingKg: 16_000,
   missionElapsedSeconds: 90_000,
-  timePenaltyPoints: 100,
-  totalScore: 1_000,
+  timePenaltyPoints: 49.7,
+  totalScore: 171.2,
 }
 
 const completedHighscore = {

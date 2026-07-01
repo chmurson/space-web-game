@@ -324,21 +324,21 @@ describe('reachMoonScenario', () => {
           missionElapsedSeconds: 90_000,
         },
         score: {
-          baseScorePoints: 1_000,
-          fuelBonusPoints: 100,
+          baseScorePoints: 0,
+          fuelBonusPoints: 121.5,
           fuelRemainingKg: 16_000,
           missionElapsedSeconds: 90_000,
-          timePenaltyPoints: 100,
-          totalScore: 1_000,
+          timePenaltyPoints: 49.7,
+          totalScore: 171.2,
         },
       },
       score: {
-        baseScorePoints: 1_000,
-        fuelBonusPoints: 100,
+        baseScorePoints: 0,
+        fuelBonusPoints: 121.5,
         fuelRemainingKg: 16_000,
         missionElapsedSeconds: 90_000,
-        timePenaltyPoints: 100,
-        totalScore: 1_000,
+        timePenaltyPoints: 49.7,
+        totalScore: 171.2,
       },
     })
     expect(getReachMoonCompletedHighscorePayload(runtime)).toEqual({
@@ -347,12 +347,12 @@ describe('reachMoonScenario', () => {
         missionElapsedSeconds: 90_000,
       },
       score: {
-        baseScorePoints: 1_000,
-        fuelBonusPoints: 100,
+        baseScorePoints: 0,
+        fuelBonusPoints: 121.5,
         fuelRemainingKg: 16_000,
         missionElapsedSeconds: 90_000,
-        timePenaltyPoints: 100,
-        totalScore: 1_000,
+        timePenaltyPoints: 49.7,
+        totalScore: 171.2,
       },
     })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
@@ -361,7 +361,7 @@ describe('reachMoonScenario', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
       description:
-        'Score 1,000. Time used 1d 1h (-100). Fuel left 16,000 kg (+100). Base 1,000.',
+        'Score 171.2. Time used 1d 1h (+49.7). Fuel left 16,000 kg (+121.5).',
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
     expect(
@@ -369,7 +369,7 @@ describe('reachMoonScenario', () => {
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'Score 1,000. Time used 1d 1h (-100). Fuel left 16,000 kg (+100). Base 1,000.',
+      'Score 171.2. Time used 1d 1h (+49.7). Fuel left 16,000 kg (+121.5).',
     )
   })
 
