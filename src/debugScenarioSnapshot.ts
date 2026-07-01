@@ -12,6 +12,7 @@ import type {
   SimulationState,
   Spacecraft,
 } from './simulation/types'
+import type { OrbitPointDisplaySettingOverrides } from './userSettingsStorage'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
 
@@ -49,6 +50,7 @@ export type RuntimeScenario = Scenario & {
   cameraMode?: CameraControlMode
   coastPredictionHorizonHours?: number
   elapsed?: number
+  orbitPointDisplay?: OrbitPointDisplaySettingOverrides
   scenarioSession?: RuntimeScenarioSession
   viewportSize?: number
 }

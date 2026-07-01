@@ -8,6 +8,9 @@ export type OrbitPointDisplaySettings = {
   pointNameVisible: boolean
 }
 
+export type OrbitPointDisplaySettingOverrides =
+  Partial<OrbitPointDisplaySettings>
+
 export type UserSettings = {
   debugModeEnabled: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
@@ -146,3 +149,11 @@ export const updateUserSettings = (updates: Partial<UserSettings>) => {
   writeUserSettings(settings)
   return settings
 }
+
+export const resolveOrbitPointDisplaySettings = (
+  userSettings: OrbitPointDisplaySettings,
+  scenarioOverrides?: OrbitPointDisplaySettingOverrides,
+): OrbitPointDisplaySettings => ({
+  ...userSettings,
+  ...scenarioOverrides,
+})
