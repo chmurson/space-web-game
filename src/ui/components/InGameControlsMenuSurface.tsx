@@ -166,6 +166,16 @@ export const InGameControlsMenuSurface = ({
             Keyboard shortcuts
           </legend>
           <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">Normal burn</span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <span>hold</span>
+              <span> </span>
+              <kbd>W</kbd>
+              <span> / </span>
+              <kbd>↑</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
             <span class="in-game-controls-menu-keyboard-name">Burn latch</span>
             <span class="in-game-controls-menu-keyboard-keys">
               <span>double</span>
@@ -185,6 +195,20 @@ export const InGameControlsMenuSurface = ({
               <kbd>S</kbd>
               <span> / </span>
               <kbd>↓</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">Turn</span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <span>mouse double-click</span>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">Time warp</span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>[</kbd>
+              <span> / </span>
+              <kbd>]</kbd>
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">

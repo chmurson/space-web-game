@@ -9,7 +9,7 @@ Shipit state: `.codex/shipit-workflows/codex-issue-43-desktop-keyboard-controls.
 - Added a desktop main-thrust latch to `src/input/keyboardInput.ts`: double-tap `W` or `ArrowUp` latches main thrust on, pressing the thrust key again cancels after release, reverse thrust cancels immediately, and `keyboardInput.clear()` clears the latch.
 - Mapped `Shift+[` and `Shift+]` in `src/input/keyboardShortcuts.ts` to the existing trajectory horizon runtime actions while preserving plain `[` and `]` for time warp.
 - Cleared keyboard input after the existing keyboard and top-menu reset paths so latched thrust cannot survive a direct scenario reset.
-- Added compact desktop-only keyboard hints to the existing in-game controls popover.
+- Added compact desktop-only keyboard hints to the existing in-game controls popover, including hold-burn, burn latch, cancel burn, mouse turning, time warp, and trajectory horizon shortcuts.
 
 ## Why
 

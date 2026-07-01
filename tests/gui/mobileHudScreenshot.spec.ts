@@ -811,8 +811,11 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     focusAfterEscape: true,
     increaseDisabledAtMax: true,
     keyboardHints: [
+      'Normal burn hold W / ↑',
       'Burn latch double W / ↑',
       'Cancel burn W / ↑ / S / ↓',
+      'Turn mouse double-click',
+      'Time warp [ / ]',
       'Horizon Shift + [ / ]',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',
@@ -1226,6 +1229,9 @@ test('captures wide in-game controls keyboard hints', async ({
   await expect(
     page.getByRole('group', { name: 'Keyboard shortcuts' }),
   ).toBeVisible()
+  await expect(page.getByText('Normal burn')).toBeVisible()
+  await expect(page.getByText('Turn', { exact: true })).toBeVisible()
+  await expect(page.getByText('Time warp')).toBeVisible()
   await expect(page.getByText('Burn latch')).toBeVisible()
   await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
 
