@@ -13,11 +13,17 @@ const createKeyboardTarget = () => {
     ) => {
       handlers.set(type, [...(handlers.get(type) ?? []), handler])
     },
-    dispatch: (type: string, code: string) => {
+    dispatch: (
+      type: string,
+      code: string,
+      init: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'repeat' | 'shiftKey' | 'timeStamp'>> = {},
+    ) => {
       const event = {
         code,
-        ctrlKey: false,
-        repeat: false,
+        ctrlKey: init.ctrlKey ?? false,
+        repeat: init.repeat ?? false,
+        shiftKey: init.shiftKey ?? false,
+        timeStamp: init.timeStamp ?? 0,
       } as KeyboardEvent
 
       for (const handler of handlers.get(type) ?? []) {
@@ -32,7 +38,7 @@ const createKeyboardTarget = () => {
 }
 
 describe('bindKeyboardShortcuts', () => {
-  it('clears held controls when gameplay interactions become disabled', () => {
+  it('clears held and latched controls when gameplay interactions become disabled', () => {
     const keyboardInput = createKeyboardInput()
     const keyboardTarget = createKeyboardTarget()
     let interactionsEnabled = true
@@ -46,7 +52,11 @@ describe('bindKeyboardShortcuts', () => {
       windowTarget: keyboardTarget,
     })
 
-    keyboardTarget.dispatch('keydown', 'KeyW')
+    keyboardTarget.dispatch('keydown', 'KeyW', { timeStamp: 100 })
+    expect(keyboardInput.getManualControls().main).toBe(1)
+    keyboardTarget.dispatch('keyup', 'KeyW')
+    keyboardTarget.dispatch('keydown', 'KeyW', { timeStamp: 220 })
+    keyboardTarget.dispatch('keyup', 'KeyW')
     expect(keyboardInput.getManualControls().main).toBe(1)
 
     interactionsEnabled = false
@@ -78,6 +88,32 @@ describe('bindKeyboardShortcuts', () => {
     keyboardTarget.dispatch('keyup', 'KeyW')
     interactionsEnabled = true
 
+    expect(keyboardInput.getManualControls().main).toBe(0)
+  })
+
+  it('clears latched thrust when the reset shortcut runs', () => {
+    const keyboardInput = createKeyboardInput()
+    const keyboardTarget = createKeyboardTarget()
+    const handleAction = vi.fn()
+
+    bindKeyboardShortcuts({
+      autoDiscoverStrongestInfluence: false,
+      getDebugModeEnabled: () => false,
+      getInteractionsEnabled: () => true,
+      handleAction,
+      keyboardInput,
+      windowTarget: keyboardTarget,
+    })
+
+    keyboardTarget.dispatch('keydown', 'ArrowUp', { timeStamp: 100 })
+    keyboardTarget.dispatch('keyup', 'ArrowUp')
+    keyboardTarget.dispatch('keydown', 'ArrowUp', { timeStamp: 220 })
+    keyboardTarget.dispatch('keyup', 'ArrowUp')
+    expect(keyboardInput.getManualControls().main).toBe(1)
+
+    keyboardTarget.dispatch('keydown', 'KeyR', { timeStamp: 500 })
+
+    expect(handleAction).toHaveBeenCalledWith('resetScenario')
     expect(keyboardInput.getManualControls().main).toBe(0)
   })
 })

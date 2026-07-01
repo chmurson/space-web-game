@@ -12,16 +12,21 @@ export type KeyboardInput = {
   clear(): void
   getManualControls(): ControlInput
   hasManualTurn(): boolean
-  press(code: string): void
+  press(code: string, options?: { timeStampMs?: number }): void
   release(code: string): void
   setVirtualKey(control: VirtualControlKey, pressed: boolean): void
 }
 
 const mainThrustKeys = ['KeyW', 'ArrowUp']
 const reverseThrustKeys = ['KeyS', 'ArrowDown']
+const mainThrustLatchDoubleTapMs = 300
 
 const hasAny = (pressedKeys: Set<string>, codes: string[]) =>
   codes.some((code) => pressedKeys.has(code))
+const isMainThrustKey = (code: string) => mainThrustKeys.includes(code)
+const isReverseThrustKey = (code: string) => reverseThrustKeys.includes(code)
+const getInputTimeStampMs = () =>
+  typeof performance === 'undefined' ? Date.now() : performance.now()
 
 export const createKeyboardInput = (): KeyboardInput => {
   const pressedKeys = new Set<string>()
@@ -33,6 +38,13 @@ export const createKeyboardInput = (): KeyboardInput => {
     turnLeft: false,
     turnRight: false,
   }
+  let mainThrustLatched = false
+  let lastMainThrustTap: { code: string; timeStampMs: number } | null = null
+
+  const clearMainThrustLatch = () => {
+    mainThrustLatched = false
+    lastMainThrustTap = null
+  }
 
   return {
     clear: () => {
@@ -42,9 +54,15 @@ export const createKeyboardInput = (): KeyboardInput => {
       ) as VirtualControlKey[]) {
         virtualControls[control] = false
       }
+      clearMainThrustLatch()
     },
     getManualControls: () => ({
-      main: hasAny(pressedKeys, mainThrustKeys) || virtualControls.main ? 1 : 0,
+      main:
+        hasAny(pressedKeys, mainThrustKeys) ||
+        mainThrustLatched ||
+        virtualControls.main
+          ? 1
+          : 0,
       reverse:
         hasAny(pressedKeys, reverseThrustKeys) || virtualControls.reverse
           ? 1
@@ -57,7 +75,33 @@ export const createKeyboardInput = (): KeyboardInput => {
         (virtualControls.turnRight ? -1 : 0),
     }),
     hasManualTurn: () => virtualControls.turnLeft || virtualControls.turnRight,
-    press: (code) => {
+    press: (code, options) => {
+      if (pressedKeys.has(code)) {
+        return
+      }
+
+      if (isReverseThrustKey(code)) {
+        clearMainThrustLatch()
+      }
+
+      if (isMainThrustKey(code)) {
+        const timeStampMs = options?.timeStampMs ?? getInputTimeStampMs()
+
+        if (mainThrustLatched) {
+          clearMainThrustLatch()
+        } else if (
+          lastMainThrustTap?.code === code &&
+          timeStampMs >= lastMainThrustTap.timeStampMs &&
+          timeStampMs - lastMainThrustTap.timeStampMs <=
+            mainThrustLatchDoubleTapMs
+        ) {
+          mainThrustLatched = true
+          lastMainThrustTap = null
+        } else {
+          lastMainThrustTap = { code, timeStampMs }
+        }
+      }
+
       pressedKeys.add(code)
     },
     release: (code) => {

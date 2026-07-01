@@ -534,6 +534,9 @@ export const createAppComponents = (options: {
       return
     }
 
+    if (action === 'resetScenario') {
+      keyboardInput.clear()
+    }
     dispatchRuntimeAction(action)
   }
   const uiSettingsDialog = createUiSettingsDialog({

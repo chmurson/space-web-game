@@ -6,9 +6,68 @@ const createDebugShortcutEvent = (code: string) => ({
   code,
   ctrlKey: false,
   repeat: false,
+  shiftKey: false,
 })
 
 describe('getKeyboardShortcutAction', () => {
+  it('keeps plain bracket shortcuts mapped to time warp', () => {
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('BracketLeft'), {
+        autoDiscoverStrongestInfluence: false,
+        debugModeEnabled: false,
+      }),
+    ).toBe('decreaseTimeWarp')
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('BracketRight'), {
+        autoDiscoverStrongestInfluence: false,
+        debugModeEnabled: false,
+      }),
+    ).toBe('increaseTimeWarp')
+  })
+
+  it('maps Shift bracket shortcuts to trajectory horizon outside debug mode', () => {
+    expect(
+      getKeyboardShortcutAction(
+        {
+          ...createDebugShortcutEvent('BracketLeft'),
+          shiftKey: true,
+        },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBe('decreaseCoastHorizon')
+    expect(
+      getKeyboardShortcutAction(
+        {
+          ...createDebugShortcutEvent('BracketRight'),
+          shiftKey: true,
+        },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBe('increaseCoastHorizon')
+  })
+
+  it('does not fall through repeated Shift bracket shortcuts to time warp', () => {
+    expect(
+      getKeyboardShortcutAction(
+        {
+          ...createDebugShortcutEvent('BracketRight'),
+          repeat: true,
+          shiftKey: true,
+        },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBeNull()
+  })
+
   it('does not reserve the old performance debug shortcut', () => {
     expect(
       getKeyboardShortcutAction(createDebugShortcutEvent('Digit3'), {
