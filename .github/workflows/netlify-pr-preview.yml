@@ -72,7 +72,6 @@ jobs:
           netlify deploy \
             --dir=dist \
             --site "${NETLIFY_SITE_ID}" \
-            --context deploy-preview \
             --alias "pr-${PR_NUMBER}" \
             --message "PR #${PR_NUMBER} preview ${PR_HEAD_SHA}" \
             --json | tee "${deploy_output}"
