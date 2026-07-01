@@ -26,6 +26,11 @@ import { resolveCurrentScenarioScene } from '@/scenario/scenarioScenes'
 import { getReachMoonCompletedHighscorePayload } from '@/scenario/specific-scenarios/reachMoonScenario'
 import { G } from '@/simulation/constants'
 import type { Body } from '@/simulation/types'
+import {
+  reachMoonCompletedRunHighscore,
+  reachMoonCompletedRunInput,
+  reachMoonCompletedRunScore,
+} from '../../fixtures/reachMoonCompletedRun'
 
 const runtimeScenarioOptions: RuntimeScenarioOptions = {
   defaultCoastPredictionHorizonHours: 1,
@@ -318,42 +323,12 @@ describe('reachMoonScenario', () => {
     expect(runtime.scenario.session.completed).toBe(true)
     expect(runtime.scenario.session.state).toEqual({
       phase: 'complete',
-      highscore: {
-        input: {
-          fuelRemainingRatio: 0.5,
-          missionElapsedSeconds: 90_000,
-        },
-        score: {
-          baseScorePoints: 0,
-          fuelBonusPoints: 121.5,
-          fuelRemainingKg: 16_000,
-          missionElapsedSeconds: 90_000,
-          timePenaltyPoints: 49.7,
-          totalScore: 171.2,
-        },
-      },
-      score: {
-        baseScorePoints: 0,
-        fuelBonusPoints: 121.5,
-        fuelRemainingKg: 16_000,
-        missionElapsedSeconds: 90_000,
-        timePenaltyPoints: 49.7,
-        totalScore: 171.2,
-      },
+      highscore: reachMoonCompletedRunHighscore,
+      score: reachMoonCompletedRunScore,
     })
     expect(getReachMoonCompletedHighscorePayload(runtime)).toEqual({
-      input: {
-        fuelRemainingRatio: 0.5,
-        missionElapsedSeconds: 90_000,
-      },
-      score: {
-        baseScorePoints: 0,
-        fuelBonusPoints: 121.5,
-        fuelRemainingKg: 16_000,
-        missionElapsedSeconds: 90_000,
-        timePenaltyPoints: 49.7,
-        totalScore: 171.2,
-      },
+      input: reachMoonCompletedRunInput,
+      score: reachMoonCompletedRunScore,
     })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'mission-complete',

@@ -10,6 +10,7 @@ import {
   type ReachMoonHighscoreRecord,
   rankReachMoonHighscoreRecords,
 } from '@/scenario/specific-scenarios/reachMoonHighscores'
+import { reachMoonCompletedRunScore } from '../../fixtures/reachMoonCompletedRun'
 
 const createRecord = (
   id: string,
@@ -52,14 +53,7 @@ describe('reachMoonHighscores', () => {
       value: {
         id: 'record-1',
         playerName: 'Apollo Ace',
-        score: {
-          baseScorePoints: 0,
-          fuelBonusPoints: 121.5,
-          fuelRemainingKg: 16_000,
-          missionElapsedSeconds: 90_000,
-          timePenaltyPoints: 49.7,
-          totalScore: 171.2,
-        },
+        score: reachMoonCompletedRunScore,
         submittedAt: '2026-06-28T18:00:00.000Z',
       },
     })

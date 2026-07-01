@@ -6,6 +6,37 @@ import {
 } from '@/scenario/specific-scenarios/reachMoonScore'
 
 describe('reachMoonScore', () => {
+  const fuelTargets = [
+    [0, 0],
+    [0.1, 10.2],
+    [0.2, 20.1],
+    [0.3, 44.1],
+    [0.4, 80.7],
+    [0.5, 121.5],
+    [0.6, 157.1],
+    [0.7, 181.8],
+    [0.8, 194.9],
+    [0.9, 199.7],
+    [1, 200],
+  ] as const
+
+  const dayTargets = [
+    [1, 49.9],
+    [2, 45],
+    [3, 40.1],
+    [4, 35.2],
+    [5, 30.7],
+    [6, 26.7],
+    [7, 23.2],
+    [8, 20.3],
+    [9, 18],
+    [10, 16.3],
+    [11, 15],
+    [12, 14],
+    [13, 13.1],
+    [14, 12],
+  ] as const
+
   it('uses fuel as the primary score component and time as a secondary component', () => {
     const efficientSlow = calculateReachMoonScore({
       fuelCapacityKg: 32_000,
@@ -39,59 +70,28 @@ describe('reachMoonScore', () => {
     )
   })
 
-  it('matches the fuel-left target curve from the scoring spreadsheet', () => {
-    const fuelTargets = [
-      [0, 0],
-      [0.1, 10.2],
-      [0.2, 20.1],
-      [0.3, 44.1],
-      [0.4, 80.7],
-      [0.5, 121.5],
-      [0.6, 157.1],
-      [0.7, 181.8],
-      [0.8, 194.9],
-      [0.9, 199.7],
-      [1, 200],
-    ] as const
-
-    for (const [fuelRemainingRatio, fuelBonusPoints] of fuelTargets) {
-      expect(
-        calculateReachMoonScore({
-          fuelCapacityKg: 32_000,
-          fuelRemainingRatio,
-          missionElapsedSeconds: 86_400,
-        }).fuelBonusPoints,
-      ).toBe(fuelBonusPoints)
-    }
+  it.each(
+    fuelTargets,
+  )('matches the fuel-left target curve for ratio %s', (fuelRemainingRatio, fuelBonusPoints) => {
+    expect(
+      calculateReachMoonScore({
+        fuelCapacityKg: 32_000,
+        fuelRemainingRatio,
+        missionElapsedSeconds: 86_400,
+      }).fuelBonusPoints,
+    ).toBe(fuelBonusPoints)
   })
 
-  it('matches the elapsed-day target curve from the scoring spreadsheet', () => {
-    const dayTargets = [
-      [1, 49.9],
-      [2, 45],
-      [3, 40.1],
-      [4, 35.2],
-      [5, 30.7],
-      [6, 26.7],
-      [7, 23.2],
-      [8, 20.3],
-      [9, 18],
-      [10, 16.3],
-      [11, 15],
-      [12, 14],
-      [13, 13.1],
-      [14, 12],
-    ] as const
-
-    for (const [elapsedDays, timePenaltyPoints] of dayTargets) {
-      expect(
-        calculateReachMoonScore({
-          fuelCapacityKg: 32_000,
-          fuelRemainingRatio: 0,
-          missionElapsedSeconds: elapsedDays * 86_400,
-        }).timePenaltyPoints,
-      ).toBe(timePenaltyPoints)
-    }
+  it.each(
+    dayTargets,
+  )('matches the elapsed-day target curve for day %s', (elapsedDays, timePenaltyPoints) => {
+    expect(
+      calculateReachMoonScore({
+        fuelCapacityKg: 32_000,
+        fuelRemainingRatio: 0,
+        missionElapsedSeconds: elapsedDays * 86_400,
+      }).timePenaltyPoints,
+    ).toBe(timePenaltyPoints)
   })
 
   it('makes a low-fuel two-and-a-half-day run score mostly on time', () => {
