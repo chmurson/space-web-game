@@ -653,6 +653,24 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       menu.element.querySelector('[data-in-game-camera-status]')?.textContent
     const getCoastHorizon = () =>
       menu.element.querySelector('[data-in-game-coast-horizon]')?.textContent
+    const getKeyboardHints = () =>
+      Array.from(
+        menu.element.querySelectorAll(
+          '.in-game-controls-menu-keyboard-row',
+        ) as NodeListOf<HTMLElement>,
+      ).map((element) =>
+        [
+          element
+            .querySelector('.in-game-controls-menu-keyboard-name')
+            ?.textContent?.trim(),
+          element
+            .querySelector('.in-game-controls-menu-keyboard-keys')
+            ?.textContent?.replace(/\s+/g, ' ')
+            .trim(),
+        ]
+          .filter(Boolean)
+          .join(' '),
+      )
     const pressDocumentKey = (key: string) =>
       document.dispatchEvent(
         new KeyboardEvent('keydown', {
@@ -752,6 +770,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       expandedAfterClick,
       focusAfterEscape,
       increaseDisabledAtMax,
+      keyboardHints: getKeyboardHints(),
       menuButtonLabelAfterClick,
       menuButtonLabelAfterEscape,
       openAfterClick,
@@ -791,6 +810,11 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     expandedAfterClick: 'true',
     focusAfterEscape: true,
     increaseDisabledAtMax: true,
+    keyboardHints: [
+      'Burn latch double W / ↑',
+      'Cancel burn W / S',
+      'Horizon Shift + [ / ]',
+    ],
     menuButtonLabelAfterClick: 'Close in-game controls',
     menuButtonLabelAfterEscape: 'Open in-game controls',
     openAfterClick: true,
@@ -1187,6 +1211,29 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await expect(page.getByText('Prediction horizon')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
+})
+
+test('captures wide in-game controls keyboard hints', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Open in-game controls' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'In-game controls' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('group', { name: 'Keyboard shortcuts' }),
+  ).toBeVisible()
+  await expect(page.getByText('Burn latch')).toBeVisible()
+  await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'wide-in-game-controls-keyboard-hints',
+  )
 })
 
 test('captures the mobile UI settings dialog opened from in-game controls', async ({

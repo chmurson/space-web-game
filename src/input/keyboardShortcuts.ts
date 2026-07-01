@@ -5,12 +5,21 @@ export type KeyboardShortcutContext = {
   debugModeEnabled: boolean
 }
 
-type KeyboardShortcutEvent = Pick<KeyboardEvent, 'code' | 'ctrlKey' | 'repeat'>
+type KeyboardShortcutEvent = Pick<
+  KeyboardEvent,
+  'code' | 'ctrlKey' | 'repeat' | 'shiftKey'
+>
 
 export const getKeyboardShortcutAction = (
   event: KeyboardShortcutEvent,
   context: KeyboardShortcutContext,
 ): UIUserAction | null => {
+  if (event.shiftKey && event.code === 'BracketRight') {
+    return event.repeat ? null : 'increaseCoastHorizon'
+  }
+  if (event.shiftKey && event.code === 'BracketLeft') {
+    return event.repeat ? null : 'decreaseCoastHorizon'
+  }
   if (event.code === 'BracketRight') {
     return 'increaseTimeWarp'
   }
