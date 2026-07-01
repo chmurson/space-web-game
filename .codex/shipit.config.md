@@ -84,20 +84,17 @@ When starting implementation for a GitHub issue, update every issue that the tas
 - If the repo has no project status or `in progress` label, assign the issue to the authenticated user when appropriate and leave a concise start comment with:
   - the implementation branch
   - the Shipit state path
-  - the first planned scope
-  - what remains before the issue can close
+  - what is being done
+  - what remains
 - Record the issue URL/comment and current issue state in the Shipit workflow state.
 
 Before marking Shipit work `completed`, update every GitHub issue that the task explicitly targets or materially changes.
 
 - If the work is still in progress, leave a concise issue comment with:
-  - what changed
-  - what validation or deploy happened, if any
-  - what remains before the issue can close
+  - what is being done
+  - what remains
 - If the issue is complete, close it with a concise comment that includes:
   - the merged PR or commit
-  - the shipped behavior
-  - the production or staging deploy URL when applicable
   - any follow-up issues that now own deferred work
 - Record the issue URL and final issue state in the Shipit workflow state before marking `Status: completed`.
 

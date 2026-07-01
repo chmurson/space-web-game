@@ -34,8 +34,11 @@
 - Woven moth staging site ID: `65b8db6a-f0cc-49e3-b4e4-cc994699ba6a`
 - PRs targeting `main` use the automated Netlify PR preview workflow in `.github/workflows/netlify-pr-preview.yml`.
 - The PR preview workflow builds the PR head, deploys `dist/` with a stable `pr-<number>` Netlify alias, and reports the preview URL in the workflow summary and a stable PR comment.
-- Required PR preview GitHub Actions secret is `NETLIFY_AUTH_TOKEN`; preview deploys reuse the production Netlify site ID with a non-production `pr-<number>` alias, use the Netlify `deploy-preview` context, and do not pass `--prod`.
-- Reach the Moon highscore preview submissions require Netlify env var `REACH_MOON_RUN_RECEIPT_SECRET` to be configured for the `deploy-preview` context. Use a staging/non-production value so all PR preview aliases share the same non-production receipt signing secret.
+- Stable `pr-<number>` aliases are Netlify branch deploys for runtime context purposes, with branch `pr-<number>`; they are not true Netlify Deploy Previews even though the workflow is named "PR preview".
+- Required PR preview secret is `NETLIFY_AUTH_TOKEN`; preview deploys reuse the production Netlify site ID with a non-production `pr-<number>` alias and do not pass `--prod`.
+- Netlify Function environment variables used by stable PR aliases must be configured in the non-production branch deploy context, or the branch-specific `pr-<number>` context. For `REACH_MOON_RUN_RECEIPT_SECRET`, use a fresh non-production value there; never reuse the production secret for PR aliases.
+- Do not rely on Netlify's `deploy-preview` environment context for stable `pr-<number>` aliases. The workflow intentionally omits `--context deploy-preview`; if that flag is reintroduced, verify the Netlify Function runtime context before depending on it for secrets.
+- After redeploying a PR alias that needs Reach the Moon receipts, validate `POST /api/reach-moon/run-receipt` against the alias URL and confirm it returns `201` with a `runReceipt` object instead of `missing_receipt_secret`.
 - The PR preview workflow runs for same-repository PRs; forked PRs do not receive repository secrets and need explicit maintainer staging if a preview is required.
 - Deploy scripts use explicit `--site` selection and do not rely on `.netlify/state.json`.
 - The default non-production staging target can be changed per worktree by creating the gitignored `.netlify-deploy.local.json` with `{ "defaultStagingTarget": "woven-moth" }` or another supported staging target key.

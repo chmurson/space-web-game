@@ -65,6 +65,10 @@ jobs:
           fi
 
           deploy_output="${RUNNER_TEMP}/netlify-pr-preview.json"
+          # Stable pr-* aliases run as Netlify branch deploy contexts
+          # (branch pr-*), not true deploy-preview contexts. Keep
+          # --context deploy-preview out unless Netlify runtime env behavior is
+          # revalidated for function secrets.
           netlify deploy \
             --dir=dist \
             --site "${NETLIFY_SITE_ID}" \

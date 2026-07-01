@@ -48,6 +48,31 @@ Production deploy automation:
   `REACH_MOON_RUN_RECEIPT_SECRET` in Netlify's `deploy-preview` environment,
   using a staging/non-production value.
 
+Stable PR alias previews:
+
+- `.github/workflows/netlify-pr-preview.yml` runs for same-repository PRs
+  targeting `main`, builds the PR head, and deploys `dist/` to a stable Netlify
+  alias like `https://pr-130--space-web-game.netlify.app`.
+- These stable aliases are Netlify branch deploys with branch `pr-<number>`.
+  They are not true Netlify Deploy Previews, even though the repo calls the
+  workflow output a PR preview.
+- Function secrets for the alias runtime must exist in the non-production
+  branch deploy context, or in the branch-specific `pr-<number>` context. Set
+  `REACH_MOON_RUN_RECEIPT_SECRET` there with a fresh non-production value; do
+  not reuse the production secret. A value configured only for Netlify's
+  `deploy-preview` context is not available to the stable alias runtime.
+- After a PR alias redeploy, validate the receipt function before testing
+  highscore submission:
+
+  ```sh
+  curl -sS -X POST \
+    https://pr-<number>--space-web-game.netlify.app/api/reach-moon/run-receipt
+  ```
+
+  The response should be `201` JSON with a `runReceipt` object. A
+  `missing_receipt_secret` error means the non-production branch deploy secret
+  is not available to that alias.
+
 Current Netlify targets:
 
 - Production: `space-web-game`
