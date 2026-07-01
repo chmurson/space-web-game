@@ -57,6 +57,8 @@ No product source changes were needed.
   - Build logs: https://app.netlify.com/projects/fanciful-bunny-d77b4b/deploys/6a44fd218203f15263ec083c
 - Deployed `GET /api/reach-moon/highscores?period=daily` passed against the unique deploy: status `200`, daily rollup present, entries array present.
 - Deployed `POST /api/reach-moon/run-receipt` failed against the unique deploy: status `500`, no `runReceipt` object. The failure blocks deployed highscore submission because submissions require a valid receipt.
+- PR preview workflow for [#148](https://github.com/chmurson/space-web-game/pull/148) passed and published https://pr-148--space-web-game.netlify.app.
+- PR alias `POST /api/reach-moon/run-receipt` failed against https://pr-148--space-web-game.netlify.app: status `500`, error code `missing_receipt_secret`.
 
 ## Deployment Blocker
 
@@ -81,5 +83,5 @@ Expected result: status `201` JSON with a `runReceipt` object.
 ## Known Gaps
 
 - Shared staging highscore submissions cannot be smoke-tested until the staging receipt secret is configured.
-- Same-repository PR aliases also need a fresh non-production `REACH_MOON_RUN_RECEIPT_SECRET` in the production site's branch-deploy context or branch-specific `pr-<number>` context before receipt and submit smoke tests can pass there.
+- Same-repository PR aliases also need a fresh non-production `REACH_MOON_RUN_RECEIPT_SECRET` in the production site's branch-deploy context or branch-specific `pr-<number>` context before receipt and submit smoke tests can pass there. PR #148 confirmed the secret is currently unavailable to `https://pr-148--space-web-game.netlify.app`.
 - Issue #119 remains the explicit post-v1 abuse-resistance follow-up.
