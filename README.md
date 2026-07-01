@@ -60,7 +60,7 @@ Stable PR alias previews:
   highscore submission:
 
   ```sh
-  curl -fsS -X POST \
+  curl -sS -X POST \
     https://pr-<number>--space-web-game.netlify.app/api/reach-moon/run-receipt
   ```
 
