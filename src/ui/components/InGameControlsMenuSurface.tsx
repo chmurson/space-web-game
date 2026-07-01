@@ -180,7 +180,11 @@ export const InGameControlsMenuSurface = ({
             <span class="in-game-controls-menu-keyboard-keys">
               <kbd>W</kbd>
               <span> / </span>
+              <kbd>↑</kbd>
+              <span> / </span>
               <kbd>S</kbd>
+              <span> / </span>
+              <kbd>↓</kbd>
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">

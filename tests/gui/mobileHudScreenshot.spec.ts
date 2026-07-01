@@ -812,7 +812,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     increaseDisabledAtMax: true,
     keyboardHints: [
       'Burn latch double W / ↑',
-      'Cancel burn W / S',
+      'Cancel burn W / ↑ / S / ↓',
       'Horizon Shift + [ / ]',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',
