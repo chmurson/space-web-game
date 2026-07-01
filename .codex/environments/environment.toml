@@ -3,4 +3,4 @@ version = 1
 name = "@andrzejkoduje"
 
 [setup]
-script = "export PATH=\"/Users/chmurson/.codex/automations/space-game-good-first-issue-task-intake-and-pr-monitor/env/bin:$PATH\""
+script = "source /Users/chmurson/.codex/automations/space-game-good-first-issue-task-intake-and-pr-monitor/env/activate"
