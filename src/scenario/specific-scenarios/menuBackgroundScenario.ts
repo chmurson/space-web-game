@@ -1,6 +1,7 @@
 import { EARTH_VIEWPORT_SIZE } from '../../domain/viewportPresets'
 import { G } from '../../simulation/constants'
 import { createEarthMoonScenario } from '../../simulation/scenarios/earthMoon'
+import type { OrbitPointDisplaySettingOverrides } from '../../userSettingsStorage'
 import type { RuntimeScenarioDefinition } from '../scenarioRegistry'
 import { createRuntimeScenarioSession } from '../scenarioSession'
 
@@ -9,6 +10,10 @@ type MenuBackgroundScenarioState = {
   cameraFollowOffsetX: number
   cameraFollowOffsetY: number
   hiddenBodyIds: ['moon']
+}
+
+const menuBackgroundOrbitPointDisplay: OrbitPointDisplaySettingOverrides = {
+  markersVisible: false,
 }
 
 export const registerMenuBackgroundScenario =
@@ -28,7 +33,7 @@ export const registerMenuBackgroundScenario =
           ...scenario,
           id: 'menu-background',
           name: 'Menu background',
-          orbitPointDisplay: { markersVisible: false },
+          orbitPointDisplay: menuBackgroundOrbitPointDisplay,
           scenarioSession: createRuntimeScenarioSession('menu-background'),
         }
       }
@@ -40,7 +45,7 @@ export const registerMenuBackgroundScenario =
         ...scenario,
         id: 'menu-background',
         name: 'Menu background',
-        orbitPointDisplay: { markersVisible: false },
+        orbitPointDisplay: menuBackgroundOrbitPointDisplay,
         viewportSize: EARTH_VIEWPORT_SIZE,
         scenarioSession: createRuntimeScenarioSession('menu-background', {
           cameraFollowBodyId: 'earth',
