@@ -205,6 +205,170 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(page.getByText('No weekly runs yet.')).toBeVisible()
 })
 
+test('backs out of Reach the Moon highscores one menu step', async ({
+  page,
+}) => {
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const request = route.request()
+    const period =
+      request.method() === 'POST'
+        ? 'daily'
+        : getHighscorePeriodFromRequest(request.url())
+
+    await route.fulfill({
+      body: JSON.stringify(
+        request.method() === 'POST'
+          ? {
+              record: {
+                id: 'run-117',
+                playerName: 'Back Pilot',
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+              rollups: {
+                daily: createHighscoreRollup('daily'),
+              },
+            }
+          : {
+              rollups: {
+                [period]: createHighscoreRollup(period),
+              },
+            },
+      ),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+  await expect(
+    page.locator('[data-main-menu-view="reach-moon-highscores"]'),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="reach-moon"]')).toBeVisible()
+  await expect(page.locator('[data-main-menu-view="main"]')).toBeHidden()
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="main"]')).toBeVisible()
+
+  await page.evaluate(async (pendingRun) => {
+    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
+    const { createMainMenu } = await import(mainMenuModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app')
+    }
+
+    app.replaceChildren()
+    const menu = createMainMenu({
+      app,
+      reachMoonFeatureEnabled: true,
+      onFreeRoam: () => undefined,
+      onLoadGame: () => undefined,
+      onReachMoon: () => undefined,
+      onTutorial: () => undefined,
+    })
+    menu.showReachMoonHighscores(pendingRun)
+  }, completedHighscoreRun)
+
+  await expect(
+    page.locator('[data-main-menu-view="reach-moon-highscores"]'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="reach-moon"]')).toBeVisible()
+  await expect(page.locator('[data-main-menu-view="main"]')).toBeHidden()
+})
+
+test('keeps highscore rows mounted and faded while switching periods', async ({
+  page,
+}, testInfo) => {
+  let resolveWeeklyRoute: (route: Route) => void = () => undefined
+  const weeklyRoutePromise = new Promise<Route>((resolve) => {
+    resolveWeeklyRoute = resolve
+  })
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+
+    if (period === 'weekly') {
+      resolveWeeklyRoute(route)
+      return
+    }
+
+    await route.fulfill({
+      body: JSON.stringify({
+        rollups: {
+          [period]: createHighscoreRollup(
+            period,
+            period === 'daily' ? createHighscoreRollup(period).entries : [],
+          ),
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+
+  const bodyRow = page
+    .locator('.reach-moon-highscore-row:not(.reach-moon-highscore-row-header)')
+    .first()
+  await bodyRow.evaluate((element) =>
+    element.setAttribute('data-stable-probe', 'daily-row'),
+  )
+
+  await page.getByRole('button', { name: 'Weekly' }).click()
+  const weeklyRoute = await weeklyRoutePromise
+
+  const staleRow = page.locator('[data-stable-probe="daily-row"]')
+  await expect(staleRow).toBeVisible()
+  await expect(staleRow).toHaveClass(/reach-moon-highscore-row-loading/)
+  await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
+    'aria-busy',
+    'true',
+  )
+  await expect(page.getByText('Refreshing weekly...')).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-reach-moon-highscores-loading-fade',
+  )
+
+  await weeklyRoute.fulfill({
+    body: JSON.stringify({
+      rollups: {
+        weekly: createHighscoreRollup('weekly', [
+          {
+            id: 'weekly-run',
+            playerName: 'Weekly Pilot',
+            rank: 1,
+            score: highscoreScore,
+            submittedAt: '2026-06-29T09:00:00.000Z',
+          },
+        ]),
+      },
+    }),
+    contentType: 'application/json',
+    status: 200,
+  })
+
+  await expect(page.getByRole('cell', { name: 'Weekly Pilot' })).toBeVisible()
+  await expect(page.locator('.reach-moon-highscore-row-loading')).toHaveCount(0)
+  await expect(page.locator('[data-stable-probe="daily-row"]')).toHaveCount(0)
+})
+
 test('autosubmits completion highscores and retries failures', async ({
   page,
 }) => {

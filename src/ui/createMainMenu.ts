@@ -26,6 +26,7 @@ export type MainMenu = {
 }
 
 type MainMenuRenderProps = Omit<MainMenuSurfaceProps, 'rootRef'>
+type MainMenuHighscoresBackView = Exclude<MainMenuView, 'reach-moon-highscores'>
 
 const defaultReachMoonHighscorePeriod: ReachMoonHighscorePeriod = 'daily'
 
@@ -77,6 +78,9 @@ export const createMainMenu = (options: {
   let reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null = null
   let reachMoonHighscoreActivePeriod: ReachMoonHighscorePeriod =
     defaultReachMoonHighscorePeriod
+  let reachMoonHighscoreBackView: MainMenuHighscoresBackView = 'reach-moon'
+  let reachMoonHighscoreLoadingFallbackRollup: ReachMoonHighscoreRollup | null =
+    null
   let reachMoonHighscoreLoadError: string | null = null
   let reachMoonHighscoreLoadingPeriod: ReachMoonHighscorePeriod | null = null
   let reachMoonHighscoreLoadRequestId = 0
@@ -136,6 +140,29 @@ export const createMainMenu = (options: {
     reachMoonHighscoreSubmitStatus = 'idle'
   }
 
+  const getReachMoonHighscoreRollup = (period: ReachMoonHighscorePeriod) =>
+    reachMoonHighscoreRollups[period] ?? null
+
+  const getReachMoonHighscoreVisibleRollup = () =>
+    getReachMoonHighscoreRollup(reachMoonHighscoreActivePeriod) ??
+    (reachMoonHighscoreLoadingPeriod === reachMoonHighscoreActivePeriod
+      ? reachMoonHighscoreLoadingFallbackRollup
+      : null)
+
+  const setReachMoonHighscoresView = (backView: MainMenuHighscoresBackView) => {
+    reachMoonHighscoreBackView = backView
+    setActiveView('reach-moon-highscores')
+  }
+
+  const handleReachMoonBack = () => {
+    setActiveView(
+      activeView === 'reach-moon-highscores'
+        ? reachMoonHighscoreBackView
+        : 'main',
+    )
+    renderMenu()
+  }
+
   const renderMenu = () => {
     surface.render({
       activeView,
@@ -144,6 +171,7 @@ export const createMainMenu = (options: {
       reachMoonHighscoreState: {
         activePeriod: reachMoonHighscoreActivePeriod,
         loadError: reachMoonHighscoreLoadError,
+        loadingFallbackRollup: reachMoonHighscoreLoadingFallbackRollup,
         loadingPeriod: reachMoonHighscoreLoadingPeriod,
         playerName: reachMoonHighscorePlayerName,
         rollups: reachMoonHighscoreRollups,
@@ -163,18 +191,19 @@ export const createMainMenu = (options: {
         }
       },
       onReachMoon: () => handleActionThatClosesMenu(options.onReachMoon),
-      onReachMoonBack: () => {
-        setActiveView('main')
-        renderMenu()
-      },
+      onReachMoonBack: handleReachMoonBack,
       onReachMoonHighscorePeriod: (period) => {
+        const loadingFallbackRollup = getReachMoonHighscoreVisibleRollup()
+        const hasPeriodRollup = Boolean(getReachMoonHighscoreRollup(period))
         reachMoonHighscoreLoadRequestId += 1
         reachMoonHighscoreActivePeriod = period
         reachMoonHighscoreLoadError = null
+        reachMoonHighscoreLoadingFallbackRollup = null
         reachMoonHighscoreLoadingPeriod = null
-        renderMenu()
-        if (!reachMoonHighscoreRollups[period]) {
-          loadReachMoonHighscores(period)
+        if (hasPeriodRollup) {
+          renderMenu()
+        } else {
+          loadReachMoonHighscores(period, loadingFallbackRollup)
         }
       },
       onReachMoonHighscorePlayerName: (playerName) => {
@@ -189,9 +218,10 @@ export const createMainMenu = (options: {
       },
       onReachMoonHighscores: () => {
         reachMoonHighscorePendingRun = null
+        reachMoonHighscoreLoadingFallbackRollup = null
         resetReachMoonHighscoreSubmitState()
         reachMoonHighscoreActivePeriod = defaultReachMoonHighscorePeriod
-        setActiveView('reach-moon-highscores')
+        setReachMoonHighscoresView('reach-moon')
         renderMenu()
         loadReachMoonHighscores(reachMoonHighscoreActivePeriod)
       },
@@ -203,13 +233,19 @@ export const createMainMenu = (options: {
     })
   }
 
-  const loadReachMoonHighscores = (period: ReachMoonHighscorePeriod) => {
+  const loadReachMoonHighscores = (
+    period: ReachMoonHighscorePeriod,
+    loadingFallbackRollup: ReachMoonHighscoreRollup | null = getReachMoonHighscoreRollup(
+      period,
+    ),
+  ) => {
     if (!options.reachMoonFeatureEnabled) {
       return
     }
 
     reachMoonHighscoreLoadRequestId += 1
     const requestId = reachMoonHighscoreLoadRequestId
+    reachMoonHighscoreLoadingFallbackRollup = loadingFallbackRollup
     reachMoonHighscoreLoadingPeriod = period
     reachMoonHighscoreLoadError = null
     renderMenu()
@@ -246,6 +282,7 @@ export const createMainMenu = (options: {
           return
         }
 
+        reachMoonHighscoreLoadingFallbackRollup = null
         reachMoonHighscoreLoadingPeriod = null
         renderMenu()
       })
@@ -304,6 +341,7 @@ export const createMainMenu = (options: {
           response.rollups[reachMoonHighscoreActivePeriod]
         ) {
           reachMoonHighscoreLoadRequestId += 1
+          reachMoonHighscoreLoadingFallbackRollup = null
           reachMoonHighscoreLoadingPeriod = null
         }
         mergeReachMoonHighscoreRollups(response.rollups)
@@ -355,6 +393,7 @@ export const createMainMenu = (options: {
       visible = true
       if (!options.reachMoonFeatureEnabled) {
         reachMoonHighscorePendingRun = null
+        reachMoonHighscoreLoadingFallbackRollup = null
         resetReachMoonHighscoreSubmitState()
         setActiveView('main')
         renderMenu()
@@ -362,12 +401,14 @@ export const createMainMenu = (options: {
       }
 
       reachMoonHighscorePendingRun = pendingRun ?? null
+      reachMoonHighscoreBackView = 'reach-moon'
+      reachMoonHighscoreLoadingFallbackRollup = null
       resetReachMoonHighscoreSubmitState()
       reachMoonHighscoreActivePeriod = defaultReachMoonHighscorePeriod
       if (pendingRun) {
         reachMoonHighscorePlayerName = generateReachMoonFallbackPilotName()
       }
-      setActiveView('reach-moon-highscores')
+      setReachMoonHighscoresView('reach-moon')
       renderMenu()
       loadReachMoonHighscores(reachMoonHighscoreActivePeriod)
       if (pendingRun) {
