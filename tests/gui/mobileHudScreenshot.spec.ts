@@ -267,6 +267,10 @@ test('shows skeleton rows while highscores initially load', async ({
       name: 'Artemis Pathfinder With A Long Callsign',
     }),
   ).toBeVisible()
+  await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
+    'aria-busy',
+    'false',
+  )
   await expect(page.locator('.reach-moon-highscore-row-skeleton')).toHaveCount(
     0,
   )
