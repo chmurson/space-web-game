@@ -82,8 +82,10 @@ const completedHighscoreRun: ReachMoonHighscorePendingRun = {
   score: highscoreScore,
 }
 
+type HighscorePeriod = 'all-time' | 'daily' | 'weekly'
+
 const createHighscoreRollup = (
-  period: 'all-time' | 'daily' | 'weekly',
+  period: HighscorePeriod,
   entries = [
     {
       id: 'run-117',
@@ -99,10 +101,41 @@ const createHighscoreRollup = (
   period,
 })
 
+type HighscoreEntries = ReturnType<typeof createHighscoreRollup>['entries']
+
+const createHighscoreRollups = (
+  entriesByPeriod: Partial<Record<HighscorePeriod, HighscoreEntries>> = {},
+) => ({
+  'all-time': createHighscoreRollup(
+    'all-time',
+    entriesByPeriod['all-time'] ?? [],
+  ),
+  daily: createHighscoreRollup('daily', entriesByPeriod.daily ?? []),
+  weekly: createHighscoreRollup('weekly', entriesByPeriod.weekly ?? []),
+})
+
+const createHighscoreListResponse = (
+  period: HighscorePeriod | null,
+  entriesByPeriod: Partial<Record<HighscorePeriod, HighscoreEntries>> = {},
+) => ({
+  rollups:
+    period == null
+      ? createHighscoreRollups(entriesByPeriod)
+      : {
+          [period]: createHighscoreRollup(
+            period,
+            entriesByPeriod[period] ?? [],
+          ),
+        },
+})
+
 const getHighscorePeriodFromRequest = (
   requestUrl: string,
-): 'all-time' | 'daily' | 'weekly' => {
+): HighscorePeriod | null => {
   const value = new URL(requestUrl).searchParams.get('period')
+  if (value == null || value.length === 0) {
+    return null
+  }
   if (value === 'all-time' || value === 'daily' || value === 'weekly') {
     return value
   }
@@ -172,15 +205,13 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
 }, testInfo) => {
   await page.route('**/api/reach-moon/highscores**', async (route) => {
     const period = getHighscorePeriodFromRequest(route.request().url())
-    const entries =
-      period === 'daily' ? createHighscoreRollup(period).entries : []
 
     await route.fulfill({
-      body: JSON.stringify({
-        rollups: {
-          [period]: createHighscoreRollup(period, entries),
-        },
-      }),
+      body: JSON.stringify(
+        createHighscoreListResponse(period, {
+          daily: createHighscoreRollup('daily').entries,
+        }),
+      ),
       contentType: 'application/json',
       status: 200,
     })
@@ -197,9 +228,22 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
     page.getByText('Artemis Pathfinder With A Long Callsign'),
   ).toBeVisible()
   await expect(page.getByText('1,168')).toBeVisible()
-  await expect(page.getByRole('cell', { name: 'Time 7h30m' })).toBeVisible()
-  await expect(page.getByRole('cell', { name: 'Fuel left 98%' })).toBeVisible()
-  const firstHighscoreRow = page
+  await expect(page.getByText('7h30m')).toBeVisible()
+  const highscoreTable = page.getByRole('table', {
+    name: 'Today Reach the Moon leaderboard',
+  })
+  await expect(highscoreTable).toBeVisible()
+  await expect(highscoreTable.getByRole('row')).toHaveCount(2)
+  await expect(
+    highscoreTable.getByRole('columnheader', { name: 'Rank' }),
+  ).toBeVisible()
+  await expect(
+    highscoreTable.getByRole('cell', { name: 'Time 7h30m' }),
+  ).toBeVisible()
+  await expect(
+    highscoreTable.getByRole('cell', { name: 'Fuel left 98%' }),
+  ).toBeVisible()
+  const firstHighscoreRow = highscoreTable
     .locator('.reach-moon-highscore-row:not(.reach-moon-highscore-row-header)')
     .first()
   await expect(
@@ -219,28 +263,42 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(page.getByText('No weekly runs yet.')).toBeVisible()
 })
 
-test('shows skeleton rows while highscores initially load', async ({
+test('falls back to weekly highscores from the all-section response', async ({
   page,
 }, testInfo) => {
-  let resolveDailyRoute: (route: Route) => void = () => undefined
-  const dailyRoutePromise = new Promise<Route>((resolve) => {
-    resolveDailyRoute = resolve
-  })
+  const getRequestUrls: string[] = []
 
   await page.route('**/api/reach-moon/highscores**', async (route) => {
-    const period = getHighscorePeriodFromRequest(route.request().url())
-
-    if (period === 'daily') {
-      resolveDailyRoute(route)
-      return
+    if (route.request().method() === 'GET') {
+      getRequestUrls.push(route.request().url())
     }
 
     await route.fulfill({
-      body: JSON.stringify({
-        rollups: {
-          [period]: createHighscoreRollup(period, []),
-        },
-      }),
+      body: JSON.stringify(
+        createHighscoreListResponse(
+          getHighscorePeriodFromRequest(route.request().url()),
+          {
+            'all-time': [
+              {
+                id: 'all-time-run',
+                playerName: 'All Time Pilot',
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:00:00.000Z',
+              },
+            ],
+            weekly: [
+              {
+                id: 'weekly-run',
+                playerName: 'Weekly Pilot',
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T09:00:00.000Z',
+              },
+            ],
+          },
+        ),
+      ),
       contentType: 'application/json',
       status: 200,
     })
@@ -250,7 +308,50 @@ test('shows skeleton rows while highscores initially load', async ({
   await page.getByRole('button', { name: 'Reach the Moon' }).click()
   await page.getByRole('button', { name: 'Highscores' }).click()
 
-  const dailyRoute = await dailyRoutePromise
+  await expect(page.getByRole('cell', { name: 'Weekly Pilot' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Weekly' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByText('No Reach the Moon runs yet.')).toHaveCount(0)
+  expect(getRequestUrls).toHaveLength(1)
+  expect(new URL(getRequestUrls[0]).searchParams.has('period')).toBe(false)
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-reach-moon-highscores-weekly-fallback',
+  )
+})
+
+test('shows skeleton rows while highscores initially load', async ({
+  page,
+}, testInfo) => {
+  let resolveLeaderboardRoute: (route: Route) => void = () => undefined
+  const leaderboardRoutePromise = new Promise<Route>((resolve) => {
+    resolveLeaderboardRoute = resolve
+  })
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+
+    if (period == null) {
+      resolveLeaderboardRoute(route)
+      return
+    }
+
+    await route.fulfill({
+      body: JSON.stringify(createHighscoreListResponse(period)),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  const leaderboardRoute = await leaderboardRoutePromise
   await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
     'aria-busy',
     'true',
@@ -266,12 +367,12 @@ test('shows skeleton rows while highscores initially load', async ({
     'mobile-reach-moon-highscores-initial-skeleton',
   )
 
-  await dailyRoute.fulfill({
-    body: JSON.stringify({
-      rollups: {
-        daily: createHighscoreRollup('daily'),
-      },
-    }),
+  await leaderboardRoute.fulfill({
+    body: JSON.stringify(
+      createHighscoreListResponse(null, {
+        daily: createHighscoreRollup('daily').entries,
+      }),
+    ),
     contentType: 'application/json',
     status: 200,
   })
@@ -315,9 +416,11 @@ test('backs out of Reach the Moon highscores one menu step', async ({
               },
             }
           : {
-              rollups: {
-                [period]: createHighscoreRollup(period),
-              },
+              ...createHighscoreListResponse(period, {
+                'all-time': createHighscoreRollup('all-time').entries,
+                daily: createHighscoreRollup('daily').entries,
+                weekly: createHighscoreRollup('weekly').entries,
+              }),
             },
       ),
       contentType: 'application/json',
@@ -367,31 +470,34 @@ test('backs out of Reach the Moon highscores one menu step', async ({
   await expect(page.locator('[data-main-menu-view="main"]')).toBeHidden()
 })
 
-test('keeps highscore rows mounted and faded while switching periods', async ({
+test('switches highscore periods from the cached all-section response', async ({
   page,
 }, testInfo) => {
-  let resolveWeeklyRoute: (route: Route) => void = () => undefined
-  const weeklyRoutePromise = new Promise<Route>((resolve) => {
-    resolveWeeklyRoute = resolve
-  })
+  const getRequestUrls: string[] = []
 
   await page.route('**/api/reach-moon/highscores**', async (route) => {
-    const period = getHighscorePeriodFromRequest(route.request().url())
-
-    if (period === 'weekly') {
-      resolveWeeklyRoute(route)
-      return
+    if (route.request().method() === 'GET') {
+      getRequestUrls.push(route.request().url())
     }
 
     await route.fulfill({
-      body: JSON.stringify({
-        rollups: {
-          [period]: createHighscoreRollup(
-            period,
-            period === 'daily' ? createHighscoreRollup(period).entries : [],
-          ),
-        },
-      }),
+      body: JSON.stringify(
+        createHighscoreListResponse(
+          getHighscorePeriodFromRequest(route.request().url()),
+          {
+            daily: createHighscoreRollup('daily').entries,
+            weekly: [
+              {
+                id: 'weekly-run',
+                playerName: 'Weekly Pilot',
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T09:00:00.000Z',
+              },
+            ],
+          },
+        ),
+      ),
       contentType: 'application/json',
       status: 200,
     })
@@ -406,67 +512,37 @@ test('keeps highscore rows mounted and faded while switching periods', async ({
     }),
   ).toBeVisible()
 
-  const bodyRow = page
-    .locator('.reach-moon-highscore-row:not(.reach-moon-highscore-row-header)')
-    .first()
-  await bodyRow.evaluate((element) =>
-    element.setAttribute('data-stable-probe', 'daily-row'),
-  )
-
   await page.getByRole('button', { name: 'Weekly' }).click()
-  const weeklyRoute = await weeklyRoutePromise
 
-  const staleRow = page.locator('[data-stable-probe="daily-row"]')
-  await expect(staleRow).toBeVisible()
-  await expect(staleRow).toHaveClass(/reach-moon-highscore-row-loading/)
+  await expect(page.getByRole('cell', { name: 'Weekly Pilot' })).toBeVisible()
   await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
     'aria-busy',
-    'true',
+    'false',
   )
-  await expect(page.getByText('Refreshing weekly...')).toBeVisible()
+  await expect(page.locator('.reach-moon-highscore-row-loading')).toHaveCount(0)
+  expect(getRequestUrls).toHaveLength(1)
+  expect(new URL(getRequestUrls[0]).searchParams.has('period')).toBe(false)
 
   await attachMobileScreenshot(
     page,
     testInfo,
-    'mobile-reach-moon-highscores-loading-fade',
+    'mobile-reach-moon-highscores-cached-weekly',
   )
-
-  await weeklyRoute.fulfill({
-    body: JSON.stringify({
-      rollups: {
-        weekly: createHighscoreRollup('weekly', [
-          {
-            id: 'weekly-run',
-            playerName: 'Weekly Pilot',
-            rank: 1,
-            score: highscoreScore,
-            submittedAt: '2026-06-29T09:00:00.000Z',
-          },
-        ]),
-      },
-    }),
-    contentType: 'application/json',
-    status: 200,
-  })
-
-  await expect(page.getByRole('cell', { name: 'Weekly Pilot' })).toBeVisible()
-  await expect(page.locator('.reach-moon-highscore-row-loading')).toHaveCount(0)
-  await expect(page.locator('[data-stable-probe="daily-row"]')).toHaveCount(0)
 })
 
 test('shows retry when highscore refresh fails with stale rows', async ({
   page,
 }) => {
-  let dailyRequests = 0
+  let leaderboardRequests = 0
 
   await page.route('**/api/reach-moon/highscores**', async (route) => {
     const period = getHighscorePeriodFromRequest(route.request().url())
 
-    if (period === 'daily') {
-      dailyRequests += 1
+    if (route.request().method() === 'GET') {
+      leaderboardRequests += 1
     }
 
-    if (period === 'daily' && dailyRequests > 1) {
+    if (route.request().method() === 'GET' && leaderboardRequests > 1) {
       await route.fulfill({
         body: JSON.stringify({
           error: { message: 'Highscore service offline.' },
@@ -478,11 +554,11 @@ test('shows retry when highscore refresh fails with stale rows', async ({
     }
 
     await route.fulfill({
-      body: JSON.stringify({
-        rollups: {
-          [period]: createHighscoreRollup(period),
-        },
-      }),
+      body: JSON.stringify(
+        createHighscoreListResponse(period, {
+          daily: createHighscoreRollup('daily').entries,
+        }),
+      ),
       contentType: 'application/json',
       status: 200,
     })
@@ -583,11 +659,7 @@ test('autosubmits completion highscores and retries failures', async ({
 
     const period = getHighscorePeriodFromRequest(url.href)
     await route.fulfill({
-      body: JSON.stringify({
-        rollups: {
-          [period]: createHighscoreRollup(period, []),
-        },
-      }),
+      body: JSON.stringify(createHighscoreListResponse(period)),
       contentType: 'application/json',
       status: 200,
     })
@@ -696,9 +768,9 @@ test('skips highscore requests when the Reach the Moon feature is disabled', asy
 test('keeps loading the active period when submit rollups omit it', async ({
   page,
 }) => {
-  let resolveDailyRoute: (route: Route) => void = () => undefined
-  const dailyRoutePromise = new Promise<Route>((resolve) => {
-    resolveDailyRoute = resolve
+  let resolveLeaderboardRoute: (route: Route) => void = () => undefined
+  const leaderboardRoutePromise = new Promise<Route>((resolve) => {
+    resolveLeaderboardRoute = resolve
   })
 
   await page.route('**/api/reach-moon/highscores**', async (route) => {
@@ -735,17 +807,13 @@ test('keeps loading the active period when submit rollups omit it', async ({
     }
 
     const period = getHighscorePeriodFromRequest(request.url())
-    if (period === 'daily') {
-      resolveDailyRoute(route)
+    if (period == null) {
+      resolveLeaderboardRoute(route)
       return
     }
 
     await route.fulfill({
-      body: JSON.stringify({
-        rollups: {
-          [period]: createHighscoreRollup(period, []),
-        },
-      }),
+      body: JSON.stringify(createHighscoreListResponse(period)),
       contentType: 'application/json',
       status: 200,
     })
@@ -777,11 +845,11 @@ test('keeps loading the active period when submit rollups omit it', async ({
   await expect(page.getByText(/^Submitted as /)).toBeVisible()
   await expect(page.getByText('Loading today leaderboard...')).toBeVisible()
 
-  const dailyRoute = await dailyRoutePromise
-  await dailyRoute.fulfill({
-    body: JSON.stringify({
-      rollups: {
-        daily: createHighscoreRollup('daily', [
+  const leaderboardRoute = await leaderboardRoutePromise
+  await leaderboardRoute.fulfill({
+    body: JSON.stringify(
+      createHighscoreListResponse(null, {
+        daily: [
           {
             id: 'daily-run',
             playerName: 'Daily Pilot',
@@ -789,9 +857,9 @@ test('keeps loading the active period when submit rollups omit it', async ({
             score: highscoreScore,
             submittedAt: '2026-06-29T08:45:00.000Z',
           },
-        ]),
-      },
-    }),
+        ],
+      }),
+    ),
     contentType: 'application/json',
     status: 200,
   })

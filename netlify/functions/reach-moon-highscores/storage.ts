@@ -2,15 +2,16 @@ import { getStore } from '@netlify/blobs'
 
 import {
   createReachMoonHighscoreRollup,
-  reachMoonHighscorePeriods,
   type ReachMoonHighscorePeriod,
   type ReachMoonHighscoreRecord,
   type ReachMoonHighscoreRollup,
+  reachMoonHighscorePeriods,
 } from '../../../src/scenario/specific-scenarios/reachMoonHighscores'
 import type {
   HighscoreBlobStore,
   LeaderboardResponse,
   PeriodRollups,
+  StoredReachMoonHighscoreRecord,
 } from './types'
 
 const storeName = 'reach-moon-highscores'
@@ -85,6 +86,25 @@ const isHighscoreRecord = (value: unknown): value is ReachMoonHighscoreRecord =>
   typeof value.score.timePenaltyPoints === 'number' &&
   typeof value.score.totalScore === 'number'
 
+export const toPublicHighscoreRecord = (
+  record: ReachMoonHighscoreRecord,
+): ReachMoonHighscoreRecord => ({
+  id: record.id,
+  playerName: record.playerName,
+  score: record.score,
+  submittedAt: record.submittedAt,
+})
+
+const toPublicHighscoreRollup = (
+  rollup: ReachMoonHighscoreRollup,
+): ReachMoonHighscoreRollup => ({
+  ...rollup,
+  entries: rollup.entries.map((entry) => ({
+    ...toPublicHighscoreRecord(entry),
+    rank: entry.rank,
+  })),
+})
+
 const isHighscoreRollup = (
   value: unknown,
   period: ReachMoonHighscorePeriod,
@@ -104,7 +124,7 @@ const isHighscoreRollup = (
 export const readRecord = async (
   store: HighscoreBlobStore,
   key: string,
-): Promise<ReachMoonHighscoreRecord | null> => {
+): Promise<StoredReachMoonHighscoreRecord | null> => {
   const storedRecord = await store.get(key, { type: 'json' })
 
   return isHighscoreRecord(storedRecord) ? storedRecord : null
@@ -112,9 +132,9 @@ export const readRecord = async (
 
 const readRecordsForRepair = async (
   store: HighscoreBlobStore,
-  requiredRecord?: ReachMoonHighscoreRecord,
-): Promise<ReachMoonHighscoreRecord[]> => {
-  const records: ReachMoonHighscoreRecord[] = []
+  requiredRecord?: StoredReachMoonHighscoreRecord,
+): Promise<StoredReachMoonHighscoreRecord[]> => {
+  const records: StoredReachMoonHighscoreRecord[] = []
   let readCount = 0
 
   repairPages: for await (const { blobs } of store.list({
@@ -153,7 +173,9 @@ const readRollupCache = async (
     type: 'json',
   })
 
-  return isHighscoreRollup(storedRollup, period) ? storedRollup : null
+  return isHighscoreRollup(storedRollup, period)
+    ? toPublicHighscoreRollup(storedRollup)
+    : null
 }
 
 const readRollupCacheWithEtag = async (
@@ -169,7 +191,7 @@ const readRollupCacheWithEtag = async (
   return storedRollup != null && isHighscoreRollup(storedRollup.data, period)
     ? {
         etag: storedRollup.etag,
-        rollup: storedRollup.data,
+        rollup: toPublicHighscoreRollup(storedRollup.data),
       }
     : null
 }
@@ -201,12 +223,13 @@ const createRollupsFromRecords = (
   periodDate: Date,
   generatedAt: Date,
 ): PeriodRollups => {
+  const publicRecords = records.map(toPublicHighscoreRecord)
   const rollups: PeriodRollups = {}
 
   for (const period of periods) {
     rollups[period] = createTopTenRollup(
       period,
-      filterRecordsForPeriod(records, period, periodDate),
+      filterRecordsForPeriod(publicRecords, period, periodDate),
       generatedAt,
     )
   }
@@ -250,12 +273,18 @@ const mergeRecordIntoRollup = (
   rollup: ReachMoonHighscoreRollup,
   record: ReachMoonHighscoreRecord,
   generatedAt: Date,
-): ReachMoonHighscoreRollup =>
-  createTopTenRollup(
+): ReachMoonHighscoreRollup => {
+  const publicRecord = toPublicHighscoreRecord(record)
+
+  return createTopTenRollup(
     period,
-    [...rollup.entries.filter((entry) => entry.id !== record.id), record],
+    [
+      ...rollup.entries.filter((entry) => entry.id !== publicRecord.id),
+      publicRecord,
+    ],
     generatedAt,
   )
+}
 
 const updateRollupCache = async (
   store: HighscoreBlobStore,
@@ -345,7 +374,7 @@ export const buildLeaderboardResponse = async (
 
 export const updateRollups = async (
   store: HighscoreBlobStore,
-  record: ReachMoonHighscoreRecord,
+  record: StoredReachMoonHighscoreRecord,
   now: Date,
 ): Promise<LeaderboardResponse> => {
   const recordDate = new Date(record.submittedAt)

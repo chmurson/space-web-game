@@ -9,6 +9,7 @@ import {
   REACH_MOON_HIGHSCORE_PLAYER_NAME_MIN_LENGTH,
   type ReachMoonHighscoreRecord,
   rankReachMoonHighscoreRecords,
+  selectReachMoonHighscoreDisplayPeriod,
 } from '@/scenario/specific-scenarios/reachMoonHighscores'
 import { reachMoonCompletedRunScore } from '../../fixtures/reachMoonCompletedRun'
 
@@ -154,6 +155,61 @@ describe('reachMoonHighscores', () => {
     expect(parseReachMoonHighscorePeriod('all-time')).toBe('all-time')
     expect(parseReachMoonHighscorePeriod('monthly')).toBeNull()
     expect(parseReachMoonHighscorePeriod(undefined)).toBeNull()
+  })
+
+  it('selects the display period by daily, weekly, then all-time fallback', () => {
+    const dailyRecord = createRecord(
+      'daily',
+      { missionElapsedSeconds: 120, totalScore: 1_000 },
+      '2026-06-28T18:00:00.000Z',
+    )
+    const weeklyRecord = createRecord(
+      'weekly',
+      { missionElapsedSeconds: 120, totalScore: 900 },
+      '2026-06-28T18:01:00.000Z',
+    )
+    const allTimeRecord = createRecord(
+      'all-time',
+      { missionElapsedSeconds: 120, totalScore: 800 },
+      '2026-06-28T18:02:00.000Z',
+    )
+
+    expect(
+      selectReachMoonHighscoreDisplayPeriod({
+        'all-time': createReachMoonHighscoreRollup('all-time', [
+          allTimeRecord,
+        ]),
+        daily: createReachMoonHighscoreRollup('daily', []),
+        weekly: createReachMoonHighscoreRollup('weekly', []),
+      }),
+    ).toBe('all-time')
+    expect(
+      selectReachMoonHighscoreDisplayPeriod({
+        'all-time': createReachMoonHighscoreRollup('all-time', [
+          allTimeRecord,
+        ]),
+        daily: createReachMoonHighscoreRollup('daily', []),
+        weekly: createReachMoonHighscoreRollup('weekly', [weeklyRecord]),
+      }),
+    ).toBe('weekly')
+    expect(
+      selectReachMoonHighscoreDisplayPeriod({
+        'all-time': createReachMoonHighscoreRollup('all-time', [
+          allTimeRecord,
+        ]),
+        daily: createReachMoonHighscoreRollup('daily', [dailyRecord]),
+        weekly: createReachMoonHighscoreRollup('weekly', [weeklyRecord]),
+      }),
+    ).toBe('daily')
+    expect(
+      selectReachMoonHighscoreDisplayPeriod(
+        {
+          daily: createReachMoonHighscoreRollup('daily', []),
+          weekly: createReachMoonHighscoreRollup('weekly', []),
+        },
+        'weekly',
+      ),
+    ).toBe('weekly')
   })
 
   it('ranks by total score, elapsed time, then earlier submission time', () => {

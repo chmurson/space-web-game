@@ -31,6 +31,21 @@ export type PeriodRollups = Partial<
   Record<ReachMoonHighscorePeriod, ReachMoonHighscoreRollup>
 >
 
+export type ReachMoonHighscoreAuditFlag =
+  | 'near_max_score'
+  | 'unusually_high_fuel_remaining'
+  | 'unusually_short_mission'
+
+export type ReachMoonHighscoreAuditMetadata = {
+  checkedAt: string
+  flags: ReachMoonHighscoreAuditFlag[]
+  version: 1
+}
+
+export type StoredReachMoonHighscoreRecord = ReachMoonHighscoreRecord & {
+  audit?: ReachMoonHighscoreAuditMetadata
+}
+
 export type ApiErrorCode =
   | 'invalid_highscore'
   | 'invalid_json'

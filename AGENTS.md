@@ -11,6 +11,7 @@
 - Before modifying source code, look for the nearest `AGENTS.md` that applies to the target files, starting in the target directory and walking upward.
 - When adding a new scoped `AGENTS.md`, add a link here with a brief explanation of its scope.
 - [extension/space-web-game-devtools/AGENTS.md](extension/space-web-game-devtools/AGENTS.md): Chrome DevTools extension guidance, including when to bump the extension manifest version.
+- [docs/backoffice/AGENTS.md](docs/backoffice/AGENTS.md): Backoffice/runbook guidance for agent-assisted operational reviews such as suspicious highscore audits with Netlify CLI.
 
 ## Design Guidance
 
