@@ -999,10 +999,7 @@ canvas {
     transform 120ms ease;
 }
 
-.app-dialog-close {
-  flex: 0 0 auto;
-}
-
+.app-dialog-close,
 .app-dialog-header-actions .app-dialog-button {
   flex: 0 0 auto;
 }
