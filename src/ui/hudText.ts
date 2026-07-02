@@ -298,6 +298,7 @@ export const getFpsMeterGraphModel = (
       0,
       fpsMeterGraphWidth,
     )
+  let minCpuMs: number | null = null
   let maxCpuMs: number | null = null
   const frameBuckets = Array<number>(fpsMeterGraphWidth + 1).fill(-1)
   for (const sample of input.frameSamples) {
@@ -305,15 +306,21 @@ export const getFpsMeterGraphModel = (
       continue
     }
 
+    minCpuMs = Math.min(minCpuMs ?? Number.POSITIVE_INFINITY, sample.cpuMs)
     maxCpuMs = Math.max(maxCpuMs ?? 0, sample.cpuMs)
     const bucketX = Math.round(toX(sample.atMs))
     frameBuckets[bucketX] = Math.max(frameBuckets[bucketX], sample.cpuMs)
   }
 
-  const graphScaleFrameMs = Math.max(maxCpuMs ?? frameBudgetMs60, 1)
-  const toY = (frameMs: number) =>
+  const minScaleCpuMs = minCpuMs ?? 0
+  const graphScaleCpuRangeMs = Math.max(
+    (maxCpuMs ?? frameBudgetMs60) - minScaleCpuMs,
+    Number.EPSILON,
+  )
+  const toY = (cpuMs: number) =>
     fpsMeterGraphHeight -
-    clamp(frameMs / graphScaleFrameMs, 0, 1) * fpsMeterGraphHeight
+    clamp((cpuMs - minScaleCpuMs) / graphScaleCpuRangeMs, 0, 1) *
+      fpsMeterGraphHeight
 
   const pathSegments: string[] = []
   for (let x = 0; x < frameBuckets.length; x += 1) {

@@ -223,10 +223,10 @@ describe('getFpsMeterGraphModel', () => {
     expect(graph).toMatchObject({
       height: 28,
       maxCpuMs: 80,
-      path: 'M 0.0 22.4 L 56.0 16.8 L 112.0 0.0',
+      path: 'M 0.0 28.0 L 56.0 21.0 L 112.0 0.0',
       width: 112,
     })
-    expect(graph.budgetLineY).toBeCloseTo(22.17, 2)
+    expect(graph.budgetLineY).toBeCloseTo(27.71, 2)
   })
 
   it('filters old samples and maps recent gc events to vertical markers', () => {
@@ -244,8 +244,22 @@ describe('getFpsMeterGraphModel', () => {
       nowMs: 10_000,
     })
 
-    expect(graph.path).toBe('M 112.0 0.0')
+    expect(graph.path).toBe('M 112.0 28.0')
     expect(graph.gcMarkerXs).toEqual([56])
+  })
+
+  it('keeps the visible low cpu cost at the bottom while scaling bumps upward', () => {
+    const graph = getFpsMeterGraphModel({
+      browserGcStats: createBrowserGcStats(),
+      frameSamples: [
+        { atMs: 5_000, cpuMs: 2.5 },
+        { atMs: 7_500, cpuMs: 2.6 },
+        { atMs: 10_000, cpuMs: 2.7 },
+      ],
+      nowMs: 10_000,
+    })
+
+    expect(graph.path).toBe('M 0.0 28.0 L 56.0 14.0 L 112.0 0.0')
   })
 })
 
