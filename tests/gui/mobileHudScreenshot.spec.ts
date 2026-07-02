@@ -205,6 +205,73 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(page.getByText('No weekly runs yet.')).toBeVisible()
 })
 
+test('shows skeleton rows while highscores initially load', async ({
+  page,
+}, testInfo) => {
+  let resolveDailyRoute: (route: Route) => void = () => undefined
+  const dailyRoutePromise = new Promise<Route>((resolve) => {
+    resolveDailyRoute = resolve
+  })
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+
+    if (period === 'daily') {
+      resolveDailyRoute(route)
+      return
+    }
+
+    await route.fulfill({
+      body: JSON.stringify({
+        rollups: {
+          [period]: createHighscoreRollup(period, []),
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  const dailyRoute = await dailyRoutePromise
+  await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
+    'aria-busy',
+    'true',
+  )
+  await expect(page.locator('.reach-moon-highscore-row-skeleton')).toHaveCount(
+    3,
+  )
+  await expect(page.getByText('Loading today leaderboard...')).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-reach-moon-highscores-initial-skeleton',
+  )
+
+  await dailyRoute.fulfill({
+    body: JSON.stringify({
+      rollups: {
+        daily: createHighscoreRollup('daily'),
+      },
+    }),
+    contentType: 'application/json',
+    status: 200,
+  })
+
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+  await expect(page.locator('.reach-moon-highscore-row-skeleton')).toHaveCount(
+    0,
+  )
+})
+
 test('backs out of Reach the Moon highscores one menu step', async ({
   page,
 }) => {

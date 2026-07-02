@@ -33,6 +33,17 @@ const reachMoonHighscorePeriodOptions: Array<{
   { label: 'All-time', period: 'all-time' },
 ]
 
+const reachMoonHighscoreSkeletonRows = [0, 1, 2]
+
+const reachMoonHighscoreSkeletonCells = [
+  { className: 'reach-moon-highscore-cell-rank', key: 'rank' },
+  { className: 'reach-moon-highscore-cell-name', key: 'name' },
+  { className: 'reach-moon-highscore-cell-score', key: 'score' },
+  { className: 'reach-moon-highscore-cell-elapsed', key: 'elapsed' },
+  { className: 'reach-moon-highscore-cell-fuel', key: 'fuel' },
+  { className: 'reach-moon-highscore-cell-submitted', key: 'submitted' },
+] as const
+
 export type ReachMoonHighscorePendingRun =
   ReachMoonCompletedHighscorePayload & {
     runReceipt: ReachMoonRunReceipt | null
@@ -181,6 +192,29 @@ const ReachMoonHighscoreSubmitPanel = ({
   )
 }
 
+const ReachMoonHighscoreHeaderRow = () => (
+  <tr class="reach-moon-highscore-row reach-moon-highscore-row-header">
+    <th scope="col">Rank</th>
+    <th scope="col">Name</th>
+    <th scope="col">Score</th>
+    <th scope="col">Time</th>
+    <th scope="col">Fuel</th>
+    <th scope="col">Submitted</th>
+  </tr>
+)
+
+const ReachMoonHighscoreSkeletonRow = () => (
+  <tr class="reach-moon-highscore-row reach-moon-highscore-row-skeleton">
+    {reachMoonHighscoreSkeletonCells.map(({ className, key }) => (
+      <td class={className} key={key}>
+        <span
+          class={`reach-moon-highscore-skeleton reach-moon-highscore-skeleton-${key}`}
+        />
+      </td>
+    ))}
+  </tr>
+)
+
 const ReachMoonHighscoreRow = ({
   entry,
   loading,
@@ -253,9 +287,23 @@ const ReachMoonHighscoreBoard = ({
 
   if (loading && !displayedRollup) {
     return (
-      <div class="reach-moon-highscore-state" aria-live="polite">
-        Loading {periodLabel.toLowerCase()} leaderboard...
-      </div>
+      <table
+        aria-busy="true"
+        aria-label={`${periodLabel} Reach the Moon leaderboard`}
+        class="reach-moon-highscore-board reach-moon-highscore-board-skeleton"
+      >
+        <caption class="reach-moon-highscore-refreshing" aria-live="polite">
+          Loading {periodLabel.toLowerCase()} leaderboard...
+        </caption>
+        <thead>
+          <ReachMoonHighscoreHeaderRow />
+        </thead>
+        <tbody>
+          {reachMoonHighscoreSkeletonRows.map((row) => (
+            <ReachMoonHighscoreSkeletonRow key={row} />
+          ))}
+        </tbody>
+      </table>
     )
   }
 
@@ -279,14 +327,7 @@ const ReachMoonHighscoreBoard = ({
           {loading ? `Refreshing ${periodLabel.toLowerCase()}...` : ''}
         </caption>
         <thead>
-          <tr class="reach-moon-highscore-row reach-moon-highscore-row-header">
-            <th scope="col">Rank</th>
-            <th scope="col">Name</th>
-            <th scope="col">Score</th>
-            <th scope="col">Time</th>
-            <th scope="col">Fuel</th>
-            <th scope="col">Submitted</th>
-          </tr>
+          <ReachMoonHighscoreHeaderRow />
         </thead>
         <tbody>
           {entries.map((entry) => (
