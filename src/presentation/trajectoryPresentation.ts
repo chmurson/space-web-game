@@ -1,10 +1,10 @@
 import * as THREE from 'three'
 
+import type { CircularizePlan } from '../assist/orbitalAssist'
 import type {
   TrajectoryPredictionEventMarker,
   TrajectoryPredictionEventMarkerKind,
 } from '../prediction/trajectoryPrediction'
-import type { CircularizePlan } from '../assist/orbitalAssist'
 import { renderPosition } from '../render/sceneUpdates'
 import {
   updateColoredLine2Geometry,
@@ -30,6 +30,7 @@ const trajectoryEventMarkerLabelOffsetX = 10
 const trajectoryEventMarkerLabelOffsetY = 10
 const trajectoryEventMarkerLabelViewportPadding = 8
 const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.025
+const predictionEndMarkerMaxScreenDiameter = 30
 
 type TrajectoryEventMarkerLabelRefs = Record<
   TrajectoryPredictionEventMarkerKind,
@@ -252,7 +253,12 @@ const updateTargetRelativePredictionVisuals = (options: {
     options.gameScene.predictionEndMarkerMinScreenRadius *
       (options.viewportSize / options.viewportHeight),
   )
-  options.gameScene.predictionEndMarker.scale.setScalar(markerRadius)
+  const markerMaxRadius =
+    (predictionEndMarkerMaxScreenDiameter / 2) *
+    (options.viewportSize / Math.max(options.viewportHeight, 1))
+  options.gameScene.predictionEndMarker.scale.setScalar(
+    Math.min(markerRadius, markerMaxRadius),
+  )
   options.gameScene.predictionEndMarkerFill.material.color.set(
     options.predictedImpact ? '#ef4444' : '#67e8f9',
   )
