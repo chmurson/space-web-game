@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateReachMoonScore,
   formatReachMoonScoreSummary,
+  formatReachMoonScoreSummaryDisplay,
 } from '@/scenario/specific-scenarios/reachMoonScore'
 
 describe('reachMoonScore', () => {
@@ -68,6 +69,13 @@ describe('reachMoonScore', () => {
     expect(formatReachMoonScoreSummary(score)).toBe(
       'Score 171.2. Time used 1d 1h (+49.7). Fuel used 50% (+121.5).',
     )
+    expect(formatReachMoonScoreSummaryDisplay(score)).toEqual({
+      fuelBonusPoints: '121.5',
+      fuelUsed: '50%',
+      missionElapsed: '1d 1h',
+      timeScorePoints: '49.7',
+      totalScore: '171.2',
+    })
   })
 
   it.each(

@@ -270,11 +270,22 @@ canvas {
   gap: 5px;
 }
 
-.reach-moon-highscore-submit-copy strong {
+.reach-moon-highscore-score-summary {
+  display: grid;
+  gap: 4px;
   color: #f0f9ff;
   font-size: 13px;
   font-weight: 650;
   line-height: 1.35;
+}
+
+.reach-moon-highscore-score-summary-line,
+.reach-moon-highscore-metric {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  vertical-align: middle;
 }
 
 .reach-moon-highscore-section-label {
