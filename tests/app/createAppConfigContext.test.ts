@@ -39,7 +39,11 @@ describe('createAppConfigContext', () => {
   })
 
   it('uses configured default touch control settings without stored settings', () => {
+    expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
     expect(createAppConfigContext().featureFlags.reachMoon).toBe(false)
+    expect(
+      createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
+    ).toBe(48)
     expect(createAppConfigContext().userSettings).toMatchObject({
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -140,5 +144,40 @@ describe('createAppConfigContext', () => {
     expect(flaggedConfig.initialAppMode).toBe('game')
     expect(flaggedConfig.featureFlags.reachMoon).toBe(true)
     expect(flaggedConfig.requestedScenarioId).toBe('reach-moon')
+  })
+
+  it('allows extended trajectory horizons only behind the exact URL feature flag', () => {
+    for (const search of [
+      '?nohiroznlimit=0',
+      '?nohiroznlimit=true',
+      '?nohiroznlimit',
+      '?nohorizonlimit=1',
+    ]) {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: createWindowWithSearch(search),
+      })
+
+      const nearMissConfig = createAppConfigContext()
+
+      expect(nearMissConfig.featureFlags.noHorizonLimit).toBe(false)
+      expect(nearMissConfig.trajectory.maxCoastPredictionHorizonHours).toBe(48)
+    }
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?nohiroznlimit=1'),
+    })
+
+    const flaggedConfig = createAppConfigContext()
+
+    expect(flaggedConfig.featureFlags.noHorizonLimit).toBe(true)
+    expect(flaggedConfig.trajectory.maxCoastPredictionHorizonHours).toBe(
+      128 * 24,
+    )
+    expect(
+      flaggedConfig.globalScenarioDirectiveLimits
+        .maxCoastPredictionHorizonHours,
+    ).toBe(128 * 24)
   })
 })

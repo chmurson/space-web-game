@@ -96,21 +96,30 @@ jobs:
           NODE
           )"
 
-          feature_flag_preview_url="$(node - "${preview_url}" <<'NODE'
+          reach_moon_preview_url="$(node - "${preview_url}" <<'NODE'
           const url = new URL(process.argv[2])
           url.searchParams.set('reachmoon', '1')
           console.log(url.toString())
           NODE
           )"
 
+          horizon_flag_preview_url="$(node - "${preview_url}" <<'NODE'
+          const url = new URL(process.argv[2])
+          url.searchParams.set('nohiroznlimit', '1')
+          console.log(url.toString())
+          NODE
+          )"
+
           echo "preview-url=${preview_url}" >> "${GITHUB_OUTPUT}"
-          echo "feature-flag-preview-url=${feature_flag_preview_url}" >> "${GITHUB_OUTPUT}"
+          echo "reach-moon-preview-url=${reach_moon_preview_url}" >> "${GITHUB_OUTPUT}"
+          echo "horizon-flag-preview-url=${horizon_flag_preview_url}" >> "${GITHUB_OUTPUT}"
 
           {
             echo "### Netlify PR Preview"
             echo
             echo "Preview URL: ${preview_url}"
-            echo "Feature-flag preview URL: ${feature_flag_preview_url}"
+            echo "Reach the Moon preview URL: ${reach_moon_preview_url}"
+            echo "Extended horizon preview URL: ${horizon_flag_preview_url}"
             echo
             echo "Alias: pr-${PR_NUMBER}"
             echo "Commit: ${PR_HEAD_SHA}"
@@ -118,11 +127,12 @@ jobs:
 
       - name: Comment preview URL on PR
         env:
-          FEATURE_FLAG_PREVIEW_URL: ${{ steps.deploy.outputs.feature-flag-preview-url }}
           GITHUB_TOKEN: ${{ github.token }}
+          HORIZON_FLAG_PREVIEW_URL: ${{ steps.deploy.outputs.horizon-flag-preview-url }}
           PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REACH_MOON_PREVIEW_URL: ${{ steps.deploy.outputs.reach-moon-preview-url }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           node <<'NODE'
@@ -141,7 +151,8 @@ jobs:
             '### Netlify PR Preview',
             '',
             `Preview URL: ${process.env.PREVIEW_URL}`,
-            `Feature-flag preview URL: ${process.env.FEATURE_FLAG_PREVIEW_URL}`,
+            `Reach the Moon preview URL: ${process.env.REACH_MOON_PREVIEW_URL}`,
+            `Extended horizon preview URL: ${process.env.HORIZON_FLAG_PREVIEW_URL}`,
             '',
             `Commit: \`${process.env.PR_HEAD_SHA}\``,
             `Workflow run: ${process.env.RUN_URL}`,

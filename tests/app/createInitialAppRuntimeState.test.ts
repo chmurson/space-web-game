@@ -29,6 +29,7 @@ const createConfig = (
   physicsEngine: { name: 'test-engine', step: (() => undefined) as never },
   requestedScenarioId: 'tutorial',
   featureFlags: {
+    noHorizonLimit: false,
     reachMoon: false,
   },
   userSettings: {

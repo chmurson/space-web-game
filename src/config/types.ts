@@ -22,6 +22,7 @@ export type GameConfig = {
     horizon: {
       defaultHours: number
       minHours: number
+      defaultMaxHours: number
       maxHours: number
     }
     loopTrim: {
