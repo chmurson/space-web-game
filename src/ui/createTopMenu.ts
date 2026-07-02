@@ -67,12 +67,20 @@ export const createTopMenu = (options: {
   }
 
   const syncSnapshotAvailability = () => {
+    const previousLoadSnapshotAvailable = loadSnapshotAvailable
     loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
+    return loadSnapshotAvailable !== previousLoadSnapshotAvailable
   }
 
   const syncToggleState = () => {
+    const previousDebugModeEnabled = debugModeEnabled
+    const previousFpsIndicatorEnabled = fpsIndicatorEnabled
     debugModeEnabled = options.getDebugModeEnabled()
     fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
+    return (
+      debugModeEnabled !== previousDebugModeEnabled ||
+      fpsIndicatorEnabled !== previousFpsIndicatorEnabled
+    )
   }
 
   const renderMenu = () => {
@@ -108,8 +116,15 @@ export const createTopMenu = (options: {
   }
 
   const syncState = () => {
-    syncToggleState()
-    syncSnapshotAvailability()
+    const toggleStateChanged = syncToggleState()
+    const snapshotAvailabilityChanged = open
+      ? syncSnapshotAvailability()
+      : false
+
+    if (!toggleStateChanged && !snapshotAvailabilityChanged) {
+      return
+    }
+
     renderMenu()
   }
 

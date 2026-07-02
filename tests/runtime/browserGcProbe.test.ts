@@ -152,6 +152,33 @@ describe('createBrowserGcProbe', () => {
     expect(disconnected).toBe(true)
   })
 
+  it('ignores tiny native gc entries below the reporting threshold', () => {
+    let emit: (entry: { duration: number; startTime: number }) => void = (
+      _entry,
+    ) => {
+      throw new Error('native observer was not registered')
+    }
+    const probe = createBrowserGcProbe({
+      getUsedHeapBytes: () => null,
+      minNativeGcDurationMs: 2,
+      observeNativeGc: (onEntry) => {
+        emit = onEntry
+        return () => undefined
+      },
+    })
+
+    probe.setEnabled(true)
+    emit?.({ duration: 0.8, startTime: 42 })
+    emit?.({ duration: 2.5, startTime: 84 })
+
+    expect(probe.getStats()).toMatchObject({
+      eventCount: 1,
+      lastEstimatedPauseMs: 2.5,
+      lastEventAtMs: 84,
+      lastSource: 'native',
+    })
+  })
+
   it('does not sample or observe gc while disabled', () => {
     let observed = false
     let heapReads = 0

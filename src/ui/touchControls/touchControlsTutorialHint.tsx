@@ -48,6 +48,10 @@ export const createTouchControlsTutorialHint = (options: {
   return {
     element: surface.element as HTMLDivElement,
     setVisible: (nextVisible) => {
+      if (visible === nextVisible) {
+        return
+      }
+
       visible = nextVisible
       renderHint()
     },

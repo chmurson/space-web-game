@@ -297,31 +297,40 @@ export const getFpsMeterGraphModel = (
     fpsMeterGraphHeight -
     clamp(frameMs / fpsMeterGraphMaxFrameMs, 0, 1) * fpsMeterGraphHeight
 
-  const points = input.frameSamples
-    .filter(
-      (sample) => sample.atMs >= windowStartMs && sample.atMs <= input.nowMs,
-    )
-    .map((sample) => ({
-      x: toX(sample.atMs),
-      y: toY(sample.frameMs),
-    }))
+  const frameBuckets = Array<number>(fpsMeterGraphWidth + 1).fill(-1)
+  for (const sample of input.frameSamples) {
+    if (sample.atMs < windowStartMs || sample.atMs > input.nowMs) {
+      continue
+    }
 
-  const path = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? 'M' : 'L'} ${formatGraphNumber(point.x)} ${formatGraphNumber(point.y)}`,
+    const bucketX = Math.round(toX(sample.atMs))
+    frameBuckets[bucketX] = Math.max(frameBuckets[bucketX], sample.frameMs)
+  }
+
+  const pathSegments: string[] = []
+  for (let x = 0; x < frameBuckets.length; x += 1) {
+    const frameMs = frameBuckets[x]
+    if (frameMs < 0) {
+      continue
+    }
+
+    pathSegments.push(
+      `${pathSegments.length === 0 ? 'M' : 'L'} ${formatGraphNumber(x)} ${formatGraphNumber(toY(frameMs))}`,
     )
-    .join(' ')
+  }
+
+  const gcMarkerXs: number[] = []
+  for (const event of input.browserGcStats.recentEvents) {
+    if (event.atMs >= windowStartMs && event.atMs <= input.nowMs) {
+      gcMarkerXs.push(toX(event.atMs))
+    }
+  }
 
   return {
     budgetLineY: toY(frameBudgetMs60),
-    gcMarkerXs: input.browserGcStats.recentEvents
-      .filter(
-        (event) => event.atMs >= windowStartMs && event.atMs <= input.nowMs,
-      )
-      .map((event) => toX(event.atMs)),
+    gcMarkerXs,
     height: fpsMeterGraphHeight,
-    path,
+    path: pathSegments.join(' '),
     width: fpsMeterGraphWidth,
   }
 }

@@ -164,6 +164,9 @@ export const createCrashMenu = (options: {
       }
 
       visible = nextVisible
+      if (visible) {
+        refreshLoadGameAvailable()
+      }
       renderMenu()
 
       if (visible) {
@@ -185,9 +188,19 @@ export const createCrashMenu = (options: {
       restoreFocusTarget = null
     },
     syncState: (nextState) => {
+      const stateChanged =
+        crashedBodyName !== nextState.crashedBodyName ||
+        hasCheckpoint !== nextState.hasCheckpoint
+      const loadGameAvailableChanged = visible
+        ? refreshLoadGameAvailable()
+        : false
+
+      if (!stateChanged && !loadGameAvailableChanged) {
+        return
+      }
+
       crashedBodyName = nextState.crashedBodyName
       hasCheckpoint = nextState.hasCheckpoint
-      refreshLoadGameAvailable()
       renderMenu()
     },
   }
