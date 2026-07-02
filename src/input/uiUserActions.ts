@@ -1,4 +1,5 @@
 export const uiUserActions = [
+  'cycleCameraMode',
   'cycleAssistMode',
   'cycleAssistTarget',
   'decreaseCoastHorizon',
@@ -10,6 +11,7 @@ export const uiUserActions = [
   'resetScenario',
   'saveDebugSnapshot',
   'setCameraCentered',
+  'setCameraTarget',
   'setCameraUnlocked',
   'toggleDebugMode',
   'toggleFpsIndicator',

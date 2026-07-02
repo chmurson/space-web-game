@@ -1361,7 +1361,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const app = document.createElement('div')
     const outsideButton = document.createElement('button')
     const events: string[] = []
-    let cameraMode: 'centered' | 'unlocked' = 'centered'
+    let cameraMode: 'centered' | 'target' | 'unlocked' = 'centered'
     let cameraModeChangesLocked = false
     let coastHorizonHours = 6
     let settingsOpened = false
@@ -1383,6 +1383,9 @@ test('keeps the in-game controls menu adapter state and actions', async ({
         }
         if (action === 'setCameraCentered') {
           cameraMode = 'centered'
+        }
+        if (action === 'setCameraTarget') {
+          cameraMode = 'target'
         }
         if (action === 'decreaseCoastHorizon') {
           coastHorizonHours = Math.max(2, coastHorizonHours - 2)
@@ -1407,6 +1410,21 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       menu.element.querySelector(
         `[data-in-game-action="${action}"]`,
       ) as HTMLButtonElement | null
+    const getCameraOption = (mode: string) =>
+      menu.element.querySelector(
+        `[data-camera-mode-option="${mode}"]`,
+      ) as HTMLButtonElement | null
+    const getCameraOptions = () =>
+      Array.from(
+        menu.element.querySelectorAll(
+          '[data-camera-mode-option]',
+        ) as NodeListOf<HTMLButtonElement>,
+      ).map((element) => ({
+        disabled: element.disabled,
+        label: element.textContent?.trim(),
+        mode: element.dataset.cameraModeOption,
+        pressed: element.getAttribute('aria-pressed'),
+      }))
     const getCameraStatus = () =>
       menu.element.querySelector('[data-in-game-camera-status]')?.textContent
     const getCoastHorizon = () =>
@@ -1446,27 +1464,20 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       getMenuButton()?.getAttribute('aria-label')
     const cameraModeDataInitial = menu.element.dataset.cameraMode
     const cameraStatusInitial = getCameraStatus()
-    const cameraCheckedInitial =
-      getActionButton('toggleCameraMode')?.getAttribute('aria-checked')
-    const cameraLabelInitial =
-      getActionButton('toggleCameraMode')?.getAttribute('aria-label')
+    const cameraOptionsInitial = getCameraOptions()
     const coastHorizonInitial = getCoastHorizon()
 
-    getActionButton('toggleCameraMode')?.click()
-    const cameraModeDataAfterToggle = menu.element.dataset.cameraMode
-    const cameraStatusAfterToggle = getCameraStatus()
-    const cameraCheckedAfterToggle =
-      getActionButton('toggleCameraMode')?.getAttribute('aria-checked')
-    const cameraLabelAfterToggle =
-      getActionButton('toggleCameraMode')?.getAttribute('aria-label')
+    getCameraOption('target')?.click()
+    const cameraModeDataAfterTarget = menu.element.dataset.cameraMode
+    const cameraStatusAfterTarget = getCameraStatus()
+    const cameraOptionsAfterTarget = getCameraOptions()
 
     cameraModeChangesLocked = true
     menu.syncState()
-    const switchDisabledWhenLocked =
-      getActionButton('toggleCameraMode')?.disabled
-    const switchLabelWhenLocked =
-      getActionButton('toggleCameraMode')?.getAttribute('aria-label')
-    getActionButton('toggleCameraMode')?.click()
+    const cameraOptionsWhenLocked = getCameraOptions()
+    const targetLabelWhenLocked =
+      getCameraOption('target')?.getAttribute('aria-label')
+    getCameraOption('unlocked')?.click()
     const eventCountAfterLockedClick = events.length
 
     getActionButton('decreaseCoastHorizon')?.click()
@@ -1506,13 +1517,12 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const closedAfterClose = getPopover()?.hidden
 
     return {
-      cameraCheckedAfterToggle,
-      cameraCheckedInitial,
-      cameraLabelAfterToggle,
-      cameraLabelInitial,
-      cameraModeDataAfterToggle,
+      cameraModeDataAfterTarget,
       cameraModeDataInitial,
-      cameraStatusAfterToggle,
+      cameraOptionsAfterTarget,
+      cameraOptionsInitial,
+      cameraOptionsWhenLocked,
+      cameraStatusAfterTarget,
       cameraStatusInitial,
       closedAfterClose,
       closedAfterEscape,
@@ -1533,20 +1543,60 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       menuButtonLabelAfterEscape,
       openAfterClick,
       settingsOpened,
-      switchDisabledWhenLocked,
-      switchLabelWhenLocked,
+      targetLabelWhenLocked,
     }
   })
 
   expect(result).toEqual({
-    cameraCheckedAfterToggle: 'false',
-    cameraCheckedInitial: 'true',
-    cameraLabelAfterToggle: 'Camera locked off: Free roam',
-    cameraLabelInitial: 'Camera locked on: On spacecraft',
-    cameraModeDataAfterToggle: 'unlocked',
+    cameraModeDataAfterTarget: 'target',
     cameraModeDataInitial: 'centered',
-    cameraStatusAfterToggle: 'Free roam',
-    cameraStatusInitial: 'On spacecraft',
+    cameraOptionsAfterTarget: [
+      {
+        disabled: false,
+        label: 'Free roam',
+        mode: 'unlocked',
+        pressed: 'false',
+      },
+      {
+        disabled: false,
+        label: 'Spacecraft',
+        mode: 'centered',
+        pressed: 'false',
+      },
+      { disabled: false, label: 'Target', mode: 'target', pressed: 'true' },
+    ],
+    cameraOptionsInitial: [
+      {
+        disabled: false,
+        label: 'Free roam',
+        mode: 'unlocked',
+        pressed: 'false',
+      },
+      {
+        disabled: false,
+        label: 'Spacecraft',
+        mode: 'centered',
+        pressed: 'true',
+      },
+      { disabled: false, label: 'Target', mode: 'target', pressed: 'false' },
+    ],
+    cameraOptionsWhenLocked: [
+      {
+        disabled: true,
+        label: 'Free roam',
+        mode: 'unlocked',
+        pressed: 'false',
+      },
+      {
+        disabled: true,
+        label: 'Spacecraft',
+        mode: 'centered',
+        pressed: 'false',
+      },
+      { disabled: true, label: 'Target', mode: 'target', pressed: 'true' },
+    ],
+    cameraStatusAfterTarget: 'Target',
+    cameraStatusInitial: 'Spacecraft',
     closedAfterClose: true,
     closedAfterEscape: true,
     closedAfterOutsidePointer: true,
@@ -1558,7 +1608,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     eventCountAfterDisabledDecrease: 3,
     eventCountAfterLockedClick: 1,
     events: [
-      'setCameraUnlocked',
+      'setCameraTarget',
       'decreaseCoastHorizon',
       'decreaseCoastHorizon',
       'increaseCoastHorizon',
@@ -1575,14 +1625,28 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Turn mouse double-click',
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
+      'Camera C',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',
     menuButtonLabelAfterEscape: 'Open in-game controls',
     openAfterClick: true,
     settingsOpened: true,
-    switchDisabledWhenLocked: true,
-    switchLabelWhenLocked: 'Camera locked changes unavailable: Free roam',
+    targetLabelWhenLocked: 'Camera mode changes unavailable: Target',
   })
+})
+
+test('shows a bottom notice when cycling camera mode from the keyboard', async ({
+  page,
+}) => {
+  await startReachMoonMission(page)
+
+  await page.keyboard.press('KeyC')
+
+  const notice = page.locator('.hud-notice-transient')
+  await expect(notice).toBeVisible()
+  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
+  await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
 })
 
 test('keeps the UI settings dialog adapter state, focus, and change behavior', async ({

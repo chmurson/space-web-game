@@ -6,7 +6,10 @@ import {
 } from '@/devtools/devtoolsBridge'
 import type { UIUserAction } from '@/input/uiUserActions'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
-import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import {
+  type CameraControlMode,
+  createDefaultScenarioDirectives,
+} from '@/scenario/scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 
 const timeWarps = [1, 10, 30, 60]
@@ -95,7 +98,7 @@ const createRuntime = (): AppRuntimeState => ({
 
 const createBridgeHarness = (runtime = createRuntime()) => {
   const dispatchedActions: UIUserAction[] = []
-  const setCameraMode = vi.fn((mode: 'centered' | 'unlocked') => {
+  const setCameraMode = vi.fn((mode: CameraControlMode) => {
     if (runtime.scenario.directives.cameraModeChangesLocked) {
       return false
     }
@@ -211,6 +214,15 @@ describe('createDevtoolsBridge', () => {
     expect(response.ok).toBe(true)
     expect(setCameraMode).toHaveBeenCalledWith('unlocked')
     expect(runtime.ui.camera.mode).toBe('unlocked')
+
+    const targetResponse = bridge.handleRequest({
+      mode: 'target',
+      type: 'set-camera-mode',
+    })
+
+    expect(targetResponse.ok).toBe(true)
+    expect(setCameraMode).toHaveBeenCalledWith('target')
+    expect(runtime.ui.camera.mode).toBe('target')
   })
 
   it('sets debug flags through the matching toggle action', () => {

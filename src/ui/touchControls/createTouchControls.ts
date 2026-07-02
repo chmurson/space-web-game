@@ -870,7 +870,7 @@ export const createTouchControls = (options: {
             activeSession.hasMovedForTap = true
           }
 
-          if (options.getCameraMode() === 'centered') {
+          if (options.getCameraMode() !== 'unlocked') {
             const unlockThresholdX =
               window.innerWidth * intentionalCameraUnlockSwipeViewportRatio
             const unlockThresholdY =

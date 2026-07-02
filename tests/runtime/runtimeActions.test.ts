@@ -14,6 +14,7 @@ import {
   createRuntimeScenarioSession,
 } from '@/scenario/scenarioSession'
 import { RENDER_SCALE } from '@/simulation/constants'
+import type { Body } from '@/simulation/types'
 
 const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,
@@ -119,6 +120,16 @@ const createTestRuntimeActions = (
     cameraElevation: 1,
     createRipple: () => {},
     gameScene: { trailPoints: [] } as never,
+    getAssistTargetUiState: () => ({
+      activeTarget:
+        runtime.simulation.state.bodies[runtime.simulation.assistTargetIndex] ??
+        getRequiredBody(runtime, 0),
+      mode:
+        runtime.simulation.assistTargetSelectionMode === 'auto'
+          ? 'auto'
+          : 'manual',
+      recommendedTarget: null,
+    }),
     maxCoastPredictionHorizonHours: 48,
     maxViewport: EARTH_MOON_VIEWPORT_SIZE,
     minCoastPredictionHorizonHours: 0.5,
@@ -153,6 +164,15 @@ const setWindowSize = (width: number, height: number) => {
 
   globals.window.innerWidth = width
   globals.window.innerHeight = height
+}
+
+const getRequiredBody = (runtime: AppRuntimeState, index: number): Body => {
+  const body = runtime.simulation.state.bodies[index]
+  if (!body) {
+    throw new Error(`Expected test body at index ${index}`)
+  }
+
+  return body
 }
 
 describe('createRuntimeActions', () => {
@@ -237,6 +257,86 @@ describe('createRuntimeActions', () => {
       expect(runtimeActions.setCameraMode('centered')).toBe(true)
       expect(runtime.ui.camera.mode).toBe('centered')
       expect(runtimeActions.panCamera({ x: 1, y: 1 })).toBe(false)
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('centers the target camera mode on the active assist target', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    runtime.simulation.state.bodies[1] = {
+      ...getRequiredBody(runtime, 1),
+      position: { x: 150, y: 160 },
+    }
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(runtimeActions.setCameraMode('target')).toBe(true)
+      expect(runtime.ui.camera.mode).toBe('target')
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: { x: 150, y: 160 },
+        }),
+      )
+
+      expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 150, y: 160 })
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('cycles camera modes through free roam, spacecraft, and target', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    runtime.simulation.state.bodies[1] = {
+      ...getRequiredBody(runtime, 1),
+      position: { x: 150, y: 160 },
+    }
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(runtimeActions.handleUIUserAction('cycleCameraMode')).toEqual({
+        refreshTrajectoryPrediction: false,
+      })
+      expect(runtime.ui.camera.mode).toBe('target')
+
+      runtimeActions.handleUIUserAction('cycleCameraMode')
+      expect(runtime.ui.camera).toEqual({
+        mode: 'unlocked',
+        panOffset: { x: 150, y: 160 },
+      })
+
+      runtimeActions.handleUIUserAction('cycleCameraMode')
+      expect(runtime.ui.camera.mode).toBe('centered')
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: runtime.simulation.state.spacecraft.position,
+        }),
+      )
     } finally {
       if (originalWindow === undefined) {
         delete globals.window
@@ -535,6 +635,11 @@ describe('createRuntimeActions', () => {
         cameraElevation: 1,
         createRipple: () => {},
         gameScene: { trailPoints: [] } as never,
+        getAssistTargetUiState: () => ({
+          activeTarget: getRequiredBody(runtime, 0),
+          mode: 'manual',
+          recommendedTarget: null,
+        }),
         maxCoastPredictionHorizonHours: 48,
         maxViewport: EARTH_MOON_VIEWPORT_SIZE,
         minCoastPredictionHorizonHours: 0.5,

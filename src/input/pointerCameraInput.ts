@@ -292,7 +292,7 @@ export const bindPointerCameraInput = (
       activeCameraPan.hasMovedForTap = true
     }
 
-    if (options.getCameraMode() === 'centered') {
+    if (options.getCameraMode() !== 'unlocked') {
       const unlockThresholdX =
         options.windowTarget.innerWidth * intentionalSwipeViewportRatio
       const unlockThresholdY =

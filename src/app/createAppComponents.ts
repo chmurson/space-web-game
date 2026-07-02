@@ -31,6 +31,7 @@ import {
 import { getTrajectoryHorizonPreviews } from '../runtime/trajectoryHorizonControlPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import { parsePromptAction } from '../scenario/scenarioPrompts'
+import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
 import {
   applyBodyTextureAssetsToScene,
   applyScenarioRenderConfigToScene,
@@ -72,7 +73,7 @@ type AppRuntimeCoordinator = {
   initialize(): void
 }
 
-const cameraUnlockNoticeDurationMs = 2400
+const cameraNoticeDurationMs = 2400
 
 export type AppComponents = {
   renderer: THREE.WebGLRenderer
@@ -164,7 +165,14 @@ const createRuntimeCoordinator = (options: {
   }
 }
 
-const createCameraUnlockNoticePresenter = (overlayUi: OverlayUiRefs) => {
+const getCameraNoticeModeLabel = (mode: CameraControlMode) =>
+  mode === 'unlocked'
+    ? 'Free roam'
+    : mode === 'centered'
+      ? 'Spacecraft'
+      : 'Target'
+
+const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   let hideTimeout: number | null = null
   let finishHideTimeout: number | null = null
 
@@ -180,28 +188,48 @@ const createCameraUnlockNoticePresenter = (overlayUi: OverlayUiRefs) => {
     hideTimeout = null
   }
 
-  return {
-    show() {
-      if (finishHideTimeout !== null) {
-        window.clearTimeout(finishHideTimeout)
-        finishHideTimeout = null
-      }
-      overlayUi.cameraUnlockNotice.hidden = false
-      overlayUi.cameraUnlockNoticeTitle?.replaceChildren('Camera unlocked')
+  const show = (options: {
+    ariaLabel: string
+    body?: string
+    title: string
+  }) => {
+    if (finishHideTimeout !== null) {
+      window.clearTimeout(finishHideTimeout)
+      finishHideTimeout = null
+    }
+    overlayUi.cameraUnlockNotice.hidden = false
+    overlayUi.cameraUnlockNoticeTitle?.replaceChildren(options.title)
+    if (options.body === undefined) {
       overlayUi.cameraUnlockNoticeBody?.replaceChildren()
-      overlayUi.cameraUnlockNotice.setAttribute(
-        'aria-label',
-        'Camera unlocked. Drag anywhere to pan.',
-      )
-      overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'false')
-      window.requestAnimationFrame(() => {
-        overlayUi.cameraUnlockNotice.dataset.visible = 'true'
-      })
+    } else {
+      overlayUi.cameraUnlockNoticeBody?.replaceChildren(options.body)
+    }
+    overlayUi.cameraUnlockNotice.setAttribute('aria-label', options.ariaLabel)
+    overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'false')
+    window.requestAnimationFrame(() => {
+      overlayUi.cameraUnlockNotice.dataset.visible = 'true'
+    })
 
-      if (hideTimeout !== null) {
-        window.clearTimeout(hideTimeout)
-      }
-      hideTimeout = window.setTimeout(hide, cameraUnlockNoticeDurationMs)
+    if (hideTimeout !== null) {
+      window.clearTimeout(hideTimeout)
+    }
+    hideTimeout = window.setTimeout(hide, cameraNoticeDurationMs)
+  }
+
+  return {
+    showModeChange(mode: CameraControlMode) {
+      const label = getCameraNoticeModeLabel(mode)
+      show({
+        ariaLabel: `Camera mode: ${label}`,
+        body: label,
+        title: 'Camera mode',
+      })
+    },
+    showUnlockedBySwipe() {
+      show({
+        ariaLabel: 'Camera unlocked. Drag anywhere to pan.',
+        title: 'Camera unlocked',
+      })
     },
   }
 }
@@ -278,7 +306,7 @@ export const createAppComponents = (options: {
     bodies: options.runtimeState.simulation.state.bodies,
     showCycleTargetHint: !options.config.assistTarget.autoSelectNearestSurface,
   })
-  const cameraUnlockNotice = createCameraUnlockNoticePresenter(overlayUi)
+  const cameraNotice = createCameraNoticePresenter(overlayUi)
   const queries = createGameQueries({
     autoSelectNearestSurface:
       options.config.assistTarget.autoSelectNearestSurface,
@@ -368,6 +396,7 @@ export const createAppComponents = (options: {
     cameraElevation: options.config.camera.elevation,
     createRipple,
     gameScene,
+    getAssistTargetUiState: queries.getAssistTargetUiState,
     maxCoastPredictionHorizonHours:
       options.config.trajectory.maxCoastPredictionHorizonHours,
     maxViewport: options.config.camera.maxViewport,
@@ -485,7 +514,7 @@ export const createAppComponents = (options: {
     keyboardInput,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
-    onCameraUnlockedBySwipe: cameraUnlockNotice.show,
+    onCameraUnlockedBySwipe: cameraNotice.showUnlockedBySwipe,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
@@ -798,12 +827,22 @@ export const createAppComponents = (options: {
     timeWarps: options.config.controls.timeWarps,
   })
 
+  const handleKeyboardAction = (action: UIUserAction) => {
+    const previousCameraMode = runtimeActions.getCameraMode()
+    dispatchRuntimeAction(action)
+    const nextCameraMode = runtimeActions.getCameraMode()
+
+    if (action === 'cycleCameraMode' && nextCameraMode !== previousCameraMode) {
+      cameraNotice.showModeChange(nextCameraMode)
+    }
+  }
+
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence:
       options.config.assistTarget.autoSelectNearestSurface,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
     getInteractionsEnabled: getGameInteractionsEnabled,
-    handleAction: dispatchRuntimeAction,
+    handleAction: handleKeyboardAction,
     keyboardInput,
     windowTarget: window,
   })

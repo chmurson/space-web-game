@@ -6,7 +6,10 @@ import {
   type TrajectoryPredictionSamplingConfig,
 } from '../prediction/trajectoryPrediction'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
-import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
+import {
+  isCameraControlMode,
+  type CameraControlMode,
+} from '../scenario/scenarioDirectiveTypes'
 import type {
   AppRuntimeDebugSlice,
   AppRuntimeState,
@@ -156,9 +159,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isWritableDebugFlag = (value: unknown): value is WritableDebugFlag =>
   typeof value === 'string' && value in debugFlagActions
-
-const isCameraControlMode = (value: unknown): value is CameraControlMode =>
-  value === 'centered' || value === 'unlocked'
 
 const cloneVec2 = (vector: Vec2): DevtoolsVec2 => ({
   x: vector.x,
@@ -370,7 +370,7 @@ export const createDevtoolsBridge = (
 
       if (request.type === 'set-camera-mode') {
         if (!isCameraControlMode(request.mode)) {
-          return fail('set-camera-mode requires centered or unlocked')
+          return fail('set-camera-mode requires centered, unlocked, or target')
         }
 
         return options.runtimeActions.setCameraMode(request.mode)

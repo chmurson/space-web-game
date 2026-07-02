@@ -1,4 +1,22 @@
-export type CameraControlMode = 'centered' | 'unlocked'
+export const cameraControlModes = ['unlocked', 'centered', 'target'] as const
+
+export type CameraControlMode = (typeof cameraControlModes)[number]
+
+export const isCameraControlMode = (
+  value: unknown,
+): value is CameraControlMode =>
+  typeof value === 'string' &&
+  cameraControlModes.includes(value as CameraControlMode)
+
+export const getNextCameraControlMode = (
+  mode: CameraControlMode,
+): CameraControlMode => {
+  const currentIndex = cameraControlModes.indexOf(mode)
+  return (
+    cameraControlModes[(currentIndex + 1) % cameraControlModes.length] ??
+    'unlocked'
+  )
+}
 
 export type RuntimeScenarioHiddenUIElement =
   | 'scenarioInfoButton'

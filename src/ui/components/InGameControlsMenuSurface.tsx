@@ -9,15 +9,25 @@ export type InGameControlsMenuSurfaceProps = {
   menuId: string
   open: boolean
   rootRef(element: HTMLElement | null): void
-  onCameraModeToggle(): void
+  onCameraModeSelect(mode: CameraControlMode): void
   onDecreaseCoastHorizon(): void
   onIncreaseCoastHorizon(): void
   onMenuButtonClick(): void
   onOpenUiSettings(): void
 }
 
+const cameraModeOptions = [
+  { action: 'setCameraUnlocked', label: 'Free roam', mode: 'unlocked' },
+  { action: 'setCameraCentered', label: 'Spacecraft', mode: 'centered' },
+  { action: 'setCameraTarget', label: 'Target', mode: 'target' },
+] satisfies Array<{
+  action: string
+  label: string
+  mode: CameraControlMode
+}>
+
 const getCameraModeDescription = (mode: CameraControlMode) =>
-  mode === 'centered' ? 'On spacecraft' : 'Free roam'
+  cameraModeOptions.find((option) => option.mode === mode)?.label ?? 'Unknown'
 
 export const InGameControlsMenuSurface = ({
   cameraMode,
@@ -28,7 +38,7 @@ export const InGameControlsMenuSurface = ({
   menuId,
   open,
   rootRef,
-  onCameraModeToggle,
+  onCameraModeSelect,
   onDecreaseCoastHorizon,
   onIncreaseCoastHorizon,
   onMenuButtonClick,
@@ -36,7 +46,6 @@ export const InGameControlsMenuSurface = ({
 }: InGameControlsMenuSurfaceProps) => {
   const cameraControlLabelId = `${menuId}-camera`
   const trajectorySectionLabelId = `${menuId}-trajectory`
-  const cameraLocked = cameraMode === 'centered'
   const cameraModeDescription = getCameraModeDescription(cameraMode)
 
   return (
@@ -68,15 +77,10 @@ export const InGameControlsMenuSurface = ({
         aria-label="In-game controls"
       >
         <div class="in-game-controls-menu-heading">Controls</div>
-        {/* biome-ignore lint/a11y/useSemanticElements: Preserve the existing role=group adapter contract. */}
-        <div
-          class="menu-stepper in-game-controls-menu-camera"
-          role="group"
-          aria-labelledby={cameraControlLabelId}
-        >
+        <div class="menu-stepper in-game-controls-menu-camera">
           <div class="menu-stepper-copy">
             <span class="menu-stepper-name" id={cameraControlLabelId}>
-              Camera locked
+              Camera mode
             </span>
             <span
               class="menu-stepper-value"
@@ -87,22 +91,41 @@ export const InGameControlsMenuSurface = ({
             </span>
           </div>
           <div class="menu-stepper-controls">
-            <button
-              type="button"
-              class="in-game-controls-menu-switch"
-              role="switch"
-              data-in-game-action="toggleCameraMode"
-              disabled={cameraModeChangesLocked}
-              aria-checked={cameraLocked}
-              aria-label={
-                cameraModeChangesLocked
-                  ? `Camera locked changes unavailable: ${cameraModeDescription}`
-                  : `Camera locked ${cameraLocked ? 'on' : 'off'}: ${cameraModeDescription}`
-              }
-              onClick={onCameraModeToggle}
+            <fieldset
+              class="segmented-control in-game-controls-menu-camera-options"
+              aria-labelledby={cameraControlLabelId}
             >
-              <span aria-hidden="true" />
-            </button>
+              <legend class="in-game-controls-menu-camera-options-legend">
+                Camera mode
+              </legend>
+              {cameraModeOptions.map((option) => {
+                const selected = option.mode === cameraMode
+
+                return (
+                  <button
+                    key={option.mode}
+                    type="button"
+                    class={
+                      selected
+                        ? 'segmented-control-option segmented-control-option-selected'
+                        : 'segmented-control-option'
+                    }
+                    data-in-game-action={option.action}
+                    data-camera-mode-option={option.mode}
+                    disabled={cameraModeChangesLocked}
+                    aria-pressed={selected}
+                    aria-label={
+                      cameraModeChangesLocked
+                        ? `Camera mode changes unavailable: ${cameraModeDescription}`
+                        : `Set camera mode to ${option.label}`
+                    }
+                    onClick={() => onCameraModeSelect(option.mode)}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </fieldset>
           </div>
         </div>
 
@@ -219,6 +242,12 @@ export const InGameControlsMenuSurface = ({
               <kbd>[</kbd>
               <span> / </span>
               <kbd>]</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">Camera</span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>C</kbd>
             </span>
           </div>
         </fieldset>

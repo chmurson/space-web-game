@@ -18,6 +18,13 @@ type InGameControlsMenuRenderProps = Omit<
   'rootRef'
 >
 
+const getCameraModeAction = (mode: CameraControlMode): UIUserAction =>
+  mode === 'unlocked'
+    ? 'setCameraUnlocked'
+    : mode === 'centered'
+      ? 'setCameraCentered'
+      : 'setCameraTarget'
+
 export const createInGameControlsMenu = (options: {
   app: HTMLElement
   getCameraMode: () => CameraControlMode
@@ -78,12 +85,8 @@ export const createInGameControlsMenu = (options: {
       increaseCoastHorizonDisabled,
       menuId,
       open,
-      onCameraModeToggle: () => {
-        options.onAction(
-          options.getCameraMode() === 'centered'
-            ? 'setCameraUnlocked'
-            : 'setCameraCentered',
-        )
+      onCameraModeSelect: (mode) => {
+        options.onAction(getCameraModeAction(mode))
         syncState()
       },
       onDecreaseCoastHorizon: () => {
