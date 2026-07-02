@@ -49,6 +49,17 @@ const formatScorePoints = (value: number) =>
 const formatInteger = (value: number) =>
   Math.round(value).toLocaleString('en-US')
 
+export const formatReachMoonFuelUsedPercent = (
+  score: Pick<ReachMoonScoreSummary, 'fuelRemainingKg'>,
+): string => {
+  const fuelRemainingRatio = Math.min(
+    1,
+    clampFinite(score.fuelRemainingKg) / REACH_MOON_FUEL_CAPACITY_KG,
+  )
+
+  return `${formatInteger((1 - fuelRemainingRatio) * 100)}%`
+}
+
 const formatElapsed = (seconds: number) => {
   const roundedSeconds = Math.max(0, Math.round(seconds))
   const days = Math.floor(roundedSeconds / 86_400)
@@ -117,7 +128,7 @@ export const calculateReachMoonMissionScore = (input: {
 export const formatReachMoonScoreSummary = (
   score: ReachMoonScoreSummary,
 ): string =>
-  `Score ${formatScorePoints(score.totalScore)}. Time used ${formatElapsed(score.missionElapsedSeconds)} (+${formatScorePoints(score.timePenaltyPoints)}). Fuel left ${formatInteger(score.fuelRemainingKg)} kg (+${formatScorePoints(score.fuelBonusPoints)}).`
+  `Score ${formatScorePoints(score.totalScore)}. Time used ${formatElapsed(score.missionElapsedSeconds)} (+${formatScorePoints(score.timePenaltyPoints)}). Fuel used ${formatReachMoonFuelUsedPercent(score)} (+${formatScorePoints(score.fuelBonusPoints)}).`
 
 export const isReachMoonScoreSummary = (
   value: unknown,

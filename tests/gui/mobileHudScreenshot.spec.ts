@@ -198,6 +198,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   ).toBeVisible()
   await expect(page.getByText('1,168')).toBeVisible()
   await expect(page.getByText('7h30m')).toBeVisible()
+  await expect(page.getByText('2%')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-highscores')
 

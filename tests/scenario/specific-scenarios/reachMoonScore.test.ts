@@ -66,7 +66,7 @@ describe('reachMoonScore', () => {
     })
 
     expect(formatReachMoonScoreSummary(score)).toBe(
-      'Score 171.2. Time used 1d 1h (+49.7). Fuel left 16,000 kg (+121.5).',
+      'Score 171.2. Time used 1d 1h (+49.7). Fuel used 50% (+121.5).',
     )
   })
 

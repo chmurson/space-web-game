@@ -336,7 +336,7 @@ describe('reachMoonScenario', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
       description:
-        'Score 171.2. Time used 1d 1h (+49.7). Fuel left 16,000 kg (+121.5).',
+        'Score 171.2. Time used 1d 1h (+49.7). Fuel used 50% (+121.5).',
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
     expect(
@@ -344,7 +344,7 @@ describe('reachMoonScenario', () => {
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'Score 171.2. Time used 1d 1h (+49.7). Fuel left 16,000 kg (+121.5).',
+      'Score 171.2. Time used 1d 1h (+49.7). Fuel used 50% (+121.5).',
     )
   })
 

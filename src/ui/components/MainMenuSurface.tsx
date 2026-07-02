@@ -7,7 +7,10 @@ import {
   type ReachMoonHighscoreRollups,
 } from '../../scenario/specific-scenarios/reachMoonHighscores'
 import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
-import { formatReachMoonScoreSummary } from '../../scenario/specific-scenarios/reachMoonScore'
+import {
+  formatReachMoonFuelUsedPercent,
+  formatReachMoonScoreSummary,
+} from '../../scenario/specific-scenarios/reachMoonScore'
 import type { ReachMoonRunReceipt } from '../../server/reachMoonRunReceipts'
 import { formatCompactElapsed } from '../formatters'
 import {
@@ -91,8 +94,6 @@ export type MainMenuSurfaceProps = {
 
 const formatInteger = (value: number) =>
   Math.round(value).toLocaleString('en-US')
-
-const formatFuelLeft = (value: number) => `${formatInteger(value)} kg`
 
 const formatSubmittedAt = (value: string) => {
   const date = new Date(value)
@@ -198,7 +199,7 @@ const ReachMoonHighscoreHeaderRow = () => (
     <th scope="col">Name</th>
     <th scope="col">Score</th>
     <th scope="col">Time</th>
-    <th scope="col">Fuel</th>
+    <th scope="col">Fuel used</th>
     <th scope="col">Submitted</th>
   </tr>
 )
@@ -240,7 +241,7 @@ const ReachMoonHighscoreRow = ({
       {formatCompactElapsed(entry.score.missionElapsedSeconds)}
     </td>
     <td class="reach-moon-highscore-cell-fuel">
-      {formatFuelLeft(entry.score.fuelRemainingKg)}
+      {formatReachMoonFuelUsedPercent(entry.score)}
     </td>
     <td class="reach-moon-highscore-cell-submitted">
       {formatSubmittedAt(entry.submittedAt)}
