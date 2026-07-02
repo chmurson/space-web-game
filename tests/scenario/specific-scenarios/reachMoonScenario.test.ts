@@ -192,9 +192,9 @@ describe('reachMoonScenario', () => {
     expect(directives.maxCoastPredictionHorizonHours).toBeNull()
     expect(directives.maxTimeWarp).toBeNull()
     expect(directives.maxViewportSize).toBe(EARTH_MOON_VIEWPORT_SIZE)
-    expect(globalScenarioDirectiveLimits.timeWarps[globalMaxTimeWarpIndex]).toBe(
-      18_000,
-    )
+    expect(
+      globalScenarioDirectiveLimits.timeWarps[globalMaxTimeWarpIndex],
+    ).toBe(18_000)
     expect(
       getConstrainedTimeWarpIndex(
         globalMaxTimeWarpIndex,
@@ -336,16 +336,14 @@ describe('reachMoonScenario', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
       description:
-        'Score 171.2. Time used 1d 1h (+49.7). Fuel used 50% (+121.5).',
+        'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5).',
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
     expect(
       getPromptTextContent(
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
-    ).toBe(
-      'Score 171.2. Time used 1d 1h (+49.7). Fuel used 50% (+121.5).',
-    )
+    ).toBe('Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5).')
   })
 
   it('does not count angular backtracking as completed lunar orbits', () => {

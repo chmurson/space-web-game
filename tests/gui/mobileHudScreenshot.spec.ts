@@ -198,7 +198,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   ).toBeVisible()
   await expect(page.getByText('1,168')).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Time 7h30m' })).toBeVisible()
-  await expect(page.getByRole('cell', { name: 'Fuel used 2%' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Fuel left 98%' })).toBeVisible()
   const firstHighscoreRow = page
     .locator('.reach-moon-highscore-row:not(.reach-moon-highscore-row-header)')
     .first()
@@ -620,7 +620,7 @@ test('autosubmits completion highscores and retries failures', async ({
   const pilotName = page.getByLabel('Pilot name')
   await expect(pilotName).toBeVisible()
   await expect(page.getByText('Time used 7h 30m (+28).')).toBeVisible()
-  await expect(page.getByText('Fuel used 2% (+196).')).toBeVisible()
+  await expect(page.getByText('Fuel left 98% (+196).')).toBeVisible()
   await expect(
     page.locator('.reach-moon-highscore-submit .telemetry-time-icon'),
   ).toBeVisible()

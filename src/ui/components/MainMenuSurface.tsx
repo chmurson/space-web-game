@@ -8,7 +8,7 @@ import {
 } from '../../scenario/specific-scenarios/reachMoonHighscores'
 import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
 import {
-  formatReachMoonFuelUsedPercent,
+  formatReachMoonFuelLeftPercent,
   formatReachMoonScoreSummaryDisplay,
   type ReachMoonScoreSummary,
 } from '../../scenario/specific-scenarios/reachMoonScore'
@@ -188,7 +188,7 @@ const ReachMoonHighscoreScoreSummary = ({
       <span class="reach-moon-highscore-score-summary-line">
         <ReachMoonHighscoreFuelIcon />
         <span>
-          Fuel used {display.fuelUsed} (+{display.fuelBonusPoints}).
+          Fuel left {display.fuelLeft} (+{display.fuelBonusPoints}).
         </span>
       </span>
     </strong>
@@ -268,7 +268,7 @@ const ReachMoonHighscoreHeaderRow = () => (
     <th scope="col">Name</th>
     <th scope="col">Score</th>
     <th scope="col">Time</th>
-    <th scope="col">Fuel used</th>
+    <th scope="col">Fuel left</th>
     <th scope="col">Submitted</th>
   </tr>
 )
@@ -293,7 +293,7 @@ const ReachMoonHighscoreRow = ({
   loading: boolean
 }) => {
   const elapsed = formatCompactElapsed(entry.score.missionElapsedSeconds)
-  const fuelUsed = formatReachMoonFuelUsedPercent(entry.score)
+  const fuelLeft = formatReachMoonFuelLeftPercent(entry.score)
 
   return (
     <tr
@@ -318,9 +318,9 @@ const ReachMoonHighscoreRow = ({
       </td>
       <td
         class="reach-moon-highscore-cell-fuel"
-        aria-label={`Fuel used ${fuelUsed}`}
+        aria-label={`Fuel left ${fuelLeft}`}
       >
-        <ReachMoonHighscoreMetric icon="fuel" value={fuelUsed} />
+        <ReachMoonHighscoreMetric icon="fuel" value={fuelLeft} />
       </td>
       <td class="reach-moon-highscore-cell-submitted">
         {formatSubmittedAt(entry.submittedAt)}
