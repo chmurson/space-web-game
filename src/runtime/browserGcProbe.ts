@@ -241,8 +241,6 @@ export const createBrowserGcProbe = (options: BrowserGcProbeOptions = {}) => {
         }
         return
       }
-
-      recordEvent('frame-gap', nowMs, estimatedPauseMs, null)
     },
     setEnabled: (enabled: boolean) => {
       if (enabled) {

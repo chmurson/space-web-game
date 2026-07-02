@@ -143,7 +143,7 @@ describe('getFpsMeterText', () => {
   it('formats fps, frame time, combined cycle timings, and 60hz headroom', () => {
     expect(
       getFpsMeterText({
-        browserGcStats: createBrowserGcStats(),
+        browserGcStats: createBrowserGcStats({ heapSamplingSupported: true }),
         smoothedCpuMs: 5.25,
         smoothedFps: 59.94,
         smoothedGpuMs: 8.4,
@@ -167,6 +167,7 @@ describe('getFpsMeterText', () => {
       getFpsMeterText({
         browserGcStats: createBrowserGcStats({
           eventCount: 3,
+          heapSamplingSupported: true,
           lastEstimatedPauseMs: 18.25,
           longestEstimatedPauseMs: 44.5,
         }),
@@ -175,6 +176,17 @@ describe('getFpsMeterText', () => {
         smoothedGpuMs: null,
       }),
     ).toContain('gc? 3 l18.3 m44.5')
+  })
+
+  it('marks gc unavailable when the browser exposes no gc or heap signal', () => {
+    expect(
+      getFpsMeterText({
+        browserGcStats: createBrowserGcStats(),
+        smoothedCpuMs: 7.1,
+        smoothedFps: 60,
+        smoothedGpuMs: null,
+      }),
+    ).toContain('gc n/a')
   })
 
   it('shows when gc probing is off', () => {

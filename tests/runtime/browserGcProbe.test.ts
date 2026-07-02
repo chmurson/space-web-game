@@ -72,7 +72,7 @@ describe('createBrowserGcProbe', () => {
     ])
   })
 
-  it('falls back to frame-gap counting when heap sampling is unavailable', () => {
+  it('does not guess gc from frame gaps when heap sampling is unavailable', () => {
     const probe = createBrowserGcProbe({
       expectedFrameMs: 16,
       getUsedHeapBytes: () => null,
@@ -86,10 +86,10 @@ describe('createBrowserGcProbe', () => {
     probe.recordFrame({ frameIntervalMs: 72, nowMs: 88 })
 
     expect(probe.getStats()).toMatchObject({
-      eventCount: 1,
+      eventCount: 0,
       heapSamplingSupported: false,
-      lastEstimatedPauseMs: 56,
-      lastSource: 'frame-gap',
+      lastEstimatedPauseMs: null,
+      lastSource: null,
       totalReclaimedBytes: null,
     })
   })

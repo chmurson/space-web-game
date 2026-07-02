@@ -115,7 +115,7 @@ const getGcProbeMode = (stats: BrowserGcProbeStats) => {
     return 'native'
   }
 
-  return stats.heapSamplingSupported ? 'heap-drop' : 'frame-gap'
+  return stats.heapSamplingSupported ? 'heap-drop' : 'unsupported'
 }
 
 const getRecordValue = (
@@ -267,6 +267,10 @@ const getCompactGcProbeText = (stats: BrowserGcProbeStats) => {
 
   if (!stats.isEnabled) {
     return `${label} off`
+  }
+
+  if (mode === 'unsupported') {
+    return 'gc n/a'
   }
 
   if (stats.eventCount === 0) {
