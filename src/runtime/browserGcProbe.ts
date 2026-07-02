@@ -34,6 +34,7 @@ type BrowserGcProbeOptions = {
   minHeapDropBytes?: number
   minHeapDropRatio?: number
   minLongFrameMs?: number
+  minNativeGcDurationMs?: number
   observeNativeGc?: (
     onEntry: (entry: NativeGcEntry) => void,
   ) => (() => void) | null
@@ -97,6 +98,7 @@ export const createBrowserGcProbe = (options: BrowserGcProbeOptions = {}) => {
   const minHeapDropBytes = options.minHeapDropBytes ?? bytesPerMegabyte
   const minHeapDropRatio = options.minHeapDropRatio ?? 0.05
   const minLongFrameMs = options.minLongFrameMs ?? 50
+  const minNativeGcDurationMs = options.minNativeGcDurationMs ?? 2
   const observeNativeGc = options.observeNativeGc ?? observeNativeGcEntries
   let disconnectNativeObserver: (() => void) | null = null
   let lastHeapUsedBytes: number | null = null
@@ -166,6 +168,10 @@ export const createBrowserGcProbe = (options: BrowserGcProbeOptions = {}) => {
     hasFrameBaseline = false
     sampleHeapBaseline()
     disconnectNativeObserver = observeNativeGc((entry) => {
+      if (entry.duration < minNativeGcDurationMs) {
+        return
+      }
+
       recordEvent('native', entry.startTime, Math.max(0, entry.duration), null)
     })
     stats.nativeObserverSupported = disconnectNativeObserver !== null
@@ -235,8 +241,6 @@ export const createBrowserGcProbe = (options: BrowserGcProbeOptions = {}) => {
         }
         return
       }
-
-      recordEvent('frame-gap', nowMs, estimatedPauseMs, null)
     },
     setEnabled: (enabled: boolean) => {
       if (enabled) {

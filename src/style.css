@@ -1876,7 +1876,7 @@ button.app-dialog-setting {
 }
 
 #app .fps-indicator[data-status="warning"] {
-  --fps-meter-accent: rgba(250, 204, 21, 0.86);
+  --fps-meter-accent: rgba(250, 204, 21, 0.9);
 }
 
 #app .fps-indicator[data-status="danger"] {

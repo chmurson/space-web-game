@@ -26,10 +26,13 @@ type StarfieldLayerConfig = {
 }
 
 type StarfieldLayerState = {
+  colorAttribute: THREE.BufferAttribute | null
   config: StarfieldLayerConfig
+  capacity: number
   geometry: THREE.BufferGeometry
   group: THREE.Group
   material: THREE.PointsMaterial
+  positionAttribute: THREE.BufferAttribute | null
   visibleKey: string | null
 }
 
@@ -119,6 +122,8 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
 ]
 
 const minimumVisibleLayerOpacity = 0.02
+const maxStarfieldViewportSize = 2_500
+const maxStarfieldViewportAspectRatio = 4
 
 const hashInt = (input: number) => {
   let value = input | 0
@@ -170,12 +175,13 @@ const getFadeOutMultiplier = (
 const getLayerOpacity = (config: StarfieldLayerConfig, viewportSize: number) =>
   config.opacity * getFadeOutMultiplier(config, viewportSize)
 
-const pushStarColor = (
-  colors: number[],
+const setStarColor = (
+  colors: Float32Array,
   config: StarfieldLayerConfig,
   chunkX: number,
   chunkZ: number,
   starIndex: number,
+  offset: number,
 ) => {
   const brightness = THREE.MathUtils.lerp(
     config.minBrightness,
@@ -186,10 +192,12 @@ const pushStarColor = (
   const warm = Math.max(temperature, 0)
   const cool = Math.max(-temperature, 0)
 
-  colors.push(
-    clampColor(brightness * (0.9 + warm * 0.16)),
-    clampColor(brightness * (0.94 + (1 - Math.abs(temperature)) * 0.06)),
-    clampColor(brightness * (1.02 + cool * 0.18 - warm * 0.05)),
+  colors[offset] = clampColor(brightness * (0.9 + warm * 0.16))
+  colors[offset + 1] = clampColor(
+    brightness * (0.94 + (1 - Math.abs(temperature)) * 0.06),
+  )
+  colors[offset + 2] = clampColor(
+    brightness * (1.02 + cool * 0.18 - warm * 0.05),
   )
 }
 
@@ -219,6 +227,44 @@ const getVisibleChunkRange = (options: {
   max: Math.floor((options.center + options.radius) / options.chunkSize),
   min: Math.floor((options.center - options.radius) / options.chunkSize),
 })
+
+const getLayerCapacity = (config: StarfieldLayerConfig) => {
+  const viewportSize = config.fadeOutEndViewport ?? maxStarfieldViewportSize
+  const radius = getVisibleRadius({
+    chunkSize: config.chunkSize,
+    viewportHeight: 1,
+    viewportSize,
+    viewportWidth: maxStarfieldViewportAspectRatio,
+  })
+  const chunkRange = getVisibleChunkRange({
+    center: 0,
+    chunkSize: config.chunkSize,
+    radius,
+  })
+  const chunkCount = (chunkRange.max - chunkRange.min + 1) ** 2
+
+  return chunkCount * (config.starsPerChunk + config.extraStarsPerChunk)
+}
+
+const ensureLayerAttributes = (layer: StarfieldLayerState) => {
+  if (layer.positionAttribute && layer.colorAttribute) {
+    return
+  }
+
+  const capacity = getLayerCapacity(layer.config)
+  const positions = new Float32Array(capacity * 3)
+  const colors = new Float32Array(capacity * 3)
+  const positionAttribute = new THREE.BufferAttribute(positions, 3)
+  const colorAttribute = new THREE.BufferAttribute(colors, 3)
+  positionAttribute.setUsage(THREE.DynamicDrawUsage)
+  colorAttribute.setUsage(THREE.DynamicDrawUsage)
+
+  layer.capacity = capacity
+  layer.positionAttribute = positionAttribute
+  layer.colorAttribute = colorAttribute
+  layer.geometry.setAttribute('position', positionAttribute)
+  layer.geometry.setAttribute('color', colorAttribute)
+}
 
 const buildLayerGeometry = (
   layer: StarfieldLayerState,
@@ -258,40 +304,59 @@ const buildLayerGeometry = (
     return
   }
 
-  const positions: number[] = []
-  const colors: number[] = []
+  const chunkCount =
+    (chunkRangeX.max - chunkRangeX.min + 1) *
+    (chunkRangeZ.max - chunkRangeZ.min + 1)
+  ensureLayerAttributes(layer)
+
+  const positionAttribute = layer.positionAttribute
+  const colorAttribute = layer.colorAttribute
+  const positions = positionAttribute?.array
+  const colors = colorAttribute?.array
+  if (
+    !positionAttribute ||
+    !colorAttribute ||
+    !(positions instanceof Float32Array) ||
+    !(colors instanceof Float32Array)
+  ) {
+    return
+  }
+  if (
+    chunkCount * (config.starsPerChunk + config.extraStarsPerChunk) >
+    layer.capacity
+  ) {
+    return
+  }
+
+  let starCount = 0
 
   for (let chunkX = chunkRangeX.min; chunkX <= chunkRangeX.max; chunkX += 1) {
     for (let chunkZ = chunkRangeZ.min; chunkZ <= chunkRangeZ.max; chunkZ += 1) {
-      const starCount =
+      const chunkStarCount =
         config.starsPerChunk +
         Math.floor(
           hash01(config.seed, chunkX, chunkZ, 0) *
             (config.extraStarsPerChunk + 1),
         )
 
-      for (let starIndex = 0; starIndex < starCount; starIndex += 1) {
-        positions.push(
+      for (let starIndex = 0; starIndex < chunkStarCount; starIndex += 1) {
+        const offset = starCount * 3
+        positions[offset] =
           (chunkX + hash01(config.seed, chunkX, chunkZ, starIndex, 1)) *
-            config.chunkSize,
-          0,
+          config.chunkSize
+        positions[offset + 1] = 0
+        positions[offset + 2] =
           (chunkZ + hash01(config.seed, chunkX, chunkZ, starIndex, 2)) *
-            config.chunkSize,
-        )
-        pushStarColor(colors, config, chunkX, chunkZ, starIndex)
+          config.chunkSize
+        setStarColor(colors, config, chunkX, chunkZ, starIndex, offset)
+        starCount += 1
       }
     }
   }
 
-  layer.geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(positions, 3),
-  )
-  layer.geometry.setAttribute(
-    'color',
-    new THREE.Float32BufferAttribute(colors, 3),
-  )
-  layer.geometry.computeBoundingSphere()
+  layer.geometry.setDrawRange(0, starCount)
+  positionAttribute.needsUpdate = true
+  colorAttribute.needsUpdate = true
   layer.visibleKey = visibleKey
 }
 
@@ -319,10 +384,13 @@ const createStarfieldLayer = (
   group.add(points)
 
   return {
+    colorAttribute: null,
     config,
+    capacity: 0,
     geometry,
     group,
     material,
+    positionAttribute: null,
     visibleKey: null,
   }
 }

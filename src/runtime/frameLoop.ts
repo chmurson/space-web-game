@@ -52,7 +52,7 @@ export const createFrameLoop = (options: {
   trajectoryPresentation: TrajectoryPresentation
 }) => {
   let lastTime = performance.now()
-  let smoothedFps = 60
+  let meterFps = 60
   let smoothedCpuMs = 0
   const scenarioTrajectoryPredictionRuntime =
     createTrajectoryPredictionRuntime()
@@ -60,6 +60,7 @@ export const createFrameLoop = (options: {
   let scenarioTrajectoryPredictionInitialized = false
   const browserGcProbe = createBrowserGcProbe()
   const fpsFrameSamples: FpsMeterFrameSample[] = []
+  const fpsMeterFpsWindowMs = 1_000
   const fpsFrameSampleWindowMs = 5_000
 
   const syncDebugSceneVisibility = () => {
@@ -87,10 +88,10 @@ export const createFrameLoop = (options: {
     }
   }
 
-  const recordFpsFrameSample = (nowMs: number, frameIntervalMs: number) => {
+  const recordFpsFrameSample = (nowMs: number, cpuMs: number) => {
     fpsFrameSamples.push({
       atMs: nowMs,
-      frameMs: frameIntervalMs,
+      cpuMs,
     })
 
     const sampleCutoffMs = nowMs - fpsFrameSampleWindowMs
@@ -102,6 +103,34 @@ export const createFrameLoop = (options: {
     }
   }
 
+  const getRollingFps = (nowMs: number) => {
+    const sampleCutoffMs = nowMs - fpsMeterFpsWindowMs
+    let sampleCount = 0
+    let oldestSampleAtMs = nowMs
+
+    for (let index = fpsFrameSamples.length - 1; index >= 0; index -= 1) {
+      const sample = fpsFrameSamples[index]
+      if (sample.atMs <= sampleCutoffMs) {
+        break
+      }
+
+      sampleCount += 1
+      oldestSampleAtMs = sample.atMs
+    }
+
+    const observedWindowMs = nowMs - oldestSampleAtMs
+    if (sampleCount < 2 || observedWindowMs < fpsMeterFpsWindowMs * 0.5) {
+      return meterFps
+    }
+
+    const measuredWindowMs =
+      observedWindowMs >= fpsMeterFpsWindowMs * 0.95
+        ? fpsMeterFpsWindowMs
+        : observedWindowMs
+
+    return (sampleCount * 1_000) / measuredWindowMs
+  }
+
   const animate = (time: number) => {
     const frameStart = performance.now()
     const frameIntervalMs = time - lastTime
@@ -109,13 +138,6 @@ export const createFrameLoop = (options: {
     lastTime = time
     const fpsMeterVisible = isFpsMeterVisible()
     browserGcProbe.setEnabled(fpsMeterVisible)
-    if (fpsMeterVisible) {
-      smoothedFps = THREE.MathUtils.lerp(
-        smoothedFps,
-        1 / Math.max(realDt, 1 / 240),
-        0.12,
-      )
-    }
     const prompts = resolveScenarioPrompts(
       options.runtime,
       options.touchControls ? 'mobile' : 'desktop',
@@ -234,6 +256,11 @@ export const createFrameLoop = (options: {
 
     options.trajectoryPresentation.updateVisuals()
     const hudNowMs = performance.now()
+    if (fpsMeterVisible) {
+      meterFps = getRollingFps(hudNowMs)
+    } else if (fpsFrameSamples.length > 0) {
+      fpsFrameSamples.length = 0
+    }
     options.hudPresentation.update({
       browserGcStats: browserGcProbe.getStats(),
       frameIntervalMs,
@@ -242,7 +269,7 @@ export const createFrameLoop = (options: {
       fpsMeterVisible,
       nowMs: hudNowMs,
       smoothedCpuMs,
-      smoothedFps,
+      smoothedFps: meterFps,
     })
     options.crashMenu?.syncState()
     options.topMenu?.syncState()
@@ -253,18 +280,16 @@ export const createFrameLoop = (options: {
       fpsMeterVisible,
     )
 
-    const frameCpuMs = performance.now() - frameStart
     const frameEndMs = performance.now()
+    const frameCpuMs = frameEndMs - frameStart
+    if (fpsMeterVisible) {
+      recordFpsFrameSample(frameEndMs, frameCpuMs)
+    }
     if (fpsMeterVisible) {
       browserGcProbe.recordFrame({
         frameIntervalMs,
         nowMs: frameEndMs,
       })
-    }
-    if (fpsMeterVisible) {
-      recordFpsFrameSample(frameEndMs, frameIntervalMs)
-    } else if (fpsFrameSamples.length > 0) {
-      fpsFrameSamples.length = 0
     }
     if (fpsMeterVisible) {
       smoothedCpuMs = THREE.MathUtils.lerp(smoothedCpuMs, frameCpuMs, 0.15)
@@ -322,7 +347,7 @@ export const createFrameLoop = (options: {
         fpsMeterVisible,
         nowMs: hudNowMs,
         smoothedCpuMs,
-        smoothedFps,
+        smoothedFps: meterFps,
       })
       options.crashMenu?.syncState()
       options.topMenu?.syncState()

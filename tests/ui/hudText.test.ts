@@ -143,18 +143,22 @@ describe('getFpsMeterText', () => {
   it('formats fps, frame time, combined cycle timings, and 60hz headroom', () => {
     expect(
       getFpsMeterText({
-        browserGcStats: createBrowserGcStats(),
+        browserGcStats: createBrowserGcStats({ heapSamplingSupported: true }),
+        graphMaxCpuMs: 42.25,
         smoothedCpuMs: 5.25,
         smoothedFps: 59.94,
         smoothedGpuMs: 8.4,
       }),
-    ).toBe('FPS 59.9\nframe 16.7ms\ncpu 5.3ms | gpu 8.4ms\n60Hz +8.3ms\ngc? 0')
+    ).toBe(
+      'FPS 59.9\nframe 16.7ms\ncpu max 42.3ms\ncpu 5.3ms | gpu 8.4ms\n60Hz +8.3ms\ngc? 0',
+    )
   })
 
   it('marks gpu timing unavailable when the browser cannot provide it yet', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats(),
+        graphMaxCpuMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -167,9 +171,11 @@ describe('getFpsMeterText', () => {
       getFpsMeterText({
         browserGcStats: createBrowserGcStats({
           eventCount: 3,
+          heapSamplingSupported: true,
           lastEstimatedPauseMs: 18.25,
           longestEstimatedPauseMs: 44.5,
         }),
+        graphMaxCpuMs: 80,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -177,10 +183,23 @@ describe('getFpsMeterText', () => {
     ).toContain('gc? 3 l18.3 m44.5')
   })
 
+  it('marks gc unavailable when the browser exposes no gc or heap signal', () => {
+    expect(
+      getFpsMeterText({
+        browserGcStats: createBrowserGcStats(),
+        graphMaxCpuMs: null,
+        smoothedCpuMs: 7.1,
+        smoothedFps: 60,
+        smoothedGpuMs: null,
+      }),
+    ).toContain('gc n/a')
+  })
+
   it('shows when gc probing is off', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats({ isEnabled: false }),
+        graphMaxCpuMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -194,19 +213,20 @@ describe('getFpsMeterGraphModel', () => {
     const graph = getFpsMeterGraphModel({
       browserGcStats: createBrowserGcStats(),
       frameSamples: [
-        { atMs: 5_000, frameMs: 16 },
-        { atMs: 7_500, frameMs: 32 },
-        { atMs: 10_000, frameMs: 80 },
+        { atMs: 5_000, cpuMs: 16 },
+        { atMs: 7_500, cpuMs: 32 },
+        { atMs: 10_000, cpuMs: 80 },
       ],
       nowMs: 10_000,
     })
 
     expect(graph).toMatchObject({
       height: 28,
-      path: 'M 0.0 22.4 L 56.0 16.8 L 112.0 0.0',
+      maxCpuMs: 80,
+      path: 'M 0.0 28.0 L 56.0 21.0 L 112.0 0.0',
       width: 112,
     })
-    expect(graph.budgetLineY).toBeCloseTo(22.17, 2)
+    expect(graph.budgetLineY).toBeCloseTo(27.71, 2)
   })
 
   it('filters old samples and maps recent gc events to vertical markers', () => {
@@ -218,14 +238,28 @@ describe('getFpsMeterGraphModel', () => {
         ],
       }),
       frameSamples: [
-        { atMs: 4_900, frameMs: 80 },
-        { atMs: 10_000, frameMs: 20 },
+        { atMs: 4_900, cpuMs: 80 },
+        { atMs: 10_000, cpuMs: 20 },
       ],
       nowMs: 10_000,
     })
 
-    expect(graph.path).toBe('M 112.0 21.0')
+    expect(graph.path).toBe('M 112.0 28.0')
     expect(graph.gcMarkerXs).toEqual([56])
+  })
+
+  it('keeps the visible low cpu cost at the bottom while scaling bumps upward', () => {
+    const graph = getFpsMeterGraphModel({
+      browserGcStats: createBrowserGcStats(),
+      frameSamples: [
+        { atMs: 5_000, cpuMs: 2.5 },
+        { atMs: 7_500, cpuMs: 2.6 },
+        { atMs: 10_000, cpuMs: 2.7 },
+      ],
+      nowMs: 10_000,
+    })
+
+    expect(graph.path).toBe('M 0.0 28.0 L 56.0 14.0 L 112.0 0.0')
   })
 })
 
@@ -240,41 +274,71 @@ describe('getFpsMeterStatus', () => {
     ).toBe('good')
   })
 
-  it('warns before the 60hz frame budget is exhausted', () => {
-    expect(
-      getFpsMeterStatus({
-        smoothedCpuMs: 14,
-        smoothedFps: 58,
-        smoothedGpuMs: null,
-      }),
-    ).toBe('warning')
-  })
-
-  it('warns before the effective 30 FPS frame budget is exhausted', () => {
-    expect(
-      getFpsMeterStatus({
-        smoothedCpuMs: 27,
-        smoothedFps: 30,
-        smoothedGpuMs: null,
-      }),
-    ).toBe('warning')
-  })
-
-  it('reports danger when work exceeds a 60hz frame budget', () => {
+  it('stays good before the 60hz frame budget is crossed', () => {
     expect(
       getFpsMeterStatus({
         smoothedCpuMs: 12,
         smoothedFps: 60,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('good')
+  })
+
+  it('warns when work slightly exceeds the 60hz frame budget', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 18,
+        smoothedFps: 60,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('warning')
+  })
+
+  it('warns when measured fps indicates moderate frame loss', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 5,
+        smoothedFps: 26,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('warning')
+  })
+
+  it('warns when gpu work slightly exceeds the 60hz frame budget', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 5,
+        smoothedFps: 60,
         smoothedGpuMs: 18,
+      }),
+    ).toBe('warning')
+  })
+
+  it('reports danger when work exceeds the 60hz frame budget by a large factor', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 26,
+        smoothedFps: 60,
+        smoothedGpuMs: null,
       }),
     ).toBe('danger')
   })
 
-  it('reports danger when work exceeds the effective 30 FPS frame budget', () => {
+  it('reports danger when gpu work exceeds the 60hz frame budget by a large factor', () => {
     expect(
       getFpsMeterStatus({
-        smoothedCpuMs: 34,
-        smoothedFps: 30,
+        smoothedCpuMs: 5,
+        smoothedFps: 60,
+        smoothedGpuMs: 26,
+      }),
+    ).toBe('danger')
+  })
+
+  it('reports danger when measured fps indicates heavy frame loss', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 5,
+        smoothedFps: 22,
         smoothedGpuMs: null,
       }),
     ).toBe('danger')

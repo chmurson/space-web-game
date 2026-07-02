@@ -115,7 +115,7 @@ const getGcProbeMode = (stats: BrowserGcProbeStats) => {
     return 'native'
   }
 
-  return stats.heapSamplingSupported ? 'heap-drop' : 'frame-gap'
+  return stats.heapSamplingSupported ? 'heap-drop' : 'unsupported'
 }
 
 const getRecordValue = (
@@ -221,11 +221,12 @@ export type FpsMeterStatusInput = {
 
 export type FpsMeterTextInput = FpsMeterStatusInput & {
   browserGcStats: BrowserGcProbeStats
+  graphMaxCpuMs: number | null
 }
 
 export type FpsMeterFrameSample = {
   atMs: number
-  frameMs: number
+  cpuMs: number
 }
 
 export type FpsMeterGraphInput = {
@@ -237,16 +238,19 @@ export type FpsMeterGraphInput = {
 export type FpsMeterGraphModel = {
   budgetLineY: number
   gcMarkerXs: number[]
+  maxCpuMs: number | null
   height: number
   path: string
   width: number
 }
 
 const frameBudgetMs60 = 1000 / 60
+const fpsMeterDangerBudgetRatio = 1.5
+const fpsMeterDangerFps = 24
 const fpsMeterGraphWindowMs = 5_000
 const fpsMeterGraphWidth = 112
 const fpsMeterGraphHeight = 28
-const fpsMeterGraphMaxFrameMs = 80
+const fpsMeterWarningFps = 28
 
 const formatSignedMs = (value: number) =>
   `${value >= 0 ? '+' : ''}${value.toFixed(1)}ms`
@@ -258,15 +262,16 @@ const getLimitingWorkMs = (input: FpsMeterStatusInput) =>
 
 const getFrameMsForFps = (fps: number) => 1000 / Math.max(fps, 1)
 
-const getEffectiveFrameBudgetMs = (fps: number) =>
-  Math.max(frameBudgetMs60, getFrameMsForFps(fps))
-
 const getCompactGcProbeText = (stats: BrowserGcProbeStats) => {
   const mode = getGcProbeMode(stats)
   const label = mode === 'native' ? 'gc' : 'gc?'
 
   if (!stats.isEnabled) {
     return `${label} off`
+  }
+
+  if (mode === 'unsupported') {
+    return 'gc n/a'
   }
 
   if (stats.eventCount === 0) {
@@ -293,35 +298,55 @@ export const getFpsMeterGraphModel = (
       0,
       fpsMeterGraphWidth,
     )
-  const toY = (frameMs: number) =>
+  let minCpuMs: number | null = null
+  let maxCpuMs: number | null = null
+  const frameBuckets = Array<number>(fpsMeterGraphWidth + 1).fill(-1)
+  for (const sample of input.frameSamples) {
+    if (sample.atMs < windowStartMs || sample.atMs > input.nowMs) {
+      continue
+    }
+
+    minCpuMs = Math.min(minCpuMs ?? Number.POSITIVE_INFINITY, sample.cpuMs)
+    maxCpuMs = Math.max(maxCpuMs ?? 0, sample.cpuMs)
+    const bucketX = Math.round(toX(sample.atMs))
+    frameBuckets[bucketX] = Math.max(frameBuckets[bucketX], sample.cpuMs)
+  }
+
+  const minScaleCpuMs = minCpuMs ?? 0
+  const graphScaleCpuRangeMs = Math.max(
+    (maxCpuMs ?? frameBudgetMs60) - minScaleCpuMs,
+    Number.EPSILON,
+  )
+  const toY = (cpuMs: number) =>
     fpsMeterGraphHeight -
-    clamp(frameMs / fpsMeterGraphMaxFrameMs, 0, 1) * fpsMeterGraphHeight
+    clamp((cpuMs - minScaleCpuMs) / graphScaleCpuRangeMs, 0, 1) *
+      fpsMeterGraphHeight
 
-  const points = input.frameSamples
-    .filter(
-      (sample) => sample.atMs >= windowStartMs && sample.atMs <= input.nowMs,
-    )
-    .map((sample) => ({
-      x: toX(sample.atMs),
-      y: toY(sample.frameMs),
-    }))
+  const pathSegments: string[] = []
+  for (let x = 0; x < frameBuckets.length; x += 1) {
+    const frameMs = frameBuckets[x]
+    if (frameMs < 0) {
+      continue
+    }
 
-  const path = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? 'M' : 'L'} ${formatGraphNumber(point.x)} ${formatGraphNumber(point.y)}`,
+    pathSegments.push(
+      `${pathSegments.length === 0 ? 'M' : 'L'} ${formatGraphNumber(x)} ${formatGraphNumber(toY(frameMs))}`,
     )
-    .join(' ')
+  }
+
+  const gcMarkerXs: number[] = []
+  for (const event of input.browserGcStats.recentEvents) {
+    if (event.atMs >= windowStartMs && event.atMs <= input.nowMs) {
+      gcMarkerXs.push(toX(event.atMs))
+    }
+  }
 
   return {
     budgetLineY: toY(frameBudgetMs60),
-    gcMarkerXs: input.browserGcStats.recentEvents
-      .filter(
-        (event) => event.atMs >= windowStartMs && event.atMs <= input.nowMs,
-      )
-      .map((event) => toX(event.atMs)),
+    gcMarkerXs,
+    maxCpuMs,
     height: fpsMeterGraphHeight,
-    path,
+    path: pathSegments.join(' '),
     width: fpsMeterGraphWidth,
   }
 }
@@ -330,12 +355,17 @@ export const getFpsMeterStatus = (
   input: FpsMeterStatusInput,
 ): FpsMeterStatus => {
   const limitingWorkMs = getLimitingWorkMs(input)
-  const effectiveFrameBudgetMs = getEffectiveFrameBudgetMs(input.smoothedFps)
 
-  if (limitingWorkMs > effectiveFrameBudgetMs) {
+  if (
+    limitingWorkMs > frameBudgetMs60 * fpsMeterDangerBudgetRatio ||
+    input.smoothedFps < fpsMeterDangerFps
+  ) {
     return 'danger'
   }
-  if (limitingWorkMs > effectiveFrameBudgetMs * 0.8) {
+  if (
+    limitingWorkMs > frameBudgetMs60 ||
+    input.smoothedFps < fpsMeterWarningFps
+  ) {
     return 'warning'
   }
 
@@ -344,6 +374,10 @@ export const getFpsMeterStatus = (
 
 export const getFpsMeterText = (input: FpsMeterTextInput) => {
   const frameMs = getFrameMsForFps(input.smoothedFps)
+  const maxFrameText =
+    input.graphMaxCpuMs === null
+      ? 'cpu max n/a'
+      : `cpu max ${input.graphMaxCpuMs.toFixed(1)}ms`
   const headroomMs = frameBudgetMs60 - getLimitingWorkMs(input)
   const gpuText =
     input.smoothedGpuMs === null
@@ -354,6 +388,7 @@ export const getFpsMeterText = (input: FpsMeterTextInput) => {
   return [
     `FPS ${input.smoothedFps.toFixed(1)}`,
     `frame ${frameMs.toFixed(1)}ms`,
+    maxFrameText,
     cycleText,
     `60Hz ${formatSignedMs(headroomMs)}`,
     getCompactGcProbeText(input.browserGcStats),

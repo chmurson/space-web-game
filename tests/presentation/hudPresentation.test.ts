@@ -488,7 +488,7 @@ const createMetrics = (
 ) => ({
   browserGcStats: createBrowserGcStats(),
   frameIntervalMs: overrides.frameIntervalMs ?? 16,
-  fpsFrameSamples: [{ atMs: 1_000, frameMs: 16 }],
+  fpsFrameSamples: [{ atMs: 1_000, cpuMs: 16 }],
   fpsGraphNowMs: overrides.fpsGraphNowMs ?? overrides.nowMs ?? 1_000,
   fpsMeterVisible,
   nowMs: overrides.nowMs ?? 1_000,

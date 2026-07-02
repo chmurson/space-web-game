@@ -72,7 +72,7 @@ describe('createBrowserGcProbe', () => {
     ])
   })
 
-  it('falls back to frame-gap counting when heap sampling is unavailable', () => {
+  it('does not guess gc from frame gaps when heap sampling is unavailable', () => {
     const probe = createBrowserGcProbe({
       expectedFrameMs: 16,
       getUsedHeapBytes: () => null,
@@ -86,10 +86,10 @@ describe('createBrowserGcProbe', () => {
     probe.recordFrame({ frameIntervalMs: 72, nowMs: 88 })
 
     expect(probe.getStats()).toMatchObject({
-      eventCount: 1,
+      eventCount: 0,
       heapSamplingSupported: false,
-      lastEstimatedPauseMs: 56,
-      lastSource: 'frame-gap',
+      lastEstimatedPauseMs: null,
+      lastSource: null,
       totalReclaimedBytes: null,
     })
   })
@@ -150,6 +150,33 @@ describe('createBrowserGcProbe', () => {
 
     probe.disconnect()
     expect(disconnected).toBe(true)
+  })
+
+  it('ignores tiny native gc entries below the reporting threshold', () => {
+    let emit: (entry: { duration: number; startTime: number }) => void = (
+      _entry,
+    ) => {
+      throw new Error('native observer was not registered')
+    }
+    const probe = createBrowserGcProbe({
+      getUsedHeapBytes: () => null,
+      minNativeGcDurationMs: 2,
+      observeNativeGc: (onEntry) => {
+        emit = onEntry
+        return () => undefined
+      },
+    })
+
+    probe.setEnabled(true)
+    emit?.({ duration: 0.8, startTime: 42 })
+    emit?.({ duration: 2.5, startTime: 84 })
+
+    expect(probe.getStats()).toMatchObject({
+      eventCount: 1,
+      lastEstimatedPauseMs: 2.5,
+      lastEventAtMs: 84,
+      lastSource: 'native',
+    })
   })
 
   it('does not sample or observe gc while disabled', () => {

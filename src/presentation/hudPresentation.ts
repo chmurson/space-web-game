@@ -643,18 +643,20 @@ export const createHudPresentation = (options: {
 
       if (shouldUpdateFpsIndicator) {
         fpsIndicatorFrameCyclesSinceUpdate = 0
+        const graph = getFpsMeterGraphModel({
+          browserGcStats: metrics.browserGcStats,
+          frameSamples: metrics.fpsFrameSamples,
+          nowMs: metrics.fpsGraphNowMs,
+        })
         const fpsMeterInput = {
           browserGcStats: metrics.browserGcStats,
+          graphMaxCpuMs: graph.maxCpuMs,
           smoothedCpuMs: metrics.smoothedCpuMs,
           smoothedFps: metrics.smoothedFps,
           smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
         }
         options.overlayUi.renderFpsIndicator({
-          graph: getFpsMeterGraphModel({
-            browserGcStats: metrics.browserGcStats,
-            frameSamples: metrics.fpsFrameSamples,
-            nowMs: metrics.fpsGraphNowMs,
-          }),
+          graph,
           status: getFpsMeterStatus(fpsMeterInput),
           text: getFpsMeterText(fpsMeterInput),
         })
