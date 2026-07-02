@@ -1427,6 +1427,17 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       }))
     const getCameraStatus = () =>
       menu.element.querySelector('[data-in-game-camera-status]')?.textContent
+    const getCameraOptionAriaLabels = () =>
+      Object.fromEntries(
+        Array.from(
+          menu.element.querySelectorAll(
+            '[data-camera-mode-option]',
+          ) as NodeListOf<HTMLButtonElement>,
+        ).map((element) => [
+          element.dataset.cameraModeOption,
+          element.getAttribute('aria-label'),
+        ]),
+      )
     const getCoastHorizon = () =>
       menu.element.querySelector('[data-in-game-coast-horizon]')?.textContent
     const getKeyboardHints = () =>
@@ -1475,6 +1486,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     cameraModeChangesLocked = true
     menu.syncState()
     const cameraOptionsWhenLocked = getCameraOptions()
+    const cameraOptionAriaLabelsWhenLocked = getCameraOptionAriaLabels()
     const targetLabelWhenLocked =
       getCameraOption('target')?.getAttribute('aria-label')
     getCameraOption('unlocked')?.click()
@@ -1519,6 +1531,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     return {
       cameraModeDataAfterTarget,
       cameraModeDataInitial,
+      cameraOptionAriaLabelsWhenLocked,
       cameraOptionsAfterTarget,
       cameraOptionsInitial,
       cameraOptionsWhenLocked,
@@ -1550,6 +1563,11 @@ test('keeps the in-game controls menu adapter state and actions', async ({
   expect(result).toEqual({
     cameraModeDataAfterTarget: 'target',
     cameraModeDataInitial: 'centered',
+    cameraOptionAriaLabelsWhenLocked: {
+      centered: 'Camera mode changes unavailable: Spacecraft',
+      target: 'Camera mode changes unavailable: Target',
+      unlocked: 'Camera mode changes unavailable: Free roam',
+    },
     cameraOptionsAfterTarget: [
       {
         disabled: false,

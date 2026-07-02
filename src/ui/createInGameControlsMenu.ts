@@ -1,5 +1,6 @@
 import type { UIUserAction } from '../input/uiUserActions'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
+import { getCameraModeAction } from './cameraModeActions'
 import {
   InGameControlsMenuSurface,
   type InGameControlsMenuSurfaceProps,
@@ -17,13 +18,6 @@ type InGameControlsMenuRenderProps = Omit<
   InGameControlsMenuSurfaceProps,
   'rootRef'
 >
-
-const getCameraModeAction = (mode: CameraControlMode): UIUserAction =>
-  mode === 'unlocked'
-    ? 'setCameraUnlocked'
-    : mode === 'centered'
-      ? 'setCameraCentered'
-      : 'setCameraTarget'
 
 export const createInGameControlsMenu = (options: {
   app: HTMLElement

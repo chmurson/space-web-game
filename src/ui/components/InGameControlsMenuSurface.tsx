@@ -1,4 +1,5 @@
 import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
+import { getCameraModeAction } from '../cameraModeActions'
 
 export type InGameControlsMenuSurfaceProps = {
   cameraMode: CameraControlMode
@@ -17,11 +18,10 @@ export type InGameControlsMenuSurfaceProps = {
 }
 
 const cameraModeOptions = [
-  { action: 'setCameraUnlocked', label: 'Free roam', mode: 'unlocked' },
-  { action: 'setCameraCentered', label: 'Spacecraft', mode: 'centered' },
-  { action: 'setCameraTarget', label: 'Target', mode: 'target' },
+  { label: 'Free roam', mode: 'unlocked' },
+  { label: 'Spacecraft', mode: 'centered' },
+  { label: 'Target', mode: 'target' },
 ] satisfies Array<{
-  action: string
   label: string
   mode: CameraControlMode
 }>
@@ -110,13 +110,13 @@ export const InGameControlsMenuSurface = ({
                         ? 'segmented-control-option segmented-control-option-selected'
                         : 'segmented-control-option'
                     }
-                    data-in-game-action={option.action}
+                    data-in-game-action={getCameraModeAction(option.mode)}
                     data-camera-mode-option={option.mode}
                     disabled={cameraModeChangesLocked}
                     aria-pressed={selected}
                     aria-label={
                       cameraModeChangesLocked
-                        ? `Camera mode changes unavailable: ${cameraModeDescription}`
+                        ? `Camera mode changes unavailable: ${option.label}`
                         : `Set camera mode to ${option.label}`
                     }
                     onClick={() => onCameraModeSelect(option.mode)}

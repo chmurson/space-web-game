@@ -16,9 +16,9 @@ Issue #159 asks players to center the camera on the active assist/navigation tar
 - `src/scenario/scenarioDirectiveTypes.ts` owns the camera mode union, validator, and cycle order.
 - `src/runtime/runtimeActions.ts` owns camera target resolution and mode changes.
 - `src/input/keyboardShortcuts.ts` owns the `C` keyboard mapping.
-- `src/ui/components/InGameControlsMenuSurface.tsx` and `src/ui/createInGameControlsMenu.ts` own the in-game segmented camera control.
+- `src/ui/components/InGameControlsMenuSurface.tsx`, `src/ui/createInGameControlsMenu.ts`, and `src/ui/cameraModeActions.ts` own the in-game segmented camera control.
 - `src/app/createAppComponents.ts` owns keyboard-triggered camera-mode notices.
-- `src/input/pointerCameraInput.ts` and `src/ui/touchControls/createTouchControls.ts` keep drag-to-unlock behavior consistent for all follow modes.
+- `src/input/pointerCameraInput.ts`, `src/input/intentionalSwipeThreshold.ts`, and `src/ui/touchControls/createTouchControls.ts` keep drag-to-unlock behavior consistent for all follow modes.
 
 ## Decisions
 
@@ -36,6 +36,16 @@ Issue #159 asks players to center the camera on the active assist/navigation tar
 - `npm run test:gui` passed: 36 Playwright GUI tests.
 - Inspected `tmp/playwright-results/mobileHudScreenshot-captur-144e3-menu-open-over-gameplay-HUD-mobile-chromium/mobile-in-game-controls-menu.png` and `tmp/playwright-results/mobileHudScreenshot-captur-86be2-ame-controls-keyboard-hints-mobile-chromium/wide-in-game-controls-keyboard-hints.png`; the segmented camera control fit without overlap and the keyboard guide showed `Camera` / `C`.
 - `coderabbit --base main --agent` completed with 5 findings. Fixed the two in-scope findings for this issue: validation wording in this note and camera-control copy. Skipped three Reach the Moon highscore findings as out of scope for issue #159.
+
+PR #161 follow-up validation:
+
+- `npx biome lint` on touched source and test files passed.
+- `git diff --check` passed.
+- `npm test` passed: 58 Vitest files, 430 Vitest tests, plus 16 automation-claim tests.
+- `npm run build` passed, with the existing Vite large-chunk warning.
+- `npm run test:gui` passed: 36 Playwright GUI tests.
+- Inspected `tmp/playwright-results/mobileHudScreenshot-captur-144e3-menu-open-over-gameplay-HUD-mobile-chromium/mobile-in-game-controls-menu.png` and `tmp/playwright-results/mobileHudScreenshot-captur-86be2-ame-controls-keyboard-hints-mobile-chromium/wide-in-game-controls-keyboard-hints.png`; the controls menu still fit without overlap.
+- `coderabbit --base main --agent` completed with 0 findings.
 
 ## Follow-Ups
 
