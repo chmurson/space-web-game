@@ -44,14 +44,26 @@ export type ReachMoonHighscoreRollup = {
   period: ReachMoonHighscorePeriod
 }
 
+export type ReachMoonHighscoreRollups = Partial<
+  Record<ReachMoonHighscorePeriod, ReachMoonHighscoreRollup>
+>
+
 export type ReachMoonHighscoreListResponse = {
-  rollup: ReachMoonHighscoreRollup
+  rollups: ReachMoonHighscoreRollups
 }
 
 export type ReachMoonHighscoreSubmitResponse = {
-  record: RankedReachMoonHighscoreRecord
-  rollup: ReachMoonHighscoreRollup
+  record: ReachMoonHighscoreRecord
+  rollups: ReachMoonHighscoreRollups
 }
+
+export const selectReachMoonHighscoreDisplayPeriod = (
+  rollups: ReachMoonHighscoreRollups,
+  fallbackPeriod: ReachMoonHighscorePeriod = 'daily',
+): ReachMoonHighscorePeriod =>
+  reachMoonHighscorePeriods.find(
+    (period) => (rollups[period]?.entries.length ?? 0) > 0,
+  ) ?? fallbackPeriod
 
 export type ReachMoonHighscoreValidationError = {
   code:

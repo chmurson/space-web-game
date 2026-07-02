@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import type {
+  OrbitPointDisplaySettings,
   TouchControlSide,
   TouchTrajectoryControlState,
 } from '../../userSettingsStorage'
@@ -21,6 +22,24 @@ const trajectoryOptions = [
 
 const joinClassNames = (...classNames: Array<string | false | undefined>) =>
   classNames.filter(Boolean).join(' ')
+
+const getOrbitPointDisplaySummary = (settings: OrbitPointDisplaySettings) => {
+  if (!settings.markersVisible) {
+    return 'Markers off'
+  }
+
+  if (!settings.labelsVisible) {
+    return 'Markers on, labels off'
+  }
+
+  return [
+    'Markers on',
+    'labels on',
+    `altitude ${settings.altitudeVisible ? 'on' : 'off'}`,
+    `center ${settings.centerDistanceVisible ? 'on' : 'off'}`,
+    `name ${settings.pointNameVisible ? 'on' : 'off'}`,
+  ].join(', ')
+}
 
 const UiSettingsSegmentedControl = <TValue extends string>({
   ariaLabel,
@@ -80,14 +99,72 @@ const UiSettingsRow = ({
   </div>
 )
 
+const UiSettingsNavigationRow = ({
+  label,
+  onClick,
+  summary,
+}: {
+  label: string
+  onClick(): void
+  summary: string
+}) => (
+  <button
+    type="button"
+    class="app-dialog-setting app-dialog-setting-button"
+    aria-label={`${label}: ${summary}`}
+    onClick={onClick}
+  >
+    <span class="app-dialog-setting-copy">
+      <span class="app-dialog-setting-name">{label}</span>
+      <span class="app-dialog-setting-summary">{summary}</span>
+    </span>
+    <span class="app-dialog-setting-chevron" aria-hidden="true">
+      &gt;
+    </span>
+  </button>
+)
+
+const UiSettingsSwitch = ({
+  checked,
+  disabled = false,
+  label,
+  onChange,
+}: {
+  checked: boolean
+  disabled?: boolean
+  label: string
+  onChange(checked: boolean): void
+}) => (
+  <button
+    type="button"
+    class="app-dialog-setting app-dialog-switch"
+    role="switch"
+    aria-checked={checked}
+    disabled={disabled}
+    onClick={() => onChange(!checked)}
+  >
+    <span class="app-dialog-setting-name">{label}</span>
+    <span class="app-dialog-switch-track" aria-hidden="true">
+      <span />
+    </span>
+  </button>
+)
+
+export type UiSettingsDialogPane = 'main' | 'orbitPointDisplay'
+
 export type UiSettingsDialogSurfaceProps = {
+  activePane: UiSettingsDialogPane
   dialogId: string
+  orbitPointDisplay: OrbitPointDisplaySettings
   open: boolean
   rootRef(element: HTMLElement | null): void
   touchBurnControlSide: TouchControlSide
   touchTargetControlSide: TouchControlSide
   touchTrajectoryControlSide: TouchTrajectoryControlState
   touchWarpControlSide: TouchControlSide
+  onBackToMainSettings(): void
+  onOpenOrbitPointDisplaySettings(): void
+  onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onTouchBurnControlSideChange(side: TouchControlSide): void
   onTouchTargetControlSideChange(side: TouchControlSide): void
   onTouchTrajectoryControlSideChange(side: TouchTrajectoryControlState): void
@@ -95,19 +172,183 @@ export type UiSettingsDialogSurfaceProps = {
 }
 
 export const UiSettingsDialogSurface = ({
+  activePane,
   dialogId,
+  orbitPointDisplay,
   open,
   rootRef,
   touchBurnControlSide,
   touchTargetControlSide,
   touchTrajectoryControlSide,
   touchWarpControlSide,
+  onBackToMainSettings,
+  onOpenOrbitPointDisplaySettings,
+  onOrbitPointDisplayChange,
   onTouchBurnControlSideChange,
   onTouchTargetControlSideChange,
   onTouchTrajectoryControlSideChange,
   onTouchWarpControlSideChange,
 }: UiSettingsDialogSurfaceProps) => {
-  const titleId = `${dialogId}-title`
+  const titleId =
+    activePane === 'orbitPointDisplay'
+      ? `${dialogId}-orbit-point-display-title`
+      : `${dialogId}-title`
+  const updateOrbitPointDisplay = (
+    key: keyof OrbitPointDisplaySettings,
+    value: boolean,
+  ) => onOrbitPointDisplayChange({ ...orbitPointDisplay, [key]: value })
+  const orbitLabelsDisabled = !orbitPointDisplay.markersVisible
+  const orbitFieldsDisabled =
+    !orbitPointDisplay.markersVisible || !orbitPointDisplay.labelsVisible
+
+  const mainPanel = (
+    <>
+      <header class="app-dialog-header">
+        <div>
+          <div class="app-dialog-kicker">Controls</div>
+          <h2 id={titleId} class="app-dialog-title">
+            UI settings
+          </h2>
+        </div>
+        <button
+          type="button"
+          class="app-dialog-button app-dialog-close"
+          aria-label="Close UI settings"
+          data-dialog-close="true"
+        >
+          Close
+        </button>
+      </header>
+
+      <div class="app-dialog-body">
+        <div class="app-dialog-setting-list">
+          <UiSettingsRow label="Burn side">
+            <UiSettingsSegmentedControl
+              ariaLabel="Burn control side"
+              onChange={onTouchBurnControlSideChange}
+              options={sideOptions}
+              value={touchBurnControlSide}
+            />
+          </UiSettingsRow>
+          <UiSettingsRow label="Warp side">
+            <UiSettingsSegmentedControl
+              ariaLabel="Warp control side"
+              onChange={onTouchWarpControlSideChange}
+              options={sideOptions}
+              value={touchWarpControlSide}
+            />
+          </UiSettingsRow>
+          <UiSettingsRow label="Target side">
+            <UiSettingsSegmentedControl
+              ariaLabel="Target control side"
+              onChange={onTouchTargetControlSideChange}
+              options={sideOptions}
+              value={touchTargetControlSide}
+            />
+          </UiSettingsRow>
+          <UiSettingsRow label="Trajectory side">
+            <UiSettingsSegmentedControl
+              ariaLabel="Trajectory control side"
+              onChange={onTouchTrajectoryControlSideChange}
+              options={trajectoryOptions}
+              value={touchTrajectoryControlSide}
+            />
+          </UiSettingsRow>
+          <UiSettingsNavigationRow
+            label="Orbit point display"
+            onClick={onOpenOrbitPointDisplaySettings}
+            summary={getOrbitPointDisplaySummary(orbitPointDisplay)}
+          />
+        </div>
+      </div>
+    </>
+  )
+
+  const orbitPointDisplayPanel = (
+    <>
+      <header class="app-dialog-header">
+        <div>
+          <div class="app-dialog-kicker">Display</div>
+          <h2 id={titleId} class="app-dialog-title">
+            Orbit point display
+          </h2>
+        </div>
+        <div class="app-dialog-header-actions">
+          <button
+            type="button"
+            class="app-dialog-button"
+            onClick={onBackToMainSettings}
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            class="app-dialog-button app-dialog-close"
+            aria-label="Close orbit point display settings"
+            data-dialog-close="true"
+          >
+            Close
+          </button>
+        </div>
+      </header>
+
+      <div class="app-dialog-body">
+        <div class="app-dialog-setting-list">
+          <UiSettingsSwitch
+            checked={orbitPointDisplay.markersVisible}
+            label="Show closest/farthest markers"
+            onChange={(checked) =>
+              updateOrbitPointDisplay('markersVisible', checked)
+            }
+          />
+          <UiSettingsSwitch
+            checked={orbitPointDisplay.labelsVisible}
+            disabled={orbitLabelsDisabled}
+            label="Show marker labels"
+            onChange={(checked) =>
+              updateOrbitPointDisplay('labelsVisible', checked)
+            }
+          />
+          <div
+            class={joinClassNames(
+              'app-dialog-setting-group',
+              orbitFieldsDisabled && 'app-dialog-setting-group-disabled',
+            )}
+            role="group"
+            aria-label="Marker label contents"
+          >
+            <span class="app-dialog-setting-group-label">
+              Marker label contents
+            </span>
+            <UiSettingsSwitch
+              checked={orbitPointDisplay.pointNameVisible}
+              disabled={orbitFieldsDisabled}
+              label="Show point name"
+              onChange={(checked) =>
+                updateOrbitPointDisplay('pointNameVisible', checked)
+              }
+            />
+            <UiSettingsSwitch
+              checked={orbitPointDisplay.altitudeVisible}
+              disabled={orbitFieldsDisabled}
+              label="Show altitude"
+              onChange={(checked) =>
+                updateOrbitPointDisplay('altitudeVisible', checked)
+              }
+            />
+            <UiSettingsSwitch
+              checked={orbitPointDisplay.centerDistanceVisible}
+              disabled={orbitFieldsDisabled}
+              label="Show center distance"
+              onChange={(checked) =>
+                updateOrbitPointDisplay('centerDistanceVisible', checked)
+              }
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  )
 
   return (
     <div class="app-dialog ui-settings-dialog" hidden={!open} ref={rootRef}>
@@ -119,59 +360,9 @@ export const UiSettingsDialogSurface = ({
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        <header class="app-dialog-header">
-          <div>
-            <div class="app-dialog-kicker">Controls</div>
-            <h2 id={titleId} class="app-dialog-title">
-              UI settings
-            </h2>
-          </div>
-          <button
-            type="button"
-            class="app-dialog-button app-dialog-close"
-            aria-label="Close UI settings"
-            data-dialog-close="true"
-          >
-            Close
-          </button>
-        </header>
-
-        <div class="app-dialog-body">
-          <div class="app-dialog-setting-list">
-            <UiSettingsRow label="Burn side">
-              <UiSettingsSegmentedControl
-                ariaLabel="Burn control side"
-                onChange={onTouchBurnControlSideChange}
-                options={sideOptions}
-                value={touchBurnControlSide}
-              />
-            </UiSettingsRow>
-            <UiSettingsRow label="Warp side">
-              <UiSettingsSegmentedControl
-                ariaLabel="Warp control side"
-                onChange={onTouchWarpControlSideChange}
-                options={sideOptions}
-                value={touchWarpControlSide}
-              />
-            </UiSettingsRow>
-            <UiSettingsRow label="Target side">
-              <UiSettingsSegmentedControl
-                ariaLabel="Target control side"
-                onChange={onTouchTargetControlSideChange}
-                options={sideOptions}
-                value={touchTargetControlSide}
-              />
-            </UiSettingsRow>
-            <UiSettingsRow label="Trajectory side">
-              <UiSettingsSegmentedControl
-                ariaLabel="Trajectory control side"
-                onChange={onTouchTrajectoryControlSideChange}
-                options={trajectoryOptions}
-                value={touchTrajectoryControlSide}
-              />
-            </UiSettingsRow>
-          </div>
-        </div>
+        {activePane === 'orbitPointDisplay'
+          ? orbitPointDisplayPanel
+          : mainPanel}
       </section>
     </div>
   )

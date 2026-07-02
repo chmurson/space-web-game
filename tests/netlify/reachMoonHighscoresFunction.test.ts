@@ -101,7 +101,7 @@ const createRecord = (
   id,
   playerName: `Pilot ${id}`,
   score: {
-    baseScorePoints: 1_000,
+    baseScorePoints: 0,
     fuelBonusPoints: 0,
     fuelRemainingKg: 0,
     missionElapsedSeconds: score.elapsed,
@@ -136,9 +136,9 @@ const seedRecord = (
 const readJson = async <T>(response: Response): Promise<T> =>
   (await response.json()) as T
 
-const createReceipt = () =>
+const createReceipt = (issuedAt = '2026-06-28T20:00:00.000Z') =>
   createReachMoonRunReceipt({
-    issuedAt: '2026-06-28T20:00:00.000Z',
+    issuedAt,
     secret,
   })
 
@@ -224,18 +224,18 @@ describe('reachMoonHighscores function', () => {
     blobMocks.getStore.mockReturnValue(store)
     const dailyOldRecord = createRecord(
       'daily-old',
-      { elapsed: 120, total: 900 },
+      { elapsed: 120, total: 200 },
       now,
     )
     const weeklyOldRecord = createRecord(
       'weekly-old',
-      { elapsed: 120, total: 900 },
+      { elapsed: 120, total: 200 },
       '2026-06-27T20:30:00.000Z',
     )
     const allTimeRecords = Array.from({ length: 10 }, (_, index) =>
       createRecord(
         `all-time-${index}`,
-        { elapsed: 1_000 + index, total: 900 - index },
+        { elapsed: 1_000 + index, total: 200 - index },
         `2026-06-${String(8 + index).padStart(2, '0')}T12:00:00.000Z`,
       ),
     )
@@ -256,8 +256,8 @@ describe('reachMoonHighscores function', () => {
     const response = await handler(
       new Request('https://example.test/api/reach-moon/highscores', {
         body: JSON.stringify({
-          fuelRemainingRatio: 1,
-          missionElapsedSeconds: 0,
+          fuelRemainingRatio: 0.9,
+          missionElapsedSeconds: 86_400,
           playerName: '  Moon Ace  ',
           runReceipt: receipt,
           totalScore: 1,
@@ -274,9 +274,10 @@ describe('reachMoonHighscores function', () => {
     expect(body.record).toMatchObject({
       playerName: 'Moon Ace',
       score: {
-        fuelBonusPoints: 200,
-        missionElapsedSeconds: 0,
-        totalScore: 1_200,
+        fuelBonusPoints: 199.7,
+        missionElapsedSeconds: 86_400,
+        timePenaltyPoints: 49.9,
+        totalScore: 249.6,
       },
       submittedAt: now,
     })
@@ -303,7 +304,7 @@ describe('reachMoonHighscores function', () => {
     expect(dailyEntries[0]).toMatchObject({
       id: body.record.id,
       rank: 1,
-      score: { totalScore: 1_200 },
+      score: { totalScore: 249.6 },
     })
     expect(dailyEntries[1]).toMatchObject({
       id: 'daily-old',
@@ -340,8 +341,8 @@ describe('reachMoonHighscores function', () => {
         'https://example.test/api/reach-moon/highscores?period=daily',
         {
           body: JSON.stringify({
-            fuelRemainingRatio: 1,
-            missionElapsedSeconds: 0,
+            fuelRemainingRatio: 0.5,
+            missionElapsedSeconds: 90_000,
             playerName: 'Daily Pilot',
             runReceipt: receipt,
           }),
@@ -364,13 +365,134 @@ describe('reachMoonHighscores function', () => {
     expect(store.values.get('rollups/all-time.json')).toBeTruthy()
   })
 
+  it.each([
+    [
+      'near-zero mission time',
+      {
+        fuelRemainingRatio: 0.5,
+        missionElapsedSeconds: 0,
+      },
+      'mission_elapsed_too_low',
+    ],
+    [
+      'effectively full fuel remaining',
+      {
+        fuelRemainingRatio: 1,
+        missionElapsedSeconds: 90_000,
+      },
+      'fuel_remaining_too_high',
+    ],
+  ])('rejects %s before writing a public record', async (_label, input, expectedCode) => {
+    const receipt = await createReceipt()
+
+    const response = await handler(
+      new Request('https://example.test/api/reach-moon/highscores', {
+        body: JSON.stringify({
+          ...input,
+          playerName: 'Impossible Pilot',
+          runReceipt: receipt,
+        }),
+        method: 'POST',
+      }),
+    )
+
+    expect(response.status).toBe(422)
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: {
+        code: 'invalid_highscore',
+        details: [expect.objectContaining({ code: expectedCode })],
+      },
+    })
+    expect(blobMocks.getStore).not.toHaveBeenCalled()
+  })
+
+  it('rejects highscore submissions sent too soon after receipt issuance', async () => {
+    const receipt = await createReceipt('2026-06-28T20:29:50.000Z')
+
+    const response = await handler(
+      new Request('https://example.test/api/reach-moon/highscores', {
+        body: JSON.stringify({
+          fuelRemainingRatio: 0.5,
+          missionElapsedSeconds: 90_000,
+          playerName: 'Instant Pilot',
+          runReceipt: receipt,
+        }),
+        method: 'POST',
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: {
+        code: 'invalid_receipt',
+        details: [
+          expect.objectContaining({
+            code: 'receipt_too_recent',
+            threshold: 15_000,
+            value: 10_000,
+          }),
+        ],
+      },
+    })
+    expect(blobMocks.getStore).not.toHaveBeenCalled()
+  })
+
+  it('persists suspicious flags on stored records without exposing them publicly', async () => {
+    const store = createStore()
+    blobMocks.getStore.mockReturnValue(store)
+    const receipt = await createReceipt()
+
+    const response = await handler(
+      new Request('https://example.test/api/reach-moon/highscores', {
+        body: JSON.stringify({
+          fuelRemainingRatio: 0.98,
+          missionElapsedSeconds: 60_000,
+          playerName: 'Audit Pilot',
+          runReceipt: receipt,
+        }),
+        method: 'POST',
+      }),
+    )
+    const body = await readJson<{
+      record: ReachMoonHighscoreRecord
+      rollups: Record<
+        ReachMoonHighscorePeriod,
+        { entries: Record<string, unknown>[] }
+      >
+    }>(response)
+    const storedRecord = store.values.get(
+      `records/by-run/${receipt.runId}.json`,
+    )?.data as ReachMoonHighscoreRecord & {
+      audit?: { checkedAt: string; flags: string[]; version: number }
+    }
+    const dailyEntry = (
+      store.values.get('rollups/daily/2026-06-28.json')?.data as {
+        entries: Record<string, unknown>[]
+      }
+    ).entries[0]
+
+    expect(response.status).toBe(200)
+    expect(storedRecord.audit).toEqual({
+      checkedAt: now,
+      flags: [
+        'unusually_short_mission',
+        'unusually_high_fuel_remaining',
+        'near_max_score',
+      ],
+      version: 1,
+    })
+    expect(body.record).not.toHaveProperty('audit')
+    expect(body.rollups.daily.entries[0]).not.toHaveProperty('audit')
+    expect(dailyEntry).not.toHaveProperty('audit')
+  })
+
   it('treats receipt run IDs as idempotency keys for replayed submissions', async () => {
     const store = createStore()
     blobMocks.getStore.mockReturnValue(store)
     const receipt = await createReceipt()
     const requestBody = {
-      fuelRemainingRatio: 1,
-      missionElapsedSeconds: 0,
+      fuelRemainingRatio: 0.5,
+      missionElapsedSeconds: 90_000,
       playerName: 'First Pilot',
       runReceipt: receipt,
     }
@@ -385,8 +507,8 @@ describe('reachMoonHighscores function', () => {
       new Request('https://example.test/api/reach-moon/highscores', {
         body: JSON.stringify({
           ...requestBody,
-          fuelRemainingRatio: 0,
-          missionElapsedSeconds: 999,
+          fuelRemainingRatio: 0.3,
+          missionElapsedSeconds: 100_000,
           playerName: 'Replay Pilot',
         }),
         method: 'POST',
@@ -553,8 +675,8 @@ describe('reachMoonHighscores function', () => {
     const response = await handler(
       new Request('https://example.test/api/reach-moon/highscores', {
         body: JSON.stringify({
-          fuelRemainingRatio: 1,
-          missionElapsedSeconds: 0,
+          fuelRemainingRatio: 0.5,
+          missionElapsedSeconds: 90_000,
           playerName: 'Cache Pilot',
           runReceipt: receipt,
         }),

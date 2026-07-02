@@ -26,7 +26,10 @@ export type ScenarioRuntimeTransition = {
   assistTargetSelectionMode?: AppRuntimeSimulationSlice['assistTargetSelectionMode']
   cameraMode: CameraControlMode
   coastPredictionHorizonHours: number
-  scenario: Pick<AppRuntimeScenarioSlice, 'metadata' | 'render' | 'session'>
+  scenario: Pick<
+    AppRuntimeScenarioSlice,
+    'metadata' | 'orbitPointDisplay' | 'render' | 'session'
+  >
   state: AppRuntimeSimulationSlice['state']
   viewportSize: number
 }
@@ -60,6 +63,7 @@ export const createScenarioRuntimeTransition = (
         description: scenario.description,
         title: scenario.name,
       } satisfies RuntimeScenarioMetadata,
+      orbitPointDisplay: scenario.orbitPointDisplay,
       render: resolveScenarioRenderConfig(scenario.render),
       session: runtimeScenarioState.scenarioSession,
     },
@@ -144,6 +148,7 @@ export const createScenarioRuntimeController = (options: {
               description: loadedDebugScenario.scenario.description,
               title: loadedDebugScenario.scenario.name,
             },
+            orbitPointDisplay: loadedDebugScenario.scenario.orbitPointDisplay,
             render: resolveScenarioRenderConfig(
               loadedDebugScenario.scenario.render,
             ),

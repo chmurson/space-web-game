@@ -7,6 +7,7 @@ import type { ScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
+import type { OrbitPointDisplaySettingOverrides } from '../userSettingsStorage'
 
 export type AssistTargetSelectionMode = 'auto' | 'manual'
 
@@ -59,6 +60,7 @@ export const createDefaultCameraControlUiState = (
 export type AppRuntimeScenarioSlice = {
   directives: RuntimeScenarioDirectives
   metadata: RuntimeScenarioMetadata
+  orbitPointDisplay?: OrbitPointDisplaySettingOverrides
   render?: ScenarioRenderConfig
   session: RuntimeScenarioSession
 }

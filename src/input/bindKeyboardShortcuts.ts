@@ -16,7 +16,7 @@ export const bindKeyboardShortcuts = (options: {
       return
     }
 
-    options.keyboardInput.press(event.code)
+    options.keyboardInput.press(event.code, { timeStampMs: event.timeStamp })
 
     const shortcutAction = getKeyboardShortcutAction(event, {
       autoDiscoverStrongestInfluence: options.autoDiscoverStrongestInfluence,
@@ -25,6 +25,9 @@ export const bindKeyboardShortcuts = (options: {
 
     if (shortcutAction) {
       options.handleAction(shortcutAction)
+      if (shortcutAction === 'resetScenario') {
+        options.keyboardInput.clear()
+      }
     }
   })
 

@@ -8,23 +8,13 @@ import {
   type ScenarioSessionValue,
 } from '@/scenario/scenarioSession'
 import type { ReachMoonRunReceipt } from '@/server/reachMoonRunReceipts'
+import {
+  reachMoonCompletedRunHighscore,
+  reachMoonCompletedRunScore,
+} from '../../fixtures/reachMoonCompletedRun'
 
-const completedScore = {
-  baseScorePoints: 1_000,
-  fuelBonusPoints: 100,
-  fuelRemainingKg: 16_000,
-  missionElapsedSeconds: 90_000,
-  timePenaltyPoints: 100,
-  totalScore: 1_000,
-}
-
-const completedHighscore = {
-  input: {
-    fuelRemainingRatio: 0.5,
-    missionElapsedSeconds: 90_000,
-  },
-  score: completedScore,
-}
+const completedScore = reachMoonCompletedRunScore
+const completedHighscore = reachMoonCompletedRunHighscore
 
 const runReceipt: ReachMoonRunReceipt = {
   issuedAt: '2026-06-29T07:00:00.000Z',

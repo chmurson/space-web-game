@@ -18,6 +18,7 @@ const elements = {
     debugSnapshotStatus: document.querySelector('#debugSnapshotStatus'),
     elapsed: document.querySelector('#elapsed'),
     openRawSnapshotButton: document.querySelector('#openRawSnapshotButton'),
+    predictionSampling: document.querySelector('#predictionSampling'),
     rawJson: document.querySelector('#rawJson'),
     rawJsonFull: document.querySelector('#rawJsonFull'),
     rawSnapshotPanel: document.querySelector('#rawSnapshotPanel'),
@@ -313,6 +314,10 @@ const renderSnapshot = (snapshot) => {
     elements.assistTarget.textContent = snapshot.simulation.assistTarget?.name || 'none'
     elements.crashState.textContent = snapshot.simulation.crashedBodyName || 'clear'
     elements.coastHorizon.textContent = `${formatNumber(snapshot.simulation.coastPredictionHorizonHours, 2)} h`
+    const sampling = snapshot.simulation.predictionSampling
+    elements.predictionSampling.textContent = sampling
+        ? `sample ${formatNumber(sampling.currentStepSeconds, 1)} s · integrate max ${formatNumber(sampling.currentMaxIntegrationStepSeconds, 1)} s · refresh ${formatNumber(sampling.refreshInterval, 2)} s · target ${formatNumber(sampling.targetMaxSteps, 0)} pts`
+        : '—'
 
     elements.spacecraftPosition.textContent = formatVec(spacecraft.position)
     elements.spacecraftVelocity.textContent = formatVec(spacecraft.velocity, 3)

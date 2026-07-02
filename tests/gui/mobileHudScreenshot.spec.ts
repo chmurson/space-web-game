@@ -1,5 +1,12 @@
-import { expect, type Page, type TestInfo, test } from '@playwright/test'
+import {
+  expect,
+  type Page,
+  type Route,
+  type TestInfo,
+  test,
+} from '@playwright/test'
 import type { UIUserAction } from '../../src/input/uiUserActions'
+import type { ReachMoonHighscorePendingRun } from '../../src/ui/components/MainMenuSurface'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -50,6 +57,91 @@ const expectWorldVisualsSuppressed = async (page: Page) => {
 
 const getReachMoonUrl = (query = '') =>
   query ? `/?reachmoon=1&${query}` : '/?reachmoon=1'
+
+const highscoreScore = {
+  baseScorePoints: 1_000,
+  fuelBonusPoints: 196,
+  fuelRemainingKg: 31_360,
+  missionElapsedSeconds: 27_000,
+  timePenaltyPoints: 28,
+  totalScore: 1_168,
+}
+
+const completedHighscoreRun: ReachMoonHighscorePendingRun = {
+  input: {
+    fuelRemainingRatio: 0.98,
+    missionElapsedSeconds: 27_000,
+  },
+  runReceipt: {
+    issuedAt: '2026-06-29T08:00:00.000Z',
+    runId: 'run-117',
+    scenarioId: 'reach-moon',
+    signature: 'signature',
+  },
+  runReceiptError: null,
+  score: highscoreScore,
+}
+
+type HighscorePeriod = 'all-time' | 'daily' | 'weekly'
+
+const createHighscoreRollup = (
+  period: HighscorePeriod,
+  entries = [
+    {
+      id: 'run-117',
+      playerName: 'Artemis Pathfinder With A Long Callsign',
+      rank: 1,
+      score: highscoreScore,
+      submittedAt: '2026-06-29T08:30:00.000Z',
+    },
+  ],
+) => ({
+  entries,
+  generatedAt: '2026-06-29T08:35:00.000Z',
+  period,
+})
+
+type HighscoreEntries = ReturnType<typeof createHighscoreRollup>['entries']
+
+const createHighscoreRollups = (
+  entriesByPeriod: Partial<Record<HighscorePeriod, HighscoreEntries>> = {},
+) => ({
+  'all-time': createHighscoreRollup(
+    'all-time',
+    entriesByPeriod['all-time'] ?? [],
+  ),
+  daily: createHighscoreRollup('daily', entriesByPeriod.daily ?? []),
+  weekly: createHighscoreRollup('weekly', entriesByPeriod.weekly ?? []),
+})
+
+const createHighscoreListResponse = (
+  period: HighscorePeriod | null,
+  entriesByPeriod: Partial<Record<HighscorePeriod, HighscoreEntries>> = {},
+) => ({
+  rollups:
+    period == null
+      ? createHighscoreRollups(entriesByPeriod)
+      : {
+          [period]: createHighscoreRollup(
+            period,
+            entriesByPeriod[period] ?? [],
+          ),
+        },
+})
+
+const getHighscorePeriodFromRequest = (
+  requestUrl: string,
+): HighscorePeriod | null => {
+  const value = new URL(requestUrl).searchParams.get('period')
+  if (value == null || value.length === 0) {
+    return null
+  }
+  if (value === 'all-time' || value === 'daily' || value === 'weekly') {
+    return value
+  }
+
+  throw new Error(`Missing or unexpected highscore period: ${value}`)
+}
 
 const openReachMoonMainMenu = async (page: Page, query = '') => {
   await page.goto(getReachMoonUrl(query))
@@ -106,6 +198,672 @@ test('captures the mobile Reach the Moon menu transition', async ({
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page.locator('[data-main-menu-view="main"]')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
+})
+
+test('captures the mobile Reach the Moon highscores leaderboard', async ({
+  page,
+}, testInfo) => {
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+
+    await route.fulfill({
+      body: JSON.stringify(
+        createHighscoreListResponse(period, {
+          daily: createHighscoreRollup('daily').entries,
+        }),
+      ),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+  await openReachMoonMainMenu(page)
+
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  await expect(page.getByRole('button', { name: 'Today' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Weekly' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'All-time' })).toBeVisible()
+  await expect(
+    page.getByText('Artemis Pathfinder With A Long Callsign'),
+  ).toBeVisible()
+  await expect(page.getByText('1,168')).toBeVisible()
+  await expect(page.getByText('7h30m')).toBeVisible()
+  const highscoreTable = page.getByRole('table', {
+    name: 'Today Reach the Moon leaderboard',
+  })
+  await expect(highscoreTable).toBeVisible()
+  await expect(highscoreTable.getByRole('row')).toHaveCount(2)
+  await expect(
+    highscoreTable.getByRole('columnheader', { name: 'Rank' }),
+  ).toBeVisible()
+  await expect(
+    highscoreTable.getByRole('cell', { name: 'Time 7h30m' }),
+  ).toBeVisible()
+  await expect(
+    highscoreTable.getByRole('cell', { name: 'Fuel left 98%' }),
+  ).toBeVisible()
+  const firstHighscoreRow = highscoreTable
+    .locator('.reach-moon-highscore-row:not(.reach-moon-highscore-row-header)')
+    .first()
+  await expect(
+    firstHighscoreRow.locator(
+      '.reach-moon-highscore-cell-elapsed .telemetry-time-icon',
+    ),
+  ).toBeVisible()
+  await expect(
+    firstHighscoreRow.locator(
+      '.reach-moon-highscore-cell-fuel .telemetry-fuel-icon',
+    ),
+  ).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-highscores')
+
+  await page.getByRole('button', { name: 'Weekly' }).click()
+  await expect(page.getByText('No weekly runs yet.')).toBeVisible()
+})
+
+test('falls back to weekly highscores from the all-section response', async ({
+  page,
+}, testInfo) => {
+  const getRequestUrls: string[] = []
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    if (route.request().method() === 'GET') {
+      getRequestUrls.push(route.request().url())
+    }
+
+    await route.fulfill({
+      body: JSON.stringify(
+        createHighscoreListResponse(
+          getHighscorePeriodFromRequest(route.request().url()),
+          {
+            'all-time': [
+              {
+                id: 'all-time-run',
+                playerName: 'All Time Pilot',
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:00:00.000Z',
+              },
+            ],
+            weekly: [
+              {
+                id: 'weekly-run',
+                playerName: 'Weekly Pilot',
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T09:00:00.000Z',
+              },
+            ],
+          },
+        ),
+      ),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  await expect(page.getByRole('cell', { name: 'Weekly Pilot' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Weekly' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByText('No Reach the Moon runs yet.')).toHaveCount(0)
+  expect(getRequestUrls).toHaveLength(1)
+  expect(new URL(getRequestUrls[0]).searchParams.has('period')).toBe(false)
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-reach-moon-highscores-weekly-fallback',
+  )
+})
+
+test('shows skeleton rows while highscores initially load', async ({
+  page,
+}, testInfo) => {
+  let resolveLeaderboardRoute: (route: Route) => void = () => undefined
+  const leaderboardRoutePromise = new Promise<Route>((resolve) => {
+    resolveLeaderboardRoute = resolve
+  })
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+
+    if (period == null) {
+      resolveLeaderboardRoute(route)
+      return
+    }
+
+    await route.fulfill({
+      body: JSON.stringify(createHighscoreListResponse(period)),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  const leaderboardRoute = await leaderboardRoutePromise
+  await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
+    'aria-busy',
+    'true',
+  )
+  await expect(page.locator('.reach-moon-highscore-row-skeleton')).toHaveCount(
+    3,
+  )
+  await expect(page.getByText('Loading today leaderboard...')).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-reach-moon-highscores-initial-skeleton',
+  )
+
+  await leaderboardRoute.fulfill({
+    body: JSON.stringify(
+      createHighscoreListResponse(null, {
+        daily: createHighscoreRollup('daily').entries,
+      }),
+    ),
+    contentType: 'application/json',
+    status: 200,
+  })
+
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+  await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
+    'aria-busy',
+    'false',
+  )
+  await expect(page.locator('.reach-moon-highscore-row-skeleton')).toHaveCount(
+    0,
+  )
+})
+
+test('backs out of Reach the Moon highscores one menu step', async ({
+  page,
+}) => {
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const request = route.request()
+    const period =
+      request.method() === 'POST'
+        ? 'daily'
+        : getHighscorePeriodFromRequest(request.url())
+
+    await route.fulfill({
+      body: JSON.stringify(
+        request.method() === 'POST'
+          ? {
+              record: {
+                id: 'run-117',
+                playerName: 'Back Pilot',
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+              rollups: {
+                daily: createHighscoreRollup('daily'),
+              },
+            }
+          : {
+              ...createHighscoreListResponse(period, {
+                'all-time': createHighscoreRollup('all-time').entries,
+                daily: createHighscoreRollup('daily').entries,
+                weekly: createHighscoreRollup('weekly').entries,
+              }),
+            },
+      ),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+  await expect(
+    page.locator('[data-main-menu-view="reach-moon-highscores"]'),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="reach-moon"]')).toBeVisible()
+  await expect(page.locator('[data-main-menu-view="main"]')).toBeHidden()
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="main"]')).toBeVisible()
+
+  await page.evaluate(async (pendingRun) => {
+    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
+    const { createMainMenu } = await import(mainMenuModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app')
+    }
+
+    app.replaceChildren()
+    const menu = createMainMenu({
+      app,
+      reachMoonFeatureEnabled: true,
+      onFreeRoam: () => undefined,
+      onLoadGame: () => undefined,
+      onReachMoon: () => undefined,
+      onTutorial: () => undefined,
+    })
+    menu.showReachMoonHighscores(pendingRun)
+  }, completedHighscoreRun)
+
+  await expect(
+    page.locator('[data-main-menu-view="reach-moon-highscores"]'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="reach-moon"]')).toBeVisible()
+  await expect(page.locator('[data-main-menu-view="main"]')).toBeHidden()
+})
+
+test('switches highscore periods from the cached all-section response', async ({
+  page,
+}, testInfo) => {
+  const getRequestUrls: string[] = []
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    if (route.request().method() === 'GET') {
+      getRequestUrls.push(route.request().url())
+    }
+
+    await route.fulfill({
+      body: JSON.stringify(
+        createHighscoreListResponse(
+          getHighscorePeriodFromRequest(route.request().url()),
+          {
+            daily: createHighscoreRollup('daily').entries,
+            weekly: [
+              {
+                id: 'weekly-run',
+                playerName: 'Weekly Pilot',
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T09:00:00.000Z',
+              },
+            ],
+          },
+        ),
+      ),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Weekly' }).click()
+
+  await expect(page.getByRole('cell', { name: 'Weekly Pilot' })).toBeVisible()
+  await expect(page.locator('.reach-moon-highscore-board')).toHaveAttribute(
+    'aria-busy',
+    'false',
+  )
+  await expect(page.locator('.reach-moon-highscore-row-loading')).toHaveCount(0)
+  expect(getRequestUrls).toHaveLength(1)
+  expect(new URL(getRequestUrls[0]).searchParams.has('period')).toBe(false)
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-reach-moon-highscores-cached-weekly',
+  )
+})
+
+test('shows retry when highscore refresh fails with stale rows', async ({
+  page,
+}) => {
+  let leaderboardRequests = 0
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+
+    if (route.request().method() === 'GET') {
+      leaderboardRequests += 1
+    }
+
+    if (route.request().method() === 'GET' && leaderboardRequests > 1) {
+      await route.fulfill({
+        body: JSON.stringify({
+          error: { message: 'Highscore service offline.' },
+        }),
+        contentType: 'application/json',
+        status: 503,
+      })
+      return
+    }
+
+    await route.fulfill({
+      body: JSON.stringify(
+        createHighscoreListResponse(period, {
+          daily: createHighscoreRollup('daily').entries,
+        }),
+      ),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  await expect(page.getByText('Leaderboard unavailable.')).toBeVisible()
+  await expect(page.getByText('Highscore service offline.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+})
+
+test('autosubmits completion highscores and retries failures', async ({
+  page,
+}) => {
+  const postBodies: Array<Record<string, unknown>> = []
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON() as Record<string, unknown>
+      postBodies.push(body)
+
+      if (postBodies.length === 1) {
+        await route.fulfill({
+          body: JSON.stringify({
+            error: {
+              code: 'storage_error',
+              message: 'Storage offline.',
+            },
+          }),
+          contentType: 'application/json',
+          status: 503,
+        })
+        return
+      }
+
+      const playerName = String(body.playerName)
+      await route.fulfill({
+        body: JSON.stringify({
+          record: {
+            id: 'run-117',
+            playerName,
+            score: highscoreScore,
+            submittedAt: '2026-06-29T08:40:00.000Z',
+          },
+          rollups: {
+            'all-time': createHighscoreRollup('all-time', [
+              {
+                id: 'run-117',
+                playerName,
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+            ]),
+            daily: createHighscoreRollup('daily', [
+              {
+                id: 'run-117',
+                playerName,
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+            ]),
+            weekly: createHighscoreRollup('weekly', [
+              {
+                id: 'run-117',
+                playerName,
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+            ]),
+          },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    const period = getHighscorePeriodFromRequest(url.href)
+    await route.fulfill({
+      body: JSON.stringify(createHighscoreListResponse(period)),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.goto('/?reachmoon=1')
+  await page.addStyleTag({ content: screenshotCss })
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  await page.evaluate(async (pendingRun) => {
+    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
+    const { createMainMenu } = await import(mainMenuModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app')
+    }
+
+    app.replaceChildren()
+    const menu = createMainMenu({
+      app,
+      reachMoonFeatureEnabled: true,
+      onFreeRoam: () => undefined,
+      onLoadGame: () => undefined,
+      onReachMoon: () => undefined,
+      onTutorial: () => undefined,
+    })
+    menu.showReachMoonHighscores(pendingRun)
+  }, completedHighscoreRun)
+
+  const pilotName = page.getByLabel('Pilot name')
+  await expect(pilotName).toBeVisible()
+  await expect(page.getByText('Time used 7h 30m (+28).')).toBeVisible()
+  await expect(page.getByText('Fuel left 98% (+196).')).toBeVisible()
+  await expect(
+    page.locator('.reach-moon-highscore-submit .telemetry-time-icon'),
+  ).toBeVisible()
+  await expect(
+    page.locator('.reach-moon-highscore-submit .telemetry-fuel-icon'),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Submission failed: Storage offline.'),
+  ).toBeVisible()
+  expect(postBodies).toHaveLength(1)
+  expect(String(postBodies[0].playerName).split(' ')).toHaveLength(2)
+
+  await pilotName.fill('Retry Pilot')
+  await page.getByRole('button', { name: 'Retry submit' }).click()
+
+  await expect(page.getByText('Submitted as Retry Pilot at #1.')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Retry Pilot' })).toBeVisible()
+  expect(postBodies).toHaveLength(2)
+  expect(postBodies[1].playerName).toBe('Retry Pilot')
+})
+
+test('skips highscore requests when the Reach the Moon feature is disabled', async ({
+  page,
+}) => {
+  let highscoreRequestCount = 0
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    highscoreRequestCount += 1
+    await route.fulfill({
+      body: JSON.stringify({ rollups: {} }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.goto('/?reachmoon=1')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(async (pendingRun) => {
+    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
+    const { createMainMenu } = await import(mainMenuModulePath)
+    const app = document.createElement('div')
+    document.body.append(app)
+
+    const menu = createMainMenu({
+      app,
+      reachMoonFeatureEnabled: false,
+      onFreeRoam: () => undefined,
+      onLoadGame: () => undefined,
+      onReachMoon: () => undefined,
+      onTutorial: () => undefined,
+    })
+    menu.showReachMoonHighscores(pendingRun)
+
+    return {
+      highscorePanelCount: menu.element.querySelectorAll(
+        '[data-main-menu-view="reach-moon-highscores"]',
+      ).length,
+      mainHidden:
+        menu.element
+          .querySelector('[data-main-menu-view="main"]')
+          ?.hasAttribute('hidden') ?? true,
+    }
+  }, completedHighscoreRun)
+
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(resolve)),
+  )
+
+  expect(result).toEqual({ highscorePanelCount: 0, mainHidden: false })
+  expect(highscoreRequestCount).toBe(0)
+})
+
+test('keeps loading the active period when submit rollups omit it', async ({
+  page,
+}) => {
+  let resolveLeaderboardRoute: (route: Route) => void = () => undefined
+  const leaderboardRoutePromise = new Promise<Route>((resolve) => {
+    resolveLeaderboardRoute = resolve
+  })
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const request = route.request()
+
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON() as Record<string, unknown>
+      const playerName = String(body.playerName)
+
+      await route.fulfill({
+        body: JSON.stringify({
+          record: {
+            id: 'run-117',
+            playerName,
+            score: highscoreScore,
+            submittedAt: '2026-06-29T08:40:00.000Z',
+          },
+          rollups: {
+            weekly: createHighscoreRollup('weekly', [
+              {
+                id: 'run-117',
+                playerName,
+                rank: 1,
+                score: highscoreScore,
+                submittedAt: '2026-06-29T08:40:00.000Z',
+              },
+            ]),
+          },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    const period = getHighscorePeriodFromRequest(request.url())
+    if (period == null) {
+      resolveLeaderboardRoute(route)
+      return
+    }
+
+    await route.fulfill({
+      body: JSON.stringify(createHighscoreListResponse(period)),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.goto('/?reachmoon=1')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  await page.evaluate(async (pendingRun) => {
+    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
+    const { createMainMenu } = await import(mainMenuModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app')
+    }
+
+    app.replaceChildren()
+    const menu = createMainMenu({
+      app,
+      reachMoonFeatureEnabled: true,
+      onFreeRoam: () => undefined,
+      onLoadGame: () => undefined,
+      onReachMoon: () => undefined,
+      onTutorial: () => undefined,
+    })
+    menu.showReachMoonHighscores(pendingRun)
+  }, completedHighscoreRun)
+
+  await expect(page.getByText(/^Submitted as /)).toBeVisible()
+  await expect(page.getByText('Loading today leaderboard...')).toBeVisible()
+
+  const leaderboardRoute = await leaderboardRoutePromise
+  await leaderboardRoute.fulfill({
+    body: JSON.stringify(
+      createHighscoreListResponse(null, {
+        daily: [
+          {
+            id: 'daily-run',
+            playerName: 'Daily Pilot',
+            rank: 1,
+            score: highscoreScore,
+            submittedAt: '2026-06-29T08:45:00.000Z',
+          },
+        ],
+      }),
+    ),
+    contentType: 'application/json',
+    status: 200,
+  })
+  await expect(page.getByRole('cell', { name: 'Daily Pilot' })).toBeVisible()
 })
 
 test('captures the mobile tutorial coach prompt transition', async ({
@@ -653,6 +1411,24 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       menu.element.querySelector('[data-in-game-camera-status]')?.textContent
     const getCoastHorizon = () =>
       menu.element.querySelector('[data-in-game-coast-horizon]')?.textContent
+    const getKeyboardHints = () =>
+      Array.from(
+        menu.element.querySelectorAll(
+          '.in-game-controls-menu-keyboard-row',
+        ) as NodeListOf<HTMLElement>,
+      ).map((element) =>
+        [
+          element
+            .querySelector('.in-game-controls-menu-keyboard-name')
+            ?.textContent?.trim(),
+          element
+            .querySelector('.in-game-controls-menu-keyboard-keys')
+            ?.textContent?.replace(/\s+/g, ' ')
+            .trim(),
+        ]
+          .filter(Boolean)
+          .join(' '),
+      )
     const pressDocumentKey = (key: string) =>
       document.dispatchEvent(
         new KeyboardEvent('keydown', {
@@ -752,6 +1528,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       expandedAfterClick,
       focusAfterEscape,
       increaseDisabledAtMax,
+      keyboardHints: getKeyboardHints(),
       menuButtonLabelAfterClick,
       menuButtonLabelAfterEscape,
       openAfterClick,
@@ -791,6 +1568,14 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     expandedAfterClick: 'true',
     focusAfterEscape: true,
     increaseDisabledAtMax: true,
+    keyboardHints: [
+      'Normal burn hold W / ↑',
+      'Burn latch double W / ↑',
+      'Cancel burn W / ↑ / S / ↓',
+      'Turn mouse double-click',
+      'Time warp [ / ]',
+      'Horizon Shift + [ / ]',
+    ],
     menuButtonLabelAfterClick: 'Close in-game controls',
     menuButtonLabelAfterEscape: 'Open in-game controls',
     openAfterClick: true,
@@ -817,6 +1602,14 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let warpSide: 'left' | 'right' = 'left'
+    let orbitPointDisplay = {
+      altitudeVisible: true,
+      centerDistanceVisible: false,
+      labelsVisible: true,
+      markersVisible: true,
+      pointNameVisible: true,
+    }
+    const orbitEvents: string[] = []
 
     beforeButton.textContent = 'Before settings'
     document.body.append(beforeButton, app)
@@ -824,10 +1617,17 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     const dialog = createUiSettingsDialog({
       app,
+      getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchBurnControlSide: () => burnSide,
       getTouchTargetControlSide: () => targetSide,
       getTouchTrajectoryControlSide: () => trajectorySide,
       getTouchWarpControlSide: () => warpSide,
+      onOrbitPointDisplayChange: (settings: typeof orbitPointDisplay) => {
+        orbitEvents.push(
+          `markers:${settings.markersVisible};labels:${settings.labelsVisible};center:${settings.centerDistanceVisible};name:${settings.pointNameVisible}`,
+        )
+        orbitPointDisplay = settings
+      },
       onOpenChange: (open: boolean) => openEvents.push(open),
       onTouchBurnControlSideChange: (side: 'left' | 'right') => {
         events.push(`burn:${side}`)
@@ -862,6 +1662,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
           `[aria-label="${ariaLabel}"] .segmented-control-option-selected`,
         )
         ?.getAttribute('data-segmented-control-value')
+    const getButtonByText = (text: string): HTMLButtonElement | undefined =>
+      (
+        Array.from(
+          (dialog.element as HTMLElement).querySelectorAll('button'),
+        ) as HTMLButtonElement[]
+      ).find((button) => button.textContent?.includes(text))
     const getFocusableButtons = (): HTMLButtonElement[] =>
       Array.from(
         (dialog.element as HTMLElement).querySelectorAll('button'),
@@ -912,6 +1718,65 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       'Burn control side',
       'right',
     )?.getAttribute('aria-pressed')
+    const orbitSummaryInitial = getButtonByText(
+      'Orbit point display',
+    )?.textContent
+    getButtonByText('Orbit point display')?.click()
+    const orbitTitleAfterOpen =
+      dialog.element.querySelector('.app-dialog-title')?.textContent
+    const orbitFocusAfterOpen =
+      document.activeElement === getButtonByText('Back')
+    const orbitSwitchOrder = (
+      Array.from(
+        dialog.element.querySelectorAll('.app-dialog-switch'),
+      ) as HTMLButtonElement[]
+    ).map((button) => button.textContent?.trim())
+    const orbitLabelGroup = dialog.element.querySelector(
+      '.app-dialog-setting-group-label',
+    )?.textContent
+    const centerDistanceInitial = getButtonByText(
+      'Show center distance',
+    )?.getAttribute('aria-checked')
+    getButtonByText('Show center distance')?.click()
+    getButtonByText('Show point name')?.click()
+    const centerDistanceAfter = getButtonByText(
+      'Show center distance',
+    )?.getAttribute('aria-checked')
+    const pointNameAfter =
+      getButtonByText('Show point name')?.getAttribute('aria-checked')
+    getButtonByText('Show marker labels')?.click()
+    const labelSwitchDisabledWhenLabelsOff =
+      getButtonByText('Show marker labels')?.disabled
+    const altitudeDisabledWhenLabelsOff =
+      getButtonByText('Show altitude')?.disabled
+    const centerDisabledWhenLabelsOff = getButtonByText(
+      'Show center distance',
+    )?.disabled
+    const pointNameDisabledWhenLabelsOff =
+      getButtonByText('Show point name')?.disabled
+    getButtonByText('Show center distance')?.click()
+    const eventCountAfterDisabledCenterClick = orbitEvents.length
+    getButtonByText('Show marker labels')?.click()
+    getButtonByText('Show closest/farthest markers')?.click()
+    const markerSwitchDisabledWhenMarkersOff = getButtonByText(
+      'Show closest/farthest markers',
+    )?.disabled
+    const labelSwitchDisabledWhenMarkersOff =
+      getButtonByText('Show marker labels')?.disabled
+    const altitudeDisabledWhenMarkersOff =
+      getButtonByText('Show altitude')?.disabled
+    const centerDisabledWhenMarkersOff = getButtonByText(
+      'Show center distance',
+    )?.disabled
+    const pointNameDisabledWhenMarkersOff =
+      getButtonByText('Show point name')?.disabled
+    getButtonByText('Show closest/farthest markers')?.click()
+    getButtonByText('Back')?.click()
+    const titleAfterOrbitBack =
+      dialog.element.querySelector('.app-dialog-title')?.textContent
+    const orbitSummaryAfterChanges = getButtonByText(
+      'Orbit point display',
+    )?.textContent
 
     getFocusableButtons().at(-1)?.focus()
     pressDocumentKey('Tab')
@@ -974,11 +1839,38 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       hiddenAfterCloseButton,
       hiddenAfterEscape,
       hiddenTriggerWasActiveBeforeOpen,
+      centerDistanceAfter,
+      centerDistanceInitial,
+      altitudeDisabledWhenLabelsOff,
+      altitudeDisabledWhenMarkersOff,
+      centerDisabledWhenLabelsOff,
+      centerDisabledWhenMarkersOff,
+      eventCountAfterDisabledCenterClick,
+      labelSwitchDisabledWhenLabelsOff,
+      labelSwitchDisabledWhenMarkersOff,
+      markerSwitchDisabledWhenMarkersOff,
       openAfterOpen,
       openEvents,
+      orbitEvents,
+      orbitFocusAfterOpen,
+      orbitSummaryAfterChangesIncludesCenterOn:
+        orbitSummaryAfterChanges?.includes('center on'),
+      orbitSummaryAfterChangesIncludesNameOff:
+        orbitSummaryAfterChanges?.includes('name off'),
+      orbitSummaryInitialIncludesCenterOff:
+        orbitSummaryInitial?.includes('center off'),
+      orbitSummaryInitialIncludesNameOn:
+        orbitSummaryInitial?.includes('name on'),
+      orbitLabelGroup,
+      orbitSwitchOrder,
+      orbitTitleAfterOpen,
+      pointNameAfter,
+      pointNameDisabledWhenLabelsOff,
+      pointNameDisabledWhenMarkersOff,
       role,
       selectedAfterChanges,
       selectedAfterOpen,
+      titleAfterOrbitBack,
       targetSyncedOnOpen,
     }
   })
@@ -999,8 +1891,43 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     hiddenAfterCloseButton: true,
     hiddenAfterEscape: true,
     hiddenTriggerWasActiveBeforeOpen: true,
+    centerDistanceAfter: 'true',
+    centerDistanceInitial: 'false',
+    altitudeDisabledWhenLabelsOff: true,
+    altitudeDisabledWhenMarkersOff: true,
+    centerDisabledWhenLabelsOff: true,
+    centerDisabledWhenMarkersOff: true,
+    eventCountAfterDisabledCenterClick: 3,
+    labelSwitchDisabledWhenLabelsOff: false,
+    labelSwitchDisabledWhenMarkersOff: true,
+    markerSwitchDisabledWhenMarkersOff: false,
     openAfterOpen: true,
     openEvents: [true, false, true, false, true, false, true, false],
+    orbitEvents: [
+      'markers:true;labels:true;center:true;name:true',
+      'markers:true;labels:true;center:true;name:false',
+      'markers:true;labels:false;center:true;name:false',
+      'markers:true;labels:true;center:true;name:false',
+      'markers:false;labels:true;center:true;name:false',
+      'markers:true;labels:true;center:true;name:false',
+    ],
+    orbitFocusAfterOpen: true,
+    orbitSummaryAfterChangesIncludesCenterOn: true,
+    orbitSummaryAfterChangesIncludesNameOff: true,
+    orbitSummaryInitialIncludesCenterOff: true,
+    orbitSummaryInitialIncludesNameOn: true,
+    orbitLabelGroup: 'Marker label contents',
+    orbitSwitchOrder: [
+      'Show closest/farthest markers',
+      'Show marker labels',
+      'Show point name',
+      'Show altitude',
+      'Show center distance',
+    ],
+    orbitTitleAfterOpen: 'Orbit point display',
+    pointNameAfter: 'false',
+    pointNameDisabledWhenLabelsOff: true,
+    pointNameDisabledWhenMarkersOff: true,
     role: 'dialog',
     selectedAfterChanges: {
       burn: 'left',
@@ -1014,6 +1941,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       trajectory: 'hidden',
       warp: 'left',
     },
+    titleAfterOrbitBack: 'UI settings',
     targetSyncedOnOpen: 'left',
   })
 })
@@ -1046,6 +1974,32 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
 })
 
+test('captures wide in-game controls keyboard hints', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Open in-game controls' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'In-game controls' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('group', { name: 'Keyboard shortcuts' }),
+  ).toBeVisible()
+  await expect(page.getByText('Normal burn')).toBeVisible()
+  await expect(page.getByText('Turn', { exact: true })).toBeVisible()
+  await expect(page.getByText('Time warp')).toBeVisible()
+  await expect(page.getByText('Burn latch')).toBeVisible()
+  await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'wide-in-game-controls-keyboard-hints',
+  )
+})
+
 test('captures the mobile UI settings dialog opened from in-game controls', async ({
   page,
 }, testInfo) => {
@@ -1056,8 +2010,64 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   await expect(page.getByRole('dialog', { name: 'UI settings' })).toBeVisible()
   await expect(page.getByText('Burn side')).toBeVisible()
   await expect(page.getByText('Trajectory side')).toBeVisible()
+  await expect(page.getByText('Orbit point display')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-ui-settings-dialog')
+
+  await page.getByRole('button', { name: /Orbit point display/ }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'Orbit point display' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('switch', { name: 'Show altitude' }),
+  ).toHaveAttribute('aria-checked', 'true')
+  await expect(
+    page.getByRole('switch', { name: 'Show center distance' }),
+  ).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByText('Marker label contents')).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-orbit-point-display-dialog',
+  )
+
+  await page.getByRole('switch', { name: 'Show marker labels' }).click()
+  await expect(
+    page.getByRole('switch', { name: 'Show marker labels' }),
+  ).toBeEnabled()
+  await expect(
+    page.getByRole('switch', { name: 'Show altitude' }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('switch', { name: 'Show center distance' }),
+  ).toBeDisabled()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-orbit-point-display-labels-disabled-dialog',
+  )
+
+  await page.getByRole('switch', { name: 'Show marker labels' }).click()
+  await page
+    .getByRole('switch', { name: 'Show closest/farthest markers' })
+    .click()
+  await expect(
+    page.getByRole('switch', { name: 'Show closest/farthest markers' }),
+  ).toBeEnabled()
+  await expect(
+    page.getByRole('switch', { name: 'Show marker labels' }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('switch', { name: 'Show altitude' }),
+  ).toBeDisabled()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-orbit-point-display-markers-disabled-dialog',
+  )
 })
 
 test('captures the mobile time warp touch control after reveal', async ({

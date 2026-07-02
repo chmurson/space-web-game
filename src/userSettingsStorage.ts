@@ -1,7 +1,19 @@
 const userSettingsStorageKey = 'space-web-game.userSettings.v1'
 
+export type OrbitPointDisplaySettings = {
+  altitudeVisible: boolean
+  centerDistanceVisible: boolean
+  labelsVisible: boolean
+  markersVisible: boolean
+  pointNameVisible: boolean
+}
+
+export type OrbitPointDisplaySettingOverrides =
+  Partial<OrbitPointDisplaySettings>
+
 export type UserSettings = {
   debugModeEnabled: boolean
+  orbitPointDisplay: OrbitPointDisplaySettings
   touchBurnControlSide: TouchControlSide
   touchTargetControlSide: TouchControlSide
   touchTrajectoryControlSide: TouchTrajectoryControlState
@@ -11,13 +23,25 @@ export type UserSettings = {
 export type TouchControlSide = 'left' | 'right'
 export type TouchTrajectoryControlState = TouchControlSide | 'hidden'
 
-const defaultUserSettings: UserSettings = {
+const createDefaultOrbitPointDisplaySettings =
+  (): OrbitPointDisplaySettings => ({
+    altitudeVisible: true,
+    centerDistanceVisible: false,
+    labelsVisible: true,
+    markersVisible: true,
+    pointNameVisible: true,
+  })
+
+const createDefaultUserSettings = (): UserSettings => ({
   debugModeEnabled: false,
+  orbitPointDisplay: createDefaultOrbitPointDisplaySettings(),
   touchBurnControlSide: 'right',
   touchTargetControlSide: 'left',
   touchTrajectoryControlSide: 'hidden',
   touchWarpControlSide: 'right',
-}
+})
+
+const defaultUserSettings: UserSettings = createDefaultUserSettings()
 
 const parseTouchControlSide = (value: unknown): TouchControlSide | null =>
   value === 'left' || value === 'right' ? value : null
@@ -27,9 +51,47 @@ const parseTouchTrajectoryControlState = (
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSide(value)
 
+const parseBooleanSetting = (value: unknown, fallback: boolean) =>
+  typeof value === 'boolean' ? value : fallback
+
+const parseOrbitPointDisplaySettings = (
+  value: unknown,
+): OrbitPointDisplaySettings => {
+  const defaults = defaultUserSettings.orbitPointDisplay
+  if (!value || typeof value !== 'object') {
+    return { ...defaults }
+  }
+
+  const settings = value as Partial<
+    Record<keyof OrbitPointDisplaySettings, unknown>
+  >
+  return {
+    altitudeVisible: parseBooleanSetting(
+      settings.altitudeVisible,
+      defaults.altitudeVisible,
+    ),
+    centerDistanceVisible: parseBooleanSetting(
+      settings.centerDistanceVisible,
+      defaults.centerDistanceVisible,
+    ),
+    labelsVisible: parseBooleanSetting(
+      settings.labelsVisible,
+      defaults.labelsVisible,
+    ),
+    markersVisible: parseBooleanSetting(
+      settings.markersVisible,
+      defaults.markersVisible,
+    ),
+    pointNameVisible: parseBooleanSetting(
+      settings.pointNameVisible,
+      defaults.pointNameVisible,
+    ),
+  }
+}
+
 const parseUserSettings = (value: unknown): UserSettings => {
   if (!value || typeof value !== 'object') {
-    return defaultUserSettings
+    return createDefaultUserSettings()
   }
 
   const settings = value as Partial<UserSettings>
@@ -42,6 +104,9 @@ const parseUserSettings = (value: unknown): UserSettings => {
       typeof settings.debugModeEnabled === 'boolean'
         ? settings.debugModeEnabled
         : defaultUserSettings.debugModeEnabled,
+    orbitPointDisplay: parseOrbitPointDisplaySettings(
+      settings.orbitPointDisplay,
+    ),
     touchBurnControlSide:
       parseTouchControlSide(settings.touchBurnControlSide) ??
       legacyTouchControlSide ??
@@ -66,9 +131,9 @@ export const readUserSettings = (): UserSettings => {
     const rawSettings = window.localStorage.getItem(userSettingsStorageKey)
     return rawSettings
       ? parseUserSettings(JSON.parse(rawSettings))
-      : defaultUserSettings
+      : createDefaultUserSettings()
   } catch {
-    return defaultUserSettings
+    return createDefaultUserSettings()
   }
 }
 
@@ -84,3 +149,11 @@ export const updateUserSettings = (updates: Partial<UserSettings>) => {
   writeUserSettings(settings)
   return settings
 }
+
+export const resolveOrbitPointDisplaySettings = (
+  userSettings: OrbitPointDisplaySettings,
+  scenarioOverrides?: OrbitPointDisplaySettingOverrides,
+): OrbitPointDisplaySettings => ({
+  ...userSettings,
+  ...scenarioOverrides,
+})
