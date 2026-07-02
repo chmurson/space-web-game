@@ -237,6 +237,25 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(
     highscoreTable.getByRole('columnheader', { name: 'Rank' }),
   ).toBeVisible()
+  await expect(
+    highscoreTable.getByRole('cell', { name: 'Time 7h30m' }),
+  ).toBeVisible()
+  await expect(
+    highscoreTable.getByRole('cell', { name: 'Fuel left 98%' }),
+  ).toBeVisible()
+  const firstHighscoreRow = highscoreTable
+    .locator('.reach-moon-highscore-row:not(.reach-moon-highscore-row-header)')
+    .first()
+  await expect(
+    firstHighscoreRow.locator(
+      '.reach-moon-highscore-cell-elapsed .telemetry-time-icon',
+    ),
+  ).toBeVisible()
+  await expect(
+    firstHighscoreRow.locator(
+      '.reach-moon-highscore-cell-fuel .telemetry-fuel-icon',
+    ),
+  ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-highscores')
 
@@ -672,6 +691,14 @@ test('autosubmits completion highscores and retries failures', async ({
 
   const pilotName = page.getByLabel('Pilot name')
   await expect(pilotName).toBeVisible()
+  await expect(page.getByText('Time used 7h 30m (+28).')).toBeVisible()
+  await expect(page.getByText('Fuel left 98% (+196).')).toBeVisible()
+  await expect(
+    page.locator('.reach-moon-highscore-submit .telemetry-time-icon'),
+  ).toBeVisible()
+  await expect(
+    page.locator('.reach-moon-highscore-submit .telemetry-fuel-icon'),
+  ).toBeVisible()
   await expect(
     page.getByText('Submission failed: Storage offline.'),
   ).toBeVisible()

@@ -7,7 +7,11 @@ import {
   type ReachMoonHighscoreRollups,
 } from '../../scenario/specific-scenarios/reachMoonHighscores'
 import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
-import { formatReachMoonScoreSummary } from '../../scenario/specific-scenarios/reachMoonScore'
+import {
+  formatReachMoonFuelLeftPercent,
+  formatReachMoonScoreSummaryDisplay,
+  type ReachMoonScoreSummary,
+} from '../../scenario/specific-scenarios/reachMoonScore'
 import type { ReachMoonRunReceipt } from '../../server/reachMoonRunReceipts'
 import { formatCompactElapsed } from '../formatters'
 import {
@@ -92,8 +96,6 @@ export type MainMenuSurfaceProps = {
 const formatInteger = (value: number) =>
   Math.round(value).toLocaleString('en-US')
 
-const formatFuelLeft = (value: number) => `${formatInteger(value)} kg`
-
 const formatSubmittedAt = (value: string) => {
   const date = new Date(value)
   if (!Number.isFinite(date.valueOf())) {
@@ -122,6 +124,74 @@ const getSubmittedRank = (state: ReachMoonHighscoreMenuState) => {
     state.rollups[state.activePeriod]?.entries.find(
       (candidate) => candidate.id === state.submittedRecord?.id,
     )?.rank ?? null
+  )
+}
+
+const ReachMoonHighscoreTimeIcon = () => (
+  <svg class="telemetry-time-icon" viewBox="0 0 16 16" aria-hidden="true">
+    <circle class="telemetry-time-icon-face" cx="8" cy="8" r="6.25" />
+    <line
+      class="telemetry-time-icon-hand telemetry-time-icon-hand-minute"
+      x1="8"
+      y1="8"
+      x2="8"
+      y2="3.5"
+    />
+    <circle class="telemetry-time-icon-center" cx="8" cy="8" r="0.9" />
+  </svg>
+)
+
+const ReachMoonHighscoreFuelIcon = () => (
+  <svg class="telemetry-fuel-icon" viewBox="0 0 16 16" aria-hidden="true">
+    <path
+      class="telemetry-fuel-icon-tank"
+      d="M5.1 2.2h5.8l1.25 1.7v8.4c0 .85-.55 1.5-1.42 1.5H5.27c-.87 0-1.42-.65-1.42-1.5V3.9Z"
+    />
+    <path class="telemetry-fuel-icon-cap" d="M5.6 2.2V1.3h4.8v.9" />
+    <path class="telemetry-fuel-icon-level" d="M5.65 10.65h4.7" />
+  </svg>
+)
+
+const ReachMoonHighscoreMetric = ({
+  icon,
+  value,
+}: {
+  icon: 'fuel' | 'time'
+  value: string
+}) => (
+  <span class="reach-moon-highscore-metric">
+    {icon === 'time' ? (
+      <ReachMoonHighscoreTimeIcon />
+    ) : (
+      <ReachMoonHighscoreFuelIcon />
+    )}
+    <span aria-hidden="true">{value}</span>
+  </span>
+)
+
+const ReachMoonHighscoreScoreSummary = ({
+  score,
+}: {
+  score: ReachMoonScoreSummary
+}) => {
+  const display = formatReachMoonScoreSummaryDisplay(score)
+
+  return (
+    <strong class="reach-moon-highscore-score-summary">
+      <span>Score {display.totalScore}.</span>
+      <span class="reach-moon-highscore-score-summary-line">
+        <ReachMoonHighscoreTimeIcon />
+        <span>
+          Time used {display.missionElapsed} (+{display.timeScorePoints}).
+        </span>
+      </span>
+      <span class="reach-moon-highscore-score-summary-line">
+        <ReachMoonHighscoreFuelIcon />
+        <span>
+          Fuel left {display.fuelLeft} (+{display.fuelBonusPoints}).
+        </span>
+      </span>
+    </strong>
   )
 }
 
@@ -159,7 +229,7 @@ const ReachMoonHighscoreSubmitPanel = ({
     <section class="reach-moon-highscore-submit" aria-live="polite">
       <div class="reach-moon-highscore-submit-copy">
         <span class="reach-moon-highscore-section-label">Completed run</span>
-        <strong>{formatReachMoonScoreSummary(pendingRun.score)}</strong>
+        <ReachMoonHighscoreScoreSummary score={pendingRun.score} />
       </div>
       <label class="reach-moon-highscore-name-field">
         <span>Pilot name</span>
@@ -198,7 +268,7 @@ const ReachMoonHighscoreHeaderRow = () => (
     <th scope="col">Name</th>
     <th scope="col">Score</th>
     <th scope="col">Time</th>
-    <th scope="col">Fuel</th>
+    <th scope="col">Fuel left</th>
     <th scope="col">Submitted</th>
   </tr>
 )
@@ -221,32 +291,43 @@ const ReachMoonHighscoreRow = ({
 }: {
   entry: RankedReachMoonHighscoreRecord
   loading: boolean
-}) => (
-  <tr
-    class={
-      loading
-        ? 'reach-moon-highscore-row reach-moon-highscore-row-loading'
-        : 'reach-moon-highscore-row'
-    }
-  >
-    <td class="reach-moon-highscore-cell-rank">#{entry.rank}</td>
-    <td class="reach-moon-highscore-cell-name" title={entry.playerName}>
-      {entry.playerName}
-    </td>
-    <td class="reach-moon-highscore-cell-score">
-      {formatInteger(entry.score.totalScore)}
-    </td>
-    <td class="reach-moon-highscore-cell-elapsed">
-      {formatCompactElapsed(entry.score.missionElapsedSeconds)}
-    </td>
-    <td class="reach-moon-highscore-cell-fuel">
-      {formatFuelLeft(entry.score.fuelRemainingKg)}
-    </td>
-    <td class="reach-moon-highscore-cell-submitted">
-      {formatSubmittedAt(entry.submittedAt)}
-    </td>
-  </tr>
-)
+}) => {
+  const elapsed = formatCompactElapsed(entry.score.missionElapsedSeconds)
+  const fuelLeft = formatReachMoonFuelLeftPercent(entry.score)
+
+  return (
+    <tr
+      class={
+        loading
+          ? 'reach-moon-highscore-row reach-moon-highscore-row-loading'
+          : 'reach-moon-highscore-row'
+      }
+    >
+      <td class="reach-moon-highscore-cell-rank">#{entry.rank}</td>
+      <td class="reach-moon-highscore-cell-name" title={entry.playerName}>
+        {entry.playerName}
+      </td>
+      <td class="reach-moon-highscore-cell-score">
+        {formatInteger(entry.score.totalScore)}
+      </td>
+      <td
+        class="reach-moon-highscore-cell-elapsed"
+        aria-label={`Time ${elapsed}`}
+      >
+        <ReachMoonHighscoreMetric icon="time" value={elapsed} />
+      </td>
+      <td
+        class="reach-moon-highscore-cell-fuel"
+        aria-label={`Fuel left ${fuelLeft}`}
+      >
+        <ReachMoonHighscoreMetric icon="fuel" value={fuelLeft} />
+      </td>
+      <td class="reach-moon-highscore-cell-submitted">
+        {formatSubmittedAt(entry.submittedAt)}
+      </td>
+    </tr>
+  )
+}
 
 const ReachMoonHighscoreBoard = ({
   activePeriod,
