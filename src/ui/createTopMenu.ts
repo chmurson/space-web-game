@@ -1,4 +1,9 @@
-import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
+import {
+  type DebugScenarioSnapshotEntry,
+  getRecentDebugScenarioSnapshots,
+  loadRecentDebugScenarioSnapshot,
+  readDebugScenarioSnapshot,
+} from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
 import {
   TopMenuSurface,
@@ -46,6 +51,9 @@ export const createTopMenu = (options: {
   let debugModeEnabled = options.getDebugModeEnabled()
   let fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
   let loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
+  let recentSnapshots: DebugScenarioSnapshotEntry[] =
+    getRecentDebugScenarioSnapshots()
+  let selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
   let pendingConfirmationAction: ConfirmableTopMenuAction | null = null
 
   const getButton = () =>
@@ -68,8 +76,28 @@ export const createTopMenu = (options: {
 
   const syncSnapshotAvailability = () => {
     const previousLoadSnapshotAvailable = loadSnapshotAvailable
+    const previousRecentSnapshotIds = recentSnapshots
+      .map((snapshot) => snapshot.id)
+      .join('|')
+    const previousSelectedRecentSnapshotId = selectedRecentSnapshotId
+
     loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
-    return loadSnapshotAvailable !== previousLoadSnapshotAvailable
+    recentSnapshots = getRecentDebugScenarioSnapshots()
+    if (
+      selectedRecentSnapshotId === '' ||
+      !recentSnapshots.some(
+        (snapshot) => snapshot.id === selectedRecentSnapshotId,
+      )
+    ) {
+      selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
+    }
+
+    return (
+      loadSnapshotAvailable !== previousLoadSnapshotAvailable ||
+      previousRecentSnapshotIds !==
+        recentSnapshots.map((snapshot) => snapshot.id).join('|') ||
+      previousSelectedRecentSnapshotId !== selectedRecentSnapshotId
+    )
   }
 
   const syncToggleState = () => {
@@ -91,6 +119,8 @@ export const createTopMenu = (options: {
       menuId,
       open,
       pendingConfirmationAction,
+      recentSnapshots,
+      selectedRecentSnapshotId,
       onAction: (action) => {
         if (
           isConfirmableAction(action) &&
@@ -111,6 +141,22 @@ export const createTopMenu = (options: {
       },
       onMenuButtonClick: () => {
         setOpen(!open, open ? 'button' : 'first-item')
+      },
+      onRecentSnapshotChange: (id) => {
+        selectedRecentSnapshotId = id
+        renderMenu()
+      },
+      onRecentSnapshotLoad: () => {
+        if (
+          selectedRecentSnapshotId &&
+          loadRecentDebugScenarioSnapshot(selectedRecentSnapshotId)
+        ) {
+          options.onAction('loadDebugSnapshot')
+          syncSnapshotAvailability()
+        }
+        syncToggleState()
+        pendingConfirmationAction = null
+        setOpen(false, 'button')
       },
     })
   }

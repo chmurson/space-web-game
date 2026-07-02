@@ -1139,8 +1139,12 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const topMenuModulePath = '/src/ui/createTopMenu.ts'
     const debugSnapshotModulePath = '/src/debugScenarioSnapshot.ts'
     const { createTopMenu } = await import(topMenuModulePath)
-    const { clearDebugScenarioSnapshot, writeDebugScenarioSnapshot } =
-      await import(debugSnapshotModulePath)
+    const {
+      clearDebugScenarioSnapshot,
+      clearRecentDebugScenarioSnapshotsForTests,
+      readDebugScenarioSnapshot,
+      writeDebugScenarioSnapshot,
+    } = await import(debugSnapshotModulePath)
     const app = document.createElement('div')
     const topBar = document.createElement('div')
     const telemetry = document.createElement('div')
@@ -1156,6 +1160,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     app.append(topBar)
     document.body.append(app, outsideButton)
     clearDebugScenarioSnapshot()
+    clearRecentDebugScenarioSnapshotsForTests()
 
     const menu = createTopMenu({
       app,
@@ -1179,6 +1184,10 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       menu.element.querySelector(
         `[data-menu-action="${action}"]`,
       ) as HTMLButtonElement | null
+    const getRecentSelect = () =>
+      menu.element.querySelector(
+        '.menu-recent-snapshot-select',
+      ) as HTMLSelectElement | null
     const getActiveAction = () =>
       document.activeElement instanceof HTMLElement
         ? document.activeElement.dataset.menuAction
@@ -1256,7 +1265,14 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     writeDebugScenarioSnapshot({
       version: 1,
       savedAt: new Date(0).toISOString(),
-      elapsed: 0,
+      elapsed: 1,
+      bodies: [],
+      spacecraft: {},
+    })
+    writeDebugScenarioSnapshot({
+      version: 1,
+      savedAt: new Date(1).toISOString(),
+      elapsed: 2,
       bodies: [],
       spacecraft: {},
     })
@@ -1264,6 +1280,18 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     openMenu()
     const loadDisabledWithSnapshot =
       getActionButton('loadDebugSnapshot')?.disabled
+    const recentOptions = Array.from(getRecentSelect()?.options ?? []).map(
+      (option) => option.textContent,
+    )
+    const recentSelect = getRecentSelect()
+    if (recentSelect) {
+      recentSelect.selectedIndex = 1
+      recentSelect.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+    getActionButton('loadRecentDebugSnapshot')?.click()
+    const selectedRecentLoadedElapsed = readDebugScenarioSnapshot()?.elapsed
+
+    openMenu()
     getActionButton('loadDebugSnapshot')?.click()
 
     openMenu()
@@ -1308,7 +1336,9 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       loadDisabledWithSnapshot,
       loadDisabledWithoutSnapshot,
       openAfterClick,
+      recentOptions,
       restartLabelAfterFirstClick,
+      selectedRecentLoadedElapsed,
     }
   })
 
@@ -1335,6 +1365,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       'toggleDebugMode',
       'toggleFpsIndicator',
       'loadDebugSnapshot',
+      'loadDebugSnapshot',
     ],
     expandedAfterClick: 'true',
     exitLabelAfterFirstClick: 'Confirm exit',
@@ -1345,7 +1376,12 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     loadDisabledWithSnapshot: false,
     loadDisabledWithoutSnapshot: true,
     openAfterClick: true,
+    recentOptions: [
+      expect.stringContaining('Snapshot at 2s - '),
+      expect.stringContaining('Snapshot at 1s - '),
+    ],
     restartLabelAfterFirstClick: 'Confirm restart',
+    selectedRecentLoadedElapsed: 1,
   })
 })
 

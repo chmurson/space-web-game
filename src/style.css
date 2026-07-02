@@ -755,6 +755,32 @@ canvas {
   text-transform: uppercase;
 }
 
+.menu-recent-snapshot {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--ui-glass-row-bg);
+}
+
+.menu-recent-snapshot-label {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.menu-recent-snapshot-select {
+  min-width: 0;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f0f9ff;
+  font: inherit;
+  font-size: 12px;
+}
+
 .menu-separator {
   width: 100%;
   height: 1px;
@@ -877,7 +903,8 @@ canvas {
 }
 
 .top-menu-button:focus-visible,
-.top-menu-dropdown button:focus-visible {
+.top-menu-dropdown button:focus-visible,
+.menu-recent-snapshot-select:focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.8);
   outline-offset: 2px;
 }

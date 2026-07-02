@@ -1,3 +1,4 @@
+import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import type { TopMenuAction } from '../createTopMenu'
 
 export type TopMenuSurfaceProps = {
@@ -7,9 +8,13 @@ export type TopMenuSurfaceProps = {
   menuId: string
   open: boolean
   pendingConfirmationAction: TopMenuAction | null
+  recentSnapshots: DebugScenarioSnapshotEntry[]
+  selectedRecentSnapshotId: string
   rootRef(element: HTMLElement | null): void
   onAction(action: TopMenuAction): void
   onMenuButtonClick(): void
+  onRecentSnapshotChange(id: string): void
+  onRecentSnapshotLoad(): void
 }
 
 export const TopMenuSurface = ({
@@ -19,9 +24,13 @@ export const TopMenuSurface = ({
   menuId,
   open,
   pendingConfirmationAction,
+  recentSnapshots,
+  selectedRecentSnapshotId,
   rootRef,
   onAction,
   onMenuButtonClick,
+  onRecentSnapshotChange,
+  onRecentSnapshotLoad,
 }: TopMenuSurfaceProps) => {
   const debugSectionLabelId = `${menuId}-debug`
   const scenarioSectionLabelId = `${menuId}-scenario`
@@ -86,6 +95,43 @@ export const TopMenuSurface = ({
           >
             Load debug snapshot
           </button>
+          <div class="menu-recent-snapshot">
+            <label
+              class="menu-recent-snapshot-label"
+              for={`${menuId}-recent-snapshot`}
+            >
+              Recent snapshot
+            </label>
+            <select
+              id={`${menuId}-recent-snapshot`}
+              class="menu-recent-snapshot-select"
+              value={selectedRecentSnapshotId}
+              disabled={recentSnapshots.length === 0}
+              onChange={(event) => {
+                onRecentSnapshotChange(event.currentTarget.value)
+              }}
+            >
+              {recentSnapshots.length === 0 ? (
+                <option value="">No recent snapshots</option>
+              ) : (
+                recentSnapshots.map((snapshot) => (
+                  <option key={snapshot.id} value={snapshot.id}>
+                    {snapshot.name} -{' '}
+                    {new Date(snapshot.savedAt).toLocaleTimeString()}
+                  </option>
+                ))
+              )}
+            </select>
+            <button
+              type="button"
+              role="menuitem"
+              data-menu-action="loadRecentDebugSnapshot"
+              disabled={!selectedRecentSnapshotId}
+              onClick={onRecentSnapshotLoad}
+            >
+              Load selected snapshot
+            </button>
+          </div>
         </section>
 
         <hr class="menu-separator" />
