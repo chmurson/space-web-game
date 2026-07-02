@@ -221,6 +221,7 @@ export type FpsMeterStatusInput = {
 
 export type FpsMeterTextInput = FpsMeterStatusInput & {
   browserGcStats: BrowserGcProbeStats
+  graphMaxFrameMs: number | null
 }
 
 export type FpsMeterFrameSample = {
@@ -237,6 +238,7 @@ export type FpsMeterGraphInput = {
 export type FpsMeterGraphModel = {
   budgetLineY: number
   gcMarkerXs: number[]
+  maxFrameMs: number | null
   height: number
   path: string
   width: number
@@ -301,12 +303,14 @@ export const getFpsMeterGraphModel = (
     fpsMeterGraphHeight -
     clamp(frameMs / fpsMeterGraphMaxFrameMs, 0, 1) * fpsMeterGraphHeight
 
+  let maxFrameMs: number | null = null
   const frameBuckets = Array<number>(fpsMeterGraphWidth + 1).fill(-1)
   for (const sample of input.frameSamples) {
     if (sample.atMs < windowStartMs || sample.atMs > input.nowMs) {
       continue
     }
 
+    maxFrameMs = Math.max(maxFrameMs ?? 0, sample.frameMs)
     const bucketX = Math.round(toX(sample.atMs))
     frameBuckets[bucketX] = Math.max(frameBuckets[bucketX], sample.frameMs)
   }
@@ -333,6 +337,7 @@ export const getFpsMeterGraphModel = (
   return {
     budgetLineY: toY(frameBudgetMs60),
     gcMarkerXs,
+    maxFrameMs,
     height: fpsMeterGraphHeight,
     path: pathSegments.join(' '),
     width: fpsMeterGraphWidth,
@@ -357,6 +362,10 @@ export const getFpsMeterStatus = (
 
 export const getFpsMeterText = (input: FpsMeterTextInput) => {
   const frameMs = getFrameMsForFps(input.smoothedFps)
+  const maxFrameText =
+    input.graphMaxFrameMs === null
+      ? 'max n/a'
+      : `max ${input.graphMaxFrameMs.toFixed(1)}ms`
   const headroomMs = frameBudgetMs60 - getLimitingWorkMs(input)
   const gpuText =
     input.smoothedGpuMs === null
@@ -367,6 +376,7 @@ export const getFpsMeterText = (input: FpsMeterTextInput) => {
   return [
     `FPS ${input.smoothedFps.toFixed(1)}`,
     `frame ${frameMs.toFixed(1)}ms`,
+    maxFrameText,
     cycleText,
     `60Hz ${formatSignedMs(headroomMs)}`,
     getCompactGcProbeText(input.browserGcStats),

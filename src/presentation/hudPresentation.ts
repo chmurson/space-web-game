@@ -56,7 +56,7 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
 }
 
 const debugPanelUpdateIntervalMs = 500
-const fpsIndicatorUpdateFrameCycleInterval = 4
+const fpsIndicatorUpdateIntervalMs = 500
 const fpsIndicatorSlowFrameMs = 1000 / 15
 
 const createDebugStateCopyPayload = (options: {
@@ -165,7 +165,7 @@ export const createHudPresentation = (options: {
   let debugPanelWasVisible = false
   let lastDebugPanelContentUpdateAt = Number.NEGATIVE_INFINITY
   let fpsIndicatorWasVisible = false
-  let fpsIndicatorFrameCyclesSinceUpdate = 0
+  let lastFpsIndicatorContentUpdateAt = Number.NEGATIVE_INFINITY
   const reducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
   ).matches
@@ -628,33 +628,34 @@ export const createHudPresentation = (options: {
           options.overlayUi.renderFpsIndicator(null)
         }
         fpsIndicatorWasVisible = false
-        fpsIndicatorFrameCyclesSinceUpdate = 0
+        lastFpsIndicatorContentUpdateAt = Number.NEGATIVE_INFINITY
         return
       }
 
-      fpsIndicatorFrameCyclesSinceUpdate += 1
       const shouldUpdateFpsIndicator =
         !fpsIndicatorWasVisible ||
-        fpsIndicatorFrameCyclesSinceUpdate >=
-          fpsIndicatorUpdateFrameCycleInterval ||
+        metrics.nowMs - lastFpsIndicatorContentUpdateAt >=
+          fpsIndicatorUpdateIntervalMs ||
         metrics.frameIntervalMs > fpsIndicatorSlowFrameMs
 
       fpsIndicatorWasVisible = true
 
       if (shouldUpdateFpsIndicator) {
-        fpsIndicatorFrameCyclesSinceUpdate = 0
+        lastFpsIndicatorContentUpdateAt = metrics.nowMs
+        const graph = getFpsMeterGraphModel({
+          browserGcStats: metrics.browserGcStats,
+          frameSamples: metrics.fpsFrameSamples,
+          nowMs: metrics.fpsGraphNowMs,
+        })
         const fpsMeterInput = {
           browserGcStats: metrics.browserGcStats,
+          graphMaxFrameMs: graph.maxFrameMs,
           smoothedCpuMs: metrics.smoothedCpuMs,
           smoothedFps: metrics.smoothedFps,
           smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),
         }
         options.overlayUi.renderFpsIndicator({
-          graph: getFpsMeterGraphModel({
-            browserGcStats: metrics.browserGcStats,
-            frameSamples: metrics.fpsFrameSamples,
-            nowMs: metrics.fpsGraphNowMs,
-          }),
+          graph,
           status: getFpsMeterStatus(fpsMeterInput),
           text: getFpsMeterText(fpsMeterInput),
         })

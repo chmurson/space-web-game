@@ -144,17 +144,21 @@ describe('getFpsMeterText', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats({ heapSamplingSupported: true }),
+        graphMaxFrameMs: 42.25,
         smoothedCpuMs: 5.25,
         smoothedFps: 59.94,
         smoothedGpuMs: 8.4,
       }),
-    ).toBe('FPS 59.9\nframe 16.7ms\ncpu 5.3ms | gpu 8.4ms\n60Hz +8.3ms\ngc? 0')
+    ).toBe(
+      'FPS 59.9\nframe 16.7ms\nmax 42.3ms\ncpu 5.3ms | gpu 8.4ms\n60Hz +8.3ms\ngc? 0',
+    )
   })
 
   it('marks gpu timing unavailable when the browser cannot provide it yet', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats(),
+        graphMaxFrameMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -171,6 +175,7 @@ describe('getFpsMeterText', () => {
           lastEstimatedPauseMs: 18.25,
           longestEstimatedPauseMs: 44.5,
         }),
+        graphMaxFrameMs: 80,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -182,6 +187,7 @@ describe('getFpsMeterText', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats(),
+        graphMaxFrameMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -193,6 +199,7 @@ describe('getFpsMeterText', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats({ isEnabled: false }),
+        graphMaxFrameMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -215,6 +222,7 @@ describe('getFpsMeterGraphModel', () => {
 
     expect(graph).toMatchObject({
       height: 28,
+      maxFrameMs: 80,
       path: 'M 0.0 22.4 L 56.0 16.8 L 112.0 0.0',
       width: 112,
     })
