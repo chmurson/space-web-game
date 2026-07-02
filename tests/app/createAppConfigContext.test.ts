@@ -147,6 +147,23 @@ describe('createAppConfigContext', () => {
   })
 
   it('allows extended trajectory horizons only behind the exact URL feature flag', () => {
+    for (const search of [
+      '?nohiroznlimit=0',
+      '?nohiroznlimit=true',
+      '?nohiroznlimit',
+      '?nohorizonlimit=1',
+    ]) {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: createWindowWithSearch(search),
+      })
+
+      const nearMissConfig = createAppConfigContext()
+
+      expect(nearMissConfig.featureFlags.noHorizonLimit).toBe(false)
+      expect(nearMissConfig.trajectory.maxCoastPredictionHorizonHours).toBe(48)
+    }
+
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch('?nohiroznlimit=1'),

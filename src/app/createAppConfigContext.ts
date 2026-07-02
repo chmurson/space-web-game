@@ -127,7 +127,7 @@ export const createAppConfigContext = (): AppConfigContext => {
     minCoastPredictionHorizonHours: gameConfig.trajectory.horizon.minHours,
     maxCoastPredictionHorizonHours: featureFlags.noHorizonLimit
       ? gameConfig.trajectory.horizon.maxHours
-      : 48,
+      : gameConfig.trajectory.horizon.defaultMaxHours,
     predictionSampling: { ...gameConfig.trajectory.sampling },
     maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
     rendering: { ...gameConfig.trajectory.rendering },

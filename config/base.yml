@@ -19,6 +19,7 @@ trajectory:
   horizon:
     defaultHours: 1
     minHours: 0.5
+    defaultMaxHours: 48
     maxHours: 3072
   loopTrim:
     maxRevolutions: 1

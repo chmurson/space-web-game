@@ -79,6 +79,9 @@
             "minHours": {
               "type": "number"
             },
+            "defaultMaxHours": {
+              "type": "number"
+            },
             "maxHours": {
               "type": "number"
             }
