@@ -9,6 +9,7 @@ Branch: `codex/issue-150-reach-moon-highscores-back-fade`
 - Direct completed-run highscore opens use the same Reach the Moon submenu as their back target.
 - Leaderboard period switches keep the currently visible rollup mounted while the new period loads.
 - Loading rows get a gray/faded visual state and `aria-busy` table state until fresh data replaces them.
+- Failed leaderboard refreshes now show an error and `Retry` action even when stale rows are still visible.
 
 ## Why
 
@@ -25,16 +26,18 @@ Highscores are part of the Reach the Moon menu flow, so Back should behave like 
 
 - Kept the fix inside the existing main-menu/highscore adapter instead of adding a broader menu history abstraction.
 - Used the last visible rollup only while the active period request is pending. If the request fails and the active period has no data, the normal error state still owns the panel.
+- Kept stale rows visible when a refresh fails, but surfaced the load error as an inline panel so the retry affordance remains available.
 - Attached a screenshot from the pending-period state because the fade behavior is visual and DOM assertions alone are not enough.
 
 ## Validation
 
-- `npx biome check --write src/ui/createMainMenu.ts src/ui/components/MainMenuSurface.tsx src/style.css tests/gui/mobileHudScreenshot.spec.ts` passed; it still reports three existing `!important` warnings in unrelated CSS rules.
-- `coderabbit --base main --agent` passed with zero findings after addressing its CSS table/caption and formatter-wrap comments.
-- `npx playwright test --config playwright.config.ts tests/gui/mobileHudScreenshot.spec.ts -g "Reach the Moon highscores|highscore rows"` passed, 3 tests.
+- Initial validation: `npx biome check --write src/ui/createMainMenu.ts src/ui/components/MainMenuSurface.tsx src/style.css tests/gui/mobileHudScreenshot.spec.ts` passed; it still reports three existing `!important` warnings in unrelated CSS rules.
+- Follow-up validation: `npx biome check --write src/ui/components/MainMenuSurface.tsx tests/gui/mobileHudScreenshot.spec.ts docs/tech-notes/2026-07-02-reach-moon-highscores-back-fade.md` passed with no fixes applied.
+- `npx playwright test --config playwright.config.ts tests/gui/mobileHudScreenshot.spec.ts -g "Reach the Moon highscores|highscore rows|highscore refresh fails"` passed, 4 tests.
 - `npx tsc --noEmit` passed.
 - `npm run build` passed; Vite emitted the existing large chunk warning.
-- `npm run test:gui` passed, 32 tests.
+- `npm run test:gui` passed, 33 tests.
+- `coderabbit --base main --agent` passed with zero findings after the follow-up fix.
 - Inspected `tmp/playwright-results/mobileHudScreenshot-captur-58df7-Moon-highscores-leaderboard-mobile-chromium/mobile-reach-moon-highscores.png`: highscore panel remained centered, readable, and unclipped.
 - Inspected `tmp/playwright-results/mobileHudScreenshot-keeps--4aeb9-ded-while-switching-periods-mobile-chromium/mobile-reach-moon-highscores-loading-fade.png`: Weekly was active, the existing row stayed in place, and the row was visibly gray/faded during loading.
 

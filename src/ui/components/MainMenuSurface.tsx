@@ -233,21 +233,22 @@ const ReachMoonHighscoreBoard = ({
     rollup ?? (loading ? loadingFallbackRollup : undefined)
   const entries = displayedRollup?.entries ?? []
   const periodLabel = getPeriodLabel(activePeriod)
+  const renderLoadErrorState = () => (
+    <div class="reach-moon-highscore-state" aria-live="polite">
+      <strong>Leaderboard unavailable.</strong>
+      <span>{loadError}</span>
+      <button
+        class="reach-moon-highscore-inline-action"
+        type="button"
+        onClick={onRetry}
+      >
+        Retry
+      </button>
+    </div>
+  )
 
-  if (loadError && !displayedRollup) {
-    return (
-      <div class="reach-moon-highscore-state" aria-live="polite">
-        <strong>Leaderboard unavailable.</strong>
-        <span>{loadError}</span>
-        <button
-          class="reach-moon-highscore-inline-action"
-          type="button"
-          onClick={onRetry}
-        >
-          Retry
-        </button>
-      </div>
-    )
+  if (loadError && (!displayedRollup || entries.length === 0)) {
+    return renderLoadErrorState()
   }
 
   if (loading && !displayedRollup) {
@@ -267,34 +268,37 @@ const ReachMoonHighscoreBoard = ({
   }
 
   return (
-    <table
-      aria-busy={loading ? 'true' : 'false'}
-      aria-label={`${periodLabel} Reach the Moon leaderboard`}
-      class="reach-moon-highscore-board"
-    >
-      <caption class="reach-moon-highscore-refreshing" aria-live="polite">
-        {loading ? `Refreshing ${periodLabel.toLowerCase()}...` : ''}
-      </caption>
-      <thead>
-        <tr class="reach-moon-highscore-row reach-moon-highscore-row-header">
-          <th scope="col">Rank</th>
-          <th scope="col">Name</th>
-          <th scope="col">Score</th>
-          <th scope="col">Time</th>
-          <th scope="col">Fuel</th>
-          <th scope="col">Submitted</th>
-        </tr>
-      </thead>
-      <tbody>
-        {entries.map((entry) => (
-          <ReachMoonHighscoreRow
-            entry={entry}
-            key={entry.id}
-            loading={loading}
-          />
-        ))}
-      </tbody>
-    </table>
+    <>
+      {loadError ? renderLoadErrorState() : null}
+      <table
+        aria-busy={loading ? 'true' : 'false'}
+        aria-label={`${periodLabel} Reach the Moon leaderboard`}
+        class="reach-moon-highscore-board"
+      >
+        <caption class="reach-moon-highscore-refreshing" aria-live="polite">
+          {loading ? `Refreshing ${periodLabel.toLowerCase()}...` : ''}
+        </caption>
+        <thead>
+          <tr class="reach-moon-highscore-row reach-moon-highscore-row-header">
+            <th scope="col">Rank</th>
+            <th scope="col">Name</th>
+            <th scope="col">Score</th>
+            <th scope="col">Time</th>
+            <th scope="col">Fuel</th>
+            <th scope="col">Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry) => (
+            <ReachMoonHighscoreRow
+              entry={entry}
+              key={entry.id}
+              loading={loading}
+            />
+          ))}
+        </tbody>
+      </table>
+    </>
   )
 }
 

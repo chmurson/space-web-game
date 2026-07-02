@@ -369,6 +369,62 @@ test('keeps highscore rows mounted and faded while switching periods', async ({
   await expect(page.locator('[data-stable-probe="daily-row"]')).toHaveCount(0)
 })
 
+test('shows retry when highscore refresh fails with stale rows', async ({
+  page,
+}) => {
+  let dailyRequests = 0
+
+  await page.route('**/api/reach-moon/highscores**', async (route) => {
+    const period = getHighscorePeriodFromRequest(route.request().url())
+
+    if (period === 'daily') {
+      dailyRequests += 1
+    }
+
+    if (period === 'daily' && dailyRequests > 1) {
+      await route.fulfill({
+        body: JSON.stringify({
+          error: { message: 'Highscore service offline.' },
+        }),
+        contentType: 'application/json',
+        status: 503,
+      })
+      return
+    }
+
+    await route.fulfill({
+      body: JSON.stringify({
+        rollups: {
+          [period]: createHighscoreRollup(period),
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await openReachMoonMainMenu(page)
+  await page.getByRole('button', { name: 'Reach the Moon' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: 'Highscores' }).click()
+
+  await expect(page.getByText('Leaderboard unavailable.')).toBeVisible()
+  await expect(page.getByText('Highscore service offline.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(
+    page.getByRole('cell', {
+      name: 'Artemis Pathfinder With A Long Callsign',
+    }),
+  ).toBeVisible()
+})
+
 test('autosubmits completion highscores and retries failures', async ({
   page,
 }) => {
