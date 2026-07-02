@@ -1400,7 +1400,7 @@ canvas {
 }
 
 #app .fps-indicator[data-status="warning"] {
-    --fps-meter-accent: rgba(245, 158, 11, 0.92);
+    --fps-meter-accent: rgba(250, 204, 21, 0.9);
 }
 
 #app .fps-indicator[data-status="danger"] {

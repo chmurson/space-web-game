@@ -10,7 +10,7 @@
 - The FPS meter now shows the maximum CPU frame cost inside the graph window, so short work spikes remain visible in text after the current CPU reading settles.
 - The FPS value now uses a rolling one-second frame count while the FPS meter popup keeps its prior four-frame render cadence for the other values.
 - The FPS meter graph now scales its Y axis from the lowest to highest CPU frame cost in the visible graph window so the normal low line stays at the bottom while small bumps remain visible.
-- The FPS meter warning state now turns orange earlier as CPU/GPU work approaches the active frame budget, while danger still marks over-budget work or heavy measured FPS loss.
+- The FPS meter warning state now turns yellow when CPU/GPU work crosses the 60 Hz budget line, while danger marks a larger 1.5x budget miss or heavy measured FPS loss.
 - Native browser GC probe events below 2 ms are ignored so the FPS meter reports performance-relevant pauses instead of every tiny V8 scavenge.
 - Browsers without native GC entries or heap sampling, including Safari/WebKit, no longer label generic frame gaps as probable GC; the FPS meter reports `gc n/a` instead.
 - `tests/scene/starfield.test.ts` covers buffer reuse while zoom changes reduce the drawn star count.
@@ -47,7 +47,7 @@ Safari/WebKit does not expose the browser APIs this probe needs for GC attributi
 - WebKit FPS-meter dynamic-scale check inspected: `tmp/perf/fps-meter-dynamic-scale-webkit.png`; graph path reached the top of the graph at the visible max CPU frame cost while the popup remained readable.
 - WebKit FPS-meter CPU-scale check inspected: `tmp/perf/fps-meter-cpu-scale-webkit.png`; `frame` showed rAF pacing while `cpu max` and the graph used measured CPU frame cost.
 - WebKit FPS-meter CPU range-scale check inspected: `tmp/perf/fps-meter-cpu-range-scale-webkit.png`; the graph reached both bottom and top of the visible CPU min-to-max range.
-- WebKit FPS-meter warning color check inspected: `tmp/perf/fps-meter-warning-orange-webkit.png`; warning state used the orange FPS-meter accent and remained readable.
+- WebKit FPS-meter warning color check inspected: `tmp/perf/fps-meter-warning-yellow-webkit.png`; warning state used the yellow FPS-meter accent and remained readable.
 - Chrome DevTools Protocol trace on the production preview after the starfield fix: 96 wheel zoom steps, sampled JS heap 6.98-15.17 MB, minor GC max 0.46 ms, major GC max 1.27 ms.
 - Chrome DevTools Protocol trace on the production preview after the UI/probe follow-up: 160 wheel zoom steps with FPS meter visible, sampled JS heap 6.98-15.37 MB, minor GC max 0.42 ms, major GC max 1.27 ms, reportable native GC events at the 2 ms threshold: 0, FPS meter text ended at `gc? 0`.
 - Playwright WebKit check: WebKit reported no native GC entry support and no `performance.memory` support; the old fallback produced a false `gc?` count from a frame gap, while sampled frames in the final window had no frames over 50 ms.

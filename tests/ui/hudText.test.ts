@@ -274,10 +274,20 @@ describe('getFpsMeterStatus', () => {
     ).toBe('good')
   })
 
-  it('warns before the 60hz frame budget is exhausted', () => {
+  it('stays good before the 60hz frame budget is crossed', () => {
     expect(
       getFpsMeterStatus({
         smoothedCpuMs: 12,
+        smoothedFps: 60,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('good')
+  })
+
+  it('warns when work slightly exceeds the 60hz frame budget', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 18,
         smoothedFps: 60,
         smoothedGpuMs: null,
       }),
@@ -294,32 +304,32 @@ describe('getFpsMeterStatus', () => {
     ).toBe('warning')
   })
 
-  it('warns before the effective 30 FPS frame budget is exhausted', () => {
+  it('warns when gpu work slightly exceeds the 60hz frame budget', () => {
     expect(
       getFpsMeterStatus({
-        smoothedCpuMs: 27,
-        smoothedFps: 30,
-        smoothedGpuMs: null,
+        smoothedCpuMs: 5,
+        smoothedFps: 60,
+        smoothedGpuMs: 18,
       }),
     ).toBe('warning')
   })
 
-  it('reports danger when work exceeds a 60hz frame budget', () => {
+  it('reports danger when work exceeds the 60hz frame budget by a large factor', () => {
     expect(
       getFpsMeterStatus({
-        smoothedCpuMs: 12,
+        smoothedCpuMs: 26,
         smoothedFps: 60,
-        smoothedGpuMs: 18,
+        smoothedGpuMs: null,
       }),
     ).toBe('danger')
   })
 
-  it('reports danger when work exceeds the effective 30 FPS frame budget', () => {
+  it('reports danger when gpu work exceeds the 60hz frame budget by a large factor', () => {
     expect(
       getFpsMeterStatus({
-        smoothedCpuMs: 34,
-        smoothedFps: 30,
-        smoothedGpuMs: null,
+        smoothedCpuMs: 5,
+        smoothedFps: 60,
+        smoothedGpuMs: 26,
       }),
     ).toBe('danger')
   })

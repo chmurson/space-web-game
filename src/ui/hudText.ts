@@ -245,11 +245,11 @@ export type FpsMeterGraphModel = {
 }
 
 const frameBudgetMs60 = 1000 / 60
+const fpsMeterDangerBudgetRatio = 1.5
 const fpsMeterDangerFps = 24
 const fpsMeterGraphWindowMs = 5_000
 const fpsMeterGraphWidth = 112
 const fpsMeterGraphHeight = 28
-const fpsMeterWarningBudgetRatio = 0.7
 const fpsMeterWarningFps = 28
 
 const formatSignedMs = (value: number) =>
@@ -261,9 +261,6 @@ const getLimitingWorkMs = (input: FpsMeterStatusInput) =>
     : Math.max(input.smoothedCpuMs, input.smoothedGpuMs)
 
 const getFrameMsForFps = (fps: number) => 1000 / Math.max(fps, 1)
-
-const getEffectiveFrameBudgetMs = (fps: number) =>
-  Math.max(frameBudgetMs60, getFrameMsForFps(fps))
 
 const getCompactGcProbeText = (stats: BrowserGcProbeStats) => {
   const mode = getGcProbeMode(stats)
@@ -358,16 +355,15 @@ export const getFpsMeterStatus = (
   input: FpsMeterStatusInput,
 ): FpsMeterStatus => {
   const limitingWorkMs = getLimitingWorkMs(input)
-  const effectiveFrameBudgetMs = getEffectiveFrameBudgetMs(input.smoothedFps)
 
   if (
-    limitingWorkMs > effectiveFrameBudgetMs ||
+    limitingWorkMs > frameBudgetMs60 * fpsMeterDangerBudgetRatio ||
     input.smoothedFps < fpsMeterDangerFps
   ) {
     return 'danger'
   }
   if (
-    limitingWorkMs > effectiveFrameBudgetMs * fpsMeterWarningBudgetRatio ||
+    limitingWorkMs > frameBudgetMs60 ||
     input.smoothedFps < fpsMeterWarningFps
   ) {
     return 'warning'
