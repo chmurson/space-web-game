@@ -6,9 +6,10 @@ import {
   saveRuntimeDebugSnapshot,
 } from '../scenario/runtimeScenario'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
-import type {
-  CameraControlMode,
-  GlobalScenarioDirectiveLimits,
+import {
+  getNextCameraControlMode,
+  type CameraControlMode,
+  type GlobalScenarioDirectiveLimits,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
@@ -18,6 +19,7 @@ import { add, type Vec2 } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
+import type { AssistTargetUiState } from './gameQueries'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
 import {
   clearTransientScenarioRuntimeState,
@@ -69,6 +71,7 @@ export const createRuntimeActions = (options: {
   cameraElevation: number
   createRipple: RippleCreator
   gameScene: GameSceneRefs
+  getAssistTargetUiState: () => AssistTargetUiState
   maxCoastPredictionHorizonHours: number
   maxViewport: number
   minCoastPredictionHorizonHours: number
@@ -168,10 +171,15 @@ export const createRuntimeActions = (options: {
           options.runtime.scenario.directives.cameraFollowOffset,
         )
 
+  const getTargetCameraTargetPosition = () =>
+    options.getAssistTargetUiState().activeTarget.position
+
   const getCameraTargetPosition = () =>
     options.runtime.ui.camera.mode === 'unlocked'
       ? options.runtime.ui.camera.panOffset
-      : getFollowCameraTargetPosition()
+      : options.runtime.ui.camera.mode === 'target'
+        ? getTargetCameraTargetPosition()
+        : getFollowCameraTargetPosition()
 
   const updateCamera = () =>
     updateCameraView({
@@ -195,7 +203,7 @@ export const createRuntimeActions = (options: {
 
     if (mode === 'unlocked') {
       options.runtime.ui.camera.panOffset = {
-        ...getFollowCameraTargetPosition(),
+        ...getCameraTargetPosition(),
       }
     }
     options.runtime.ui.camera.mode = mode
@@ -382,8 +390,16 @@ export const createRuntimeActions = (options: {
       if (action === 'zoomOut') {
         zoomCamera(1.22)
       }
+      if (action === 'cycleCameraMode') {
+        setCameraMode(getNextCameraControlMode(options.runtime.ui.camera.mode))
+        return { refreshTrajectoryPrediction: false }
+      }
       if (action === 'setCameraCentered') {
         setCameraMode('centered')
+        return { refreshTrajectoryPrediction: false }
+      }
+      if (action === 'setCameraTarget') {
+        setCameraMode('target')
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'setCameraUnlocked') {

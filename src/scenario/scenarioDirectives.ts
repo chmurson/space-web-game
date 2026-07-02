@@ -3,6 +3,7 @@ import {
   type CameraControlMode,
   createDefaultScenarioDirectives,
   type GlobalScenarioDirectiveLimits,
+  isCameraControlMode,
   type RuntimeScenarioDirectives,
 } from './scenarioDirectiveTypes'
 import { resolveCurrentScenarioScene } from './scenarioScenes'
@@ -53,8 +54,7 @@ const getBooleanValue = (value: boolean | undefined): boolean =>
 
 const getCameraModeValue = (
   value: CameraControlMode | undefined,
-): CameraControlMode | null =>
-  value === 'centered' || value === 'unlocked' ? value : null
+): CameraControlMode | null => (isCameraControlMode(value) ? value : null)
 
 const resolveBaseScenarioDirectives = (
   state: ScenarioSessionValue,

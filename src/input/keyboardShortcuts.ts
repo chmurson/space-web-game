@@ -37,7 +37,7 @@ export const getKeyboardShortcutAction = (
     return 'cycleAssistTarget'
   }
   if (!event.repeat && event.code === 'KeyC') {
-    return 'cycleAssistMode'
+    return 'cycleCameraMode'
   }
   if (!event.repeat && event.ctrlKey && event.code === 'KeyX') {
     return 'toggleDebugMode'

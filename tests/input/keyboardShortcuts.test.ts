@@ -85,4 +85,22 @@ describe('getKeyboardShortcutAction', () => {
       }),
     ).toBe('toggleFpsIndicator')
   })
+
+  it('maps C to camera mode cycling instead of assist mode cycling', () => {
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('KeyC'), {
+        autoDiscoverStrongestInfluence: false,
+        debugModeEnabled: false,
+      }),
+    ).toBe('cycleCameraMode')
+    expect(
+      getKeyboardShortcutAction(
+        { ...createDebugShortcutEvent('KeyC'), repeat: true },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBeNull()
+  })
 })

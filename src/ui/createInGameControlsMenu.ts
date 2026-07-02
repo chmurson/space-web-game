@@ -1,5 +1,6 @@
 import type { UIUserAction } from '../input/uiUserActions'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
+import { getCameraModeAction } from './cameraModeActions'
 import {
   InGameControlsMenuSurface,
   type InGameControlsMenuSurfaceProps,
@@ -78,12 +79,8 @@ export const createInGameControlsMenu = (options: {
       increaseCoastHorizonDisabled,
       menuId,
       open,
-      onCameraModeToggle: () => {
-        options.onAction(
-          options.getCameraMode() === 'centered'
-            ? 'setCameraUnlocked'
-            : 'setCameraCentered',
-        )
+      onCameraModeSelect: (mode) => {
+        options.onAction(getCameraModeAction(mode))
         syncState()
       },
       onDecreaseCoastHorizon: () => {
