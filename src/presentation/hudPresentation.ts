@@ -650,7 +650,7 @@ export const createHudPresentation = (options: {
         })
         const fpsMeterInput = {
           browserGcStats: metrics.browserGcStats,
-          graphMaxFrameMs: graph.maxFrameMs,
+          graphMaxCpuMs: graph.maxCpuMs,
           smoothedCpuMs: metrics.smoothedCpuMs,
           smoothedFps: metrics.smoothedFps,
           smoothedGpuMs: options.rendererProfiler.getSmoothedGpuMs(),

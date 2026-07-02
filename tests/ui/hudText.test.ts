@@ -144,13 +144,13 @@ describe('getFpsMeterText', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats({ heapSamplingSupported: true }),
-        graphMaxFrameMs: 42.25,
+        graphMaxCpuMs: 42.25,
         smoothedCpuMs: 5.25,
         smoothedFps: 59.94,
         smoothedGpuMs: 8.4,
       }),
     ).toBe(
-      'FPS 59.9\nframe 16.7ms\nmax 42.3ms\ncpu 5.3ms | gpu 8.4ms\n60Hz +8.3ms\ngc? 0',
+      'FPS 59.9\nframe 16.7ms\ncpu max 42.3ms\ncpu 5.3ms | gpu 8.4ms\n60Hz +8.3ms\ngc? 0',
     )
   })
 
@@ -158,7 +158,7 @@ describe('getFpsMeterText', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats(),
-        graphMaxFrameMs: null,
+        graphMaxCpuMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -175,7 +175,7 @@ describe('getFpsMeterText', () => {
           lastEstimatedPauseMs: 18.25,
           longestEstimatedPauseMs: 44.5,
         }),
-        graphMaxFrameMs: 80,
+        graphMaxCpuMs: 80,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -187,7 +187,7 @@ describe('getFpsMeterText', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats(),
-        graphMaxFrameMs: null,
+        graphMaxCpuMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -199,7 +199,7 @@ describe('getFpsMeterText', () => {
     expect(
       getFpsMeterText({
         browserGcStats: createBrowserGcStats({ isEnabled: false }),
-        graphMaxFrameMs: null,
+        graphMaxCpuMs: null,
         smoothedCpuMs: 7.1,
         smoothedFps: 60,
         smoothedGpuMs: null,
@@ -213,16 +213,16 @@ describe('getFpsMeterGraphModel', () => {
     const graph = getFpsMeterGraphModel({
       browserGcStats: createBrowserGcStats(),
       frameSamples: [
-        { atMs: 5_000, frameMs: 16 },
-        { atMs: 7_500, frameMs: 32 },
-        { atMs: 10_000, frameMs: 80 },
+        { atMs: 5_000, cpuMs: 16 },
+        { atMs: 7_500, cpuMs: 32 },
+        { atMs: 10_000, cpuMs: 80 },
       ],
       nowMs: 10_000,
     })
 
     expect(graph).toMatchObject({
       height: 28,
-      maxFrameMs: 80,
+      maxCpuMs: 80,
       path: 'M 0.0 22.4 L 56.0 16.8 L 112.0 0.0',
       width: 112,
     })
@@ -238,8 +238,8 @@ describe('getFpsMeterGraphModel', () => {
         ],
       }),
       frameSamples: [
-        { atMs: 4_900, frameMs: 80 },
-        { atMs: 10_000, frameMs: 20 },
+        { atMs: 4_900, cpuMs: 80 },
+        { atMs: 10_000, cpuMs: 20 },
       ],
       nowMs: 10_000,
     })

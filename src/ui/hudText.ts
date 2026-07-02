@@ -221,12 +221,12 @@ export type FpsMeterStatusInput = {
 
 export type FpsMeterTextInput = FpsMeterStatusInput & {
   browserGcStats: BrowserGcProbeStats
-  graphMaxFrameMs: number | null
+  graphMaxCpuMs: number | null
 }
 
 export type FpsMeterFrameSample = {
   atMs: number
-  frameMs: number
+  cpuMs: number
 }
 
 export type FpsMeterGraphInput = {
@@ -238,7 +238,7 @@ export type FpsMeterGraphInput = {
 export type FpsMeterGraphModel = {
   budgetLineY: number
   gcMarkerXs: number[]
-  maxFrameMs: number | null
+  maxCpuMs: number | null
   height: number
   path: string
   width: number
@@ -298,19 +298,19 @@ export const getFpsMeterGraphModel = (
       0,
       fpsMeterGraphWidth,
     )
-  let maxFrameMs: number | null = null
+  let maxCpuMs: number | null = null
   const frameBuckets = Array<number>(fpsMeterGraphWidth + 1).fill(-1)
   for (const sample of input.frameSamples) {
     if (sample.atMs < windowStartMs || sample.atMs > input.nowMs) {
       continue
     }
 
-    maxFrameMs = Math.max(maxFrameMs ?? 0, sample.frameMs)
+    maxCpuMs = Math.max(maxCpuMs ?? 0, sample.cpuMs)
     const bucketX = Math.round(toX(sample.atMs))
-    frameBuckets[bucketX] = Math.max(frameBuckets[bucketX], sample.frameMs)
+    frameBuckets[bucketX] = Math.max(frameBuckets[bucketX], sample.cpuMs)
   }
 
-  const graphScaleFrameMs = Math.max(maxFrameMs ?? frameBudgetMs60, 1)
+  const graphScaleFrameMs = Math.max(maxCpuMs ?? frameBudgetMs60, 1)
   const toY = (frameMs: number) =>
     fpsMeterGraphHeight -
     clamp(frameMs / graphScaleFrameMs, 0, 1) * fpsMeterGraphHeight
@@ -337,7 +337,7 @@ export const getFpsMeterGraphModel = (
   return {
     budgetLineY: toY(frameBudgetMs60),
     gcMarkerXs,
-    maxFrameMs,
+    maxCpuMs,
     height: fpsMeterGraphHeight,
     path: pathSegments.join(' '),
     width: fpsMeterGraphWidth,
@@ -363,9 +363,9 @@ export const getFpsMeterStatus = (
 export const getFpsMeterText = (input: FpsMeterTextInput) => {
   const frameMs = getFrameMsForFps(input.smoothedFps)
   const maxFrameText =
-    input.graphMaxFrameMs === null
-      ? 'max n/a'
-      : `max ${input.graphMaxFrameMs.toFixed(1)}ms`
+    input.graphMaxCpuMs === null
+      ? 'cpu max n/a'
+      : `cpu max ${input.graphMaxCpuMs.toFixed(1)}ms`
   const headroomMs = frameBudgetMs60 - getLimitingWorkMs(input)
   const gpuText =
     input.smoothedGpuMs === null

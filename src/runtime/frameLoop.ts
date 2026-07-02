@@ -88,10 +88,10 @@ export const createFrameLoop = (options: {
     }
   }
 
-  const recordFpsFrameSample = (nowMs: number, frameIntervalMs: number) => {
+  const recordFpsFrameSample = (nowMs: number, cpuMs: number) => {
     fpsFrameSamples.push({
       atMs: nowMs,
-      frameMs: frameIntervalMs,
+      cpuMs,
     })
 
     const sampleCutoffMs = nowMs - fpsFrameSampleWindowMs
@@ -257,7 +257,6 @@ export const createFrameLoop = (options: {
     options.trajectoryPresentation.updateVisuals()
     const hudNowMs = performance.now()
     if (fpsMeterVisible) {
-      recordFpsFrameSample(hudNowMs, frameIntervalMs)
       meterFps = getRollingFps(hudNowMs)
     } else if (fpsFrameSamples.length > 0) {
       fpsFrameSamples.length = 0
@@ -283,6 +282,9 @@ export const createFrameLoop = (options: {
 
     const frameCpuMs = performance.now() - frameStart
     const frameEndMs = performance.now()
+    if (fpsMeterVisible) {
+      recordFpsFrameSample(frameEndMs, frameCpuMs)
+    }
     if (fpsMeterVisible) {
       browserGcProbe.recordFrame({
         frameIntervalMs,
