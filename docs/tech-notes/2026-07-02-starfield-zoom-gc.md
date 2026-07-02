@@ -8,7 +8,8 @@
 - Hidden top/crash menus and the touch tutorial hint now skip no-op Preact renders during the frame loop.
 - The FPS meter graph buckets frame samples to the graph's pixel width instead of building a path from every retained frame sample.
 - The FPS meter now shows the maximum frame time inside the graph window, so short spikes remain visible in text after the current frame reading settles.
-- The FPS value now uses a rolling one-second frame count and refreshes the rendered HUD text every 500 ms, with immediate refreshes for very slow frames.
+- The FPS value now uses a rolling one-second frame count while the FPS meter popup keeps its prior four-frame render cadence for the other values.
+- The FPS meter graph now scales its Y axis to the maximum frame time in the visible graph window so small frame-time changes remain visible.
 - Native browser GC probe events below 2 ms are ignored so the FPS meter reports performance-relevant pauses instead of every tiny V8 scavenge.
 - Browsers without native GC entries or heap sampling, including Safari/WebKit, no longer label generic frame gaps as probable GC; the FPS meter reports `gc n/a` instead.
 - `tests/scene/starfield.test.ts` covers buffer reuse while zoom changes reduce the drawn star count.
@@ -17,7 +18,7 @@
 
 Free-roam wheel zoom repeatedly changes the starfield chunk range. The previous implementation built fresh JavaScript `number[]` arrays and fresh Three.js buffer attributes for each changed range, which created avoidable short-lived allocations and GC pressure during zoom.
 
-After that fix, allocation sampling showed debug/UI surfaces as the next visible source when the FPS meter was open. The menu and touch-hint changes remove hidden no-op renders, and the FPS meter/probe changes reduce self-inflicted debug overlay churn and noise. The FPS meter also keeps short frame-time spikes readable by exposing the graph-window max value and slowing the text refresh cadence.
+After that fix, allocation sampling showed debug/UI surfaces as the next visible source when the FPS meter was open. The menu and touch-hint changes remove hidden no-op renders, and the FPS meter/probe changes reduce self-inflicted debug overlay churn and noise. The FPS meter also keeps short frame-time spikes readable by exposing the graph-window max value and scaling the graph to that visible range.
 
 Safari/WebKit does not expose the browser APIs this probe needs for GC attribution. The earlier fallback treated long frames as `gc?`, which was misleading. The probe now reports GC as unavailable in that mode instead of implying a garbage collector pause.
 
@@ -42,6 +43,7 @@ Safari/WebKit does not expose the browser APIs this probe needs for GC attributi
 - Screenshot inspected: `tmp/perf/free-roam-starfield-zoom.png`.
 - Screenshot inspected: `tmp/playwright-results/mobileHudScreenshot-captur-666fd-menu-open-over-gameplay-HUD-mobile-chromium/mobile-top-menu-open.png`.
 - WebKit FPS-meter zoom check inspected: `tmp/perf/fps-meter-rolling-window-webkit.png`; FPS meter text included rolling FPS, graph-window max frame time, and `gc n/a` on unsupported WebKit GC APIs.
+- WebKit FPS-meter dynamic-scale check inspected: `tmp/perf/fps-meter-dynamic-scale-webkit.png`; graph path reached the top of the graph at the visible max frame time while the popup remained readable.
 - Chrome DevTools Protocol trace on the production preview after the starfield fix: 96 wheel zoom steps, sampled JS heap 6.98-15.17 MB, minor GC max 0.46 ms, major GC max 1.27 ms.
 - Chrome DevTools Protocol trace on the production preview after the UI/probe follow-up: 160 wheel zoom steps with FPS meter visible, sampled JS heap 6.98-15.37 MB, minor GC max 0.42 ms, major GC max 1.27 ms, reportable native GC events at the 2 ms threshold: 0, FPS meter text ended at `gc? 0`.
 - Playwright WebKit check: WebKit reported no native GC entry support and no `performance.memory` support; the old fallback produced a false `gc?` count from a frame gap, while sampled frames in the final window had no frames over 50 ms.

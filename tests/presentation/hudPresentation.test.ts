@@ -792,7 +792,7 @@ describe('createHudPresentation', () => {
     })
   })
 
-  it('throttles FPS meter content to every half second', async () => {
+  it('throttles FPS meter content to every four visible frame cycles', async () => {
     const { createHudPresentation } = await import(
       '@/presentation/hudPresentation'
     )
@@ -823,12 +823,13 @@ describe('createHudPresentation', () => {
     })
 
     presentation.update(createMetrics(true, { nowMs: 1_000 }))
-    presentation.update(createMetrics(true, { nowMs: 1_250 }))
-    presentation.update(createMetrics(true, { nowMs: 1_499 }))
+    for (let cycle = 1; cycle < 4; cycle += 1) {
+      presentation.update(createMetrics(true, { nowMs: 1_000 + cycle * 16 }))
+    }
 
     expect(rendererProfiler.getSmoothedGpuMs).toHaveBeenCalledOnce()
 
-    presentation.update(createMetrics(true, { nowMs: 1_500 }))
+    presentation.update(createMetrics(true, { nowMs: 1_064 }))
 
     expect(rendererProfiler.getSmoothedGpuMs).toHaveBeenCalledTimes(2)
   })

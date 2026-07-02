@@ -248,7 +248,6 @@ const frameBudgetMs60 = 1000 / 60
 const fpsMeterGraphWindowMs = 5_000
 const fpsMeterGraphWidth = 112
 const fpsMeterGraphHeight = 28
-const fpsMeterGraphMaxFrameMs = 80
 
 const formatSignedMs = (value: number) =>
   `${value >= 0 ? '+' : ''}${value.toFixed(1)}ms`
@@ -299,10 +298,6 @@ export const getFpsMeterGraphModel = (
       0,
       fpsMeterGraphWidth,
     )
-  const toY = (frameMs: number) =>
-    fpsMeterGraphHeight -
-    clamp(frameMs / fpsMeterGraphMaxFrameMs, 0, 1) * fpsMeterGraphHeight
-
   let maxFrameMs: number | null = null
   const frameBuckets = Array<number>(fpsMeterGraphWidth + 1).fill(-1)
   for (const sample of input.frameSamples) {
@@ -314,6 +309,11 @@ export const getFpsMeterGraphModel = (
     const bucketX = Math.round(toX(sample.atMs))
     frameBuckets[bucketX] = Math.max(frameBuckets[bucketX], sample.frameMs)
   }
+
+  const graphScaleFrameMs = Math.max(maxFrameMs ?? frameBudgetMs60, 1)
+  const toY = (frameMs: number) =>
+    fpsMeterGraphHeight -
+    clamp(frameMs / graphScaleFrameMs, 0, 1) * fpsMeterGraphHeight
 
   const pathSegments: string[] = []
   for (let x = 0; x < frameBuckets.length; x += 1) {

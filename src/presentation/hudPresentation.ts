@@ -56,7 +56,7 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
 }
 
 const debugPanelUpdateIntervalMs = 500
-const fpsIndicatorUpdateIntervalMs = 500
+const fpsIndicatorUpdateFrameCycleInterval = 4
 const fpsIndicatorSlowFrameMs = 1000 / 15
 
 const createDebugStateCopyPayload = (options: {
@@ -165,7 +165,7 @@ export const createHudPresentation = (options: {
   let debugPanelWasVisible = false
   let lastDebugPanelContentUpdateAt = Number.NEGATIVE_INFINITY
   let fpsIndicatorWasVisible = false
-  let lastFpsIndicatorContentUpdateAt = Number.NEGATIVE_INFINITY
+  let fpsIndicatorFrameCyclesSinceUpdate = 0
   const reducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
   ).matches
@@ -628,20 +628,21 @@ export const createHudPresentation = (options: {
           options.overlayUi.renderFpsIndicator(null)
         }
         fpsIndicatorWasVisible = false
-        lastFpsIndicatorContentUpdateAt = Number.NEGATIVE_INFINITY
+        fpsIndicatorFrameCyclesSinceUpdate = 0
         return
       }
 
+      fpsIndicatorFrameCyclesSinceUpdate += 1
       const shouldUpdateFpsIndicator =
         !fpsIndicatorWasVisible ||
-        metrics.nowMs - lastFpsIndicatorContentUpdateAt >=
-          fpsIndicatorUpdateIntervalMs ||
+        fpsIndicatorFrameCyclesSinceUpdate >=
+          fpsIndicatorUpdateFrameCycleInterval ||
         metrics.frameIntervalMs > fpsIndicatorSlowFrameMs
 
       fpsIndicatorWasVisible = true
 
       if (shouldUpdateFpsIndicator) {
-        lastFpsIndicatorContentUpdateAt = metrics.nowMs
+        fpsIndicatorFrameCyclesSinceUpdate = 0
         const graph = getFpsMeterGraphModel({
           browserGcStats: metrics.browserGcStats,
           frameSamples: metrics.fpsFrameSamples,

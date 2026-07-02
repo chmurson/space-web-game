@@ -244,7 +244,7 @@ describe('getFpsMeterGraphModel', () => {
       nowMs: 10_000,
     })
 
-    expect(graph.path).toBe('M 112.0 21.0')
+    expect(graph.path).toBe('M 112.0 0.0')
     expect(graph.gcMarkerXs).toEqual([56])
   })
 })
