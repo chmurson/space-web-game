@@ -961,7 +961,8 @@ canvas {
 
 .app-dialog-header-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -999,6 +1000,10 @@ canvas {
 }
 
 .app-dialog-close {
+  flex: 0 0 auto;
+}
+
+.app-dialog-header-actions .app-dialog-button {
   flex: 0 0 auto;
 }
 
