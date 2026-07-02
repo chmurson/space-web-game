@@ -280,8 +280,8 @@ export const createFrameLoop = (options: {
       fpsMeterVisible,
     )
 
-    const frameCpuMs = performance.now() - frameStart
     const frameEndMs = performance.now()
+    const frameCpuMs = frameEndMs - frameStart
     if (fpsMeterVisible) {
       recordFpsFrameSample(frameEndMs, frameCpuMs)
     }

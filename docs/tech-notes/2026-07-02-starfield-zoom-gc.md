@@ -2,9 +2,9 @@
 
 ## What changed
 
-- `src/scene/starfield.ts` now reuses per-layer `Float32Array`/`BufferAttribute` storage while zoom changes rebuild the visible star chunks.
+- `src/scene/starfield.ts` now allocates each visible starfield layer's `Float32Array`/`BufferAttribute` storage once at the layer's expected maximum capacity while zoom changes rebuild the visible star chunks.
 - Star generation still uses the existing deterministic hash inputs, layer fade rules, and chunk visibility keys.
-- The renderer updates `geometry.drawRange` to draw only the current star count when a reused buffer has spare capacity.
+- The renderer updates `geometry.drawRange` to draw only the current star count from the preallocated layer buffers.
 - Hidden top/crash menus and the touch tutorial hint now skip no-op Preact renders during the frame loop.
 - The FPS meter graph buckets frame samples to the graph's pixel width instead of building a path from every retained frame sample.
 - The FPS meter now shows the maximum CPU frame cost inside the graph window, so short work spikes remain visible in text after the current CPU reading settles.
@@ -13,7 +13,7 @@
 - The FPS meter warning state now turns yellow when CPU/GPU work crosses the 60 Hz budget line, while danger marks a larger 1.5x budget miss or heavy measured FPS loss.
 - Native browser GC probe events below 2 ms are ignored so the FPS meter reports performance-relevant pauses instead of every tiny V8 scavenge.
 - Browsers without native GC entries or heap sampling, including Safari/WebKit, no longer label generic frame gaps as probable GC; the FPS meter reports `gc n/a` instead.
-- `tests/scene/starfield.test.ts` covers buffer reuse while zoom changes reduce the drawn star count.
+- `tests/scene/starfield.test.ts` covers buffer reuse while zoom changes increase or reduce the drawn star count.
 
 ## Why
 

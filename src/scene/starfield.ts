@@ -122,6 +122,8 @@ const starfieldLayerConfigs: StarfieldLayerConfig[] = [
 ]
 
 const minimumVisibleLayerOpacity = 0.02
+const maxStarfieldViewportSize = 2_500
+const maxStarfieldViewportAspectRatio = 4
 
 const hashInt = (input: number) => {
   let value = input | 0
@@ -226,15 +228,30 @@ const getVisibleChunkRange = (options: {
   min: Math.floor((options.center - options.radius) / options.chunkSize),
 })
 
-const ensureLayerCapacity = (
-  layer: StarfieldLayerState,
-  requiredStars: number,
-) => {
-  if (requiredStars <= layer.capacity) {
+const getLayerCapacity = (config: StarfieldLayerConfig) => {
+  const viewportSize = config.fadeOutEndViewport ?? maxStarfieldViewportSize
+  const radius = getVisibleRadius({
+    chunkSize: config.chunkSize,
+    viewportHeight: 1,
+    viewportSize,
+    viewportWidth: maxStarfieldViewportAspectRatio,
+  })
+  const chunkRange = getVisibleChunkRange({
+    center: 0,
+    chunkSize: config.chunkSize,
+    radius,
+  })
+  const chunkCount = (chunkRange.max - chunkRange.min + 1) ** 2
+
+  return chunkCount * (config.starsPerChunk + config.extraStarsPerChunk)
+}
+
+const ensureLayerAttributes = (layer: StarfieldLayerState) => {
+  if (layer.positionAttribute && layer.colorAttribute) {
     return
   }
 
-  const capacity = Math.max(requiredStars, Math.ceil(requiredStars * 1.25))
+  const capacity = getLayerCapacity(layer.config)
   const positions = new Float32Array(capacity * 3)
   const colors = new Float32Array(capacity * 3)
   const positionAttribute = new THREE.BufferAttribute(positions, 3)
@@ -290,10 +307,7 @@ const buildLayerGeometry = (
   const chunkCount =
     (chunkRangeX.max - chunkRangeX.min + 1) *
     (chunkRangeZ.max - chunkRangeZ.min + 1)
-  ensureLayerCapacity(
-    layer,
-    chunkCount * (config.starsPerChunk + config.extraStarsPerChunk),
-  )
+  ensureLayerAttributes(layer)
 
   const positionAttribute = layer.positionAttribute
   const colorAttribute = layer.colorAttribute
@@ -304,6 +318,12 @@ const buildLayerGeometry = (
     !colorAttribute ||
     !(positions instanceof Float32Array) ||
     !(colors instanceof Float32Array)
+  ) {
+    return
+  }
+  if (
+    chunkCount * (config.starsPerChunk + config.extraStarsPerChunk) >
+    layer.capacity
   ) {
     return
   }

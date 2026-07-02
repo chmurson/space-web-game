@@ -138,12 +138,12 @@ describe('createStarfield', () => {
     const baseLayerIndex = 3
 
     updateStarfield(starfield, { viewportSize: 100 })
-    const closeStarCount =
-      getPositionValues(starfield, baseLayerIndex).length / 3
+    const closeStarCount = getLayerPoints(starfield, baseLayerIndex).geometry
+      .drawRange.count
 
     updateStarfield(starfield, { viewportSize: 1_800 })
-    const wideStarCount =
-      getPositionValues(starfield, baseLayerIndex).length / 3
+    const wideStarCount = getLayerPoints(starfield, baseLayerIndex).geometry
+      .drawRange.count
 
     expect(wideStarCount).toBeGreaterThan(closeStarCount)
   })
@@ -224,21 +224,21 @@ describe('createStarfield', () => {
     expect(getLayerPoints(starfield, 5).material.opacity).toBeGreaterThan(0)
   })
 
-  it('reuses layer buffers while zoom changes adjust the drawn star count', () => {
+  it('reuses layer buffers while zooming out adjusts the drawn star count', () => {
     const starfield = createStarfield()
     const baseLayerIndex = 3
 
-    updateStarfield(starfield, { viewportSize: 1_800 })
+    updateStarfield(starfield, { viewportSize: 100 })
     const points = getLayerPoints(starfield, baseLayerIndex)
     const positionAttribute = points.geometry.getAttribute('position')
     const colorAttribute = points.geometry.getAttribute('color')
-    const wideDrawCount = points.geometry.drawRange.count
+    const closeDrawCount = points.geometry.drawRange.count
 
-    updateStarfield(starfield, { viewportSize: 100 })
+    updateStarfield(starfield, { viewportSize: 1_800 })
 
     expect(points.geometry.getAttribute('position')).toBe(positionAttribute)
     expect(points.geometry.getAttribute('color')).toBe(colorAttribute)
-    expect(points.geometry.drawRange.count).toBeLessThan(wideDrawCount)
+    expect(points.geometry.drawRange.count).toBeGreaterThan(closeDrawCount)
     expect(points.geometry.drawRange.count).toBeLessThanOrEqual(
       positionAttribute.count,
     )
