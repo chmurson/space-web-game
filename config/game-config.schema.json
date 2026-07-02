@@ -72,6 +72,7 @@
         "horizon": {
           "type": "object",
           "additionalProperties": false,
+          "required": ["defaultHours", "minHours", "defaultMaxHours", "maxHours"],
           "properties": {
             "defaultHours": {
               "type": "number"
