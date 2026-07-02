@@ -254,6 +254,7 @@ const ReachMoonHighscoreBoard = ({
   loading,
   loadingFallbackRollup,
   rollup,
+  showGlobalEmptyState,
   onRetry,
 }: {
   activePeriod: ReachMoonHighscorePeriod
@@ -261,6 +262,7 @@ const ReachMoonHighscoreBoard = ({
   loading: boolean
   loadingFallbackRollup: ReachMoonHighscoreRollup | null
   rollup: ReachMoonHighscoreRollup | undefined
+  showGlobalEmptyState: boolean
   onRetry(): void
 }) => {
   const displayedRollup =
@@ -310,7 +312,9 @@ const ReachMoonHighscoreBoard = ({
   if (entries.length === 0) {
     return (
       <div class="reach-moon-highscore-state" aria-live="polite">
-        No {periodLabel.toLowerCase()} runs yet.
+        {showGlobalEmptyState
+          ? 'No Reach the Moon runs yet.'
+          : `No ${periodLabel.toLowerCase()} runs yet.`}
       </div>
     )
   }
@@ -366,6 +370,10 @@ export const MainMenuSurface = ({
   const displayedView = reachMoonFeatureEnabled ? activeView : 'main'
   const activeHighscoreRollup =
     reachMoonHighscoreState.rollups[reachMoonHighscoreState.activePeriod]
+  const hasHighscoreEntries = reachMoonHighscorePeriodOptions.some(
+    ({ period }) =>
+      (reachMoonHighscoreState.rollups[period]?.entries.length ?? 0) > 0,
+  )
   const highscoreLoading =
     reachMoonHighscoreState.loadingPeriod ===
     reachMoonHighscoreState.activePeriod
@@ -554,6 +562,7 @@ export const MainMenuSurface = ({
                 reachMoonHighscoreState.loadingFallbackRollup
               }
               rollup={activeHighscoreRollup}
+              showGlobalEmptyState={!hasHighscoreEntries}
               onRetry={onReachMoonHighscoreRetry}
             />
             <MenuActions className="main-menu-actions">
