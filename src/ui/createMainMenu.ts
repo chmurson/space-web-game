@@ -7,6 +7,7 @@ import {
   type ReachMoonHighscoreRollups,
   type ReachMoonHighscoreSubmitResponse,
   reachMoonHighscorePeriods,
+  selectReachMoonHighscoreDisplayPeriod,
 } from '../scenario/specific-scenarios/reachMoonHighscores'
 import {
   MainMenuSurface,
@@ -30,10 +31,7 @@ type MainMenuHighscoresBackView = Exclude<MainMenuView, 'reach-moon-highscores'>
 
 const defaultReachMoonHighscorePeriod: ReachMoonHighscorePeriod = 'daily'
 
-const reachMoonHighscoreEndpoint = (period?: ReachMoonHighscorePeriod) =>
-  period
-    ? `/api/reach-moon/highscores?period=${encodeURIComponent(period)}`
-    : '/api/reach-moon/highscores'
+const reachMoonHighscoreEndpoint = '/api/reach-moon/highscores'
 
 const getHighscoreErrorMessage = (error: unknown, fallbackMessage: string) =>
   error instanceof Error ? error.message : fallbackMessage
@@ -250,21 +248,20 @@ export const createMainMenu = (options: {
     reachMoonHighscoreLoadError = null
     renderMenu()
 
-    void fetch(reachMoonHighscoreEndpoint(period))
+    void fetch(reachMoonHighscoreEndpoint)
       .then((response) =>
         readHighscoreResponse<ReachMoonHighscoreListResponse>(response),
       )
       .then((response) => {
-        const rollup: ReachMoonHighscoreRollup | undefined =
-          response.rollups[period]
-        if (!rollup) {
-          throw new Error('Leaderboard data was unavailable.')
-        }
         if (requestId !== reachMoonHighscoreLoadRequestId) {
           return
         }
 
-        mergeReachMoonHighscoreRollups({ [period]: rollup })
+        mergeReachMoonHighscoreRollups(response.rollups)
+        reachMoonHighscoreActivePeriod = selectReachMoonHighscoreDisplayPeriod(
+          reachMoonHighscoreRollups,
+          period,
+        )
         reachMoonHighscoreLoadError = null
       })
       .catch((error: unknown) => {
@@ -317,7 +314,7 @@ export const createMainMenu = (options: {
     reachMoonHighscoreSubmittedRecord = null
     renderMenu()
 
-    void fetch(reachMoonHighscoreEndpoint(), {
+    void fetch(reachMoonHighscoreEndpoint, {
       body: JSON.stringify({
         ...pendingRun.input,
         playerName,

@@ -57,6 +57,14 @@ export type ReachMoonHighscoreSubmitResponse = {
   rollups: ReachMoonHighscoreRollups
 }
 
+export const selectReachMoonHighscoreDisplayPeriod = (
+  rollups: ReachMoonHighscoreRollups,
+  fallbackPeriod: ReachMoonHighscorePeriod = 'daily',
+): ReachMoonHighscorePeriod =>
+  reachMoonHighscorePeriods.find(
+    (period) => (rollups[period]?.entries.length ?? 0) > 0,
+  ) ?? fallbackPeriod
+
 export type ReachMoonHighscoreValidationError = {
   code:
     | 'invalid_date'
