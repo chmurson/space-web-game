@@ -1774,13 +1774,23 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       .querySelector('.app-dialog-panel')
       ?.getAttribute('role')
     const className = dialog.element.className
+    const spacecraftSummaryInitial = getButtonByText(
+      'Spacecraft controls settings',
+    )?.textContent
+    getButtonByText('Spacecraft controls settings')?.click()
+    const spacecraftTitleAfterOpen =
+      dialog.element.querySelector('.app-dialog-title')?.textContent
+    const spacecraftFocusAfterOpen =
+      document.activeElement === getButtonByText('Back')
+    const spacecraftControlGroup = dialog.element.querySelector(
+      '.app-dialog-setting-group-label',
+    )?.textContent
     const selectedAfterOpen = {
       burn: getSelectedValue('Burn control side'),
       target: getSelectedValue('Target control side'),
       trajectory: getSelectedValue('Trajectory control side'),
       warp: getSelectedValue('Warp control side'),
     }
-
     getControlButton('Burn control side', 'left')?.click()
     getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
@@ -1800,6 +1810,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       'Burn control side',
       'right',
     )?.getAttribute('aria-pressed')
+    getButtonByText('Back')?.click()
+    const titleAfterSpacecraftBack =
+      dialog.element.querySelector('.app-dialog-title')?.textContent
+    const spacecraftSummaryAfterChanges = getButtonByText(
+      'Spacecraft controls settings',
+    )?.textContent
     const orbitSummaryInitial = getButtonByText(
       'Orbit point display',
     )?.textContent
@@ -1875,6 +1891,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     targetSide = 'left'
     beforeButton.focus()
     dialog.open()
+    getButtonByText('Spacecraft controls settings')?.click()
     const targetSyncedOnOpen = getSelectedValue('Target control side')
     dialog.element
       .querySelector('.app-dialog-backdrop')
@@ -1952,6 +1969,18 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       role,
       selectedAfterChanges,
       selectedAfterOpen,
+      spacecraftControlGroup,
+      spacecraftFocusAfterOpen,
+      spacecraftSummaryAfterChangesIncludesBurnLeft:
+        spacecraftSummaryAfterChanges?.includes('Burn left'),
+      spacecraftSummaryAfterChangesIncludesTargetLeft:
+        spacecraftSummaryAfterChanges?.includes('target left'),
+      spacecraftSummaryInitialIncludesBurnRight:
+        spacecraftSummaryInitial?.includes('Burn right'),
+      spacecraftSummaryInitialIncludesTrajectoryHidden:
+        spacecraftSummaryInitial?.includes('trajectory hidden'),
+      spacecraftTitleAfterOpen,
+      titleAfterSpacecraftBack,
       titleAfterOrbitBack,
       targetSyncedOnOpen,
     }
@@ -2023,6 +2052,14 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       trajectory: 'hidden',
       warp: 'left',
     },
+    spacecraftControlGroup: 'Control sides',
+    spacecraftFocusAfterOpen: true,
+    spacecraftSummaryAfterChangesIncludesBurnLeft: true,
+    spacecraftSummaryAfterChangesIncludesTargetLeft: true,
+    spacecraftSummaryInitialIncludesBurnRight: true,
+    spacecraftSummaryInitialIncludesTrajectoryHidden: true,
+    spacecraftTitleAfterOpen: 'Spacecraft controls settings',
+    titleAfterSpacecraftBack: 'UI settings',
     titleAfterOrbitBack: 'UI settings',
     targetSyncedOnOpen: 'left',
   })
@@ -2090,11 +2127,29 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   await page.getByRole('button', { name: 'Open in-game controls' }).click()
   await page.getByRole('button', { name: 'UI settings' }).click()
   await expect(page.getByRole('dialog', { name: 'UI settings' })).toBeVisible()
-  await expect(page.getByText('Burn side')).toBeVisible()
-  await expect(page.getByText('Trajectory side')).toBeVisible()
+  await expect(page.getByText('Spacecraft controls settings')).toBeVisible()
   await expect(page.getByText('Orbit point display')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-ui-settings-dialog')
+
+  await page
+    .getByRole('button', { name: /Spacecraft controls settings/ })
+    .click()
+  await expect(
+    page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
+  ).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Control sides' })).toBeVisible()
+  await expect(page.getByText('Burn side')).toBeVisible()
+  await expect(page.getByText('Trajectory side')).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-spacecraft-controls-settings-dialog',
+  )
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByRole('dialog', { name: 'UI settings' })).toBeVisible()
 
   await page.getByRole('button', { name: /Orbit point display/ }).click()
   await expect(

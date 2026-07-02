@@ -4,8 +4,8 @@ import type {
   TouchTrajectoryControlState,
 } from '../userSettingsStorage'
 import {
-  UiSettingsDialogSurface,
   type UiSettingsDialogPane,
+  UiSettingsDialogSurface,
   type UiSettingsDialogSurfaceProps,
 } from './components/UiSettingsDialogSurface'
 import { createPreactUiSurface } from './createPreactUiSurface'
@@ -64,6 +64,11 @@ export const createUiSettingsDialog = (options: {
       },
       onOpenOrbitPointDisplaySettings: () => {
         activePane = 'orbitPointDisplay'
+        syncState()
+        focusFirstElement()
+      },
+      onOpenSpacecraftControlsSettings: () => {
+        activePane = 'spacecraftControls'
         syncState()
         focusFirstElement()
       },

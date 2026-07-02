@@ -41,6 +41,24 @@ const getOrbitPointDisplaySummary = (settings: OrbitPointDisplaySettings) => {
   ].join(', ')
 }
 
+const getSpacecraftControlsSummary = ({
+  touchBurnControlSide,
+  touchTargetControlSide,
+  touchTrajectoryControlSide,
+  touchWarpControlSide,
+}: {
+  touchBurnControlSide: TouchControlSide
+  touchTargetControlSide: TouchControlSide
+  touchTrajectoryControlSide: TouchTrajectoryControlState
+  touchWarpControlSide: TouchControlSide
+}) =>
+  [
+    `Burn ${touchBurnControlSide}`,
+    `warp ${touchWarpControlSide}`,
+    `target ${touchTargetControlSide}`,
+    `trajectory ${touchTrajectoryControlSide}`,
+  ].join(', ')
+
 const UiSettingsSegmentedControl = <TValue extends string>({
   ariaLabel,
   onChange,
@@ -150,7 +168,10 @@ const UiSettingsSwitch = ({
   </button>
 )
 
-export type UiSettingsDialogPane = 'main' | 'orbitPointDisplay'
+export type UiSettingsDialogPane =
+  | 'main'
+  | 'orbitPointDisplay'
+  | 'spacecraftControls'
 
 export type UiSettingsDialogSurfaceProps = {
   activePane: UiSettingsDialogPane
@@ -164,6 +185,7 @@ export type UiSettingsDialogSurfaceProps = {
   touchWarpControlSide: TouchControlSide
   onBackToMainSettings(): void
   onOpenOrbitPointDisplaySettings(): void
+  onOpenSpacecraftControlsSettings(): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onTouchBurnControlSideChange(side: TouchControlSide): void
   onTouchTargetControlSideChange(side: TouchControlSide): void
@@ -183,6 +205,7 @@ export const UiSettingsDialogSurface = ({
   touchWarpControlSide,
   onBackToMainSettings,
   onOpenOrbitPointDisplaySettings,
+  onOpenSpacecraftControlsSettings,
   onOrbitPointDisplayChange,
   onTouchBurnControlSideChange,
   onTouchTargetControlSideChange,
@@ -192,7 +215,9 @@ export const UiSettingsDialogSurface = ({
   const titleId =
     activePane === 'orbitPointDisplay'
       ? `${dialogId}-orbit-point-display-title`
-      : `${dialogId}-title`
+      : activePane === 'spacecraftControls'
+        ? `${dialogId}-spacecraft-controls-title`
+        : `${dialogId}-title`
   const updateOrbitPointDisplay = (
     key: keyof OrbitPointDisplaySettings,
     value: boolean,
@@ -222,6 +247,62 @@ export const UiSettingsDialogSurface = ({
 
       <div class="app-dialog-body">
         <div class="app-dialog-setting-list">
+          <UiSettingsNavigationRow
+            label="Spacecraft controls settings"
+            onClick={onOpenSpacecraftControlsSettings}
+            summary={getSpacecraftControlsSummary({
+              touchBurnControlSide,
+              touchTargetControlSide,
+              touchTrajectoryControlSide,
+              touchWarpControlSide,
+            })}
+          />
+          <UiSettingsNavigationRow
+            label="Orbit point display"
+            onClick={onOpenOrbitPointDisplaySettings}
+            summary={getOrbitPointDisplaySummary(orbitPointDisplay)}
+          />
+        </div>
+      </div>
+    </>
+  )
+
+  const spacecraftControlsPanel = (
+    <>
+      <header class="app-dialog-header">
+        <div>
+          <div class="app-dialog-kicker">Controls</div>
+          <h2 id={titleId} class="app-dialog-title">
+            Spacecraft controls settings
+          </h2>
+        </div>
+        <div class="app-dialog-header-actions">
+          <button
+            type="button"
+            class="app-dialog-button"
+            onClick={onBackToMainSettings}
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            class="app-dialog-button app-dialog-close"
+            aria-label="Close spacecraft controls settings"
+            data-dialog-close="true"
+          >
+            Close
+          </button>
+        </div>
+      </header>
+
+      <div class="app-dialog-body">
+        {/* biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern. */}
+        <div
+          class="app-dialog-setting-group"
+          role="group"
+          aria-label="Control sides"
+        >
+          <span class="app-dialog-setting-group-label">Control sides</span>
           <UiSettingsRow label="Burn side">
             <UiSettingsSegmentedControl
               ariaLabel="Burn control side"
@@ -254,11 +335,6 @@ export const UiSettingsDialogSurface = ({
               value={touchTrajectoryControlSide}
             />
           </UiSettingsRow>
-          <UiSettingsNavigationRow
-            label="Orbit point display"
-            onClick={onOpenOrbitPointDisplaySettings}
-            summary={getOrbitPointDisplaySummary(orbitPointDisplay)}
-          />
         </div>
       </div>
     </>
@@ -309,6 +385,7 @@ export const UiSettingsDialogSurface = ({
               updateOrbitPointDisplay('labelsVisible', checked)
             }
           />
+          {/* biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern. */}
           <div
             class={joinClassNames(
               'app-dialog-setting-group',
@@ -362,7 +439,9 @@ export const UiSettingsDialogSurface = ({
       >
         {activePane === 'orbitPointDisplay'
           ? orbitPointDisplayPanel
-          : mainPanel}
+          : activePane === 'spacecraftControls'
+            ? spacecraftControlsPanel
+            : mainPanel}
       </section>
     </div>
   )
