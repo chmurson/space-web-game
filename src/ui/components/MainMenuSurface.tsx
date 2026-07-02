@@ -1,13 +1,13 @@
-import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
-import { formatReachMoonScoreSummary } from '../../scenario/specific-scenarios/reachMoonScore'
 import {
-  REACH_MOON_HIGHSCORE_PLAYER_NAME_MAX_LENGTH,
   type RankedReachMoonHighscoreRecord,
+  REACH_MOON_HIGHSCORE_PLAYER_NAME_MAX_LENGTH,
   type ReachMoonHighscorePeriod,
   type ReachMoonHighscoreRecord,
   type ReachMoonHighscoreRollup,
   type ReachMoonHighscoreRollups,
 } from '../../scenario/specific-scenarios/reachMoonHighscores'
+import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
+import { formatReachMoonScoreSummary } from '../../scenario/specific-scenarios/reachMoonScore'
 import type { ReachMoonRunReceipt } from '../../server/reachMoonRunReceipts'
 import { formatCompactElapsed } from '../formatters'
 import {
@@ -33,6 +33,17 @@ const reachMoonHighscorePeriodOptions: Array<{
   { label: 'All-time', period: 'all-time' },
 ]
 
+const reachMoonHighscoreSkeletonRows = [0, 1, 2]
+
+const reachMoonHighscoreSkeletonCells = [
+  { className: 'reach-moon-highscore-cell-rank', key: 'rank' },
+  { className: 'reach-moon-highscore-cell-name', key: 'name' },
+  { className: 'reach-moon-highscore-cell-score', key: 'score' },
+  { className: 'reach-moon-highscore-cell-elapsed', key: 'elapsed' },
+  { className: 'reach-moon-highscore-cell-fuel', key: 'fuel' },
+  { className: 'reach-moon-highscore-cell-submitted', key: 'submitted' },
+] as const
+
 export type ReachMoonHighscorePendingRun =
   ReachMoonCompletedHighscorePayload & {
     runReceipt: ReachMoonRunReceipt | null
@@ -48,6 +59,7 @@ export type ReachMoonHighscoreSubmitStatus =
 export type ReachMoonHighscoreMenuState = {
   activePeriod: ReachMoonHighscorePeriod
   loadError: string | null
+  loadingFallbackRollup: ReachMoonHighscoreRollup | null
   loadingPeriod: ReachMoonHighscorePeriod | null
   playerName: string
   rollups: ReachMoonHighscoreRollups
@@ -180,74 +192,118 @@ const ReachMoonHighscoreSubmitPanel = ({
   )
 }
 
+const ReachMoonHighscoreHeaderRow = () => (
+  <tr class="reach-moon-highscore-row reach-moon-highscore-row-header">
+    <th scope="col">Rank</th>
+    <th scope="col">Name</th>
+    <th scope="col">Score</th>
+    <th scope="col">Time</th>
+    <th scope="col">Fuel</th>
+    <th scope="col">Submitted</th>
+  </tr>
+)
+
+const ReachMoonHighscoreSkeletonRow = () => (
+  <tr class="reach-moon-highscore-row reach-moon-highscore-row-skeleton">
+    {reachMoonHighscoreSkeletonCells.map(({ className, key }) => (
+      <td class={className} key={key}>
+        <span
+          class={`reach-moon-highscore-skeleton reach-moon-highscore-skeleton-${key}`}
+        />
+      </td>
+    ))}
+  </tr>
+)
+
 const ReachMoonHighscoreRow = ({
   entry,
+  loading,
 }: {
   entry: RankedReachMoonHighscoreRecord
+  loading: boolean
 }) => (
-  <div class="reach-moon-highscore-row" role="row">
-    <span class="reach-moon-highscore-cell-rank" role="cell">
-      #{entry.rank}
-    </span>
-    <span
-      class="reach-moon-highscore-cell-name"
-      role="cell"
-      title={entry.playerName}
-    >
+  <tr
+    class={
+      loading
+        ? 'reach-moon-highscore-row reach-moon-highscore-row-loading'
+        : 'reach-moon-highscore-row'
+    }
+  >
+    <td class="reach-moon-highscore-cell-rank">#{entry.rank}</td>
+    <td class="reach-moon-highscore-cell-name" title={entry.playerName}>
       {entry.playerName}
-    </span>
-    <span class="reach-moon-highscore-cell-score" role="cell">
+    </td>
+    <td class="reach-moon-highscore-cell-score">
       {formatInteger(entry.score.totalScore)}
-    </span>
-    <span class="reach-moon-highscore-cell-elapsed" role="cell">
+    </td>
+    <td class="reach-moon-highscore-cell-elapsed">
       {formatCompactElapsed(entry.score.missionElapsedSeconds)}
-    </span>
-    <span class="reach-moon-highscore-cell-fuel" role="cell">
+    </td>
+    <td class="reach-moon-highscore-cell-fuel">
       {formatFuelLeft(entry.score.fuelRemainingKg)}
-    </span>
-    <span class="reach-moon-highscore-cell-submitted" role="cell">
+    </td>
+    <td class="reach-moon-highscore-cell-submitted">
       {formatSubmittedAt(entry.submittedAt)}
-    </span>
-  </div>
+    </td>
+  </tr>
 )
 
 const ReachMoonHighscoreBoard = ({
   activePeriod,
   loadError,
   loading,
+  loadingFallbackRollup,
   rollup,
   onRetry,
 }: {
   activePeriod: ReachMoonHighscorePeriod
   loadError: string | null
   loading: boolean
+  loadingFallbackRollup: ReachMoonHighscoreRollup | null
   rollup: ReachMoonHighscoreRollup | undefined
   onRetry(): void
 }) => {
-  const entries = rollup?.entries ?? []
+  const displayedRollup =
+    rollup ?? (loading ? loadingFallbackRollup : undefined)
+  const entries = displayedRollup?.entries ?? []
   const periodLabel = getPeriodLabel(activePeriod)
+  const renderLoadErrorState = () => (
+    <div class="reach-moon-highscore-state" aria-live="polite">
+      <strong>Leaderboard unavailable.</strong>
+      <span>{loadError}</span>
+      <button
+        class="reach-moon-highscore-inline-action"
+        type="button"
+        onClick={onRetry}
+      >
+        Retry
+      </button>
+    </div>
+  )
 
-  if (loadError && !rollup) {
-    return (
-      <div class="reach-moon-highscore-state" aria-live="polite">
-        <strong>Leaderboard unavailable.</strong>
-        <span>{loadError}</span>
-        <button
-          class="reach-moon-highscore-inline-action"
-          type="button"
-          onClick={onRetry}
-        >
-          Retry
-        </button>
-      </div>
-    )
+  if (loadError && (!displayedRollup || entries.length === 0)) {
+    return renderLoadErrorState()
   }
 
-  if (loading && !rollup) {
+  if (loading && !displayedRollup) {
     return (
-      <div class="reach-moon-highscore-state" aria-live="polite">
-        Loading {periodLabel.toLowerCase()} leaderboard...
-      </div>
+      <table
+        aria-busy="true"
+        aria-label={`${periodLabel} Reach the Moon leaderboard`}
+        class="reach-moon-highscore-board reach-moon-highscore-board-skeleton"
+      >
+        <caption class="reach-moon-highscore-refreshing" aria-live="polite">
+          Loading {periodLabel.toLowerCase()} leaderboard...
+        </caption>
+        <thead>
+          <ReachMoonHighscoreHeaderRow />
+        </thead>
+        <tbody>
+          {reachMoonHighscoreSkeletonRows.map((row) => (
+            <ReachMoonHighscoreSkeletonRow key={row} />
+          ))}
+        </tbody>
+      </table>
     )
   }
 
@@ -260,31 +316,30 @@ const ReachMoonHighscoreBoard = ({
   }
 
   return (
-    <div
-      aria-label={`${periodLabel} Reach the Moon leaderboard`}
-      class="reach-moon-highscore-board"
-      role="table"
-    >
-      <div
-        class="reach-moon-highscore-row reach-moon-highscore-row-header"
-        role="row"
+    <>
+      {loadError ? renderLoadErrorState() : null}
+      <table
+        aria-busy={loading ? 'true' : 'false'}
+        aria-label={`${periodLabel} Reach the Moon leaderboard`}
+        class="reach-moon-highscore-board"
       >
-        <span role="columnheader">Rank</span>
-        <span role="columnheader">Name</span>
-        <span role="columnheader">Score</span>
-        <span role="columnheader">Time</span>
-        <span role="columnheader">Fuel</span>
-        <span role="columnheader">Submitted</span>
-      </div>
-      {entries.map((entry) => (
-        <ReachMoonHighscoreRow entry={entry} key={entry.id} />
-      ))}
-      {loading ? (
-        <div class="reach-moon-highscore-refreshing" aria-live="polite">
-          Refreshing...
-        </div>
-      ) : null}
-    </div>
+        <caption class="reach-moon-highscore-refreshing" aria-live="polite">
+          {loading ? `Refreshing ${periodLabel.toLowerCase()}...` : ''}
+        </caption>
+        <thead>
+          <ReachMoonHighscoreHeaderRow />
+        </thead>
+        <tbody>
+          {entries.map((entry) => (
+            <ReachMoonHighscoreRow
+              entry={entry}
+              key={entry.id}
+              loading={loading}
+            />
+          ))}
+        </tbody>
+      </table>
+    </>
   )
 }
 
@@ -465,11 +520,10 @@ export const MainMenuSurface = ({
               </MenuKicker>
               <MenuDescription>{highscoreDescription}</MenuDescription>
             </MenuCopy>
-            <div
-              aria-label="Leaderboard period"
-              class="reach-moon-highscore-filters"
-              role="group"
-            >
+            <fieldset class="reach-moon-highscore-filters">
+              <legend class="reach-moon-highscore-filters-label">
+                Leaderboard period
+              </legend>
               {reachMoonHighscorePeriodOptions.map(({ label, period }) => (
                 <button
                   aria-pressed={reachMoonHighscoreState.activePeriod === period}
@@ -485,7 +539,7 @@ export const MainMenuSurface = ({
                   {label}
                 </button>
               ))}
-            </div>
+            </fieldset>
             <ReachMoonHighscoreSubmitPanel
               pendingRun={reachMoonHighscorePendingRun}
               state={reachMoonHighscoreState}
@@ -496,6 +550,9 @@ export const MainMenuSurface = ({
               activePeriod={reachMoonHighscoreState.activePeriod}
               loadError={reachMoonHighscoreState.loadError}
               loading={highscoreLoading}
+              loadingFallbackRollup={
+                reachMoonHighscoreState.loadingFallbackRollup
+              }
               rollup={activeHighscoreRollup}
               onRetry={onReachMoonHighscoreRetry}
             />
