@@ -20,6 +20,7 @@ export type AppConfigContext = {
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
   featureFlags: {
+    noHorizonLimit: boolean
     reachMoon: boolean
   }
   userSettings: UserSettings
@@ -81,6 +82,7 @@ export const createAppConfigContext = (): AppConfigContext => {
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
+    noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
     reachMoon: urlParams.get('reachmoon') === '1',
   }
   const requestedScenarioParam = urlParams.get('scenario')
@@ -123,7 +125,9 @@ export const createAppConfigContext = (): AppConfigContext => {
     defaultCoastPredictionHorizonHours:
       gameConfig.trajectory.horizon.defaultHours,
     minCoastPredictionHorizonHours: gameConfig.trajectory.horizon.minHours,
-    maxCoastPredictionHorizonHours: gameConfig.trajectory.horizon.maxHours,
+    maxCoastPredictionHorizonHours: featureFlags.noHorizonLimit
+      ? gameConfig.trajectory.horizon.maxHours
+      : 48,
     predictionSampling: { ...gameConfig.trajectory.sampling },
     maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
     rendering: { ...gameConfig.trajectory.rendering },
