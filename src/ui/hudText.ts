@@ -245,9 +245,12 @@ export type FpsMeterGraphModel = {
 }
 
 const frameBudgetMs60 = 1000 / 60
+const fpsMeterDangerFps = 24
 const fpsMeterGraphWindowMs = 5_000
 const fpsMeterGraphWidth = 112
 const fpsMeterGraphHeight = 28
+const fpsMeterWarningBudgetRatio = 0.7
+const fpsMeterWarningFps = 28
 
 const formatSignedMs = (value: number) =>
   `${value >= 0 ? '+' : ''}${value.toFixed(1)}ms`
@@ -357,10 +360,16 @@ export const getFpsMeterStatus = (
   const limitingWorkMs = getLimitingWorkMs(input)
   const effectiveFrameBudgetMs = getEffectiveFrameBudgetMs(input.smoothedFps)
 
-  if (limitingWorkMs > effectiveFrameBudgetMs) {
+  if (
+    limitingWorkMs > effectiveFrameBudgetMs ||
+    input.smoothedFps < fpsMeterDangerFps
+  ) {
     return 'danger'
   }
-  if (limitingWorkMs > effectiveFrameBudgetMs * 0.8) {
+  if (
+    limitingWorkMs > effectiveFrameBudgetMs * fpsMeterWarningBudgetRatio ||
+    input.smoothedFps < fpsMeterWarningFps
+  ) {
     return 'warning'
   }
 

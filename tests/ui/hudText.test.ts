@@ -277,8 +277,18 @@ describe('getFpsMeterStatus', () => {
   it('warns before the 60hz frame budget is exhausted', () => {
     expect(
       getFpsMeterStatus({
-        smoothedCpuMs: 14,
-        smoothedFps: 58,
+        smoothedCpuMs: 12,
+        smoothedFps: 60,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('warning')
+  })
+
+  it('warns when measured fps indicates moderate frame loss', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 5,
+        smoothedFps: 26,
         smoothedGpuMs: null,
       }),
     ).toBe('warning')
@@ -309,6 +319,16 @@ describe('getFpsMeterStatus', () => {
       getFpsMeterStatus({
         smoothedCpuMs: 34,
         smoothedFps: 30,
+        smoothedGpuMs: null,
+      }),
+    ).toBe('danger')
+  })
+
+  it('reports danger when measured fps indicates heavy frame loss', () => {
+    expect(
+      getFpsMeterStatus({
+        smoothedCpuMs: 5,
+        smoothedFps: 22,
         smoothedGpuMs: null,
       }),
     ).toBe('danger')
