@@ -8,6 +8,7 @@ const devtoolsVersionFileName = 'space-web-game-devtools-version.json'
 const devtoolsManifestPath = fileURLToPath(
   new URL('./extension/space-web-game-devtools/manifest.json', import.meta.url),
 )
+const devApiOrigin = process.env.SPACE_WEB_GAME_DEV_API_ORIGIN
 
 const getDevtoolsVersionPayload = () => {
   const manifest = JSON.parse(readFileSync(devtoolsManifestPath, 'utf8')) as {
@@ -62,6 +63,17 @@ const devtoolsVersionPlugin = (): Plugin => ({
 
 export default defineConfig({
   plugins: [preact(), yamlConfigPlugin(), devtoolsVersionPlugin()],
+  server: {
+    proxy: devApiOrigin
+      ? {
+          '/api': {
+            changeOrigin: true,
+            secure: true,
+            target: devApiOrigin,
+          },
+        }
+      : undefined,
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

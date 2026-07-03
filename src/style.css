@@ -389,8 +389,12 @@ canvas {
 
 .reach-moon-highscore-row {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1.3fr) 70px 68px 118px 104px 104px;
-  gap: 8px;
+  grid-template-columns: 46px minmax(0, 1fr) 74px 74px;
+  grid-template-areas:
+    "rank name name score"
+    "rank submitted fuel elapsed"
+    "rank . orbit orbit";
+  gap: 5px 8px;
   align-items: center;
   min-width: 0;
   padding: 9px 10px;
@@ -408,11 +412,19 @@ canvas {
 }
 
 .reach-moon-highscore-row-header {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
   background: rgba(15, 23, 42, 0.48);
+  clip-path: inset(50%);
   color: rgba(191, 219, 254, 0.72);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 
@@ -422,7 +434,6 @@ canvas {
   min-width: 0;
   padding: 0;
   border: 0;
-  font: inherit;
   text-align: left;
 }
 
@@ -431,6 +442,10 @@ canvas {
   color: rgba(148, 163, 184, 0.68);
   filter: grayscale(0.85);
   opacity: 0.48;
+}
+
+.reach-moon-highscore-row-hidden {
+  visibility: hidden;
 }
 
 .reach-moon-highscore-row-skeleton {
@@ -481,10 +496,11 @@ canvas {
 }
 
 .reach-moon-highscore-cell-name {
+  grid-area: name;
   min-width: 0;
   overflow: hidden;
   color: #f0f9ff;
-  font-weight: 750;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -499,16 +515,37 @@ canvas {
 }
 
 .reach-moon-highscore-cell-score {
+  grid-area: score;
   color: #bae6fd;
-  font-weight: 750;
+  font-weight: 600;
+  font-size: 1.1em;
+  text-align: right;
 }
 
 .reach-moon-highscore-cell-submitted {
+  grid-area: submitted;
   min-width: 0;
   overflow: hidden;
   color: rgba(226, 232, 240, 0.7);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.reach-moon-highscore-cell-rank {
+  grid-area: rank;
+}
+
+.reach-moon-highscore-cell-elapsed {
+  grid-area: elapsed;
+}
+
+.reach-moon-highscore-cell-fuel {
+  grid-area: fuel;
+  text-align: right;
+}
+
+.reach-moon-highscore-cell-orbit {
+  grid-area: orbit;
 }
 
 .reach-moon-highscore-refreshing {
@@ -679,7 +716,9 @@ canvas {
   }
 
   .main-menu-panel-highscores {
-    transform: translateY(4vh);
+    align-self: flex-end;
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+    transform: none;
   }
 }
 
@@ -2217,57 +2256,45 @@ button.app-dialog-setting {
   .reach-moon-highscore-state {
     padding: 10px;
   }
+  .reach-moon-highscore-filters {
+    flex-shrink: 0;
+  }
+  .reach-moon-highscore-board {
+    overflow-y: auto;
+    flex-grow: 1;
+  }
 
   .reach-moon-highscore-row {
-    grid-template-columns: 38px minmax(0, 1fr) 68px;
-    grid-template-areas:
-      "rank name score"
-      "rank elapsed fuel"
-      "rank orbit orbit"
-      "rank submitted submitted";
-    gap: 5px 8px;
+    grid-template-columns: 38px minmax(0, 1fr) 68px 68px;
     padding: 8px 9px;
   }
 
-  .reach-moon-highscore-row-header {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .reach-moon-highscore-row-hidden {
+    display: none;
   }
 
-  .reach-moon-highscore-cell-rank {
-    grid-area: rank;
-  }
-
-  .reach-moon-highscore-cell-name {
-    grid-area: name;
-  }
-
-  .reach-moon-highscore-cell-score {
-    grid-area: score;
+  .reach-moon-highscore-row .reach-moon-highscore-cell-score {
     text-align: right;
+    display: flex;
+    justify-content: flex-end;
   }
 
-  .reach-moon-highscore-cell-elapsed {
-    grid-area: elapsed;
-  }
-
-  .reach-moon-highscore-cell-fuel {
-    grid-area: fuel;
+  .reach-moon-highscore-row .reach-moon-highscore-cell-fuel {
     text-align: right;
+    display: flex;
+    justify-content: flex-end;
   }
 
-  .reach-moon-highscore-cell-orbit {
-    grid-area: orbit;
+  .reach-moon-highscore-row .reach-moon-highscore-cell-orbit {
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
   }
 
-  .reach-moon-highscore-cell-submitted {
-    grid-area: submitted;
+  .reach-moon-highscore-row .reach-moon-highscore-cell-elapsed {
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
   }
 
   .top-menu-button {
@@ -2446,6 +2473,8 @@ button.app-dialog-setting {
   @media (max-width: 720px) {
     .main-menu-panel-highscores {
       max-height: calc(100dvh + var(--menu-y));
+      display: flex;
+      flex-direction: column;
     }
   }
 }

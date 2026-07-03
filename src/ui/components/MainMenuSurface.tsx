@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import {
   type RankedReachMoonHighscoreRecord,
   REACH_MOON_HIGHSCORE_PLAYER_NAME_MAX_LENGTH,
@@ -307,9 +308,11 @@ const ReachMoonHighscoreSkeletonRow = () => (
 const ReachMoonHighscoreRow = ({
   entry,
   loading,
+  hide,
 }: {
   entry: RankedReachMoonHighscoreRecord
   loading: boolean
+  hide?: boolean
 }) => {
   const elapsed = formatCompactElapsed(entry.score.missionElapsedSeconds)
   const fuelLeft = formatReachMoonFuelLeftPercent(entry.score)
@@ -319,11 +322,11 @@ const ReachMoonHighscoreRow = ({
 
   return (
     <tr
-      class={
-        loading
-          ? 'reach-moon-highscore-row reach-moon-highscore-row-loading'
-          : 'reach-moon-highscore-row'
-      }
+      class={clsx(
+        'reach-moon-highscore-row',
+        loading && 'reach-moon-highscore-row-loading',
+        hide && 'reach-moon-highscore-row-hidden',
+      )}
     >
       <td class="reach-moon-highscore-cell-rank">#{entry.rank}</td>
       <td class="reach-moon-highscore-cell-name" title={entry.playerName}>
@@ -428,6 +431,8 @@ const ReachMoonHighscoreBoard = ({
     )
   }
 
+  const emptyFillerRows = Array.from({ length: 10 - entries.length })
+
   return (
     <>
       {loadError ? renderLoadErrorState() : null}
@@ -448,6 +453,31 @@ const ReachMoonHighscoreBoard = ({
               entry={entry}
               key={entry.id}
               loading={loading}
+            />
+          ))}
+          {emptyFillerRows.map((_, index) => (
+            <ReachMoonHighscoreRow
+              key={index}
+              loading={false}
+              hide
+              entry={{
+                id: '',
+                rank: 0,
+                playerName: '',
+                score: {
+                  totalScore: 0,
+                  missionElapsedSeconds: 0,
+                  fuelRemainingKg: 0,
+                  baseScorePoints: 0,
+                  fuelBonusPoints: 0,
+                  timePenaltyPoints: 0,
+                  lunarOrbitQuality: {
+                    orbitApoapsisAltitudeMeters: 0,
+                    orbitPeriapsisAltitudeMeters: 0,
+                  },
+                },
+                submittedAt: '',
+              }}
             />
           ))}
         </tbody>
