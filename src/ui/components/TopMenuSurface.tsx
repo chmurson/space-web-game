@@ -2,6 +2,7 @@ import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import type { TopMenuAction } from '../createTopMenu'
 
 export type TopMenuSurfaceProps = {
+  activeSection: 'main' | 'debug-snapshot'
   debugModeEnabled: boolean
   fpsIndicatorEnabled: boolean
   loadSnapshotAvailable: boolean
@@ -13,12 +14,15 @@ export type TopMenuSurfaceProps = {
   rootRef(element: HTMLElement | null): void
   onAction(action: TopMenuAction): void
   onMenuButtonClick(): void
+  onRecentSnapshotBack(): void
   onRecentSnapshotChange(id: string): void
   onRecentSnapshotLoad(): void
+  onRecentSnapshotMenu(): void
 }
 
 export const TopMenuSurface = ({
   debugModeEnabled,
+  activeSection,
   fpsIndicatorEnabled,
   loadSnapshotAvailable,
   menuId,
@@ -29,10 +33,13 @@ export const TopMenuSurface = ({
   rootRef,
   onAction,
   onMenuButtonClick,
+  onRecentSnapshotBack,
   onRecentSnapshotChange,
   onRecentSnapshotLoad,
+  onRecentSnapshotMenu,
 }: TopMenuSurfaceProps) => {
   const debugSectionLabelId = `${menuId}-debug`
+  const debugSnapshotSectionLabelId = `${menuId}-debug-snapshot`
   const scenarioSectionLabelId = `${menuId}-scenario`
 
   return (
@@ -54,7 +61,11 @@ export const TopMenuSurface = ({
         <span aria-hidden="true"></span>
       </button>
       <div class="top-menu-dropdown" id={menuId} role="menu" hidden={!open}>
-        <section class="menu-section" aria-labelledby={debugSectionLabelId}>
+        <section
+          class="menu-section"
+          aria-labelledby={debugSectionLabelId}
+          hidden={activeSection === 'debug-snapshot'}
+        >
           <div class="menu-section-label" id={debugSectionLabelId}>
             Debug
           </div>
@@ -93,14 +104,32 @@ export const TopMenuSurface = ({
             disabled={!loadSnapshotAvailable}
             onClick={() => onAction('loadDebugSnapshot')}
           >
+            Load last debug snapshot
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-menu-action="openDebugSnapshotLoad"
+            onClick={onRecentSnapshotMenu}
+          >
             Load debug snapshot
           </button>
+        </section>
+
+        <section
+          class="menu-section"
+          aria-labelledby={debugSnapshotSectionLabelId}
+          hidden={activeSection !== 'debug-snapshot'}
+        >
+          <div class="menu-section-label" id={debugSnapshotSectionLabelId}>
+            Load debug snapshot
+          </div>
           <div class="menu-recent-snapshot">
             <label
               class="menu-recent-snapshot-label"
               for={`${menuId}-recent-snapshot`}
             >
-              Recent snapshot
+              Snapshot
             </label>
             <select
               id={`${menuId}-recent-snapshot`}
@@ -129,14 +158,26 @@ export const TopMenuSurface = ({
               disabled={!selectedRecentSnapshotId}
               onClick={onRecentSnapshotLoad}
             >
-              Load selected snapshot
+              Load
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-menu-action="backFromDebugSnapshotLoad"
+              onClick={onRecentSnapshotBack}
+            >
+              Back
             </button>
           </div>
         </section>
 
         <hr class="menu-separator" />
 
-        <section class="menu-section" aria-labelledby={scenarioSectionLabelId}>
+        <section
+          class="menu-section"
+          aria-labelledby={scenarioSectionLabelId}
+          hidden={activeSection === 'debug-snapshot'}
+        >
           <div class="menu-section-label" id={scenarioSectionLabelId}>
             Scenario
           </div>

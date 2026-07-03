@@ -48,6 +48,7 @@ export const createTopMenu = (options: {
   })
 
   let open = false
+  let activeSection: TopMenuSurfaceProps['activeSection'] = 'main'
   let debugModeEnabled = options.getDebugModeEnabled()
   let fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
   let loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
@@ -67,11 +68,17 @@ export const createTopMenu = (options: {
       surface.element.querySelectorAll<HTMLButtonElement>(
         'button[role="menuitem"], button[role="menuitemcheckbox"], button[role="menuitemradio"]',
       ),
-    ).filter((menuItem) => !menuItem.disabled)
+    ).filter((menuItem) => !menuItem.disabled && !menuItem.closest('[hidden]'))
 
   const focusItem = (index: number) => {
     const menuItems = getMenuItems()
     menuItems.at(index)?.focus()
+  }
+
+  const focusAction = (action: string) => {
+    surface.element
+      .querySelector<HTMLButtonElement>(`[data-menu-action="${action}"]`)
+      ?.focus()
   }
 
   const syncSnapshotAvailability = () => {
@@ -113,6 +120,7 @@ export const createTopMenu = (options: {
 
   const renderMenu = () => {
     surface.render({
+      activeSection,
       debugModeEnabled,
       fpsIndicatorEnabled,
       loadSnapshotAvailable,
@@ -142,6 +150,11 @@ export const createTopMenu = (options: {
       onMenuButtonClick: () => {
         setOpen(!open, open ? 'button' : 'first-item')
       },
+      onRecentSnapshotBack: () => {
+        activeSection = 'main'
+        renderMenu()
+        focusAction('openDebugSnapshotLoad')
+      },
       onRecentSnapshotChange: (id) => {
         selectedRecentSnapshotId = id
         renderMenu()
@@ -157,6 +170,11 @@ export const createTopMenu = (options: {
         syncToggleState()
         pendingConfirmationAction = null
         setOpen(false, 'button')
+      },
+      onRecentSnapshotMenu: () => {
+        activeSection = 'debug-snapshot'
+        renderMenu()
+        focusItem(0)
       },
     })
   }
@@ -185,6 +203,7 @@ export const createTopMenu = (options: {
     }
 
     if (!nextOpen) {
+      activeSection = 'main'
       pendingConfirmationAction = null
     }
     renderMenu()

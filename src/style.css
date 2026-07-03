@@ -746,6 +746,10 @@ canvas {
   gap: 4px;
 }
 
+.menu-section[hidden] {
+  display: none;
+}
+
 .menu-section-label {
   padding: 0 10px;
   color: rgba(226, 232, 240, 0.72);

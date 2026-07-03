@@ -153,7 +153,7 @@ const openReachMoonMainMenu = async (page: Page, query = '') => {
   await expect(
     page.getByRole('button', { name: 'Reach the Moon' }),
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Load Game' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Load Game' })).toBeVisible()
   await expectWorldVisualsSuppressed(page)
 }
 
@@ -954,6 +954,13 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
       bodies: [],
       spacecraft: {},
     })
+    writeDebugScenarioSnapshot({
+      version: 1,
+      savedAt: new Date(1).toISOString(),
+      elapsed: 1,
+      bodies: [],
+      spacecraft: {},
+    })
 
     const menu = createMainMenu({
       app,
@@ -963,15 +970,50 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
       onReachMoon: () => events.push('reach-moon'),
       onTutorial: () => events.push('tutorial'),
     })
-    const loadButton = menu.element.querySelector(
-      '[data-main-menu-action="load"]',
+    const loadMenuButton = menu.element.querySelector(
+      '[data-main-menu-action="load-menu"]',
     ) as HTMLButtonElement | null
-    const initiallyDisabled = loadButton?.disabled
+
+    loadMenuButton?.click()
+    const loadLastButton = menu.element.querySelector(
+      '[data-main-menu-action="load-last"]',
+    ) as HTMLButtonElement | null
+    const loadSectionVisible = !(
+      menu.element.querySelector(
+        '[data-main-menu-view="load-game"]',
+      ) as HTMLDivElement | null
+    )?.hidden
+    const loadAnyMenuButton = menu.element.querySelector(
+      '[data-main-menu-action="load-any-menu"]',
+    ) as HTMLButtonElement | null
+    loadAnyMenuButton?.click()
+    const snapshotSectionVisible = !(
+      menu.element.querySelector(
+        '[data-main-menu-view="load-game-snapshot"]',
+      ) as HTMLDivElement | null
+    )?.hidden
+    const recentOptions = Array.from(
+      (
+        menu.element.querySelector(
+          '.main-menu-recent-snapshot select',
+        ) as HTMLSelectElement | null
+      )?.options ?? [],
+    ).map((option) => option.textContent)
+    const snapshotBackButton = menu.element.querySelector(
+      '[data-main-menu-action="load-back"]',
+    ) as HTMLButtonElement | null
+    snapshotBackButton?.click()
+    const loadSectionVisibleAfterBack = !(
+      menu.element.querySelector(
+        '[data-main-menu-view="load-game"]',
+      ) as HTMLDivElement | null
+    )?.hidden
+    const initiallyDisabled = loadLastButton?.disabled
 
     clearDebugScenarioSnapshot()
-    loadButton?.click()
+    loadLastButton?.click()
     const refreshedLoadButton = menu.element.querySelector(
-      '[data-main-menu-action="load"]',
+      '[data-main-menu-action="load-last"]',
     ) as HTMLButtonElement | null
 
     return {
@@ -979,6 +1021,11 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
       disabledAfterStaleClick: refreshedLoadButton?.disabled,
       events,
       initiallyDisabled,
+      loadSectionVisible,
+      loadSectionVisibleAfterBack,
+      loadMenuVisible: !loadMenuButton?.hidden,
+      recentOptions,
+      snapshotSectionVisible,
     }
   })
 
@@ -987,6 +1034,14 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
     disabledAfterStaleClick: true,
     events: [],
     initiallyDisabled: false,
+    loadSectionVisible: true,
+    loadSectionVisibleAfterBack: true,
+    loadMenuVisible: true,
+    recentOptions: [
+      expect.stringContaining('Snapshot at 1s - '),
+      expect.stringContaining('0s - '),
+    ],
+    snapshotSectionVisible: true,
   })
 })
 
@@ -1216,6 +1271,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const activeAfterOpen = getActiveAction()
     const loadDisabledWithoutSnapshot =
       getActionButton('loadDebugSnapshot')?.disabled
+    const loadLastDebugLabel = getActionButton('loadDebugSnapshot')?.textContent
     const debugLabelInitial = getActionButton('toggleDebugMode')?.textContent
     const debugCheckedInitial =
       getActionButton('toggleDebugMode')?.getAttribute('aria-checked')
@@ -1283,6 +1339,11 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const recentOptions = Array.from(getRecentSelect()?.options ?? []).map(
       (option) => option.textContent,
     )
+    const debugSnapshotSectionHiddenBeforeOpen =
+      getRecentSelect()?.closest('section')?.hidden
+    getActionButton('openDebugSnapshotLoad')?.click()
+    const debugSnapshotSectionHiddenAfterOpen =
+      getRecentSelect()?.closest('section')?.hidden
     const recentSelect = getRecentSelect()
     if (recentSelect) {
       recentSelect.selectedIndex = 1
@@ -1292,6 +1353,10 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const selectedRecentLoadedElapsed = readDebugScenarioSnapshot()?.elapsed
 
     openMenu()
+    getActionButton('openDebugSnapshotLoad')?.click()
+    getActionButton('backFromDebugSnapshotLoad')?.click()
+    const focusAfterDebugSnapshotBack = getActiveAction()
+
     getActionButton('loadDebugSnapshot')?.click()
 
     openMenu()
@@ -1333,6 +1398,10 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       focusAfterRestart,
       fpsCheckedAfterToggle,
       fpsLabelAfterToggle,
+      focusAfterDebugSnapshotBack,
+      debugSnapshotSectionHiddenAfterOpen,
+      debugSnapshotSectionHiddenBeforeOpen,
+      loadLastDebugLabel,
       loadDisabledWithSnapshot,
       loadDisabledWithoutSnapshot,
       openAfterClick,
@@ -1344,7 +1413,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
 
   expect(result).toEqual({
     activeAfterArrowDown: 'toggleFpsIndicator',
-    activeAfterDisabledSkip: 'resetScenario',
+    activeAfterDisabledSkip: 'openDebugSnapshotLoad',
     activeAfterEnd: 'enterMainMenu',
     activeAfterHome: 'toggleDebugMode',
     activeAfterOpen: 'toggleDebugMode',
@@ -1373,6 +1442,10 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     focusAfterRestart: true,
     fpsCheckedAfterToggle: 'true',
     fpsLabelAfterToggle: 'Hide FPS meter',
+    focusAfterDebugSnapshotBack: 'openDebugSnapshotLoad',
+    debugSnapshotSectionHiddenAfterOpen: false,
+    debugSnapshotSectionHiddenBeforeOpen: true,
+    loadLastDebugLabel: 'Load last debug snapshot',
     loadDisabledWithSnapshot: false,
     loadDisabledWithoutSnapshot: true,
     openAfterClick: true,
