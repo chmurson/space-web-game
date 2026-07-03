@@ -15,6 +15,7 @@ import type {
   AppRuntimeState,
 } from '../runtime/appRuntimeState'
 import type { RuntimeActions } from '../runtime/runtimeActions'
+import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import type { AppMode } from '../app/createAppConfigContext'
 import type { Body, ControlInput, Spacecraft } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
@@ -31,6 +32,7 @@ type WritableDebugFlag = Exclude<
 type DevtoolsBridgeOptions = {
   dispatchRuntimeAction(action: UIUserAction): void
   getAppMode(): AppMode
+  getTrajectoryPredictionDiagnostics(): TrajectoryPredictionDiagnostics
   maxPredictionLoopRevolutions: number
   predictionSampling: TrajectoryPredictionSamplingConfig
   runtime: AppRuntimeState
@@ -108,6 +110,7 @@ export type SpaceGameDevtoolsSnapshot = {
       currentMaxIntegrationStepSeconds: number
       currentStepSeconds: number
     }
+    trajectoryPrediction: TrajectoryPredictionDiagnostics
     spacecraft: DevtoolsSpacecraftSnapshot
     targetHeading: number | null
     timeWarp: number
@@ -199,6 +202,7 @@ export const createDevtoolsSnapshot = (
   options: Pick<
     DevtoolsBridgeOptions,
     | 'getAppMode'
+    | 'getTrajectoryPredictionDiagnostics'
     | 'maxPredictionLoopRevolutions'
     | 'predictionSampling'
     | 'runtime'
@@ -282,6 +286,7 @@ export const createDevtoolsSnapshot = (
         currentMaxIntegrationStepSeconds: coastMaxIntegrationStepSeconds,
         currentStepSeconds: predictionConfig.stepSeconds,
       },
+      trajectoryPrediction: options.getTrajectoryPredictionDiagnostics(),
       spacecraft: createSpacecraftSnapshot(runtime.simulation.state.spacecraft),
       targetHeading: runtime.simulation.targetHeading,
       timeWarp: timeWarps[runtime.simulation.timeWarpIndex] ?? 1,
