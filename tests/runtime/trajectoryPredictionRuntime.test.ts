@@ -67,6 +67,7 @@ const createPredictionConfig = () => ({
 
 const createRuntimeHarness = () => {
   let assistMode: AssistMode = 'off'
+  let predictionConfig = createPredictionConfig()
   let state = createState()
   let target = earth
   const engineStep = vi.fn(physicsEngine.step)
@@ -82,7 +83,7 @@ const createRuntimeHarness = () => {
     getAssistTarget: () => target,
     getCaptureMetrics: (body: Body) => getCaptureMetricsForState(state, body),
     physicsEngine: engine,
-    predictionConfig: createPredictionConfig(),
+    predictionConfig,
     state,
   })
 
@@ -93,6 +94,9 @@ const createRuntimeHarness = () => {
     setAssistMode: (nextAssistMode: AssistMode) => {
       assistMode = nextAssistMode
     },
+    setPredictionConfig: (nextPredictionConfig: typeof predictionConfig) => {
+      predictionConfig = nextPredictionConfig
+    },
     setState: (nextState: SimulationState) => {
       state = nextState
     },
@@ -102,6 +106,14 @@ const createRuntimeHarness = () => {
     state: () => state,
   }
 }
+
+const createLongHorizonPredictionConfig = () => ({
+  horizonSeconds: 1_200,
+  maxIntegrationStepSeconds: 300,
+  maxLoopRevolutions: 1,
+  refreshInterval: 999,
+  stepSeconds: 300,
+})
 
 describe('createTrajectoryPredictionRuntime', () => {
   it('refreshes immediately when the assist target changes', () => {
@@ -284,6 +296,120 @@ describe('createTrajectoryPredictionRuntime', () => {
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
     expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
       'body-state-change',
+    )
+  })
+
+  it('keeps short horizons on the single-tier prediction path', () => {
+    const { getOptions, predictionRuntime } = createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+
+    expect(predictionRuntime.getState()).toMatchObject({
+      absolutePredictionPoints: [
+        { x: 10, y: 0 },
+        { x: 110, y: 0 },
+      ],
+      targetRelativePredictionEnd: { x: 110, y: 0 },
+      targetRelativePredictionPoints: [{ x: 110, y: 0 }],
+    })
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      absolutePointCount: 2,
+      horizonSeconds: 10,
+      relativePointCount: 1,
+    })
+  })
+
+  it('refreshes the near horizon first and keeps the previous far tier visible', () => {
+    const {
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 3_010, y: 0 },
+        { x: 6_010, y: 0 },
+        { x: 9_010, y: 0 },
+        { x: 12_010, y: 0 },
+      ],
+    )
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 6_010, y: 0 },
+        { x: 12_010, y: 0 },
+        { x: 9_010, y: 0 },
+        { x: 12_010, y: 0 },
+      ],
+    )
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      horizonSeconds: 1_200,
+      refreshReason: 'spacecraft-change',
+      relativePointCount: 4,
+    })
+  })
+
+  it('applies the pending far tier only for the current prediction inputs', () => {
+    const {
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 30, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 9_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 9_010, y: 0 },
+        { x: 12_010, y: 0 },
+      ],
+    )
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 9_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 27_010, y: 0 },
+        { x: 36_010, y: 0 },
+      ],
     )
   })
 })

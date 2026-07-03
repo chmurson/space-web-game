@@ -5,8 +5,9 @@ import {
   getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
   predictAssistedTrajectory,
   predictCoastTrajectory,
-  type TrajectoryPredictionEventMarker,
   type TrajectoryPredictionConfig,
+  type TrajectoryPredictionEventMarker,
+  type TrajectoryPredictionResult,
 } from '../prediction/trajectoryPrediction'
 import type {
   Body,
@@ -77,6 +78,12 @@ type PredictionInputKeyParts = {
   target: string
 }
 
+type TrajectoryPredictionTier = {
+  assistedPoints: Vec2[]
+  coastPrediction: TrajectoryPredictionResult
+  targetId: string
+}
+
 const emptyTrajectoryPredictionState = (): TrajectoryPredictionState => ({
   absolutePredictionEnd: null,
   absolutePredictionPoints: [],
@@ -106,6 +113,7 @@ const emptyTrajectoryPredictionDiagnostics =
   })
 
 const recentRefreshWindowMs = 1_000
+const nearPredictionHorizonSeconds = 10 * 60
 const nowMs = () => performance.now()
 
 const quantize = (value: number, precision: number) =>
@@ -165,6 +173,23 @@ const createPredictionInputKeyParts = (
 const createPredictionInputKey = (parts: PredictionInputKeyParts) =>
   JSON.stringify(parts)
 
+const createPredictionConfigWithHorizon = (
+  predictionConfig: TrajectoryPredictionConfig,
+  horizonSeconds: number,
+): TrajectoryPredictionConfig => ({
+  ...predictionConfig,
+  horizonSeconds,
+})
+
+const shouldSplitPredictionHorizon = (
+  predictionConfig: TrajectoryPredictionConfig,
+) => predictionConfig.horizonSeconds > nearPredictionHorizonSeconds
+
+const mergePredictionPoints = (nearPoints: Vec2[], farPoints: Vec2[]) => [
+  ...nearPoints,
+  ...farPoints.slice(nearPoints.length),
+]
+
 const getRefreshReason = (
   previousParts: PredictionInputKeyParts | null,
   nextParts: PredictionInputKeyParts,
@@ -214,6 +239,8 @@ const getRefreshReason = (
 }
 
 export const createTrajectoryPredictionRuntime = () => {
+  let farPredictionTier: TrajectoryPredictionTier | null = null
+  let pendingFarPredictionInputKey: string | null = null
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionRefreshTimesMs: number[] = []
   let predictionRefreshElapsed = 0
@@ -228,23 +255,12 @@ export const createTrajectoryPredictionRuntime = () => {
     return predictionRefreshTimesMs.length
   }
 
-  const refreshForTarget = (
+  const predictTier = (
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
-    reason: TrajectoryPredictionRefreshReason,
-    nextInputKeyParts = createPredictionInputKeyParts(options, target),
-  ) => {
-    const refreshStartMs = nowMs()
-    predictionRefreshTimesMs.push(refreshStartMs)
-    const predictionConfig = options.predictionConfig
+    predictionConfig: TrajectoryPredictionConfig,
+  ): TrajectoryPredictionTier => {
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
-    const integrationStepSeconds =
-      getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
-        options.state,
-        target,
-        predictionConfig,
-        allowLoopTrim,
-      )
     const coastPrediction = predictCoastTrajectory(
       options.state,
       options.physicsEngine,
@@ -252,16 +268,9 @@ export const createTrajectoryPredictionRuntime = () => {
       predictionConfig,
       allowLoopTrim,
     )
-    const targetRelativePredictionPoints = coastPrediction.relativePoints
 
-    predictionState = {
-      absolutePredictionEnd: coastPrediction.absoluteEndPoint,
-      absolutePredictionPoints: coastPrediction.absolutePoints,
-      predictedImpact: coastPrediction.impact,
-      predictedTargetClosestApproach: coastPrediction.closestApproach,
-      targetId: target.id,
-      targetRelativeEventMarkers: coastPrediction.eventMarkers,
-      targetRelativeAssistedPoints:
+    return {
+      assistedPoints:
         options.assistMode === 'off'
           ? []
           : predictAssistedTrajectory(
@@ -271,26 +280,160 @@ export const createTrajectoryPredictionRuntime = () => {
               predictionConfig,
               options.getAssistPredictionControls,
             ).relativePoints,
+      coastPrediction,
+      targetId: target.id,
+    }
+  }
+
+  const applyPredictionTier = (options: {
+    farTier: TrajectoryPredictionTier | null
+    inputKey: string
+    integrationStepSeconds: number
+    nearTier: TrajectoryPredictionTier
+    predictionConfig: TrajectoryPredictionConfig
+    reason: TrajectoryPredictionRefreshReason
+    refreshStartMs: number
+    target: Body
+  }) => {
+    const visibleFarTier =
+      !options.nearTier.coastPrediction.impact &&
+      options.farTier?.targetId === options.target.id
+        ? options.farTier
+        : null
+    const visibleCoastPrediction =
+      visibleFarTier?.coastPrediction ?? options.nearTier.coastPrediction
+    const targetRelativePredictionPoints = visibleFarTier
+      ? mergePredictionPoints(
+          options.nearTier.coastPrediction.relativePoints,
+          visibleFarTier.coastPrediction.relativePoints,
+        )
+      : options.nearTier.coastPrediction.relativePoints
+    const absolutePredictionPoints = visibleFarTier
+      ? mergePredictionPoints(
+          options.nearTier.coastPrediction.absolutePoints,
+          visibleFarTier.coastPrediction.absolutePoints,
+        )
+      : options.nearTier.coastPrediction.absolutePoints
+    const targetRelativeAssistedPoints = visibleFarTier
+      ? mergePredictionPoints(
+          options.nearTier.assistedPoints,
+          visibleFarTier.assistedPoints,
+        )
+      : options.nearTier.assistedPoints
+
+    predictionState = {
+      absolutePredictionEnd: visibleCoastPrediction.absoluteEndPoint,
+      absolutePredictionPoints,
+      predictedImpact: visibleCoastPrediction.impact,
+      predictedTargetClosestApproach: visibleCoastPrediction.closestApproach,
+      targetId: options.target.id,
+      targetRelativeEventMarkers: visibleCoastPrediction.eventMarkers,
+      targetRelativeAssistedPoints,
       targetRelativePredictionEnd:
         targetRelativePredictionPoints.at(-1) ?? null,
       targetRelativePredictionPoints,
     }
-    const inputKey = createPredictionInputKey(nextInputKeyParts)
-    predictionInputKeyParts = nextInputKeyParts
     predictionDiagnostics = {
       ...predictionDiagnostics,
       absolutePointCount: predictionState.absolutePredictionPoints.length,
       assistedPointCount: predictionState.targetRelativeAssistedPoints.length,
       eventMarkerCount: predictionState.targetRelativeEventMarkers.length,
-      horizonSeconds: predictionConfig.horizonSeconds,
+      horizonSeconds: options.predictionConfig.horizonSeconds,
+      inputKey: options.inputKey,
+      integrationStepSeconds: options.integrationStepSeconds,
+      predictionRefreshMs: nowMs() - options.refreshStartMs,
+      refreshCountLastSecond: getRefreshCountLastSecond(options.refreshStartMs),
+      refreshReason: options.reason,
+      relativePointCount: predictionState.targetRelativePredictionPoints.length,
+      sampleStepSeconds: options.predictionConfig.stepSeconds,
+    }
+  }
+
+  const completePendingFarPrediction = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+    nextInputKeyParts: PredictionInputKeyParts,
+  ) => {
+    const inputKey = createPredictionInputKey(nextInputKeyParts)
+
+    if (pendingFarPredictionInputKey !== inputKey) {
+      return false
+    }
+
+    const refreshStartMs = nowMs()
+    predictionRefreshTimesMs.push(refreshStartMs)
+    farPredictionTier = predictTier(options, target, options.predictionConfig)
+    pendingFarPredictionInputKey = null
+    applyPredictionTier({
+      farTier: farPredictionTier,
+      inputKey,
+      integrationStepSeconds: predictionDiagnostics.integrationStepSeconds,
+      nearTier: predictTier(
+        options,
+        target,
+        createPredictionConfigWithHorizon(
+          options.predictionConfig,
+          nearPredictionHorizonSeconds,
+        ),
+      ),
+      predictionConfig: options.predictionConfig,
+      reason: 'timed-refresh',
+      refreshStartMs,
+      target,
+    })
+    return true
+  }
+
+  const refreshForTarget = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+    reason: TrajectoryPredictionRefreshReason,
+    nextInputKeyParts = createPredictionInputKeyParts(options, target),
+    refreshFarImmediately = false,
+  ) => {
+    const refreshStartMs = nowMs()
+    predictionRefreshTimesMs.push(refreshStartMs)
+    const predictionConfig = options.predictionConfig
+    const inputKey = createPredictionInputKey(nextInputKeyParts)
+    const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
+    const integrationStepSeconds =
+      getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
+        options.state,
+        target,
+        predictionConfig,
+        allowLoopTrim,
+      )
+    const splitPredictionHorizon =
+      shouldSplitPredictionHorizon(predictionConfig)
+    const nearPredictionConfig = splitPredictionHorizon
+      ? createPredictionConfigWithHorizon(
+          predictionConfig,
+          nearPredictionHorizonSeconds,
+        )
+      : predictionConfig
+    const nearTier = predictTier(options, target, nearPredictionConfig)
+
+    if (!splitPredictionHorizon) {
+      farPredictionTier = null
+      pendingFarPredictionInputKey = null
+    } else if (refreshFarImmediately) {
+      farPredictionTier = predictTier(options, target, predictionConfig)
+      pendingFarPredictionInputKey = null
+    } else {
+      pendingFarPredictionInputKey = inputKey
+    }
+
+    predictionInputKeyParts = nextInputKeyParts
+    applyPredictionTier({
+      farTier: farPredictionTier,
       inputKey,
       integrationStepSeconds,
-      predictionRefreshMs: nowMs() - refreshStartMs,
-      refreshCountLastSecond: getRefreshCountLastSecond(refreshStartMs),
-      refreshReason: reason,
-      relativePointCount: predictionState.targetRelativePredictionPoints.length,
-      sampleStepSeconds: predictionConfig.stepSeconds,
-    }
+      nearTier,
+      predictionConfig,
+      reason,
+      refreshStartMs,
+      target,
+    })
     predictionRefreshElapsed = 0
   }
 
@@ -301,7 +444,7 @@ export const createTrajectoryPredictionRuntime = () => {
       : 'initial',
   ) => {
     const target = options.getAssistTarget()
-    refreshForTarget(options, target, reason)
+    refreshForTarget(options, target, reason, undefined, true)
   }
 
   return {
@@ -325,6 +468,12 @@ export const createTrajectoryPredictionRuntime = () => {
       )
       if (reason) {
         refreshForTarget(options, target, reason, nextInputKeyParts)
+        return true
+      }
+      if (
+        pendingFarPredictionInputKey &&
+        completePendingFarPrediction(options, target, nextInputKeyParts)
+      ) {
         return true
       }
       return false
