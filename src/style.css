@@ -579,6 +579,32 @@ canvas {
   }
 }
 
+@media (min-width: 721px) {
+  .reach-moon-highscore-row {
+    grid-template-columns:
+      38px minmax(118px, 1fr) 82px 82px 74px minmax(92px, 0.9fr)
+      88px;
+    grid-template-areas: "rank name score elapsed fuel orbit submitted";
+  }
+
+  .reach-moon-highscore-row-header {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 8px 10px;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .reach-moon-highscore-cell-elapsed,
+  .reach-moon-highscore-cell-fuel,
+  .reach-moon-highscore-cell-orbit,
+  .reach-moon-highscore-cell-submitted {
+    text-align: right;
+  }
+}
+
 #app .crash-menu {
   position: fixed;
   inset: 0;
