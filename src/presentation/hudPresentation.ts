@@ -58,6 +58,7 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
 const debugPanelUpdateIntervalMs = 500
 const fpsIndicatorUpdateFrameCycleInterval = 4
 const fpsIndicatorSlowFrameMs = 1000 / 15
+const transientNoticeDurationMs = 3_000
 
 const createDebugStateCopyPayload = (options: {
   capturedAtMs: number
@@ -156,6 +157,8 @@ export const createHudPresentation = (options: {
   trajectoryPresentation: TrajectoryPresentation
 }) => {
   let lastTimeWarpIndex: number | null = null
+  let lastTransientNoticeId: string | null = null
+  let transientNoticeHideTimeoutId: number | null = null
   let lastTimeIconUpdateAt: number | null = null
   let timeIconAngle = 0
   let lastUiEffectEpoch = options.runtime.ui.uiEffectEpoch
@@ -297,6 +300,36 @@ export const createHudPresentation = (options: {
     )
   }
 
+  const syncTransientNotice = () => {
+    const notice = options.runtime.ui.transientNotice ?? null
+    if (!notice || notice.id === lastTransientNoticeId) {
+      return
+    }
+
+    lastTransientNoticeId = notice.id
+    options.overlayUi.cameraUnlockNotice.hidden = false
+    options.overlayUi.cameraUnlockNoticeTitle?.replaceChildren(notice.title)
+    options.overlayUi.cameraUnlockNoticeBody?.replaceChildren(notice.body ?? '')
+    options.overlayUi.cameraUnlockNotice.setAttribute(
+      'aria-label',
+      notice.body ? `${notice.title}: ${notice.body}` : notice.title,
+    )
+    options.overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'false')
+    window.requestAnimationFrame(() => {
+      options.overlayUi.cameraUnlockNotice.dataset.visible = 'true'
+    })
+    if (transientNoticeHideTimeoutId !== null) {
+      window.clearTimeout(transientNoticeHideTimeoutId)
+    }
+    transientNoticeHideTimeoutId = window.setTimeout(() => {
+      if (options.runtime.ui.transientNotice?.id === notice.id) {
+        options.overlayUi.cameraUnlockNotice.dataset.visible = 'false'
+        options.overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'true')
+      }
+      transientNoticeHideTimeoutId = null
+    }, transientNoticeDurationMs)
+  }
+
   return {
     update: (metrics: {
       browserGcStats: BrowserGcProbeStats
@@ -401,6 +434,7 @@ export const createHudPresentation = (options: {
         options.overlayUi.fuelPill.title = `Fuel remaining ${fuelPercent}%`
       }
       syncFuelDepletedNotice(finiteFuel && spacecraft.fuel <= 0 && !crashed)
+      syncTransientNotice()
       options.touchControls?.setBurnControlVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
       options.touchControls?.setTargetControlVisible(showTargetControl)

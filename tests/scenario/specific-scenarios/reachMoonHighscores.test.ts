@@ -60,6 +60,66 @@ describe('reachMoonHighscores', () => {
     })
   })
 
+  it('validates lunar orbit quality input and includes it in server-side scoring', () => {
+    const record = createReachMoonHighscoreRecord(
+      {
+        fuelRemainingRatio: 0.5,
+        lunarOrbitQuality: {
+          orbitApoapsisAltitudeMeters: 500_000,
+          orbitPeriapsisAltitudeMeters: 10_000,
+        },
+        missionElapsedSeconds: 90_000,
+        playerName: 'Apollo Ace',
+      },
+      {
+        id: 'record-orbit',
+        submittedAt: '2026-06-28T18:00:00.000Z',
+      },
+    )
+
+    expect(record).toMatchObject({
+      ok: true,
+      value: {
+        score: {
+          lunarOrbitQuality: {
+            orbitApoapsisAltitudeMeters: 500_000,
+            orbitPeriapsisAltitudeMeters: 10_000,
+          },
+          lunarOrbitQualityPoints: 50,
+          totalScore: 221.2,
+        },
+      },
+    })
+  })
+
+  it('rejects inverted lunar orbit quality metrics', () => {
+    const record = createReachMoonHighscoreRecord(
+      {
+        fuelRemainingRatio: 0.5,
+        lunarOrbitQuality: {
+          orbitApoapsisAltitudeMeters: 10_000,
+          orbitPeriapsisAltitudeMeters: 500_000,
+        },
+        missionElapsedSeconds: 90_000,
+        playerName: 'Apollo Ace',
+      },
+      {
+        id: 'record-inverted-orbit',
+        submittedAt: '2026-06-28T18:00:00.000Z',
+      },
+    )
+
+    expect(record).toMatchObject({
+      errors: [
+        {
+          code: 'out_of_range',
+          field: 'orbitApoapsisAltitudeMeters',
+        },
+      ],
+      ok: false,
+    })
+  })
+
   it('generates a valid fallback name when the submitted name is blank', () => {
     const record = createReachMoonHighscoreRecord(
       {
@@ -109,6 +169,10 @@ describe('reachMoonHighscores', () => {
     const validDateResult = createReachMoonHighscoreRecord(
       {
         fuelRemainingRatio: 1.2,
+        lunarOrbitQuality: {
+          orbitApoapsisAltitudeMeters: -1,
+          orbitPeriapsisAltitudeMeters: Number.POSITIVE_INFINITY,
+        },
         missionElapsedSeconds: Number.NaN,
         playerName: 'A',
       },
@@ -123,6 +187,8 @@ describe('reachMoonHighscores', () => {
         { code: 'too_short', field: 'playerName' },
         { code: 'out_of_range', field: 'fuelRemainingRatio' },
         { code: 'invalid_type', field: 'missionElapsedSeconds' },
+        { code: 'out_of_range', field: 'orbitApoapsisAltitudeMeters' },
+        { code: 'invalid_type', field: 'orbitPeriapsisAltitudeMeters' },
       ],
       ok: false,
     })
@@ -176,27 +242,21 @@ describe('reachMoonHighscores', () => {
 
     expect(
       selectReachMoonHighscoreDisplayPeriod({
-        'all-time': createReachMoonHighscoreRollup('all-time', [
-          allTimeRecord,
-        ]),
+        'all-time': createReachMoonHighscoreRollup('all-time', [allTimeRecord]),
         daily: createReachMoonHighscoreRollup('daily', []),
         weekly: createReachMoonHighscoreRollup('weekly', []),
       }),
     ).toBe('all-time')
     expect(
       selectReachMoonHighscoreDisplayPeriod({
-        'all-time': createReachMoonHighscoreRollup('all-time', [
-          allTimeRecord,
-        ]),
+        'all-time': createReachMoonHighscoreRollup('all-time', [allTimeRecord]),
         daily: createReachMoonHighscoreRollup('daily', []),
         weekly: createReachMoonHighscoreRollup('weekly', [weeklyRecord]),
       }),
     ).toBe('weekly')
     expect(
       selectReachMoonHighscoreDisplayPeriod({
-        'all-time': createReachMoonHighscoreRollup('all-time', [
-          allTimeRecord,
-        ]),
+        'all-time': createReachMoonHighscoreRollup('all-time', [allTimeRecord]),
         daily: createReachMoonHighscoreRollup('daily', [dailyRecord]),
         weekly: createReachMoonHighscoreRollup('weekly', [weeklyRecord]),
       }),

@@ -1,3 +1,4 @@
+import type { RuntimeTransientNotice } from '../runtime/appRuntimeState'
 import type {
   RuntimeScenarioCheckpoint,
   ScenarioPromptUiState,
@@ -12,4 +13,5 @@ export type ScenarioRuntimeTransition<
   nextState?: TState
   promptUi?: ScenarioPromptUiState
   refreshTrajectoryPrediction?: boolean
+  transientNotice?: RuntimeTransientNotice | null
 }

@@ -389,7 +389,7 @@ canvas {
 
 .reach-moon-highscore-row {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1.4fr) 78px 70px 86px 116px;
+  grid-template-columns: 46px minmax(0, 1.3fr) 70px 68px 118px 104px;
   gap: 8px;
   align-items: center;
   min-width: 0;
@@ -472,6 +472,10 @@ canvas {
   width: 58px;
 }
 
+.reach-moon-highscore-skeleton-orbit {
+  width: 98px;
+}
+
 .reach-moon-highscore-skeleton-submitted {
   width: 86px;
 }
@@ -488,7 +492,8 @@ canvas {
 .reach-moon-highscore-cell-rank,
 .reach-moon-highscore-cell-score,
 .reach-moon-highscore-cell-elapsed,
-.reach-moon-highscore-cell-fuel {
+.reach-moon-highscore-cell-fuel,
+.reach-moon-highscore-cell-orbit {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1243,6 +1248,26 @@ button.app-dialog-setting {
   flex: 0 0 auto;
   overflow: visible;
   transform: translateY(-0.5px);
+}
+
+.telemetry-orbit-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.telemetry-orbit-icon-path {
+  fill: none;
+  stroke: rgba(224, 242, 254, 0.72);
+  stroke-width: 1.1;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(-22deg);
+}
+
+.telemetry-orbit-icon-moon {
+  fill: #f0f9ff;
 }
 
 .telemetry-time-icon-face {
@@ -2198,6 +2223,7 @@ button.app-dialog-setting {
     grid-template-areas:
       "rank name score"
       "rank elapsed fuel"
+      "rank orbit orbit"
       "rank submitted submitted";
     gap: 5px 8px;
     padding: 8px 9px;
@@ -2234,6 +2260,10 @@ button.app-dialog-setting {
   .reach-moon-highscore-cell-fuel {
     grid-area: fuel;
     text-align: right;
+  }
+
+  .reach-moon-highscore-cell-orbit {
+    grid-area: orbit;
   }
 
   .reach-moon-highscore-cell-submitted {

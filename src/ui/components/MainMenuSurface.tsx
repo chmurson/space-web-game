@@ -9,6 +9,7 @@ import {
 import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
 import {
   formatReachMoonFuelLeftPercent,
+  formatReachMoonOrbitQualityContext,
   formatReachMoonScoreSummaryDisplay,
   type ReachMoonScoreSummary,
 } from '../../scenario/specific-scenarios/reachMoonScore'
@@ -45,6 +46,7 @@ const reachMoonHighscoreSkeletonCells = [
   { className: 'reach-moon-highscore-cell-score', key: 'score' },
   { className: 'reach-moon-highscore-cell-elapsed', key: 'elapsed' },
   { className: 'reach-moon-highscore-cell-fuel', key: 'fuel' },
+  { className: 'reach-moon-highscore-cell-orbit', key: 'orbit' },
   { className: 'reach-moon-highscore-cell-submitted', key: 'submitted' },
 ] as const
 
@@ -152,16 +154,25 @@ const ReachMoonHighscoreFuelIcon = () => (
   </svg>
 )
 
+const ReachMoonHighscoreOrbitIcon = () => (
+  <svg class="telemetry-orbit-icon" viewBox="0 0 16 16" aria-hidden="true">
+    <circle class="telemetry-orbit-icon-moon" cx="8" cy="8" r="2" />
+    <ellipse class="telemetry-orbit-icon-path" cx="8" cy="8" rx="6" ry="3.6" />
+  </svg>
+)
+
 const ReachMoonHighscoreMetric = ({
   icon,
   value,
 }: {
-  icon: 'fuel' | 'time'
+  icon: 'fuel' | 'orbit' | 'time'
   value: string
 }) => (
   <span class="reach-moon-highscore-metric">
     {icon === 'time' ? (
       <ReachMoonHighscoreTimeIcon />
+    ) : icon === 'orbit' ? (
+      <ReachMoonHighscoreOrbitIcon />
     ) : (
       <ReachMoonHighscoreFuelIcon />
     )}
@@ -189,6 +200,13 @@ const ReachMoonHighscoreScoreSummary = ({
         <ReachMoonHighscoreFuelIcon />
         <span>
           Fuel left {display.fuelLeft} (+{display.fuelBonusPoints}).
+        </span>
+      </span>
+      <span class="reach-moon-highscore-score-summary-line">
+        <ReachMoonHighscoreOrbitIcon />
+        <span>
+          Orbit quality {display.lunarOrbitQualityAltitude} (
+          {display.lunarOrbitQualityPoints}).
         </span>
       </span>
     </strong>
@@ -269,6 +287,7 @@ const ReachMoonHighscoreHeaderRow = () => (
     <th scope="col">Score</th>
     <th scope="col">Time</th>
     <th scope="col">Fuel left</th>
+    <th scope="col">Orbit</th>
     <th scope="col">Submitted</th>
   </tr>
 )
@@ -294,6 +313,9 @@ const ReachMoonHighscoreRow = ({
 }) => {
   const elapsed = formatCompactElapsed(entry.score.missionElapsedSeconds)
   const fuelLeft = formatReachMoonFuelLeftPercent(entry.score)
+  const orbitQuality = formatReachMoonOrbitQualityContext(
+    entry.score.lunarOrbitQuality,
+  )
 
   return (
     <tr
@@ -321,6 +343,12 @@ const ReachMoonHighscoreRow = ({
         aria-label={`Fuel left ${fuelLeft}`}
       >
         <ReachMoonHighscoreMetric icon="fuel" value={fuelLeft} />
+      </td>
+      <td
+        class="reach-moon-highscore-cell-orbit"
+        aria-label={`Orbit quality ${orbitQuality}`}
+      >
+        <ReachMoonHighscoreMetric icon="orbit" value={orbitQuality} />
       </td>
       <td class="reach-moon-highscore-cell-submitted">
         {formatSubmittedAt(entry.submittedAt)}
