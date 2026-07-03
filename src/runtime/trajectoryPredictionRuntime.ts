@@ -49,6 +49,7 @@ export type TrajectoryPredictionDiagnostics = {
   inputKey: string | null
   integrationStepSeconds: number
   predictionRefreshMs: number
+  refreshCountLastSecond: number
   refreshReason: TrajectoryPredictionRefreshReason | null
   relativePointCount: number
   sampleStepSeconds: number
@@ -98,11 +99,13 @@ const emptyTrajectoryPredictionDiagnostics =
     inputKey: null,
     integrationStepSeconds: 0,
     predictionRefreshMs: 0,
+    refreshCountLastSecond: 0,
     refreshReason: null,
     relativePointCount: 0,
     sampleStepSeconds: 0,
   })
 
+const recentRefreshWindowMs = 1_000
 const nowMs = () => performance.now()
 
 const quantize = (value: number, precision: number) =>
@@ -212,9 +215,18 @@ const getRefreshReason = (
 
 export const createTrajectoryPredictionRuntime = () => {
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
+  let predictionRefreshTimesMs: number[] = []
   let predictionRefreshElapsed = 0
   let predictionDiagnostics = emptyTrajectoryPredictionDiagnostics()
   let predictionState = emptyTrajectoryPredictionState()
+
+  const getRefreshCountLastSecond = (currentTimeMs: number) => {
+    const recentCutoffMs = currentTimeMs - recentRefreshWindowMs
+    predictionRefreshTimesMs = predictionRefreshTimesMs.filter(
+      (timeMs) => timeMs >= recentCutoffMs,
+    )
+    return predictionRefreshTimesMs.length
+  }
 
   const refreshForTarget = (
     options: RefreshTrajectoryPredictionOptions,
@@ -223,6 +235,7 @@ export const createTrajectoryPredictionRuntime = () => {
     nextInputKeyParts = createPredictionInputKeyParts(options, target),
   ) => {
     const refreshStartMs = nowMs()
+    predictionRefreshTimesMs.push(refreshStartMs)
     const predictionConfig = options.predictionConfig
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const integrationStepSeconds =
@@ -273,6 +286,7 @@ export const createTrajectoryPredictionRuntime = () => {
       inputKey,
       integrationStepSeconds,
       predictionRefreshMs: nowMs() - refreshStartMs,
+      refreshCountLastSecond: getRefreshCountLastSecond(refreshStartMs),
       refreshReason: reason,
       relativePointCount: predictionState.targetRelativePredictionPoints.length,
       sampleStepSeconds: predictionConfig.stepSeconds,
@@ -291,7 +305,10 @@ export const createTrajectoryPredictionRuntime = () => {
   }
 
   return {
-    getDiagnostics: () => predictionDiagnostics,
+    getDiagnostics: () => ({
+      ...predictionDiagnostics,
+      refreshCountLastSecond: getRefreshCountLastSecond(nowMs()),
+    }),
     getState: () => predictionState,
     maybeRefresh: (
       realDt: number,

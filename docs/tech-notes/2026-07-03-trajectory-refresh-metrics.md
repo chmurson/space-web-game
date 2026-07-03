@@ -4,7 +4,7 @@
 
 - Added a quantized trajectory prediction input key to the prediction runtime.
 - Skipped full prediction recomputation when the key is unchanged and the configured refresh interval has not elapsed.
-- Recorded prediction refresh reason, prediction CPU time, geometry update time, horizon, sample step, integration step, point counts, and event marker count.
+- Recorded prediction refresh reason, prediction CPU time, recent refresh count, geometry update time, horizon, sample step, integration step cap, point counts, and event marker count.
 - Exposed the metrics through the in-game debug panel JSON/text and the DevTools simulation snapshot/panel sampling row.
 
 ## Why It Changed
@@ -24,6 +24,7 @@ Long-horizon trajectory prediction can spike the main thread. This first slice m
 - Continuous state is quantized before key comparison: positions at `5km`, velocities at `5m/s`, scalar config/control values at `0.001`, and heading at `0.0001` radians so normal frame-to-frame orbital drift falls back to the configured refresh cadence instead of forcing a refresh every animation frame.
 - Horizon/config changes refresh conservatively instead of trimming or reusing prior points.
 - The configured refresh interval remains the safety net for missed or intentionally conservative key comparisons.
+- `sampleStepSeconds` describes emitted trajectory point spacing. `integrationStepSeconds` is labelled as an integration max because adaptive gravity timing can still use smaller internal physics steps.
 - Worker scheduling, near/far horizon splits, progressive rendering, zoom-aware density, and loop trimming remain follow-up work.
 
 ## Validation

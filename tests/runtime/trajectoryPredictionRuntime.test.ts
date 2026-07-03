@@ -153,6 +153,31 @@ describe('createTrajectoryPredictionRuntime', () => {
     )
   })
 
+  it('reports refreshes from the last second', () => {
+    const { getOptions, predictionRuntime, setTarget } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      predictionRuntime.refresh(getOptions())
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(1)
+
+      now = 500
+      setTarget(moon)
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(2)
+
+      now = 1_499
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(1)
+
+      now = 1_501
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(0)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
   it('refreshes when the prediction horizon changes', () => {
     const { getOptions, predictionRuntime } = createRuntimeHarness()
     const options = getOptions()

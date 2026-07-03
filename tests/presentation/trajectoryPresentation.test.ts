@@ -174,6 +174,7 @@ const createPredictionRuntime = (
       inputKey: null,
       integrationStepSeconds: 0,
       predictionRefreshMs: 0,
+      refreshCountLastSecond: 0,
       refreshReason: null,
       relativePointCount: 0,
       sampleStepSeconds: 0,

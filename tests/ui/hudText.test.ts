@@ -44,6 +44,7 @@ const createDebugPanelInput = (
     inputKey: 'test-key',
     integrationStepSeconds: 8,
     predictionRefreshMs: 3.5,
+    refreshCountLastSecond: 2,
     refreshReason: 'target-change',
     relativePointCount: 10,
     sampleStepSeconds: 60,
@@ -112,7 +113,7 @@ describe('getDebugPanelLines', () => {
 
   it('shows trajectory prediction refresh metrics in debug text', () => {
     expect(getDebugPanelLines(createDebugPanelInput())).toContain(
-      'prediction step: 1m | refresh target-change 3.5ms | geometry 1.3ms | pts 12/10/8 | events 2',
+      'prediction step: 1m | integrate max 8s | refresh target-change 3.5ms (2/s) | geometry 1.3ms | pts 12/10/8 | events 2',
     )
   })
 
