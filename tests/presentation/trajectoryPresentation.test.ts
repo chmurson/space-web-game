@@ -165,6 +165,20 @@ const createPredictionRuntime = (
   predictedImpact: { bodyName: string; time: number } | null = null,
 ): TrajectoryPredictionRuntime =>
   ({
+    getDiagnostics: () => ({
+      absolutePointCount: 0,
+      assistedPointCount: 0,
+      eventMarkerCount: 0,
+      geometryUpdateMs: 0,
+      horizonSeconds: 0,
+      inputKey: null,
+      integrationStepSeconds: 0,
+      predictionRefreshMs: 0,
+      refreshCountLastSecond: 0,
+      refreshReason: null,
+      relativePointCount: 0,
+      sampleStepSeconds: 0,
+    }),
     getState: () => ({
       absolutePredictionEnd: null,
       absolutePredictionPoints: [],
@@ -181,6 +195,7 @@ const createPredictionRuntime = (
       ],
     }),
     maybeRefresh: () => false,
+    recordGeometryUpdate: () => {},
     refresh: () => {},
   }) as TrajectoryPredictionRuntime
 

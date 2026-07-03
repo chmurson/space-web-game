@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
+import type { AssistMode } from '@/assist/orbitalAssist'
 import { getCaptureMetricsForState } from '@/assist/orbitalAssist'
 import { createTrajectoryPredictionRuntime } from '@/runtime/trajectoryPredictionRuntime'
 import { idleControls } from '@/simulation/state'
@@ -56,39 +57,233 @@ const physicsEngine: PhysicsEngine = {
   }),
 }
 
+const createPredictionConfig = () => ({
+  horizonSeconds: 10,
+  maxIntegrationStepSeconds: 10,
+  maxLoopRevolutions: 1,
+  refreshInterval: 999,
+  stepSeconds: 10,
+})
+
+const createRuntimeHarness = () => {
+  let assistMode: AssistMode = 'off'
+  let state = createState()
+  let target = earth
+  const engineStep = vi.fn(physicsEngine.step)
+  const engine: PhysicsEngine = {
+    name: physicsEngine.name,
+    step: engineStep,
+  }
+  const predictionRuntime = createTrajectoryPredictionRuntime()
+
+  const getOptions = () => ({
+    assistMode,
+    getAssistPredictionControls: () => idleControls(),
+    getAssistTarget: () => target,
+    getCaptureMetrics: (body: Body) => getCaptureMetricsForState(state, body),
+    physicsEngine: engine,
+    predictionConfig: createPredictionConfig(),
+    state,
+  })
+
+  return {
+    engineStep,
+    getOptions,
+    predictionRuntime,
+    setAssistMode: (nextAssistMode: AssistMode) => {
+      assistMode = nextAssistMode
+    },
+    setState: (nextState: SimulationState) => {
+      state = nextState
+    },
+    setTarget: (nextTarget: Body) => {
+      target = nextTarget
+    },
+    state: () => state,
+  }
+}
+
 describe('createTrajectoryPredictionRuntime', () => {
   it('refreshes immediately when the assist target changes', () => {
-    const state = createState()
-    const predictionRuntime = createTrajectoryPredictionRuntime()
-    let target = earth
-    const options = {
-      assistMode: 'off' as const,
-      getAssistPredictionControls: () => idleControls(),
-      getAssistTarget: () => target,
-      getCaptureMetrics: (body: Body) => getCaptureMetricsForState(state, body),
-      physicsEngine,
-      predictionConfig: {
-        horizonSeconds: 10,
-        maxIntegrationStepSeconds: 10,
-        maxLoopRevolutions: 1,
-        refreshInterval: 999,
-        stepSeconds: 10,
-      },
-      state,
-    }
+    const { getOptions, predictionRuntime, setTarget } = createRuntimeHarness()
 
-    predictionRuntime.refresh(options)
+    predictionRuntime.refresh(getOptions())
     expect(predictionRuntime.getState()).toMatchObject({
       targetId: 'earth',
       targetRelativePredictionPoints: [{ x: 110, y: 0 }],
     })
 
-    target = moon
-    expect(predictionRuntime.maybeRefresh(0, options)).toBe(true)
+    setTarget(moon)
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
 
     expect(predictionRuntime.getState()).toMatchObject({
       targetId: 'moon',
       targetRelativePredictionPoints: [{ x: -890, y: 0 }],
     })
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'target-change',
+    )
+  })
+
+  it('skips unchanged prediction inputs before the refresh interval elapses', () => {
+    const { engineStep, getOptions, predictionRuntime } = createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+    const callCount = engineStep.mock.calls.length
+
+    expect(predictionRuntime.maybeRefresh(0.1, getOptions())).toBe(false)
+    expect(engineStep).toHaveBeenCalledTimes(callCount)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      absolutePointCount: 2,
+      eventMarkerCount: 0,
+      refreshReason: 'initial',
+      relativePointCount: 1,
+      sampleStepSeconds: 10,
+    })
+  })
+
+  it('refreshes unchanged prediction inputs after the refresh interval elapses', () => {
+    const { getOptions, predictionRuntime } = createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+
+    expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'timed-refresh',
+    )
+  })
+
+  it('reports refreshes from the last second', () => {
+    const { getOptions, predictionRuntime, setTarget } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      predictionRuntime.refresh(getOptions())
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(1)
+
+      now = 500
+      setTarget(moon)
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(2)
+
+      now = 1_499
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(1)
+
+      now = 1_501
+      expect(predictionRuntime.getDiagnostics().refreshCountLastSecond).toBe(0)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('refreshes when the prediction horizon changes', () => {
+    const { getOptions, predictionRuntime } = createRuntimeHarness()
+    const options = getOptions()
+    predictionRuntime.refresh(options)
+
+    expect(
+      predictionRuntime.maybeRefresh(0, {
+        ...options,
+        predictionConfig: {
+          ...options.predictionConfig,
+          horizonSeconds: 20,
+        },
+      }),
+    ).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'horizon-change',
+    )
+  })
+
+  it('refreshes when spacecraft state changes materially', () => {
+    const { getOptions, predictionRuntime, setState, state } =
+      createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 6_000, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'spacecraft-change',
+    )
+  })
+
+  it('keeps normal spacecraft drift on the timed refresh cadence', () => {
+    const { engineStep, getOptions, predictionRuntime, setState, state } =
+      createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+    const callCount = engineStep.mock.calls.length
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 2_400, y: 0 },
+        velocity: { x: 12, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0.1, getOptions())).toBe(false)
+    expect(engineStep).toHaveBeenCalledTimes(callCount)
+    expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'timed-refresh',
+    )
+  })
+
+  it('refreshes when controls change materially', () => {
+    const { getOptions, predictionRuntime, setState, state } =
+      createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+    setState({
+      ...state(),
+      controls: { ...state().controls, main: 1 },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'controls-change',
+    )
+  })
+
+  it('refreshes when assist mode changes', () => {
+    const { getOptions, predictionRuntime, setAssistMode } =
+      createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+    setAssistMode('capture')
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'assist-change',
+    )
+  })
+
+  it('refreshes when relevant body state changes', () => {
+    const { getOptions, predictionRuntime, setState, state } =
+      createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+    setState({
+      ...state(),
+      bodies: [
+        { ...earth, position: { x: 6_000, y: 0 } },
+        state().bodies[1] ?? moon,
+      ],
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'body-state-change',
+    )
   })
 })

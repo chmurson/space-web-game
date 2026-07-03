@@ -1,4 +1,9 @@
-import { readDebugScenarioSnapshot } from '../debugScenarioSnapshot'
+import {
+  type DebugScenarioSnapshotEntry,
+  getRecentDebugScenarioSnapshots,
+  loadRecentDebugScenarioSnapshot,
+  readDebugScenarioSnapshot,
+} from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
 import {
   TopMenuSurface,
@@ -43,9 +48,13 @@ export const createTopMenu = (options: {
   })
 
   let open = false
+  let activeSection: TopMenuSurfaceProps['activeSection'] = 'main'
   let debugModeEnabled = options.getDebugModeEnabled()
   let fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
   let loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
+  let recentSnapshots: DebugScenarioSnapshotEntry[] =
+    getRecentDebugScenarioSnapshots()
+  let selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
   let pendingConfirmationAction: ConfirmableTopMenuAction | null = null
 
   const getButton = () =>
@@ -59,17 +68,43 @@ export const createTopMenu = (options: {
       surface.element.querySelectorAll<HTMLButtonElement>(
         'button[role="menuitem"], button[role="menuitemcheckbox"], button[role="menuitemradio"]',
       ),
-    ).filter((menuItem) => !menuItem.disabled)
+    ).filter((menuItem) => !menuItem.disabled && !menuItem.closest('[hidden]'))
 
   const focusItem = (index: number) => {
     const menuItems = getMenuItems()
     menuItems.at(index)?.focus()
   }
 
+  const focusAction = (action: string) => {
+    surface.element
+      .querySelector<HTMLButtonElement>(`[data-menu-action="${action}"]`)
+      ?.focus()
+  }
+
   const syncSnapshotAvailability = () => {
     const previousLoadSnapshotAvailable = loadSnapshotAvailable
+    const previousRecentSnapshotIds = recentSnapshots
+      .map((snapshot) => snapshot.id)
+      .join('|')
+    const previousSelectedRecentSnapshotId = selectedRecentSnapshotId
+
     loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
-    return loadSnapshotAvailable !== previousLoadSnapshotAvailable
+    recentSnapshots = getRecentDebugScenarioSnapshots()
+    if (
+      selectedRecentSnapshotId === '' ||
+      !recentSnapshots.some(
+        (snapshot) => snapshot.id === selectedRecentSnapshotId,
+      )
+    ) {
+      selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
+    }
+
+    return (
+      loadSnapshotAvailable !== previousLoadSnapshotAvailable ||
+      previousRecentSnapshotIds !==
+        recentSnapshots.map((snapshot) => snapshot.id).join('|') ||
+      previousSelectedRecentSnapshotId !== selectedRecentSnapshotId
+    )
   }
 
   const syncToggleState = () => {
@@ -85,12 +120,15 @@ export const createTopMenu = (options: {
 
   const renderMenu = () => {
     surface.render({
+      activeSection,
       debugModeEnabled,
       fpsIndicatorEnabled,
       loadSnapshotAvailable,
       menuId,
       open,
       pendingConfirmationAction,
+      recentSnapshots,
+      selectedRecentSnapshotId,
       onAction: (action) => {
         if (
           isConfirmableAction(action) &&
@@ -111,6 +149,32 @@ export const createTopMenu = (options: {
       },
       onMenuButtonClick: () => {
         setOpen(!open, open ? 'button' : 'first-item')
+      },
+      onRecentSnapshotBack: () => {
+        activeSection = 'main'
+        renderMenu()
+        focusAction('openDebugSnapshotLoad')
+      },
+      onRecentSnapshotChange: (id) => {
+        selectedRecentSnapshotId = id
+        renderMenu()
+      },
+      onRecentSnapshotLoad: () => {
+        if (
+          selectedRecentSnapshotId &&
+          loadRecentDebugScenarioSnapshot(selectedRecentSnapshotId)
+        ) {
+          options.onAction('loadDebugSnapshot')
+          syncSnapshotAvailability()
+        }
+        syncToggleState()
+        pendingConfirmationAction = null
+        setOpen(false, 'button')
+      },
+      onRecentSnapshotMenu: () => {
+        activeSection = 'debug-snapshot'
+        renderMenu()
+        focusItem(0)
       },
     })
   }
@@ -139,6 +203,7 @@ export const createTopMenu = (options: {
     }
 
     if (!nextOpen) {
+      activeSection = 'main'
       pendingConfirmationAction = null
     }
     renderMenu()

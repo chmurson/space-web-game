@@ -1,4 +1,10 @@
 import {
+  type DebugScenarioSnapshotEntry,
+  getRecentDebugScenarioSnapshots,
+  loadRecentDebugScenarioSnapshot,
+  readDebugScenarioSnapshot,
+} from '../debugScenarioSnapshot'
+import {
   generateReachMoonFallbackPilotName,
   type ReachMoonHighscoreListResponse,
   type ReachMoonHighscorePeriod,
@@ -73,6 +79,9 @@ export const createMainMenu = (options: {
 
   let activeView: MainMenuView = 'main'
   let loadGameAvailable = isLoadGameAvailable()
+  let recentSnapshots: DebugScenarioSnapshotEntry[] =
+    getRecentDebugScenarioSnapshots()
+  let selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
   let reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null = null
   let reachMoonHighscoreActivePeriod: ReachMoonHighscorePeriod =
     defaultReachMoonHighscorePeriod
@@ -92,7 +101,30 @@ export const createMainMenu = (options: {
 
   const refreshLoadGameAvailable = () => {
     const nextLoadGameAvailable = isLoadGameAvailable()
-    if (loadGameAvailable === nextLoadGameAvailable) {
+    const previousRecentSnapshotIds = recentSnapshots
+      .map((snapshot) => snapshot.id)
+      .join('\n')
+    const previousSelectedRecentSnapshotId = selectedRecentSnapshotId
+
+    recentSnapshots = getRecentDebugScenarioSnapshots()
+    if (
+      selectedRecentSnapshotId === '' ||
+      !recentSnapshots.some(
+        (snapshot) => snapshot.id === selectedRecentSnapshotId,
+      )
+    ) {
+      selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
+    }
+
+    const recentSnapshotIds = recentSnapshots
+      .map((snapshot) => snapshot.id)
+      .join('\n')
+    const stateChanged =
+      loadGameAvailable !== nextLoadGameAvailable ||
+      previousRecentSnapshotIds !== recentSnapshotIds ||
+      previousSelectedRecentSnapshotId !== selectedRecentSnapshotId
+
+    if (!stateChanged) {
       return false
     }
 
@@ -101,7 +133,12 @@ export const createMainMenu = (options: {
   }
 
   const setActiveView = (view: MainMenuView) => {
-    activeView = options.reachMoonFeatureEnabled ? view : 'main'
+    activeView =
+      options.reachMoonFeatureEnabled ||
+      view === 'load-game' ||
+      view === 'load-game-snapshot'
+        ? view
+        : 'main'
   }
 
   const mergeReachMoonHighscoreRollups = (
@@ -165,6 +202,7 @@ export const createMainMenu = (options: {
     surface.render({
       activeView,
       loadGameAvailable,
+      recentSnapshots,
       reachMoonHighscorePendingRun,
       reachMoonHighscoreState: {
         activePeriod: reachMoonHighscoreActivePeriod,
@@ -178,6 +216,7 @@ export const createMainMenu = (options: {
         submitStatus: reachMoonHighscoreSubmitStatus,
       },
       reachMoonFeatureEnabled: options.reachMoonFeatureEnabled,
+      selectedRecentSnapshotId,
       visible,
       onFreeRoam: () => handleActionThatClosesMenu(options.onFreeRoam),
       onLoadGame: () => {
@@ -187,6 +226,17 @@ export const createMainMenu = (options: {
         if (!didLoad && refreshLoadGameAvailable()) {
           renderMenu()
         }
+      },
+      onLoadGameBack: () => {
+        setActiveView(
+          activeView === 'load-game-snapshot' ? 'load-game' : 'main',
+        )
+        renderMenu()
+      },
+      onLoadGameMenu: () => {
+        refreshLoadGameAvailable()
+        setActiveView('load-game')
+        renderMenu()
       },
       onReachMoon: () => handleActionThatClosesMenu(options.onReachMoon),
       onReachMoonBack: handleReachMoonBack,
@@ -228,6 +278,30 @@ export const createMainMenu = (options: {
         renderMenu()
       },
       onTutorial: () => handleActionThatClosesMenu(options.onTutorial),
+      onRecentSnapshotChange: (id) => {
+        selectedRecentSnapshotId = id
+        renderMenu()
+      },
+      onRecentSnapshotLoad: () => {
+        if (
+          selectedRecentSnapshotId &&
+          loadRecentDebugScenarioSnapshot(selectedRecentSnapshotId)
+        ) {
+          handleActionThatClosesMenu(options.onLoadGame)
+          return
+        }
+
+        const recentStateChanged = refreshLoadGameAvailable()
+        const activeSnapshotAvailable = readDebugScenarioSnapshot() !== null
+        if (!activeSnapshotAvailable || recentStateChanged) {
+          renderMenu()
+        }
+      },
+      onRecentSnapshotMenu: () => {
+        refreshLoadGameAvailable()
+        setActiveView('load-game-snapshot')
+        renderMenu()
+      },
     })
   }
 

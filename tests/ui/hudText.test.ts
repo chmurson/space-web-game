@@ -35,6 +35,20 @@ const createDebugPanelInput = (
   debugNoGravityEnabled: false,
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
+  predictionDiagnostics: {
+    absolutePointCount: 12,
+    assistedPointCount: 8,
+    eventMarkerCount: 2,
+    geometryUpdateMs: 1.25,
+    horizonSeconds: 3600,
+    inputKey: 'test-key',
+    integrationStepSeconds: 8,
+    predictionRefreshMs: 3.5,
+    refreshCountLastSecond: 2,
+    refreshReason: 'target-change',
+    relativePointCount: 10,
+    sampleStepSeconds: 60,
+  },
   predictedImpact: null,
   predictedTargetClosestApproach: null,
   predictionStepSeconds: 60,
@@ -68,8 +82,18 @@ const createDebugPanelInput = (
 describe('getDebugPanelLines', () => {
   it('shows debug toggles without the removed performance switch', () => {
     expect(getDebugPanelLines(createDebugPanelInput())[0]).toBe(
-      'debug: [1] no-gravity off | [2] fps off',
+      'debug: no-gravity off | fps off',
     )
+  })
+
+  it('does not show keyboard shortcut guides in debug text', () => {
+    const lines = getDebugPanelLines(
+      createDebugPanelInput({ debugSnapshotStatus: 'saved' }),
+    )
+
+    expect(lines).toContain('coast horizon: 1h')
+    expect(lines).toContain('snapshot: save/load | saved')
+    expect(lines.join('\n')).not.toMatch(/\[[0-9]\]/)
   })
 
   it('shows scenario phase in the readable debug text', () => {
@@ -84,6 +108,12 @@ describe('getDebugPanelLines', () => {
     expect(lines).toContain('viewport: 25.00 | zoom: 4.0x')
     expect(lines).toContain(
       'trail detail: L6/7 close | slices 12 | render 500 km | capture 250 km | trail frame: target-relative Moon',
+    )
+  })
+
+  it('shows trajectory prediction refresh metrics in debug text', () => {
+    expect(getDebugPanelLines(createDebugPanelInput())).toContain(
+      'prediction step: 1m | integrate max 8s | refresh target-change 3.5ms (2/s) | geometry 1.3ms | pts 12/10/8 | events 2',
     )
   })
 
