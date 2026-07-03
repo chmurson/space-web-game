@@ -109,9 +109,9 @@ const quantize = (value: number, precision: number) =>
   Math.round(value / precision) * precision
 
 const quantizeAngle = (value: number) => quantize(value, 0.0001)
-const quantizePosition = (value: number) => quantize(value, 100)
+const quantizePosition = (value: number) => quantize(value, 5_000)
 const quantizeScalar = (value: number) => quantize(value, 0.001)
-const quantizeVelocity = (value: number) => quantize(value, 0.1)
+const quantizeVelocity = (value: number) => quantize(value, 5)
 
 const createPredictionInputKeyParts = (
   options: RefreshTrajectoryPredictionOptions,
@@ -119,7 +119,7 @@ const createPredictionInputKeyParts = (
 ): PredictionInputKeyParts => ({
   assist: JSON.stringify({
     mode: options.assistMode,
-    targetId: options.getAssistTarget().id,
+    targetId: target.id,
   }),
   bodies: JSON.stringify(
     options.state.bodies.map((body) => ({

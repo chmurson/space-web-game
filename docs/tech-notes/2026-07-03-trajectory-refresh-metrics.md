@@ -21,7 +21,7 @@ Long-horizon trajectory prediction can spike the main thread. This first slice m
 
 ## Decisions
 
-- Continuous state is quantized before key comparison: positions at `100m`, velocities at `0.1m/s`, scalar config/control values at `0.001`, and heading at `0.0001` radians so tiny frame-to-frame noise does not force refreshes.
+- Continuous state is quantized before key comparison: positions at `5km`, velocities at `5m/s`, scalar config/control values at `0.001`, and heading at `0.0001` radians so normal frame-to-frame orbital drift falls back to the configured refresh cadence instead of forcing a refresh every animation frame.
 - Horizon/config changes refresh conservatively instead of trimming or reusing prior points.
 - The configured refresh interval remains the safety net for missed or intentionally conservative key comparisons.
 - Worker scheduling, near/far horizon splits, progressive rendering, zoom-aware density, and loop trimming remain follow-up work.

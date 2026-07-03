@@ -181,13 +181,36 @@ describe('createTrajectoryPredictionRuntime', () => {
       ...state(),
       spacecraft: {
         ...state().spacecraft,
-        position: { x: 250, y: 0 },
+        position: { x: 6_000, y: 0 },
       },
     })
 
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
     expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
       'spacecraft-change',
+    )
+  })
+
+  it('keeps normal spacecraft drift on the timed refresh cadence', () => {
+    const { engineStep, getOptions, predictionRuntime, setState, state } =
+      createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+    const callCount = engineStep.mock.calls.length
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 2_400, y: 0 },
+        velocity: { x: 12, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0.1, getOptions())).toBe(false)
+    expect(engineStep).toHaveBeenCalledTimes(callCount)
+    expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+      'timed-refresh',
     )
   })
 
@@ -228,7 +251,7 @@ describe('createTrajectoryPredictionRuntime', () => {
     setState({
       ...state(),
       bodies: [
-        { ...earth, position: { x: 250, y: 0 } },
+        { ...earth, position: { x: 6_000, y: 0 } },
         state().bodies[1] ?? moon,
       ],
     })
