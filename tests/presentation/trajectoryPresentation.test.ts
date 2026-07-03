@@ -364,6 +364,15 @@ describe('createTrajectoryPresentation', () => {
     expect(normal.gameScene.predictionEndMarker.visible).toBe(true)
     expect(normalDiameter).toBeCloseTo(11)
 
+    const viewportTwenty = createTestPresentation({
+      eventMarkers: [],
+      predictedImpact: { bodyName: 'Earth', time: 30 },
+      viewportSize: 20,
+    })
+    viewportTwenty.presentation.updateVisuals()
+    const viewportTwentyDiameter =
+      (viewportTwenty.gameScene.predictionEndMarker.scale.x / (20 / 600)) * 2
+
     const zoomedIn = createTestPresentation({
       eventMarkers: [],
       predictedImpact: { bodyName: 'Earth', time: 30 },
@@ -374,7 +383,8 @@ describe('createTrajectoryPresentation', () => {
       (zoomedIn.gameScene.predictionEndMarker.scale.x / (5 / 600)) * 2
 
     expect(zoomedIn.gameScene.predictionEndMarker.visible).toBe(true)
-    expect(zoomedInDiameter).toBeCloseTo(30)
+    expect(viewportTwentyDiameter).toBeCloseTo(11)
+    expect(zoomedInDiameter).toBeCloseTo(viewportTwentyDiameter)
   })
 
   it('uses orbit point display settings for marker and label visibility', () => {

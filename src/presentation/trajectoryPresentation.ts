@@ -30,7 +30,7 @@ const trajectoryEventMarkerLabelOffsetX = 10
 const trajectoryEventMarkerLabelOffsetY = 10
 const trajectoryEventMarkerLabelViewportPadding = 8
 const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.025
-const predictionEndMarkerMaxScreenDiameter = 30
+const predictionEndMarkerMaxScreenDiameter = 11
 
 type TrajectoryEventMarkerLabelRefs = Record<
   TrajectoryPredictionEventMarkerKind,
