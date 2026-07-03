@@ -222,4 +222,26 @@ describe('recent debug scenario snapshots', () => {
     expect(readDebugScenarioSnapshot()?.elapsed).toBe(1)
     expect(loadRecentDebugScenarioSnapshot('missing')).toBe(false)
   })
+
+  it('restores recent snapshots from local storage after refresh', () => {
+    writeDebugScenarioSnapshot({
+      ...snapshotBase,
+      savedAt: '2026-01-01T00:00:00.000Z',
+      elapsed: 1,
+    })
+    writeDebugScenarioSnapshot({
+      ...snapshotBase,
+      savedAt: '2026-01-01T00:00:01.000Z',
+      elapsed: 2,
+    })
+    clearRecentDebugScenarioSnapshotsForTests()
+
+    const recentSnapshots = getRecentDebugScenarioSnapshots()
+
+    expect(recentSnapshots.map((entry) => entry.snapshot.elapsed)).toEqual([
+      2, 1,
+    ])
+    expect(loadRecentDebugScenarioSnapshot(recentSnapshots[1].id)).toBe(true)
+    expect(readDebugScenarioSnapshot()?.elapsed).toBe(1)
+  })
 })

@@ -15,6 +15,8 @@ import type {
 import type { OrbitPointDisplaySettingOverrides } from './userSettingsStorage'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
+const recentDebugSnapshotsStorageKey =
+  'space-web-game.recentDebugScenarioSnapshots.v1'
 const maxRecentDebugScenarioSnapshots = 10
 
 type DebugScenarioSnapshotV1 = {
@@ -99,6 +101,7 @@ const cloneDebugScenarioSnapshot = (
 
 const recentDebugScenarioSnapshots: DebugScenarioSnapshotEntry[] = []
 let recentDebugScenarioSnapshotId = 0
+let recentDebugScenarioSnapshotsHydrated = false
 
 const formatElapsedLabel = (elapsed: number) => {
   if (!Number.isFinite(elapsed)) {
@@ -153,6 +156,7 @@ export const createDebugScenarioSnapshotEntryName = (
 }
 
 const addRecentDebugScenarioSnapshot = (snapshot: DebugScenarioSnapshot) => {
+  hydrateRecentDebugScenarioSnapshots()
   const entry = {
     id: `debug-snapshot-${++recentDebugScenarioSnapshotId}`,
     name: createDebugScenarioSnapshotEntryName(snapshot),
@@ -162,6 +166,87 @@ const addRecentDebugScenarioSnapshot = (snapshot: DebugScenarioSnapshot) => {
 
   recentDebugScenarioSnapshots.unshift(entry)
   recentDebugScenarioSnapshots.splice(maxRecentDebugScenarioSnapshots)
+  persistRecentDebugScenarioSnapshots()
+}
+
+const isDebugScenarioSnapshot = (
+  snapshot: unknown,
+): snapshot is DebugScenarioSnapshot =>
+  !!snapshot &&
+  typeof snapshot === 'object' &&
+  'version' in snapshot &&
+  ((snapshot as DebugScenarioSnapshot).version === 1 ||
+    (snapshot as DebugScenarioSnapshot).version === 2) &&
+  Array.isArray((snapshot as DebugScenarioSnapshot).bodies) &&
+  !!(snapshot as DebugScenarioSnapshot).spacecraft
+
+const isRecentDebugScenarioSnapshotEntry = (
+  entry: unknown,
+): entry is DebugScenarioSnapshotEntry =>
+  !!entry &&
+  typeof entry === 'object' &&
+  typeof (entry as DebugScenarioSnapshotEntry).id === 'string' &&
+  typeof (entry as DebugScenarioSnapshotEntry).name === 'string' &&
+  typeof (entry as DebugScenarioSnapshotEntry).savedAt === 'string' &&
+  isDebugScenarioSnapshot((entry as DebugScenarioSnapshotEntry).snapshot)
+
+const getRecentDebugScenarioSnapshotNumericId = (
+  entry: DebugScenarioSnapshotEntry,
+) => {
+  const match = /^debug-snapshot-(\d+)$/.exec(entry.id)
+  return match ? Number.parseInt(match[1], 10) : 0
+}
+
+const persistRecentDebugScenarioSnapshots = () => {
+  try {
+    window.localStorage.setItem(
+      recentDebugSnapshotsStorageKey,
+      JSON.stringify(recentDebugScenarioSnapshots),
+    )
+  } catch {
+    // Recent snapshot persistence is best-effort; the active slot still saves.
+  }
+}
+
+const hydrateRecentDebugScenarioSnapshots = () => {
+  if (recentDebugScenarioSnapshotsHydrated) {
+    return
+  }
+  recentDebugScenarioSnapshotsHydrated = true
+
+  try {
+    const rawSnapshots = window.localStorage.getItem(
+      recentDebugSnapshotsStorageKey,
+    )
+    if (!rawSnapshots) {
+      return
+    }
+
+    const entries = JSON.parse(rawSnapshots)
+    if (!Array.isArray(entries)) {
+      return
+    }
+
+    const hydratedEntries = entries
+      .filter(isRecentDebugScenarioSnapshotEntry)
+      .slice(0, maxRecentDebugScenarioSnapshots)
+      .map((entry) => ({
+        ...entry,
+        snapshot: cloneDebugScenarioSnapshot(entry.snapshot),
+      }))
+
+    recentDebugScenarioSnapshots.splice(
+      0,
+      recentDebugScenarioSnapshots.length,
+      ...hydratedEntries,
+    )
+    recentDebugScenarioSnapshotId = Math.max(
+      0,
+      ...hydratedEntries.map(getRecentDebugScenarioSnapshotNumericId),
+    )
+  } catch {
+    // Ignore unreadable recent snapshot lists and start a fresh one.
+  }
 }
 
 export const createScenarioFromSnapshot = (
@@ -211,12 +296,8 @@ export const readDebugScenarioSnapshot = (): DebugScenarioSnapshot | null => {
       return null
     }
 
-    const snapshot = JSON.parse(rawSnapshot) as DebugScenarioSnapshot
-    return (snapshot.version === 1 || snapshot.version === 2) &&
-      Array.isArray(snapshot.bodies) &&
-      snapshot.spacecraft
-      ? snapshot
-      : null
+    const snapshot = JSON.parse(rawSnapshot)
+    return isDebugScenarioSnapshot(snapshot) ? snapshot : null
   } catch {
     return null
   }
@@ -227,13 +308,16 @@ export const writeDebugScenarioSnapshot = (snapshot: DebugScenarioSnapshot) => {
   addRecentDebugScenarioSnapshot(snapshot)
 }
 
-export const getRecentDebugScenarioSnapshots = () =>
-  recentDebugScenarioSnapshots.map((entry) => ({
+export const getRecentDebugScenarioSnapshots = () => {
+  hydrateRecentDebugScenarioSnapshots()
+  return recentDebugScenarioSnapshots.map((entry) => ({
     ...entry,
     snapshot: cloneDebugScenarioSnapshot(entry.snapshot),
   }))
+}
 
 export const loadRecentDebugScenarioSnapshot = (id: string) => {
+  hydrateRecentDebugScenarioSnapshots()
   const entry = recentDebugScenarioSnapshots.find(
     (recentEntry) => recentEntry.id === id,
   )
@@ -251,6 +335,7 @@ export const loadRecentDebugScenarioSnapshot = (id: string) => {
 export const clearRecentDebugScenarioSnapshotsForTests = () => {
   recentDebugScenarioSnapshots.splice(0)
   recentDebugScenarioSnapshotId = 0
+  recentDebugScenarioSnapshotsHydrated = false
 }
 
 export const clearDebugScenarioSnapshot = () => {

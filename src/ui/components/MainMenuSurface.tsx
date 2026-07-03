@@ -580,7 +580,7 @@ export const MainMenuSurface = ({
           <MenuKicker className="main-menu-kicker">Load game</MenuKicker>
           <MenuDescription>
             Resume the last saved debug snapshot or choose another recent
-            snapshot from this browser session.
+            snapshot from this browser.
           </MenuDescription>
         </MenuCopy>
         <MenuActions className="main-menu-actions">
@@ -618,7 +618,7 @@ export const MainMenuSurface = ({
         <MenuCopy className="main-menu-copy">
           <MenuKicker className="main-menu-kicker">Load any game</MenuKicker>
           <MenuDescription>
-            Choose a recent debug snapshot from this browser session.
+            Choose a recent debug snapshot from this browser.
           </MenuDescription>
         </MenuCopy>
         <MenuActions className="main-menu-actions">
