@@ -329,13 +329,14 @@ describe('createTrajectoryPredictionRuntime', () => {
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
     predictionRuntime.refresh(getOptions())
+    const initialFarPrediction = [
+      { x: 3_010, y: 0 },
+      { x: 6_010, y: 0 },
+      { x: 9_010, y: 0 },
+      { x: 12_010, y: 0 },
+    ]
     expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
-      [
-        { x: 3_010, y: 0 },
-        { x: 6_010, y: 0 },
-        { x: 9_010, y: 0 },
-        { x: 12_010, y: 0 },
-      ],
+      initialFarPrediction,
     )
 
     setState({
@@ -348,17 +349,33 @@ describe('createTrajectoryPredictionRuntime', () => {
 
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
 
+    const nearFirstPredictionWithStaleFarTail = [
+      { x: 6_010, y: 0 },
+      { x: 12_010, y: 0 },
+      ...initialFarPrediction.slice(2),
+    ]
     expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
-      [
-        { x: 6_010, y: 0 },
-        { x: 12_010, y: 0 },
-        { x: 9_010, y: 0 },
-        { x: 12_010, y: 0 },
-      ],
+      nearFirstPredictionWithStaleFarTail,
     )
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
       horizonSeconds: 1_200,
       refreshReason: 'spacecraft-change',
+      relativePointCount: 4,
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 6_010, y: 0 },
+        { x: 12_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 24_010, y: 0 },
+      ],
+    )
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      horizonSeconds: 1_200,
+      refreshReason: 'timed-refresh',
       relativePointCount: 4,
     })
   })
