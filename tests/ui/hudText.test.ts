@@ -81,8 +81,18 @@ const createDebugPanelInput = (
 describe('getDebugPanelLines', () => {
   it('shows debug toggles without the removed performance switch', () => {
     expect(getDebugPanelLines(createDebugPanelInput())[0]).toBe(
-      'debug: [1] no-gravity off | [2] fps off',
+      'debug: no-gravity off | fps off',
     )
+  })
+
+  it('does not show keyboard shortcut guides in debug text', () => {
+    const lines = getDebugPanelLines(
+      createDebugPanelInput({ debugSnapshotStatus: 'saved' }),
+    )
+
+    expect(lines).toContain('coast horizon: 1h')
+    expect(lines).toContain('snapshot: save/load | saved')
+    expect(lines.join('\n')).not.toMatch(/\[[0-9]\]/)
   })
 
   it('shows scenario phase in the readable debug text', () => {

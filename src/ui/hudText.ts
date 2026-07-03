@@ -191,11 +191,11 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
       : 'inertial'
 
   return [
-    `debug: [1] no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | [2] fps ${input.fpsIndicatorEnabled ? 'on' : 'off'}`,
+    `debug: no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | fps ${input.fpsIndicatorEnabled ? 'on' : 'off'}`,
     getScenarioProgressLine(input),
-    `coast horizon: [4]- [5]+ => ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
+    `coast horizon: ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
     `prediction step: ${formatDuration(input.predictionStepSeconds)} | refresh ${input.predictionDiagnostics.refreshReason ?? 'none'} ${input.predictionDiagnostics.predictionRefreshMs.toFixed(1)}ms | geometry ${input.predictionDiagnostics.geometryUpdateMs.toFixed(1)}ms | pts ${input.predictionDiagnostics.absolutePointCount}/${input.predictionDiagnostics.relativePointCount}/${input.predictionDiagnostics.assistedPointCount} | events ${input.predictionDiagnostics.eventMarkerCount}`,
-    `snapshot: [6] save | [7] load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
+    `snapshot: save/load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
     `viewport: ${input.viewportSize.toFixed(2)} | zoom: ${input.zoom.toFixed(1)}x`,
     `trail detail: L${input.trailDetail.level}/${input.trailDetail.levelCount} ${input.trailDetail.label} | slices ${input.trailDetail.renderedSliceCount} | render ${formatDistance(input.trailDetail.renderSampleDistanceMeters)} | capture ${formatDistance(input.trailDetail.captureSampleDistanceMeters)} | trail frame: ${trailFrame}`,
     `assist target: ${input.targetName}`,
