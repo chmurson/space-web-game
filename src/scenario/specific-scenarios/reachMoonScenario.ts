@@ -45,6 +45,9 @@ const requiredMoonOrbitTurns = 3
 const requiredEarthOrbitTurns = 1
 const moonObjectiveRadiusMultiplier = 35
 const earthObjectiveRadiusMultiplier = 20
+const moonOrbitSafePeriapsisPromptText = `${formatReachMoonOrbitAltitude(
+  MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS,
+)} periapsis`
 
 type ReachMoonScenarioPhase =
   | 'reach-moon'
@@ -482,21 +485,17 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
           )
         : state.bestLunarOrbitQuality
       const altitude = getMoonRelativeAltitude(runtime)
+      const resetCurrentOrbitAltitude =
+        orbitProgress.status === 'reset' || completedNewTurn
       const nextState: OrbitMoonState = {
         ...orbitProgress.state,
         bestLunarOrbitQuality,
-        currentOrbitApoapsisAltitudeMeters:
-          orbitProgress.status === 'reset'
-            ? (altitude ?? undefined)
-            : completedNewTurn
-              ? (altitude ?? undefined)
-              : orbitProgress.state.currentOrbitApoapsisAltitudeMeters,
-        currentOrbitPeriapsisAltitudeMeters:
-          orbitProgress.status === 'reset'
-            ? (altitude ?? undefined)
-            : completedNewTurn
-              ? (altitude ?? undefined)
-              : orbitProgress.state.currentOrbitPeriapsisAltitudeMeters,
+        currentOrbitApoapsisAltitudeMeters: resetCurrentOrbitAltitude
+          ? (altitude ?? undefined)
+          : orbitProgress.state.currentOrbitApoapsisAltitudeMeters,
+        currentOrbitPeriapsisAltitudeMeters: resetCurrentOrbitAltitude
+          ? (altitude ?? undefined)
+          : orbitProgress.state.currentOrbitPeriapsisAltitudeMeters,
       }
       const transientNotice = completedNewTurn
         ? createLunarOrbitQualityNotice(
@@ -646,7 +645,7 @@ const reachMoonPromptDefinitions = {
       'Close ',
       { text: 'lunar orbits', tone: 'concept' },
       ' can earn bonus points during this phase. Keep apoapsis low for a better orbit, but dipping below ',
-      { text: '10 km periapsis', tone: 'constraint' },
+      { text: moonOrbitSafePeriapsisPromptText, tone: 'constraint' },
       ' is risky and can cost points.',
     ],
     buttons: [
