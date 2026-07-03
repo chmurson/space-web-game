@@ -1,3 +1,4 @@
+import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import {
   type RankedReachMoonHighscoreRecord,
   REACH_MOON_HIGHSCORE_PLAYER_NAME_MAX_LENGTH,
@@ -23,7 +24,12 @@ import {
   MenuPanel,
 } from './MenuSurfacePrimitives'
 
-export type MainMenuView = 'main' | 'reach-moon' | 'reach-moon-highscores'
+export type MainMenuView =
+  | 'main'
+  | 'load-game'
+  | 'load-game-snapshot'
+  | 'reach-moon'
+  | 'reach-moon-highscores'
 
 const mainMenuActionAttribute = 'data-main-menu-action'
 const mainMenuViewAttribute = 'data-main-menu-view'
@@ -75,13 +81,17 @@ export type ReachMoonHighscoreMenuState = {
 export type MainMenuSurfaceProps = {
   activeView: MainMenuView
   loadGameAvailable: boolean
+  recentSnapshots: DebugScenarioSnapshotEntry[]
   reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null
   reachMoonHighscoreState: ReachMoonHighscoreMenuState
   reachMoonFeatureEnabled: boolean
+  selectedRecentSnapshotId: string
   rootRef(element: HTMLElement | null): void
   visible: boolean
   onFreeRoam(): void
   onLoadGame(): void
+  onLoadGameBack(): void
+  onLoadGameMenu(): void
   onReachMoon(): void
   onReachMoonBack(): void
   onReachMoonHighscorePeriod(period: ReachMoonHighscorePeriod): void
@@ -91,6 +101,9 @@ export type MainMenuSurfaceProps = {
   onReachMoonHighscores(): void
   onReachMoonMenu(): void
   onTutorial(): void
+  onRecentSnapshotChange(id: string): void
+  onRecentSnapshotLoad(): void
+  onRecentSnapshotMenu(): void
 }
 
 const formatInteger = (value: number) =>
@@ -431,13 +444,17 @@ const ReachMoonHighscoreBoard = ({
 export const MainMenuSurface = ({
   activeView,
   loadGameAvailable,
+  recentSnapshots,
   reachMoonHighscorePendingRun,
   reachMoonHighscoreState,
   reachMoonFeatureEnabled,
   rootRef,
+  selectedRecentSnapshotId,
   visible,
   onFreeRoam,
   onLoadGame,
+  onLoadGameBack,
+  onLoadGameMenu,
   onReachMoon,
   onReachMoonBack,
   onReachMoonHighscorePeriod,
@@ -447,8 +464,11 @@ export const MainMenuSurface = ({
   onReachMoonHighscores,
   onReachMoonMenu,
   onTutorial,
+  onRecentSnapshotChange,
+  onRecentSnapshotLoad,
+  onRecentSnapshotMenu,
 }: MainMenuSurfaceProps) => {
-  const displayedView = reachMoonFeatureEnabled ? activeView : 'main'
+  const displayedView = activeView
   const activeHighscoreRollup =
     reachMoonHighscoreState.rollups[reachMoonHighscoreState.activePeriod]
   const hasHighscoreEntries = reachMoonHighscorePeriodOptions.some(
@@ -513,12 +533,11 @@ export const MainMenuSurface = ({
                 Free Roam
               </MenuActionButton>
               <MenuActionButton
-                action="load"
+                action="load-menu"
                 actionAttribute={mainMenuActionAttribute}
                 className="main-menu-action-secondary"
-                disabled={!loadGameAvailable}
                 variant="secondary"
-                onClick={onLoadGame}
+                onClick={onLoadGameMenu}
               >
                 Load Game
               </MenuActionButton>
@@ -526,10 +545,9 @@ export const MainMenuSurface = ({
           ) : (
             <>
               <MenuActionButton
-                action="load"
+                action="load-menu"
                 actionAttribute={mainMenuActionAttribute}
-                disabled={!loadGameAvailable}
-                onClick={onLoadGame}
+                onClick={onLoadGameMenu}
               >
                 Load Game
               </MenuActionButton>
@@ -549,6 +567,104 @@ export const MainMenuSurface = ({
               </MenuActionButton>
             </>
           )}
+        </MenuActions>
+      </MenuPanel>
+
+      <MenuPanel
+        className="main-menu-panel"
+        view="load-game"
+        viewAttribute={mainMenuViewAttribute}
+        hidden={displayedView !== 'load-game'}
+      >
+        <MenuCopy className="main-menu-copy">
+          <MenuKicker className="main-menu-kicker">Load game</MenuKicker>
+          <MenuDescription>
+            Resume the last saved debug snapshot or choose another recent
+            snapshot from this browser.
+          </MenuDescription>
+        </MenuCopy>
+        <MenuActions className="main-menu-actions">
+          <MenuActionButton
+            action="load-last"
+            actionAttribute={mainMenuActionAttribute}
+            disabled={!loadGameAvailable}
+            onClick={onLoadGame}
+          >
+            Load last game
+          </MenuActionButton>
+          <MenuActionButton
+            action="load-any-menu"
+            actionAttribute={mainMenuActionAttribute}
+            onClick={onRecentSnapshotMenu}
+          >
+            Load any game
+          </MenuActionButton>
+          <MenuActionButton
+            action="load-back"
+            actionAttribute={mainMenuActionAttribute}
+            onClick={onLoadGameBack}
+          >
+            Back
+          </MenuActionButton>
+        </MenuActions>
+      </MenuPanel>
+
+      <MenuPanel
+        className="main-menu-panel"
+        view="load-game-snapshot"
+        viewAttribute={mainMenuViewAttribute}
+        hidden={displayedView !== 'load-game-snapshot'}
+      >
+        <MenuCopy className="main-menu-copy">
+          <MenuKicker className="main-menu-kicker">Load any game</MenuKicker>
+          <MenuDescription>
+            Choose a recent debug snapshot from this browser.
+          </MenuDescription>
+        </MenuCopy>
+        <MenuActions className="main-menu-actions">
+          <div class="menu-recent-snapshot main-menu-recent-snapshot">
+            <label
+              class="menu-recent-snapshot-label"
+              for="main-menu-recent-snapshot"
+            >
+              Snapshot
+            </label>
+            <select
+              id="main-menu-recent-snapshot"
+              class="menu-recent-snapshot-select"
+              value={selectedRecentSnapshotId}
+              disabled={recentSnapshots.length === 0}
+              onChange={(event) => {
+                onRecentSnapshotChange(event.currentTarget.value)
+              }}
+            >
+              {recentSnapshots.length === 0 ? (
+                <option value="">No recent snapshots</option>
+              ) : (
+                recentSnapshots.map((snapshot) => (
+                  <option key={snapshot.id} value={snapshot.id}>
+                    {snapshot.name} -{' '}
+                    {new Date(snapshot.savedAt).toLocaleTimeString()}
+                  </option>
+                ))
+              )}
+            </select>
+            <MenuActionButton
+              action="load-any"
+              actionAttribute={mainMenuActionAttribute}
+              disabled={!selectedRecentSnapshotId}
+              onClick={onRecentSnapshotLoad}
+            >
+              Load
+            </MenuActionButton>
+          </div>
+          <MenuActionButton
+            action="load-back"
+            actionAttribute={mainMenuActionAttribute}
+            onClick={onLoadGameBack}
+          >
+            Back
+          </MenuActionButton>
         </MenuActions>
       </MenuPanel>
 
