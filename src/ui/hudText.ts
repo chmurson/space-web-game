@@ -12,6 +12,7 @@ import type {
   PredictedImpact,
 } from '../prediction/trajectoryPrediction'
 import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
+import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import type { BodyInfluence } from '../simulation/bodyInfluence'
 import {
   formatBodyInfluences,
@@ -92,6 +93,7 @@ export type DebugPanelTextInput = {
   debugNoGravityEnabled: boolean
   debugSnapshotStatus: string
   fpsIndicatorEnabled: boolean
+  predictionDiagnostics: TrajectoryPredictionDiagnostics
   predictionStepSeconds: number
   predictedImpact: PredictedImpact | null
   predictedTargetClosestApproach: PredictedClosestApproach | null
@@ -192,7 +194,7 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
     `debug: [1] no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | [2] fps ${input.fpsIndicatorEnabled ? 'on' : 'off'}`,
     getScenarioProgressLine(input),
     `coast horizon: [4]- [5]+ => ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
-    `prediction step: ${formatDuration(input.predictionStepSeconds)}`,
+    `prediction step: ${formatDuration(input.predictionStepSeconds)} | refresh ${input.predictionDiagnostics.refreshReason ?? 'none'} ${input.predictionDiagnostics.predictionRefreshMs.toFixed(1)}ms | geometry ${input.predictionDiagnostics.geometryUpdateMs.toFixed(1)}ms | pts ${input.predictionDiagnostics.absolutePointCount}/${input.predictionDiagnostics.relativePointCount}/${input.predictionDiagnostics.assistedPointCount} | events ${input.predictionDiagnostics.eventMarkerCount}`,
     `snapshot: [6] save | [7] load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
     `viewport: ${input.viewportSize.toFixed(2)} | zoom: ${input.zoom.toFixed(1)}x`,
     `trail detail: L${input.trailDetail.level}/${input.trailDetail.levelCount} ${input.trailDetail.label} | slices ${input.trailDetail.renderedSliceCount} | render ${formatDistance(input.trailDetail.renderSampleDistanceMeters)} | capture ${formatDistance(input.trailDetail.captureSampleDistanceMeters)} | trail frame: ${trailFrame}`,

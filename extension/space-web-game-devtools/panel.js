@@ -315,8 +315,12 @@ const renderSnapshot = (snapshot) => {
     elements.crashState.textContent = snapshot.simulation.crashedBodyName || 'clear'
     elements.coastHorizon.textContent = `${formatNumber(snapshot.simulation.coastPredictionHorizonHours, 2)} h`
     const sampling = snapshot.simulation.predictionSampling
+    const trajectoryPrediction = snapshot.simulation.trajectoryPrediction
+    const predictionMetrics = trajectoryPrediction
+        ? ` · last ${trajectoryPrediction.refreshReason || 'none'} ${formatNumber(trajectoryPrediction.predictionRefreshMs, 1)} ms · geometry ${formatNumber(trajectoryPrediction.geometryUpdateMs, 1)} ms · pts ${formatNumber(trajectoryPrediction.absolutePointCount, 0)}/${formatNumber(trajectoryPrediction.relativePointCount, 0)}/${formatNumber(trajectoryPrediction.assistedPointCount, 0)} · events ${formatNumber(trajectoryPrediction.eventMarkerCount, 0)}`
+        : ''
     elements.predictionSampling.textContent = sampling
-        ? `sample ${formatNumber(sampling.currentStepSeconds, 1)} s · integrate max ${formatNumber(sampling.currentMaxIntegrationStepSeconds, 1)} s · refresh ${formatNumber(sampling.refreshInterval, 2)} s · target ${formatNumber(sampling.targetMaxSteps, 0)} pts`
+        ? `sample ${formatNumber(sampling.currentStepSeconds, 1)} s · integrate max ${formatNumber(sampling.currentMaxIntegrationStepSeconds, 1)} s · refresh ${formatNumber(sampling.refreshInterval, 2)} s · target ${formatNumber(sampling.targetMaxSteps, 0)} pts${predictionMetrics}`
         : '—'
 
     elements.spacecraftPosition.textContent = formatVec(spacecraft.position)

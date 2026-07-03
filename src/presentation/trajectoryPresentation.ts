@@ -744,6 +744,8 @@ export const createTrajectoryPresentation = (options: {
 
   return {
     getCoachAnchorScreenPoint,
+    getPredictionDiagnostics: () =>
+      options.trajectoryPredictionRuntime.getDiagnostics(),
     getPredictionState: () => options.trajectoryPredictionRuntime.getState(),
     maybeRefreshPrediction: (realDt: number) => {
       const refreshed = options.trajectoryPredictionRuntime.maybeRefresh(
@@ -808,6 +810,7 @@ export const createTrajectoryPresentation = (options: {
         )
       }
 
+      const geometryUpdateStartMs = performance.now()
       updateTargetRelativePredictionVisuals({
         coastPredictionHorizonSeconds:
           options.queries.getCoastPredictionHorizonSeconds(),
@@ -835,6 +838,9 @@ export const createTrajectoryPresentation = (options: {
         viewportHeight: window.innerHeight,
         viewportSize: options.runtime.simulation.viewportSize,
       })
+      options.trajectoryPredictionRuntime.recordGeometryUpdate?.(
+        performance.now() - geometryUpdateStartMs,
+      )
       updateCircularizationVisuals({
         circularizePlan:
           options.runtime.simulation.assistMode === 'circularize' &&

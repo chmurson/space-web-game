@@ -35,6 +35,19 @@ const createDebugPanelInput = (
   debugNoGravityEnabled: false,
   debugSnapshotStatus: '',
   fpsIndicatorEnabled: false,
+  predictionDiagnostics: {
+    absolutePointCount: 12,
+    assistedPointCount: 8,
+    eventMarkerCount: 2,
+    geometryUpdateMs: 1.25,
+    horizonSeconds: 3600,
+    inputKey: 'test-key',
+    integrationStepSeconds: 8,
+    predictionRefreshMs: 3.5,
+    refreshReason: 'target-change',
+    relativePointCount: 10,
+    sampleStepSeconds: 60,
+  },
   predictedImpact: null,
   predictedTargetClosestApproach: null,
   predictionStepSeconds: 60,
@@ -84,6 +97,12 @@ describe('getDebugPanelLines', () => {
     expect(lines).toContain('viewport: 25.00 | zoom: 4.0x')
     expect(lines).toContain(
       'trail detail: L6/7 close | slices 12 | render 500 km | capture 250 km | trail frame: target-relative Moon',
+    )
+  })
+
+  it('shows trajectory prediction refresh metrics in debug text', () => {
+    expect(getDebugPanelLines(createDebugPanelInput())).toContain(
+      'prediction step: 1m | refresh target-change 3.5ms | geometry 1.3ms | pts 12/10/8 | events 2',
     )
   })
 

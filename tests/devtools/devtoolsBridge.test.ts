@@ -114,6 +114,19 @@ const createBridgeHarness = (runtime = createRuntime()) => {
       }
     },
     getAppMode: () => 'game',
+    getTrajectoryPredictionDiagnostics: () => ({
+      absolutePointCount: 12,
+      assistedPointCount: 8,
+      eventMarkerCount: 2,
+      geometryUpdateMs: 1.2,
+      horizonSeconds: 43_200,
+      inputKey: 'test-key',
+      integrationStepSeconds: 8,
+      predictionRefreshMs: 3.4,
+      refreshReason: 'target-change',
+      relativePointCount: 10,
+      sampleStepSeconds: 60,
+    }),
     runtime,
     maxPredictionLoopRevolutions: 2.5,
     predictionSampling,
@@ -134,6 +147,19 @@ describe('createDevtoolsSnapshot', () => {
       maxPredictionLoopRevolutions: 2.5,
       predictionSampling,
       runtime,
+      getTrajectoryPredictionDiagnostics: () => ({
+        absolutePointCount: 12,
+        assistedPointCount: 8,
+        eventMarkerCount: 2,
+        geometryUpdateMs: 1.2,
+        horizonSeconds: 43_200,
+        inputKey: 'test-key',
+        integrationStepSeconds: 8,
+        predictionRefreshMs: 3.4,
+        refreshReason: 'target-change',
+        relativePointCount: 10,
+        sampleStepSeconds: 60,
+      }),
       timeWarps,
     })
 
@@ -157,6 +183,11 @@ describe('createDevtoolsSnapshot', () => {
       maxIntegrationStepSeconds: 8,
       refreshInterval: 0.4,
       targetMaxSteps: 1200,
+    })
+    expect(snapshot.simulation.trajectoryPrediction).toMatchObject({
+      absolutePointCount: 12,
+      eventMarkerCount: 2,
+      refreshReason: 'target-change',
     })
     expect(snapshot.simulation.spacecraft.speed).toBe(10)
     expect(snapshot.simulation.bodies[0]?.speed).toBe(5)

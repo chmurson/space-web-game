@@ -819,6 +819,8 @@ export const createAppComponents = (options: {
   installDevtoolsBridge({
     dispatchRuntimeAction,
     getAppMode,
+    getTrajectoryPredictionDiagnostics: () =>
+      trajectoryPredictionRuntime.getDiagnostics(),
     maxPredictionLoopRevolutions:
       options.config.trajectory.maxPredictionLoopRevolutions,
     predictionSampling: options.config.trajectory.predictionSampling,
