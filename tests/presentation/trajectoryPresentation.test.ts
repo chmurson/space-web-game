@@ -162,12 +162,13 @@ const physicsEngine: PhysicsEngine = {
 const createPredictionRuntime = (
   getTargetId: () => string,
   eventMarkers: TrajectoryPredictionEventMarker[],
+  predictedImpact: { bodyName: string; time: number } | null = null,
 ): TrajectoryPredictionRuntime =>
   ({
     getState: () => ({
       absolutePredictionEnd: null,
       absolutePredictionPoints: [],
-      predictedImpact: null,
+      predictedImpact,
       predictedTargetClosestApproach: null,
       targetId: getTargetId(),
       targetRelativeAssistedPoints: [],
@@ -186,6 +187,7 @@ const createPredictionRuntime = (
 const createTestPresentation = (options: {
   orbitPointDisplaySettings?: OrbitPointDisplaySettings
   eventMarkers: TrajectoryPredictionEventMarker[]
+  predictedImpact?: { bodyName: string; time: number } | null
   viewportSize: number
 }) => {
   setWindowSize(800, 600)
@@ -222,6 +224,7 @@ const createTestPresentation = (options: {
       trajectoryPredictionRuntime: createPredictionRuntime(
         () => target.id,
         options.eventMarkers,
+        options.predictedImpact,
       ),
     }),
     runtime,
@@ -346,6 +349,42 @@ describe('createTrajectoryPresentation', () => {
       (5 / 600)
 
     expect(maxZoomScreenRadius).toBeCloseTo(viewportTwentyScreenRadius)
+  })
+
+  it('caps the crash marker screen-space diameter while preserving smaller sizes', () => {
+    const normal = createTestPresentation({
+      eventMarkers: [],
+      predictedImpact: { bodyName: 'Earth', time: 30 },
+      viewportSize: 100,
+    })
+    normal.presentation.updateVisuals()
+    const normalDiameter =
+      (normal.gameScene.predictionEndMarker.scale.x / (100 / 600)) * 2
+
+    expect(normal.gameScene.predictionEndMarker.visible).toBe(true)
+    expect(normalDiameter).toBeCloseTo(11)
+
+    const viewportTwenty = createTestPresentation({
+      eventMarkers: [],
+      predictedImpact: { bodyName: 'Earth', time: 30 },
+      viewportSize: 20,
+    })
+    viewportTwenty.presentation.updateVisuals()
+    const viewportTwentyDiameter =
+      (viewportTwenty.gameScene.predictionEndMarker.scale.x / (20 / 600)) * 2
+
+    const zoomedIn = createTestPresentation({
+      eventMarkers: [],
+      predictedImpact: { bodyName: 'Earth', time: 30 },
+      viewportSize: 5,
+    })
+    zoomedIn.presentation.updateVisuals()
+    const zoomedInDiameter =
+      (zoomedIn.gameScene.predictionEndMarker.scale.x / (5 / 600)) * 2
+
+    expect(zoomedIn.gameScene.predictionEndMarker.visible).toBe(true)
+    expect(viewportTwentyDiameter).toBeCloseTo(11)
+    expect(zoomedInDiameter).toBeCloseTo(viewportTwentyDiameter)
   })
 
   it('uses orbit point display settings for marker and label visibility', () => {
