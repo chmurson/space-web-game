@@ -101,6 +101,11 @@ export const createMainMenu = (options: {
 
   const refreshLoadGameAvailable = () => {
     const nextLoadGameAvailable = isLoadGameAvailable()
+    const previousRecentSnapshotIds = recentSnapshots
+      .map((snapshot) => snapshot.id)
+      .join('\n')
+    const previousSelectedRecentSnapshotId = selectedRecentSnapshotId
+
     recentSnapshots = getRecentDebugScenarioSnapshots()
     if (
       selectedRecentSnapshotId === '' ||
@@ -111,7 +116,15 @@ export const createMainMenu = (options: {
       selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
     }
 
-    if (loadGameAvailable === nextLoadGameAvailable) {
+    const recentSnapshotIds = recentSnapshots
+      .map((snapshot) => snapshot.id)
+      .join('\n')
+    const stateChanged =
+      loadGameAvailable !== nextLoadGameAvailable ||
+      previousRecentSnapshotIds !== recentSnapshotIds ||
+      previousSelectedRecentSnapshotId !== selectedRecentSnapshotId
+
+    if (!stateChanged) {
       return false
     }
 
@@ -278,10 +291,9 @@ export const createMainMenu = (options: {
           return
         }
 
-        if (
-          readDebugScenarioSnapshot() === null ||
-          refreshLoadGameAvailable()
-        ) {
+        const recentStateChanged = refreshLoadGameAvailable()
+        const activeSnapshotAvailable = readDebugScenarioSnapshot() !== null
+        if (!activeSnapshotAvailable || recentStateChanged) {
           renderMenu()
         }
       },

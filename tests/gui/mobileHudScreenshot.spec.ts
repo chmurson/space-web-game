@@ -973,25 +973,28 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
     const loadMenuButton = menu.element.querySelector(
       '[data-main-menu-action="load-menu"]',
     ) as HTMLButtonElement | null
+    const isMainMenuSectionVisible = (view: string) => {
+      const section = menu.element.querySelector(
+        `[data-main-menu-view="${view}"]`,
+      ) as HTMLDivElement | null
+      if (!section) {
+        throw new Error(`Missing main menu section: ${view}`)
+      }
+
+      return !section.hidden
+    }
 
     loadMenuButton?.click()
     const loadLastButton = menu.element.querySelector(
       '[data-main-menu-action="load-last"]',
     ) as HTMLButtonElement | null
-    const loadSectionVisible = !(
-      menu.element.querySelector(
-        '[data-main-menu-view="load-game"]',
-      ) as HTMLDivElement | null
-    )?.hidden
+    const loadSectionVisible = isMainMenuSectionVisible('load-game')
     const loadAnyMenuButton = menu.element.querySelector(
       '[data-main-menu-action="load-any-menu"]',
     ) as HTMLButtonElement | null
     loadAnyMenuButton?.click()
-    const snapshotSectionVisible = !(
-      menu.element.querySelector(
-        '[data-main-menu-view="load-game-snapshot"]',
-      ) as HTMLDivElement | null
-    )?.hidden
+    const snapshotSectionVisible =
+      isMainMenuSectionVisible('load-game-snapshot')
     const recentOptions = Array.from(
       (
         menu.element.querySelector(
@@ -1003,11 +1006,7 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
       '[data-main-menu-action="load-back"]',
     ) as HTMLButtonElement | null
     snapshotBackButton?.click()
-    const loadSectionVisibleAfterBack = !(
-      menu.element.querySelector(
-        '[data-main-menu-view="load-game"]',
-      ) as HTMLDivElement | null
-    )?.hidden
+    const loadSectionVisibleAfterBack = isMainMenuSectionVisible('load-game')
     const initiallyDisabled = loadLastButton?.disabled
 
     clearDebugScenarioSnapshot()

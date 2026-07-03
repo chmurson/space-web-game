@@ -223,7 +223,18 @@ describe('recent debug scenario snapshots', () => {
     expect(loadRecentDebugScenarioSnapshot('missing')).toBe(false)
   })
 
-  it('restores recent snapshots from local storage after refresh', () => {
+  it('keeps recent snapshots in memory without duplicating them in local storage', () => {
+    const savedValues: Record<string, string> = {}
+    const originalSetItem = window.localStorage.setItem.bind(
+      window.localStorage,
+    )
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation(
+      (key, value) => {
+        savedValues[key] = value
+        originalSetItem(key, value)
+      },
+    )
+
     writeDebugScenarioSnapshot({
       ...snapshotBase,
       savedAt: '2026-01-01T00:00:00.000Z',
@@ -234,7 +245,6 @@ describe('recent debug scenario snapshots', () => {
       savedAt: '2026-01-01T00:00:01.000Z',
       elapsed: 2,
     })
-    clearRecentDebugScenarioSnapshotsForTests()
 
     const recentSnapshots = getRecentDebugScenarioSnapshots()
 
@@ -243,5 +253,11 @@ describe('recent debug scenario snapshots', () => {
     ])
     expect(loadRecentDebugScenarioSnapshot(recentSnapshots[1].id)).toBe(true)
     expect(readDebugScenarioSnapshot()?.elapsed).toBe(1)
+    expect(Object.keys(savedValues)).toEqual([
+      'space-web-game.debugScenarioSnapshot.v1',
+    ])
+
+    clearRecentDebugScenarioSnapshotsForTests()
+    expect(getRecentDebugScenarioSnapshots()).toEqual([])
   })
 })
