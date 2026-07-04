@@ -418,6 +418,7 @@ const ReachMoonHighscoreEmptyRow = ({
         {children}
       </div>
     </td>
+    <td class="reach-moon-highscore-cell-score">&nbsp;</td>
   </tr>
 )
 
