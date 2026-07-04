@@ -289,9 +289,7 @@ const createLunarOrbitQualityNotice = (
 
   const breakdown = calculateReachMoonOrbitQualityBreakdown(best)
   const points = breakdown.totalPoints
-  const safe =
-    best.orbitPeriapsisAltitudeMeters >=
-    MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS
+  const safe = breakdown.riskPenaltyPoints === 0
   const closeOrbit =
     breakdown.altitudeBonusPoints >= MOON_ORBIT_ALTITUDE_BONUS_MAX_POINTS * 0.7
   const nearCircular =

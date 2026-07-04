@@ -212,20 +212,17 @@ export const formatReachMoonOrbitQualityContext = (
     return altitudeContext
   }
 
-  const breakdown = calculateReachMoonOrbitQualityBreakdown(metric)
+  const circularityBonusPoints = score.lunarOrbitCircularityPoints ?? 0
   if (
     metric.orbitPeriapsisAltitudeMeters <
     MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS
   ) {
     return `${altitudeContext} - too close`
   }
-  if (
-    breakdown.circularityBonusPoints >=
-    MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS * 0.8
-  ) {
+  if (circularityBonusPoints >= MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS * 0.8) {
     return `${altitudeContext} - near circular`
   }
-  if (breakdown.circularityBonusPoints > 0) {
+  if (circularityBonusPoints > 0) {
     return `${altitudeContext} - elongated`
   }
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateReachMoonOrbitQualityPoints,
   calculateReachMoonScore,
+  formatReachMoonOrbitQualityContext,
   formatReachMoonScoreSummary,
   formatReachMoonScoreSummaryDisplay,
   getReachMoonFuelRemainingRatio,
@@ -202,6 +203,21 @@ describe('reachMoonScore', () => {
       lunarOrbitQualityAltitude: 'Ap 100 km / Pe 25 km - near circular',
       lunarOrbitQualityPoints: '74.9',
     })
+  })
+
+  it('uses score circularity points for orbit-shape context labels', () => {
+    expect(
+      formatReachMoonOrbitQualityContext(
+        {
+          orbitApoapsisAltitudeMeters: 420_000,
+          orbitPeriapsisAltitudeMeters: 390_000,
+        },
+        {
+          lunarOrbitCircularityPoints: 0,
+          lunarOrbitEccentricity: 0.007,
+        },
+      ),
+    ).toBe('Ap 420 km / Pe 390 km - very elongated')
   })
 
   it.each([
