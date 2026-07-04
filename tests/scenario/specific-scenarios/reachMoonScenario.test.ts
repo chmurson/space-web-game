@@ -41,7 +41,11 @@ const neutralLunarOrbitCompletedRunInput = {
 }
 const neutralLunarOrbitCompletedRunScore = {
   ...reachMoonCompletedRunScore,
+  lunarOrbitCircularityPoints: 25,
+  lunarOrbitEccentricity: 0,
   lunarOrbitQuality: neutralLunarOrbitQuality,
+  lunarOrbitQualityPoints: 25,
+  totalScore: 196.2,
 }
 const neutralLunarOrbitCompletedRunHighscore = {
   input: neutralLunarOrbitCompletedRunInput,
@@ -292,7 +296,7 @@ describe('reachMoonScenario', () => {
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'Close lunar orbits can earn bonus points during this phase. Keep apoapsis low for a better orbit, but dipping below 25 km periapsis is risky and can cost points.',
+      'Close lunar orbits can earn bonus points during this phase. Keep apoapsis low and the orbit near circular, but dipping below 25 km periapsis is risky and can cost points.',
     )
 
     completeOrbitTurns(runtime, 'moon', 3)
@@ -363,7 +367,7 @@ describe('reachMoonScenario', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
       description:
-        'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km (0).',
+        'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km - near circular (25).',
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
     expect(
@@ -371,7 +375,7 @@ describe('reachMoonScenario', () => {
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km (0).',
+      'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km - near circular (25).',
     )
   })
 
@@ -399,8 +403,8 @@ describe('reachMoonScenario', () => {
       phase: 'orbit-moon',
     })
     expect(runtime.ui.transientNotice).toMatchObject({
-      body: 'Ap 600 km',
-      title: 'Very close lunar orbit recorded',
+      body: 'Ap 600 km - Pe 600 km - near circular',
+      title: 'Excellent lunar orbit recorded',
     })
 
     runtime.scenario.session.state = {
@@ -423,8 +427,8 @@ describe('reachMoonScenario', () => {
       phase: 'orbit-moon',
     })
     expect(runtime.ui.transientNotice).toMatchObject({
-      body: 'Ap 90 km',
-      title: 'Extremely close lunar orbit recorded',
+      body: 'Ap 90 km - Pe 25 km - near circular',
+      title: 'Excellent lunar orbit recorded',
     })
 
     const previousNotice = runtime.ui.transientNotice
@@ -447,6 +451,54 @@ describe('reachMoonScenario', () => {
       },
       phase: 'return-earth',
     })
+  })
+
+  it.each([
+    [
+      'risky low periapsis',
+      100_000,
+      6_000,
+      {
+        body: 'Pe 6 km - too close to the Moon',
+        title: 'Risky lunar orbit recorded',
+      },
+    ],
+    [
+      'high but circular',
+      1_400_000,
+      1_250_000,
+      {
+        body: 'Ap 1,400 km - Pe 1,250 km - higher than ideal',
+        title: 'Circular lunar orbit recorded',
+      },
+    ],
+    [
+      'close but elongated',
+      620_000,
+      210_000,
+      {
+        body: 'Ap 620 km - Pe 210 km - elongated',
+        title: 'Close lunar orbit recorded',
+      },
+    ],
+  ])('uses the combined lunar orbit notice category for %s', (_label, apoapsis, periapsis, notice) => {
+    const runtime = createRuntime()
+    const moon = getBody(runtime, 'moon')
+    runtime.scenario.session.state = {
+      currentOrbitApoapsisAltitudeMeters: apoapsis,
+      currentOrbitPeriapsisAltitudeMeters: periapsis,
+      phase: 'orbit-moon',
+      orbitProgressRadians: Math.PI * 1.75,
+      orbitTurnsCompleted: 0,
+      previousOrbitAngle: -Math.PI / 2,
+    }
+
+    setOrbitState(runtime, 'moon', 0, {
+      orbitalRadius: moon.radius + apoapsis,
+    })
+    advanceScenario(runtime)
+
+    expect(runtime.ui.transientNotice).toMatchObject(notice)
   })
 
   it('does not count angular backtracking as completed lunar orbits', () => {

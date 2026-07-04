@@ -152,7 +152,7 @@ describe('reachMoonScore', () => {
         orbitApoapsisAltitudeMeters: 100_000,
         orbitPeriapsisAltitudeMeters: 25_000,
       }),
-    ).toBe(50)
+    ).toBe(74.9)
     expect(
       calculateReachMoonOrbitQualityPoints({
         orbitApoapsisAltitudeMeters: 1_050_000,
@@ -180,21 +180,76 @@ describe('reachMoonScore', () => {
   })
 
   it('adds lunar orbit quality without changing fuel or time curves', () => {
-    expect(
-      calculateReachMoonScore({
-        fuelCapacityKg: 32_000,
-        fuelRemainingRatio: 0.5,
-        lunarOrbitQuality: {
-          orbitApoapsisAltitudeMeters: 100_000,
-          orbitPeriapsisAltitudeMeters: 25_000,
-        },
-        missionElapsedSeconds: 90_000,
-      }),
-    ).toMatchObject({
+    const score = calculateReachMoonScore({
+      fuelCapacityKg: 32_000,
+      fuelRemainingRatio: 0.5,
+      lunarOrbitQuality: {
+        orbitApoapsisAltitudeMeters: 100_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
+      },
+      missionElapsedSeconds: 90_000,
+    })
+
+    expect(score).toMatchObject({
       fuelBonusPoints: 121.5,
-      lunarOrbitQualityPoints: 50,
+      lunarOrbitCircularityPoints: 24.9,
+      lunarOrbitEccentricity: 0.021,
+      lunarOrbitQualityPoints: 74.9,
       timePenaltyPoints: 49.7,
-      totalScore: 221.2,
+      totalScore: 246.1,
+    })
+    expect(formatReachMoonScoreSummaryDisplay(score)).toMatchObject({
+      lunarOrbitQualityAltitude: 'Ap 100 km / Pe 25 km - near circular',
+      lunarOrbitQualityPoints: '74.9',
+    })
+  })
+
+  it.each([
+    [
+      'near-circular close orbit',
+      420_000,
+      390_000,
+      { circularity: 25, eccentricity: 0.007, quality: 66.6 },
+    ],
+    [
+      'close but elongated orbit',
+      620_000,
+      210_000,
+      { circularity: 14.5, eccentricity: 0.095, quality: 50.9 },
+    ],
+    [
+      'mostly elongated orbit',
+      900_000,
+      100_000,
+      { circularity: 2.9, eccentricity: 0.179, quality: 31.9 },
+    ],
+    [
+      'high but circular orbit',
+      1_400_000,
+      1_250_000,
+      { circularity: 24.4, eccentricity: 0.024, quality: 40.2 },
+    ],
+    [
+      'unsafe low-periapsis orbit',
+      100_000,
+      15_000,
+      { circularity: 0, eccentricity: 0.024, quality: 30 },
+    ],
+  ])('scores circularity for %s', (_label, orbitApoapsisAltitudeMeters, orbitPeriapsisAltitudeMeters, expected) => {
+    const score = calculateReachMoonScore({
+      fuelCapacityKg: 32_000,
+      fuelRemainingRatio: 0,
+      lunarOrbitQuality: {
+        orbitApoapsisAltitudeMeters,
+        orbitPeriapsisAltitudeMeters,
+      },
+      missionElapsedSeconds: 0,
+    })
+
+    expect(score).toMatchObject({
+      lunarOrbitCircularityPoints: expected.circularity,
+      lunarOrbitEccentricity: expected.eccentricity,
+      lunarOrbitQualityPoints: expected.quality,
     })
   })
 })

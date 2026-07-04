@@ -371,6 +371,7 @@ const ReachMoonHighscoreRow = ({
   const fuelLeft = formatReachMoonFuelLeftPercent(entry.score)
   const orbitQuality = formatReachMoonOrbitQualityContext(
     entry.score.lunarOrbitQuality,
+    entry.score,
   )
 
   return (
@@ -460,7 +461,6 @@ const ReachMoonHighscoreEmptyRow = ({
         {children}
       </div>
     </td>
-    <td class="reach-moon-highscore-cell-score">&nbsp;</td>
   </tr>
 )
 

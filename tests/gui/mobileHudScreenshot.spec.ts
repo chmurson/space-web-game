@@ -59,17 +59,19 @@ const getReachMoonUrl = (query = '') =>
   query ? `/?reachmoon=1&${query}` : '/?reachmoon=1'
 
 const highscoreScore = {
-  baseScorePoints: 1_000,
+  baseScorePoints: 0,
   fuelBonusPoints: 196,
   fuelRemainingKg: 31_360,
+  lunarOrbitCircularityPoints: 25,
+  lunarOrbitEccentricity: 0.007,
   lunarOrbitQuality: {
     orbitApoapsisAltitudeMeters: 420_000,
-    orbitPeriapsisAltitudeMeters: 12_000,
+    orbitPeriapsisAltitudeMeters: 390_000,
   },
-  lunarOrbitQualityPoints: 50,
+  lunarOrbitQualityPoints: 66.6,
   missionElapsedSeconds: 27_000,
   timePenaltyPoints: 28,
-  totalScore: 1_218,
+  totalScore: 290.6,
 }
 
 const completedHighscoreRun: ReachMoonHighscorePendingRun = {
@@ -233,7 +235,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(
     page.getByText('Artemis Pathfinder With A Long Callsign'),
   ).toBeVisible()
-  await expect(page.getByText('1,218')).toBeVisible()
+  await expect(page.getByText('291')).toBeVisible()
   await expect(page.getByText('7h30m')).toBeVisible()
   const highscoreTable = page.getByRole('table', {
     name: 'Today Reach the Moon leaderboard',
@@ -251,7 +253,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   ).toBeVisible()
   await expect(
     highscoreTable.getByRole('cell', {
-      name: 'Orbit quality Ap 420 km / Pe 12 km',
+      name: 'Orbit quality Ap 420 km / Pe 390 km - near circular',
     }),
   ).toBeVisible()
   const firstHighscoreRow = highscoreTable

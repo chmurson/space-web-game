@@ -29,12 +29,14 @@ import {
 } from '../scenarioSession'
 import type { ReachMoonHighscoreSubmitInput } from './reachMoonHighscores'
 import {
+  calculateReachMoonOrbitQualityBreakdown,
   calculateReachMoonOrbitQualityPoints,
   calculateReachMoonScore,
   formatReachMoonOrbitAltitude,
   formatReachMoonScoreSummary,
   isReachMoonScoreSummary,
-  MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS,
+  MOON_ORBIT_ALTITUDE_BONUS_MAX_POINTS,
+  MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS,
   MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS,
   REACH_MOON_FUEL_CAPACITY_KG,
   type ReachMoonOrbitQualityMetric,
@@ -285,31 +287,44 @@ const createLunarOrbitQualityNotice = (
     return null
   }
 
-  const points = calculateReachMoonOrbitQualityPoints(best)
+  const breakdown = calculateReachMoonOrbitQualityBreakdown(best)
+  const points = breakdown.totalPoints
   const safe =
     best.orbitPeriapsisAltitudeMeters >=
     MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS
-  const extremelyClose =
-    best.orbitApoapsisAltitudeMeters <=
-      MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS && safe
-  const title = extremelyClose
-    ? 'Extremely close lunar orbit recorded'
-    : points >= 35
-      ? 'Very close lunar orbit recorded'
-      : points > 0
-        ? 'Close lunar orbit recorded'
-        : points < 0
-          ? 'Too close to the Moon - risky orbit recorded'
-          : null
+  const closeOrbit =
+    breakdown.altitudeBonusPoints >= MOON_ORBIT_ALTITUDE_BONUS_MAX_POINTS * 0.7
+  const nearCircular =
+    breakdown.circularityBonusPoints >=
+    MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS * 0.8
+  const title = !safe
+    ? 'Risky lunar orbit recorded'
+    : closeOrbit && nearCircular
+      ? 'Excellent lunar orbit recorded'
+      : nearCircular
+        ? 'Circular lunar orbit recorded'
+        : closeOrbit
+          ? 'Close lunar orbit recorded'
+          : points > 0
+            ? 'Lunar orbit recorded'
+            : null
   if (!title) {
     return null
   }
 
+  const altitudeDetail = `Ap ${formatReachMoonOrbitAltitude(best.orbitApoapsisAltitudeMeters)} - Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)}`
+  const orbitShapeDetail = nearCircular
+    ? closeOrbit
+      ? 'near circular'
+      : 'higher than ideal'
+    : closeOrbit
+      ? 'elongated'
+      : 'orbit quality improved'
+
   return {
-    body:
-      points < 0
-        ? `Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)}`
-        : `Ap ${formatReachMoonOrbitAltitude(best.orbitApoapsisAltitudeMeters)}`,
+    body: !safe
+      ? `Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)} - too close to the Moon`
+      : `${altitudeDetail} - ${orbitShapeDetail}`,
     id: `reach-moon-lunar-orbit-quality-${orbitTurnsCompleted}-${points}`,
     title,
   }
@@ -345,6 +360,7 @@ const getLegacyHighscoreInputFromScore = (
       ? score.fuelRemainingKg / REACH_MOON_FUEL_CAPACITY_KG
       : 0,
   ),
+  lunarOrbitQuality: score.lunarOrbitQuality ?? null,
   missionElapsedSeconds: normalizeMissionElapsedSeconds(
     score.missionElapsedSeconds,
   ),
@@ -644,7 +660,7 @@ const reachMoonPromptDefinitions = {
     description: [
       'Close ',
       { text: 'lunar orbits', tone: 'concept' },
-      ' can earn bonus points during this phase. Keep apoapsis low for a better orbit, but dipping below ',
+      ' can earn bonus points during this phase. Keep apoapsis low and the orbit near circular, but dipping below ',
       { text: moonOrbitSafePeriapsisPromptText, tone: 'constraint' },
       ' is risky and can cost points.',
     ],

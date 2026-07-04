@@ -11,6 +11,8 @@ export const reachMoonCompletedRunScore = {
   baseScorePoints: 0,
   fuelBonusPoints: 121.5,
   fuelRemainingKg: 16_000,
+  lunarOrbitCircularityPoints: 0,
+  lunarOrbitEccentricity: null,
   lunarOrbitQuality: null,
   lunarOrbitQualityPoints: 0,
   missionElapsedSeconds: 90_000,
