@@ -537,6 +537,7 @@ canvas {
 
 .reach-moon-highscore-cell-elapsed {
   grid-area: elapsed;
+  text-align: right;
 }
 
 .reach-moon-highscore-cell-fuel {
@@ -546,6 +547,7 @@ canvas {
 
 .reach-moon-highscore-cell-orbit {
   grid-area: orbit;
+  text-align: right;
 }
 
 .reach-moon-highscore-refreshing {
@@ -2324,10 +2326,6 @@ button.app-dialog-setting {
   .reach-moon-highscore-row {
     grid-template-columns: 38px minmax(0, 1fr) 68px 68px;
     padding: 8px 9px;
-  }
-
-  .reach-moon-highscore-row-hidden {
-    display: none;
   }
 
   .reach-moon-highscore-row .reach-moon-highscore-cell-score {
