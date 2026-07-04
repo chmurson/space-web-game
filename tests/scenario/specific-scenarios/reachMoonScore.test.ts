@@ -4,6 +4,7 @@ import {
   calculateReachMoonScore,
   formatReachMoonScoreSummary,
   formatReachMoonScoreSummaryDisplay,
+  getReachMoonFuelRemainingRatio,
 } from '@/scenario/specific-scenarios/reachMoonScore'
 
 describe('reachMoonScore', () => {
@@ -76,6 +77,14 @@ describe('reachMoonScore', () => {
       timeScorePoints: '49.7',
       totalScore: '171.2',
     })
+  })
+
+  it('normalizes score fuel for matching percent text and highscore icons', () => {
+    expect(getReachMoonFuelRemainingRatio({ fuelRemainingKg: 16_000 })).toBe(
+      0.5,
+    )
+    expect(getReachMoonFuelRemainingRatio({ fuelRemainingKg: 48_000 })).toBe(1)
+    expect(getReachMoonFuelRemainingRatio({ fuelRemainingKg: -1 })).toBe(0)
   })
 
   it.each(
