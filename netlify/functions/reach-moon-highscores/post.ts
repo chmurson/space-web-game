@@ -4,6 +4,7 @@ import {
   reachMoonHighscorePeriods,
 } from '../../../src/scenario/specific-scenarios/reachMoonHighscores'
 import {
+  MOON_ORBIT_BONUS_MAX_POINTS,
   REACH_MOON_BASE_SCORE_POINTS,
   REACH_MOON_FUEL_CAPACITY_KG,
   REACH_MOON_MAX_FUEL_BONUS_POINTS,
@@ -38,11 +39,12 @@ const minTotalScore = 0
 const maxTotalScore =
   REACH_MOON_BASE_SCORE_POINTS +
   REACH_MOON_MAX_FUEL_BONUS_POINTS +
-  REACH_MOON_MAX_TIME_SCORE_POINTS
+  REACH_MOON_MAX_TIME_SCORE_POINTS +
+  MOON_ORBIT_BONUS_MAX_POINTS
 const scoreTolerance = 0.001
 const suspiciousMissionElapsedSeconds = 86_400
 const suspiciousFuelRemainingRatio = 0.95
-const suspiciousTotalScore = 245
+const suspiciousTotalScore = 295
 
 type RejectionDetail = {
   code:

@@ -27,10 +27,26 @@ import { getReachMoonCompletedHighscorePayload } from '@/scenario/specific-scena
 import { G } from '@/simulation/constants'
 import type { Body } from '@/simulation/types'
 import {
-  reachMoonCompletedRunHighscore,
   reachMoonCompletedRunInput,
   reachMoonCompletedRunScore,
 } from '../../fixtures/reachMoonCompletedRun'
+
+const neutralLunarOrbitQuality = {
+  orbitApoapsisAltitudeMeters: 2_000_000,
+  orbitPeriapsisAltitudeMeters: 2_000_000,
+}
+const neutralLunarOrbitCompletedRunInput = {
+  ...reachMoonCompletedRunInput,
+  lunarOrbitQuality: neutralLunarOrbitQuality,
+}
+const neutralLunarOrbitCompletedRunScore = {
+  ...reachMoonCompletedRunScore,
+  lunarOrbitQuality: neutralLunarOrbitQuality,
+}
+const neutralLunarOrbitCompletedRunHighscore = {
+  input: neutralLunarOrbitCompletedRunInput,
+  score: neutralLunarOrbitCompletedRunScore,
+}
 
 const runtimeScenarioOptions: RuntimeScenarioOptions = {
   defaultCoastPredictionHorizonHours: 1,
@@ -262,24 +278,30 @@ describe('reachMoonScenario', () => {
     advanceScenario(runtime)
 
     expect(runtime.scenario.session.state).toEqual({
+      currentOrbitApoapsisAltitudeMeters: 2_000_000,
+      currentOrbitPeriapsisAltitudeMeters: 2_000_000,
       phase: 'orbit-moon',
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
     })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
-      'moon-reached',
+      'safe-lunar-orbit-bonus',
     )
     expect(
       getPromptTextContent(
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'You are inside the lunar objective zone. Stay bound to the Moon and complete three full orbits.',
+      'Close lunar orbits can earn bonus points during this phase. Keep apoapsis low for a better orbit, but dipping below 25 km periapsis is risky and can cost points.',
     )
 
     completeOrbitTurns(runtime, 'moon', 3)
 
     expect(runtime.scenario.session.state).toEqual({
+      bestLunarOrbitQuality: {
+        orbitApoapsisAltitudeMeters: 2_000_000,
+        orbitPeriapsisAltitudeMeters: 2_000_000,
+      },
       phase: 'return-earth',
     })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
@@ -297,6 +319,10 @@ describe('reachMoonScenario', () => {
     advanceScenario(runtime)
 
     expect(runtime.scenario.session.state).toEqual({
+      bestLunarOrbitQuality: {
+        orbitApoapsisAltitudeMeters: 2_000_000,
+        orbitPeriapsisAltitudeMeters: 2_000_000,
+      },
       phase: 'orbit-earth',
       orbitProgressRadians: 0,
       orbitTurnsCompleted: 0,
@@ -322,13 +348,14 @@ describe('reachMoonScenario', () => {
 
     expect(runtime.scenario.session.completed).toBe(true)
     expect(runtime.scenario.session.state).toEqual({
+      bestLunarOrbitQuality: neutralLunarOrbitQuality,
       phase: 'complete',
-      highscore: reachMoonCompletedRunHighscore,
-      score: reachMoonCompletedRunScore,
+      highscore: neutralLunarOrbitCompletedRunHighscore,
+      score: neutralLunarOrbitCompletedRunScore,
     })
     expect(getReachMoonCompletedHighscorePayload(runtime)).toEqual({
-      input: reachMoonCompletedRunInput,
-      score: reachMoonCompletedRunScore,
+      input: neutralLunarOrbitCompletedRunInput,
+      score: neutralLunarOrbitCompletedRunScore,
     })
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'mission-complete',
@@ -336,14 +363,90 @@ describe('reachMoonScenario', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
       description:
-        'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5).',
+        'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km (0).',
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
     expect(
       getPromptTextContent(
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
-    ).toBe('Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5).')
+    ).toBe(
+      'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km (0).',
+    )
+  })
+
+  it('keeps the best completed lunar orbit quality and emits only improved notices', () => {
+    const runtime = createRuntime()
+    const moon = getBody(runtime, 'moon')
+    runtime.scenario.session.state = {
+      currentOrbitApoapsisAltitudeMeters: 600_000,
+      currentOrbitPeriapsisAltitudeMeters: 600_000,
+      phase: 'orbit-moon',
+      orbitProgressRadians: Math.PI * 1.75,
+      orbitTurnsCompleted: 0,
+      previousOrbitAngle: -Math.PI / 2,
+    }
+
+    setOrbitState(runtime, 'moon', 0, { orbitalRadius: moon.radius + 600_000 })
+    advanceScenario(runtime)
+
+    expect(runtime.scenario.session.state).toMatchObject({
+      bestLunarOrbitQuality: {
+        orbitApoapsisAltitudeMeters: 600_000,
+        orbitPeriapsisAltitudeMeters: 600_000,
+      },
+      orbitTurnsCompleted: 1,
+      phase: 'orbit-moon',
+    })
+    expect(runtime.ui.transientNotice).toMatchObject({
+      body: 'Ap 600 km',
+      title: 'Very close lunar orbit recorded',
+    })
+
+    runtime.scenario.session.state = {
+      ...(runtime.scenario.session.state as Record<string, unknown>),
+      currentOrbitApoapsisAltitudeMeters: 90_000,
+      currentOrbitPeriapsisAltitudeMeters: 25_000,
+      orbitProgressRadians: Math.PI * 3.75,
+      orbitTurnsCompleted: 1,
+      previousOrbitAngle: -Math.PI / 2,
+    }
+    setOrbitState(runtime, 'moon', 0, { orbitalRadius: moon.radius + 90_000 })
+    advanceScenario(runtime)
+
+    expect(runtime.scenario.session.state).toMatchObject({
+      bestLunarOrbitQuality: {
+        orbitApoapsisAltitudeMeters: 90_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
+      },
+      orbitTurnsCompleted: 2,
+      phase: 'orbit-moon',
+    })
+    expect(runtime.ui.transientNotice).toMatchObject({
+      body: 'Ap 90 km',
+      title: 'Extremely close lunar orbit recorded',
+    })
+
+    const previousNotice = runtime.ui.transientNotice
+    runtime.scenario.session.state = {
+      ...(runtime.scenario.session.state as Record<string, unknown>),
+      currentOrbitApoapsisAltitudeMeters: 800_000,
+      currentOrbitPeriapsisAltitudeMeters: 25_000,
+      orbitProgressRadians: Math.PI * 5.75,
+      orbitTurnsCompleted: 2,
+      previousOrbitAngle: -Math.PI / 2,
+    }
+    setOrbitState(runtime, 'moon', 0, { orbitalRadius: moon.radius + 800_000 })
+    advanceScenario(runtime)
+
+    expect(runtime.ui.transientNotice).toBe(previousNotice)
+    expect(runtime.scenario.session.state).toMatchObject({
+      bestLunarOrbitQuality: {
+        orbitApoapsisAltitudeMeters: 90_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
+      },
+      phase: 'return-earth',
+    })
   })
 
   it('does not count angular backtracking as completed lunar orbits', () => {

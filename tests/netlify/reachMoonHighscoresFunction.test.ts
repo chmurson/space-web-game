@@ -257,6 +257,10 @@ describe('reachMoonHighscores function', () => {
       new Request('https://example.test/api/reach-moon/highscores', {
         body: JSON.stringify({
           fuelRemainingRatio: 0.9,
+          lunarOrbitQuality: {
+            orbitApoapsisAltitudeMeters: 100_000,
+            orbitPeriapsisAltitudeMeters: 25_000,
+          },
           missionElapsedSeconds: 86_400,
           playerName: '  Moon Ace  ',
           runReceipt: receipt,
@@ -275,9 +279,10 @@ describe('reachMoonHighscores function', () => {
       playerName: 'Moon Ace',
       score: {
         fuelBonusPoints: 199.7,
+        lunarOrbitQualityPoints: 50,
         missionElapsedSeconds: 86_400,
         timePenaltyPoints: 49.9,
-        totalScore: 249.6,
+        totalScore: 299.6,
       },
       submittedAt: now,
     })
@@ -304,7 +309,7 @@ describe('reachMoonHighscores function', () => {
     expect(dailyEntries[0]).toMatchObject({
       id: body.record.id,
       rank: 1,
-      score: { totalScore: 249.6 },
+      score: { totalScore: 299.6 },
     })
     expect(dailyEntries[1]).toMatchObject({
       id: 'daily-old',
@@ -446,6 +451,10 @@ describe('reachMoonHighscores function', () => {
       new Request('https://example.test/api/reach-moon/highscores', {
         body: JSON.stringify({
           fuelRemainingRatio: 0.98,
+          lunarOrbitQuality: {
+            orbitApoapsisAltitudeMeters: 100_000,
+            orbitPeriapsisAltitudeMeters: 25_000,
+          },
           missionElapsedSeconds: 60_000,
           playerName: 'Audit Pilot',
           runReceipt: receipt,

@@ -9,6 +9,13 @@ npm install
 npm run dev
 ```
 
+To connect local dev to a deployed Netlify API, proxy `/api` to a staging or PR
+alias origin:
+
+```sh
+SPACE_WEB_GAME_DEV_API_ORIGIN=https://fanciful-bunny-d77b4b.netlify.app npm run dev
+```
+
 ## Build
 
 ```sh

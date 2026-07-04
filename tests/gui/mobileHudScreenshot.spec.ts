@@ -62,14 +62,20 @@ const highscoreScore = {
   baseScorePoints: 1_000,
   fuelBonusPoints: 196,
   fuelRemainingKg: 31_360,
+  lunarOrbitQuality: {
+    orbitApoapsisAltitudeMeters: 420_000,
+    orbitPeriapsisAltitudeMeters: 12_000,
+  },
+  lunarOrbitQualityPoints: 50,
   missionElapsedSeconds: 27_000,
   timePenaltyPoints: 28,
-  totalScore: 1_168,
+  totalScore: 1_218,
 }
 
 const completedHighscoreRun: ReachMoonHighscorePendingRun = {
   input: {
     fuelRemainingRatio: 0.98,
+    lunarOrbitQuality: highscoreScore.lunarOrbitQuality,
     missionElapsedSeconds: 27_000,
   },
   runReceipt: {
@@ -227,7 +233,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(
     page.getByText('Artemis Pathfinder With A Long Callsign'),
   ).toBeVisible()
-  await expect(page.getByText('1,168')).toBeVisible()
+  await expect(page.getByText('1,218')).toBeVisible()
   await expect(page.getByText('7h30m')).toBeVisible()
   const highscoreTable = page.getByRole('table', {
     name: 'Today Reach the Moon leaderboard',
@@ -243,6 +249,11 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(
     highscoreTable.getByRole('cell', { name: 'Fuel left 98%' }),
   ).toBeVisible()
+  await expect(
+    highscoreTable.getByRole('cell', {
+      name: 'Orbit quality Ap 420 km / Pe 12 km',
+    }),
+  ).toBeVisible()
   const firstHighscoreRow = highscoreTable
     .locator('.reach-moon-highscore-row:not(.reach-moon-highscore-row-header)')
     .first()
@@ -256,11 +267,24 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
       '.reach-moon-highscore-cell-fuel .telemetry-fuel-icon',
     ),
   ).toBeVisible()
+  await expect(
+    firstHighscoreRow.locator(
+      '.reach-moon-highscore-cell-orbit .telemetry-orbit-icon',
+    ),
+  ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-reach-moon-highscores')
 
   await page.getByRole('button', { name: 'Weekly' }).click()
   await expect(page.getByText('No weekly runs yet.')).toBeVisible()
+  const emptyWeeklyTable = page.getByRole('table', {
+    name: 'Weekly Reach the Moon leaderboard',
+  })
+  await expect(emptyWeeklyTable).toBeVisible()
+  await expect(emptyWeeklyTable.getByRole('row')).toHaveCount(2)
+  await expect(
+    emptyWeeklyTable.locator('.reach-moon-highscore-row-spacer'),
+  ).toHaveCount(9)
 })
 
 test('falls back to weekly highscores from the all-section response', async ({

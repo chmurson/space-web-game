@@ -1,6 +1,9 @@
 import type { RuntimeScenario } from '../../debugScenarioSnapshot'
 import { EARTH_MOON_VIEWPORT_SIZE } from '../../domain/viewportPresets'
-import type { AppRuntimeState } from '../../runtime/appRuntimeState'
+import type {
+  AppRuntimeState,
+  RuntimeTransientNotice,
+} from '../../runtime/appRuntimeState'
 import { createEarthMoonScenario } from '../../simulation/scenarios/earthMoon'
 import {
   createDefaultScenarioDirectives,
@@ -9,6 +12,7 @@ import {
 import {
   advanceScenarioOrbitProgress,
   createScenarioOrbitProgressState,
+  getScenarioTargetBody,
   isWithinScenarioObjectiveRadius,
   type ScenarioOrbitProgressState,
 } from '../scenarioObjectiveProgress'
@@ -25,10 +29,15 @@ import {
 } from '../scenarioSession'
 import type { ReachMoonHighscoreSubmitInput } from './reachMoonHighscores'
 import {
+  calculateReachMoonOrbitQualityPoints,
   calculateReachMoonScore,
+  formatReachMoonOrbitAltitude,
   formatReachMoonScoreSummary,
   isReachMoonScoreSummary,
+  MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS,
+  MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS,
   REACH_MOON_FUEL_CAPACITY_KG,
+  type ReachMoonOrbitQualityMetric,
   type ReachMoonScoreSummary,
 } from './reachMoonScore'
 
@@ -36,6 +45,9 @@ const requiredMoonOrbitTurns = 3
 const requiredEarthOrbitTurns = 1
 const moonObjectiveRadiusMultiplier = 35
 const earthObjectiveRadiusMultiplier = 20
+const moonOrbitSafePeriapsisPromptText = `${formatReachMoonOrbitAltitude(
+  MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS,
+)} periapsis`
 
 type ReachMoonScenarioPhase =
   | 'reach-moon'
@@ -47,6 +59,7 @@ type ReachMoonScenarioPhase =
 type ReachMoonPromptId =
   | 'mission-start'
   | 'moon-reached'
+  | 'safe-lunar-orbit-bonus'
   | 'lunar-orbits-complete'
   | 'earth-reached'
   | 'mission-complete'
@@ -56,18 +69,24 @@ type ReachMoonApproachState = {
 }
 
 type OrbitMoonState = {
+  bestLunarOrbitQuality?: ReachMoonOrbitQualityMetric | null
+  currentOrbitApoapsisAltitudeMeters?: number
+  currentOrbitPeriapsisAltitudeMeters?: number
   phase: 'orbit-moon'
 } & ScenarioOrbitProgressState
 
 type ReturnEarthState = {
+  bestLunarOrbitQuality?: ReachMoonOrbitQualityMetric | null
   phase: 'return-earth'
 }
 
 type OrbitEarthState = {
+  bestLunarOrbitQuality?: ReachMoonOrbitQualityMetric | null
   phase: 'orbit-earth'
 } & ScenarioOrbitProgressState
 
 type CompleteReachMoonState = {
+  bestLunarOrbitQuality?: ReachMoonOrbitQualityMetric | null
   phase: 'complete'
   highscore?: ReachMoonCompletedHighscorePayload
   score?: ReachMoonScoreSummary
@@ -137,11 +156,13 @@ const createReachMoonTransition = (
   options: {
     completed?: boolean
     promptUi?: ScenarioPromptUiState
+    transientNotice?: RuntimeTransientNotice | null
   } = {},
 ): ScenarioRuntimeTransition<ReachMoonScenarioState> => ({
   completed: options.completed,
   nextState: state,
   promptUi: options.promptUi,
+  transientNotice: options.transientNotice,
 })
 
 const createPromptUiWithActivePrompt = (
@@ -160,11 +181,13 @@ const normalizeMissionElapsedSeconds = (value: number): number =>
 
 const createReachMoonCompletedHighscorePayload = (
   runtime: AppRuntimeState,
+  lunarOrbitQuality: ReachMoonOrbitQualityMetric | null | undefined,
 ): ReachMoonCompletedHighscorePayload => {
   const input = {
     fuelRemainingRatio: clampReachMoonFuelRatio(
       runtime.simulation.state.spacecraft.fuel,
     ),
+    lunarOrbitQuality: lunarOrbitQuality ?? null,
     missionElapsedSeconds: normalizeMissionElapsedSeconds(
       runtime.simulation.state.elapsed,
     ),
@@ -176,6 +199,119 @@ const createReachMoonCompletedHighscorePayload = (
       fuelCapacityKg: runtime.simulation.state.spacecraft.fuelCapacity,
       ...input,
     }),
+  }
+}
+
+const getMoonRelativeAltitude = (runtime: AppRuntimeState): number | null => {
+  const moon = getScenarioTargetBody(runtime, 'moon')
+  if (!moon) {
+    return null
+  }
+
+  const { position } = runtime.simulation.state.spacecraft
+  return Math.max(
+    0,
+    Math.hypot(position.x - moon.position.x, position.y - moon.position.y) -
+      moon.radius,
+  )
+}
+
+const withCurrentLunarOrbitAltitude = (
+  runtime: AppRuntimeState,
+  state: OrbitMoonState,
+): OrbitMoonState => {
+  const altitude = getMoonRelativeAltitude(runtime)
+  if (altitude == null) {
+    return state
+  }
+
+  return {
+    ...state,
+    currentOrbitApoapsisAltitudeMeters: Math.max(
+      state.currentOrbitApoapsisAltitudeMeters ?? altitude,
+      altitude,
+    ),
+    currentOrbitPeriapsisAltitudeMeters: Math.min(
+      state.currentOrbitPeriapsisAltitudeMeters ?? altitude,
+      altitude,
+    ),
+  }
+}
+
+const getLunarOrbitMetric = (
+  state: OrbitMoonState,
+): ReachMoonOrbitQualityMetric | null => {
+  if (
+    state.currentOrbitApoapsisAltitudeMeters == null ||
+    state.currentOrbitPeriapsisAltitudeMeters == null
+  ) {
+    return null
+  }
+
+  return {
+    orbitApoapsisAltitudeMeters: Math.round(
+      state.currentOrbitApoapsisAltitudeMeters,
+    ),
+    orbitPeriapsisAltitudeMeters: Math.round(
+      state.currentOrbitPeriapsisAltitudeMeters,
+    ),
+  }
+}
+
+const getBetterLunarOrbitMetric = (
+  currentBest: ReachMoonOrbitQualityMetric | null | undefined,
+  candidate: ReachMoonOrbitQualityMetric | null,
+): ReachMoonOrbitQualityMetric | null | undefined => {
+  if (!candidate) {
+    return currentBest
+  }
+  if (
+    !currentBest ||
+    calculateReachMoonOrbitQualityPoints(candidate) >
+      calculateReachMoonOrbitQualityPoints(currentBest)
+  ) {
+    return candidate
+  }
+
+  return currentBest
+}
+
+const createLunarOrbitQualityNotice = (
+  previousBest: ReachMoonOrbitQualityMetric | null | undefined,
+  best: ReachMoonOrbitQualityMetric | null | undefined,
+  orbitTurnsCompleted: number,
+): RuntimeTransientNotice | null => {
+  if (!best || best === previousBest) {
+    return null
+  }
+
+  const points = calculateReachMoonOrbitQualityPoints(best)
+  const safe =
+    best.orbitPeriapsisAltitudeMeters >=
+    MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS
+  const extremelyClose =
+    best.orbitApoapsisAltitudeMeters <=
+      MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS && safe
+  const title = extremelyClose
+    ? 'Extremely close lunar orbit recorded'
+    : points >= 35
+      ? 'Very close lunar orbit recorded'
+      : points > 0
+        ? 'Close lunar orbit recorded'
+        : points < 0
+          ? 'Too close to the Moon - risky orbit recorded'
+          : null
+  if (!title) {
+    return null
+  }
+
+  return {
+    body:
+      points < 0
+        ? `Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)}`
+        : `Ap ${formatReachMoonOrbitAltitude(best.orbitApoapsisAltitudeMeters)}`,
+    id: `reach-moon-lunar-orbit-quality-${orbitTurnsCompleted}-${points}`,
+    title,
   }
 }
 
@@ -306,12 +442,15 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
     advance: ({ runtime }) =>
       isWithinObjectiveDistance(runtime, 'moon')
         ? createReachMoonTransition(
-            {
+            withCurrentLunarOrbitAltitude(runtime, {
               phase: 'orbit-moon',
               ...createScenarioOrbitProgressState(),
-            },
+            }),
             {
-              promptUi: createPromptUiWithActivePrompt(runtime, 'moon-reached'),
+              promptUi: createPromptUiWithActivePrompt(
+                runtime,
+                'safe-lunar-orbit-bonus',
+              ),
             },
           )
         : null,
@@ -319,18 +458,62 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
   },
   'orbit-moon': {
     advance: ({ runtime, state }) => {
-      const orbitProgress = advanceOrbitProgress(
+      const sampledState = withCurrentLunarOrbitAltitude(runtime, state)
+      const orbitProgress = advanceScenarioOrbitProgress(
         runtime,
-        state,
-        'moon',
-        requiredMoonOrbitTurns,
+        sampledState,
+        {
+          maxRadiusMultiplier: getObjectiveRadiusMultiplier('moon'),
+          requiredTurns: requiredMoonOrbitTurns,
+          targetId: 'moon',
+        },
       )
-      if (!orbitProgress?.completed) {
-        return orbitProgress
+      if (!orbitProgress) {
+        return null
+      }
+
+      const completedNewTurn =
+        orbitProgress.status === 'progressing' &&
+        orbitProgress.state.orbitTurnsCompleted > state.orbitTurnsCompleted
+      const completedMetric = completedNewTurn
+        ? getLunarOrbitMetric(orbitProgress.state)
+        : null
+      const bestLunarOrbitQuality = completedNewTurn
+        ? getBetterLunarOrbitMetric(
+            state.bestLunarOrbitQuality,
+            completedMetric,
+          )
+        : state.bestLunarOrbitQuality
+      const altitude = getMoonRelativeAltitude(runtime)
+      const resetCurrentOrbitAltitude =
+        orbitProgress.status === 'reset' || completedNewTurn
+      const nextState: OrbitMoonState = {
+        ...orbitProgress.state,
+        bestLunarOrbitQuality,
+        currentOrbitApoapsisAltitudeMeters: resetCurrentOrbitAltitude
+          ? (altitude ?? undefined)
+          : orbitProgress.state.currentOrbitApoapsisAltitudeMeters,
+        currentOrbitPeriapsisAltitudeMeters: resetCurrentOrbitAltitude
+          ? (altitude ?? undefined)
+          : orbitProgress.state.currentOrbitPeriapsisAltitudeMeters,
+      }
+      const transientNotice = completedNewTurn
+        ? createLunarOrbitQualityNotice(
+            state.bestLunarOrbitQuality,
+            bestLunarOrbitQuality,
+            orbitProgress.state.orbitTurnsCompleted,
+          )
+        : null
+
+      if (!orbitProgress.completed) {
+        return createReachMoonTransition(nextState, {
+          ...(transientNotice ? { transientNotice } : {}),
+        })
       }
 
       return createReachMoonTransition(
         {
+          bestLunarOrbitQuality,
           phase: 'return-earth',
         },
         {
@@ -338,16 +521,18 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
             runtime,
             'lunar-orbits-complete',
           ),
+          ...(transientNotice ? { transientNotice } : {}),
         },
       )
     },
     directives: createMissionDirectives,
   },
   'return-earth': {
-    advance: ({ runtime }) =>
+    advance: ({ runtime, state }) =>
       isWithinObjectiveDistance(runtime, 'earth')
         ? createReachMoonTransition(
             {
+              bestLunarOrbitQuality: state.bestLunarOrbitQuality,
               phase: 'orbit-earth',
               ...createScenarioOrbitProgressState(),
             },
@@ -373,10 +558,14 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
         return orbitProgress
       }
 
-      const highscore = createReachMoonCompletedHighscorePayload(runtime)
+      const highscore = createReachMoonCompletedHighscorePayload(
+        runtime,
+        state.bestLunarOrbitQuality,
+      )
 
       return createReachMoonTransition(
         {
+          bestLunarOrbitQuality: state.bestLunarOrbitQuality,
           phase: 'complete',
           highscore,
           score: highscore.score,
@@ -438,6 +627,26 @@ const reachMoonPromptDefinitions = {
       ' and complete ',
       { text: 'three full orbits', tone: 'number' },
       '.',
+    ],
+    buttons: [
+      {
+        action: { kind: 'builtin', id: 'dismiss_to_replay' },
+        label: 'Continue',
+        tone: 'primary',
+      },
+    ],
+    presentation: { kind: 'blocking' },
+  },
+  'safe-lunar-orbit-bonus': {
+    id: 'safe-lunar-orbit-bonus',
+    title: 'Close Lunar Orbit Bonus',
+    shortLabel: 'Orbit Bonus',
+    description: [
+      'Close ',
+      { text: 'lunar orbits', tone: 'concept' },
+      ' can earn bonus points during this phase. Keep apoapsis low for a better orbit, but dipping below ',
+      { text: moonOrbitSafePeriapsisPromptText, tone: 'constraint' },
+      ' is risky and can cost points.',
     ],
     buttons: [
       {
