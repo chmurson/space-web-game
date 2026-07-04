@@ -688,29 +688,45 @@ describe('createHudPresentation', () => {
       } as never,
     })
     const fuelIconLevel = overlayUi.fuelIconLevel as unknown as FakeElement
+    const readFuelIconLevel = () => {
+      const y = Number(fuelIconLevel.getAttribute('y'))
+      const height = Number(fuelIconLevel.getAttribute('height'))
+
+      return { bottom: y + height, height, y }
+    }
+    const expectFuelIconLevel = (
+      fullLevel: ReturnType<typeof readFuelIconLevel>,
+      fillRatio: number,
+    ) => {
+      const height = fullLevel.height * fillRatio
+
+      expect(readFuelIconLevel().height).toBeCloseTo(height, 2)
+      expect(readFuelIconLevel().y).toBeCloseTo(fullLevel.bottom - height, 2)
+    }
+
+    runtime.simulation.state.spacecraft.fuel = 1
+    presentation.update(createMetrics())
+    const fullFuelIconLevel = readFuelIconLevel()
 
     runtime.simulation.state.spacecraft.fuel = 0.52
     presentation.update(createMetrics())
 
     expect(overlayUi.statFuel.textContent).toBe('52%')
-    expect(fuelIconLevel.getAttribute('y')).toBe('8.25')
-    expect(fuelIconLevel.getAttribute('height')).toBe('4.30')
+    expectFuelIconLevel(fullFuelIconLevel, 0.5)
     expect(overlayUi.fuelPill.dataset.fuelState).toBe('available')
 
     runtime.simulation.state.spacecraft.fuel = 0.13
     presentation.update(createMetrics())
 
     expect(overlayUi.statFuel.textContent).toBe('13%')
-    expect(fuelIconLevel.getAttribute('y')).toBe('11.26')
-    expect(fuelIconLevel.getAttribute('height')).toBe('1.29')
+    expectFuelIconLevel(fullFuelIconLevel, 0.15)
     expect(overlayUi.fuelPill.dataset.fuelState).toBe('low')
 
     runtime.simulation.state.spacecraft.fuel = 0
     presentation.update(createMetrics())
 
     expect(overlayUi.statFuel.textContent).toBe('0%')
-    expect(fuelIconLevel.getAttribute('y')).toBe('12.55')
-    expect(fuelIconLevel.getAttribute('height')).toBe('0.00')
+    expectFuelIconLevel(fullFuelIconLevel, 0)
     expect(overlayUi.fuelPill.dataset.fuelState).toBe('depleted')
   })
 
