@@ -292,7 +292,7 @@ describe('reachMoonScenario', () => {
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'Close lunar orbits can earn bonus points during this phase. Keep apoapsis low for a better orbit, but dipping below 10 km periapsis is risky and can cost points.',
+      'Close lunar orbits can earn bonus points during this phase. Keep apoapsis low for a better orbit, but dipping below 25 km periapsis is risky and can cost points.',
     )
 
     completeOrbitTurns(runtime, 'moon', 3)
@@ -379,51 +379,51 @@ describe('reachMoonScenario', () => {
     const runtime = createRuntime()
     const moon = getBody(runtime, 'moon')
     runtime.scenario.session.state = {
-      currentOrbitApoapsisAltitudeMeters: 900_000,
-      currentOrbitPeriapsisAltitudeMeters: 900_000,
+      currentOrbitApoapsisAltitudeMeters: 600_000,
+      currentOrbitPeriapsisAltitudeMeters: 600_000,
       phase: 'orbit-moon',
       orbitProgressRadians: Math.PI * 1.75,
       orbitTurnsCompleted: 0,
       previousOrbitAngle: -Math.PI / 2,
     }
 
-    setOrbitState(runtime, 'moon', 0, { orbitalRadius: moon.radius + 900_000 })
+    setOrbitState(runtime, 'moon', 0, { orbitalRadius: moon.radius + 600_000 })
     advanceScenario(runtime)
 
     expect(runtime.scenario.session.state).toMatchObject({
       bestLunarOrbitQuality: {
-        orbitApoapsisAltitudeMeters: 900_000,
-        orbitPeriapsisAltitudeMeters: 900_000,
+        orbitApoapsisAltitudeMeters: 600_000,
+        orbitPeriapsisAltitudeMeters: 600_000,
       },
       orbitTurnsCompleted: 1,
       phase: 'orbit-moon',
     })
     expect(runtime.ui.transientNotice).toMatchObject({
-      body: 'Ap 900 km',
+      body: 'Ap 600 km',
       title: 'Very close lunar orbit recorded',
     })
 
     runtime.scenario.session.state = {
       ...(runtime.scenario.session.state as Record<string, unknown>),
-      currentOrbitApoapsisAltitudeMeters: 420_000,
-      currentOrbitPeriapsisAltitudeMeters: 12_000,
+      currentOrbitApoapsisAltitudeMeters: 90_000,
+      currentOrbitPeriapsisAltitudeMeters: 25_000,
       orbitProgressRadians: Math.PI * 3.75,
       orbitTurnsCompleted: 1,
       previousOrbitAngle: -Math.PI / 2,
     }
-    setOrbitState(runtime, 'moon', 0, { orbitalRadius: moon.radius + 420_000 })
+    setOrbitState(runtime, 'moon', 0, { orbitalRadius: moon.radius + 90_000 })
     advanceScenario(runtime)
 
     expect(runtime.scenario.session.state).toMatchObject({
       bestLunarOrbitQuality: {
-        orbitApoapsisAltitudeMeters: 420_000,
-        orbitPeriapsisAltitudeMeters: 12_000,
+        orbitApoapsisAltitudeMeters: 90_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
       },
       orbitTurnsCompleted: 2,
       phase: 'orbit-moon',
     })
     expect(runtime.ui.transientNotice).toMatchObject({
-      body: 'Ap 420 km',
+      body: 'Ap 90 km',
       title: 'Extremely close lunar orbit recorded',
     })
 
@@ -431,7 +431,7 @@ describe('reachMoonScenario', () => {
     runtime.scenario.session.state = {
       ...(runtime.scenario.session.state as Record<string, unknown>),
       currentOrbitApoapsisAltitudeMeters: 800_000,
-      currentOrbitPeriapsisAltitudeMeters: 12_000,
+      currentOrbitPeriapsisAltitudeMeters: 25_000,
       orbitProgressRadians: Math.PI * 5.75,
       orbitTurnsCompleted: 2,
       previousOrbitAngle: -Math.PI / 2,
@@ -442,8 +442,8 @@ describe('reachMoonScenario', () => {
     expect(runtime.ui.transientNotice).toBe(previousNotice)
     expect(runtime.scenario.session.state).toMatchObject({
       bestLunarOrbitQuality: {
-        orbitApoapsisAltitudeMeters: 420_000,
-        orbitPeriapsisAltitudeMeters: 12_000,
+        orbitApoapsisAltitudeMeters: 90_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
       },
       phase: 'return-earth',
     })

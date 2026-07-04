@@ -140,26 +140,26 @@ describe('reachMoonScore', () => {
   it('scores close safe lunar orbit quality as a separate bonus component', () => {
     expect(
       calculateReachMoonOrbitQualityPoints({
-        orbitApoapsisAltitudeMeters: 500_000,
-        orbitPeriapsisAltitudeMeters: 10_000,
+        orbitApoapsisAltitudeMeters: 100_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
       }),
     ).toBe(50)
     expect(
       calculateReachMoonOrbitQualityPoints({
-        orbitApoapsisAltitudeMeters: 1_250_000,
-        orbitPeriapsisAltitudeMeters: 10_000,
+        orbitApoapsisAltitudeMeters: 1_050_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
       }),
     ).toBe(25)
     expect(
       calculateReachMoonOrbitQualityPoints({
         orbitApoapsisAltitudeMeters: 2_000_000,
-        orbitPeriapsisAltitudeMeters: 10_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
       }),
     ).toBe(0)
     expect(
       calculateReachMoonOrbitQualityPoints({
-        orbitApoapsisAltitudeMeters: 500_000,
-        orbitPeriapsisAltitudeMeters: 6_000,
+        orbitApoapsisAltitudeMeters: 100_000,
+        orbitPeriapsisAltitudeMeters: 15_000,
       }),
     ).toBe(30)
     expect(
@@ -176,8 +176,8 @@ describe('reachMoonScore', () => {
         fuelCapacityKg: 32_000,
         fuelRemainingRatio: 0.5,
         lunarOrbitQuality: {
-          orbitApoapsisAltitudeMeters: 500_000,
-          orbitPeriapsisAltitudeMeters: 10_000,
+          orbitApoapsisAltitudeMeters: 100_000,
+          orbitPeriapsisAltitudeMeters: 25_000,
         },
         missionElapsedSeconds: 90_000,
       }),

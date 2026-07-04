@@ -65,8 +65,8 @@ describe('reachMoonHighscores', () => {
       {
         fuelRemainingRatio: 0.5,
         lunarOrbitQuality: {
-          orbitApoapsisAltitudeMeters: 500_000,
-          orbitPeriapsisAltitudeMeters: 10_000,
+          orbitApoapsisAltitudeMeters: 100_000,
+          orbitPeriapsisAltitudeMeters: 25_000,
         },
         missionElapsedSeconds: 90_000,
         playerName: 'Apollo Ace',
@@ -82,8 +82,8 @@ describe('reachMoonHighscores', () => {
       value: {
         score: {
           lunarOrbitQuality: {
-            orbitApoapsisAltitudeMeters: 500_000,
-            orbitPeriapsisAltitudeMeters: 10_000,
+            orbitApoapsisAltitudeMeters: 100_000,
+            orbitPeriapsisAltitudeMeters: 25_000,
           },
           lunarOrbitQualityPoints: 50,
           totalScore: 221.2,

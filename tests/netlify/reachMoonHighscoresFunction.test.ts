@@ -258,8 +258,8 @@ describe('reachMoonHighscores function', () => {
         body: JSON.stringify({
           fuelRemainingRatio: 0.9,
           lunarOrbitQuality: {
-            orbitApoapsisAltitudeMeters: 500_000,
-            orbitPeriapsisAltitudeMeters: 10_000,
+            orbitApoapsisAltitudeMeters: 100_000,
+            orbitPeriapsisAltitudeMeters: 25_000,
           },
           missionElapsedSeconds: 86_400,
           playerName: '  Moon Ace  ',
@@ -452,8 +452,8 @@ describe('reachMoonHighscores function', () => {
         body: JSON.stringify({
           fuelRemainingRatio: 0.98,
           lunarOrbitQuality: {
-            orbitApoapsisAltitudeMeters: 500_000,
-            orbitPeriapsisAltitudeMeters: 10_000,
+            orbitApoapsisAltitudeMeters: 100_000,
+            orbitPeriapsisAltitudeMeters: 25_000,
           },
           missionElapsedSeconds: 60_000,
           playerName: 'Audit Pilot',
