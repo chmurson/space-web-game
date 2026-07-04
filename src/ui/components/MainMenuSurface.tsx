@@ -1,3 +1,5 @@
+import clsx from 'clsx'
+import type { ComponentChildren } from 'preact'
 import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import {
   type RankedReachMoonHighscoreRecord,
@@ -10,6 +12,7 @@ import {
 import type { ReachMoonCompletedHighscorePayload } from '../../scenario/specific-scenarios/reachMoonScenario'
 import {
   formatReachMoonFuelLeftPercent,
+  formatReachMoonOrbitQualityContext,
   formatReachMoonScoreSummaryDisplay,
   type ReachMoonScoreSummary,
 } from '../../scenario/specific-scenarios/reachMoonScore'
@@ -44,6 +47,7 @@ const reachMoonHighscorePeriodOptions: Array<{
 ]
 
 const reachMoonHighscoreSkeletonRows = [0, 1, 2]
+const reachMoonHighscoreVisibleRowCount = 10
 
 const reachMoonHighscoreSkeletonCells = [
   { className: 'reach-moon-highscore-cell-rank', key: 'rank' },
@@ -51,6 +55,7 @@ const reachMoonHighscoreSkeletonCells = [
   { className: 'reach-moon-highscore-cell-score', key: 'score' },
   { className: 'reach-moon-highscore-cell-elapsed', key: 'elapsed' },
   { className: 'reach-moon-highscore-cell-fuel', key: 'fuel' },
+  { className: 'reach-moon-highscore-cell-orbit', key: 'orbit' },
   { className: 'reach-moon-highscore-cell-submitted', key: 'submitted' },
 ] as const
 
@@ -165,16 +170,25 @@ const ReachMoonHighscoreFuelIcon = () => (
   </svg>
 )
 
+const ReachMoonHighscoreOrbitIcon = () => (
+  <svg class="telemetry-orbit-icon" viewBox="0 0 16 16" aria-hidden="true">
+    <circle class="telemetry-orbit-icon-moon" cx="8" cy="8" r="2" />
+    <ellipse class="telemetry-orbit-icon-path" cx="8" cy="8" rx="6" ry="3.6" />
+  </svg>
+)
+
 const ReachMoonHighscoreMetric = ({
   icon,
   value,
 }: {
-  icon: 'fuel' | 'time'
+  icon: 'fuel' | 'orbit' | 'time'
   value: string
 }) => (
   <span class="reach-moon-highscore-metric">
     {icon === 'time' ? (
       <ReachMoonHighscoreTimeIcon />
+    ) : icon === 'orbit' ? (
+      <ReachMoonHighscoreOrbitIcon />
     ) : (
       <ReachMoonHighscoreFuelIcon />
     )}
@@ -202,6 +216,13 @@ const ReachMoonHighscoreScoreSummary = ({
         <ReachMoonHighscoreFuelIcon />
         <span>
           Fuel left {display.fuelLeft} (+{display.fuelBonusPoints}).
+        </span>
+      </span>
+      <span class="reach-moon-highscore-score-summary-line">
+        <ReachMoonHighscoreOrbitIcon />
+        <span>
+          Orbit quality {display.lunarOrbitQualityAltitude} (
+          {display.lunarOrbitQualityPoints}).
         </span>
       </span>
     </strong>
@@ -282,6 +303,7 @@ const ReachMoonHighscoreHeaderRow = () => (
     <th scope="col">Score</th>
     <th scope="col">Time</th>
     <th scope="col">Fuel left</th>
+    <th scope="col">Orbit</th>
     <th scope="col">Submitted</th>
   </tr>
 )
@@ -301,20 +323,25 @@ const ReachMoonHighscoreSkeletonRow = () => (
 const ReachMoonHighscoreRow = ({
   entry,
   loading,
+  hide,
 }: {
   entry: RankedReachMoonHighscoreRecord
   loading: boolean
+  hide?: boolean
 }) => {
   const elapsed = formatCompactElapsed(entry.score.missionElapsedSeconds)
   const fuelLeft = formatReachMoonFuelLeftPercent(entry.score)
+  const orbitQuality = formatReachMoonOrbitQualityContext(
+    entry.score.lunarOrbitQuality,
+  )
 
   return (
     <tr
-      class={
-        loading
-          ? 'reach-moon-highscore-row reach-moon-highscore-row-loading'
-          : 'reach-moon-highscore-row'
-      }
+      class={clsx(
+        'reach-moon-highscore-row',
+        loading && 'reach-moon-highscore-row-loading',
+        hide && 'reach-moon-highscore-row-spacer',
+      )}
     >
       <td class="reach-moon-highscore-cell-rank">#{entry.rank}</td>
       <td class="reach-moon-highscore-cell-name" title={entry.playerName}>
@@ -335,12 +362,65 @@ const ReachMoonHighscoreRow = ({
       >
         <ReachMoonHighscoreMetric icon="fuel" value={fuelLeft} />
       </td>
+      <td
+        class="reach-moon-highscore-cell-orbit"
+        aria-label={`Orbit quality ${orbitQuality}`}
+      >
+        <ReachMoonHighscoreMetric icon="orbit" value={orbitQuality} />
+      </td>
       <td class="reach-moon-highscore-cell-submitted">
         {formatSubmittedAt(entry.submittedAt)}
       </td>
     </tr>
   )
 }
+
+const reachMoonHighscoreFillerEntry: RankedReachMoonHighscoreRecord = {
+  id: '',
+  rank: 0,
+  playerName: '',
+  score: {
+    totalScore: 0,
+    missionElapsedSeconds: 0,
+    fuelRemainingKg: 0,
+    baseScorePoints: 0,
+    fuelBonusPoints: 0,
+    timePenaltyPoints: 0,
+    lunarOrbitQuality: {
+      orbitApoapsisAltitudeMeters: 0,
+      orbitPeriapsisAltitudeMeters: 0,
+    },
+  },
+  submittedAt: '',
+}
+
+const ReachMoonHighscoreFillerRows = ({ count }: { count: number }) => (
+  <>
+    {Array.from({ length: Math.max(0, count) }).map((_, index) => (
+      <ReachMoonHighscoreRow
+        key={index}
+        loading={false}
+        hide
+        entry={reachMoonHighscoreFillerEntry}
+      />
+    ))}
+  </>
+)
+
+const ReachMoonHighscoreEmptyRow = ({
+  children,
+}: {
+  children: ComponentChildren
+}) => (
+  <tr class="reach-moon-highscore-row reach-moon-highscore-row-empty">
+    <td colSpan={7}>
+      <div class="reach-moon-highscore-state" aria-live="polite">
+        {children}
+      </div>
+    </td>
+    <td class="reach-moon-highscore-cell-score">&nbsp;</td>
+  </tr>
+)
 
 const ReachMoonHighscoreBoard = ({
   activePeriod,
@@ -364,16 +444,18 @@ const ReachMoonHighscoreBoard = ({
   const entries = displayedRollup?.entries ?? []
   const periodLabel = getPeriodLabel(activePeriod)
   const renderLoadErrorState = () => (
-    <div class="reach-moon-highscore-state" aria-live="polite">
-      <strong>Leaderboard unavailable.</strong>
-      <span>{loadError}</span>
-      <button
-        class="reach-moon-highscore-inline-action"
-        type="button"
-        onClick={onRetry}
-      >
-        Retry
-      </button>
+    <div class="reach-moon-highscore-empty-container">
+      <div class="reach-moon-highscore-state" aria-live="polite">
+        <strong>Leaderboard unavailable.</strong>
+        <span>{loadError}</span>
+        <button
+          class="reach-moon-highscore-inline-action"
+          type="button"
+          onClick={onRetry}
+        >
+          Retry
+        </button>
+      </div>
     </div>
   )
 
@@ -405,13 +487,30 @@ const ReachMoonHighscoreBoard = ({
 
   if (entries.length === 0) {
     return (
-      <div class="reach-moon-highscore-state" aria-live="polite">
-        {showGlobalEmptyState
-          ? 'No Reach the Moon runs yet.'
-          : `No ${periodLabel.toLowerCase()} runs yet.`}
-      </div>
+      <table
+        aria-busy="false"
+        aria-label={`${periodLabel} Reach the Moon leaderboard`}
+        class="reach-moon-highscore-board"
+      >
+        <caption class="reach-moon-highscore-refreshing" aria-live="polite" />
+        <thead>
+          <ReachMoonHighscoreHeaderRow />
+        </thead>
+        <tbody>
+          <ReachMoonHighscoreEmptyRow>
+            {showGlobalEmptyState
+              ? 'No Reach the Moon runs yet.'
+              : `No ${periodLabel.toLowerCase()} runs yet.`}
+          </ReachMoonHighscoreEmptyRow>
+          <ReachMoonHighscoreFillerRows
+            count={reachMoonHighscoreVisibleRowCount - 1}
+          />
+        </tbody>
+      </table>
     )
   }
+
+  const emptyFillerRowCount = reachMoonHighscoreVisibleRowCount - entries.length
 
   return (
     <>
@@ -435,6 +534,7 @@ const ReachMoonHighscoreBoard = ({
               loading={loading}
             />
           ))}
+          <ReachMoonHighscoreFillerRows count={emptyFillerRowCount} />
         </tbody>
       </table>
     </>

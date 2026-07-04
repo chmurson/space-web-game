@@ -41,6 +41,12 @@ export type CameraControlUiState = {
   panOffset: Vec2
 }
 
+export type RuntimeTransientNotice = {
+  body?: string
+  id: string
+  title: string
+}
+
 export const createDefaultTouchThrustControlUiState =
   (): TouchThrustControlUiState => ({
     engaged: false,
@@ -75,6 +81,7 @@ export type AppRuntimeUiSlice = {
   targetHeadingWorldPosition?: Vec2 | null
   targetHeadingSelectionEpoch: number
   touchThrustControl: TouchThrustControlUiState
+  transientNotice?: RuntimeTransientNotice | null
   uiEffectEpoch: number
 }
 

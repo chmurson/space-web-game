@@ -144,6 +144,9 @@ export const applyScenarioRuntimeTransition = (
         ? runtime.scenario.session.state
         : transition.nextState,
   }
+  if (transition.transientNotice !== undefined) {
+    runtime.ui.transientNotice = transition.transientNotice
+  }
   return true
 }
 

@@ -194,10 +194,12 @@ canvas {
 }
 
 .main-menu-panel-highscores {
+  display: flex;
+  flex-direction: column;
   width: min(100%, 760px);
-  max-height: min(78vh, 680px);
+  max-height: min(78vh, 692px);
   padding: 18px;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--ui-glass-panel-border);
   border-radius: 16px;
   background: var(--ui-glass-panel-bg);
@@ -215,6 +217,7 @@ canvas {
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 999px;
   background: var(--ui-glass-label-bg);
+  flex-shrink: 0;
 }
 
 .reach-moon-highscore-filters-label {
@@ -366,8 +369,13 @@ canvas {
 
 .reach-moon-highscore-board {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 6px;
+  flex: 1 1 auto;
+  align-content: start;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
   width: 100%;
   border-collapse: collapse;
 }
@@ -376,6 +384,7 @@ canvas {
 .reach-moon-highscore-board tbody {
   display: grid;
   gap: 6px;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -385,12 +394,18 @@ canvas {
 
 .reach-moon-highscore-board tbody {
   order: 2;
+  align-content: start;
+  overflow-y: auto;
 }
 
 .reach-moon-highscore-row {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1.4fr) 78px 70px 86px 116px;
-  gap: 8px;
+  grid-template-columns: 46px minmax(0, 1fr) 74px 74px;
+  grid-template-areas:
+    "rank name name score"
+    "rank submitted fuel elapsed"
+    "rank orbit orbit orbit";
+  gap: 5px 8px;
   align-items: center;
   min-width: 0;
   padding: 9px 10px;
@@ -408,11 +423,19 @@ canvas {
 }
 
 .reach-moon-highscore-row-header {
+  position: absolute;
+  left: -10000px;
+  width: max-content;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
   background: rgba(15, 23, 42, 0.48);
   color: rgba(191, 219, 254, 0.72);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 
@@ -422,7 +445,6 @@ canvas {
   min-width: 0;
   padding: 0;
   border: 0;
-  font: inherit;
   text-align: left;
 }
 
@@ -431,6 +453,27 @@ canvas {
   color: rgba(148, 163, 184, 0.68);
   filter: grayscale(0.85);
   opacity: 0.48;
+}
+
+.reach-moon-highscore-row.reach-moon-highscore-row-empty {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "empty";
+  justify-items: stretch;
+}
+
+.reach-moon-highscore-row-empty td {
+  grid-area: empty;
+}
+
+.reach-moon-highscore-row-empty .reach-moon-highscore-state {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.reach-moon-highscore-row-spacer {
+  visibility: hidden;
 }
 
 .reach-moon-highscore-row-skeleton {
@@ -472,15 +515,20 @@ canvas {
   width: 58px;
 }
 
+.reach-moon-highscore-skeleton-orbit {
+  width: 98px;
+}
+
 .reach-moon-highscore-skeleton-submitted {
   width: 86px;
 }
 
 .reach-moon-highscore-cell-name {
+  grid-area: name;
   min-width: 0;
   overflow: hidden;
   color: #f0f9ff;
-  font-weight: 750;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -488,22 +536,46 @@ canvas {
 .reach-moon-highscore-cell-rank,
 .reach-moon-highscore-cell-score,
 .reach-moon-highscore-cell-elapsed,
-.reach-moon-highscore-cell-fuel {
+.reach-moon-highscore-cell-fuel,
+.reach-moon-highscore-cell-orbit {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .reach-moon-highscore-cell-score {
+  grid-area: score;
   color: #bae6fd;
-  font-weight: 750;
+  font-weight: 600;
+  font-size: 1.2em;
+  text-align: right;
 }
 
 .reach-moon-highscore-cell-submitted {
+  grid-area: submitted;
   min-width: 0;
   overflow: hidden;
   color: rgba(226, 232, 240, 0.7);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.reach-moon-highscore-cell-rank {
+  grid-area: rank;
+}
+
+.reach-moon-highscore-cell-elapsed {
+  grid-area: elapsed;
+  text-align: right;
+}
+
+.reach-moon-highscore-cell-fuel {
+  grid-area: fuel;
+  text-align: right;
+}
+
+.reach-moon-highscore-cell-orbit {
+  grid-area: orbit;
+  text-align: right;
 }
 
 .reach-moon-highscore-refreshing {
@@ -534,6 +606,36 @@ canvas {
 
   .reach-moon-highscore-skeleton {
     animation: none;
+  }
+}
+
+@media (min-width: 721px) {
+  .reach-moon-highscore-row {
+    grid-template-columns:
+      38px minmax(118px, 1fr) 82px 82px 74px minmax(92px, 0.9fr)
+      88px;
+    grid-template-areas: "rank name score elapsed fuel orbit submitted";
+  }
+
+  .reach-moon-highscore-row-header {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 8px 10px;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .reach-moon-highscore-cell-elapsed,
+  .reach-moon-highscore-cell-fuel,
+  .reach-moon-highscore-cell-orbit,
+  .reach-moon-highscore-cell-submitted {
+    text-align: right;
+  }
+
+  .reach-moon-highscore-cell-submitted {
+    font-size: 0.725em;
   }
 }
 
@@ -674,7 +776,9 @@ canvas {
   }
 
   .main-menu-panel-highscores {
-    transform: translateY(4vh);
+    align-self: flex-end;
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+    transform: none;
   }
 }
 
@@ -1274,6 +1378,26 @@ button.app-dialog-setting {
   flex: 0 0 auto;
   overflow: visible;
   transform: translateY(-0.5px);
+}
+
+.telemetry-orbit-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.telemetry-orbit-icon-path {
+  fill: none;
+  stroke: rgba(224, 242, 254, 0.72);
+  stroke-width: 1.1;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(-22deg);
+}
+
+.telemetry-orbit-icon-moon {
+  fill: #f0f9ff;
 }
 
 .telemetry-time-icon-face {
@@ -2217,58 +2341,54 @@ button.app-dialog-setting {
     max-height: calc(100vh + var(--menu-y));
     padding: 12px;
     border-radius: 14px;
+    align-self: stretch;
   }
-
+  .reach-moon-highscore-empty-container {
+    flex: 1 1 0;
+    min-height: 0;
+  }
   .reach-moon-highscore-submit,
   .reach-moon-highscore-state {
     padding: 10px;
   }
+  .reach-moon-highscore-filters {
+    flex-shrink: 0;
+  }
+  .reach-moon-highscore-board {
+    align-items: flex-start;
+    flex: 1 1 0;
+  }
+  .reach-moon-highscore-row-spacer {
+    display: none;
+  }
 
   .reach-moon-highscore-row {
-    grid-template-columns: 38px minmax(0, 1fr) 68px;
-    grid-template-areas:
-      "rank name score"
-      "rank elapsed fuel"
-      "rank submitted submitted";
-    gap: 5px 8px;
+    grid-template-columns: 38px minmax(0, 1fr) 54px 54px;
     padding: 8px 9px;
   }
 
-  .reach-moon-highscore-row-header {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .reach-moon-highscore-cell-rank {
-    grid-area: rank;
-  }
-
-  .reach-moon-highscore-cell-name {
-    grid-area: name;
-  }
-
-  .reach-moon-highscore-cell-score {
-    grid-area: score;
+  .reach-moon-highscore-row .reach-moon-highscore-cell-score {
     text-align: right;
+    display: flex;
+    justify-content: flex-end;
   }
 
-  .reach-moon-highscore-cell-elapsed {
-    grid-area: elapsed;
-  }
-
-  .reach-moon-highscore-cell-fuel {
-    grid-area: fuel;
+  .reach-moon-highscore-row .reach-moon-highscore-cell-fuel {
     text-align: right;
+    display: flex;
+    justify-content: flex-end;
   }
 
-  .reach-moon-highscore-cell-submitted {
-    grid-area: submitted;
+  .reach-moon-highscore-row .reach-moon-highscore-cell-orbit {
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .reach-moon-highscore-row .reach-moon-highscore-cell-elapsed {
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
   }
 
   .top-menu-button {

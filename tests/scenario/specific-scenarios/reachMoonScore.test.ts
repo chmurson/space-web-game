@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  calculateReachMoonOrbitQualityPoints,
   calculateReachMoonScore,
   formatReachMoonScoreSummary,
   formatReachMoonScoreSummaryDisplay,
@@ -67,11 +68,13 @@ describe('reachMoonScore', () => {
     })
 
     expect(formatReachMoonScoreSummary(score)).toBe(
-      'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5).',
+      'Score 171.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit No close lunar orbit (0).',
     )
     expect(formatReachMoonScoreSummaryDisplay(score)).toEqual({
       fuelBonusPoints: '121.5',
       fuelLeft: '50%',
+      lunarOrbitQualityAltitude: 'No close lunar orbit',
+      lunarOrbitQualityPoints: '0',
       missionElapsed: '1d 1h',
       timeScorePoints: '49.7',
       totalScore: '171.2',
@@ -131,6 +134,58 @@ describe('reachMoonScore', () => {
       fuelRemainingKg: 32_000,
       timePenaltyPoints: 50,
       totalScore: 250,
+    })
+  })
+
+  it('scores close safe lunar orbit quality as a separate bonus component', () => {
+    expect(
+      calculateReachMoonOrbitQualityPoints({
+        orbitApoapsisAltitudeMeters: 100_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
+      }),
+    ).toBe(50)
+    expect(
+      calculateReachMoonOrbitQualityPoints({
+        orbitApoapsisAltitudeMeters: 1_050_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
+      }),
+    ).toBe(25)
+    expect(
+      calculateReachMoonOrbitQualityPoints({
+        orbitApoapsisAltitudeMeters: 2_000_000,
+        orbitPeriapsisAltitudeMeters: 25_000,
+      }),
+    ).toBe(0)
+    expect(
+      calculateReachMoonOrbitQualityPoints({
+        orbitApoapsisAltitudeMeters: 100_000,
+        orbitPeriapsisAltitudeMeters: 15_000,
+      }),
+    ).toBe(30)
+    expect(
+      calculateReachMoonOrbitQualityPoints({
+        orbitApoapsisAltitudeMeters: 2_000_000,
+        orbitPeriapsisAltitudeMeters: 0,
+      }),
+    ).toBe(-50)
+  })
+
+  it('adds lunar orbit quality without changing fuel or time curves', () => {
+    expect(
+      calculateReachMoonScore({
+        fuelCapacityKg: 32_000,
+        fuelRemainingRatio: 0.5,
+        lunarOrbitQuality: {
+          orbitApoapsisAltitudeMeters: 100_000,
+          orbitPeriapsisAltitudeMeters: 25_000,
+        },
+        missionElapsedSeconds: 90_000,
+      }),
+    ).toMatchObject({
+      fuelBonusPoints: 121.5,
+      lunarOrbitQualityPoints: 50,
+      timePenaltyPoints: 49.7,
+      totalScore: 221.2,
     })
   })
 })

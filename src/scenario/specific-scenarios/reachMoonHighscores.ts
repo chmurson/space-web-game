@@ -1,5 +1,6 @@
 import {
   calculateReachMoonMissionScore,
+  type ReachMoonOrbitQualityMetric,
   type ReachMoonScoreSummary,
 } from './reachMoonScore'
 
@@ -17,12 +18,14 @@ export type ReachMoonHighscorePeriod =
 
 export type ReachMoonHighscoreSubmitInput = {
   fuelRemainingRatio: number
+  lunarOrbitQuality?: ReachMoonOrbitQualityMetric | null
   missionElapsedSeconds: number
   playerName?: string | null
 }
 
 export type NormalizedReachMoonHighscoreSubmitInput = {
   fuelRemainingRatio: number
+  lunarOrbitQuality: ReachMoonOrbitQualityMetric | null
   missionElapsedSeconds: number
   playerName: string
 }
@@ -76,7 +79,10 @@ export type ReachMoonHighscoreValidationError = {
   field:
     | 'fuelRemainingRatio'
     | 'input'
+    | 'lunarOrbitQuality'
     | 'missionElapsedSeconds'
+    | 'orbitApoapsisAltitudeMeters'
+    | 'orbitPeriapsisAltitudeMeters'
     | 'playerName'
     | 'submittedAt'
   message: string
@@ -193,7 +199,11 @@ const validatePlayerName = (
 }
 
 const validateNumber = (
-  field: 'fuelRemainingRatio' | 'missionElapsedSeconds',
+  field:
+    | 'fuelRemainingRatio'
+    | 'missionElapsedSeconds'
+    | 'orbitApoapsisAltitudeMeters'
+    | 'orbitPeriapsisAltitudeMeters',
   value: unknown,
   options: { max?: number; min: number },
 ): ReachMoonHighscoreValidationResult<number> => {
@@ -217,6 +227,54 @@ const validateNumber = (
   }
 
   return ok(value)
+}
+
+const validateOptionalLunarOrbitQuality = (
+  value: unknown,
+): ReachMoonHighscoreValidationResult<ReachMoonOrbitQualityMetric | null> => {
+  if (value == null) {
+    return ok(null)
+  }
+  if (!isRecord(value)) {
+    return invalid([
+      createError(
+        'lunarOrbitQuality',
+        'invalid_type',
+        'lunarOrbitQuality must be an object.',
+      ),
+    ])
+  }
+
+  const apoapsis = validateNumber(
+    'orbitApoapsisAltitudeMeters',
+    value.orbitApoapsisAltitudeMeters,
+    { min: 0 },
+  )
+  const periapsis = validateNumber(
+    'orbitPeriapsisAltitudeMeters',
+    value.orbitPeriapsisAltitudeMeters,
+    { min: 0 },
+  )
+  if (!apoapsis.ok || !periapsis.ok) {
+    return invalid([
+      ...(!apoapsis.ok ? apoapsis.errors : []),
+      ...(!periapsis.ok ? periapsis.errors : []),
+    ])
+  }
+  if (apoapsis.value < periapsis.value) {
+    return invalid([
+      createError(
+        'orbitApoapsisAltitudeMeters',
+        'out_of_range',
+        'orbitApoapsisAltitudeMeters must be greater than or equal to orbitPeriapsisAltitudeMeters.',
+      ),
+    ])
+  }
+
+  return ok({
+    orbitApoapsisAltitudeMeters: Math.round(apoapsis.value),
+    orbitPeriapsisAltitudeMeters: Math.round(periapsis.value),
+  })
 }
 
 const toDateIso = (value: Date | string): string | null => {
@@ -267,8 +325,16 @@ export const validateReachMoonHighscoreSubmitInput = (
       min: 0,
     },
   )
+  const lunarOrbitQuality = validateOptionalLunarOrbitQuality(
+    input.lunarOrbitQuality,
+  )
 
-  if (!playerName.ok || !fuelRemainingRatio.ok || !missionElapsedSeconds.ok) {
+  if (
+    !playerName.ok ||
+    !fuelRemainingRatio.ok ||
+    !missionElapsedSeconds.ok ||
+    !lunarOrbitQuality.ok
+  ) {
     if (!playerName.ok) {
       errors.push(...playerName.errors)
     }
@@ -278,12 +344,16 @@ export const validateReachMoonHighscoreSubmitInput = (
     if (!missionElapsedSeconds.ok) {
       errors.push(...missionElapsedSeconds.errors)
     }
+    if (!lunarOrbitQuality.ok) {
+      errors.push(...lunarOrbitQuality.errors)
+    }
 
     return invalid(errors)
   }
 
   return ok({
     fuelRemainingRatio: fuelRemainingRatio.value,
+    lunarOrbitQuality: lunarOrbitQuality.value,
     missionElapsedSeconds: Math.round(missionElapsedSeconds.value),
     playerName: playerName.value,
   })
@@ -316,6 +386,7 @@ export const createReachMoonHighscoreRecord = (
     playerName: normalized.value.playerName,
     score: calculateReachMoonMissionScore({
       fuelRemainingRatio: normalized.value.fuelRemainingRatio,
+      lunarOrbitQuality: normalized.value.lunarOrbitQuality,
       missionElapsedSeconds: normalized.value.missionElapsedSeconds,
     }),
     submittedAt,
