@@ -5,6 +5,7 @@
 - Long trajectory predictions now refresh in two runtime-owned tiers.
 - Manual and short-horizon refreshes still produce the full prediction in one pass.
 - Automatic long-horizon refreshes update the near tier first, keep a previously rendered far tier visible while a far refresh is pending, and apply the far tier only when it still matches the current prediction inputs.
+- While that far refresh is pending, the displayed path can briefly join fresh near points to the retained far tail even when they are not spatially continuous. This is an accepted temporary visual tradeoff for keeping the near path responsive and avoiding a disappearing long-horizon tail.
 - If the fresh near tier already predicts impact, the runtime suppresses the retained far tier so stale far points do not draw past the impact.
 
 ## Why
