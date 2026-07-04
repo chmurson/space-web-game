@@ -1,6 +1,7 @@
 import type { FpsMeterGraphModel, FpsMeterStatus } from '../hudText'
 
 export type TelemetryStripRefs = {
+  fuelIconLevel: SVGRectElement | null
   fuelPill: HTMLElement | null
   speedIcon: SVGSVGElement | null
   statFuel: HTMLElement | null
@@ -123,7 +124,17 @@ export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
               d="M5.1 2.2h5.8l1.25 1.7v8.4c0 .85-.55 1.5-1.42 1.5H5.27c-.87 0-1.42-.65-1.42-1.5V3.9Z"
             />
             <path class="telemetry-fuel-icon-cap" d="M5.6 2.2V1.3h4.8v.9" />
-            <path class="telemetry-fuel-icon-level" d="M5.65 10.65h4.7" />
+            <rect
+              class="telemetry-fuel-icon-level telemetry-fuel-icon-live-level"
+              x="5.65"
+              y="3.95"
+              width="4.7"
+              height="8.6"
+              rx="0.35"
+              ref={(element) => {
+                refs.fuelIconLevel = element
+              }}
+            />
           </svg>
           <strong
             data-stat="fuel"

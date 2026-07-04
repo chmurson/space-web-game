@@ -28,6 +28,7 @@ export type OverlayUiRefs = {
   debugPanel: DebugPanel
   fpsIndicator: HTMLElement
   fuelDepletedNotice: HTMLElement
+  fuelIconLevel: SVGRectElement | null
   fuelPill: HTMLElement | null
   headingTargetDot: HTMLElement
   headingTargetLine: SVGLineElement
@@ -86,6 +87,7 @@ export type OverlayUiOptions = {
 }
 
 const createEmptyTelemetryRefs = (): TelemetryStripRefs => ({
+  fuelIconLevel: null,
   fuelPill: null,
   speedIcon: null,
   statFuel: null,
@@ -250,6 +252,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     debugPanel,
     fpsIndicator: hudTelemetry.fpsIndicator,
     fuelDepletedNotice: bottomHudNotices.fuelDepletedNotice,
+    fuelIconLevel: hudTelemetry.telemetryRefs.fuelIconLevel,
     fuelPill: hudTelemetry.telemetryRefs.fuelPill,
     headingTargetDot,
     headingTargetLine,

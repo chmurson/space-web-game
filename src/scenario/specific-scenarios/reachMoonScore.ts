@@ -133,13 +133,15 @@ export const formatReachMoonOrbitQualityContext = (
 export const formatReachMoonFuelLeftPercent = (
   score: Pick<ReachMoonScoreSummary, 'fuelRemainingKg'>,
 ): string => {
-  const fuelRemainingRatio = Math.min(
-    1,
-    clampFinite(score.fuelRemainingKg) / REACH_MOON_FUEL_CAPACITY_KG,
-  )
+  const fuelRemainingRatio = getReachMoonFuelRemainingRatio(score)
 
   return `${formatInteger(fuelRemainingRatio * 100)}%`
 }
+
+export const getReachMoonFuelRemainingRatio = (
+  score: Pick<ReachMoonScoreSummary, 'fuelRemainingKg'>,
+): number =>
+  Math.min(1, clampFinite(score.fuelRemainingKg) / REACH_MOON_FUEL_CAPACITY_KG)
 
 const formatElapsed = (seconds: number) => {
   const roundedSeconds = Math.max(0, Math.round(seconds))

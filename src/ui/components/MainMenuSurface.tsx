@@ -14,6 +14,7 @@ import {
   formatReachMoonFuelLeftPercent,
   formatReachMoonOrbitQualityContext,
   formatReachMoonScoreSummaryDisplay,
+  getReachMoonFuelRemainingRatio,
   type ReachMoonScoreSummary,
 } from '../../scenario/specific-scenarios/reachMoonScore'
 import type { ReachMoonRunReceipt } from '../../server/reachMoonRunReceipts'
@@ -159,16 +160,43 @@ const ReachMoonHighscoreTimeIcon = () => (
   </svg>
 )
 
-const ReachMoonHighscoreFuelIcon = () => (
-  <svg class="telemetry-fuel-icon" viewBox="0 0 16 16" aria-hidden="true">
-    <path
-      class="telemetry-fuel-icon-tank"
-      d="M5.1 2.2h5.8l1.25 1.7v8.4c0 .85-.55 1.5-1.42 1.5H5.27c-.87 0-1.42-.65-1.42-1.5V3.9Z"
-    />
-    <path class="telemetry-fuel-icon-cap" d="M5.6 2.2V1.3h4.8v.9" />
-    <path class="telemetry-fuel-icon-level" d="M5.65 10.65h4.7" />
-  </svg>
-)
+const getReachMoonHighscoreFuelIconLevel = (
+  score: Pick<ReachMoonScoreSummary, 'fuelRemainingKg'>,
+) => {
+  const maxHeight = 8.6
+  const levelHeight = maxHeight * getReachMoonFuelRemainingRatio(score)
+
+  return {
+    height: levelHeight.toFixed(2),
+    y: (3.95 + maxHeight - levelHeight).toFixed(2),
+  }
+}
+
+const ReachMoonHighscoreFuelIcon = ({
+  score,
+}: {
+  score: Pick<ReachMoonScoreSummary, 'fuelRemainingKg'>
+}) => {
+  const level = getReachMoonHighscoreFuelIconLevel(score)
+
+  return (
+    <svg class="telemetry-fuel-icon" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        class="telemetry-fuel-icon-tank"
+        d="M5.1 2.2h5.8l1.25 1.7v8.4c0 .85-.55 1.5-1.42 1.5H5.27c-.87 0-1.42-.65-1.42-1.5V3.9Z"
+      />
+      <path class="telemetry-fuel-icon-cap" d="M5.6 2.2V1.3h4.8v.9" />
+      <rect
+        class="telemetry-fuel-icon-level telemetry-fuel-icon-live-level"
+        x="5.65"
+        y={level.y}
+        width="4.7"
+        height={level.height}
+        rx="0.35"
+      />
+    </svg>
+  )
+}
 
 const ReachMoonHighscoreOrbitIcon = () => (
   <svg class="telemetry-orbit-icon" viewBox="0 0 16 16" aria-hidden="true">
@@ -177,24 +205,34 @@ const ReachMoonHighscoreOrbitIcon = () => (
   </svg>
 )
 
-const ReachMoonHighscoreMetric = ({
-  icon,
-  value,
-}: {
-  icon: 'fuel' | 'orbit' | 'time'
-  value: string
-}) => (
-  <span class="reach-moon-highscore-metric">
-    {icon === 'time' ? (
-      <ReachMoonHighscoreTimeIcon />
-    ) : icon === 'orbit' ? (
+const ReachMoonHighscoreMetric = (
+  props:
+    | {
+        icon: 'fuel'
+        score: Pick<ReachMoonScoreSummary, 'fuelRemainingKg'>
+        value: string
+      }
+    | {
+        icon: 'orbit' | 'time'
+        value: string
+      },
+) => {
+  const icon =
+    props.icon === 'fuel' ? (
+      <ReachMoonHighscoreFuelIcon score={props.score} />
+    ) : props.icon === 'orbit' ? (
       <ReachMoonHighscoreOrbitIcon />
     ) : (
-      <ReachMoonHighscoreFuelIcon />
-    )}
-    <span aria-hidden="true">{value}</span>
-  </span>
-)
+      <ReachMoonHighscoreTimeIcon />
+    )
+
+  return (
+    <span class="reach-moon-highscore-metric">
+      {icon}
+      <span aria-hidden="true">{props.value}</span>
+    </span>
+  )
+}
 
 const ReachMoonHighscoreScoreSummary = ({
   score,
@@ -213,7 +251,7 @@ const ReachMoonHighscoreScoreSummary = ({
         </span>
       </span>
       <span class="reach-moon-highscore-score-summary-line">
-        <ReachMoonHighscoreFuelIcon />
+        <ReachMoonHighscoreFuelIcon score={score} />
         <span>
           Fuel left {display.fuelLeft} (+{display.fuelBonusPoints}).
         </span>
@@ -360,7 +398,11 @@ const ReachMoonHighscoreRow = ({
         class="reach-moon-highscore-cell-fuel"
         aria-label={`Fuel left ${fuelLeft}`}
       >
-        <ReachMoonHighscoreMetric icon="fuel" value={fuelLeft} />
+        <ReachMoonHighscoreMetric
+          icon="fuel"
+          score={entry.score}
+          value={fuelLeft}
+        />
       </td>
       <td
         class="reach-moon-highscore-cell-orbit"

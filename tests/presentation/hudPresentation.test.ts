@@ -394,6 +394,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     },
     fpsIndicator: fpsIndicator as unknown as HTMLElement,
     fuelDepletedNotice: new FakeElement('div') as unknown as HTMLElement,
+    fuelIconLevel: null,
     fuelPill: null,
     headingTargetDot: new FakeElement('div') as unknown as HTMLElement,
     headingTargetLine: new FakeElement('line') as unknown as SVGLineElement,
@@ -654,6 +655,79 @@ describe('createHudPresentation', () => {
     expect(overlayUi.targetPill.getAttribute('aria-label')).toBe(
       overlayUi.targetPill.title,
     )
+  })
+
+  it('syncs the live fuel icon fill in five percent steps', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    overlayUi.fuelIconLevel = new FakeElement('rect') as unknown as SVGRectElement
+    overlayUi.fuelPill = new FakeElement('div') as unknown as HTMLElement
+    overlayUi.statFuel = new FakeElement('strong') as unknown as HTMLElement
+    const runtime = createRuntime()
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler: {
+        getSmoothedGpuMs: vi.fn(() => 8),
+      } as unknown as RendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+    const fuelIconLevel = overlayUi.fuelIconLevel as unknown as FakeElement
+    const readFuelIconLevel = () => {
+      const y = Number(fuelIconLevel.getAttribute('y'))
+      const height = Number(fuelIconLevel.getAttribute('height'))
+
+      return { bottom: y + height, height, y }
+    }
+    const expectFuelIconLevel = (
+      fullLevel: ReturnType<typeof readFuelIconLevel>,
+      fillRatio: number,
+    ) => {
+      const height = fullLevel.height * fillRatio
+
+      expect(readFuelIconLevel().height).toBeCloseTo(height, 2)
+      expect(readFuelIconLevel().y).toBeCloseTo(fullLevel.bottom - height, 2)
+    }
+
+    runtime.simulation.state.spacecraft.fuel = 1
+    presentation.update(createMetrics())
+    const fullFuelIconLevel = readFuelIconLevel()
+
+    runtime.simulation.state.spacecraft.fuel = 0.52
+    presentation.update(createMetrics())
+
+    expect(overlayUi.statFuel.textContent).toBe('52%')
+    expectFuelIconLevel(fullFuelIconLevel, 0.5)
+    expect(overlayUi.fuelPill.dataset.fuelState).toBe('available')
+
+    runtime.simulation.state.spacecraft.fuel = 0.13
+    presentation.update(createMetrics())
+
+    expect(overlayUi.statFuel.textContent).toBe('13%')
+    expectFuelIconLevel(fullFuelIconLevel, 0.15)
+    expect(overlayUi.fuelPill.dataset.fuelState).toBe('low')
+
+    runtime.simulation.state.spacecraft.fuel = 0
+    presentation.update(createMetrics())
+
+    expect(overlayUi.statFuel.textContent).toBe('0%')
+    expectFuelIconLevel(fullFuelIconLevel, 0)
+    expect(overlayUi.fuelPill.dataset.fuelState).toBe('depleted')
   })
 
   it('renders viewport and trail detail in the debug window', async () => {

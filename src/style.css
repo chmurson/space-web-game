@@ -1464,6 +1464,11 @@ button.app-dialog-setting {
   stroke-width: 1.35;
 }
 
+.telemetry-fuel-icon-live-level {
+  fill: rgba(103, 232, 249, 0.78);
+  stroke: none;
+}
+
 .telemetry-speed-icon-window {
   fill: rgba(8, 13, 24, 0.72);
 }
@@ -1547,6 +1552,11 @@ button.app-dialog-setting {
   stroke: rgba(250, 204, 21, 0.9);
 }
 
+.telemetry-pill-fuel[data-fuel-state="low"] .telemetry-fuel-icon-live-level {
+  fill: rgba(250, 204, 21, 0.8);
+  stroke: none;
+}
+
 .telemetry-pill-fuel[data-fuel-state="depleted"] {
   background: rgba(63, 18, 33, 0.64);
   box-shadow:
@@ -1562,6 +1572,12 @@ button.app-dialog-setting {
 
 .telemetry-pill-fuel[data-fuel-state="depleted"] .telemetry-fuel-icon-level {
   stroke: rgba(251, 113, 133, 0.94);
+}
+
+.telemetry-pill-fuel[data-fuel-state="depleted"]
+  .telemetry-fuel-icon-live-level {
+  fill: rgba(251, 113, 133, 0.82);
+  stroke: none;
 }
 
 .telemetry-pill-target {

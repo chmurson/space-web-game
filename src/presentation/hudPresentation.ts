@@ -51,6 +51,23 @@ const getFuelPercent = (fuel: number) => {
 const getFuelState = (fuel: number, fuelPercent: number) =>
   fuel <= 0 ? 'depleted' : fuelPercent <= 15 ? 'low' : 'available'
 
+const fuelIconFillTop = 3.95
+const fuelIconFillBottom = 12.55
+const fuelIconFillHeight = fuelIconFillBottom - fuelIconFillTop
+
+const getFuelIconFillPercent = (fuel: number) => {
+  const clampedFuel = Math.max(0, Math.min(1, fuel))
+  return clampedFuel <= 0
+    ? 0
+    : Math.max(5, Math.min(100, Math.round(clampedFuel * 20) * 5))
+}
+
+const syncFuelIconLevel = (element: SVGRectElement, fillPercent: number) => {
+  const height = fuelIconFillHeight * (fillPercent / 100)
+  element.setAttribute('y', (fuelIconFillBottom - height).toFixed(2))
+  element.setAttribute('height', height.toFixed(2))
+}
+
 const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
   element.className = 'target-body-sphere'
   element.style.setProperty('--target-body-color', body.color)
@@ -413,6 +430,7 @@ export const createHudPresentation = (options: {
       const spacecraft = options.runtime.simulation.state.spacecraft
       const finiteFuel = spacecraft.fuelCapacity > 0
       const fuelPercent = getFuelPercent(spacecraft.fuel)
+      const fuelIconFillPercent = getFuelIconFillPercent(spacecraft.fuel)
 
       syncTrajectoryCoachAnchor()
 
@@ -447,6 +465,9 @@ export const createHudPresentation = (options: {
           `Fuel remaining ${fuelPercent}%`,
         )
         options.overlayUi.fuelPill.title = `Fuel remaining ${fuelPercent}%`
+      }
+      if (options.overlayUi.fuelIconLevel) {
+        syncFuelIconLevel(options.overlayUi.fuelIconLevel, fuelIconFillPercent)
       }
       syncFuelDepletedNotice(finiteFuel && spacecraft.fuel <= 0 && !crashed)
       syncTransientNotice()
