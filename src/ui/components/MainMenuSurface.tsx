@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import type { ComponentChildren } from 'preact'
 import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import {
   type RankedReachMoonHighscoreRecord,
@@ -46,6 +47,7 @@ const reachMoonHighscorePeriodOptions: Array<{
 ]
 
 const reachMoonHighscoreSkeletonRows = [0, 1, 2]
+const reachMoonHighscoreVisibleRowCount = 10
 
 const reachMoonHighscoreSkeletonCells = [
   { className: 'reach-moon-highscore-cell-rank', key: 'rank' },
@@ -373,6 +375,52 @@ const ReachMoonHighscoreRow = ({
   )
 }
 
+const reachMoonHighscoreFillerEntry: RankedReachMoonHighscoreRecord = {
+  id: '',
+  rank: 0,
+  playerName: '',
+  score: {
+    totalScore: 0,
+    missionElapsedSeconds: 0,
+    fuelRemainingKg: 0,
+    baseScorePoints: 0,
+    fuelBonusPoints: 0,
+    timePenaltyPoints: 0,
+    lunarOrbitQuality: {
+      orbitApoapsisAltitudeMeters: 0,
+      orbitPeriapsisAltitudeMeters: 0,
+    },
+  },
+  submittedAt: '',
+}
+
+const ReachMoonHighscoreFillerRows = ({ count }: { count: number }) => (
+  <>
+    {Array.from({ length: Math.max(0, count) }).map((_, index) => (
+      <ReachMoonHighscoreRow
+        key={index}
+        loading={false}
+        hide
+        entry={reachMoonHighscoreFillerEntry}
+      />
+    ))}
+  </>
+)
+
+const ReachMoonHighscoreEmptyRow = ({
+  children,
+}: {
+  children: ComponentChildren
+}) => (
+  <tr class="reach-moon-highscore-row reach-moon-highscore-row-empty">
+    <td colSpan={7}>
+      <div class="reach-moon-highscore-state" aria-live="polite">
+        {children}
+      </div>
+    </td>
+  </tr>
+)
+
 const ReachMoonHighscoreBoard = ({
   activePeriod,
   loadError,
@@ -395,16 +443,18 @@ const ReachMoonHighscoreBoard = ({
   const entries = displayedRollup?.entries ?? []
   const periodLabel = getPeriodLabel(activePeriod)
   const renderLoadErrorState = () => (
-    <div class="reach-moon-highscore-state" aria-live="polite">
-      <strong>Leaderboard unavailable.</strong>
-      <span>{loadError}</span>
-      <button
-        class="reach-moon-highscore-inline-action"
-        type="button"
-        onClick={onRetry}
-      >
-        Retry
-      </button>
+    <div class="reach-moon-highscore-empty-container">
+      <div class="reach-moon-highscore-state" aria-live="polite">
+        <strong>Leaderboard unavailable.</strong>
+        <span>{loadError}</span>
+        <button
+          class="reach-moon-highscore-inline-action"
+          type="button"
+          onClick={onRetry}
+        >
+          Retry
+        </button>
+      </div>
     </div>
   )
 
@@ -436,15 +486,30 @@ const ReachMoonHighscoreBoard = ({
 
   if (entries.length === 0) {
     return (
-      <div class="reach-moon-highscore-state" aria-live="polite">
-        {showGlobalEmptyState
-          ? 'No Reach the Moon runs yet.'
-          : `No ${periodLabel.toLowerCase()} runs yet.`}
-      </div>
+      <table
+        aria-busy="false"
+        aria-label={`${periodLabel} Reach the Moon leaderboard`}
+        class="reach-moon-highscore-board"
+      >
+        <caption class="reach-moon-highscore-refreshing" aria-live="polite" />
+        <thead>
+          <ReachMoonHighscoreHeaderRow />
+        </thead>
+        <tbody>
+          <ReachMoonHighscoreEmptyRow>
+            {showGlobalEmptyState
+              ? 'No Reach the Moon runs yet.'
+              : `No ${periodLabel.toLowerCase()} runs yet.`}
+          </ReachMoonHighscoreEmptyRow>
+          <ReachMoonHighscoreFillerRows
+            count={reachMoonHighscoreVisibleRowCount - 1}
+          />
+        </tbody>
+      </table>
     )
   }
 
-  const emptyFillerRows = Array.from({ length: 10 - entries.length })
+  const emptyFillerRowCount = reachMoonHighscoreVisibleRowCount - entries.length
 
   return (
     <>
@@ -468,31 +533,7 @@ const ReachMoonHighscoreBoard = ({
               loading={loading}
             />
           ))}
-          {emptyFillerRows.map((_, index) => (
-            <ReachMoonHighscoreRow
-              key={index}
-              loading={false}
-              hide
-              entry={{
-                id: '',
-                rank: 0,
-                playerName: '',
-                score: {
-                  totalScore: 0,
-                  missionElapsedSeconds: 0,
-                  fuelRemainingKg: 0,
-                  baseScorePoints: 0,
-                  fuelBonusPoints: 0,
-                  timePenaltyPoints: 0,
-                  lunarOrbitQuality: {
-                    orbitApoapsisAltitudeMeters: 0,
-                    orbitPeriapsisAltitudeMeters: 0,
-                  },
-                },
-                submittedAt: '',
-              }}
-            />
-          ))}
+          <ReachMoonHighscoreFillerRows count={emptyFillerRowCount} />
         </tbody>
       </table>
     </>

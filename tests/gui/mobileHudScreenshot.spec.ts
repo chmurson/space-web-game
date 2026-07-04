@@ -277,6 +277,14 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
 
   await page.getByRole('button', { name: 'Weekly' }).click()
   await expect(page.getByText('No weekly runs yet.')).toBeVisible()
+  const emptyWeeklyTable = page.getByRole('table', {
+    name: 'Weekly Reach the Moon leaderboard',
+  })
+  await expect(emptyWeeklyTable).toBeVisible()
+  await expect(emptyWeeklyTable.getByRole('row')).toHaveCount(2)
+  await expect(
+    emptyWeeklyTable.locator('.reach-moon-highscore-row-hidden'),
+  ).toHaveCount(9)
 })
 
 test('falls back to weekly highscores from the all-section response', async ({
