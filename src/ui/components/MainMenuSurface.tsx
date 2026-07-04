@@ -340,7 +340,7 @@ const ReachMoonHighscoreRow = ({
       class={clsx(
         'reach-moon-highscore-row',
         loading && 'reach-moon-highscore-row-loading',
-        hide && 'reach-moon-highscore-row-hidden',
+        hide && 'reach-moon-highscore-row-spacer',
       )}
     >
       <td class="reach-moon-highscore-cell-rank">#{entry.rank}</td>

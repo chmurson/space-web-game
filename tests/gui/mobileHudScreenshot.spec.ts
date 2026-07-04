@@ -283,7 +283,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(emptyWeeklyTable).toBeVisible()
   await expect(emptyWeeklyTable.getByRole('row')).toHaveCount(2)
   await expect(
-    emptyWeeklyTable.locator('.reach-moon-highscore-row-hidden'),
+    emptyWeeklyTable.locator('.reach-moon-highscore-row-spacer'),
   ).toHaveCount(9)
 })
 

@@ -472,7 +472,7 @@ canvas {
   box-shadow: none;
 }
 
-.reach-moon-highscore-row-hidden {
+.reach-moon-highscore-row-spacer {
   visibility: hidden;
 }
 
@@ -2358,7 +2358,7 @@ button.app-dialog-setting {
     align-items: flex-start;
     flex: 1 1 0;
   }
-  .reach-moon-highscore-row-hidden {
+  .reach-moon-highscore-row-spacer {
     display: none;
   }
 
