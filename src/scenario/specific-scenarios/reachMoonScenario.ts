@@ -295,29 +295,30 @@ const createLunarOrbitQualityNotice = (
   const nearCircular =
     breakdown.circularityBonusPoints >=
     MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS * 0.8
-  const title = !safe
-    ? 'Risky lunar orbit'
-    : closeOrbit && nearCircular
-      ? 'Excellent lunar orbit'
-      : nearCircular
-        ? 'Circular lunar orbit'
-        : closeOrbit
-          ? 'Close lunar orbit'
-          : points > 0
-            ? 'Lunar orbit'
-            : null
+  let title: string | null = null
+  if (!safe) {
+    title = 'Risky lunar orbit'
+  } else if (closeOrbit && nearCircular) {
+    title = 'Excellent lunar orbit'
+  } else if (nearCircular) {
+    title = 'Circular lunar orbit'
+  } else if (closeOrbit) {
+    title = 'Close lunar orbit'
+  } else if (points > 0) {
+    title = 'Lunar orbit'
+  }
+
   if (!title) {
     return null
   }
 
   const altitudeDetail = `Ap ${formatReachMoonOrbitAltitude(best.orbitApoapsisAltitudeMeters).replace(/ km$/, '')} / Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)}`
-  const orbitShapeDetail = nearCircular
-    ? closeOrbit
-      ? 'circular'
-      : 'high'
-    : closeOrbit
-      ? 'elongated'
-      : 'improved'
+  let orbitShapeDetail = 'improved'
+  if (nearCircular) {
+    orbitShapeDetail = closeOrbit ? 'circular' : 'high'
+  } else if (closeOrbit) {
+    orbitShapeDetail = 'elongated'
+  }
 
   return {
     body: !safe
