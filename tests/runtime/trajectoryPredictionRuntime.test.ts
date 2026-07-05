@@ -551,6 +551,86 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
+  it('extends the near horizon when recent movement exceeds the near-span budget', () => {
+    const {
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig({
+      ...createLongHorizonPredictionConfig(),
+      horizonSeconds: 18_000,
+    })
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 100, y: 0 },
+      },
+    })
+
+    predictionRuntime.refresh(getOptions())
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearCalculationTravel: {
+        horizonDistanceMeters: 60_000,
+        lastStepHorizonRatio: 0,
+      },
+      nearPointCount: 2,
+    })
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 5_010, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      farVisible: 'retained-stale',
+      nearCalculationTravel: {
+        distanceSinceCalculationMeters: 0,
+        horizonDistanceMeters: 500_000,
+        horizonRatio: 0,
+        lastCalculationGapMeters: 5_000,
+        lastStepDistanceMeters: 5_000,
+        lastStepHorizonRatio: 0.01,
+      },
+      nearPointCount: 17,
+      refreshReason: 'spacecraft-change',
+      splitHorizon: true,
+    })
+    expect(
+      predictionRuntime.getDiagnostics().nearCalculationTravel
+        .lastCalculationGapRatio,
+    ).toBeCloseTo(5_000 / 60_000)
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 10_010, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearCalculationTravel: {
+        horizonDistanceMeters: 500_000,
+        lastCalculationGapMeters: 5_000,
+        lastCalculationGapRatio: 0.01,
+        lastStepDistanceMeters: 5_000,
+        lastStepHorizonRatio: 0.01,
+      },
+      nearPointCount: 17,
+      refreshReason: 'spacecraft-change',
+    })
+  })
+
   it('keeps active far work and replaces only the waiting pending request', () => {
     const {
       getOptions,

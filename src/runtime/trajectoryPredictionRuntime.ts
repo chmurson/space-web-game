@@ -217,7 +217,7 @@ const emptyTrajectoryPredictionState = (): TrajectoryPredictionState => ({
   targetRelativePredictionPoints: [],
 })
 
-const emptyTrajectoryPredictionDiagnostics =
+export const emptyTrajectoryPredictionDiagnostics =
   (): TrajectoryPredictionDiagnostics => ({
     absolutePointCount: 0,
     activeFar: false,
@@ -274,7 +274,8 @@ const emptyTrajectoryPredictionDiagnostics =
 const recentRefreshWindowMs = 1_000
 const calculationSampleWindowMs = 30_000
 const diagnosticEventLimit = 100
-const nearPredictionHorizonSeconds = 10 * 60
+const baseNearPredictionHorizonSeconds = 10 * 60
+const nearPredictionMovementBudgetRatio = 0.01
 const nowMs = () => performance.now()
 
 const recordCalculationTiming = (
@@ -473,7 +474,7 @@ const createPredictionConfigWithHorizon = (
 
 const shouldSplitPredictionHorizon = (
   predictionConfig: TrajectoryPredictionConfig,
-) => predictionConfig.horizonSeconds > nearPredictionHorizonSeconds
+) => predictionConfig.horizonSeconds > baseNearPredictionHorizonSeconds
 
 const mergePredictionPoints = (nearPoints: Vec2[], farPoints: Vec2[]) => [
   ...nearPoints,
@@ -550,6 +551,7 @@ export const createTrajectoryPredictionRuntime = () => {
     totalMs: 0,
   }
   let nearPredictionDistanceMeters: number | null = null
+  let currentNearPredictionHorizonSeconds = baseNearPredictionHorizonSeconds
   let lastNearCalculationGapMeters: number | null = null
   let lastNearCalculationGapRatio: number | null = null
   let lastSpacecraftStepMeters: number | null = null
@@ -594,6 +596,29 @@ export const createTrajectoryPredictionRuntime = () => {
           ? lastSpacecraftStepMeters / nearPredictionDistanceMeters
           : null,
     })
+
+  const getNearPredictionHorizonSeconds = (
+    predictionConfig: TrajectoryPredictionConfig,
+  ) => {
+    if (
+      lastSpacecraftStepMeters === null ||
+      lastSpacecraftStepMeters <= 0 ||
+      nearPredictionDistanceMeters === null ||
+      nearPredictionDistanceMeters <= 0
+    ) {
+      return baseNearPredictionHorizonSeconds
+    }
+
+    return Math.min(
+      predictionConfig.horizonSeconds,
+      Math.max(
+        baseNearPredictionHorizonSeconds,
+        currentNearPredictionHorizonSeconds *
+          (lastSpacecraftStepMeters /
+            (nearPredictionDistanceMeters * nearPredictionMovementBudgetRatio)),
+      ),
+    )
+  }
 
   const getRefreshCountLastSecond = (currentTimeMs: number) => {
     const recentCutoffMs = currentTimeMs - recentRefreshWindowMs
@@ -730,6 +755,7 @@ export const createTrajectoryPredictionRuntime = () => {
     inputKey: string
     integrationStepSeconds: number
     nearCalculationMs: number | null
+    nearHorizonSeconds: number
     nearTier: TrajectoryPredictionTier
     predictionConfig: TrajectoryPredictionConfig
     reason: TrajectoryPredictionRefreshReason
@@ -788,6 +814,7 @@ export const createTrajectoryPredictionRuntime = () => {
       calculationRecordedAtMs,
     )
     if (options.nearCalculationMs !== null) {
+      currentNearPredictionHorizonSeconds = options.nearHorizonSeconds
       lastNearCalculationGapMeters =
         nearPredictionDistanceMeters === null
           ? null
@@ -932,7 +959,7 @@ export const createTrajectoryPredictionRuntime = () => {
     farPredictionRefreshElapsed = 0
     const liveNearPredictionConfig = createPredictionConfigWithHorizon(
       options.predictionConfig,
-      nearPredictionHorizonSeconds,
+      getNearPredictionHorizonSeconds(options.predictionConfig),
     )
     let nearCalculationMs: number | null = null
     let currentNearTier = nearPredictionTier
@@ -963,6 +990,7 @@ export const createTrajectoryPredictionRuntime = () => {
         options.predictionConfig,
       ),
       nearCalculationMs,
+      nearHorizonSeconds: liveNearPredictionConfig.horizonSeconds,
       nearTier: currentNearTier,
       predictionConfig: options.predictionConfig,
       reason: 'timed-refresh',
@@ -993,7 +1021,7 @@ export const createTrajectoryPredictionRuntime = () => {
     const nearPredictionConfig = splitPredictionHorizon
       ? createPredictionConfigWithHorizon(
           predictionConfig,
-          nearPredictionHorizonSeconds,
+          getNearPredictionHorizonSeconds(predictionConfig),
         )
       : predictionConfig
     const previousInputKeyParts = predictionInputKeyParts
@@ -1040,6 +1068,7 @@ export const createTrajectoryPredictionRuntime = () => {
       inputKey,
       integrationStepSeconds,
       nearCalculationMs: nearPrediction.calculationMs,
+      nearHorizonSeconds: nearPredictionConfig.horizonSeconds,
       nearTier,
       predictionConfig,
       reason,

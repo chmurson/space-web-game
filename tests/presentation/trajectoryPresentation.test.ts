@@ -1,3 +1,4 @@
+import * as THREE from 'three'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { TrajectoryPredictionEventMarker } from '@/prediction/trajectoryPrediction'
@@ -11,6 +12,7 @@ import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import { createGameScene } from '@/scene/createGameScene'
 import { idleControls } from '@/simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '@/simulation/types'
+import type { Vec2 } from '@/simulation/vector'
 import type { OrbitPointDisplaySettings } from '@/userSettingsStorage'
 
 const globals = globalThis as unknown as {
@@ -163,6 +165,13 @@ const createPredictionRuntime = (
   getTargetId: () => string,
   eventMarkers: TrajectoryPredictionEventMarker[],
   predictedImpact: { bodyName: string; time: number } | null = null,
+  nearPointCount = 0,
+  farVisible: 'current' | 'none' | 'retained-stale' = 'none',
+  predictionPoints = [
+    { x: 10, y: 0 },
+    { x: 12, y: 0 },
+    { x: 20, y: 0 },
+  ],
 ): TrajectoryPredictionRuntime =>
   ({
     getDiagnostics: () => ({
@@ -187,7 +196,7 @@ const createPredictionRuntime = (
       },
       farInputKeyShort: null,
       farPointCount: 0,
-      farVisible: 'none',
+      farVisible,
       geometryUpdateMs: 0,
       hasFarTier: false,
       horizonSeconds: 0,
@@ -219,7 +228,7 @@ const createPredictionRuntime = (
         countLastTenSeconds: 0,
         countLastThirtySeconds: 0,
       },
-      nearPointCount: 0,
+      nearPointCount,
       pendingFar: false,
       pendingFarInputKeyShort: null,
       predictionRefreshMs: 0,
@@ -240,11 +249,7 @@ const createPredictionRuntime = (
       targetRelativeAssistedPoints: [],
       targetRelativeEventMarkers: eventMarkers,
       targetRelativePredictionEnd: { x: 20, y: 0 },
-      targetRelativePredictionPoints: [
-        { x: 10, y: 0 },
-        { x: 12, y: 0 },
-        { x: 20, y: 0 },
-      ],
+      targetRelativePredictionPoints: predictionPoints,
     }),
     maybeRefresh: () => false,
     recordGeometryUpdate: () => {},
@@ -252,14 +257,19 @@ const createPredictionRuntime = (
   }) as TrajectoryPredictionRuntime
 
 const createTestPresentation = (options: {
+  debugModeEnabled?: boolean
   orbitPointDisplaySettings?: OrbitPointDisplaySettings
   eventMarkers: TrajectoryPredictionEventMarker[]
+  farVisible?: 'current' | 'none' | 'retained-stale'
+  nearPointCount?: number
   predictedImpact?: { bodyName: string; time: number } | null
+  predictionPoints?: Vec2[]
   viewportSize: number
 }) => {
   setWindowSize(800, 600)
   const target = createTarget()
   const runtime = createRuntime(target, options.viewportSize)
+  runtime.debug.debugModeEnabled = options.debugModeEnabled ?? false
   const trajectoryEventMarkerLabels = createTrajectoryEventMarkerLabels()
   const gameScene = createGameScene([target], {
     dashPixels: 12,
@@ -292,6 +302,9 @@ const createTestPresentation = (options: {
         () => target.id,
         options.eventMarkers,
         options.predictedImpact,
+        options.nearPointCount,
+        options.farVisible,
+        options.predictionPoints,
       ),
     }),
     runtime,
@@ -452,6 +465,162 @@ describe('createTrajectoryPresentation', () => {
     expect(zoomedIn.gameScene.predictionEndMarker.visible).toBe(true)
     expect(viewportTwentyDiameter).toBeCloseTo(11)
     expect(zoomedInDiameter).toBeCloseTo(viewportTwentyDiameter)
+  })
+
+  it('colors near and far trajectory tiers in debug mode', () => {
+    const test = createTestPresentation({
+      debugModeEnabled: true,
+      eventMarkers: [],
+      farVisible: 'current',
+      nearPointCount: 2,
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    const colorStart =
+      test.gameScene.predictionGeometry.getAttribute('instanceColorStart')
+    const colorEnd =
+      test.gameScene.predictionGeometry.getAttribute('instanceColorEnd')
+    const nearColor = new THREE.Color(0x38bdf8)
+    const farColor = new THREE.Color(0xf59e0b)
+
+    expect(test.gameScene.predictionMaterial.color.getHex()).toBe(0xffffff)
+    expect(colorStart.getX(0)).toBeCloseTo(nearColor.r)
+    expect(colorStart.getY(0)).toBeCloseTo(nearColor.g)
+    expect(colorStart.getZ(0)).toBeCloseTo(nearColor.b)
+    expect(colorStart.getX(1)).toBeCloseTo(nearColor.r)
+    expect(colorEnd.getX(1)).toBeCloseTo(farColor.r)
+    expect(colorEnd.getY(1)).toBeCloseTo(farColor.g)
+    expect(colorEnd.getZ(1)).toBeCloseTo(farColor.b)
+  })
+
+  it('bridges a plausible retained stale far gap from the stale line', () => {
+    const test = createTestPresentation({
+      debugModeEnabled: true,
+      eventMarkers: [],
+      farVisible: 'retained-stale',
+      nearPointCount: 2,
+      predictionPoints: [
+        { x: 10, y: 0 },
+        { x: 12, y: 0 },
+        { x: 20, y: 0 },
+        { x: 40, y: 0 },
+      ],
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    expect(test.gameScene.predictionLine.visible).toBe(true)
+    expect(test.gameScene.predictionStaleFarLine.visible).toBe(true)
+    expect(
+      test.gameScene.predictionGeometry.getAttribute('instanceStart').count,
+    ).toBe(1)
+    expect(
+      test.gameScene.predictionStaleFarGeometry.getAttribute('instanceStart')
+        .count,
+    ).toBe(2)
+    expect(test.gameScene.predictionStaleFarMaterial.opacity).toBe(1)
+    expect(test.gameScene.predictionStaleFarLine.renderOrder).toBeLessThan(
+      test.gameScene.predictionLine.renderOrder,
+    )
+  })
+
+  it('trims retained stale far points behind the fresh near tip', () => {
+    const test = createTestPresentation({
+      debugModeEnabled: true,
+      eventMarkers: [],
+      farVisible: 'retained-stale',
+      nearPointCount: 2,
+      predictionPoints: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 4, y: 0 },
+        { x: 8, y: 0 },
+        { x: 12, y: 0 },
+        { x: 20, y: 0 },
+      ],
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    expect(
+      test.gameScene.predictionStaleFarGeometry.getAttribute('instanceStart')
+        .count,
+    ).toBe(2)
+  })
+
+  it('bridges a close curved retained stale far seam', () => {
+    const test = createTestPresentation({
+      debugModeEnabled: true,
+      eventMarkers: [],
+      farVisible: 'retained-stale',
+      nearPointCount: 2,
+      predictionPoints: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 3 },
+        { x: 18, y: 6 },
+      ],
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    expect(
+      test.gameScene.predictionStaleFarGeometry.getAttribute('instanceStart')
+        .count,
+    ).toBe(2)
+  })
+
+  it('keeps an implausible retained stale far gap disconnected', () => {
+    const test = createTestPresentation({
+      debugModeEnabled: true,
+      eventMarkers: [],
+      farVisible: 'retained-stale',
+      nearPointCount: 2,
+      predictionPoints: [
+        { x: 10, y: 0 },
+        { x: 12, y: 0 },
+        { x: 200, y: 0 },
+        { x: 210, y: 0 },
+      ],
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    expect(
+      test.gameScene.predictionStaleFarGeometry.getAttribute('instanceStart')
+        .count,
+    ).toBe(1)
+  })
+
+  it('keeps split near and far trajectory fade on the combined path', () => {
+    const test = createTestPresentation({
+      eventMarkers: [],
+      farVisible: 'retained-stale',
+      nearPointCount: 2,
+      predictionPoints: [
+        { x: 10, y: 0 },
+        { x: 12, y: 0 },
+        { x: 20, y: 0 },
+        { x: 40, y: 0 },
+      ],
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    const colorEnd =
+      test.gameScene.predictionGeometry.getAttribute('instanceColorEnd')
+    const staleFarColorStart =
+      test.gameScene.predictionStaleFarGeometry.getAttribute(
+        'instanceColorStart',
+      )
+
+    expect(colorEnd.getX(0)).toBeCloseTo(1)
+    expect(colorEnd.getY(0)).toBeCloseTo(1)
+    expect(colorEnd.getZ(0)).toBeCloseTo(1)
+    expect(staleFarColorStart.getX(0)).toBeCloseTo(1)
+    expect(staleFarColorStart.getY(0)).toBeCloseTo(1)
+    expect(staleFarColorStart.getZ(0)).toBeCloseTo(1)
   })
 
   it('uses orbit point display settings for marker and label visibility', () => {

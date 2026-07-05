@@ -241,7 +241,7 @@ main {
 #predictionFarCalculation,
 #predictionNearTravel,
 #predictionIntegrationStats {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", monospace;
     font-size: 11px;
     white-space: pre;
 }

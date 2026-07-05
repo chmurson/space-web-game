@@ -1246,6 +1246,8 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       document.activeElement instanceof HTMLElement
         ? document.activeElement.dataset.menuAction
         : undefined
+    const getActiveIsRecentSelect = () =>
+      document.activeElement === getRecentSelect()
     const pressActiveKey = (key: string) =>
       document.activeElement?.dispatchEvent(
         new KeyboardEvent('keydown', {
@@ -1343,6 +1345,9 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     getActionButton('openDebugSnapshotLoad')?.click()
     const debugSnapshotSectionHiddenAfterOpen =
       getRecentSelect()?.closest('section')?.hidden
+    const focusAfterDebugSnapshotOpen = getActiveIsRecentSelect()
+    pressActiveKey('ArrowDown')
+    const activeAfterDebugSnapshotArrowDown = getActiveAction()
     const recentSelect = getRecentSelect()
     if (recentSelect) {
       recentSelect.selectedIndex = 1
@@ -1380,6 +1385,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       activeAfterHome,
       activeAfterOpen,
       activeAfterSave,
+      activeAfterDebugSnapshotArrowDown,
       activeAfterWrap,
       closedAfterEscape,
       closedAfterExit,
@@ -1398,6 +1404,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       fpsCheckedAfterToggle,
       fpsLabelAfterToggle,
       focusAfterDebugSnapshotBack,
+      focusAfterDebugSnapshotOpen,
       debugSnapshotSectionHiddenAfterOpen,
       debugSnapshotSectionHiddenBeforeOpen,
       loadLastDebugLabel,
@@ -1417,6 +1424,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     activeAfterHome: 'toggleDebugMode',
     activeAfterOpen: 'toggleDebugMode',
     activeAfterSave: 'saveDebugSnapshot',
+    activeAfterDebugSnapshotArrowDown: 'loadRecentDebugSnapshot',
     activeAfterWrap: 'toggleDebugMode',
     closedAfterEscape: true,
     closedAfterExit: true,
@@ -1442,6 +1450,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     fpsCheckedAfterToggle: 'true',
     fpsLabelAfterToggle: 'Hide FPS meter',
     focusAfterDebugSnapshotBack: 'openDebugSnapshotLoad',
+    focusAfterDebugSnapshotOpen: true,
     debugSnapshotSectionHiddenAfterOpen: false,
     debugSnapshotSectionHiddenBeforeOpen: true,
     loadLastDebugLabel: 'Load last debug snapshot',
@@ -1751,6 +1760,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Turn mouse double-click',
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
+      'Assist Shift + C',
       'Camera C',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',

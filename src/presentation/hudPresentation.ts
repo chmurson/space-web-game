@@ -6,7 +6,7 @@ import type {
   AssistTargetUiState,
   GameQueries,
 } from '../runtime/gameQueries'
-import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
+import { emptyTrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import { getBodyInfluences } from '../simulation/bodyInfluence'
@@ -57,72 +57,6 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
 }
 
 const debugPanelUpdateIntervalMs = 500
-const emptyTrajectoryPredictionDiagnostics: TrajectoryPredictionDiagnostics = {
-  absolutePointCount: 0,
-  activeFar: false,
-  activeFarInputKeyShort: null,
-  assistedPointCount: 0,
-  elapsedSinceRefreshSeconds: 0,
-  events: [],
-  eventMarkerCount: 0,
-  farCalculationAgeSeconds: null,
-  farCalculationAverageMs: null,
-  farCalculationMs: null,
-  farCalculationSampleCount: 0,
-  farCalculationWindows: {
-    averageLastSecondMs: null,
-    averageLastTenSecondsMs: null,
-    averageLastThirtySecondsMs: null,
-    countLastSecond: 0,
-    countLastTenSeconds: 0,
-    countLastThirtySeconds: 0,
-  },
-  farInputKeyShort: null,
-  farPointCount: 0,
-  farVisible: 'none',
-  geometryUpdateMs: 0,
-  hasFarTier: false,
-  horizonSeconds: 0,
-  inputKey: null,
-  inputKeyShort: null,
-  integrationStepSeconds: 0,
-  integrationTiers: {
-    far: null,
-    near: null,
-  },
-  nearCalculationAgeSeconds: null,
-  nearCalculationAverageMs: null,
-  nearCalculationMs: null,
-  nearCalculationSampleCount: 0,
-  nearCalculationTravel: {
-    distanceSinceCalculationMeters: null,
-    horizonDistanceMeters: null,
-    horizonRatio: null,
-    lastCalculationGapMeters: null,
-    lastCalculationGapRatio: null,
-    lastStepDistanceMeters: null,
-    lastStepHorizonRatio: null,
-  },
-  nearCalculationWindows: {
-    averageLastSecondMs: null,
-    averageLastTenSecondsMs: null,
-    averageLastThirtySecondsMs: null,
-    countLastSecond: 0,
-    countLastTenSeconds: 0,
-    countLastThirtySeconds: 0,
-  },
-  nearPointCount: 0,
-  pendingFar: false,
-  pendingFarInputKeyShort: null,
-  predictionRefreshMs: 0,
-  refreshCountLastSecond: 0,
-  refreshIntervalSeconds: 0,
-  refreshReason: null,
-  relativePointCount: 0,
-  sampleStepSeconds: 0,
-  splitHorizon: false,
-  visiblePointCount: 0,
-}
 const fpsIndicatorUpdateFrameCycleInterval = 4
 const fpsIndicatorSlowFrameMs = 1000 / 15
 
@@ -636,7 +570,7 @@ export const createHudPresentation = (options: {
             fpsIndicatorEnabled: options.runtime.debug.fpsIndicatorEnabled,
             predictionDiagnostics:
               options.trajectoryPresentation.getPredictionDiagnostics?.() ??
-              emptyTrajectoryPredictionDiagnostics,
+              emptyTrajectoryPredictionDiagnostics(),
             predictionStepSeconds:
               options.queries.getPredictionConfig().stepSeconds,
             predictedImpact: predictionState.predictedImpact,

@@ -1,6 +1,11 @@
 import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import type { TopMenuAction } from '../createTopMenu'
 
+const formatRecentSnapshotSavedAt = (value: string) => {
+  const date = new Date(value)
+  return Number.isFinite(date.valueOf()) ? date.toLocaleTimeString() : 'Unknown'
+}
+
 export type TopMenuSurfaceProps = {
   activeSection: 'main' | 'debug-snapshot'
   debugModeEnabled: boolean
@@ -146,7 +151,7 @@ export const TopMenuSurface = ({
                 recentSnapshots.map((snapshot) => (
                   <option key={snapshot.id} value={snapshot.id}>
                     {snapshot.name} -{' '}
-                    {new Date(snapshot.savedAt).toLocaleTimeString()}
+                    {formatRecentSnapshotSavedAt(snapshot.savedAt)}
                   </option>
                 ))
               )}

@@ -124,6 +124,11 @@ const formatSubmittedAt = (value: string) => {
   })
 }
 
+const formatRecentSnapshotSavedAt = (value: string) => {
+  const date = new Date(value)
+  return Number.isFinite(date.valueOf()) ? date.toLocaleTimeString() : 'Unknown'
+}
+
 const getPeriodLabel = (period: ReachMoonHighscorePeriod) =>
   reachMoonHighscorePeriodOptions.find((option) => option.period === period)
     ?.label ?? 'Today'
@@ -644,7 +649,7 @@ export const MainMenuSurface = ({
                 recentSnapshots.map((snapshot) => (
                   <option key={snapshot.id} value={snapshot.id}>
                     {snapshot.name} -{' '}
-                    {new Date(snapshot.savedAt).toLocaleTimeString()}
+                    {formatRecentSnapshotSavedAt(snapshot.savedAt)}
                   </option>
                 ))
               )}

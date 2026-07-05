@@ -12,11 +12,14 @@ import {
 } from '../rendering/line2Geometry'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { GameQueries } from '../runtime/gameQueries'
-import type { TrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
+import type {
+  TrajectoryPredictionFarVisibility,
+  TrajectoryPredictionRuntime,
+} from '../runtime/trajectoryPredictionRuntime'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
-import { fromAngle, type Vec2 } from '../simulation/vector'
+import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
 import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
@@ -31,6 +34,11 @@ const trajectoryEventMarkerLabelOffsetY = 10
 const trajectoryEventMarkerLabelViewportPadding = 8
 const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.025
 const predictionEndMarkerMaxScreenDiameter = 11
+const predictionLineBaseColor = 0x7dd3fc
+const predictionLineDebugMaterialColor = 0xffffff
+const predictionLineDebugNearColor = new THREE.Color(0x38bdf8)
+const predictionLineDebugFarColor = new THREE.Color(0xf59e0b)
+const retainedStaleFarMaxBridgeSegmentMultiplier = 3
 
 type TrajectoryEventMarkerLabelRefs = Record<
   TrajectoryPredictionEventMarkerKind,
@@ -82,6 +90,7 @@ const hideTrajectoryVisuals = (
   gameScene.inertialPredictionLine.visible = false
   gameScene.predictionEndMarker.visible = false
   gameScene.predictionLine.visible = false
+  gameScene.predictionStaleFarLine.visible = false
   hideTrajectoryEventMarkers(gameScene, labels)
 }
 
@@ -116,8 +125,14 @@ const updateInertialPredictionVisual = (options: {
 const applyTargetRelativePredictionLine = (
   gameScene: GameSceneRefs,
   relativePoints: Vec2[],
-  geometryKey: 'predictionGeometry' | 'assistedPredictionGeometry',
-  lineKey: 'predictionLine' | 'assistedPredictionLine',
+  geometryKey:
+    | 'predictionGeometry'
+    | 'predictionStaleFarGeometry'
+    | 'assistedPredictionGeometry',
+  lineKey:
+    | 'predictionLine'
+    | 'predictionStaleFarLine'
+    | 'assistedPredictionLine',
   lift: number,
   target: Body,
   colors?: number[],
@@ -164,6 +179,88 @@ const applyTargetRelativePredictionLine = (
   )
 }
 
+const getDebugPredictionTierColors = (
+  pointCount: number,
+  nearPointCount: number,
+  farVisible: TrajectoryPredictionFarVisibility,
+) =>
+  Array.from({ length: pointCount }).flatMap((_, index) => {
+    const color =
+      index < nearPointCount || farVisible === 'none'
+        ? predictionLineDebugNearColor
+        : predictionLineDebugFarColor
+
+    return [color.r, color.g, color.b]
+  })
+
+const dot = (a: Vec2, b: Vec2) => a.x * b.x + a.y * b.y
+
+const getRetainedStaleFarVisualSegment = (options: {
+  nearEndColor: number[]
+  nearPoints: Vec2[]
+  staleFarColors: number[]
+  staleFarPoints: Vec2[]
+}) => {
+  if (options.nearPoints.length < 2 || options.staleFarPoints.length === 0) {
+    return {
+      colors: options.staleFarColors,
+      points: options.staleFarPoints,
+    }
+  }
+
+  const nearEnd = options.nearPoints[options.nearPoints.length - 1]
+  const nearDelta = sub(
+    nearEnd,
+    options.nearPoints[options.nearPoints.length - 2],
+  )
+  const nearSegmentDistance = length(nearDelta)
+
+  if (nearSegmentDistance <= 0) {
+    return {
+      colors: options.staleFarColors,
+      points: options.staleFarPoints,
+    }
+  }
+
+  const nearDirection = {
+    x: nearDelta.x / nearSegmentDistance,
+    y: nearDelta.y / nearSegmentDistance,
+  }
+  let startIndex = 0
+
+  while (
+    startIndex < options.staleFarPoints.length &&
+    dot(sub(options.staleFarPoints[startIndex], nearEnd), nearDirection) < 0
+  ) {
+    startIndex += 1
+  }
+
+  const points = options.staleFarPoints.slice(startIndex)
+  const colors = options.staleFarColors.slice(startIndex * 3)
+  const staleStart = points[0]
+
+  if (!staleStart) {
+    return { colors, points }
+  }
+
+  const seamDelta = sub(staleStart, nearEnd)
+  const seamDistance = length(seamDelta)
+  const nextStaleSegmentDistance = points[1]
+    ? length(sub(points[1], staleStart))
+    : nearSegmentDistance
+  const maxBridgeDistance =
+    Math.max(nearSegmentDistance, nextStaleSegmentDistance) *
+    retainedStaleFarMaxBridgeSegmentMultiplier
+  const shouldBridge = seamDistance <= maxBridgeDistance
+
+  return shouldBridge
+    ? {
+        colors: [...options.nearEndColor, ...colors],
+        points: [nearEnd, ...points],
+      }
+    : { colors, points }
+}
+
 const updateTargetRelativePredictionVisuals = (options: {
   coastPredictionHorizonSeconds: number
   debugModeEnabled: boolean
@@ -178,6 +275,8 @@ const updateTargetRelativePredictionVisuals = (options: {
   target: Body
   targetRelativeEventMarkers: TrajectoryPredictionEventMarker[]
   targetRelativeAssistedPoints: Vec2[]
+  targetRelativeFarVisible: TrajectoryPredictionFarVisibility
+  targetRelativeNearPointCount: number
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
   viewportHeight: number
@@ -200,18 +299,85 @@ const updateTargetRelativePredictionVisuals = (options: {
     )
     predictionPositions.push(renderedPoint.x, renderedPoint.y, renderedPoint.z)
   }
+  options.gameScene.predictionMaterial.color.set(
+    options.debugModeEnabled
+      ? predictionLineDebugMaterialColor
+      : predictionLineBaseColor,
+  )
+  options.gameScene.predictionStaleFarMaterial.color.set(
+    options.debugModeEnabled
+      ? predictionLineDebugMaterialColor
+      : predictionLineBaseColor,
+  )
+  const predictionFadeColors = getCoastPredictionFadeColors(
+    predictionPositions,
+    options.coastPredictionHorizonSeconds,
+  )
+  const splitRetainedFar =
+    options.targetRelativeFarVisible === 'retained-stale' &&
+    options.targetRelativeNearPointCount > 0 &&
+    options.targetRelativeNearPointCount <
+      options.targetRelativePredictionPoints.length
+  const visiblePredictionPoints = splitRetainedFar
+    ? options.targetRelativePredictionPoints.slice(
+        0,
+        options.targetRelativeNearPointCount,
+      )
+    : options.targetRelativePredictionPoints
+  const visiblePredictionColors = splitRetainedFar
+    ? predictionFadeColors.slice(0, options.targetRelativeNearPointCount * 3)
+    : predictionFadeColors
+  const staleFarPredictionPoints = splitRetainedFar
+    ? options.targetRelativePredictionPoints.slice(
+        options.targetRelativeNearPointCount,
+      )
+    : []
+  const staleFarPredictionColors = splitRetainedFar
+    ? predictionFadeColors.slice(options.targetRelativeNearPointCount * 3)
+    : []
+  const staleFarVisualSegment = splitRetainedFar
+    ? getRetainedStaleFarVisualSegment({
+        nearEndColor: predictionFadeColors.slice(
+          (options.targetRelativeNearPointCount - 1) * 3,
+          options.targetRelativeNearPointCount * 3,
+        ),
+        nearPoints: visiblePredictionPoints,
+        staleFarColors: staleFarPredictionColors,
+        staleFarPoints: staleFarPredictionPoints,
+      })
+    : { colors: [], points: [] }
 
   applyTargetRelativePredictionLine(
     options.gameScene,
-    options.targetRelativePredictionPoints,
+    visiblePredictionPoints,
     'predictionGeometry',
     'predictionLine',
     0.18,
     options.target,
-    getCoastPredictionFadeColors(
-      predictionPositions,
-      options.coastPredictionHorizonSeconds,
-    ),
+    options.debugModeEnabled
+      ? getDebugPredictionTierColors(
+          visiblePredictionPoints.length,
+          options.targetRelativeNearPointCount,
+          options.targetRelativeFarVisible,
+        )
+      : visiblePredictionColors,
+  )
+  applyTargetRelativePredictionLine(
+    options.gameScene,
+    staleFarVisualSegment.points,
+    'predictionStaleFarGeometry',
+    'predictionStaleFarLine',
+    0.18,
+    options.target,
+    !splitRetainedFar
+      ? undefined
+      : options.debugModeEnabled
+        ? getDebugPredictionTierColors(
+            staleFarVisualSegment.points.length,
+            0,
+            'retained-stale',
+          )
+        : staleFarVisualSegment.colors,
   )
   applyTargetRelativePredictionLine(
     options.gameScene,
@@ -782,6 +948,8 @@ export const createTrajectoryPresentation = (options: {
       }
 
       const predictionState = options.trajectoryPredictionRuntime.getState()
+      const predictionDiagnostics =
+        options.trajectoryPredictionRuntime.getDiagnostics()
       const target = options.queries.getAssistTarget()
       const predictionTargetMatches = predictionState.targetId === target.id
       const trajectoryEventMarkerSession = predictionTargetMatches
@@ -829,6 +997,12 @@ export const createTrajectoryPresentation = (options: {
         targetRelativeAssistedPoints: predictionTargetMatches
           ? predictionState.targetRelativeAssistedPoints
           : [],
+        targetRelativeFarVisible: predictionTargetMatches
+          ? predictionDiagnostics.farVisible
+          : 'none',
+        targetRelativeNearPointCount: predictionTargetMatches
+          ? predictionDiagnostics.nearPointCount
+          : 0,
         targetRelativePredictionEnd: predictionTargetMatches
           ? predictionState.targetRelativePredictionEnd
           : null,
