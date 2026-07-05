@@ -1,12 +1,13 @@
 import type { AssistMode, CaptureMetrics } from '../assist/orbitalAssist'
 import {
+  getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
   type PredictedClosestApproach,
   type PredictedImpact,
-  getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
   predictAssistedTrajectory,
   predictCoastTrajectory,
   type TrajectoryPredictionConfig,
   type TrajectoryPredictionEventMarker,
+  type TrajectoryPredictionIntegrationDiagnostics,
   type TrajectoryPredictionResult,
 } from '../prediction/trajectoryPrediction'
 import type {
@@ -15,7 +16,7 @@ import type {
   PhysicsEngine,
   SimulationState,
 } from '../simulation/types'
-import type { Vec2 } from '../simulation/vector'
+import { length, sub, type Vec2 } from '../simulation/vector'
 
 export type TrajectoryPredictionState = {
   absolutePredictionEnd: Vec2 | null
@@ -41,19 +42,114 @@ export type TrajectoryPredictionRefreshReason =
   | 'target-change'
   | 'timed-refresh'
 
+export type TrajectoryPredictionFarVisibility =
+  | 'current'
+  | 'none'
+  | 'retained-stale'
+
+export type TrajectoryPredictionEventKind =
+  | 'far-complete'
+  | 'far-replaced'
+  | 'refresh'
+
+export type TrajectoryPredictionInputChangePart =
+  | 'assist'
+  | 'bodies'
+  | 'controls'
+  | 'horizon'
+  | 'sampling'
+  | 'spacecraft'
+  | 'target'
+
+export type TrajectoryPredictionDiagnosticEvent = {
+  activeFar: boolean
+  activeFarInputKeyShort: string | null
+  changedParts: TrajectoryPredictionInputChangePart[]
+  dtMs: number | null
+  elapsedSinceRefreshSeconds: number
+  event: TrajectoryPredictionEventKind
+  farApplied: boolean
+  farCalculationMs: number | null
+  farInputKeyShort: string | null
+  farPointCount: number
+  farVisible: TrajectoryPredictionFarVisibility
+  horizonSeconds: number
+  inputKeyShort: string
+  nearCalculationMs: number | null
+  nearPointCount: number
+  pendingFar: boolean
+  pendingFarInputKeyShort: string | null
+  reason: TrajectoryPredictionRefreshReason
+  refreshIntervalSeconds: number
+  splitHorizon: boolean
+  t: number
+  visiblePointCount: number
+}
+
+export type TrajectoryPredictionCalculationWindowDiagnostics = {
+  averageLastSecondMs: number | null
+  averageLastTenSecondsMs: number | null
+  averageLastThirtySecondsMs: number | null
+  countLastSecond: number
+  countLastTenSeconds: number
+  countLastThirtySeconds: number
+}
+
+export type TrajectoryPredictionTierIntegrationDiagnostics = {
+  far: TrajectoryPredictionIntegrationDiagnostics | null
+  near: TrajectoryPredictionIntegrationDiagnostics | null
+}
+
+export type TrajectoryPredictionNearTravelDiagnostics = {
+  distanceSinceCalculationMeters: number | null
+  horizonDistanceMeters: number | null
+  horizonRatio: number | null
+  lastCalculationGapMeters: number | null
+  lastCalculationGapRatio: number | null
+  lastStepDistanceMeters: number | null
+  lastStepHorizonRatio: number | null
+}
+
 export type TrajectoryPredictionDiagnostics = {
   absolutePointCount: number
+  activeFar: boolean
+  activeFarInputKeyShort: string | null
   assistedPointCount: number
+  elapsedSinceRefreshSeconds: number
+  events: TrajectoryPredictionDiagnosticEvent[]
   eventMarkerCount: number
+  farCalculationAgeSeconds: number | null
+  farCalculationAverageMs: number | null
+  farCalculationMs: number | null
+  farCalculationSampleCount: number
+  farCalculationWindows: TrajectoryPredictionCalculationWindowDiagnostics
+  farInputKeyShort: string | null
+  farPointCount: number
+  farVisible: TrajectoryPredictionFarVisibility
   geometryUpdateMs: number
+  hasFarTier: boolean
   horizonSeconds: number
   inputKey: string | null
+  inputKeyShort: string | null
   integrationStepSeconds: number
+  integrationTiers: TrajectoryPredictionTierIntegrationDiagnostics
+  nearCalculationAgeSeconds: number | null
+  nearCalculationAverageMs: number | null
+  nearCalculationMs: number | null
+  nearCalculationSampleCount: number
+  nearCalculationTravel: TrajectoryPredictionNearTravelDiagnostics
+  nearCalculationWindows: TrajectoryPredictionCalculationWindowDiagnostics
+  nearPointCount: number
+  pendingFar: boolean
+  pendingFarInputKeyShort: string | null
   predictionRefreshMs: number
   refreshCountLastSecond: number
+  refreshIntervalSeconds: number
   refreshReason: TrajectoryPredictionRefreshReason | null
   relativePointCount: number
   sampleStepSeconds: number
+  splitHorizon: boolean
+  visiblePointCount: number
 }
 
 export type RefreshTrajectoryPredictionOptions = {
@@ -81,8 +177,33 @@ type PredictionInputKeyParts = {
 type TrajectoryPredictionTier = {
   assistedPoints: Vec2[]
   coastPrediction: TrajectoryPredictionResult
+  inputKey: string
   targetId: string
 }
+
+type TrajectoryPredictionFarRequest = {
+  inputKey: string
+  options: RefreshTrajectoryPredictionOptions
+  predictionConfig: TrajectoryPredictionConfig
+  target: Body
+}
+
+type CalculationTimingStats = {
+  count: number
+  lastAtMs: number | null
+  samples: Array<{ calculationMs: number; t: number }>
+  totalMs: number
+}
+
+const emptyCalculationWindowDiagnostics =
+  (): TrajectoryPredictionCalculationWindowDiagnostics => ({
+    averageLastSecondMs: null,
+    averageLastTenSecondsMs: null,
+    averageLastThirtySecondsMs: null,
+    countLastSecond: 0,
+    countLastTenSeconds: 0,
+    countLastThirtySeconds: 0,
+  })
 
 const emptyTrajectoryPredictionState = (): TrajectoryPredictionState => ({
   absolutePredictionEnd: null,
@@ -99,22 +220,122 @@ const emptyTrajectoryPredictionState = (): TrajectoryPredictionState => ({
 const emptyTrajectoryPredictionDiagnostics =
   (): TrajectoryPredictionDiagnostics => ({
     absolutePointCount: 0,
+    activeFar: false,
+    activeFarInputKeyShort: null,
     assistedPointCount: 0,
+    elapsedSinceRefreshSeconds: 0,
+    events: [],
     eventMarkerCount: 0,
+    farCalculationAgeSeconds: null,
+    farCalculationAverageMs: null,
+    farCalculationMs: null,
+    farCalculationSampleCount: 0,
+    farCalculationWindows: emptyCalculationWindowDiagnostics(),
+    farInputKeyShort: null,
+    farPointCount: 0,
+    farVisible: 'none',
     geometryUpdateMs: 0,
+    hasFarTier: false,
     horizonSeconds: 0,
     inputKey: null,
+    inputKeyShort: null,
     integrationStepSeconds: 0,
+    integrationTiers: {
+      far: null,
+      near: null,
+    },
+    nearCalculationAgeSeconds: null,
+    nearCalculationAverageMs: null,
+    nearCalculationMs: null,
+    nearCalculationSampleCount: 0,
+    nearCalculationTravel: {
+      distanceSinceCalculationMeters: null,
+      horizonDistanceMeters: null,
+      horizonRatio: null,
+      lastCalculationGapMeters: null,
+      lastCalculationGapRatio: null,
+      lastStepDistanceMeters: null,
+      lastStepHorizonRatio: null,
+    },
+    nearCalculationWindows: emptyCalculationWindowDiagnostics(),
+    nearPointCount: 0,
+    pendingFar: false,
+    pendingFarInputKeyShort: null,
     predictionRefreshMs: 0,
     refreshCountLastSecond: 0,
+    refreshIntervalSeconds: 0,
     refreshReason: null,
     relativePointCount: 0,
     sampleStepSeconds: 0,
+    splitHorizon: false,
+    visiblePointCount: 0,
   })
 
 const recentRefreshWindowMs = 1_000
+const calculationSampleWindowMs = 30_000
+const diagnosticEventLimit = 100
 const nearPredictionHorizonSeconds = 10 * 60
 const nowMs = () => performance.now()
+
+const recordCalculationTiming = (
+  stats: CalculationTimingStats,
+  calculationMs: number | null,
+  completedAtMs: number,
+) => {
+  if (calculationMs === null) {
+    return
+  }
+
+  stats.count += 1
+  stats.lastAtMs = completedAtMs
+  stats.samples.push({ calculationMs, t: completedAtMs })
+  stats.totalMs += calculationMs
+}
+
+const getAverageCalculationMs = (stats: CalculationTimingStats) =>
+  stats.count > 0 ? stats.totalMs / stats.count : null
+
+const getCalculationAgeSeconds = (
+  stats: CalculationTimingStats,
+  currentTimeMs: number,
+) => (stats.lastAtMs === null ? null : (currentTimeMs - stats.lastAtMs) / 1000)
+
+const getAverageSampleMs = (
+  samples: CalculationTimingStats['samples'],
+): number | null =>
+  samples.length === 0
+    ? null
+    : samples.reduce((sum, sample) => sum + sample.calculationMs, 0) /
+      samples.length
+
+const getCalculationWindowDiagnostics = (
+  stats: CalculationTimingStats,
+  currentTimeMs: number,
+): TrajectoryPredictionCalculationWindowDiagnostics => {
+  const oldestSampleMs = currentTimeMs - calculationSampleWindowMs
+  stats.samples = stats.samples.filter((sample) => sample.t >= oldestSampleMs)
+  const lastSecond = stats.samples.filter(
+    (sample) => sample.t >= currentTimeMs - 1_000,
+  )
+  const lastTenSeconds = stats.samples.filter(
+    (sample) => sample.t >= currentTimeMs - 10_000,
+  )
+
+  return {
+    averageLastSecondMs: getAverageSampleMs(lastSecond),
+    averageLastTenSecondsMs: getAverageSampleMs(lastTenSeconds),
+    averageLastThirtySecondsMs: getAverageSampleMs(stats.samples),
+    countLastSecond: lastSecond.length,
+    countLastTenSeconds: lastTenSeconds.length,
+    countLastThirtySeconds: stats.samples.length,
+  }
+}
+
+const getPathDistanceMeters = (points: Vec2[]) =>
+  points.reduce((total, point, index) => {
+    const previousPoint = points[index - 1]
+    return previousPoint ? total + length(sub(point, previousPoint)) : total
+  }, 0)
 
 const quantize = (value: number, precision: number) =>
   Math.round(value / precision) * precision
@@ -172,6 +393,75 @@ const createPredictionInputKeyParts = (
 
 const createPredictionInputKey = (parts: PredictionInputKeyParts) =>
   JSON.stringify(parts)
+
+const getInputKeyShort = (inputKey: string | null) => {
+  if (!inputKey) {
+    return null
+  }
+
+  let hash = 0
+  for (let index = 0; index < inputKey.length; index += 1) {
+    hash = (hash * 31 + inputKey.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash).toString(36)
+}
+
+const getChangedPredictionInputParts = (
+  previousParts: PredictionInputKeyParts | null,
+  nextParts: PredictionInputKeyParts,
+): TrajectoryPredictionInputChangePart[] => {
+  if (!previousParts) {
+    return [
+      'target',
+      'horizon',
+      'sampling',
+      'assist',
+      'spacecraft',
+      'controls',
+      'bodies',
+    ]
+  }
+
+  const changedParts: TrajectoryPredictionInputChangePart[] = []
+
+  if (previousParts.target !== nextParts.target) {
+    changedParts.push('target')
+  }
+
+  if (previousParts.config !== nextParts.config) {
+    const previousConfig = JSON.parse(previousParts.config) as {
+      horizonSeconds: number
+    }
+    const nextConfig = JSON.parse(nextParts.config) as typeof previousConfig
+    changedParts.push(
+      previousConfig.horizonSeconds !== nextConfig.horizonSeconds
+        ? 'horizon'
+        : 'sampling',
+    )
+  }
+
+  if (previousParts.assist !== nextParts.assist) {
+    changedParts.push('assist')
+  }
+  if (previousParts.spacecraft !== nextParts.spacecraft) {
+    changedParts.push('spacecraft')
+  }
+  if (previousParts.controls !== nextParts.controls) {
+    changedParts.push('controls')
+  }
+  if (previousParts.bodies !== nextParts.bodies) {
+    changedParts.push('bodies')
+  }
+
+  return changedParts
+}
+
+const cloneDiagnosticEvent = (
+  event: TrajectoryPredictionDiagnosticEvent,
+): TrajectoryPredictionDiagnosticEvent => ({
+  ...event,
+  changedParts: [...event.changedParts],
+})
 
 const createPredictionConfigWithHorizon = (
   predictionConfig: TrajectoryPredictionConfig,
@@ -239,13 +529,71 @@ const getRefreshReason = (
 }
 
 export const createTrajectoryPredictionRuntime = () => {
+  let activeFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
   let farPredictionTier: TrajectoryPredictionTier | null = null
-  let pendingFarPredictionInputKey: string | null = null
+  let nearPredictionTier: TrajectoryPredictionTier | null = null
+  let pendingFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
+  let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
+  let previousDiagnosticEventTimeMs: number | null = null
+  let farPredictionRefreshElapsed = 0
+  const farCalculationStats: CalculationTimingStats = {
+    count: 0,
+    lastAtMs: null,
+    samples: [],
+    totalMs: 0,
+  }
+  const nearCalculationStats: CalculationTimingStats = {
+    count: 0,
+    lastAtMs: null,
+    samples: [],
+    totalMs: 0,
+  }
+  let nearPredictionDistanceMeters: number | null = null
+  let lastNearCalculationGapMeters: number | null = null
+  let lastNearCalculationGapRatio: number | null = null
+  let lastSpacecraftStepMeters: number | null = null
+  let nearTravelSinceCalculationMeters = 0
+  let previousSpacecraftPosition: Vec2 | null = null
   let predictionRefreshTimesMs: number[] = []
   let predictionRefreshElapsed = 0
   let predictionDiagnostics = emptyTrajectoryPredictionDiagnostics()
   let predictionState = emptyTrajectoryPredictionState()
+
+  const setCurrentSpacecraftPosition = (position: Vec2) => {
+    if (previousSpacecraftPosition) {
+      lastSpacecraftStepMeters = length(
+        sub(position, previousSpacecraftPosition),
+      )
+      nearTravelSinceCalculationMeters += lastSpacecraftStepMeters
+    } else {
+      lastSpacecraftStepMeters = 0
+    }
+    previousSpacecraftPosition = { ...position }
+  }
+
+  const getNearTravelDiagnostics =
+    (): TrajectoryPredictionNearTravelDiagnostics => ({
+      distanceSinceCalculationMeters:
+        nearPredictionDistanceMeters === null
+          ? null
+          : nearTravelSinceCalculationMeters,
+      horizonDistanceMeters: nearPredictionDistanceMeters,
+      horizonRatio:
+        nearPredictionDistanceMeters && nearPredictionDistanceMeters > 0
+          ? nearTravelSinceCalculationMeters / nearPredictionDistanceMeters
+          : null,
+      lastCalculationGapMeters: lastNearCalculationGapMeters,
+      lastCalculationGapRatio: lastNearCalculationGapRatio,
+      lastStepDistanceMeters:
+        nearPredictionDistanceMeters === null ? null : lastSpacecraftStepMeters,
+      lastStepHorizonRatio:
+        nearPredictionDistanceMeters &&
+        nearPredictionDistanceMeters > 0 &&
+        lastSpacecraftStepMeters !== null
+          ? lastSpacecraftStepMeters / nearPredictionDistanceMeters
+          : null,
+    })
 
   const getRefreshCountLastSecond = (currentTimeMs: number) => {
     const recentCutoffMs = currentTimeMs - recentRefreshWindowMs
@@ -259,6 +607,7 @@ export const createTrajectoryPredictionRuntime = () => {
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
     predictionConfig: TrajectoryPredictionConfig,
+    inputKey: string,
   ): TrajectoryPredictionTier => {
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const coastPrediction = predictCoastTrajectory(
@@ -281,14 +630,106 @@ export const createTrajectoryPredictionRuntime = () => {
               options.getAssistPredictionControls,
             ).relativePoints,
       coastPrediction,
+      inputKey,
       targetId: target.id,
     }
   }
 
+  const predictTierWithTiming = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+    predictionConfig: TrajectoryPredictionConfig,
+    inputKey: string,
+  ) => {
+    const calculationStartMs = nowMs()
+    const tier = predictTier(options, target, predictionConfig, inputKey)
+    return {
+      calculationMs: nowMs() - calculationStartMs,
+      tier,
+    }
+  }
+
+  const pushDiagnosticEvent = (
+    event: Omit<TrajectoryPredictionDiagnosticEvent, 'dtMs' | 't'> & {
+      t?: number
+    },
+  ) => {
+    const t = event.t ?? nowMs()
+    predictionDiagnosticEvents.push({
+      ...event,
+      dtMs:
+        previousDiagnosticEventTimeMs === null
+          ? null
+          : t - previousDiagnosticEventTimeMs,
+      t,
+    })
+    previousDiagnosticEventTimeMs = t
+    if (predictionDiagnosticEvents.length > diagnosticEventLimit) {
+      predictionDiagnosticEvents = predictionDiagnosticEvents.slice(
+        -diagnosticEventLimit,
+      )
+    }
+  }
+
+  const createFarPredictionRequest = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+    inputKey: string,
+  ): TrajectoryPredictionFarRequest => ({
+    inputKey,
+    options,
+    predictionConfig: options.predictionConfig,
+    target,
+  })
+
+  const clearFarPredictionRequests = () => {
+    activeFarPredictionRequest = null
+    pendingFarPredictionRequest = null
+    farPredictionRefreshElapsed = 0
+  }
+
+  const queueFarPredictionRequest = (
+    request: TrajectoryPredictionFarRequest,
+  ) => {
+    if (activeFarPredictionRequest?.inputKey === request.inputKey) {
+      return false
+    }
+
+    if (!activeFarPredictionRequest) {
+      activeFarPredictionRequest = request
+      return false
+    }
+
+    const replacedPendingFar =
+      pendingFarPredictionRequest !== null &&
+      pendingFarPredictionRequest.inputKey !== request.inputKey
+    pendingFarPredictionRequest = request
+    return replacedPendingFar
+  }
+
+  const getIntegrationStepSeconds = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+    predictionConfig: TrajectoryPredictionConfig,
+  ) => {
+    const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
+    return getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
+      options.state,
+      target,
+      predictionConfig,
+      allowLoopTrim,
+    )
+  }
+
   const applyPredictionTier = (options: {
+    changedParts: TrajectoryPredictionInputChangePart[]
+    event: TrajectoryPredictionEventKind
+    farApplied: boolean
+    farCalculationMs: number | null
     farTier: TrajectoryPredictionTier | null
     inputKey: string
     integrationStepSeconds: number
+    nearCalculationMs: number | null
     nearTier: TrajectoryPredictionTier
     predictionConfig: TrajectoryPredictionConfig
     reason: TrajectoryPredictionRefreshReason
@@ -320,6 +761,48 @@ export const createTrajectoryPredictionRuntime = () => {
           visibleFarTier.assistedPoints,
         )
       : options.nearTier.assistedPoints
+    const farVisible: TrajectoryPredictionFarVisibility = !visibleFarTier
+      ? 'none'
+      : visibleFarTier.inputKey === options.inputKey
+        ? 'current'
+        : 'retained-stale'
+    const farPointCount =
+      options.farTier?.coastPrediction.relativePoints.length ?? 0
+    const inputKeyShort = getInputKeyShort(options.inputKey)
+    const activeFarInputKeyShort = getInputKeyShort(
+      activeFarPredictionRequest?.inputKey ?? null,
+    )
+    const pendingFarInputKeyShort = getInputKeyShort(
+      pendingFarPredictionRequest?.inputKey ?? null,
+    )
+    const farInputKeyShort = getInputKeyShort(options.farTier?.inputKey ?? null)
+    const calculationRecordedAtMs = nowMs()
+    recordCalculationTiming(
+      nearCalculationStats,
+      options.nearCalculationMs,
+      calculationRecordedAtMs,
+    )
+    recordCalculationTiming(
+      farCalculationStats,
+      options.farCalculationMs,
+      calculationRecordedAtMs,
+    )
+    if (options.nearCalculationMs !== null) {
+      lastNearCalculationGapMeters =
+        nearPredictionDistanceMeters === null
+          ? null
+          : nearTravelSinceCalculationMeters
+      lastNearCalculationGapRatio =
+        nearPredictionDistanceMeters && nearPredictionDistanceMeters > 0
+          ? nearTravelSinceCalculationMeters / nearPredictionDistanceMeters
+          : null
+      nearPredictionDistanceMeters = getPathDistanceMeters(
+        options.nearTier.coastPrediction.absolutePoints,
+      )
+      nearTravelSinceCalculationMeters = 0
+      previousSpacecraftPosition =
+        options.nearTier.coastPrediction.absolutePoints[0] ?? null
+    }
 
     predictionState = {
       absolutePredictionEnd: visibleCoastPrediction.absoluteEndPoint,
@@ -336,46 +819,151 @@ export const createTrajectoryPredictionRuntime = () => {
     predictionDiagnostics = {
       ...predictionDiagnostics,
       absolutePointCount: predictionState.absolutePredictionPoints.length,
+      activeFar: activeFarPredictionRequest !== null,
+      activeFarInputKeyShort,
       assistedPointCount: predictionState.targetRelativeAssistedPoints.length,
       eventMarkerCount: predictionState.targetRelativeEventMarkers.length,
+      elapsedSinceRefreshSeconds: predictionRefreshElapsed,
+      events: predictionDiagnosticEvents,
+      farCalculationAgeSeconds: getCalculationAgeSeconds(
+        farCalculationStats,
+        calculationRecordedAtMs,
+      ),
+      farCalculationAverageMs: getAverageCalculationMs(farCalculationStats),
+      farCalculationMs:
+        options.farCalculationMs ?? predictionDiagnostics.farCalculationMs,
+      farCalculationSampleCount: farCalculationStats.count,
+      farCalculationWindows: getCalculationWindowDiagnostics(
+        farCalculationStats,
+        calculationRecordedAtMs,
+      ),
+      farInputKeyShort,
+      farPointCount,
+      farVisible,
       horizonSeconds: options.predictionConfig.horizonSeconds,
+      hasFarTier: options.farTier !== null,
       inputKey: options.inputKey,
+      inputKeyShort,
       integrationStepSeconds: options.integrationStepSeconds,
+      integrationTiers: {
+        far: options.farTier?.coastPrediction.integration ?? null,
+        near: options.nearTier.coastPrediction.integration,
+      },
+      nearCalculationAgeSeconds: getCalculationAgeSeconds(
+        nearCalculationStats,
+        calculationRecordedAtMs,
+      ),
+      nearCalculationAverageMs: getAverageCalculationMs(nearCalculationStats),
+      nearCalculationMs:
+        options.nearCalculationMs ?? predictionDiagnostics.nearCalculationMs,
+      nearCalculationSampleCount: nearCalculationStats.count,
+      nearCalculationTravel: getNearTravelDiagnostics(),
+      nearCalculationWindows: getCalculationWindowDiagnostics(
+        nearCalculationStats,
+        calculationRecordedAtMs,
+      ),
+      nearPointCount: options.nearTier.coastPrediction.relativePoints.length,
+      pendingFar: pendingFarPredictionRequest !== null,
+      pendingFarInputKeyShort,
       predictionRefreshMs: nowMs() - options.refreshStartMs,
       refreshCountLastSecond: getRefreshCountLastSecond(options.refreshStartMs),
+      refreshIntervalSeconds: options.predictionConfig.refreshInterval,
       refreshReason: options.reason,
       relativePointCount: predictionState.targetRelativePredictionPoints.length,
       sampleStepSeconds: options.predictionConfig.stepSeconds,
+      splitHorizon: shouldSplitPredictionHorizon(options.predictionConfig),
+      visiblePointCount: predictionState.targetRelativePredictionPoints.length,
+    }
+    pushDiagnosticEvent({
+      activeFar: activeFarPredictionRequest !== null,
+      activeFarInputKeyShort,
+      changedParts: options.changedParts,
+      elapsedSinceRefreshSeconds: predictionRefreshElapsed,
+      event: options.event,
+      farApplied: options.farApplied,
+      farCalculationMs: options.farCalculationMs,
+      farInputKeyShort,
+      farPointCount,
+      farVisible,
+      horizonSeconds: options.predictionConfig.horizonSeconds,
+      inputKeyShort: inputKeyShort ?? '',
+      nearCalculationMs: options.nearCalculationMs,
+      nearPointCount: options.nearTier.coastPrediction.relativePoints.length,
+      pendingFar: pendingFarPredictionRequest !== null,
+      pendingFarInputKeyShort,
+      reason: options.reason,
+      refreshIntervalSeconds: options.predictionConfig.refreshInterval,
+      splitHorizon: shouldSplitPredictionHorizon(options.predictionConfig),
+      visiblePointCount: predictionState.targetRelativePredictionPoints.length,
+    })
+    predictionDiagnostics = {
+      ...predictionDiagnostics,
+      events: predictionDiagnosticEvents,
     }
   }
 
-  const completePendingFarPrediction = (
+  const completeActiveFarPrediction = (
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
     nextInputKeyParts: PredictionInputKeyParts,
+    request: TrajectoryPredictionFarRequest,
   ) => {
     const inputKey = createPredictionInputKey(nextInputKeyParts)
 
-    if (pendingFarPredictionInputKey !== inputKey) {
+    if (activeFarPredictionRequest !== request) {
       return false
     }
 
     const refreshStartMs = nowMs()
     predictionRefreshTimesMs.push(refreshStartMs)
-    farPredictionTier = predictTier(options, target, options.predictionConfig)
-    pendingFarPredictionInputKey = null
-    applyPredictionTier({
-      farTier: farPredictionTier,
-      inputKey,
-      integrationStepSeconds: predictionDiagnostics.integrationStepSeconds,
-      nearTier: predictTier(
+    const requestOptions = {
+      ...request.options,
+      predictionConfig: request.predictionConfig,
+    }
+    const farPrediction = predictTierWithTiming(
+      requestOptions,
+      request.target,
+      request.predictionConfig,
+      request.inputKey,
+    )
+    farPredictionTier = farPrediction.tier
+    activeFarPredictionRequest = pendingFarPredictionRequest
+    pendingFarPredictionRequest = null
+    farPredictionRefreshElapsed = 0
+    const liveNearPredictionConfig = createPredictionConfigWithHorizon(
+      options.predictionConfig,
+      nearPredictionHorizonSeconds,
+    )
+    let nearCalculationMs: number | null = null
+    let currentNearTier = nearPredictionTier
+    if (
+      currentNearTier?.inputKey !== inputKey ||
+      currentNearTier.targetId !== target.id
+    ) {
+      const nearPrediction = predictTierWithTiming(
         options,
         target,
-        createPredictionConfigWithHorizon(
-          options.predictionConfig,
-          nearPredictionHorizonSeconds,
-        ),
+        liveNearPredictionConfig,
+        inputKey,
+      )
+      currentNearTier = nearPrediction.tier
+      nearCalculationMs = nearPrediction.calculationMs
+    }
+    nearPredictionTier = currentNearTier
+    applyPredictionTier({
+      changedParts: [],
+      event: 'far-complete',
+      farApplied: true,
+      farCalculationMs: farPrediction.calculationMs,
+      farTier: farPredictionTier,
+      inputKey,
+      integrationStepSeconds: getIntegrationStepSeconds(
+        options,
+        target,
+        options.predictionConfig,
       ),
+      nearCalculationMs,
+      nearTier: currentNearTier,
       predictionConfig: options.predictionConfig,
       reason: 'timed-refresh',
       refreshStartMs,
@@ -395,14 +983,11 @@ export const createTrajectoryPredictionRuntime = () => {
     predictionRefreshTimesMs.push(refreshStartMs)
     const predictionConfig = options.predictionConfig
     const inputKey = createPredictionInputKey(nextInputKeyParts)
-    const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
-    const integrationStepSeconds =
-      getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
-        options.state,
-        target,
-        predictionConfig,
-        allowLoopTrim,
-      )
+    const integrationStepSeconds = getIntegrationStepSeconds(
+      options,
+      target,
+      predictionConfig,
+    )
     const splitPredictionHorizon =
       shouldSplitPredictionHorizon(predictionConfig)
     const nearPredictionConfig = splitPredictionHorizon
@@ -411,23 +996,50 @@ export const createTrajectoryPredictionRuntime = () => {
           nearPredictionHorizonSeconds,
         )
       : predictionConfig
-    const nearTier = predictTier(options, target, nearPredictionConfig)
+    const previousInputKeyParts = predictionInputKeyParts
+    const nearPrediction = predictTierWithTiming(
+      options,
+      target,
+      nearPredictionConfig,
+      inputKey,
+    )
+    const nearTier = nearPrediction.tier
+    nearPredictionTier = nearTier
+    let replacedPendingFar = false
+    let farCalculationMs: number | null = null
 
     if (!splitPredictionHorizon) {
       farPredictionTier = null
-      pendingFarPredictionInputKey = null
+      clearFarPredictionRequests()
     } else if (refreshFarImmediately) {
-      farPredictionTier = predictTier(options, target, predictionConfig)
-      pendingFarPredictionInputKey = null
+      const farPrediction = predictTierWithTiming(
+        options,
+        target,
+        predictionConfig,
+        inputKey,
+      )
+      farPredictionTier = farPrediction.tier
+      farCalculationMs = farPrediction.calculationMs
+      clearFarPredictionRequests()
     } else {
-      pendingFarPredictionInputKey = inputKey
+      replacedPendingFar = queueFarPredictionRequest(
+        createFarPredictionRequest(options, target, inputKey),
+      )
     }
 
     predictionInputKeyParts = nextInputKeyParts
     applyPredictionTier({
+      changedParts: getChangedPredictionInputParts(
+        previousInputKeyParts,
+        nextInputKeyParts,
+      ),
+      event: replacedPendingFar ? 'far-replaced' : 'refresh',
+      farApplied: splitPredictionHorizon && refreshFarImmediately,
+      farCalculationMs,
       farTier: farPredictionTier,
       inputKey,
       integrationStepSeconds,
+      nearCalculationMs: nearPrediction.calculationMs,
       nearTier,
       predictionConfig,
       reason,
@@ -444,20 +1056,46 @@ export const createTrajectoryPredictionRuntime = () => {
       : 'initial',
   ) => {
     const target = options.getAssistTarget()
+    setCurrentSpacecraftPosition(options.state.spacecraft.position)
     refreshForTarget(options, target, reason, undefined, true)
   }
 
   return {
-    getDiagnostics: () => ({
-      ...predictionDiagnostics,
-      refreshCountLastSecond: getRefreshCountLastSecond(nowMs()),
-    }),
+    getDiagnostics: () => {
+      const currentTimeMs = nowMs()
+      return {
+        ...predictionDiagnostics,
+        elapsedSinceRefreshSeconds: predictionRefreshElapsed,
+        events: predictionDiagnosticEvents.map(cloneDiagnosticEvent),
+        farCalculationAgeSeconds: getCalculationAgeSeconds(
+          farCalculationStats,
+          currentTimeMs,
+        ),
+        farCalculationWindows: getCalculationWindowDiagnostics(
+          farCalculationStats,
+          currentTimeMs,
+        ),
+        nearCalculationAgeSeconds: getCalculationAgeSeconds(
+          nearCalculationStats,
+          currentTimeMs,
+        ),
+        nearCalculationTravel: getNearTravelDiagnostics(),
+        nearCalculationWindows: getCalculationWindowDiagnostics(
+          nearCalculationStats,
+          currentTimeMs,
+        ),
+        refreshCountLastSecond: getRefreshCountLastSecond(currentTimeMs),
+      }
+    },
     getState: () => predictionState,
     maybeRefresh: (
       realDt: number,
       options: RefreshTrajectoryPredictionOptions,
     ) => {
       predictionRefreshElapsed += realDt
+      farPredictionRefreshElapsed += realDt
+      setCurrentSpacecraftPosition(options.state.spacecraft.position)
+      const activeFarRequestToComplete = activeFarPredictionRequest
       const target = options.getAssistTarget()
       const nextInputKeyParts = createPredictionInputKeyParts(options, target)
       const reason = getRefreshReason(
@@ -466,17 +1104,26 @@ export const createTrajectoryPredictionRuntime = () => {
         predictionRefreshElapsed,
         options.predictionConfig.refreshInterval,
       )
+      let refreshed = false
       if (reason) {
         refreshForTarget(options, target, reason, nextInputKeyParts)
-        return true
+        refreshed = true
       }
       if (
-        pendingFarPredictionInputKey &&
-        completePendingFarPrediction(options, target, nextInputKeyParts)
+        activeFarRequestToComplete &&
+        (!reason ||
+          farPredictionRefreshElapsed >=
+            options.predictionConfig.refreshInterval) &&
+        completeActiveFarPrediction(
+          options,
+          target,
+          nextInputKeyParts,
+          activeFarRequestToComplete,
+        )
       ) {
         return true
       }
-      return false
+      return refreshed
     },
     recordGeometryUpdate: (geometryUpdateMs: number) => {
       predictionDiagnostics = {

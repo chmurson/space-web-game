@@ -18,7 +18,20 @@ const elements = {
     debugSnapshotStatus: document.querySelector('#debugSnapshotStatus'),
     elapsed: document.querySelector('#elapsed'),
     openRawSnapshotButton: document.querySelector('#openRawSnapshotButton'),
-    predictionSampling: document.querySelector('#predictionSampling'),
+    predictionEventSummary: document.querySelector('#predictionEventSummary'),
+    predictionFarCalculation: document.querySelector('#predictionFarCalculation'),
+    predictionGeometryDuration: document.querySelector('#predictionGeometryDuration'),
+    predictionInputKeys: document.querySelector('#predictionInputKeys'),
+    predictionIntegrationStats: document.querySelector('#predictionIntegrationStats'),
+    predictionIntegrationStep: document.querySelector('#predictionIntegrationStep'),
+    predictionNearCalculation: document.querySelector('#predictionNearCalculation'),
+    predictionNearTravel: document.querySelector('#predictionNearTravel'),
+    predictionPointCounts: document.querySelector('#predictionPointCounts'),
+    predictionRefreshInterval: document.querySelector('#predictionRefreshInterval'),
+    predictionRefreshSummary: document.querySelector('#predictionRefreshSummary'),
+    predictionSampleStep: document.querySelector('#predictionSampleStep'),
+    predictionTargetSteps: document.querySelector('#predictionTargetSteps'),
+    predictionTierState: document.querySelector('#predictionTierState'),
     rawJson: document.querySelector('#rawJson'),
     rawJsonFull: document.querySelector('#rawJsonFull'),
     rawSnapshotPanel: document.querySelector('#rawSnapshotPanel'),
@@ -55,7 +68,68 @@ const formatVec = (vector, digits = 1) =>
     vector ? `${formatNumber(vector.x, digits)}, ${formatNumber(vector.y, digits)}` : '—'
 
 const formatBool = (value) => (value ? 'yes' : 'no')
+const formatMs = (milliseconds) =>
+    typeof milliseconds === 'number' && Number.isFinite(milliseconds)
+        ? `${formatNumber(milliseconds, 1)} ms`
+        : '—'
 const formatSeconds = (seconds) => `${formatNumber(seconds, 1)} s`
+const formatDistance = (meters) => {
+    if (typeof meters !== 'number' || !Number.isFinite(meters)) {
+        return '—'
+    }
+
+    if (Math.abs(meters) >= 1_000_000_000) {
+        return `${formatNumber(meters / 1_000_000_000, 2)} Gm`
+    }
+    if (Math.abs(meters) >= 1_000_000) {
+        return `${formatNumber(meters / 1_000_000, 2)} Mm`
+    }
+    if (Math.abs(meters) >= 1_000) {
+        return `${formatNumber(meters / 1_000, 1)} km`
+    }
+    return `${formatNumber(meters, 0)} m`
+}
+const formatPercent = (ratio) =>
+    typeof ratio === 'number' && Number.isFinite(ratio)
+        ? `${formatNumber(ratio * 100, 1)}%`
+        : '—'
+const formatAge = (seconds) =>
+    typeof seconds === 'number' && Number.isFinite(seconds)
+        ? `${formatNumber(seconds, 1)} s ago`
+        : '—'
+const formatCompactAge = (seconds) =>
+    typeof seconds === 'number' && Number.isFinite(seconds)
+        ? `${formatNumber(seconds, 1)}s ago`
+        : '—'
+const formatCompactMs = (milliseconds) =>
+    typeof milliseconds === 'number' && Number.isFinite(milliseconds)
+        ? `${formatNumber(milliseconds, 1)}ms`
+        : '—'
+const formatRate = (count, seconds) => `${formatNumber(count / seconds, 1)}/s`
+const emptyCalculationWindows = {
+    averageLastSecondMs: null,
+    averageLastTenSecondsMs: null,
+    averageLastThirtySecondsMs: null,
+    countLastSecond: 0,
+    countLastTenSeconds: 0,
+    countLastThirtySeconds: 0,
+}
+const formatCalculationTiming = (lastMs, ageSeconds, windows = emptyCalculationWindows) =>
+    `last: ${formatMs(lastMs)} · ${formatCompactAge(ageSeconds)}
+runs: 1s/10s/30s
+      ${formatRate(windows.countLastSecond, 1)} | ${formatRate(windows.countLastTenSeconds, 10)} | ${formatRate(windows.countLastThirtySeconds, 30)}
+avg:  ${formatCompactMs(windows.averageLastSecondMs)}/${formatCompactMs(windows.averageLastTenSecondsMs)}/${formatCompactMs(windows.averageLastThirtySecondsMs)}`
+const formatIntegrationTier = (label, integration) =>
+    `${label}: steps ${formatNumber(integration?.stepCount ?? null, 0)} · avg dt ${formatSeconds(integration?.averageStepSeconds)} · min dt ${formatSeconds(integration?.minStepSeconds)}`
+const formatIntegrationStats = (integrationTiers) =>
+    [
+        formatIntegrationTier('near', integrationTiers?.near),
+        formatIntegrationTier('far ', integrationTiers?.far),
+    ].join('\n')
+const formatNearTravel = (travel) =>
+    `step:       ${formatDistance(travel?.lastStepDistanceMeters)} (${formatPercent(travel?.lastStepHorizonRatio)})
+calc gap:   ${formatDistance(travel?.lastCalculationGapMeters)} (${formatPercent(travel?.lastCalculationGapRatio)})
+near span:  ${formatDistance(travel?.horizonDistanceMeters)}`
 let latestRawSnapshotJson = '{}'
 
 const escapeHtml = (value) =>
@@ -297,6 +371,94 @@ const renderBodies = (snapshot) => {
     elements.bodyList.replaceChildren(...items)
 }
 
+const renderPredictionSampling = (snapshot) => {
+    const sampling = snapshot.simulation.predictionSampling
+    const prediction = snapshot.simulation.trajectoryPrediction
+
+    elements.predictionSampleStep.textContent = sampling
+        ? formatSeconds(sampling.currentStepSeconds)
+        : '—'
+    elements.predictionIntegrationStep.textContent = sampling
+        ? formatSeconds(sampling.currentMaxIntegrationStepSeconds)
+        : '—'
+    elements.predictionRefreshInterval.textContent = sampling
+        ? formatSeconds(sampling.refreshInterval)
+        : '—'
+    elements.predictionTargetSteps.textContent = sampling
+        ? formatNumber(sampling.targetMaxSteps, 0)
+        : '—'
+
+    if (!prediction) {
+        elements.predictionRefreshSummary.textContent = '—'
+        elements.predictionNearCalculation.textContent = '—'
+        elements.predictionFarCalculation.textContent = '—'
+        elements.predictionNearTravel.textContent = '—'
+        elements.predictionIntegrationStats.textContent = '—'
+        elements.predictionGeometryDuration.textContent = '—'
+        elements.predictionTierState.textContent = '—'
+        elements.predictionPointCounts.textContent = '—'
+        elements.predictionEventSummary.textContent = '—'
+        elements.predictionInputKeys.textContent = '—'
+        return
+    }
+
+    const latestEvent = prediction.events?.at(-1)
+    const tierState = [
+        `split ${formatBool(prediction.splitHorizon)}`,
+        `far ${prediction.farVisible || 'none'}`,
+        `active ${formatBool(prediction.activeFar)}`,
+        `pending ${formatBool(prediction.pendingFar)}`,
+    ].join(' · ')
+    const pointCounts = [
+        `near ${formatNumber(prediction.nearPointCount, 0)}`,
+        `far ${formatNumber(prediction.farPointCount, 0)}`,
+        `visible ${formatNumber(prediction.visiblePointCount, 0)}`,
+        `abs/rel/assist ${formatNumber(prediction.absolutePointCount, 0)}/${formatNumber(prediction.relativePointCount, 0)}/${formatNumber(prediction.assistedPointCount, 0)}`,
+    ].join(' · ')
+    const eventSummary = [
+        `markers ${formatNumber(prediction.eventMarkerCount, 0)}`,
+        `log ${formatNumber(prediction.events?.length ?? 0, 0)}`,
+        latestEvent ? `last ${latestEvent.event}` : null,
+        latestEvent?.changedParts?.length
+            ? `changed ${latestEvent.changedParts.join(', ')}`
+            : null,
+    ]
+        .filter(Boolean)
+        .join(' · ')
+    const inputKeys = [
+        `current ${prediction.inputKeyShort || '—'}`,
+        `far ${prediction.farInputKeyShort || '—'}`,
+        `active ${prediction.activeFarInputKeyShort || '—'}`,
+        `pending ${prediction.pendingFarInputKeyShort || '—'}`,
+    ].join(' · ')
+
+    elements.predictionRefreshSummary.textContent =
+        `${prediction.refreshReason || 'none'} ${formatMs(prediction.predictionRefreshMs)} · ${formatNumber(prediction.refreshCountLastSecond, 0)}/s · elapsed ${formatSeconds(prediction.elapsedSinceRefreshSeconds)}`
+    elements.predictionNearCalculation.textContent = formatCalculationTiming(
+        prediction.nearCalculationMs,
+        prediction.nearCalculationAgeSeconds,
+        prediction.nearCalculationWindows,
+    )
+    elements.predictionFarCalculation.textContent = formatCalculationTiming(
+        prediction.farCalculationMs,
+        prediction.farCalculationAgeSeconds,
+        prediction.farCalculationWindows,
+    )
+    elements.predictionNearTravel.textContent = formatNearTravel(
+        prediction.nearCalculationTravel,
+    )
+    elements.predictionIntegrationStats.textContent = formatIntegrationStats(
+        prediction.integrationTiers,
+    )
+    elements.predictionGeometryDuration.textContent = formatMs(
+        prediction.geometryUpdateMs,
+    )
+    elements.predictionTierState.textContent = tierState
+    elements.predictionPointCounts.textContent = pointCounts
+    elements.predictionEventSummary.textContent = eventSummary
+    elements.predictionInputKeys.textContent = inputKeys
+}
+
 const renderSnapshot = (snapshot) => {
     const prompt = snapshot.scenario.promptUi.activePromptId || snapshot.scenario.promptUi.replayPromptId || 'none'
     const spacecraft = snapshot.simulation.spacecraft
@@ -314,14 +476,6 @@ const renderSnapshot = (snapshot) => {
     elements.assistTarget.textContent = snapshot.simulation.assistTarget?.name || 'none'
     elements.crashState.textContent = snapshot.simulation.crashedBodyName || 'clear'
     elements.coastHorizon.textContent = `${formatNumber(snapshot.simulation.coastPredictionHorizonHours, 2)} h`
-    const sampling = snapshot.simulation.predictionSampling
-    const trajectoryPrediction = snapshot.simulation.trajectoryPrediction
-    const predictionMetrics = trajectoryPrediction
-        ? ` · last ${trajectoryPrediction.refreshReason || 'none'} ${formatNumber(trajectoryPrediction.predictionRefreshMs, 1)} ms · refreshes ${formatNumber(trajectoryPrediction.refreshCountLastSecond, 0)}/s · geometry ${formatNumber(trajectoryPrediction.geometryUpdateMs, 1)} ms · pts ${formatNumber(trajectoryPrediction.absolutePointCount, 0)}/${formatNumber(trajectoryPrediction.relativePointCount, 0)}/${formatNumber(trajectoryPrediction.assistedPointCount, 0)} · events ${formatNumber(trajectoryPrediction.eventMarkerCount, 0)}`
-        : ''
-    elements.predictionSampling.textContent = sampling
-        ? `sample ${formatNumber(sampling.currentStepSeconds, 1)} s · integrate max ${formatNumber(sampling.currentMaxIntegrationStepSeconds, 1)} s · refresh ${formatNumber(sampling.refreshInterval, 2)} s · target ${formatNumber(sampling.targetMaxSteps, 0)} pts${predictionMetrics}`
-        : '—'
 
     elements.spacecraftPosition.textContent = formatVec(spacecraft.position)
     elements.spacecraftVelocity.textContent = formatVec(spacecraft.velocity, 3)
@@ -337,6 +491,7 @@ const renderSnapshot = (snapshot) => {
     renderTimeWarpSelect(snapshot)
     renderDebugFlags(snapshot)
     renderBodies(snapshot)
+    renderPredictionSampling(snapshot)
 
     renderRawSnapshot(snapshot)
 }

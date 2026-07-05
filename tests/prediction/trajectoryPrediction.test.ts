@@ -215,6 +215,20 @@ describe('predictCoastTrajectory', () => {
     ).toBe(8)
   })
 
+  it('reports actual integration step diagnostics for coast predictions', () => {
+    const prediction = predictSampledPath({
+      allowLoopTrim: false,
+      distances: [10, 20, 30, 40],
+      horizonSeconds: 3,
+    })
+
+    expect(prediction.integration).toEqual({
+      averageStepSeconds: 1,
+      minStepSeconds: 1,
+      stepCount: 3,
+    })
+  })
+
   it('does not report false Earth impacts for long default Earth-Moon predictions', () => {
     for (const hours of [24, 48, 96]) {
       const state = createEarthMoonSimulationState()

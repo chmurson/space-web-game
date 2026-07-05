@@ -142,16 +142,26 @@ describe('createTrajectoryPredictionRuntime', () => {
 
     predictionRuntime.refresh(getOptions())
     const callCount = engineStep.mock.calls.length
+    const eventCount = predictionRuntime.getDiagnostics().events.length
 
     expect(predictionRuntime.maybeRefresh(0.1, getOptions())).toBe(false)
     expect(engineStep).toHaveBeenCalledTimes(callCount)
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
       absolutePointCount: 2,
+      events: expect.arrayContaining([
+        expect.objectContaining({
+          event: 'refresh',
+          farApplied: false,
+          farVisible: 'none',
+          splitHorizon: false,
+        }),
+      ]),
       eventMarkerCount: 0,
       refreshReason: 'initial',
       relativePointCount: 1,
       sampleStepSeconds: 10,
     })
+    expect(predictionRuntime.getDiagnostics().events).toHaveLength(eventCount)
   })
 
   it('refreshes unchanged prediction inputs after the refresh interval elapses', () => {
@@ -188,6 +198,26 @@ describe('createTrajectoryPredictionRuntime', () => {
     } finally {
       nowSpy.mockRestore()
     }
+  })
+
+  it('caps the diagnostic event log at the most recent 100 entries', () => {
+    const { getOptions, predictionRuntime, setPredictionConfig } =
+      createRuntimeHarness()
+
+    predictionRuntime.refresh(getOptions())
+
+    for (let index = 0; index < 105; index += 1) {
+      setPredictionConfig({
+        ...createPredictionConfig(),
+        horizonSeconds: 20 + index,
+      })
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    }
+
+    expect(predictionRuntime.getDiagnostics().events).toHaveLength(100)
+    expect(predictionRuntime.getDiagnostics().events[0]).toMatchObject({
+      reason: 'horizon-change',
+    })
   })
 
   it('refreshes when the prediction horizon changes', () => {
@@ -245,10 +275,28 @@ describe('createTrajectoryPredictionRuntime', () => {
 
     expect(predictionRuntime.maybeRefresh(0.1, getOptions())).toBe(false)
     expect(engineStep).toHaveBeenCalledTimes(callCount)
+    expect(predictionRuntime.getDiagnostics().nearCalculationTravel).toEqual({
+      distanceSinceCalculationMeters: 2_390,
+      horizonDistanceMeters: 100,
+      horizonRatio: 23.9,
+      lastCalculationGapMeters: null,
+      lastCalculationGapRatio: null,
+      lastStepDistanceMeters: 2_390,
+      lastStepHorizonRatio: 23.9,
+    })
     expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
     expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
       'timed-refresh',
     )
+    expect(predictionRuntime.getDiagnostics().nearCalculationTravel).toEqual({
+      distanceSinceCalculationMeters: 0,
+      horizonDistanceMeters: 120,
+      horizonRatio: 0,
+      lastCalculationGapMeters: 2_390,
+      lastCalculationGapRatio: 23.9,
+      lastStepDistanceMeters: 0,
+      lastStepHorizonRatio: 0,
+    })
   })
 
   it('refreshes when controls change materially', () => {
@@ -358,9 +406,72 @@ describe('createTrajectoryPredictionRuntime', () => {
       nearFirstPredictionWithStaleFarTail,
     )
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationAgeSeconds: expect.any(Number),
+      farCalculationAverageMs: expect.any(Number),
+      farCalculationMs: expect.any(Number),
+      farCalculationSampleCount: 1,
+      farCalculationWindows: {
+        averageLastSecondMs: expect.any(Number),
+        averageLastTenSecondsMs: expect.any(Number),
+        averageLastThirtySecondsMs: expect.any(Number),
+        countLastSecond: 1,
+        countLastTenSeconds: 1,
+        countLastThirtySeconds: 1,
+      },
+      integrationTiers: {
+        far: expect.objectContaining({
+          averageStepSeconds: expect.any(Number),
+          minStepSeconds: expect.any(Number),
+          stepCount: expect.any(Number),
+        }),
+        near: expect.objectContaining({
+          averageStepSeconds: expect.any(Number),
+          minStepSeconds: expect.any(Number),
+          stepCount: expect.any(Number),
+        }),
+      },
       horizonSeconds: 1_200,
+      farPointCount: 4,
+      farVisible: 'retained-stale',
+      hasFarTier: true,
+      nearCalculationAgeSeconds: expect.any(Number),
+      nearCalculationAverageMs: expect.any(Number),
+      nearCalculationMs: expect.any(Number),
+      nearCalculationSampleCount: 2,
+      nearCalculationTravel: {
+        distanceSinceCalculationMeters: 0,
+        horizonDistanceMeters: 12_000,
+        horizonRatio: 0,
+        lastCalculationGapMeters: 0,
+        lastCalculationGapRatio: 0,
+        lastStepDistanceMeters: 0,
+        lastStepHorizonRatio: 0,
+      },
+      nearCalculationWindows: {
+        averageLastSecondMs: expect.any(Number),
+        averageLastTenSecondsMs: expect.any(Number),
+        averageLastThirtySecondsMs: expect.any(Number),
+        countLastSecond: 2,
+        countLastTenSeconds: 2,
+        countLastThirtySeconds: 2,
+      },
+      nearPointCount: 2,
+      pendingFar: false,
       refreshReason: 'spacecraft-change',
       relativePointCount: 4,
+      splitHorizon: true,
+      visiblePointCount: 4,
+    })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      activeFar: true,
+      changedParts: ['spacecraft'],
+      event: 'refresh',
+      farApplied: false,
+      farCalculationMs: null,
+      farVisible: 'retained-stale',
+      nearCalculationMs: expect.any(Number),
+      pendingFar: false,
     })
 
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
@@ -374,13 +485,73 @@ describe('createTrajectoryPredictionRuntime', () => {
       ],
     )
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationAgeSeconds: expect.any(Number),
+      farCalculationAverageMs: expect.any(Number),
+      farCalculationMs: expect.any(Number),
+      farCalculationSampleCount: 2,
+      farCalculationWindows: {
+        averageLastSecondMs: expect.any(Number),
+        averageLastTenSecondsMs: expect.any(Number),
+        averageLastThirtySecondsMs: expect.any(Number),
+        countLastSecond: 2,
+        countLastTenSeconds: 2,
+        countLastThirtySeconds: 2,
+      },
+      integrationTiers: {
+        far: expect.objectContaining({
+          averageStepSeconds: expect.any(Number),
+          minStepSeconds: expect.any(Number),
+          stepCount: expect.any(Number),
+        }),
+        near: expect.objectContaining({
+          averageStepSeconds: expect.any(Number),
+          minStepSeconds: expect.any(Number),
+          stepCount: expect.any(Number),
+        }),
+      },
+      farPointCount: 4,
+      farVisible: 'current',
       horizonSeconds: 1_200,
+      nearCalculationAgeSeconds: expect.any(Number),
+      nearCalculationAverageMs: expect.any(Number),
+      nearCalculationMs: expect.any(Number),
+      nearCalculationSampleCount: 2,
+      nearCalculationTravel: {
+        distanceSinceCalculationMeters: 0,
+        horizonDistanceMeters: 12_000,
+        horizonRatio: 0,
+        lastCalculationGapMeters: 0,
+        lastCalculationGapRatio: 0,
+        lastStepDistanceMeters: 0,
+        lastStepHorizonRatio: 0,
+      },
+      nearCalculationWindows: {
+        averageLastSecondMs: expect.any(Number),
+        averageLastTenSecondsMs: expect.any(Number),
+        averageLastThirtySecondsMs: expect.any(Number),
+        countLastSecond: 2,
+        countLastTenSeconds: 2,
+        countLastThirtySeconds: 2,
+      },
+      nearPointCount: 2,
+      pendingFar: false,
       refreshReason: 'timed-refresh',
       relativePointCount: 4,
     })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      activeFar: false,
+      changedParts: [],
+      event: 'far-complete',
+      farApplied: true,
+      farCalculationMs: expect.any(Number),
+      farVisible: 'current',
+      nearCalculationMs: null,
+      pendingFar: false,
+    })
   })
 
-  it('applies the pending far tier only for the current prediction inputs', () => {
+  it('keeps active far work and replaces only the waiting pending request', () => {
     const {
       getOptions,
       predictionRuntime,
@@ -408,6 +579,14 @@ describe('createTrajectoryPredictionRuntime', () => {
       },
     })
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      activeFar: true,
+      changedParts: ['spacecraft'],
+      event: 'refresh',
+      farApplied: false,
+      farVisible: 'retained-stale',
+      pendingFar: true,
+    })
 
     expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
       [
@@ -418,14 +597,58 @@ describe('createTrajectoryPredictionRuntime', () => {
       ],
     )
 
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 40, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      activeFar: true,
+      changedParts: ['spacecraft'],
+      event: 'far-replaced',
+      farApplied: false,
+      farVisible: 'retained-stale',
+      pendingFar: true,
+    })
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 12_010, y: 0 },
+        { x: 24_010, y: 0 },
+        { x: 9_010, y: 0 },
+        { x: 12_010, y: 0 },
+      ],
+    )
+
+    expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      activeFar: true,
+      changedParts: [],
+      event: 'far-complete',
+      farApplied: true,
+      farVisible: 'retained-stale',
+      pendingFar: false,
+    })
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 12_010, y: 0 },
+        { x: 24_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 24_010, y: 0 },
+      ],
+    )
+
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
 
     expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
       [
-        { x: 9_010, y: 0 },
-        { x: 18_010, y: 0 },
-        { x: 27_010, y: 0 },
+        { x: 12_010, y: 0 },
+        { x: 24_010, y: 0 },
         { x: 36_010, y: 0 },
+        { x: 48_010, y: 0 },
       ],
     )
   })

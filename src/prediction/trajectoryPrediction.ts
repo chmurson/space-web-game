@@ -44,12 +44,19 @@ export type TrajectoryPredictionEventMarker = {
   time: number
 }
 
+export type TrajectoryPredictionIntegrationDiagnostics = {
+  averageStepSeconds: number | null
+  minStepSeconds: number | null
+  stepCount: number
+}
+
 export type TrajectoryPredictionResult = {
   absoluteEndPoint: Vec2 | null
   absolutePoints: Vec2[]
   closestApproach: PredictedClosestApproach | null
   eventMarkers: TrajectoryPredictionEventMarker[]
   impact: PredictedImpact | null
+  integration: TrajectoryPredictionIntegrationDiagnostics
   relativePoints: Vec2[]
 }
 
@@ -265,6 +272,9 @@ export const predictCoastTrajectory = (
   )
   let predictionAngularTravel = 0
   let predictionTime = 0
+  let integrationMinStepSeconds: number | null = null
+  let integrationStepCount = 0
+  let integrationStepSecondsTotal = 0
 
   while (predictionTime < predictionConfig.horizonSeconds && !impact) {
     const sampleEndTime = Math.min(
@@ -281,6 +291,12 @@ export const predictCoastTrajectory = (
       )
       predictedState = physicsEngine.step(predictedState, dt)
       predictionTime += dt
+      integrationStepCount += 1
+      integrationStepSecondsTotal += dt
+      integrationMinStepSeconds =
+        integrationMinStepSeconds === null
+          ? dt
+          : Math.min(integrationMinStepSeconds, dt)
       const { spacecraft: predictedSpacecraft } = predictedState
       const predictedTarget = predictedState.bodies.find(
         (body) => body.id === target.id,
@@ -347,6 +363,14 @@ export const predictCoastTrajectory = (
       targetRadius: target.radius,
     }),
     impact,
+    integration: {
+      averageStepSeconds:
+        integrationStepCount > 0
+          ? integrationStepSecondsTotal / integrationStepCount
+          : null,
+      minStepSeconds: integrationMinStepSeconds,
+      stepCount: integrationStepCount,
+    },
     relativePoints,
   }
 }
