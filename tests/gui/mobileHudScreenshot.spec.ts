@@ -1820,7 +1820,7 @@ test('keeps the lunar orbit quality notice text inside the bottom pill', async (
     }
 
     titleElement.textContent = 'Close lunar orbit recorded'
-    bodyElement.textContent = 'Ap 397 km - Pe 77 km - elongated'
+    bodyElement.textContent = 'Ap 3970 km / Pe 770 km - very elongated'
     noticeElement.hidden = false
     noticeElement.dataset.visible = 'true'
     noticeElement.setAttribute('aria-hidden', 'false')
