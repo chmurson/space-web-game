@@ -1801,6 +1801,70 @@ test('shows a bottom notice when cycling camera mode from the keyboard', async (
   await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
 })
 
+test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  const notice = page.locator('.hud-notice-transient')
+  await page.evaluate(() => {
+    const noticeElement = document.querySelector<HTMLElement>(
+      '.hud-notice-transient',
+    )
+    const titleElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-title')
+    const bodyElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-body')
+    if (!noticeElement || !titleElement || !bodyElement) {
+      throw new Error('Missing transient notice DOM')
+    }
+
+    titleElement.textContent = 'Close lunar orbit recorded'
+    bodyElement.textContent = 'Ap 397 km - Pe 77 km - elongated'
+    noticeElement.hidden = false
+    noticeElement.dataset.visible = 'true'
+    noticeElement.setAttribute('aria-hidden', 'false')
+  })
+
+  await expect(notice).toBeVisible()
+
+  const metrics = await notice.evaluate((noticeElement) => {
+    const titleElement =
+      noticeElement.querySelector<HTMLElement>('.hud-notice-title')
+    const bodyElement =
+      noticeElement.querySelector<HTMLElement>('.hud-notice-body')
+    if (!titleElement || !bodyElement) {
+      throw new Error('Missing transient notice text spans')
+    }
+
+    return {
+      bodyClientWidth: bodyElement.clientWidth,
+      bodyLeft: bodyElement.getBoundingClientRect().left,
+      noticeClientWidth: noticeElement.clientWidth,
+      noticeScrollWidth: noticeElement.scrollWidth,
+      titleClientWidth: titleElement.clientWidth,
+      titleOverflow: getComputedStyle(titleElement).overflow,
+      titleRight: titleElement.getBoundingClientRect().right,
+      titleTextOverflow: getComputedStyle(titleElement).textOverflow,
+    }
+  })
+
+  expect(metrics.noticeScrollWidth).toBeLessThanOrEqual(
+    metrics.noticeClientWidth,
+  )
+  expect(metrics.titleClientWidth).toBeGreaterThan(0)
+  expect(metrics.bodyClientWidth).toBeGreaterThan(0)
+  expect(metrics.titleRight).toBeLessThanOrEqual(metrics.bodyLeft)
+  expect(metrics.titleOverflow).toBe('hidden')
+  expect(metrics.titleTextOverflow).toBe('ellipsis')
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-lunar-orbit-quality-notice',
+  )
+})
+
 test('keeps the UI settings dialog adapter state, focus, and change behavior', async ({
   page,
 }) => {

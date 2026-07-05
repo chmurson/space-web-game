@@ -1,9 +1,13 @@
 #app {
-    /* --bottom-safe-area-inset: optimized for IOS wrapper*/
-    --bottom-safe-area-inset: calc(env(safe-area-inset-bottom, 0px) / 4);
-    --left-safe-area-inset: max(env(safe-area-inset-bottom, 0px) / 2, env(safe-area-inset-left, 0px));
+  /* --bottom-safe-area-inset: optimized for IOS wrapper*/
+  --bottom-safe-area-inset: calc(env(safe-area-inset-bottom, 0px) / 4);
+  --left-safe-area-inset: max(
+    env(safe-area-inset-bottom, 0px) /
+    2,
+    env(safe-area-inset-left, 0px)
+  );
 
-    --bottom-hud-edge-gap: 6px;
+  --bottom-hud-edge-gap: 6px;
 }
 
 /* Top bar layout - contains menu and telemetry strip */
@@ -417,7 +421,7 @@
 
 .hud-notice-transient {
   order: 10;
-  max-width: min(360px, calc(100vw - 116px));
+  max-width: min(400px, calc(100vw - 32px));
   padding: 6px 10px;
   border-color: rgba(140, 199, 255, 0.16);
   border-radius: 999px;
@@ -452,14 +456,19 @@
 }
 
 .hud-notice-title {
+  flex: 0 1 auto;
+  max-width: 48%;
+  overflow: hidden;
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .hud-notice-body {
+  flex: 1 1 auto;
   color: rgba(219, 234, 254, 0.82);
   font-size: 12px;
   line-height: 1.35;
@@ -654,7 +663,7 @@
   }
 
   .hud-notice-transient {
-    max-width: min(320px, calc(100vw - 112px));
+    max-width: min(360px, calc(100vw - 24px));
   }
 
   .target-recommendation-notice {

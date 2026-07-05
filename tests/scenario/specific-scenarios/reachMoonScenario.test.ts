@@ -403,8 +403,8 @@ describe('reachMoonScenario', () => {
       phase: 'orbit-moon',
     })
     expect(runtime.ui.transientNotice).toMatchObject({
-      body: 'Ap 600 km - Pe 600 km - near circular',
-      title: 'Excellent lunar orbit recorded',
+      body: 'Ap 600 / Pe 600 km - circular',
+      title: 'Excellent lunar orbit',
     })
 
     runtime.scenario.session.state = {
@@ -427,8 +427,8 @@ describe('reachMoonScenario', () => {
       phase: 'orbit-moon',
     })
     expect(runtime.ui.transientNotice).toMatchObject({
-      body: 'Ap 90 km - Pe 25 km - near circular',
-      title: 'Excellent lunar orbit recorded',
+      body: 'Ap 90 / Pe 25 km - circular',
+      title: 'Excellent lunar orbit',
     })
 
     const previousNotice = runtime.ui.transientNotice
@@ -459,8 +459,8 @@ describe('reachMoonScenario', () => {
       100_000,
       6_000,
       {
-        body: 'Pe 6 km - too close to the Moon',
-        title: 'Risky lunar orbit recorded',
+        body: 'Pe 6 km - too low',
+        title: 'Risky lunar orbit',
       },
     ],
     [
@@ -468,8 +468,8 @@ describe('reachMoonScenario', () => {
       1_400_000,
       1_250_000,
       {
-        body: 'Ap 1,400 km - Pe 1,250 km - higher than ideal',
-        title: 'Circular lunar orbit recorded',
+        body: 'Ap 1,400 / Pe 1,250 km - high',
+        title: 'Circular lunar orbit',
       },
     ],
     [
@@ -477,8 +477,8 @@ describe('reachMoonScenario', () => {
       620_000,
       210_000,
       {
-        body: 'Ap 620 km - Pe 210 km - elongated',
-        title: 'Close lunar orbit recorded',
+        body: 'Ap 620 / Pe 210 km - elongated',
+        title: 'Close lunar orbit',
       },
     ],
   ])('uses the combined lunar orbit notice category for %s', (_label, apoapsis, periapsis, notice) => {

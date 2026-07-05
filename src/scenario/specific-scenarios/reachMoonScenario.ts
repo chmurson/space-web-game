@@ -296,32 +296,32 @@ const createLunarOrbitQualityNotice = (
     breakdown.circularityBonusPoints >=
     MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS * 0.8
   const title = !safe
-    ? 'Risky lunar orbit recorded'
+    ? 'Risky lunar orbit'
     : closeOrbit && nearCircular
-      ? 'Excellent lunar orbit recorded'
+      ? 'Excellent lunar orbit'
       : nearCircular
-        ? 'Circular lunar orbit recorded'
+        ? 'Circular lunar orbit'
         : closeOrbit
-          ? 'Close lunar orbit recorded'
+          ? 'Close lunar orbit'
           : points > 0
-            ? 'Lunar orbit recorded'
+            ? 'Lunar orbit'
             : null
   if (!title) {
     return null
   }
 
-  const altitudeDetail = `Ap ${formatReachMoonOrbitAltitude(best.orbitApoapsisAltitudeMeters)} - Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)}`
+  const altitudeDetail = `Ap ${formatReachMoonOrbitAltitude(best.orbitApoapsisAltitudeMeters).replace(/ km$/, '')} / Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)}`
   const orbitShapeDetail = nearCircular
     ? closeOrbit
-      ? 'near circular'
-      : 'higher than ideal'
+      ? 'circular'
+      : 'high'
     : closeOrbit
       ? 'elongated'
-      : 'orbit quality improved'
+      : 'improved'
 
   return {
     body: !safe
-      ? `Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)} - too close to the Moon`
+      ? `Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)} - too low`
       : `${altitudeDetail} - ${orbitShapeDetail}`,
     id: `reach-moon-lunar-orbit-quality-${orbitTurnsCompleted}-${points}`,
     title,
