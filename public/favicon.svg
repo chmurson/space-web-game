@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Space Web Game">
+  <rect width="64" height="64" fill="#05070d"/>
+  <circle cx="32" cy="32" r="27" fill="#0f172a" opacity=".72"/>
+  <ellipse cx="32" cy="32" rx="23" ry="13.5" fill="none" stroke="#e0f2fe" stroke-width="5" transform="rotate(-22 32 32)"/>
+  <circle cx="32" cy="32" r="7.5" fill="#f0f9ff"/>
+</svg>
