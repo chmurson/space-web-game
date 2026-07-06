@@ -30,13 +30,6 @@ Early tutorial coaching should keep the playable surface focused on the current 
 - `npm run test:gui`
 - `git diff --check`
 
-Inspected screenshots:
-
-- `tmp/playwright-results/mobileHudScreenshot-captur-5be36-ial-coach-prompt-transition-mobile-chromium/mobile-tutorial-coach-prompt.png`
-- `tmp/playwright-results/tutorialTrailDebugReplay-r-a4f42-ate-from-a-fixed-checkpoint-mobile-chromium/tutorial-trail-debug-replay.png`
-
-`coderabbit --base main --agent` connected and entered analysis, then produced no findings or progress for several minutes. The local run was stopped and recorded as stalled.
-
 ## Follow-Ups
 
 None currently known.

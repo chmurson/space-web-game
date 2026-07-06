@@ -16,6 +16,7 @@ import type {
   TrajectoryPredictionFarVisibility,
   TrajectoryPredictionRuntime,
 } from '../runtime/trajectoryPredictionRuntime'
+import { isTutorialScenarioState } from '../scenario/specific-scenarios/tutorial/tutorialScenarioTypes'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
@@ -820,11 +821,7 @@ const shouldHideTutorialOrbitPointMarkers = (runtime: AppRuntimeState) => {
   }
 
   const state = session.state
-  if (!state || typeof state !== 'object' || Array.isArray(state)) {
-    return false
-  }
-
-  return (state as { phase?: unknown }).phase === 'escape-earth'
+  return isTutorialScenarioState(state) && state.phase === 'escape-earth'
 }
 
 const getEffectiveOrbitPointDisplaySettings = (

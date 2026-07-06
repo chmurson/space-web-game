@@ -715,6 +715,7 @@ describe('createTrajectoryPresentation', () => {
     expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
       'none',
     )
+    expect(test.trajectoryEventMarkerLabels.apoapsis.style.display).toBe('none')
   })
 
   it('renders Pe/Ap marker visuals again during the tutorial reach-moon phase', () => {
