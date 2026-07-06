@@ -264,12 +264,14 @@ const createTestPresentation = (options: {
   nearPointCount?: number
   predictedImpact?: { bodyName: string; time: number } | null
   predictionPoints?: Vec2[]
+  scenarioSession?: AppRuntimeState['scenario']['session']
   viewportSize: number
 }) => {
   setWindowSize(800, 600)
   const target = createTarget()
   const runtime = createRuntime(target, options.viewportSize)
   runtime.debug.debugModeEnabled = options.debugModeEnabled ?? false
+  runtime.scenario.session = options.scenarioSession ?? runtime.scenario.session
   const trajectoryEventMarkerLabels = createTrajectoryEventMarkerLabels()
   const gameScene = createGameScene([target], {
     dashPixels: 12,
@@ -666,6 +668,106 @@ describe('createTrajectoryPresentation', () => {
     expect(
       hiddenLabels.trajectoryEventMarkerLabels.periapsis.style.display,
     ).toBe('none')
+  })
+
+  it('hides only Pe/Ap marker visuals during tutorial phases before reach-moon', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 400_000,
+        distance: 12_000_000,
+        kind: 'periapsis',
+        point: { x: 12_000_000, y: 0 },
+        time: 30,
+      }),
+      createEventMarker({
+        altitude: 13_000_000,
+        distance: 20_000_000,
+        kind: 'apoapsis',
+        point: { x: 20_000_000, y: 0 },
+        time: 60,
+      }),
+    ]
+    const test = createTestPresentation({
+      eventMarkers,
+      scenarioSession: createRuntimeScenarioSession('tutorial', {
+        onboarding: {
+          activeStepId: 'intro-trajectory',
+          completedStepIds: [],
+          gateActive: true,
+          progress: {},
+        },
+        phase: 'escape-earth',
+      }),
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    expect(test.gameScene.predictionLine.visible).toBe(true)
+    expect(
+      test.presentation.getPredictionState().targetRelativeEventMarkers,
+    ).toHaveLength(2)
+    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
+      false,
+    )
+    expect(test.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
+      false,
+    )
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'none',
+    )
+    expect(test.trajectoryEventMarkerLabels.apoapsis.style.display).toBe('none')
+  })
+
+  it('renders Pe/Ap marker visuals again during the tutorial reach-moon phase', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 400_000,
+        distance: 12_000_000,
+        kind: 'periapsis',
+        point: { x: 12_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const test = createTestPresentation({
+      eventMarkers,
+      scenarioSession: createRuntimeScenarioSession('tutorial', {
+        phase: 'reach-moon',
+      }),
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
+      true,
+    )
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'block',
+    )
+  })
+
+  it('keeps Pe/Ap marker visuals unchanged outside the tutorial', () => {
+    const eventMarkers = [
+      createEventMarker({
+        altitude: 400_000,
+        distance: 12_000_000,
+        kind: 'periapsis',
+        point: { x: 12_000_000, y: 0 },
+        time: 30,
+      }),
+    ]
+    const test = createTestPresentation({
+      eventMarkers,
+      scenarioSession: createRuntimeScenarioSession('earth-moon'),
+      viewportSize: 50,
+    })
+    test.presentation.updateVisuals()
+
+    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
+      true,
+    )
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'block',
+    )
   })
 
   it('composes orbit point labels from enabled fields', () => {

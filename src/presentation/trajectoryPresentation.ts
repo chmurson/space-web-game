@@ -16,6 +16,7 @@ import type {
   TrajectoryPredictionFarVisibility,
   TrajectoryPredictionRuntime,
 } from '../runtime/trajectoryPredictionRuntime'
+import { isTutorialScenarioState } from '../scenario/specific-scenarios/tutorial/tutorialScenarioTypes'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
@@ -813,6 +814,33 @@ const updateCircularizationVisuals = (options: {
   options.gameScene.desiredVelocityLine.visible = true
 }
 
+const shouldHideTutorialOrbitPointMarkers = (runtime: AppRuntimeState) => {
+  const session = runtime.scenario.session
+  if (session.scenarioId !== 'tutorial') {
+    return false
+  }
+
+  const state = session.state
+  return isTutorialScenarioState(state) && state.phase === 'escape-earth'
+}
+
+const getEffectiveOrbitPointDisplaySettings = (
+  runtime: AppRuntimeState,
+  settings: OrbitPointDisplaySettings,
+): OrbitPointDisplaySettings => {
+  if (
+    !settings.markersVisible ||
+    !shouldHideTutorialOrbitPointMarkers(runtime)
+  ) {
+    return settings
+  }
+
+  return {
+    ...settings,
+    markersVisible: false,
+  }
+}
+
 export const createTrajectoryPresentation = (options: {
   gameScene: GameSceneRefs
   getOrbitPointDisplaySettings: () => OrbitPointDisplaySettings
@@ -985,7 +1013,10 @@ export const createTrajectoryPresentation = (options: {
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
         eventMarkerLabels: options.trajectoryEventMarkerLabels,
         gameScene: options.gameScene,
-        orbitPointDisplaySettings: options.getOrbitPointDisplaySettings(),
+        orbitPointDisplaySettings: getEffectiveOrbitPointDisplaySettings(
+          options.runtime,
+          options.getOrbitPointDisplaySettings(),
+        ),
         predictedImpact: predictionTargetMatches
           ? predictionState.predictedImpact
           : null,
