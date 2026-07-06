@@ -279,10 +279,12 @@ describe('reachMoonHighscores function', () => {
       playerName: 'Moon Ace',
       score: {
         fuelBonusPoints: 199.7,
-        lunarOrbitQualityPoints: 50,
+        lunarOrbitCircularityPoints: 24.9,
+        lunarOrbitEccentricity: 0.021,
+        lunarOrbitQualityPoints: 74.9,
         missionElapsedSeconds: 86_400,
         timePenaltyPoints: 49.9,
-        totalScore: 299.6,
+        totalScore: 324.5,
       },
       submittedAt: now,
     })
@@ -309,7 +311,7 @@ describe('reachMoonHighscores function', () => {
     expect(dailyEntries[0]).toMatchObject({
       id: body.record.id,
       rank: 1,
-      score: { totalScore: 299.6 },
+      score: { totalScore: 324.5 },
     })
     expect(dailyEntries[1]).toMatchObject({
       id: 'daily-old',

@@ -85,8 +85,37 @@ describe('reachMoonHighscores', () => {
             orbitApoapsisAltitudeMeters: 100_000,
             orbitPeriapsisAltitudeMeters: 25_000,
           },
-          lunarOrbitQualityPoints: 50,
-          totalScore: 221.2,
+          lunarOrbitCircularityPoints: 24.9,
+          lunarOrbitEccentricity: 0.021,
+          lunarOrbitQualityPoints: 74.9,
+          totalScore: 246.1,
+        },
+      },
+    })
+  })
+
+  it('defaults missing lunar orbit quality to no circularity bonus', () => {
+    const record = createReachMoonHighscoreRecord(
+      {
+        fuelRemainingRatio: 0.5,
+        missionElapsedSeconds: 90_000,
+        playerName: 'Apollo Ace',
+      },
+      {
+        id: 'record-no-orbit',
+        submittedAt: '2026-06-28T18:00:00.000Z',
+      },
+    )
+
+    expect(record).toMatchObject({
+      ok: true,
+      value: {
+        score: {
+          lunarOrbitCircularityPoints: 0,
+          lunarOrbitEccentricity: null,
+          lunarOrbitQuality: null,
+          lunarOrbitQualityPoints: 0,
+          totalScore: 171.2,
         },
       },
     })

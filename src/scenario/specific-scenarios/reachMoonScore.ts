@@ -1,7 +1,11 @@
+import { MOON_RADIUS } from '../../simulation/constants'
+
 export type ReachMoonScoreSummary = {
   baseScorePoints: number
   fuelBonusPoints: number
   fuelRemainingKg: number
+  lunarOrbitCircularityPoints?: number
+  lunarOrbitEccentricity?: number | null
   lunarOrbitQuality?: ReachMoonOrbitQualityMetric | null
   lunarOrbitQualityPoints?: number
   missionElapsedSeconds: number
@@ -28,11 +32,16 @@ export const REACH_MOON_FUEL_CAPACITY_KG = 32_000
 export const REACH_MOON_BASE_SCORE_POINTS = 0
 export const REACH_MOON_MAX_FUEL_BONUS_POINTS = 200
 export const REACH_MOON_MAX_TIME_SCORE_POINTS = 50
-export const MOON_ORBIT_BONUS_MAX_POINTS = 50
+export const MOON_ORBIT_ALTITUDE_BONUS_MAX_POINTS = 50
+export const MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS = 25
+export const MOON_ORBIT_BONUS_MAX_POINTS =
+  MOON_ORBIT_ALTITUDE_BONUS_MAX_POINTS + MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS
 export const MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS = 100_000
 export const MOON_ORBIT_ZERO_BONUS_APOAPSIS_ALTITUDE_METERS = 2_000_000
 export const MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS = 25_000
 export const MOON_ORBIT_MAX_RISK_PENALTY_POINTS = 50
+export const MOON_ORBIT_FULL_CIRCULARITY_ECCENTRICITY = 0.02
+export const MOON_ORBIT_ZERO_CIRCULARITY_ECCENTRICITY = 0.2
 
 const secondsPerDay = 86_400
 
@@ -68,6 +77,8 @@ const evaluatePolynomial = (
 
 const roundScorePoints = (value: number) => Math.round(value * 10) / 10
 
+const roundEccentricity = (value: number) => Math.round(value * 1_000) / 1_000
+
 const formatScorePoints = (value: number) =>
   roundScorePoints(value).toLocaleString('en-US', {
     maximumFractionDigits: 1,
@@ -77,11 +88,41 @@ const formatScorePoints = (value: number) =>
 const formatInteger = (value: number) =>
   Math.round(value).toLocaleString('en-US')
 
-export const calculateReachMoonOrbitQualityPoints = (
-  metric: ReachMoonOrbitQualityMetric | null | undefined,
+type ReachMoonOrbitQualityBreakdown = {
+  altitudeBonusPoints: number
+  circularityBonusPoints: number
+  eccentricity: number | null
+  riskPenaltyPoints: number
+  totalPoints: number
+}
+
+const calculateReachMoonOrbitEccentricity = (
+  metric: ReachMoonOrbitQualityMetric,
 ): number => {
+  const apoapsisAltitudeMeters = clampFinite(metric.orbitApoapsisAltitudeMeters)
+  const periapsisAltitudeMeters = clampFinite(
+    metric.orbitPeriapsisAltitudeMeters,
+  )
+  const apoapsisRadiusMeters = MOON_RADIUS + apoapsisAltitudeMeters
+  const periapsisRadiusMeters = MOON_RADIUS + periapsisAltitudeMeters
+
+  return (
+    (apoapsisRadiusMeters - periapsisRadiusMeters) /
+    (apoapsisRadiusMeters + periapsisRadiusMeters)
+  )
+}
+
+export const calculateReachMoonOrbitQualityBreakdown = (
+  metric: ReachMoonOrbitQualityMetric | null | undefined,
+): ReachMoonOrbitQualityBreakdown => {
   if (!metric) {
-    return 0
+    return {
+      altitudeBonusPoints: 0,
+      circularityBonusPoints: 0,
+      eccentricity: null,
+      riskPenaltyPoints: 0,
+      totalPoints: 0,
+    }
   }
 
   const apoapsisAltitudeMeters = clampFinite(metric.orbitApoapsisAltitudeMeters)
@@ -93,10 +134,10 @@ export const calculateReachMoonOrbitQualityPoints = (
     MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS
   const apoapsisBonusPoints =
     apoapsisAltitudeMeters <= MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS
-      ? MOON_ORBIT_BONUS_MAX_POINTS
+      ? MOON_ORBIT_ALTITUDE_BONUS_MAX_POINTS
       : apoapsisAltitudeMeters >= MOON_ORBIT_ZERO_BONUS_APOAPSIS_ALTITUDE_METERS
         ? 0
-        : MOON_ORBIT_BONUS_MAX_POINTS *
+        : MOON_ORBIT_ALTITUDE_BONUS_MAX_POINTS *
           (1 -
             (apoapsisAltitudeMeters -
               MOON_ORBIT_FULL_BONUS_APOAPSIS_ALTITUDE_METERS) /
@@ -107,11 +148,40 @@ export const calculateReachMoonOrbitQualityPoints = (
       : -MOON_ORBIT_MAX_RISK_PENALTY_POINTS *
         (1 -
           periapsisAltitudeMeters / MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS)
+  const eccentricity = calculateReachMoonOrbitEccentricity(metric)
+  const circularityRange =
+    MOON_ORBIT_ZERO_CIRCULARITY_ECCENTRICITY -
+    MOON_ORBIT_FULL_CIRCULARITY_ECCENTRICITY
+  const circularityBonusPoints =
+    periapsisAltitudeMeters < MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS
+      ? 0
+      : eccentricity <= MOON_ORBIT_FULL_CIRCULARITY_ECCENTRICITY
+        ? MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS
+        : eccentricity >= MOON_ORBIT_ZERO_CIRCULARITY_ECCENTRICITY
+          ? 0
+          : MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS *
+            (1 -
+              (eccentricity - MOON_ORBIT_FULL_CIRCULARITY_ECCENTRICITY) /
+                circularityRange)
 
-  return roundScorePoints(
-    clampOrbitQualityPoints(apoapsisBonusPoints + periapsisRiskPenaltyPoints),
-  )
+  return {
+    altitudeBonusPoints: roundScorePoints(apoapsisBonusPoints),
+    circularityBonusPoints: roundScorePoints(circularityBonusPoints),
+    eccentricity: roundEccentricity(eccentricity),
+    riskPenaltyPoints: roundScorePoints(periapsisRiskPenaltyPoints),
+    totalPoints: roundScorePoints(
+      clampOrbitQualityPoints(
+        apoapsisBonusPoints +
+          circularityBonusPoints +
+          periapsisRiskPenaltyPoints,
+      ),
+    ),
+  }
 }
+
+export const calculateReachMoonOrbitQualityPoints = (
+  metric: ReachMoonOrbitQualityMetric | null | undefined,
+): number => calculateReachMoonOrbitQualityBreakdown(metric).totalPoints
 
 export const formatReachMoonOrbitAltitude = (
   valueMeters: number | null | undefined,
@@ -125,10 +195,39 @@ export const formatReachMoonOrbitAltitude = (
 
 export const formatReachMoonOrbitQualityContext = (
   metric: ReachMoonOrbitQualityMetric | null | undefined,
-): string =>
-  metric
-    ? `Ap ${formatReachMoonOrbitAltitude(metric.orbitApoapsisAltitudeMeters)} / Pe ${formatReachMoonOrbitAltitude(metric.orbitPeriapsisAltitudeMeters)}`
-    : 'No close lunar orbit'
+  score?: Pick<
+    ReachMoonScoreSummary,
+    'lunarOrbitCircularityPoints' | 'lunarOrbitEccentricity'
+  >,
+): string => {
+  if (!metric) {
+    return 'No close lunar orbit'
+  }
+
+  const altitudeContext = `Ap ${formatReachMoonOrbitAltitude(metric.orbitApoapsisAltitudeMeters)} / Pe ${formatReachMoonOrbitAltitude(metric.orbitPeriapsisAltitudeMeters)}`
+  if (
+    score?.lunarOrbitCircularityPoints == null &&
+    score?.lunarOrbitEccentricity == null
+  ) {
+    return altitudeContext
+  }
+
+  const circularityBonusPoints = score.lunarOrbitCircularityPoints ?? 0
+  if (
+    metric.orbitPeriapsisAltitudeMeters <
+    MOON_ORBIT_SAFE_PERIAPSIS_ALTITUDE_METERS
+  ) {
+    return `${altitudeContext} - too close`
+  }
+  if (circularityBonusPoints >= MOON_ORBIT_CIRCULARITY_BONUS_MAX_POINTS * 0.8) {
+    return `${altitudeContext} - near circular`
+  }
+  if (circularityBonusPoints > 0) {
+    return `${altitudeContext} - elongated`
+  }
+
+  return `${altitudeContext} - very elongated`
+}
 
 export const formatReachMoonFuelLeftPercent = (
   score: Pick<ReachMoonScoreSummary, 'fuelRemainingKg'>,
@@ -188,14 +287,18 @@ export const calculateReachMoonScore = (input: {
       REACH_MOON_MAX_TIME_SCORE_POINTS,
     ),
   )
-  const lunarOrbitQualityPoints = calculateReachMoonOrbitQualityPoints(
+  const lunarOrbitQualityBreakdown = calculateReachMoonOrbitQualityBreakdown(
     input.lunarOrbitQuality,
   )
+  const lunarOrbitQualityPoints = lunarOrbitQualityBreakdown.totalPoints
 
   return {
     baseScorePoints: REACH_MOON_BASE_SCORE_POINTS,
     fuelBonusPoints,
     fuelRemainingKg,
+    lunarOrbitCircularityPoints:
+      lunarOrbitQualityBreakdown.circularityBonusPoints,
+    lunarOrbitEccentricity: lunarOrbitQualityBreakdown.eccentricity,
     lunarOrbitQuality: input.lunarOrbitQuality ?? null,
     lunarOrbitQualityPoints,
     missionElapsedSeconds,
@@ -225,6 +328,7 @@ export const formatReachMoonScoreSummaryDisplay = (
   fuelLeft: formatReachMoonFuelLeftPercent(score),
   lunarOrbitQualityAltitude: formatReachMoonOrbitQualityContext(
     score.lunarOrbitQuality,
+    score,
   ),
   lunarOrbitQualityPoints: formatScorePoints(
     score.lunarOrbitQualityPoints ?? 0,

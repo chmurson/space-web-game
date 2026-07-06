@@ -59,17 +59,19 @@ const getReachMoonUrl = (query = '') =>
   query ? `/?reachmoon=1&${query}` : '/?reachmoon=1'
 
 const highscoreScore = {
-  baseScorePoints: 1_000,
+  baseScorePoints: 0,
   fuelBonusPoints: 196,
   fuelRemainingKg: 31_360,
+  lunarOrbitCircularityPoints: 25,
+  lunarOrbitEccentricity: 0.007,
   lunarOrbitQuality: {
     orbitApoapsisAltitudeMeters: 420_000,
-    orbitPeriapsisAltitudeMeters: 12_000,
+    orbitPeriapsisAltitudeMeters: 390_000,
   },
-  lunarOrbitQualityPoints: 50,
+  lunarOrbitQualityPoints: 66.6,
   missionElapsedSeconds: 27_000,
   timePenaltyPoints: 28,
-  totalScore: 1_218,
+  totalScore: 290.6,
 }
 
 const completedHighscoreRun: ReachMoonHighscorePendingRun = {
@@ -233,7 +235,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   await expect(
     page.getByText('Artemis Pathfinder With A Long Callsign'),
   ).toBeVisible()
-  await expect(page.getByText('1,218')).toBeVisible()
+  await expect(page.getByText('291')).toBeVisible()
   await expect(page.getByText('7h30m')).toBeVisible()
   const highscoreTable = page.getByRole('table', {
     name: 'Today Reach the Moon leaderboard',
@@ -251,7 +253,7 @@ test('captures the mobile Reach the Moon highscores leaderboard', async ({
   ).toBeVisible()
   await expect(
     highscoreTable.getByRole('cell', {
-      name: 'Orbit quality Ap 420 km / Pe 12 km',
+      name: 'Orbit quality Ap 420 km / Pe 390 km - near circular',
     }),
   ).toBeVisible()
   const firstHighscoreRow = highscoreTable
@@ -1807,6 +1809,70 @@ test('shows a bottom notice when cycling camera mode from the keyboard', async (
   await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
   await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
   await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
+})
+
+test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  const notice = page.locator('.hud-notice-transient')
+  await page.evaluate(() => {
+    const noticeElement = document.querySelector<HTMLElement>(
+      '.hud-notice-transient',
+    )
+    const titleElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-title')
+    const bodyElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-body')
+    if (!noticeElement || !titleElement || !bodyElement) {
+      throw new Error('Missing transient notice DOM')
+    }
+
+    titleElement.textContent = 'Close lunar orbit recorded'
+    bodyElement.textContent = 'Ap 3970 km / Pe 770 km - very elongated'
+    noticeElement.hidden = false
+    noticeElement.dataset.visible = 'true'
+    noticeElement.setAttribute('aria-hidden', 'false')
+  })
+
+  await expect(notice).toBeVisible()
+
+  const metrics = await notice.evaluate((noticeElement) => {
+    const titleElement =
+      noticeElement.querySelector<HTMLElement>('.hud-notice-title')
+    const bodyElement =
+      noticeElement.querySelector<HTMLElement>('.hud-notice-body')
+    if (!titleElement || !bodyElement) {
+      throw new Error('Missing transient notice text spans')
+    }
+
+    return {
+      bodyClientWidth: bodyElement.clientWidth,
+      bodyLeft: bodyElement.getBoundingClientRect().left,
+      noticeClientWidth: noticeElement.clientWidth,
+      noticeScrollWidth: noticeElement.scrollWidth,
+      titleClientWidth: titleElement.clientWidth,
+      titleOverflow: getComputedStyle(titleElement).overflow,
+      titleRight: titleElement.getBoundingClientRect().right,
+      titleTextOverflow: getComputedStyle(titleElement).textOverflow,
+    }
+  })
+
+  expect(metrics.noticeScrollWidth).toBeLessThanOrEqual(
+    metrics.noticeClientWidth,
+  )
+  expect(metrics.titleClientWidth).toBeGreaterThan(0)
+  expect(metrics.bodyClientWidth).toBeGreaterThan(0)
+  expect(metrics.titleRight).toBeLessThanOrEqual(metrics.bodyLeft)
+  expect(metrics.titleOverflow).toBe('hidden')
+  expect(metrics.titleTextOverflow).toBe('ellipsis')
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-lunar-orbit-quality-notice',
+  )
 })
 
 test('keeps the UI settings dialog adapter state, focus, and change behavior', async ({

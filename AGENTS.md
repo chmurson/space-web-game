@@ -111,6 +111,7 @@
 
 - Do not widen module APIs only to make tests easier to write.
 - Prefer testing behavior through existing public functions instead of exporting internal helpers just for tests.
+- Avoid nested ternaries for multi-branch business decisions, UI copy choices, or state labels. Use explicit `if`/`else` branches or a small named helper instead; simple binary ternaries are fine when they stay easy to read.
 - For HUD, menu, drawer, touch-control, and overlay styling, prefer shared UI surface tokens in `src/style.css` such as `--ui-glass-control-bg`, `--ui-glass-panel-bg`, `--ui-glass-label-bg`, and their related border/blur/shadow variables before adding local colors.
 - Reuse or extend shared UI surface styles when a new element has the same role as an existing pill, popup, drawer, label, or glass panel. Add local CSS values only when the visual treatment is genuinely component-specific, and keep those values close to the component that owns them.
 
