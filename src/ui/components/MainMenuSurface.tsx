@@ -23,6 +23,7 @@ import {
   MenuKicker,
   MenuPanel,
 } from './MenuSurfacePrimitives'
+import { formatRecentSnapshotSavedAt } from './recentSnapshotFormatting'
 
 export type MainMenuView =
   | 'main'
@@ -122,11 +123,6 @@ const formatSubmittedAt = (value: string) => {
     month: 'short',
     year: 'numeric',
   })
-}
-
-const formatRecentSnapshotSavedAt = (value: string) => {
-  const date = new Date(value)
-  return Number.isFinite(date.valueOf()) ? date.toLocaleTimeString() : 'Unknown'
 }
 
 const getPeriodLabel = (period: ReachMoonHighscorePeriod) =>

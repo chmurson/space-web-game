@@ -1,10 +1,6 @@
 import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import type { TopMenuAction } from '../createTopMenu'
-
-const formatRecentSnapshotSavedAt = (value: string) => {
-  const date = new Date(value)
-  return Number.isFinite(date.valueOf()) ? date.toLocaleTimeString() : 'Unknown'
-}
+import { formatRecentSnapshotSavedAt } from './recentSnapshotFormatting'
 
 export type TopMenuSurfaceProps = {
   activeSection: 'main' | 'debug-snapshot'
