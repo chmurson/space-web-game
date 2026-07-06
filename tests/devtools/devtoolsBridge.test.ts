@@ -6,6 +6,10 @@ import {
 } from '@/devtools/devtoolsBridge'
 import type { UIUserAction } from '@/input/uiUserActions'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import type {
+  TrajectoryPredictionDiagnosticEvent,
+  TrajectoryPredictionDiagnostics,
+} from '@/runtime/trajectoryPredictionRuntime'
 import {
   type CameraControlMode,
   createDefaultScenarioDirectives,
@@ -19,6 +23,83 @@ const predictionSampling = {
   stepOptionsSeconds: [30, 60],
   targetMaxSteps: 1200,
 }
+
+const createTrajectoryPredictionDiagnostics = (
+  events: TrajectoryPredictionDiagnosticEvent[] = [],
+): TrajectoryPredictionDiagnostics => ({
+  absolutePointCount: 12,
+  activeFar: false,
+  activeFarInputKeyShort: null,
+  assistedPointCount: 8,
+  elapsedSinceRefreshSeconds: 0.2,
+  events,
+  eventMarkerCount: 2,
+  farCalculationAgeSeconds: 0.8,
+  farCalculationAverageMs: 5.1,
+  farCalculationMs: 5.6,
+  farCalculationSampleCount: 3,
+  farCalculationWindows: {
+    averageLastSecondMs: 5.6,
+    averageLastTenSecondsMs: 5.2,
+    averageLastThirtySecondsMs: 5.1,
+    countLastSecond: 1,
+    countLastTenSeconds: 2,
+    countLastThirtySeconds: 3,
+  },
+  farInputKeyShort: 'far-key',
+  farPointCount: 10,
+  farVisible: 'current',
+  geometryUpdateMs: 1.2,
+  hasFarTier: true,
+  horizonSeconds: 43_200,
+  inputKey: 'test-key',
+  inputKeyShort: 'test',
+  integrationStepSeconds: 8,
+  integrationTiers: {
+    far: {
+      averageStepSeconds: 2,
+      minStepSeconds: 1,
+      stepCount: 20,
+    },
+    near: {
+      averageStepSeconds: 4,
+      minStepSeconds: 2,
+      stepCount: 10,
+    },
+  },
+  nearCalculationAgeSeconds: 0.1,
+  nearCalculationAverageMs: 2.4,
+  nearCalculationMs: 2.1,
+  nearCalculationSampleCount: 6,
+  nearCalculationTravel: {
+    distanceSinceCalculationMeters: 1_000,
+    horizonDistanceMeters: 10_000,
+    horizonRatio: 0.1,
+    lastCalculationGapMeters: 900,
+    lastCalculationGapRatio: 0.09,
+    lastStepDistanceMeters: 250,
+    lastStepHorizonRatio: 0.025,
+  },
+  nearCalculationWindows: {
+    averageLastSecondMs: 2.1,
+    averageLastTenSecondsMs: 2.3,
+    averageLastThirtySecondsMs: 2.4,
+    countLastSecond: 1,
+    countLastTenSeconds: 4,
+    countLastThirtySeconds: 6,
+  },
+  nearPointCount: 4,
+  pendingFar: false,
+  pendingFarInputKeyShort: null,
+  predictionRefreshMs: 3.4,
+  refreshCountLastSecond: 2,
+  refreshIntervalSeconds: 0.4,
+  refreshReason: 'target-change',
+  relativePointCount: 10,
+  sampleStepSeconds: 60,
+  splitHorizon: true,
+  visiblePointCount: 10,
+})
 
 const createRuntime = (): AppRuntimeState => ({
   simulation: {
@@ -114,20 +195,8 @@ const createBridgeHarness = (runtime = createRuntime()) => {
       }
     },
     getAppMode: () => 'game',
-    getTrajectoryPredictionDiagnostics: () => ({
-      absolutePointCount: 12,
-      assistedPointCount: 8,
-      eventMarkerCount: 2,
-      geometryUpdateMs: 1.2,
-      horizonSeconds: 43_200,
-      inputKey: 'test-key',
-      integrationStepSeconds: 8,
-      predictionRefreshMs: 3.4,
-      refreshCountLastSecond: 2,
-      refreshReason: 'target-change',
-      relativePointCount: 10,
-      sampleStepSeconds: 60,
-    }),
+    getTrajectoryPredictionDiagnostics: () =>
+      createTrajectoryPredictionDiagnostics(),
     runtime,
     maxPredictionLoopRevolutions: 2.5,
     predictionSampling,
@@ -148,20 +217,33 @@ describe('createDevtoolsSnapshot', () => {
       maxPredictionLoopRevolutions: 2.5,
       predictionSampling,
       runtime,
-      getTrajectoryPredictionDiagnostics: () => ({
-        absolutePointCount: 12,
-        assistedPointCount: 8,
-        eventMarkerCount: 2,
-        geometryUpdateMs: 1.2,
-        horizonSeconds: 43_200,
-        inputKey: 'test-key',
-        integrationStepSeconds: 8,
-        predictionRefreshMs: 3.4,
-        refreshCountLastSecond: 2,
-        refreshReason: 'target-change',
-        relativePointCount: 10,
-        sampleStepSeconds: 60,
-      }),
+      getTrajectoryPredictionDiagnostics: () =>
+        createTrajectoryPredictionDiagnostics([
+          {
+            activeFar: false,
+            activeFarInputKeyShort: null,
+            changedParts: ['target'],
+            dtMs: null,
+            elapsedSinceRefreshSeconds: 0.2,
+            event: 'refresh',
+            farApplied: true,
+            farCalculationMs: 5.6,
+            farInputKeyShort: 'far-key',
+            farPointCount: 10,
+            farVisible: 'current',
+            horizonSeconds: 43_200,
+            inputKeyShort: 'test',
+            nearCalculationMs: 2.1,
+            nearPointCount: 4,
+            pendingFar: false,
+            pendingFarInputKeyShort: null,
+            reason: 'target-change',
+            refreshIntervalSeconds: 0.4,
+            splitHorizon: true,
+            t: 12,
+            visiblePointCount: 10,
+          },
+        ]),
       timeWarps,
     })
 
@@ -188,7 +270,19 @@ describe('createDevtoolsSnapshot', () => {
     })
     expect(snapshot.simulation.trajectoryPrediction).toMatchObject({
       absolutePointCount: 12,
+      events: [{ event: 'refresh', farApplied: true }],
       eventMarkerCount: 2,
+      farVisible: 'current',
+      pendingFar: false,
+      nearCalculationTravel: {
+        distanceSinceCalculationMeters: 1_000,
+        horizonDistanceMeters: 10_000,
+        horizonRatio: 0.1,
+        lastCalculationGapMeters: 900,
+        lastCalculationGapRatio: 0.09,
+        lastStepDistanceMeters: 250,
+        lastStepHorizonRatio: 0.025,
+      },
       refreshReason: 'target-change',
     })
     expect(snapshot.simulation.spacecraft.speed).toBe(10)

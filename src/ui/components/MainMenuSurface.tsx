@@ -27,6 +27,7 @@ import {
   MenuKicker,
   MenuPanel,
 } from './MenuSurfacePrimitives'
+import { formatRecentSnapshotSavedAt } from './recentSnapshotFormatting'
 
 export type MainMenuView =
   | 'main'
@@ -786,7 +787,7 @@ export const MainMenuSurface = ({
                 recentSnapshots.map((snapshot) => (
                   <option key={snapshot.id} value={snapshot.id}>
                     {snapshot.name} -{' '}
-                    {new Date(snapshot.savedAt).toLocaleTimeString()}
+                    {formatRecentSnapshotSavedAt(snapshot.savedAt)}
                   </option>
                 ))
               )}

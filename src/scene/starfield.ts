@@ -207,11 +207,16 @@ const getVisibleRadius = (options: {
   viewportSize: number
   viewportWidth: number
 }) => {
-  const aspect =
+  const rawAspect =
     options.viewportHeight <= 0
       ? 1
       : options.viewportWidth / options.viewportHeight
-  const halfWidth = options.viewportSize * Math.max(aspect, 1) * 0.5
+  const aspect = THREE.MathUtils.clamp(
+    rawAspect,
+    1,
+    maxStarfieldViewportAspectRatio,
+  )
+  const halfWidth = options.viewportSize * aspect * 0.5
   const halfHeight = options.viewportSize * 0.5
 
   return (

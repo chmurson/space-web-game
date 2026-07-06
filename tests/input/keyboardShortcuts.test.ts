@@ -86,7 +86,7 @@ describe('getKeyboardShortcutAction', () => {
     ).toBe('toggleFpsIndicator')
   })
 
-  it('maps C to camera mode cycling instead of assist mode cycling', () => {
+  it('maps C to camera mode cycling and Shift+C to assist mode cycling', () => {
     expect(
       getKeyboardShortcutAction(createDebugShortcutEvent('KeyC'), {
         autoDiscoverStrongestInfluence: false,
@@ -96,6 +96,24 @@ describe('getKeyboardShortcutAction', () => {
     expect(
       getKeyboardShortcutAction(
         { ...createDebugShortcutEvent('KeyC'), repeat: true },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBeNull()
+    expect(
+      getKeyboardShortcutAction(
+        { ...createDebugShortcutEvent('KeyC'), shiftKey: true },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBe('cycleAssistMode')
+    expect(
+      getKeyboardShortcutAction(
+        { ...createDebugShortcutEvent('KeyC'), repeat: true, shiftKey: true },
         {
           autoDiscoverStrongestInfluence: false,
           debugModeEnabled: false,

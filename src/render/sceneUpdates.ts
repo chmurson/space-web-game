@@ -58,6 +58,10 @@ export const updateCameraView = (options: {
     options.viewportWidth,
     options.viewportHeight,
   )
+  options.gameScene.predictionStaleFarMaterial.resolution.set(
+    options.viewportWidth,
+    options.viewportHeight,
+  )
   options.gameScene.impactGradientMaterial.resolution.set(
     options.viewportWidth,
     options.viewportHeight,

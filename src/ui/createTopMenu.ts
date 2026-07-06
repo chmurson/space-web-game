@@ -65,8 +65,13 @@ export const createTopMenu = (options: {
 
   const getMenuItems = () =>
     Array.from(
-      surface.element.querySelectorAll<HTMLButtonElement>(
-        'button[role="menuitem"], button[role="menuitemcheckbox"], button[role="menuitemradio"]',
+      surface.element.querySelectorAll<HTMLButtonElement | HTMLSelectElement>(
+        [
+          'button[role="menuitem"]',
+          'button[role="menuitemcheckbox"]',
+          'button[role="menuitemradio"]',
+          'select.menu-recent-snapshot-select',
+        ].join(', '),
       ),
     ).filter((menuItem) => !menuItem.disabled && !menuItem.closest('[hidden]'))
 
@@ -219,7 +224,7 @@ export const createTopMenu = (options: {
   const handleDropdownKeyDown = (event: KeyboardEvent) => {
     const menuItems = getMenuItems()
     const currentIndex = menuItems.indexOf(
-      document.activeElement as HTMLButtonElement,
+      document.activeElement as HTMLButtonElement | HTMLSelectElement,
     )
     if (event.key === 'ArrowDown') {
       event.preventDefault()

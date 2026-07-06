@@ -310,6 +310,9 @@ export type GameSceneRefs = {
   predictionGeometry: LineGeometry
   predictionLine: Line2
   predictionMaterial: LineMaterial
+  predictionStaleFarGeometry: LineGeometry
+  predictionStaleFarLine: Line2
+  predictionStaleFarMaterial: LineMaterial
   replacePredictionLineGeometryOnUpdate: boolean
   scene: THREE.Scene
   screenSpaceDashPatterns: ScreenSpaceDashPattern[]
@@ -570,28 +573,41 @@ export const createGameScene = (
   const screenSpaceDashPatterns: ScreenSpaceDashPattern[] = []
 
   const predictionLineWidth = 0.8
-  const predictionGeometry = new LineGeometry()
-  const predictionMaterial = new LineMaterial({
-    color: 0x7dd3fc,
-    linewidth: predictionLineWidth,
-    transparent: true,
-    opacity: 1,
-    vertexColors: true,
-  })
-  predictionMaterial.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      'gl_FragColor = vec4( diffuseColor.rgb, alpha );',
-      [
-        'float fadeBrightness = clamp( ( vColor.r + vColor.g + vColor.b ) / 3.0, 0.0, 1.0 );',
-        'float fadeAlphaMultiplier = mix( 0.55, 1.0, fadeBrightness );',
-        'gl_FragColor = vec4( diffuseColor.rgb, alpha * fadeAlphaMultiplier );',
-      ].join('\n'),
-    )
+  const createPredictionMaterial = (opacity: number) => {
+    const material = new LineMaterial({
+      color: 0x7dd3fc,
+      linewidth: predictionLineWidth,
+      transparent: true,
+      opacity,
+      vertexColors: true,
+    })
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'gl_FragColor = vec4( diffuseColor.rgb, alpha );',
+        [
+          'float fadeBrightness = clamp( ( vColor.r + vColor.g + vColor.b ) / 3.0, 0.0, 1.0 );',
+          'float fadeAlphaMultiplier = mix( 0.55, 1.0, fadeBrightness );',
+          'gl_FragColor = vec4( diffuseColor.rgb, alpha * fadeAlphaMultiplier );',
+        ].join('\n'),
+      )
+    }
+    material.customProgramCacheKey = () => 'prediction-line-alpha-fade-v1'
+    return material
   }
-  predictionMaterial.customProgramCacheKey = () =>
-    'prediction-line-alpha-fade-v1'
+  const predictionGeometry = new LineGeometry()
+  const predictionMaterial = createPredictionMaterial(1)
+  const predictionStaleFarMaterial = createPredictionMaterial(1)
   const predictionLine = new Line2(predictionGeometry, predictionMaterial)
+  predictionLine.renderOrder = 1
   scene.add(predictionLine)
+  const predictionStaleFarGeometry = new LineGeometry()
+  const predictionStaleFarLine = new Line2(
+    predictionStaleFarGeometry,
+    predictionStaleFarMaterial,
+  )
+  predictionStaleFarLine.renderOrder = 0
+  predictionStaleFarLine.visible = false
+  scene.add(predictionStaleFarLine)
 
   const impactGradientGeometry = new LineGeometry()
   const impactGradientMaterial = new LineMaterial({
@@ -708,6 +724,9 @@ export const createGameScene = (
     predictionGeometry,
     predictionLine,
     predictionMaterial,
+    predictionStaleFarGeometry,
+    predictionStaleFarLine,
+    predictionStaleFarMaterial,
     replacePredictionLineGeometryOnUpdate,
     scene,
     screenSpaceDashPatterns,

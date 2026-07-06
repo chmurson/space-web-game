@@ -6,7 +6,7 @@ import type {
   AssistTargetUiState,
   GameQueries,
 } from '../runtime/gameQueries'
-import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
+import { emptyTrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import { getBodyInfluences } from '../simulation/bodyInfluence'
@@ -74,20 +74,6 @@ const syncTargetSphere = (element: HTMLElement, body: Pick<Body, 'color'>) => {
 }
 
 const debugPanelUpdateIntervalMs = 500
-const emptyTrajectoryPredictionDiagnostics: TrajectoryPredictionDiagnostics = {
-  absolutePointCount: 0,
-  assistedPointCount: 0,
-  eventMarkerCount: 0,
-  geometryUpdateMs: 0,
-  horizonSeconds: 0,
-  inputKey: null,
-  integrationStepSeconds: 0,
-  predictionRefreshMs: 0,
-  refreshCountLastSecond: 0,
-  refreshReason: null,
-  relativePointCount: 0,
-  sampleStepSeconds: 0,
-}
 const fpsIndicatorUpdateFrameCycleInterval = 4
 const fpsIndicatorSlowFrameMs = 1000 / 15
 const transientNoticeDurationMs = 3_000
@@ -639,7 +625,7 @@ export const createHudPresentation = (options: {
             fpsIndicatorEnabled: options.runtime.debug.fpsIndicatorEnabled,
             predictionDiagnostics:
               options.trajectoryPresentation.getPredictionDiagnostics?.() ??
-              emptyTrajectoryPredictionDiagnostics,
+              emptyTrajectoryPredictionDiagnostics(),
             predictionStepSeconds:
               options.queries.getPredictionConfig().stepSeconds,
             predictedImpact: predictionState.predictedImpact,

@@ -61,7 +61,9 @@ const getCaptureGuidanceText = ({
   }
 
   if (shouldCaptureBurnForMetrics(targetMetrics)) {
-    return assistMode === 'capture' ? 'Burning retrograde' : 'Ready: press C'
+    return assistMode === 'capture'
+      ? 'Burning retrograde'
+      : 'Ready: press Shift+C'
   }
 
   if (targetMetrics.relativeSpeed < targetMetrics.circularSpeed * 0.75) {

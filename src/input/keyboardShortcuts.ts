@@ -36,6 +36,9 @@ export const getKeyboardShortcutAction = (
   ) {
     return 'cycleAssistTarget'
   }
+  if (!event.repeat && event.shiftKey && event.code === 'KeyC') {
+    return 'cycleAssistMode'
+  }
   if (!event.repeat && event.code === 'KeyC') {
     return 'cycleCameraMode'
   }

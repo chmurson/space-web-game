@@ -1,5 +1,6 @@
 import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import type { TopMenuAction } from '../createTopMenu'
+import { formatRecentSnapshotSavedAt } from './recentSnapshotFormatting'
 
 export type TopMenuSurfaceProps = {
   activeSection: 'main' | 'debug-snapshot'
@@ -146,7 +147,7 @@ export const TopMenuSurface = ({
                 recentSnapshots.map((snapshot) => (
                   <option key={snapshot.id} value={snapshot.id}>
                     {snapshot.name} -{' '}
-                    {new Date(snapshot.savedAt).toLocaleTimeString()}
+                    {formatRecentSnapshotSavedAt(snapshot.savedAt)}
                   </option>
                 ))
               )}

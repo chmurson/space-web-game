@@ -229,6 +229,23 @@ main {
     overflow-wrap: anywhere;
 }
 
+.sampling-list {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+}
+
+.sampling-list div {
+    grid-template-columns: minmax(104px, 0.42fr) 1fr;
+}
+
+#predictionNearCalculation,
+#predictionFarCalculation,
+#predictionNearTravel,
+#predictionIntegrationStats {
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 11px;
+    white-space: pre;
+}
+
 .control-group {
     align-items: center;
     display: flex;
@@ -304,6 +321,11 @@ main {
     font-weight: 600;
 }
 
+.raw-card {
+    max-width: 100%;
+    min-width: 0;
+}
+
 .raw-card-toolbar {
     display: flex;
     justify-content: flex-end;
@@ -317,10 +339,13 @@ main {
     color: #c7d2fe;
     line-height: 1.55;
     margin: 0;
+    max-width: 100%;
+    min-width: 0;
     overflow: auto;
     padding: 10px;
     tab-size: 2;
     white-space: pre;
+    width: 100%;
 }
 
 .raw-card .json-viewer {
@@ -352,6 +377,7 @@ main {
     display: none;
     flex-direction: column;
     inset: 0;
+    min-width: 0;
     position: fixed;
     z-index: 10;
 }

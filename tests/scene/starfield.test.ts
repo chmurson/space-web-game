@@ -243,6 +243,26 @@ describe('createStarfield', () => {
       positionAttribute.count,
     )
   })
+
+  it('keeps star geometry within capacity on ultrawide viewports', () => {
+    const starfield = createStarfield()
+    const baseLayerIndex = 3
+
+    updateStarfield(starfield, {
+      viewportHeight: 600,
+      viewportSize: 1_800,
+      viewportWidth: 8_000,
+    })
+
+    const points = getLayerPoints(starfield, baseLayerIndex)
+    const positionAttribute = points.geometry.getAttribute('position')
+
+    expect(Number.isFinite(points.geometry.drawRange.count)).toBe(true)
+    expect(points.geometry.drawRange.count).toBeGreaterThan(0)
+    expect(points.geometry.drawRange.count).toBeLessThanOrEqual(
+      positionAttribute.count,
+    )
+  })
 })
 
 describe('createGameScene', () => {
