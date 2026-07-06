@@ -2,6 +2,7 @@ import type {
   FarTrajectoryPredictionRequestPayload,
   FarTrajectoryPredictionResultPayload,
 } from '../prediction/farTrajectoryPrediction'
+import { getErrorMessage } from './errorMessage'
 import type { FarTrajectoryPredictionWorkerMessage } from './trajectoryPredictionWorker'
 
 export type TrajectoryPredictionFarWorkerError = {
@@ -22,9 +23,6 @@ export type TrajectoryPredictionFarWorkerClient = {
 export type TrajectoryPredictionFarWorkerClientFactory = (
   handlers: TrajectoryPredictionFarWorkerClientHandlers,
 ) => TrajectoryPredictionFarWorkerClient
-
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : String(error)
 
 const isWorkerMessage = (
   message: unknown,

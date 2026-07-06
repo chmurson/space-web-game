@@ -51,16 +51,15 @@ export type FarTrajectoryPredictionResultPayload = {
 
 const nowMs = () => performance.now()
 
-const cloneBodySnapshot = (
-  body: Body,
-): FarTrajectoryPredictionBodySnapshot => ({
-  id: body.id,
-  mass: body.mass,
-  name: body.name,
-  position: { ...body.position },
-  radius: body.radius,
-  velocity: { ...body.velocity },
-})
+const cloneBodySnapshot = (body: Body): FarTrajectoryPredictionBodySnapshot => {
+  const { color: _color, ...snapshot } = body
+
+  return {
+    ...snapshot,
+    position: { ...body.position },
+    velocity: { ...body.velocity },
+  }
+}
 
 export const createFarTrajectoryPredictionStateSnapshot = (
   state: SimulationState,
