@@ -535,6 +535,21 @@ describe('tutorialOnboardingProgress', () => {
         'targetControl',
         'targetPill',
         'timeWarpPill',
+        'trajectory',
+      ]),
+    )
+    expect(
+      getHiddenOnboardingUIElements({
+        ...onboarding,
+        activeStepId: 'intro-thrusting-off',
+      }),
+    ).toEqual(
+      new Set([
+        'scenarioInfoButton',
+        'targetControl',
+        'targetPill',
+        'timeWarpPill',
+        'trajectory',
       ]),
     )
     expect(
@@ -549,6 +564,7 @@ describe('tutorialOnboardingProgress', () => {
         'targetPill',
         'thrustControl',
         'timeWarpPill',
+        'trajectory',
       ]),
     )
     expect(

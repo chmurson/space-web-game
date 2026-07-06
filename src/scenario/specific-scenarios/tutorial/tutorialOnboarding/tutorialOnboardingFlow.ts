@@ -414,6 +414,7 @@ export const getHiddenOnboardingUIElements = (
       'targetControl',
       'targetPill',
       'timeWarpPill',
+      'trajectory',
     ])
   }
 
@@ -424,6 +425,7 @@ export const getHiddenOnboardingUIElements = (
       'targetPill',
       'thrustControl',
       'timeWarpPill',
+      'trajectory',
     ])
   }
 
