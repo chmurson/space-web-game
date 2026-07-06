@@ -814,6 +814,7 @@ const updateCircularizationVisuals = (options: {
 }
 
 export const createTrajectoryPresentation = (options: {
+  autopilotRotationRate: number
   gameScene: GameSceneRefs
   getOrbitPointDisplaySettings: () => OrbitPointDisplaySettings
   physicsEngine: PhysicsEngine
@@ -849,6 +850,7 @@ export const createTrajectoryPresentation = (options: {
   const refreshPrediction = () => {
     options.trajectoryPredictionRuntime.refresh({
       assistMode: options.runtime.simulation.assistMode,
+      autopilotRotationRate: options.autopilotRotationRate,
       getAssistPredictionControls: options.queries.getAssistPredictionControls,
       getAssistTarget: options.queries.getAssistTarget,
       getCaptureMetrics: options.queries.getCaptureMetrics,
@@ -918,6 +920,7 @@ export const createTrajectoryPresentation = (options: {
         realDt,
         {
           assistMode: options.runtime.simulation.assistMode,
+          autopilotRotationRate: options.autopilotRotationRate,
           getAssistPredictionControls:
             options.queries.getAssistPredictionControls,
           getAssistTarget: options.queries.getAssistTarget,

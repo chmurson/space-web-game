@@ -30,8 +30,8 @@ import {
 } from '../runtime/timeWarpFeedbackPolicy'
 import { getTrajectoryHorizonPreviews } from '../runtime/trajectoryHorizonControlPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
-import { parsePromptAction } from '../scenario/scenarioPrompts'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
+import { parsePromptAction } from '../scenario/scenarioPrompts'
 import {
   applyBodyTextureAssetsToScene,
   applyScenarioRenderConfigToScene,
@@ -332,6 +332,7 @@ export const createAppComponents = (options: {
       options.runtimeState.scenario.orbitPointDisplay,
     )
   const trajectoryPresentation = createTrajectoryPresentation({
+    autopilotRotationRate: options.config.controls.autopilotRotationRate,
     gameScene,
     getOrbitPointDisplaySettings: getEffectiveOrbitPointDisplaySettings,
     physicsEngine: options.config.physicsEngine,
