@@ -642,9 +642,9 @@ describe('tutorialOnboardingProgress', () => {
 
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 11_200, 30)
     expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
-    expect(runtime.simulation.targetHeading).toBeCloseTo(0, 6)
+    expect(runtime.simulation.targetHeading).toBeCloseTo(Math.PI / 2, 6)
 
-    runtime.simulation.state.spacecraft.heading = 0
+    runtime.simulation.state.spacecraft.heading = Math.PI / 2
     runtime.simulation.state.controls.main = 1
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 12_200, 30)
 
@@ -658,6 +658,69 @@ describe('tutorialOnboardingProgress', () => {
       'intro-keep-timewarp',
       'intro-timewarp-thrust',
     ])
+  })
+
+  it('sets the high-warp burn target heading prograde instead of radial outward', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 30)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-keep-timewarp',
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+        'intro-thrusting-off',
+        'intro-point-and-turn',
+        'intro-timewarp',
+      ],
+      progress: {
+        ...onboarding.progress,
+        accumulatedTimeWarpMs: 9_900,
+      },
+    }
+    runtime.simulation.state.spacecraft.position = {
+      x: 0,
+      y: 6_371_000 + 500_000,
+    }
+    runtime.simulation.state.spacecraft.velocity = { x: -7_500, y: 500 }
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 30)
+
+    expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
+    expect(runtime.simulation.targetHeading).toBeCloseTo(Math.PI, 6)
+    expect(runtime.simulation.targetHeading).not.toBeCloseTo(Math.PI / 2, 6)
+  })
+
+  it('uses the perpendicular fallback when high-warp burn velocity is purely radial', () => {
+    const runtime = createRuntime()
+    let onboarding = createTutorialOnboardingState(runtime, 1_000, 30)
+    onboarding = {
+      ...onboarding,
+      activeStepId: 'intro-keep-timewarp',
+      completedStepIds: [
+        'intro-show-thrust-control',
+        'intro-thrust',
+        'intro-keep-thrusting',
+        'intro-thrusting-off',
+        'intro-point-and-turn',
+        'intro-timewarp',
+      ],
+      progress: {
+        ...onboarding.progress,
+        accumulatedTimeWarpMs: 9_900,
+      },
+    }
+    runtime.simulation.state.spacecraft.position = {
+      x: 6_371_000 + 500_000,
+      y: 0,
+    }
+    runtime.simulation.state.spacecraft.velocity = { x: 500, y: 0 }
+
+    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 30)
+
+    expect(onboarding.activeStepId).toBe('intro-timewarp-thrust')
+    expect(runtime.simulation.targetHeading).toBeCloseTo(Math.PI / 2, 6)
   })
 
   it('returns to time warp control guidance if x30s is lowered during the hold step', () => {

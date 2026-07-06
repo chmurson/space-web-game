@@ -1,6 +1,12 @@
 import type { AppRuntimeState } from '../../../../runtime/appRuntimeState'
 import type { Body } from '../../../../simulation/types'
-import { length, normalize, sub, vec } from '../../../../simulation/vector'
+import {
+  length,
+  normalize,
+  scale,
+  sub,
+  vec,
+} from '../../../../simulation/vector'
 import {
   requiredHighWarpMultiplier,
   requiredHighWarpThrustMs,
@@ -86,7 +92,7 @@ const getNearestBody = (runtime: AppRuntimeState): Body | null => {
   return nearestBody
 }
 
-const getOutwardHeading = (
+const getProgradeHeading = (
   runtime: AppRuntimeState,
   nearestBody: Body | null,
 ) => {
@@ -94,11 +100,26 @@ const getOutwardHeading = (
     return runtime.simulation.state.spacecraft.heading
   }
 
+  const spacecraft = runtime.simulation.state.spacecraft
   const radialDirection = normalize(
-    sub(runtime.simulation.state.spacecraft.position, nearestBody.position),
+    sub(spacecraft.position, nearestBody.position),
+  )
+  if (length(radialDirection) === 0) {
+    return spacecraft.heading
+  }
+
+  const relativeVelocity = sub(spacecraft.velocity, nearestBody.velocity)
+  const radialVelocity =
+    relativeVelocity.x * radialDirection.x +
+    relativeVelocity.y * radialDirection.y
+  const tangentDirection = sub(
+    relativeVelocity,
+    scale(radialDirection, radialVelocity),
   )
   const safeDirection =
-    length(radialDirection) > 0 ? radialDirection : vec(1, 0)
+    length(tangentDirection) > 0
+      ? tangentDirection
+      : vec(-radialDirection.y, radialDirection.x)
   return Math.atan2(safeDirection.y, safeDirection.x)
 }
 
@@ -123,7 +144,7 @@ const setStepId = (
 
   if (nextStepId === 'intro-timewarp-thrust') {
     const nearestBody = getNearestBody(runtime)
-    runtime.simulation.targetHeading = getOutwardHeading(runtime, nearestBody)
+    runtime.simulation.targetHeading = getProgradeHeading(runtime, nearestBody)
     runtime.simulation.assistMode = 'off'
   }
 
