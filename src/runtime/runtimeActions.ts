@@ -7,9 +7,9 @@ import {
 } from '../scenario/runtimeScenario'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import {
-  getNextCameraControlMode,
   type CameraControlMode,
   type GlobalScenarioDirectiveLimits,
+  getNextCameraControlMode,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
@@ -497,7 +497,10 @@ export const createRuntimeActions = (options: {
         worldPosition,
       )
     },
-    planTargetHeading: setTargetHeadingPlan,
+    planTargetHeading: (plan: TargetHeadingPlan) => {
+      setTimeWarp(60)
+      setTargetHeadingPlan(plan)
+    },
     clearTargetHeadingPlan,
     commitTargetHeadingPlan: () => {
       const plan = options.runtime.ui.targetHeadingPlan
@@ -515,13 +518,6 @@ export const createRuntimeActions = (options: {
       options.runtime.ui.targetHeadingSelectionEpoch += 1
       options.runtime.simulation.assistMode = 'off'
       clearTargetHeadingPlan()
-      options.createRipple(
-        options.app,
-        options.ripples,
-        plan.screenPosition.x,
-        plan.screenPosition.y,
-        plan.worldPosition,
-      )
       return true
     },
     nudgeTargetHeading: (deltaRadians: number) => {

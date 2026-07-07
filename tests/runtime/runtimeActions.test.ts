@@ -111,14 +111,17 @@ const createRuntime = (): AppRuntimeState => ({
 
 const createTestRuntimeActions = (
   runtime: AppRuntimeState,
-  options: { autoSelectNearestSurface?: boolean } = {},
+  options: {
+    autoSelectNearestSurface?: boolean
+    createRipple?: Parameters<typeof createRuntimeActions>[0]['createRipple']
+  } = {},
 ) =>
   createRuntimeActions({
     app: {} as HTMLDivElement,
     autoSelectNearestSurface: options.autoSelectNearestSurface ?? true,
     cameraDistance: 700,
     cameraElevation: 1,
-    createRipple: () => {},
+    createRipple: options.createRipple ?? (() => {}),
     gameScene: { trailPoints: [] } as never,
     getAssistTargetUiState: () => ({
       activeTarget:
@@ -419,10 +422,12 @@ describe('createRuntimeActions', () => {
 
   it('shows a planned target heading without committing the turn until release', () => {
     const runtime = createRuntime()
-    const runtimeActions = createTestRuntimeActions(runtime)
+    const createRipple = vi.fn()
+    const runtimeActions = createTestRuntimeActions(runtime, { createRipple })
 
     runtime.simulation.targetHeading = null
     runtime.simulation.assistMode = 'capture'
+    runtime.simulation.timeWarpIndex = 6
     runtimeActions.planTargetHeading({
       heading: 1.2,
       screenPosition: { x: 300, y: 200 },
@@ -430,6 +435,7 @@ describe('createRuntimeActions', () => {
     })
 
     expect(runtime.simulation.targetHeading).toBeNull()
+    expect(runtime.simulation.timeWarpIndex).toBe(3)
     expect(runtime.ui.targetHeadingPlan).toEqual({
       heading: 1.2,
       screenPosition: { x: 300, y: 200 },
@@ -445,6 +451,7 @@ describe('createRuntimeActions', () => {
     expect(runtime.ui.targetHeadingWorldPosition).toEqual({ x: 12, y: 34 })
     expect(runtime.ui.targetHeadingSelectionEpoch).toBe(1)
     expect(runtime.simulation.assistMode).toBe('off')
+    expect(createRipple).not.toHaveBeenCalled()
   })
 
   it('clears a planned target heading when cycling assist mode', () => {
