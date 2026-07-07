@@ -178,6 +178,7 @@ export const createFrameLoop = (options: {
     const getTrajectoryPredictionForHorizonHours = (horizonHours: number) => {
       const predictionOptions = {
         assistMode: options.runtime.simulation.assistMode,
+        autopilotRotationRate: options.autopilotRotationRate,
         getAssistPredictionControls:
           options.queries.getAssistPredictionControls,
         getAssistTarget: options.queries.getAssistTarget,

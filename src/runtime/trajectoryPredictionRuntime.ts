@@ -1,5 +1,10 @@
 import type { AssistMode, CaptureMetrics } from '../assist/orbitalAssist'
 import {
+  createFarTrajectoryPredictionStateSnapshot,
+  type FarTrajectoryPredictionRequestPayload,
+  type FarTrajectoryPredictionResultPayload,
+} from '../prediction/farTrajectoryPrediction'
+import {
   getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
   type PredictedClosestApproach,
   type PredictedImpact,
@@ -17,6 +22,12 @@ import type {
   SimulationState,
 } from '../simulation/types'
 import { length, sub, type Vec2 } from '../simulation/vector'
+import {
+  createTrajectoryPredictionFarWorkerClient,
+  type TrajectoryPredictionFarWorkerClient,
+  type TrajectoryPredictionFarWorkerClientFactory,
+  type TrajectoryPredictionFarWorkerError,
+} from './trajectoryPredictionWorkerClient'
 
 export type TrajectoryPredictionState = {
   absolutePredictionEnd: Vec2 | null
@@ -154,6 +165,7 @@ export type TrajectoryPredictionDiagnostics = {
 
 export type RefreshTrajectoryPredictionOptions = {
   assistMode: AssistMode
+  autopilotRotationRate: number
   getAssistPredictionControls(
     simulationState: SimulationState,
     targetId: string,
@@ -183,9 +195,13 @@ type TrajectoryPredictionTier = {
 
 type TrajectoryPredictionFarRequest = {
   inputKey: string
-  options: RefreshTrajectoryPredictionOptions
-  predictionConfig: TrajectoryPredictionConfig
-  target: Body
+  jobId: number
+  payload: FarTrajectoryPredictionRequestPayload
+  semanticInputKey: string
+}
+
+export type CreateTrajectoryPredictionRuntimeOptions = {
+  createFarWorkerClient?: TrajectoryPredictionFarWorkerClientFactory
 }
 
 type CalculationTimingStats = {
@@ -395,6 +411,29 @@ const createPredictionInputKeyParts = (
 const createPredictionInputKey = (parts: PredictionInputKeyParts) =>
   JSON.stringify(parts)
 
+const createFarPredictionSemanticInputKey = (
+  parts: PredictionInputKeyParts,
+  generation: number,
+) =>
+  JSON.stringify({
+    assist: parts.assist,
+    bodies: (
+      JSON.parse(parts.bodies) as Array<{
+        id: string
+        mass: number
+        radius: number
+      }>
+    ).map((body) => ({
+      id: body.id,
+      mass: body.mass,
+      radius: body.radius,
+    })),
+    config: parts.config,
+    controls: parts.controls,
+    generation,
+    target: parts.target,
+  })
+
 const getInputKeyShort = (inputKey: string | null) => {
   if (!inputKey) {
     return null
@@ -529,15 +568,20 @@ const getRefreshReason = (
   return elapsed >= refreshInterval ? 'timed-refresh' : null
 }
 
-export const createTrajectoryPredictionRuntime = () => {
+export const createTrajectoryPredictionRuntime = (
+  runtimeOptions: CreateTrajectoryPredictionRuntimeOptions = {},
+) => {
   let activeFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
   let farPredictionTier: TrajectoryPredictionTier | null = null
+  let farWorkerClient: TrajectoryPredictionFarWorkerClient | null = null
+  let lastRefreshOptions: RefreshTrajectoryPredictionOptions | null = null
   let nearPredictionTier: TrajectoryPredictionTier | null = null
+  let nextFarPredictionJobId = 1
   let pendingFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
+  let farSemanticGeneration = 0
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
   let previousDiagnosticEventTimeMs: number | null = null
-  let farPredictionRefreshElapsed = 0
   const farCalculationStats: CalculationTimingStats = {
     count: 0,
     lastAtMs: null,
@@ -561,6 +605,9 @@ export const createTrajectoryPredictionRuntime = () => {
   let predictionRefreshElapsed = 0
   let predictionDiagnostics = emptyTrajectoryPredictionDiagnostics()
   let predictionState = emptyTrajectoryPredictionState()
+  const createFarWorkerClient =
+    runtimeOptions.createFarWorkerClient ??
+    createTrajectoryPredictionFarWorkerClient
 
   const setCurrentSpacecraftPosition = (position: Vec2) => {
     if (previousSpacecraftPosition) {
@@ -699,18 +746,93 @@ export const createTrajectoryPredictionRuntime = () => {
   const createFarPredictionRequest = (
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
-    inputKey: string,
-  ): TrajectoryPredictionFarRequest => ({
-    inputKey,
-    options,
-    predictionConfig: options.predictionConfig,
-    target,
-  })
+    inputKeyParts: PredictionInputKeyParts,
+  ): TrajectoryPredictionFarRequest => {
+    const inputKey = createPredictionInputKey(inputKeyParts)
+    const semanticInputKey = createFarPredictionSemanticInputKey(
+      inputKeyParts,
+      farSemanticGeneration,
+    )
+    const jobId = nextFarPredictionJobId
+    nextFarPredictionJobId += 1
+
+    return {
+      inputKey,
+      jobId,
+      payload: {
+        assistMode: options.assistMode,
+        autopilotRotationRate: options.autopilotRotationRate,
+        inputKey,
+        jobId,
+        predictionConfig: { ...options.predictionConfig },
+        semanticInputKey,
+        state: createFarTrajectoryPredictionStateSnapshot(options.state),
+        targetId: target.id,
+      },
+      semanticInputKey,
+    }
+  }
 
   const clearFarPredictionRequests = () => {
     activeFarPredictionRequest = null
     pendingFarPredictionRequest = null
-    farPredictionRefreshElapsed = 0
+    farWorkerClient?.terminate()
+    farWorkerClient = null
+  }
+
+  const resetFarWorkerClient = () => {
+    farWorkerClient?.terminate()
+    farWorkerClient = null
+  }
+
+  const syncFarRequestDiagnostics = () => {
+    predictionDiagnostics = {
+      ...predictionDiagnostics,
+      activeFar: activeFarPredictionRequest !== null,
+      activeFarInputKeyShort: getInputKeyShort(
+        activeFarPredictionRequest?.inputKey ?? null,
+      ),
+      pendingFar: pendingFarPredictionRequest !== null,
+      pendingFarInputKeyShort: getInputKeyShort(
+        pendingFarPredictionRequest?.inputKey ?? null,
+      ),
+    }
+  }
+
+  const createFarTierFromWorkerResult = (
+    result: FarTrajectoryPredictionResultPayload,
+  ): TrajectoryPredictionTier => ({
+    assistedPoints: result.assistedPoints,
+    coastPrediction: result.coastPrediction,
+    inputKey: result.inputKey,
+    targetId: result.targetId,
+  })
+
+  const postActiveFarPredictionRequest = () => {
+    const request = activeFarPredictionRequest
+    if (!request) {
+      return
+    }
+
+    try {
+      farWorkerClient ??= createFarWorkerClient({
+        handleError: handleFarWorkerError,
+        handleResult: handleFarWorkerResult,
+      })
+      farWorkerClient.postRequest(request.payload)
+    } catch (error) {
+      handleFarWorkerError({
+        jobId: request.jobId,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  const startPendingFarPredictionRequest = () => {
+    activeFarPredictionRequest = pendingFarPredictionRequest
+    pendingFarPredictionRequest = null
+    syncFarRequestDiagnostics()
+    postActiveFarPredictionRequest()
   }
 
   const queueFarPredictionRequest = (
@@ -722,6 +844,11 @@ export const createTrajectoryPredictionRuntime = () => {
 
     if (!activeFarPredictionRequest) {
       activeFarPredictionRequest = request
+      postActiveFarPredictionRequest()
+      return false
+    }
+
+    if (pendingFarPredictionRequest?.inputKey === request.inputKey) {
       return false
     }
 
@@ -730,6 +857,97 @@ export const createTrajectoryPredictionRuntime = () => {
       pendingFarPredictionRequest.inputKey !== request.inputKey
     pendingFarPredictionRequest = request
     return replacedPendingFar
+  }
+
+  function handleFarWorkerError(error: TrajectoryPredictionFarWorkerError) {
+    if (
+      error.jobId !== null &&
+      activeFarPredictionRequest?.jobId !== error.jobId
+    ) {
+      return
+    }
+
+    resetFarWorkerClient()
+    startPendingFarPredictionRequest()
+  }
+
+  function handleFarWorkerResult(result: FarTrajectoryPredictionResultPayload) {
+    const request = activeFarPredictionRequest
+    if (!request || request.jobId !== result.jobId) {
+      return
+    }
+
+    activeFarPredictionRequest = pendingFarPredictionRequest
+    pendingFarPredictionRequest = null
+    syncFarRequestDiagnostics()
+
+    const options = lastRefreshOptions
+    if (!options) {
+      postActiveFarPredictionRequest()
+      return
+    }
+
+    const target = options.getAssistTarget()
+    const nextInputKeyParts = createPredictionInputKeyParts(options, target)
+    const inputKey = createPredictionInputKey(nextInputKeyParts)
+    const semanticInputKey = createFarPredictionSemanticInputKey(
+      nextInputKeyParts,
+      farSemanticGeneration,
+    )
+
+    if (
+      result.semanticInputKey !== semanticInputKey ||
+      request.semanticInputKey !== semanticInputKey ||
+      result.targetId !== target.id
+    ) {
+      postActiveFarPredictionRequest()
+      return
+    }
+
+    const refreshStartMs = nowMs()
+    predictionRefreshTimesMs.push(refreshStartMs)
+    farPredictionTier = createFarTierFromWorkerResult(result)
+    const liveNearPredictionConfig = createPredictionConfigWithHorizon(
+      options.predictionConfig,
+      getNearPredictionHorizonSeconds(options.predictionConfig),
+    )
+    let nearCalculationMs: number | null = null
+    let currentNearTier = nearPredictionTier
+    if (
+      currentNearTier?.inputKey !== inputKey ||
+      currentNearTier.targetId !== target.id
+    ) {
+      const nearPrediction = predictTierWithTiming(
+        options,
+        target,
+        liveNearPredictionConfig,
+        inputKey,
+      )
+      currentNearTier = nearPrediction.tier
+      nearCalculationMs = nearPrediction.calculationMs
+    }
+    nearPredictionTier = currentNearTier
+    applyPredictionTier({
+      changedParts: [],
+      event: 'far-complete',
+      farApplied: true,
+      farCalculationMs: result.calculationMs,
+      farTier: farPredictionTier,
+      inputKey,
+      integrationStepSeconds: getIntegrationStepSeconds(
+        options,
+        target,
+        options.predictionConfig,
+      ),
+      nearCalculationMs,
+      nearHorizonSeconds: liveNearPredictionConfig.horizonSeconds,
+      nearTier: currentNearTier,
+      predictionConfig: options.predictionConfig,
+      reason: 'timed-refresh',
+      refreshStartMs,
+      target,
+    })
+    postActiveFarPredictionRequest()
   }
 
   const getIntegrationStepSeconds = (
@@ -929,83 +1147,11 @@ export const createTrajectoryPredictionRuntime = () => {
     }
   }
 
-  const completeActiveFarPrediction = (
-    options: RefreshTrajectoryPredictionOptions,
-    target: Body,
-    nextInputKeyParts: PredictionInputKeyParts,
-    request: TrajectoryPredictionFarRequest,
-  ) => {
-    const inputKey = createPredictionInputKey(nextInputKeyParts)
-
-    if (activeFarPredictionRequest !== request) {
-      return false
-    }
-
-    const refreshStartMs = nowMs()
-    predictionRefreshTimesMs.push(refreshStartMs)
-    const requestOptions = {
-      ...request.options,
-      predictionConfig: request.predictionConfig,
-    }
-    const farPrediction = predictTierWithTiming(
-      requestOptions,
-      request.target,
-      request.predictionConfig,
-      request.inputKey,
-    )
-    farPredictionTier = farPrediction.tier
-    activeFarPredictionRequest = pendingFarPredictionRequest
-    pendingFarPredictionRequest = null
-    farPredictionRefreshElapsed = 0
-    const liveNearPredictionConfig = createPredictionConfigWithHorizon(
-      options.predictionConfig,
-      getNearPredictionHorizonSeconds(options.predictionConfig),
-    )
-    let nearCalculationMs: number | null = null
-    let currentNearTier = nearPredictionTier
-    if (
-      currentNearTier?.inputKey !== inputKey ||
-      currentNearTier.targetId !== target.id
-    ) {
-      const nearPrediction = predictTierWithTiming(
-        options,
-        target,
-        liveNearPredictionConfig,
-        inputKey,
-      )
-      currentNearTier = nearPrediction.tier
-      nearCalculationMs = nearPrediction.calculationMs
-    }
-    nearPredictionTier = currentNearTier
-    applyPredictionTier({
-      changedParts: [],
-      event: 'far-complete',
-      farApplied: true,
-      farCalculationMs: farPrediction.calculationMs,
-      farTier: farPredictionTier,
-      inputKey,
-      integrationStepSeconds: getIntegrationStepSeconds(
-        options,
-        target,
-        options.predictionConfig,
-      ),
-      nearCalculationMs,
-      nearHorizonSeconds: liveNearPredictionConfig.horizonSeconds,
-      nearTier: currentNearTier,
-      predictionConfig: options.predictionConfig,
-      reason: 'timed-refresh',
-      refreshStartMs,
-      target,
-    })
-    return true
-  }
-
   const refreshForTarget = (
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
     reason: TrajectoryPredictionRefreshReason,
     nextInputKeyParts = createPredictionInputKeyParts(options, target),
-    refreshFarImmediately = false,
   ) => {
     const refreshStartMs = nowMs()
     predictionRefreshTimesMs.push(refreshStartMs)
@@ -1034,24 +1180,13 @@ export const createTrajectoryPredictionRuntime = () => {
     const nearTier = nearPrediction.tier
     nearPredictionTier = nearTier
     let replacedPendingFar = false
-    let farCalculationMs: number | null = null
 
     if (!splitPredictionHorizon) {
       farPredictionTier = null
       clearFarPredictionRequests()
-    } else if (refreshFarImmediately) {
-      const farPrediction = predictTierWithTiming(
-        options,
-        target,
-        predictionConfig,
-        inputKey,
-      )
-      farPredictionTier = farPrediction.tier
-      farCalculationMs = farPrediction.calculationMs
-      clearFarPredictionRequests()
     } else {
       replacedPendingFar = queueFarPredictionRequest(
-        createFarPredictionRequest(options, target, inputKey),
+        createFarPredictionRequest(options, target, nextInputKeyParts),
       )
     }
 
@@ -1062,8 +1197,8 @@ export const createTrajectoryPredictionRuntime = () => {
         nextInputKeyParts,
       ),
       event: replacedPendingFar ? 'far-replaced' : 'refresh',
-      farApplied: splitPredictionHorizon && refreshFarImmediately,
-      farCalculationMs,
+      farApplied: false,
+      farCalculationMs: null,
       farTier: farPredictionTier,
       inputKey,
       integrationStepSeconds,
@@ -1084,9 +1219,11 @@ export const createTrajectoryPredictionRuntime = () => {
       ? 'manual'
       : 'initial',
   ) => {
+    farSemanticGeneration += 1
+    lastRefreshOptions = options
     const target = options.getAssistTarget()
     setCurrentSpacecraftPosition(options.state.spacecraft.position)
-    refreshForTarget(options, target, reason, undefined, true)
+    refreshForTarget(options, target, reason)
   }
 
   return {
@@ -1121,10 +1258,9 @@ export const createTrajectoryPredictionRuntime = () => {
       realDt: number,
       options: RefreshTrajectoryPredictionOptions,
     ) => {
+      lastRefreshOptions = options
       predictionRefreshElapsed += realDt
-      farPredictionRefreshElapsed += realDt
       setCurrentSpacecraftPosition(options.state.spacecraft.position)
-      const activeFarRequestToComplete = activeFarPredictionRequest
       const target = options.getAssistTarget()
       const nextInputKeyParts = createPredictionInputKeyParts(options, target)
       const reason = getRefreshReason(
@@ -1137,20 +1273,6 @@ export const createTrajectoryPredictionRuntime = () => {
       if (reason) {
         refreshForTarget(options, target, reason, nextInputKeyParts)
         refreshed = true
-      }
-      if (
-        activeFarRequestToComplete &&
-        (!reason ||
-          farPredictionRefreshElapsed >=
-            options.predictionConfig.refreshInterval) &&
-        completeActiveFarPrediction(
-          options,
-          target,
-          nextInputKeyParts,
-          activeFarRequestToComplete,
-        )
-      ) {
-        return true
       }
       return refreshed
     },

@@ -293,6 +293,7 @@ const createTestPresentation = (options: {
   return {
     gameScene,
     presentation: createTrajectoryPresentation({
+      autopilotRotationRate: 0.9,
       gameScene,
       getOrbitPointDisplaySettings: () =>
         options.orbitPointDisplaySettings ?? defaultOrbitPointDisplaySettings,

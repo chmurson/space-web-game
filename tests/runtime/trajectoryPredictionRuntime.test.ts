@@ -2,7 +2,15 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { AssistMode } from '@/assist/orbitalAssist'
 import { getCaptureMetricsForState } from '@/assist/orbitalAssist'
+import type {
+  FarTrajectoryPredictionRequestPayload,
+  FarTrajectoryPredictionResultPayload,
+} from '@/prediction/farTrajectoryPrediction'
 import { createTrajectoryPredictionRuntime } from '@/runtime/trajectoryPredictionRuntime'
+import type {
+  TrajectoryPredictionFarWorkerClientFactory,
+  TrajectoryPredictionFarWorkerClientHandlers,
+} from '@/runtime/trajectoryPredictionWorkerClient'
 import { idleControls } from '@/simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '@/simulation/types'
 
@@ -65,20 +73,156 @@ const createPredictionConfig = () => ({
   stepSeconds: 10,
 })
 
+type FakeFarWorkerClient = {
+  handlers: TrajectoryPredictionFarWorkerClientHandlers
+  requests: FarTrajectoryPredictionRequestPayload[]
+  terminated: boolean
+}
+
+const createFarWorkerResult = (
+  request: FarTrajectoryPredictionRequestPayload,
+  calculationMs = 4,
+): FarTrajectoryPredictionResultPayload => {
+  const target = request.state.bodies.find(
+    (body) => body.id === request.targetId,
+  )
+  if (!target) {
+    throw new Error(`Missing target ${request.targetId}`)
+  }
+
+  const absolutePoints = [{ ...request.state.spacecraft.position }]
+  const relativePoints: Array<{ x: number; y: number }> = []
+  const stepDurations: number[] = []
+  let predictionTime = 0
+
+  while (predictionTime < request.predictionConfig.horizonSeconds) {
+    const nextPredictionTime = Math.min(
+      predictionTime + request.predictionConfig.stepSeconds,
+      request.predictionConfig.horizonSeconds,
+    )
+    const dt = nextPredictionTime - predictionTime
+    predictionTime = nextPredictionTime
+    stepDurations.push(dt)
+
+    const absolutePoint = {
+      x:
+        request.state.spacecraft.position.x +
+        request.state.spacecraft.velocity.x * predictionTime,
+      y:
+        request.state.spacecraft.position.y +
+        request.state.spacecraft.velocity.y * predictionTime,
+    }
+    absolutePoints.push(absolutePoint)
+    relativePoints.push({
+      x: absolutePoint.x - target.position.x,
+      y: absolutePoint.y - target.position.y,
+    })
+  }
+
+  return {
+    assistedPoints: [],
+    calculationMs,
+    coastPrediction: {
+      absoluteEndPoint: absolutePoints.at(-1) ?? null,
+      absolutePoints,
+      closestApproach: null,
+      eventMarkers: [],
+      impact: null,
+      integration: {
+        averageStepSeconds:
+          stepDurations.reduce((total, dt) => total + dt, 0) /
+          stepDurations.length,
+        minStepSeconds: Math.min(...stepDurations),
+        stepCount: stepDurations.length,
+      },
+      relativePoints,
+    },
+    inputKey: request.inputKey,
+    jobId: request.jobId,
+    semanticInputKey: request.semanticInputKey,
+    targetId: request.targetId,
+  }
+}
+
+const createFarWorkerHarness = () => {
+  const clients: FakeFarWorkerClient[] = []
+  const createFarWorkerClient =
+    vi.fn<TrajectoryPredictionFarWorkerClientFactory>((handlers) => {
+      const client: FakeFarWorkerClient = {
+        handlers,
+        requests: [],
+        terminated: false,
+      }
+      clients.push(client)
+
+      return {
+        postRequest: (request) => {
+          client.requests.push(request)
+        },
+        terminate: () => {
+          client.terminated = true
+        },
+      }
+    })
+  const getClient = (index: number) => {
+    const client = clients[index]
+    if (!client) {
+      throw new Error(`Missing fake worker client ${index}`)
+    }
+    return client
+  }
+  const getRequest = (clientIndex: number, requestIndex: number) => {
+    const request = getClient(clientIndex).requests[requestIndex]
+    if (!request) {
+      throw new Error(
+        `Missing fake worker request ${clientIndex}/${requestIndex}`,
+      )
+    }
+    return request
+  }
+
+  return {
+    clients,
+    completeRequest: (
+      clientIndex: number,
+      requestIndex: number,
+      calculationMs?: number,
+    ) => {
+      const request = getRequest(clientIndex, requestIndex)
+      getClient(clientIndex).handlers.handleResult(
+        createFarWorkerResult(request, calculationMs),
+      )
+    },
+    createFarWorkerClient,
+    failRequest: (clientIndex: number, requestIndex: number) => {
+      const request = getRequest(clientIndex, requestIndex)
+      getClient(clientIndex).handlers.handleError({
+        jobId: request.jobId,
+        message: 'worker failed',
+      })
+    },
+    getRequest,
+  }
+}
+
 const createRuntimeHarness = () => {
   let assistMode: AssistMode = 'off'
   let predictionConfig = createPredictionConfig()
   let state = createState()
   let target = earth
+  const farWorker = createFarWorkerHarness()
   const engineStep = vi.fn(physicsEngine.step)
   const engine: PhysicsEngine = {
     name: physicsEngine.name,
     step: engineStep,
   }
-  const predictionRuntime = createTrajectoryPredictionRuntime()
+  const predictionRuntime = createTrajectoryPredictionRuntime({
+    createFarWorkerClient: farWorker.createFarWorkerClient,
+  })
 
   const getOptions = () => ({
     assistMode,
+    autopilotRotationRate: 0.9,
     getAssistPredictionControls: () => idleControls(),
     getAssistTarget: () => target,
     getCaptureMetrics: (body: Body) => getCaptureMetricsForState(state, body),
@@ -89,6 +233,7 @@ const createRuntimeHarness = () => {
 
   return {
     engineStep,
+    farWorker,
     getOptions,
     predictionRuntime,
     setAssistMode: (nextAssistMode: AssistMode) => {
@@ -367,8 +512,102 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
-  it('refreshes the near horizon first and keeps the previous far tier visible', () => {
+  it('queues the far horizon in a worker with a lean serializable payload', () => {
     const {
+      engineStep,
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    predictionRuntime.refresh(getOptions())
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 3_010, y: 0 },
+        { x: 6_010, y: 0 },
+      ],
+    )
+    expect(engineStep).toHaveBeenCalledTimes(2)
+    expect(farWorker.createFarWorkerClient).toHaveBeenCalledTimes(1)
+    const request = farWorker.getRequest(0, 0)
+    expect(Object.keys(request).sort()).toEqual([
+      'assistMode',
+      'autopilotRotationRate',
+      'inputKey',
+      'jobId',
+      'predictionConfig',
+      'semanticInputKey',
+      'state',
+      'targetId',
+    ])
+    expect(request).toMatchObject({
+      assistMode: 'off',
+      autopilotRotationRate: 0.9,
+      jobId: 1,
+      predictionConfig: createLongHorizonPredictionConfig(),
+      targetId: 'earth',
+    })
+    expect(request.state.bodies[0]).toEqual({
+      id: 'earth',
+      mass: 0,
+      name: 'Earth',
+      position: { x: 0, y: 0 },
+      radius: 1,
+      velocity: { x: 0, y: 0 },
+    })
+    expect('color' in request.state.bodies[0]).toBe(false)
+    expect('physicsEngine' in request).toBe(false)
+    expect('getAssistPredictionControls' in request).toBe(false)
+    expect('target' in request).toBe(false)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationMs: null,
+      farPointCount: 0,
+      farVisible: 'none',
+      hasFarTier: false,
+      nearPointCount: 2,
+      pendingFar: false,
+      splitHorizon: true,
+    })
+
+    farWorker.completeRequest(0, 0)
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 3_010, y: 0 },
+        { x: 6_010, y: 0 },
+        { x: 9_010, y: 0 },
+        { x: 12_010, y: 0 },
+      ],
+    )
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationAverageMs: 4,
+      farCalculationMs: 4,
+      farCalculationSampleCount: 1,
+      farPointCount: 4,
+      farVisible: 'current',
+      hasFarTier: true,
+      nearPointCount: 2,
+      relativePointCount: 4,
+    })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      activeFar: false,
+      changedParts: [],
+      event: 'far-complete',
+      farApplied: true,
+      farCalculationMs: 4,
+      farVisible: 'current',
+      pendingFar: false,
+    })
+  })
+
+  it('accepts a worker result after spacecraft drift and then replaces it with the newer pending job', () => {
+    const {
+      farWorker,
       getOptions,
       predictionRuntime,
       setPredictionConfig,
@@ -377,15 +616,6 @@ describe('createTrajectoryPredictionRuntime', () => {
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
     predictionRuntime.refresh(getOptions())
-    const initialFarPrediction = [
-      { x: 3_010, y: 0 },
-      { x: 6_010, y: 0 },
-      { x: 9_010, y: 0 },
-      { x: 12_010, y: 0 },
-    ]
-    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
-      initialFarPrediction,
-    )
 
     setState({
       ...state(),
@@ -400,31 +630,14 @@ describe('createTrajectoryPredictionRuntime', () => {
     const nearFirstPredictionWithStaleFarTail = [
       { x: 6_010, y: 0 },
       { x: 12_010, y: 0 },
-      ...initialFarPrediction.slice(2),
     ]
     expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
       nearFirstPredictionWithStaleFarTail,
     )
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
       activeFar: true,
-      farCalculationAgeSeconds: expect.any(Number),
-      farCalculationAverageMs: expect.any(Number),
-      farCalculationMs: expect.any(Number),
-      farCalculationSampleCount: 1,
-      farCalculationWindows: {
-        averageLastSecondMs: expect.any(Number),
-        averageLastTenSecondsMs: expect.any(Number),
-        averageLastThirtySecondsMs: expect.any(Number),
-        countLastSecond: 1,
-        countLastTenSeconds: 1,
-        countLastThirtySeconds: 1,
-      },
       integrationTiers: {
-        far: expect.objectContaining({
-          averageStepSeconds: expect.any(Number),
-          minStepSeconds: expect.any(Number),
-          stepCount: expect.any(Number),
-        }),
+        far: null,
         near: expect.objectContaining({
           averageStepSeconds: expect.any(Number),
           minStepSeconds: expect.any(Number),
@@ -432,9 +645,9 @@ describe('createTrajectoryPredictionRuntime', () => {
         }),
       },
       horizonSeconds: 1_200,
-      farPointCount: 4,
-      farVisible: 'retained-stale',
-      hasFarTier: true,
+      farPointCount: 0,
+      farVisible: 'none',
+      hasFarTier: false,
       nearCalculationAgeSeconds: expect.any(Number),
       nearCalculationAverageMs: expect.any(Number),
       nearCalculationMs: expect.any(Number),
@@ -457,11 +670,11 @@ describe('createTrajectoryPredictionRuntime', () => {
         countLastThirtySeconds: 2,
       },
       nearPointCount: 2,
-      pendingFar: false,
+      pendingFar: true,
       refreshReason: 'spacecraft-change',
-      relativePointCount: 4,
+      relativePointCount: 2,
       splitHorizon: true,
-      visiblePointCount: 4,
+      visiblePointCount: 2,
     })
     expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
       activeFar: true,
@@ -469,34 +682,34 @@ describe('createTrajectoryPredictionRuntime', () => {
       event: 'refresh',
       farApplied: false,
       farCalculationMs: null,
-      farVisible: 'retained-stale',
+      farVisible: 'none',
       nearCalculationMs: expect.any(Number),
-      pendingFar: false,
+      pendingFar: true,
     })
 
-    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    farWorker.completeRequest(0, 0)
 
     expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
       [
         { x: 6_010, y: 0 },
         { x: 12_010, y: 0 },
-        { x: 18_010, y: 0 },
-        { x: 24_010, y: 0 },
+        { x: 9_010, y: 0 },
+        { x: 12_010, y: 0 },
       ],
     )
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
-      activeFar: false,
+      activeFar: true,
       farCalculationAgeSeconds: expect.any(Number),
-      farCalculationAverageMs: expect.any(Number),
-      farCalculationMs: expect.any(Number),
-      farCalculationSampleCount: 2,
+      farCalculationAverageMs: 4,
+      farCalculationMs: 4,
+      farCalculationSampleCount: 1,
       farCalculationWindows: {
-        averageLastSecondMs: expect.any(Number),
-        averageLastTenSecondsMs: expect.any(Number),
-        averageLastThirtySecondsMs: expect.any(Number),
-        countLastSecond: 2,
-        countLastTenSeconds: 2,
-        countLastThirtySeconds: 2,
+        averageLastSecondMs: 4,
+        averageLastTenSecondsMs: 4,
+        averageLastThirtySecondsMs: 4,
+        countLastSecond: 1,
+        countLastTenSeconds: 1,
+        countLastThirtySeconds: 1,
       },
       integrationTiers: {
         far: expect.objectContaining({
@@ -511,7 +724,7 @@ describe('createTrajectoryPredictionRuntime', () => {
         }),
       },
       farPointCount: 4,
-      farVisible: 'current',
+      farVisible: 'retained-stale',
       horizonSeconds: 1_200,
       nearCalculationAgeSeconds: expect.any(Number),
       nearCalculationAverageMs: expect.any(Number),
@@ -540,19 +753,154 @@ describe('createTrajectoryPredictionRuntime', () => {
       relativePointCount: 4,
     })
     expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
-      activeFar: false,
+      activeFar: true,
       changedParts: [],
       event: 'far-complete',
       farApplied: true,
-      farCalculationMs: expect.any(Number),
-      farVisible: 'current',
+      farCalculationMs: 4,
+      farVisible: 'retained-stale',
       nearCalculationMs: null,
+      pendingFar: false,
+    })
+    expect(farWorker.getRequest(0, 1).jobId).toBeGreaterThan(
+      farWorker.getRequest(0, 0).jobId,
+    )
+
+    farWorker.completeRequest(0, 1, 5)
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 6_010, y: 0 },
+        { x: 12_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 24_010, y: 0 },
+      ],
+    )
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationAverageMs: 4.5,
+      farCalculationMs: 5,
+      farCalculationSampleCount: 2,
+      farVisible: 'current',
+      pendingFar: false,
+    })
+  })
+
+  it('accepts a worker result after body drift and then replaces it with the newer pending job', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      bodies: [
+        state().bodies[0] ?? earth,
+        { ...moon, position: { x: 7_000, y: 0 } },
+      ],
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationSampleCount: 0,
+      farVisible: 'none',
+      pendingFar: true,
+      refreshReason: 'body-state-change',
+    })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      changedParts: ['bodies'],
+      event: 'refresh',
+      farApplied: false,
+      pendingFar: true,
+      reason: 'body-state-change',
+    })
+
+    farWorker.completeRequest(0, 0)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationAverageMs: 4,
+      farCalculationMs: 4,
+      farCalculationSampleCount: 1,
+      farVisible: 'retained-stale',
+      pendingFar: false,
+    })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      event: 'far-complete',
+      farApplied: true,
+      farVisible: 'retained-stale',
+      pendingFar: false,
+    })
+    expect(farWorker.getRequest(0, 1).jobId).toBeGreaterThan(
+      farWorker.getRequest(0, 0).jobId,
+    )
+
+    farWorker.completeRequest(0, 1, 5)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationAverageMs: 4.5,
+      farCalculationMs: 5,
+      farCalculationSampleCount: 2,
+      farVisible: 'current',
+      pendingFar: false,
+    })
+  })
+
+  it('ignores a worker result from before a manual refresh boundary', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+    predictionRuntime.refresh(getOptions(), 'manual')
+
+    farWorker.completeRequest(0, 0)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationSampleCount: 0,
+      farVisible: 'none',
+      pendingFar: false,
+    })
+    expect(farWorker.getRequest(0, 1).jobId).toBeGreaterThan(
+      farWorker.getRequest(0, 0).jobId,
+    )
+
+    farWorker.completeRequest(0, 1)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationMs: 4,
+      farCalculationSampleCount: 1,
+      farVisible: 'current',
       pendingFar: false,
     })
   })
 
   it('extends the near horizon when recent movement exceeds the near-span budget', () => {
     const {
+      farWorker,
       getOptions,
       predictionRuntime,
       setPredictionConfig,
@@ -572,6 +920,7 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
 
     predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
       nearCalculationTravel: {
         horizonDistanceMeters: 60_000,
@@ -633,6 +982,7 @@ describe('createTrajectoryPredictionRuntime', () => {
 
   it('keeps active far work and replaces only the waiting pending request', () => {
     const {
+      farWorker,
       getOptions,
       predictionRuntime,
       setPredictionConfig,
@@ -641,6 +991,7 @@ describe('createTrajectoryPredictionRuntime', () => {
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
     predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
 
     setState({
       ...state(),
@@ -703,7 +1054,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       ],
     )
 
-    expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
+    farWorker.completeRequest(0, 1)
     expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
       activeFar: true,
       changedParts: [],
@@ -721,7 +1072,11 @@ describe('createTrajectoryPredictionRuntime', () => {
       ],
     )
 
-    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(farWorker.clients[0]?.requests).toHaveLength(3)
+    expect(farWorker.getRequest(0, 2).jobId).toBeGreaterThan(
+      farWorker.getRequest(0, 1).jobId,
+    )
+    farWorker.completeRequest(0, 2)
 
     expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
       [
@@ -731,5 +1086,106 @@ describe('createTrajectoryPredictionRuntime', () => {
         { x: 48_010, y: 0 },
       ],
     )
+  })
+
+  it('ignores stale worker results after the semantic prediction target changes', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setTarget,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+    const earthRequest = farWorker.getRequest(0, 0)
+
+    setTarget(moon)
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getState()).toMatchObject({
+      targetId: 'moon',
+      targetRelativePredictionPoints: [
+        { x: 2_010, y: 0 },
+        { x: 5_010, y: 0 },
+      ],
+    })
+
+    farWorker.completeRequest(0, 0)
+
+    expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    expect(farWorker.getRequest(0, 1)).toMatchObject({
+      jobId: earthRequest.jobId + 1,
+      targetId: 'moon',
+    })
+    expect(predictionRuntime.getState()).toMatchObject({
+      targetId: 'moon',
+      targetRelativePredictionPoints: [
+        { x: 2_010, y: 0 },
+        { x: 5_010, y: 0 },
+      ],
+    })
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationSampleCount: 0,
+      farVisible: 'none',
+      pendingFar: false,
+      refreshReason: 'target-change',
+    })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      event: 'refresh',
+      reason: 'target-change',
+    })
+  })
+
+  it('recreates the worker after an active far job fails and continues with the pending request', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    farWorker.failRequest(0, 0)
+
+    expect(farWorker.clients[0]?.terminated).toBe(true)
+    expect(farWorker.createFarWorkerClient).toHaveBeenCalledTimes(2)
+    expect(farWorker.getRequest(1, 0)).toMatchObject({
+      jobId: 2,
+      targetId: 'earth',
+    })
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farVisible: 'none',
+      pendingFar: false,
+    })
+
+    farWorker.completeRequest(1, 0)
+
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 6_010, y: 0 },
+        { x: 12_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 24_010, y: 0 },
+      ],
+    )
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationMs: 4,
+      farVisible: 'current',
+    })
   })
 })
