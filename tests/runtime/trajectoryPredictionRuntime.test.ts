@@ -210,6 +210,7 @@ const createRuntimeHarness = () => {
   let predictionConfig = createPredictionConfig()
   let state = createState()
   let target = earth
+  let timeWarp = 1
   const farWorker = createFarWorkerHarness()
   const engineStep = vi.fn(physicsEngine.step)
   const engine: PhysicsEngine = {
@@ -229,6 +230,7 @@ const createRuntimeHarness = () => {
     physicsEngine: engine,
     predictionConfig,
     state,
+    timeWarp,
   })
 
   return {
@@ -247,6 +249,9 @@ const createRuntimeHarness = () => {
     },
     setTarget: (nextTarget: Body) => {
       target = nextTarget
+    },
+    setTimeWarp: (nextTimeWarp: number) => {
+      timeWarp = nextTimeWarp
     },
     state: () => state,
   }
@@ -605,6 +610,197 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
+  it('coalesces routine far requests while the cooldown override is active', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig(createLongHorizonPredictionConfig())
+      expect(
+        predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(10),
+      ).toBe(true)
+
+      predictionRuntime.refresh(getOptions())
+      farWorker.completeRequest(0, 0)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCalculationSampleCount: 1,
+        farCoalescingMinIntervalOverrideSeconds: 10,
+        farCoalescingMinIntervalSeconds: 10,
+        farCoalescingSkippedCount: 0,
+      })
+
+      now = 1_000
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          velocity: { x: 20, y: 0 },
+        },
+      })
+
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(1)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCoalescingLastSkipReason: 'cooldown',
+        farCoalescingLastSkipStage: 'request',
+        farCoalescingSkippedCount: 1,
+        farVisible: 'retained-stale',
+        refreshReason: 'spacecraft-change',
+      })
+
+      now = 11_000
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          velocity: { x: 30, y: 0 },
+        },
+      })
+
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('coalesces pending far results that complete before the override interval', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig(createLongHorizonPredictionConfig())
+      predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(10)
+      predictionRuntime.refresh(getOptions())
+
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          velocity: { x: 20, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(1)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        activeFar: true,
+        pendingFar: true,
+      })
+
+      farWorker.completeRequest(0, 0)
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        activeFar: true,
+        farCalculationSampleCount: 1,
+      })
+
+      now = 1_000
+      farWorker.completeRequest(0, 1)
+
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        activeFar: false,
+        farCalculationSampleCount: 1,
+        farCoalescingLastSkipReason: 'cooldown',
+        farCoalescingLastSkipStage: 'result',
+        farCoalescingSkippedCount: 1,
+      })
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('does not coalesce semantic far refreshes during the cooldown', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setTarget,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig(createLongHorizonPredictionConfig())
+      predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(10)
+      predictionRuntime.refresh(getOptions())
+      farWorker.completeRequest(0, 0)
+
+      now = 1_000
+      setTarget(moon)
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCoalescingSkippedCount: 0,
+        refreshReason: 'target-change',
+      })
+
+      farWorker.completeRequest(0, 1)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCalculationSampleCount: 2,
+        farCoalescingSkippedCount: 0,
+        farVisible: 'current',
+      })
+      expect(predictionRuntime.getState().targetId).toBe('moon')
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('uses the last configured warp factor bucket above the largest warp factor ceiling', () => {
+    const { getOptions, predictionRuntime, setPredictionConfig, setTimeWarp } =
+      createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    setTimeWarp(18_000)
+    predictionRuntime.refresh(getOptions())
+    const largestConfiguredWarpInterval =
+      predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds
+
+    setTimeWarp(999_999)
+    predictionRuntime.maybeRefresh(0, getOptions())
+
+    expect(
+      predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds,
+    ).toBe(largestConfiguredWarpInterval)
+  })
+
+  it('calculates the default cooldown from horizon travel time at current warp', () => {
+    const { getOptions, predictionRuntime, setPredictionConfig, setTimeWarp } =
+      createRuntimeHarness()
+    setPredictionConfig({
+      ...createLongHorizonPredictionConfig(),
+      horizonSeconds: 768 * 3_600,
+    })
+    setTimeWarp(18_000)
+
+    predictionRuntime.refresh(getOptions())
+
+    expect(
+      predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds,
+    ).toBeCloseTo(6.4)
+  })
+
   it('accepts a worker result after spacecraft drift and then replaces it with the newer pending job', () => {
     const {
       farWorker,
@@ -615,6 +811,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
     predictionRuntime.refresh(getOptions())
 
     setState({
@@ -796,6 +993,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
     predictionRuntime.refresh(getOptions())
 
     setState({
@@ -864,6 +1062,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
     predictionRuntime.refresh(getOptions())
 
     setState({
@@ -990,6 +1189,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
     predictionRuntime.refresh(getOptions())
     farWorker.completeRequest(0, 0)
 

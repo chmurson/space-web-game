@@ -188,6 +188,8 @@ export const createFrameLoop = (options: {
           horizonHours * 60 * 60,
         ),
         state: options.runtime.simulation.state,
+        timeWarp:
+          options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
       }
 
       if (

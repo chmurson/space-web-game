@@ -17,9 +17,13 @@ const elements = {
     crashState: document.querySelector('#crashState'),
     debugSnapshotStatus: document.querySelector('#debugSnapshotStatus'),
     elapsed: document.querySelector('#elapsed'),
+    farCoalescingApplyButton: document.querySelector('#farCoalescingApplyButton'),
+    farCoalescingOverrideEnabled: document.querySelector('#farCoalescingOverrideEnabled'),
+    farCoalescingOverrideSeconds: document.querySelector('#farCoalescingOverrideSeconds'),
     openRawSnapshotButton: document.querySelector('#openRawSnapshotButton'),
     predictionEventSummary: document.querySelector('#predictionEventSummary'),
     predictionFarCalculation: document.querySelector('#predictionFarCalculation'),
+    predictionFarCoalescing: document.querySelector('#predictionFarCoalescing'),
     predictionGeometryDuration: document.querySelector('#predictionGeometryDuration'),
     predictionInputKeys: document.querySelector('#predictionInputKeys'),
     predictionIntegrationStats: document.querySelector('#predictionIntegrationStats'),
@@ -130,6 +134,19 @@ const formatNearTravel = (travel) =>
     `step:       ${formatDistance(travel?.lastStepDistanceMeters)} (${formatPercent(travel?.lastStepHorizonRatio)})
 calc gap:   ${formatDistance(travel?.lastCalculationGapMeters)} (${formatPercent(travel?.lastCalculationGapRatio)})
 near span:  ${formatDistance(travel?.horizonDistanceMeters)}`
+const formatOptionalSeconds = (seconds) =>
+    typeof seconds === 'number' && Number.isFinite(seconds) ? formatSeconds(seconds) : 'off'
+const formatFarCoalescing = (prediction) =>
+    [
+        `min ${formatSeconds(prediction.farCoalescingMinIntervalSeconds ?? 0)}`,
+        `override ${formatOptionalSeconds(prediction.farCoalescingMinIntervalOverrideSeconds)}`,
+        `skipped ${formatNumber(prediction.farCoalescingSkippedCount ?? 0, 0)}`,
+        prediction.farCoalescingLastSkipReason
+            ? `last ${prediction.farCoalescingLastSkipStage || '—'}:${prediction.farCoalescingLastSkipReason}`
+            : null,
+    ]
+        .filter(Boolean)
+        .join(' · ')
 let latestRawSnapshotJson = '{}'
 
 const escapeHtml = (value) =>
@@ -392,6 +409,7 @@ const renderPredictionSampling = (snapshot) => {
         elements.predictionRefreshSummary.textContent = '—'
         elements.predictionNearCalculation.textContent = '—'
         elements.predictionFarCalculation.textContent = '—'
+        elements.predictionFarCoalescing.textContent = '—'
         elements.predictionNearTravel.textContent = '—'
         elements.predictionIntegrationStats.textContent = '—'
         elements.predictionGeometryDuration.textContent = '—'
@@ -399,6 +417,7 @@ const renderPredictionSampling = (snapshot) => {
         elements.predictionPointCounts.textContent = '—'
         elements.predictionEventSummary.textContent = '—'
         elements.predictionInputKeys.textContent = '—'
+        renderFarCoalescingControls(null)
         return
     }
 
@@ -444,6 +463,8 @@ const renderPredictionSampling = (snapshot) => {
         prediction.farCalculationAgeSeconds,
         prediction.farCalculationWindows,
     )
+    elements.predictionFarCoalescing.textContent = formatFarCoalescing(prediction)
+    renderFarCoalescingControls(prediction)
     elements.predictionNearTravel.textContent = formatNearTravel(
         prediction.nearCalculationTravel,
     )
@@ -457,6 +478,37 @@ const renderPredictionSampling = (snapshot) => {
     elements.predictionPointCounts.textContent = pointCounts
     elements.predictionEventSummary.textContent = eventSummary
     elements.predictionInputKeys.textContent = inputKeys
+}
+
+const renderFarCoalescingControls = (prediction) => {
+    const overrideSeconds = prediction?.farCoalescingMinIntervalOverrideSeconds
+    const overrideEnabled = typeof overrideSeconds === 'number'
+    elements.farCoalescingOverrideEnabled.checked = overrideEnabled
+
+    if (document.activeElement !== elements.farCoalescingOverrideSeconds) {
+        const displayedSeconds = overrideEnabled
+            ? overrideSeconds
+            : prediction?.farCoalescingMinIntervalSeconds
+        elements.farCoalescingOverrideSeconds.value =
+            typeof displayedSeconds === 'number' && Number.isFinite(displayedSeconds)
+                ? String(displayedSeconds)
+                : ''
+    }
+}
+
+const applyFarCoalescingOverride = () => {
+    const enabled = elements.farCoalescingOverrideEnabled.checked
+    const value = Number(elements.farCoalescingOverrideSeconds.value)
+
+    if (enabled && (!Number.isFinite(value) || value < 0)) {
+        appendCommandLog('Set far cooldown override', 'enter a non-negative seconds value', false)
+        return
+    }
+
+    runCommand('Set far cooldown override', {
+        type: 'set-far-coalescing-min-interval-override',
+        value: enabled ? value : null,
+    })
 }
 
 const renderSnapshot = (snapshot) => {
@@ -598,6 +650,11 @@ document.addEventListener('change', (event) => {
             index: Number(elements.timeWarpSelect.value),
             type: 'set-time-warp-index',
         })
+        return
+    }
+
+    if (event.target === elements.farCoalescingOverrideEnabled) {
+        applyFarCoalescingOverride()
     }
 })
 
@@ -616,6 +673,10 @@ elements.closeRawSnapshotButton.addEventListener('click', () => {
 
 elements.copyRawSnapshotButton.addEventListener('click', () => {
     copyRawSnapshot()
+})
+
+elements.farCoalescingApplyButton.addEventListener('click', () => {
+    applyFarCoalescingOverride()
 })
 
 document.addEventListener('keydown', (event) => {

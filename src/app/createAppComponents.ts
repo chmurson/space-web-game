@@ -338,6 +338,7 @@ export const createAppComponents = (options: {
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
+    timeWarps: options.config.controls.timeWarps,
     trajectoryEventMarkerLabels: overlayUi.trajectoryEventMarkerLabels,
     trajectoryPredictionRuntime,
   })
@@ -827,6 +828,10 @@ export const createAppComponents = (options: {
     predictionSampling: options.config.trajectory.predictionSampling,
     runtime: options.runtimeState,
     runtimeActions,
+    setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds: (value) =>
+      trajectoryPredictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(
+        value,
+      ),
     timeWarps: options.config.controls.timeWarps,
   })
 

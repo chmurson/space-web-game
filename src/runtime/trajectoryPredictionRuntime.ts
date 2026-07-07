@@ -63,6 +63,10 @@ export type TrajectoryPredictionEventKind =
   | 'far-replaced'
   | 'refresh'
 
+export type TrajectoryPredictionFarCoalescingSkipStage = 'request' | 'result'
+
+export type TrajectoryPredictionFarCoalescingSkipReason = 'cooldown'
+
 export type TrajectoryPredictionInputChangePart =
   | 'assist'
   | 'bodies'
@@ -134,6 +138,11 @@ export type TrajectoryPredictionDiagnostics = {
   farCalculationMs: number | null
   farCalculationSampleCount: number
   farCalculationWindows: TrajectoryPredictionCalculationWindowDiagnostics
+  farCoalescingLastSkipReason: TrajectoryPredictionFarCoalescingSkipReason | null
+  farCoalescingLastSkipStage: TrajectoryPredictionFarCoalescingSkipStage | null
+  farCoalescingMinIntervalOverrideSeconds: number | null
+  farCoalescingMinIntervalSeconds: number
+  farCoalescingSkippedCount: number
   farInputKeyShort: string | null
   farPointCount: number
   farVisible: TrajectoryPredictionFarVisibility
@@ -175,6 +184,7 @@ export type RefreshTrajectoryPredictionOptions = {
   physicsEngine: PhysicsEngine
   predictionConfig: TrajectoryPredictionConfig
   state: SimulationState
+  timeWarp: number
 }
 
 type PredictionInputKeyParts = {
@@ -247,6 +257,11 @@ export const emptyTrajectoryPredictionDiagnostics =
     farCalculationMs: null,
     farCalculationSampleCount: 0,
     farCalculationWindows: emptyCalculationWindowDiagnostics(),
+    farCoalescingLastSkipReason: null,
+    farCoalescingLastSkipStage: null,
+    farCoalescingMinIntervalOverrideSeconds: null,
+    farCoalescingMinIntervalSeconds: 0,
+    farCoalescingSkippedCount: 0,
     farInputKeyShort: null,
     farPointCount: 0,
     farVisible: 'none',
@@ -293,6 +308,59 @@ const diagnosticEventLimit = 100
 const baseNearPredictionHorizonSeconds = 10 * 60
 const nearPredictionMovementBudgetRatio = 0.01
 const nowMs = () => performance.now()
+
+const farCoalescingHorizonHourCeilings = [
+  8, 24, 48, 96, 192, 384, 768, 3_072,
+] as const
+
+const farCoalescingWarpFactorCeilings = [
+  1, 10, 60, 300, 1_800, 7_200, 18_000,
+] as const
+
+const farCoalescingMinIntervalFloorSeconds = 0.25
+const refreshFarAfterEveryPart = 24
+const farCoalescingMinIntervalSecondsByBucket =
+  farCoalescingHorizonHourCeilings.map((horizonHours) =>
+    farCoalescingWarpFactorCeilings.map((warpFactor) =>
+      Math.max(
+        (horizonHours * 3_600) / warpFactor / refreshFarAfterEveryPart,
+        farCoalescingMinIntervalFloorSeconds,
+      ),
+    ),
+  )
+
+const getDefaultFarCoalescingMinIntervalSeconds = (
+  horizonSeconds: number,
+  timeWarp: number,
+) => {
+  const horizonHours = horizonSeconds / 3600
+  const warp = Number.isFinite(timeWarp) ? timeWarp : 1
+  const horizonIndex = farCoalescingHorizonHourCeilings.findIndex(
+    (ceiling) => horizonHours <= ceiling,
+  )
+  const warpIndex = farCoalescingWarpFactorCeilings.findIndex(
+    (ceiling) => warp <= ceiling,
+  )
+  const row =
+    farCoalescingMinIntervalSecondsByBucket[
+      horizonIndex >= 0
+        ? horizonIndex
+        : farCoalescingMinIntervalSecondsByBucket.length - 1
+    ]
+
+  return row[warpIndex >= 0 ? warpIndex : row.length - 1]
+}
+
+const forcesFarPredictionRefresh = (
+  reason: TrajectoryPredictionRefreshReason,
+) =>
+  reason === 'initial' ||
+  reason === 'manual' ||
+  reason === 'target-change' ||
+  reason === 'horizon-change' ||
+  reason === 'sampling-change' ||
+  reason === 'assist-change' ||
+  reason === 'controls-change'
 
 const recordCalculationTiming = (
   stats: CalculationTimingStats,
@@ -579,6 +647,12 @@ export const createTrajectoryPredictionRuntime = (
   let nextFarPredictionJobId = 1
   let pendingFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
   let farSemanticGeneration = 0
+  let farCoalescingMinIntervalOverrideSeconds: number | null = null
+  let farCoalescingSkippedCount = 0
+  let farCoalescingLastSkipReason: TrajectoryPredictionFarCoalescingSkipReason | null =
+    null
+  let farCoalescingLastSkipStage: TrajectoryPredictionFarCoalescingSkipStage | null =
+    null
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
   let previousDiagnosticEventTimeMs: number | null = null
@@ -608,6 +682,58 @@ export const createTrajectoryPredictionRuntime = (
   const createFarWorkerClient =
     runtimeOptions.createFarWorkerClient ??
     createTrajectoryPredictionFarWorkerClient
+
+  const getFarCoalescingMinIntervalSeconds = (
+    options: RefreshTrajectoryPredictionOptions,
+  ) =>
+    farCoalescingMinIntervalOverrideSeconds ??
+    getDefaultFarCoalescingMinIntervalSeconds(
+      options.predictionConfig.horizonSeconds,
+      options.timeWarp,
+    )
+
+  const updateFarCoalescingDiagnostics = (
+    options: RefreshTrajectoryPredictionOptions | null = lastRefreshOptions,
+  ) => {
+    predictionDiagnostics = {
+      ...predictionDiagnostics,
+      farCoalescingLastSkipReason,
+      farCoalescingLastSkipStage,
+      farCoalescingMinIntervalOverrideSeconds,
+      farCoalescingMinIntervalSeconds: options
+        ? getFarCoalescingMinIntervalSeconds(options)
+        : (farCoalescingMinIntervalOverrideSeconds ?? 0),
+      farCoalescingSkippedCount,
+    }
+  }
+
+  const recordFarCoalescingSkip = (
+    stage: TrajectoryPredictionFarCoalescingSkipStage,
+  ) => {
+    farCoalescingSkippedCount += 1
+    farCoalescingLastSkipReason = 'cooldown'
+    farCoalescingLastSkipStage = stage
+    updateFarCoalescingDiagnostics()
+  }
+
+  const isFarCoalescingCooldownActive = (
+    options: RefreshTrajectoryPredictionOptions,
+    currentTimeMs: number,
+    target: Body,
+  ) => {
+    const minIntervalSeconds = getFarCoalescingMinIntervalSeconds(options)
+    if (
+      minIntervalSeconds <= 0 ||
+      farCalculationStats.lastAtMs === null ||
+      farPredictionTier?.targetId !== target.id
+    ) {
+      return false
+    }
+
+    return (
+      currentTimeMs - farCalculationStats.lastAtMs < minIntervalSeconds * 1000
+    )
+  }
 
   const setCurrentSpacecraftPosition = (position: Vec2) => {
     if (previousSpacecraftPosition) {
@@ -905,6 +1031,12 @@ export const createTrajectoryPredictionRuntime = (
     }
 
     const refreshStartMs = nowMs()
+    if (isFarCoalescingCooldownActive(options, refreshStartMs, target)) {
+      recordFarCoalescingSkip('result')
+      postActiveFarPredictionRequest()
+      return
+    }
+
     predictionRefreshTimesMs.push(refreshStartMs)
     farPredictionTier = createFarTierFromWorkerResult(result)
     const liveNearPredictionConfig = createPredictionConfigWithHorizon(
@@ -946,6 +1078,7 @@ export const createTrajectoryPredictionRuntime = (
       reason: 'timed-refresh',
       refreshStartMs,
       target,
+      timeWarp: options.timeWarp,
     })
     postActiveFarPredictionRequest()
   }
@@ -979,6 +1112,7 @@ export const createTrajectoryPredictionRuntime = (
     reason: TrajectoryPredictionRefreshReason
     refreshStartMs: number
     target: Body
+    timeWarp: number
   }) => {
     const visibleFarTier =
       !options.nearTier.coastPrediction.impact &&
@@ -1082,6 +1216,16 @@ export const createTrajectoryPredictionRuntime = (
         farCalculationStats,
         calculationRecordedAtMs,
       ),
+      farCoalescingLastSkipReason,
+      farCoalescingLastSkipStage,
+      farCoalescingMinIntervalOverrideSeconds,
+      farCoalescingMinIntervalSeconds:
+        farCoalescingMinIntervalOverrideSeconds ??
+        getDefaultFarCoalescingMinIntervalSeconds(
+          options.predictionConfig.horizonSeconds,
+          options.timeWarp,
+        ),
+      farCoalescingSkippedCount,
       farInputKeyShort,
       farPointCount,
       farVisible,
@@ -1184,6 +1328,11 @@ export const createTrajectoryPredictionRuntime = (
     if (!splitPredictionHorizon) {
       farPredictionTier = null
       clearFarPredictionRequests()
+    } else if (
+      !forcesFarPredictionRefresh(reason) &&
+      isFarCoalescingCooldownActive(options, refreshStartMs, target)
+    ) {
+      recordFarCoalescingSkip('request')
     } else {
       replacedPendingFar = queueFarPredictionRequest(
         createFarPredictionRequest(options, target, nextInputKeyParts),
@@ -1209,7 +1358,9 @@ export const createTrajectoryPredictionRuntime = (
       reason,
       refreshStartMs,
       target,
+      timeWarp: options.timeWarp,
     })
+    updateFarCoalescingDiagnostics(options)
     predictionRefreshElapsed = 0
   }
 
@@ -1229,6 +1380,7 @@ export const createTrajectoryPredictionRuntime = (
   return {
     getDiagnostics: () => {
       const currentTimeMs = nowMs()
+      updateFarCoalescingDiagnostics()
       return {
         ...predictionDiagnostics,
         elapsedSinceRefreshSeconds: predictionRefreshElapsed,
@@ -1281,6 +1433,17 @@ export const createTrajectoryPredictionRuntime = (
         ...predictionDiagnostics,
         geometryUpdateMs,
       }
+    },
+    setFarCoalescingMinIntervalOverrideSeconds: (
+      value: number | null,
+    ): boolean => {
+      if (value !== null && (!Number.isFinite(value) || value < 0)) {
+        return false
+      }
+
+      farCoalescingMinIntervalOverrideSeconds = value
+      updateFarCoalescingDiagnostics()
+      return true
     },
     refresh,
   }
