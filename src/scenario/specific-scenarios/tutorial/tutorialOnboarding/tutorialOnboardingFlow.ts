@@ -171,13 +171,13 @@ const tutorialOnboardingPromptDefinitions: Record<
   },
   'intro-point-and-turn': {
     id: 'intro-point-and-turn',
-    title: 'Point By Double-Tapping',
-    shortLabel: 'Point By Double-Tapping',
+    title: 'Plan A Turn',
+    shortLabel: 'Plan A Turn',
     description: [
-      { text: 'Double-tap open space', tone: 'concept' },
+      { text: 'Press and hold open space', tone: 'concept' },
       ' away from ',
       { text: 'Earth', tone: 'concept' },
-      ' to set a new heading. Wait while the ship turns to face it.',
+      ' to plan a turn. Drag to adjust the target, then release to start turning.',
     ],
     buttons: [],
     presentation: { kind: 'coach', layout: 'playfield' },
