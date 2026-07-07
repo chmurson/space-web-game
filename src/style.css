@@ -2160,9 +2160,9 @@ button.app-dialog-setting {
 }
 
 .heading-committed-target-line {
-  stroke: rgba(125, 211, 252, 0.46);
-  stroke-width: 1.5;
-  stroke-dasharray: 1 8;
+  stroke: rgba(125, 211, 252, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 3 9;
   stroke-linecap: round;
 }
 
