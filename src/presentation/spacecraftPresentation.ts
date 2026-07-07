@@ -40,6 +40,38 @@ const projectRenderPositionToScreen = (
     y: (-projected.y * 0.5 + 0.5) * window.innerHeight,
   }
 }
+const getHeadingTargetScreenPosition = (options: {
+  camera: THREE.Camera
+  screenPosition: { x: number; y: number } | null
+  worldPosition: Vec2 | null
+}) =>
+  options.worldPosition
+    ? projectRenderPositionToScreen(
+        renderPosition(
+          options.worldPosition.x,
+          options.worldPosition.y,
+          spacecraftVisualLift,
+        ),
+        options.camera,
+      )
+    : options.screenPosition
+const setSvgLineEndpoints = (
+  line: SVGLineElement,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) => {
+  line.setAttribute('x1', `${from.x}`)
+  line.setAttribute('y1', `${from.y}`)
+  line.setAttribute('x2', `${to.x}`)
+  line.setAttribute('y2', `${to.y}`)
+}
+const isProjectedPositionInViewport = (position: THREE.Vector3) =>
+  position.x >= -1 &&
+  position.x <= 1 &&
+  position.y >= -1 &&
+  position.y <= 1 &&
+  position.z > -1 &&
+  position.z < 1
 const getHeadingTargetPlanePoint = (options: {
   camera: THREE.Camera
   center: Vec2
@@ -229,6 +261,9 @@ const updateSpacecraftCallout = (options: {
   spacecraft: Spacecraft
   spacecraftLabelIntroUntil: number
   spacecraftModelZoomThreshold: number
+  committedTargetHeading: number | null
+  committedTargetHeadingScreenPosition: { x: number; y: number } | null
+  committedTargetHeadingWorldPosition: Vec2 | null
   targetHeading: number | null
   targetHeadingScreenPosition: { x: number; y: number } | null
   targetHeadingWorldPosition: Vec2 | null
@@ -243,7 +278,7 @@ const updateSpacecraftCallout = (options: {
 
   const screenX = (position.x * 0.5 + 0.5) * window.innerWidth
   const screenY = (-position.y * 0.5 + 0.5) * window.innerHeight
-  const isVisible = position.z > -1 && position.z < 1
+  const isVisible = isProjectedPositionInViewport(position)
   const useSymbolicShip =
     options.viewportSize >
     options.defaultViewport / options.spacecraftModelZoomThreshold
@@ -264,6 +299,7 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.spacecraftIconThrust.style.display = 'none'
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
+    options.overlayUi.headingCommittedTargetLine.style.display = 'none'
     return options.displayHeadingAngle
   }
 
@@ -320,36 +356,43 @@ const updateSpacecraftCallout = (options: {
     const remainingPlaneDelta = normalizeAngleDelta(
       options.targetHeading - options.spacecraft.heading,
     )
-    const targetHeadingScreenPosition = options.targetHeadingWorldPosition
-      ? (() => {
-          const targetPosition = renderPosition(
-            options.targetHeadingWorldPosition.x,
-            options.targetHeadingWorldPosition.y,
-            spacecraftVisualLift,
-          )
-          targetPosition.project(options.gameScene.camera)
-          return {
-            x: (targetPosition.x * 0.5 + 0.5) * window.innerWidth,
-            y: (-targetPosition.y * 0.5 + 0.5) * window.innerHeight,
-          }
-        })()
-      : options.targetHeadingScreenPosition
+    const spacecraftScreenPosition = { x: screenX, y: screenY }
+    const targetHeadingScreenPosition = getHeadingTargetScreenPosition({
+      camera: options.gameScene.camera,
+      screenPosition: options.targetHeadingScreenPosition,
+      worldPosition: options.targetHeadingWorldPosition,
+    })
 
     options.overlayUi.headingTargetOverlay.style.display = 'block'
     options.overlayUi.headingTargetOverlay.setAttribute(
       'viewBox',
       `0 0 ${window.innerWidth} ${window.innerHeight}`,
     )
-    options.overlayUi.headingTargetLine.setAttribute('x1', `${screenX}`)
-    options.overlayUi.headingTargetLine.setAttribute('y1', `${screenY}`)
-    options.overlayUi.headingTargetLine.setAttribute(
-      'x2',
-      `${targetHeadingScreenPosition?.x ?? screenX}`,
+    setSvgLineEndpoints(
+      options.overlayUi.headingTargetLine,
+      spacecraftScreenPosition,
+      targetHeadingScreenPosition ?? spacecraftScreenPosition,
     )
-    options.overlayUi.headingTargetLine.setAttribute(
-      'y2',
-      `${targetHeadingScreenPosition?.y ?? screenY}`,
-    )
+    if (
+      options.committedTargetHeading !== null &&
+      (options.committedTargetHeadingWorldPosition ||
+        options.committedTargetHeadingScreenPosition)
+    ) {
+      const committedTargetHeadingScreenPosition =
+        getHeadingTargetScreenPosition({
+          camera: options.gameScene.camera,
+          screenPosition: options.committedTargetHeadingScreenPosition,
+          worldPosition: options.committedTargetHeadingWorldPosition,
+        })
+      options.overlayUi.headingCommittedTargetLine.style.display = 'block'
+      setSvgLineEndpoints(
+        options.overlayUi.headingCommittedTargetLine,
+        spacecraftScreenPosition,
+        committedTargetHeadingScreenPosition ?? spacecraftScreenPosition,
+      )
+    } else {
+      options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    }
     options.overlayUi.headingTargetDot.style.display = 'block'
     options.overlayUi.headingTargetDot.style.left = `${
       targetHeadingScreenPosition?.x ?? screenX
@@ -371,6 +414,7 @@ const updateSpacecraftCallout = (options: {
   } else {
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
+    options.overlayUi.headingCommittedTargetLine.style.display = 'none'
   }
 
   return headingAngle
@@ -379,6 +423,7 @@ const updateSpacecraftCallout = (options: {
 export const createSpacecraftPresentation = (options: {
   defaultViewport: number
   gameScene: GameSceneRefs
+  onSpacecraftVisibleChange?: (visible: boolean) => void
   overlayUi: OverlayUiRefs
   pointerCameraInput: PointerCameraInput
   spacecraftModelZoomThreshold: number
@@ -397,12 +442,23 @@ export const createSpacecraftPresentation = (options: {
       spacecraftLabelIntroUntil: number
       trailTarget: Body
       trimTrailAroundTarget: boolean
+      committedTargetHeading: number | null
+      committedTargetHeadingScreenPosition: { x: number; y: number } | null
+      committedTargetHeadingWorldPosition: Vec2 | null
       targetHeading: number | null
       targetHeadingScreenPosition: { x: number; y: number } | null
       targetHeadingWorldPosition: Vec2 | null
       viewportSize: number
     }) => {
       const rawMeshRotationY = -state.spacecraft.heading + Math.PI / 2
+      const spacecraftScreenPosition = renderPosition(
+        state.spacecraft.position.x,
+        state.spacecraft.position.y,
+        spacecraftVisualLift,
+      ).project(options.gameScene.camera)
+      options.onSpacecraftVisibleChange?.(
+        isProjectedPositionInViewport(spacecraftScreenPosition),
+      )
       const displayRotationY = unwrapAngle(rawMeshRotationY, lastMeshRotationY)
       lastMeshRotationY = displayRotationY
 
@@ -446,6 +502,11 @@ export const createSpacecraftPresentation = (options: {
         spacecraft: state.spacecraft,
         spacecraftLabelIntroUntil: state.spacecraftLabelIntroUntil,
         spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
+        committedTargetHeading: state.committedTargetHeading,
+        committedTargetHeadingScreenPosition:
+          state.committedTargetHeadingScreenPosition,
+        committedTargetHeadingWorldPosition:
+          state.committedTargetHeadingWorldPosition,
         targetHeading: state.targetHeading,
         targetHeadingScreenPosition: state.targetHeadingScreenPosition,
         targetHeadingWorldPosition: state.targetHeadingWorldPosition,

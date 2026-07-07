@@ -2159,6 +2159,13 @@ button.app-dialog-setting {
   stroke-linecap: round;
 }
 
+.heading-committed-target-line {
+  stroke: rgba(125, 211, 252, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 3 9;
+  stroke-linecap: round;
+}
+
 .heading-target-turn-slice {
   fill: rgba(56, 189, 248, 0.18);
   stroke: none;

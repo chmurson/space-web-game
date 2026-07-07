@@ -111,14 +111,17 @@ const createRuntime = (): AppRuntimeState => ({
 
 const createTestRuntimeActions = (
   runtime: AppRuntimeState,
-  options: { autoSelectNearestSurface?: boolean } = {},
+  options: {
+    autoSelectNearestSurface?: boolean
+    createRipple?: Parameters<typeof createRuntimeActions>[0]['createRipple']
+  } = {},
 ) =>
   createRuntimeActions({
     app: {} as HTMLDivElement,
     autoSelectNearestSurface: options.autoSelectNearestSurface ?? true,
     cameraDistance: 700,
     cameraElevation: 1,
-    createRipple: () => {},
+    createRipple: options.createRipple ?? (() => {}),
     gameScene: { trailPoints: [] } as never,
     getAssistTargetUiState: () => ({
       activeTarget:
@@ -415,6 +418,71 @@ describe('createRuntimeActions', () => {
     expect(runtime.ui.targetHeadingWorldPosition).toEqual({ x: 12, y: 34 })
     expect(runtime.ui.targetHeadingSelectionEpoch).toBe(1)
     expect(runtime.simulation.assistMode).toBe('off')
+  })
+
+  it('shows a planned target heading without committing the turn until release', () => {
+    const runtime = createRuntime()
+    const createRipple = vi.fn()
+    const runtimeActions = createTestRuntimeActions(runtime, { createRipple })
+
+    runtime.simulation.targetHeading = null
+    runtime.simulation.assistMode = 'capture'
+    runtime.simulation.timeWarpIndex = 6
+    runtimeActions.planTargetHeading({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+
+    expect(runtime.simulation.targetHeading).toBeNull()
+    expect(runtime.simulation.timeWarpIndex).toBe(3)
+    expect(runtime.ui.targetHeadingPlan).toEqual({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(0)
+
+    expect(runtimeActions.commitTargetHeadingPlan()).toBe(true)
+
+    expect(runtime.simulation.targetHeading).toBe(1.2)
+    expect(runtime.ui.targetHeadingPlan).toBeNull()
+    expect(runtime.ui.targetHeadingScreenPosition).toEqual({ x: 300, y: 200 })
+    expect(runtime.ui.targetHeadingWorldPosition).toEqual({ x: 12, y: 34 })
+    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(1)
+    expect(runtime.simulation.assistMode).toBe('off')
+    expect(createRipple).not.toHaveBeenCalled()
+  })
+
+  it('keeps slower time warp unchanged when planning a target heading', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    runtime.simulation.timeWarpIndex = 1
+    runtimeActions.planTargetHeading({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+
+    expect(runtime.simulation.timeWarpIndex).toBe(1)
+  })
+
+  it('clears a planned target heading when cycling assist mode', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    runtimeActions.planTargetHeading({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+
+    runtimeActions.handleUIUserAction('cycleAssistMode')
+
+    expect(runtime.simulation.targetHeading).toBeNull()
+    expect(runtime.simulation.targetHeadingTurn).toBeNull()
+    expect(runtime.ui.targetHeadingPlan).toBeNull()
   })
 
   it('updates the reset target when free roam starts', () => {

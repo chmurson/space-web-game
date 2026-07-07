@@ -31,6 +31,7 @@ export type OverlayUiRefs = {
   fuelIconLevel: SVGRectElement | null
   fuelPill: HTMLElement | null
   headingTargetDot: HTMLElement
+  headingCommittedTargetLine: SVGLineElement
   headingTargetLine: SVGLineElement
   headingTargetOverlay: SVGSVGElement
   headingTargetTurnSlice: SVGPathElement
@@ -198,6 +199,13 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   headingTargetLine.classList.add('heading-target-line')
   headingTargetOverlay.appendChild(headingTargetLine)
 
+  const headingCommittedTargetLine = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'line',
+  )
+  headingCommittedTargetLine.classList.add('heading-committed-target-line')
+  headingTargetOverlay.appendChild(headingCommittedTargetLine)
+
   const headingTargetTurnSlice = document.createElementNS(
     'http://www.w3.org/2000/svg',
     'path',
@@ -255,6 +263,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     fuelIconLevel: hudTelemetry.telemetryRefs.fuelIconLevel,
     fuelPill: hudTelemetry.telemetryRefs.fuelPill,
     headingTargetDot,
+    headingCommittedTargetLine,
     headingTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,

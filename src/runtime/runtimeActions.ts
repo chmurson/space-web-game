@@ -7,9 +7,9 @@ import {
 } from '../scenario/runtimeScenario'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import {
-  getNextCameraControlMode,
   type CameraControlMode,
   type GlobalScenarioDirectiveLimits,
+  getNextCameraControlMode,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
@@ -17,7 +17,7 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import { add, type Vec2 } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
-import type { AppRuntimeState } from './appRuntimeState'
+import type { AppRuntimeState, TargetHeadingPlan } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { AssistTargetUiState } from './gameQueries'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
@@ -130,6 +130,16 @@ export const createRuntimeActions = (options: {
     const desiredIndex = options.timeWarps.indexOf(warp)
     options.runtime.simulation.timeWarpIndex =
       desiredIndex >= 0 ? desiredIndex : 0
+  }
+  const capTimeWarpAt = (warp: number) => {
+    const maxIndex = options.timeWarps.indexOf(warp)
+    if (maxIndex < 0) {
+      return
+    }
+    options.runtime.simulation.timeWarpIndex = Math.min(
+      options.runtime.simulation.timeWarpIndex,
+      maxIndex,
+    )
   }
   const scenarioRuntimeController = createScenarioRuntimeController({
     clearTransientScenarioState,
@@ -254,6 +264,18 @@ export const createRuntimeActions = (options: {
     return true
   }
 
+  const setTargetHeadingPlan = (plan: TargetHeadingPlan) => {
+    options.runtime.ui.targetHeadingPlan = {
+      heading: plan.heading,
+      screenPosition: { ...plan.screenPosition },
+      worldPosition: { ...plan.worldPosition },
+    }
+  }
+
+  const clearTargetHeadingPlan = () => {
+    options.runtime.ui.targetHeadingPlan = null
+  }
+
   const zoomCamera = (factor: number) => {
     options.runtime.simulation.viewportSize = THREE.MathUtils.clamp(
       options.runtime.simulation.viewportSize * factor,
@@ -327,6 +349,7 @@ export const createRuntimeActions = (options: {
               : 'off'
         options.runtime.simulation.targetHeading = null
         options.runtime.simulation.targetHeadingTurn = null
+        clearTargetHeadingPlan()
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'toggleDebugMode') {
@@ -466,6 +489,7 @@ export const createRuntimeActions = (options: {
     ) => {
       options.runtime.simulation.targetHeading = heading
       options.runtime.simulation.targetHeadingTurn = null
+      clearTargetHeadingPlan()
       options.runtime.ui.targetHeadingScreenPosition = {
         x: clientX,
         y: clientY,
@@ -482,6 +506,29 @@ export const createRuntimeActions = (options: {
         clientY,
         worldPosition,
       )
+    },
+    planTargetHeading: (plan: TargetHeadingPlan) => {
+      capTimeWarpAt(60)
+      setTargetHeadingPlan(plan)
+    },
+    clearTargetHeadingPlan,
+    commitTargetHeadingPlan: () => {
+      const plan = options.runtime.ui.targetHeadingPlan
+      if (!plan) {
+        return false
+      }
+      options.runtime.simulation.targetHeading = plan.heading
+      options.runtime.simulation.targetHeadingTurn = null
+      options.runtime.ui.targetHeadingScreenPosition = {
+        ...plan.screenPosition,
+      }
+      options.runtime.ui.targetHeadingWorldPosition = {
+        ...plan.worldPosition,
+      }
+      options.runtime.ui.targetHeadingSelectionEpoch += 1
+      options.runtime.simulation.assistMode = 'off'
+      clearTargetHeadingPlan()
+      return true
     },
     nudgeTargetHeading: (deltaRadians: number) => {
       const baseHeading =
