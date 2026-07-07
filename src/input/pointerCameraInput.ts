@@ -331,6 +331,12 @@ export const bindPointerCameraInput = (
     const previousDistance = Math.hypot(previousDeltaX, previousDeltaY)
     if (Math.hypot(totalDeltaX, totalDeltaY) >= cameraPanTapTolerancePx) {
       activeCameraPan.hasMovedForTap = true
+      if (
+        activeTargetHeadingPlan?.pointerId === event.pointerId &&
+        !activeTargetHeadingPlan.started
+      ) {
+        cancelTargetHeadingPlan()
+      }
     }
 
     if (options.getCameraMode() !== 'unlocked') {

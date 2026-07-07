@@ -339,6 +339,7 @@ export const createRuntimeActions = (options: {
               : 'off'
         options.runtime.simulation.targetHeading = null
         options.runtime.simulation.targetHeadingTurn = null
+        clearTargetHeadingPlan()
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'toggleDebugMode') {

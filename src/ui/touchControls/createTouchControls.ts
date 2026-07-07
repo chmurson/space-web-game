@@ -546,6 +546,7 @@ export const createTouchControls = (options: {
 
   const clearGameplayTouchInput = () => {
     clearPendingTapState()
+    clearTargetHeadingPlanSession()
     clearZoneGesture()
     clearActiveSession()
     options.keyboardInput.clear()
@@ -561,6 +562,7 @@ export const createTouchControls = (options: {
     }
 
     const [first, second] = Array.from(touches)
+    clearTargetHeadingPlanSession()
     clearZoneGesture()
     clearPendingTapState()
     activeSession = {

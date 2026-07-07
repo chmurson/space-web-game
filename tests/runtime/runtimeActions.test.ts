@@ -447,6 +447,23 @@ describe('createRuntimeActions', () => {
     expect(runtime.simulation.assistMode).toBe('off')
   })
 
+  it('clears a planned target heading when cycling assist mode', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    runtimeActions.planTargetHeading({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+
+    runtimeActions.handleUIUserAction('cycleAssistMode')
+
+    expect(runtime.simulation.targetHeading).toBeNull()
+    expect(runtime.simulation.targetHeadingTurn).toBeNull()
+    expect(runtime.ui.targetHeadingPlan).toBeNull()
+  })
+
   it('updates the reset target when free roam starts', () => {
     const runtime = createRuntime()
     const runtimeActions = createTestRuntimeActions(runtime)
