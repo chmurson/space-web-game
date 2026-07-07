@@ -131,6 +131,16 @@ export const createRuntimeActions = (options: {
     options.runtime.simulation.timeWarpIndex =
       desiredIndex >= 0 ? desiredIndex : 0
   }
+  const capTimeWarpAt = (warp: number) => {
+    const maxIndex = options.timeWarps.indexOf(warp)
+    if (maxIndex < 0) {
+      return
+    }
+    options.runtime.simulation.timeWarpIndex = Math.min(
+      options.runtime.simulation.timeWarpIndex,
+      maxIndex,
+    )
+  }
   const scenarioRuntimeController = createScenarioRuntimeController({
     clearTransientScenarioState,
     globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
@@ -498,7 +508,7 @@ export const createRuntimeActions = (options: {
       )
     },
     planTargetHeading: (plan: TargetHeadingPlan) => {
-      setTimeWarp(60)
+      capTimeWarpAt(60)
       setTargetHeadingPlan(plan)
     },
     clearTargetHeadingPlan,

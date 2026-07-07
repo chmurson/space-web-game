@@ -454,6 +454,20 @@ describe('createRuntimeActions', () => {
     expect(createRipple).not.toHaveBeenCalled()
   })
 
+  it('keeps slower time warp unchanged when planning a target heading', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    runtime.simulation.timeWarpIndex = 1
+    runtimeActions.planTargetHeading({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+
+    expect(runtime.simulation.timeWarpIndex).toBe(1)
+  })
+
   it('clears a planned target heading when cycling assist mode', () => {
     const runtime = createRuntime()
     const runtimeActions = createTestRuntimeActions(runtime)
