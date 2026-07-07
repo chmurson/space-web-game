@@ -433,6 +433,7 @@ export const createAppComponents = (options: {
     getBaseGameInteractionsEnabled() &&
     options.runtimeState.simulation.crashedBodyName === null
   const getCameraInteractionsEnabled = getBaseGameInteractionsEnabled
+  let spacecraftVisibleInViewport = true
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
@@ -453,6 +454,7 @@ export const createAppComponents = (options: {
         options.runtimeState.simulation.timeWarpIndex
       ] ?? 1,
     getInteractionsEnabled: getGameInteractionsEnabled,
+    getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getAssistTargetUiState: queries.getAssistTargetUiState,
     getTargetControlRows: () =>
       options.runtimeState.simulation.state.bodies.map((body, index) => ({
@@ -659,6 +661,7 @@ export const createAppComponents = (options: {
     getInteractionsEnabled: getCameraInteractionsEnabled,
     getSpacecraftPosition: () =>
       options.runtimeState.simulation.state.spacecraft.position,
+    getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPan: runtimeActions.panCamera,
@@ -797,6 +800,12 @@ export const createAppComponents = (options: {
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport: options.config.camera.defaultViewport,
       gameScene,
+      onSpacecraftVisibleChange: (visible) => {
+        spacecraftVisibleInViewport = visible
+        if (!visible) {
+          runtimeActions.clearTargetHeadingPlan()
+        }
+      },
       overlayUi,
       pointerCameraInput,
       spacecraftModelZoomThreshold:

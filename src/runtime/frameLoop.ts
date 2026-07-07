@@ -88,6 +88,36 @@ export const createFrameLoop = (options: {
     }
   }
 
+  const getTargetHeadingVisuals = () => {
+    const targetHeadingPlan = options.runtime.ui.targetHeadingPlan
+    const committedTargetHeading =
+      targetHeadingPlan && options.runtime.simulation.targetHeading !== null
+        ? options.runtime.simulation.targetHeading
+        : null
+
+    return {
+      committedTargetHeading,
+      committedTargetHeadingScreenPosition:
+        committedTargetHeading !== null
+          ? (options.runtime.ui.targetHeadingScreenPosition ?? null)
+          : null,
+      committedTargetHeadingWorldPosition:
+        committedTargetHeading !== null
+          ? (options.runtime.ui.targetHeadingWorldPosition ?? null)
+          : null,
+      targetHeading:
+        targetHeadingPlan?.heading ?? options.runtime.simulation.targetHeading,
+      targetHeadingScreenPosition:
+        targetHeadingPlan?.screenPosition ??
+        options.runtime.ui.targetHeadingScreenPosition ??
+        null,
+      targetHeadingWorldPosition:
+        targetHeadingPlan?.worldPosition ??
+        options.runtime.ui.targetHeadingWorldPosition ??
+        null,
+    }
+  }
+
   const recordFpsFrameSample = (nowMs: number, cpuMs: number) => {
     fpsFrameSamples.push({
       atMs: nowMs,
@@ -221,7 +251,9 @@ export const createFrameLoop = (options: {
       options.trajectoryPresentation.refreshPrediction()
     }
     options.runtimeActions.updateCamera()
-    updateRipples(options.ripples, realDt, { camera: options.gameScene.camera })
+    updateRipples(options.ripples, realDt, {
+      camera: options.gameScene.camera,
+    })
     const {
       distanceContext,
       target: trailTarget,
@@ -239,7 +271,6 @@ export const createFrameLoop = (options: {
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
-    const targetHeadingPlan = options.runtime.ui.targetHeadingPlan
     options.spacecraftPresentation.updateVisuals({
       bodies: options.runtime.simulation.state.bodies,
       elapsed: options.runtime.simulation.state.elapsed,
@@ -248,16 +279,7 @@ export const createFrameLoop = (options: {
       spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
       trailTarget,
       trimTrailAroundTarget,
-      targetHeading:
-        targetHeadingPlan?.heading ?? options.runtime.simulation.targetHeading,
-      targetHeadingScreenPosition:
-        targetHeadingPlan?.screenPosition ??
-        options.runtime.ui.targetHeadingScreenPosition ??
-        null,
-      targetHeadingWorldPosition:
-        targetHeadingPlan?.worldPosition ??
-        options.runtime.ui.targetHeadingWorldPosition ??
-        null,
+      ...getTargetHeadingVisuals(),
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
@@ -326,7 +348,6 @@ export const createFrameLoop = (options: {
           options.runtime.simulation.state.spacecraft.position,
         viewportSize: options.runtime.simulation.viewportSize,
       })
-      const targetHeadingPlan = options.runtime.ui.targetHeadingPlan
       options.spacecraftPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
         elapsed: options.runtime.simulation.state.elapsed,
@@ -337,17 +358,7 @@ export const createFrameLoop = (options: {
         spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
         trailTarget,
         trimTrailAroundTarget: trailTargetMetrics.specificEnergy < 0,
-        targetHeading:
-          targetHeadingPlan?.heading ??
-          options.runtime.simulation.targetHeading,
-        targetHeadingScreenPosition:
-          targetHeadingPlan?.screenPosition ??
-          options.runtime.ui.targetHeadingScreenPosition ??
-          null,
-        targetHeadingWorldPosition:
-          targetHeadingPlan?.worldPosition ??
-          options.runtime.ui.targetHeadingWorldPosition ??
-          null,
+        ...getTargetHeadingVisuals(),
         viewportSize: options.runtime.simulation.viewportSize,
       })
       const fpsMeterVisible = isFpsMeterVisible()

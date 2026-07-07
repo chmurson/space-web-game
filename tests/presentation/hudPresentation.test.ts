@@ -397,6 +397,9 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     fuelIconLevel: null,
     fuelPill: null,
     headingTargetDot: new FakeElement('div') as unknown as HTMLElement,
+    headingCommittedTargetLine: new FakeElement(
+      'line',
+    ) as unknown as SVGLineElement,
     headingTargetLine: new FakeElement('line') as unknown as SVGLineElement,
     headingTargetOverlay: new FakeElement('svg') as unknown as SVGSVGElement,
     headingTargetTurnSlice: new FakeElement(
@@ -665,7 +668,9 @@ describe('createHudPresentation', () => {
     app.id = 'app'
     app.isConnected = true
     const overlayUi = createOverlayUi(app)
-    overlayUi.fuelIconLevel = new FakeElement('rect') as unknown as SVGRectElement
+    overlayUi.fuelIconLevel = new FakeElement(
+      'rect',
+    ) as unknown as SVGRectElement
     overlayUi.fuelPill = new FakeElement('div') as unknown as HTMLElement
     overlayUi.statFuel = new FakeElement('strong') as unknown as HTMLElement
     const runtime = createRuntime()

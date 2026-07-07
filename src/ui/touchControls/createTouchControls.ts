@@ -203,6 +203,7 @@ export const createTouchControls = (options: {
   getCurrentTrajectoryHorizonHours(): number
   getCurrentTimeWarp(): number
   getInteractionsEnabled(): boolean
+  getSpacecraftVisible(): boolean
   getAssistTargetUiState(): AssistTargetUiState
   getTargetControlRows(): TargetControlBodyRow[]
   getTrajectoryHorizonPreviews(
@@ -635,6 +636,10 @@ export const createTouchControls = (options: {
   }
 
   const beginTargetHeadingPlanSession = (touch: Touch) => {
+    if (!options.getSpacecraftVisible()) {
+      return
+    }
+
     const touchId = touch.identifier
     activeSession = {
       kind: 'target-heading-plan',
@@ -648,6 +653,10 @@ export const createTouchControls = (options: {
           activeSession.kind !== 'target-heading-plan' ||
           activeSession.touchId !== touchId
         ) {
+          return
+        }
+        if (!options.getSpacecraftVisible()) {
+          clearTargetHeadingPlanSession()
           return
         }
         activeSession.started = true
@@ -821,6 +830,11 @@ export const createTouchControls = (options: {
 
       switch (activeSession.kind) {
         case 'target-heading-plan': {
+          if (!options.getSpacecraftVisible()) {
+            clearTargetHeadingPlanSession()
+            return
+          }
+
           const touch = getTouchById(event.touches, activeSession.touchId)
           if (!touch) {
             return
@@ -1035,7 +1049,6 @@ export const createTouchControls = (options: {
           activeSession = { kind: 'none' }
           if (shouldCommit) {
             options.onTargetHeadingPlanCommitted()
-            vibrate()
             tapTouches.delete(touch.identifier)
             lastTap = null
             continue

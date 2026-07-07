@@ -22,6 +22,7 @@ export type PointerCameraInputOptions = {
   getInteractionsEnabled: () => boolean
   getCameraMode: () => CameraControlMode
   getCameraModeChangesLocked: () => boolean
+  getSpacecraftVisible: () => boolean
   getSpacecraftPosition: () => Vec2
   getTargetHeadingSelectionEnabled?: () => boolean
   onCameraModeSelected: (mode: CameraControlMode) => boolean
@@ -146,8 +147,9 @@ export const bindPointerCameraInput = (
     options.renderScale,
   )
   const getTargetHeadingSelectionEnabled = () =>
-    options.getTargetHeadingSelectionEnabled?.() ??
-    options.getInteractionsEnabled()
+    options.getSpacecraftVisible() &&
+    (options.getTargetHeadingSelectionEnabled?.() ??
+      options.getInteractionsEnabled())
   let activeTargetHeadingPlan: {
     latestX: number
     latestY: number
@@ -307,6 +309,10 @@ export const bindPointerCameraInput = (
 
   options.rendererElement.addEventListener('pointermove', (event) => {
     if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
+      if (!getTargetHeadingSelectionEnabled()) {
+        cancelTargetHeadingPlan()
+        return
+      }
       activeTargetHeadingPlan.latestX = event.clientX
       activeTargetHeadingPlan.latestY = event.clientY
       if (activeTargetHeadingPlan.started) {
@@ -398,7 +404,7 @@ export const bindPointerCameraInput = (
       const shouldCommit = activeTargetHeadingPlan.started
       window.clearTimeout(activeTargetHeadingPlan.timeoutId)
       activeTargetHeadingPlan = null
-      if (shouldCommit) {
+      if (shouldCommit && getTargetHeadingSelectionEnabled()) {
         event.preventDefault()
         options.onTargetHeadingPlanCommitted()
       } else {
