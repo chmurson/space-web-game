@@ -411,12 +411,26 @@ const createPredictionInputKeyParts = (
 const createPredictionInputKey = (parts: PredictionInputKeyParts) =>
   JSON.stringify(parts)
 
-const createFarPredictionSemanticInputKey = (parts: PredictionInputKeyParts) =>
+const createFarPredictionSemanticInputKey = (
+  parts: PredictionInputKeyParts,
+  generation: number,
+) =>
   JSON.stringify({
     assist: parts.assist,
-    bodies: parts.bodies,
+    bodies: (
+      JSON.parse(parts.bodies) as Array<{
+        id: string
+        mass: number
+        radius: number
+      }>
+    ).map((body) => ({
+      id: body.id,
+      mass: body.mass,
+      radius: body.radius,
+    })),
     config: parts.config,
     controls: parts.controls,
+    generation,
     target: parts.target,
   })
 
@@ -564,6 +578,7 @@ export const createTrajectoryPredictionRuntime = (
   let nearPredictionTier: TrajectoryPredictionTier | null = null
   let nextFarPredictionJobId = 1
   let pendingFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
+  let farSemanticGeneration = 0
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
   let previousDiagnosticEventTimeMs: number | null = null
@@ -734,7 +749,10 @@ export const createTrajectoryPredictionRuntime = (
     inputKeyParts: PredictionInputKeyParts,
   ): TrajectoryPredictionFarRequest => {
     const inputKey = createPredictionInputKey(inputKeyParts)
-    const semanticInputKey = createFarPredictionSemanticInputKey(inputKeyParts)
+    const semanticInputKey = createFarPredictionSemanticInputKey(
+      inputKeyParts,
+      farSemanticGeneration,
+    )
     const jobId = nextFarPredictionJobId
     nextFarPredictionJobId += 1
 
@@ -872,8 +890,10 @@ export const createTrajectoryPredictionRuntime = (
     const target = options.getAssistTarget()
     const nextInputKeyParts = createPredictionInputKeyParts(options, target)
     const inputKey = createPredictionInputKey(nextInputKeyParts)
-    const semanticInputKey =
-      createFarPredictionSemanticInputKey(nextInputKeyParts)
+    const semanticInputKey = createFarPredictionSemanticInputKey(
+      nextInputKeyParts,
+      farSemanticGeneration,
+    )
 
     if (
       result.semanticInputKey !== semanticInputKey ||
@@ -1199,6 +1219,7 @@ export const createTrajectoryPredictionRuntime = (
       ? 'manual'
       : 'initial',
   ) => {
+    farSemanticGeneration += 1
     lastRefreshOptions = options
     const target = options.getAssistTarget()
     setCurrentSpacecraftPosition(options.state.spacecraft.position)

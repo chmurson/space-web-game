@@ -786,6 +786,118 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
+  it('accepts a worker result after body drift and then replaces it with the newer pending job', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      bodies: [
+        state().bodies[0] ?? earth,
+        { ...moon, position: { x: 7_000, y: 0 } },
+      ],
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationSampleCount: 0,
+      farVisible: 'none',
+      pendingFar: true,
+      refreshReason: 'body-state-change',
+    })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      changedParts: ['bodies'],
+      event: 'refresh',
+      farApplied: false,
+      pendingFar: true,
+      reason: 'body-state-change',
+    })
+
+    farWorker.completeRequest(0, 0)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationAverageMs: 4,
+      farCalculationMs: 4,
+      farCalculationSampleCount: 1,
+      farVisible: 'retained-stale',
+      pendingFar: false,
+    })
+    expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
+      event: 'far-complete',
+      farApplied: true,
+      farVisible: 'retained-stale',
+      pendingFar: false,
+    })
+    expect(farWorker.getRequest(0, 1).jobId).toBeGreaterThan(
+      farWorker.getRequest(0, 0).jobId,
+    )
+
+    farWorker.completeRequest(0, 1, 5)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationAverageMs: 4.5,
+      farCalculationMs: 5,
+      farCalculationSampleCount: 2,
+      farVisible: 'current',
+      pendingFar: false,
+    })
+  })
+
+  it('ignores a worker result from before a manual refresh boundary', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+    predictionRuntime.refresh(getOptions(), 'manual')
+
+    farWorker.completeRequest(0, 0)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      farCalculationSampleCount: 0,
+      farVisible: 'none',
+      pendingFar: false,
+    })
+    expect(farWorker.getRequest(0, 1).jobId).toBeGreaterThan(
+      farWorker.getRequest(0, 0).jobId,
+    )
+
+    farWorker.completeRequest(0, 1)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationMs: 4,
+      farCalculationSampleCount: 1,
+      farVisible: 'current',
+      pendingFar: false,
+    })
+  })
+
   it('extends the near horizon when recent movement exceeds the near-span budget', () => {
     const {
       farWorker,
