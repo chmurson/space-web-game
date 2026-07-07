@@ -165,12 +165,15 @@ const createRuntimeCoordinator = (options: {
   }
 }
 
-const getCameraNoticeModeLabel = (mode: CameraControlMode) =>
-  mode === 'unlocked'
-    ? 'Free roam'
-    : mode === 'centered'
-      ? 'Spacecraft'
-      : 'Target'
+const getCameraNoticeModeLabel = (mode: CameraControlMode) => {
+  if (mode === 'unlocked') {
+    return 'Free roam'
+  }
+  if (mode === 'centered') {
+    return 'Spacecraft'
+  }
+  return 'Target'
+}
 
 const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   let hideTimeout: number | null = null
@@ -526,7 +529,7 @@ export const createAppComponents = (options: {
         queries.getAssistTargetUiState(),
       )
     },
-    onTargetHeadingSelected: (screenX, screenY) => {
+    onTargetHeadingPlan: (screenX, screenY) => {
       const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
 
       if (worldPosition === null) {
@@ -540,8 +543,14 @@ export const createAppComponents = (options: {
         worldPosition.x - spacecraftPosition.x,
       )
 
-      runtimeActions.setTargetHeading(heading, screenX, screenY, worldPosition)
+      runtimeActions.planTargetHeading({
+        heading,
+        screenPosition: { x: screenX, y: screenY },
+        worldPosition,
+      })
     },
+    onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
+    onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
     onThrustControlUiStateChange: (state) => {
       options.runtimeState.ui.touchThrustControl = state
     },
@@ -654,14 +663,15 @@ export const createAppComponents = (options: {
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPan: runtimeActions.panCamera,
     onResize: runtimeActions.handleResize,
-    onTargetHeadingSelected: (heading, selection) => {
-      runtimeActions.setTargetHeading(
+    onTargetHeadingPlan: (heading, selection) => {
+      runtimeActions.planTargetHeading({
         heading,
-        selection.screenPosition.x,
-        selection.screenPosition.y,
-        selection.worldPosition,
-      )
+        screenPosition: selection.screenPosition,
+        worldPosition: selection.worldPosition,
+      })
     },
+    onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
+    onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
     onZoom: runtimeActions.zoomCamera,
     renderScale: RENDER_SCALE,
     rendererElement: renderer.domElement,

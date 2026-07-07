@@ -239,6 +239,7 @@ export const createFrameLoop = (options: {
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
+    const targetHeadingPlan = options.runtime.ui.targetHeadingPlan
     options.spacecraftPresentation.updateVisuals({
       bodies: options.runtime.simulation.state.bodies,
       elapsed: options.runtime.simulation.state.elapsed,
@@ -247,11 +248,16 @@ export const createFrameLoop = (options: {
       spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
       trailTarget,
       trimTrailAroundTarget,
-      targetHeading: options.runtime.simulation.targetHeading,
+      targetHeading:
+        targetHeadingPlan?.heading ?? options.runtime.simulation.targetHeading,
       targetHeadingScreenPosition:
-        options.runtime.ui.targetHeadingScreenPosition ?? null,
+        targetHeadingPlan?.screenPosition ??
+        options.runtime.ui.targetHeadingScreenPosition ??
+        null,
       targetHeadingWorldPosition:
-        options.runtime.ui.targetHeadingWorldPosition ?? null,
+        targetHeadingPlan?.worldPosition ??
+        options.runtime.ui.targetHeadingWorldPosition ??
+        null,
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
@@ -320,6 +326,7 @@ export const createFrameLoop = (options: {
           options.runtime.simulation.state.spacecraft.position,
         viewportSize: options.runtime.simulation.viewportSize,
       })
+      const targetHeadingPlan = options.runtime.ui.targetHeadingPlan
       options.spacecraftPresentation.updateVisuals({
         bodies: options.runtime.simulation.state.bodies,
         elapsed: options.runtime.simulation.state.elapsed,
@@ -330,11 +337,17 @@ export const createFrameLoop = (options: {
         spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
         trailTarget,
         trimTrailAroundTarget: trailTargetMetrics.specificEnergy < 0,
-        targetHeading: options.runtime.simulation.targetHeading,
+        targetHeading:
+          targetHeadingPlan?.heading ??
+          options.runtime.simulation.targetHeading,
         targetHeadingScreenPosition:
-          options.runtime.ui.targetHeadingScreenPosition ?? null,
+          targetHeadingPlan?.screenPosition ??
+          options.runtime.ui.targetHeadingScreenPosition ??
+          null,
         targetHeadingWorldPosition:
-          options.runtime.ui.targetHeadingWorldPosition ?? null,
+          targetHeadingPlan?.worldPosition ??
+          options.runtime.ui.targetHeadingWorldPosition ??
+          null,
         viewportSize: options.runtime.simulation.viewportSize,
       })
       const fpsMeterVisible = isFpsMeterVisible()

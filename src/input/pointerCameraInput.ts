@@ -27,10 +27,12 @@ export type PointerCameraInputOptions = {
   onCameraModeSelected: (mode: CameraControlMode) => boolean
   onCameraPan: (delta: Vec2) => boolean
   onResize: () => void
-  onTargetHeadingSelected: (
+  onTargetHeadingPlan: (
     heading: number,
     selection: TargetHeadingSelection,
   ) => void
+  onTargetHeadingPlanCanceled: () => void
+  onTargetHeadingPlanCommitted: () => boolean
   onZoom: (zoomFactor: number) => void
   renderScale: number
   rendererElement: HTMLCanvasElement
@@ -43,6 +45,7 @@ const maxWheelZoomFactor = 1.35
 const wheelLineModePixels = 16
 const cameraPanTapTolerancePx = 8
 const intentionalSwipeViewportRatio = 0.5
+const targetHeadingHoldDelayMs = 180
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -145,12 +148,13 @@ export const bindPointerCameraInput = (
   const getTargetHeadingSelectionEnabled = () =>
     options.getTargetHeadingSelectionEnabled?.() ??
     options.getInteractionsEnabled()
-  let lastTouchTap: {
-    time: number
-    x: number
-    y: number
+  let activeTargetHeadingPlan: {
+    latestX: number
+    latestY: number
+    pointerId: number
+    started: boolean
+    timeoutId: number
   } | null = null
-  let suppressTouchTapUntil = 0
   let activeCameraPan: {
     hasMovedForTap: boolean
     hasPanned: boolean
@@ -197,15 +201,56 @@ export const bindPointerCameraInput = (
     })
   }
 
+  const pickTargetHeadingSelection = (
+    clientX: number,
+    clientY: number,
+  ): { heading: number; selection: TargetHeadingSelection } | null => {
+    const worldPosition = pickWorldPointFromScreenPoint(clientX, clientY)
+
+    if (worldPosition === null) {
+      return null
+    }
+    const spacecraftPosition = options.getSpacecraftPosition()
+    const heading = Math.atan2(
+      worldPosition.y - spacecraftPosition.y,
+      worldPosition.x - spacecraftPosition.x,
+    )
+
+    return {
+      heading,
+      selection: {
+        screenPosition: {
+          x: clientX,
+          y: clientY,
+        },
+        worldPosition,
+      },
+    }
+  }
+
+  const updateTargetHeadingPlan = (clientX: number, clientY: number) => {
+    const target = pickTargetHeadingSelection(clientX, clientY)
+    if (!target) {
+      return false
+    }
+    options.onTargetHeadingPlan(target.heading, target.selection)
+    return true
+  }
+
+  const cancelTargetHeadingPlan = () => {
+    if (!activeTargetHeadingPlan) {
+      return
+    }
+    window.clearTimeout(activeTargetHeadingPlan.timeoutId)
+    activeTargetHeadingPlan = null
+    options.onTargetHeadingPlanCanceled()
+  }
+
   const clearActiveCameraPan = (event: PointerEvent) => {
     if (activeCameraPan?.pointerId !== event.pointerId) {
       return
     }
 
-    if (activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned) {
-      suppressTouchTapUntil = performance.now() + 360
-      lastTouchTap = null
-    }
     activeCameraPan = null
 
     try {
@@ -234,6 +279,25 @@ export const bindPointerCameraInput = (
       startY: event.clientY,
     }
 
+    if (getTargetHeadingSelectionEnabled()) {
+      const pointerId = event.pointerId
+      activeTargetHeadingPlan = {
+        latestX: event.clientX,
+        latestY: event.clientY,
+        pointerId,
+        started: false,
+        timeoutId: window.setTimeout(() => {
+          if (activeTargetHeadingPlan?.pointerId !== pointerId) {
+            return
+          }
+          activeTargetHeadingPlan.started = updateTargetHeadingPlan(
+            activeTargetHeadingPlan.latestX,
+            activeTargetHeadingPlan.latestY,
+          )
+        }, targetHeadingHoldDelayMs),
+      }
+    }
+
     try {
       options.rendererElement.setPointerCapture(event.pointerId)
     } catch {
@@ -242,6 +306,16 @@ export const bindPointerCameraInput = (
   })
 
   options.rendererElement.addEventListener('pointermove', (event) => {
+    if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
+      activeTargetHeadingPlan.latestX = event.clientX
+      activeTargetHeadingPlan.latestY = event.clientY
+      if (activeTargetHeadingPlan.started) {
+        event.preventDefault()
+        updateTargetHeadingPlan(event.clientX, event.clientY)
+        return
+      }
+    }
+
     if (activeCameraPan?.pointerId !== event.pointerId) {
       return
     }
@@ -313,11 +387,26 @@ export const bindPointerCameraInput = (
     activeCameraPan.previousY = event.clientY
   })
 
-  options.rendererElement.addEventListener('pointerup', clearActiveCameraPan)
-  options.rendererElement.addEventListener(
-    'pointercancel',
-    clearActiveCameraPan,
-  )
+  options.rendererElement.addEventListener('pointerup', (event) => {
+    if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
+      const shouldCommit = activeTargetHeadingPlan.started
+      window.clearTimeout(activeTargetHeadingPlan.timeoutId)
+      activeTargetHeadingPlan = null
+      if (shouldCommit) {
+        event.preventDefault()
+        options.onTargetHeadingPlanCommitted()
+      } else {
+        options.onTargetHeadingPlanCanceled()
+      }
+    }
+    clearActiveCameraPan(event)
+  })
+  options.rendererElement.addEventListener('pointercancel', (event) => {
+    if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
+      cancelTargetHeadingPlan()
+    }
+    clearActiveCameraPan(event)
+  })
 
   options.windowTarget.addEventListener(
     'wheel',
@@ -330,97 +419,6 @@ export const bindPointerCameraInput = (
       options.onZoom(
         getWheelZoomFactor(event, options.windowTarget.innerHeight),
       )
-    },
-    { passive: false },
-  )
-
-  options.rendererElement.addEventListener('dblclick', (event) => {
-    if (
-      !options.getInteractionsEnabled() ||
-      !getTargetHeadingSelectionEnabled()
-    ) {
-      return
-    }
-
-    const worldPosition = pickWorldPointFromScreenPoint(
-      event.clientX,
-      event.clientY,
-    )
-
-    if (worldPosition === null) {
-      return
-    }
-    const spacecraftPosition = options.getSpacecraftPosition()
-    const heading = Math.atan2(
-      worldPosition.y - spacecraftPosition.y,
-      worldPosition.x - spacecraftPosition.x,
-    )
-
-    options.onTargetHeadingSelected(heading, {
-      screenPosition: {
-        x: event.clientX,
-        y: event.clientY,
-      },
-      worldPosition,
-    })
-  })
-
-  options.rendererElement.addEventListener(
-    'touchend',
-    (event) => {
-      if (
-        !options.getInteractionsEnabled() ||
-        !getTargetHeadingSelectionEnabled()
-      ) {
-        return
-      }
-
-      const touch = event.changedTouches[0]
-      if (!touch) {
-        return
-      }
-
-      updatePointerPosition(touch.clientX, touch.clientY)
-      const now = performance.now()
-      if (now < suppressTouchTapUntil) {
-        return
-      }
-      const isDoubleTap =
-        lastTouchTap &&
-        now - lastTouchTap.time <= 320 &&
-        Math.hypot(
-          touch.clientX - lastTouchTap.x,
-          touch.clientY - lastTouchTap.y,
-        ) <= 32
-
-      if (!isDoubleTap) {
-        lastTouchTap = { time: now, x: touch.clientX, y: touch.clientY }
-        return
-      }
-
-      event.preventDefault()
-      lastTouchTap = null
-      const worldPosition = pickWorldPointFromScreenPoint(
-        touch.clientX,
-        touch.clientY,
-      )
-
-      if (worldPosition === null) {
-        return
-      }
-      const spacecraftPosition = options.getSpacecraftPosition()
-      const heading = Math.atan2(
-        worldPosition.y - spacecraftPosition.y,
-        worldPosition.x - spacecraftPosition.x,
-      )
-
-      options.onTargetHeadingSelected(heading, {
-        screenPosition: {
-          x: touch.clientX,
-          y: touch.clientY,
-        },
-        worldPosition,
-      })
     },
     { passive: false },
   )

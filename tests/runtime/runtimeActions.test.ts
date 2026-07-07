@@ -417,6 +417,36 @@ describe('createRuntimeActions', () => {
     expect(runtime.simulation.assistMode).toBe('off')
   })
 
+  it('shows a planned target heading without committing the turn until release', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    runtime.simulation.targetHeading = null
+    runtime.simulation.assistMode = 'capture'
+    runtimeActions.planTargetHeading({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+
+    expect(runtime.simulation.targetHeading).toBeNull()
+    expect(runtime.ui.targetHeadingPlan).toEqual({
+      heading: 1.2,
+      screenPosition: { x: 300, y: 200 },
+      worldPosition: { x: 12, y: 34 },
+    })
+    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(0)
+
+    expect(runtimeActions.commitTargetHeadingPlan()).toBe(true)
+
+    expect(runtime.simulation.targetHeading).toBe(1.2)
+    expect(runtime.ui.targetHeadingPlan).toBeNull()
+    expect(runtime.ui.targetHeadingScreenPosition).toEqual({ x: 300, y: 200 })
+    expect(runtime.ui.targetHeadingWorldPosition).toEqual({ x: 12, y: 34 })
+    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(1)
+    expect(runtime.simulation.assistMode).toBe('off')
+  })
+
   it('updates the reset target when free roam starts', () => {
     const runtime = createRuntime()
     const runtimeActions = createTestRuntimeActions(runtime)
