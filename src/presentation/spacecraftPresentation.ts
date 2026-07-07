@@ -40,6 +40,31 @@ const projectRenderPositionToScreen = (
     y: (-projected.y * 0.5 + 0.5) * window.innerHeight,
   }
 }
+const getHeadingTargetScreenPosition = (options: {
+  camera: THREE.Camera
+  screenPosition: { x: number; y: number } | null
+  worldPosition: Vec2 | null
+}) =>
+  options.worldPosition
+    ? projectRenderPositionToScreen(
+        renderPosition(
+          options.worldPosition.x,
+          options.worldPosition.y,
+          spacecraftVisualLift,
+        ),
+        options.camera,
+      )
+    : options.screenPosition
+const setSvgLineEndpoints = (
+  line: SVGLineElement,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) => {
+  line.setAttribute('x1', `${from.x}`)
+  line.setAttribute('y1', `${from.y}`)
+  line.setAttribute('x2', `${to.x}`)
+  line.setAttribute('y2', `${to.y}`)
+}
 const isProjectedPositionInViewport = (position: THREE.Vector3) =>
   position.x >= -1 &&
   position.x <= 1 &&
@@ -331,35 +356,22 @@ const updateSpacecraftCallout = (options: {
     const remainingPlaneDelta = normalizeAngleDelta(
       options.targetHeading - options.spacecraft.heading,
     )
-    const targetHeadingScreenPosition = options.targetHeadingWorldPosition
-      ? (() => {
-          const targetPosition = renderPosition(
-            options.targetHeadingWorldPosition.x,
-            options.targetHeadingWorldPosition.y,
-            spacecraftVisualLift,
-          )
-          targetPosition.project(options.gameScene.camera)
-          return {
-            x: (targetPosition.x * 0.5 + 0.5) * window.innerWidth,
-            y: (-targetPosition.y * 0.5 + 0.5) * window.innerHeight,
-          }
-        })()
-      : options.targetHeadingScreenPosition
+    const spacecraftScreenPosition = { x: screenX, y: screenY }
+    const targetHeadingScreenPosition = getHeadingTargetScreenPosition({
+      camera: options.gameScene.camera,
+      screenPosition: options.targetHeadingScreenPosition,
+      worldPosition: options.targetHeadingWorldPosition,
+    })
 
     options.overlayUi.headingTargetOverlay.style.display = 'block'
     options.overlayUi.headingTargetOverlay.setAttribute(
       'viewBox',
       `0 0 ${window.innerWidth} ${window.innerHeight}`,
     )
-    options.overlayUi.headingTargetLine.setAttribute('x1', `${screenX}`)
-    options.overlayUi.headingTargetLine.setAttribute('y1', `${screenY}`)
-    options.overlayUi.headingTargetLine.setAttribute(
-      'x2',
-      `${targetHeadingScreenPosition?.x ?? screenX}`,
-    )
-    options.overlayUi.headingTargetLine.setAttribute(
-      'y2',
-      `${targetHeadingScreenPosition?.y ?? screenY}`,
+    setSvgLineEndpoints(
+      options.overlayUi.headingTargetLine,
+      spacecraftScreenPosition,
+      targetHeadingScreenPosition ?? spacecraftScreenPosition,
     )
     if (
       options.committedTargetHeading !== null &&
@@ -367,36 +379,16 @@ const updateSpacecraftCallout = (options: {
         options.committedTargetHeadingScreenPosition)
     ) {
       const committedTargetHeadingScreenPosition =
-        options.committedTargetHeadingWorldPosition
-          ? (() => {
-              const targetPosition = renderPosition(
-                options.committedTargetHeadingWorldPosition.x,
-                options.committedTargetHeadingWorldPosition.y,
-                spacecraftVisualLift,
-              )
-              targetPosition.project(options.gameScene.camera)
-              return {
-                x: (targetPosition.x * 0.5 + 0.5) * window.innerWidth,
-                y: (-targetPosition.y * 0.5 + 0.5) * window.innerHeight,
-              }
-            })()
-          : options.committedTargetHeadingScreenPosition
+        getHeadingTargetScreenPosition({
+          camera: options.gameScene.camera,
+          screenPosition: options.committedTargetHeadingScreenPosition,
+          worldPosition: options.committedTargetHeadingWorldPosition,
+        })
       options.overlayUi.headingCommittedTargetLine.style.display = 'block'
-      options.overlayUi.headingCommittedTargetLine.setAttribute(
-        'x1',
-        `${screenX}`,
-      )
-      options.overlayUi.headingCommittedTargetLine.setAttribute(
-        'y1',
-        `${screenY}`,
-      )
-      options.overlayUi.headingCommittedTargetLine.setAttribute(
-        'x2',
-        `${committedTargetHeadingScreenPosition?.x ?? screenX}`,
-      )
-      options.overlayUi.headingCommittedTargetLine.setAttribute(
-        'y2',
-        `${committedTargetHeadingScreenPosition?.y ?? screenY}`,
+      setSvgLineEndpoints(
+        options.overlayUi.headingCommittedTargetLine,
+        spacecraftScreenPosition,
+        committedTargetHeadingScreenPosition ?? spacecraftScreenPosition,
       )
     } else {
       options.overlayUi.headingCommittedTargetLine.style.display = 'none'

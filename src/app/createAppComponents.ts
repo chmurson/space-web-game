@@ -424,6 +424,10 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
+  const targetHeadingPlanLifecycleHandlers = {
+    onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
+    onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
+  }
   let uiSettingsOpen = false
   let crashCameraFocusedBodyName: string | null = null
   let getAppMode = () => options.config.initialAppMode
@@ -551,8 +555,7 @@ export const createAppComponents = (options: {
         worldPosition,
       })
     },
-    onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
-    onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
+    ...targetHeadingPlanLifecycleHandlers,
     onThrustControlUiStateChange: (state) => {
       options.runtimeState.ui.touchThrustControl = state
     },
@@ -673,8 +676,7 @@ export const createAppComponents = (options: {
         worldPosition: selection.worldPosition,
       })
     },
-    onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
-    onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
+    ...targetHeadingPlanLifecycleHandlers,
     onZoom: runtimeActions.zoomCamera,
     renderScale: RENDER_SCALE,
     rendererElement: renderer.domElement,
