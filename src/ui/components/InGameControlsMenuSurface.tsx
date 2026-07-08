@@ -6,13 +6,19 @@ export type InGameControlsMenuSurfaceProps = {
   cameraModeChangesLocked: boolean
   coastHorizonLabel: string
   decreaseCoastHorizonDisabled: boolean
+  decreaseDesktopEdgePanSpeedDisabled: boolean
+  desktopEdgePanSpeedLabel: string
+  desktopEdgePanSpeedVisible: boolean
   increaseCoastHorizonDisabled: boolean
+  increaseDesktopEdgePanSpeedDisabled: boolean
   menuId: string
   open: boolean
   rootRef(element: HTMLElement | null): void
   onCameraModeSelect(mode: CameraControlMode): void
   onDecreaseCoastHorizon(): void
+  onDecreaseDesktopEdgePanSpeed(): void
   onIncreaseCoastHorizon(): void
+  onIncreaseDesktopEdgePanSpeed(): void
   onMenuButtonClick(): void
   onOpenUiSettings(): void
 }
@@ -34,17 +40,24 @@ export const InGameControlsMenuSurface = ({
   cameraModeChangesLocked,
   coastHorizonLabel,
   decreaseCoastHorizonDisabled,
+  decreaseDesktopEdgePanSpeedDisabled,
+  desktopEdgePanSpeedLabel,
+  desktopEdgePanSpeedVisible,
   increaseCoastHorizonDisabled,
+  increaseDesktopEdgePanSpeedDisabled,
   menuId,
   open,
   rootRef,
   onCameraModeSelect,
   onDecreaseCoastHorizon,
+  onDecreaseDesktopEdgePanSpeed,
   onIncreaseCoastHorizon,
+  onIncreaseDesktopEdgePanSpeed,
   onMenuButtonClick,
   onOpenUiSettings,
 }: InGameControlsMenuSurfaceProps) => {
   const cameraControlLabelId = `${menuId}-camera`
+  const edgePanSpeedLabelId = `${menuId}-edge-pan-speed`
   const trajectorySectionLabelId = `${menuId}-trajectory`
   const cameraModeDescription = getCameraModeDescription(cameraMode)
 
@@ -128,6 +141,50 @@ export const InGameControlsMenuSurface = ({
             </fieldset>
           </div>
         </div>
+
+        {desktopEdgePanSpeedVisible && (
+          // biome-ignore lint/a11y/useSemanticElements: Preserve the existing role=group adapter contract.
+          <div
+            class="menu-stepper in-game-controls-menu-stepper in-game-controls-menu-edge-pan-speed"
+            role="group"
+            aria-labelledby={edgePanSpeedLabelId}
+          >
+            <div class="menu-stepper-copy">
+              <span class="menu-stepper-name" id={edgePanSpeedLabelId}>
+                Edge pan speed
+              </span>
+              <span
+                class="menu-stepper-value"
+                data-in-game-edge-pan-speed=""
+                aria-live="polite"
+              >
+                {desktopEdgePanSpeedLabel}
+              </span>
+            </div>
+            <div class="menu-stepper-controls">
+              <button
+                type="button"
+                class="menu-stepper-button"
+                data-in-game-edge-pan-speed-action="decrease"
+                aria-label="Decrease edge pan speed"
+                disabled={decreaseDesktopEdgePanSpeedDisabled}
+                onClick={onDecreaseDesktopEdgePanSpeed}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                class="menu-stepper-button"
+                data-in-game-edge-pan-speed-action="increase"
+                aria-label="Increase edge pan speed"
+                disabled={increaseDesktopEdgePanSpeedDisabled}
+                onClick={onIncreaseDesktopEdgePanSpeed}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        )}
 
         <button
           class="in-game-controls-menu-action"

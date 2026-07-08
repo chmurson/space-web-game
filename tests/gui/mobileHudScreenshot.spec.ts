@@ -7,6 +7,7 @@ import {
 } from '@playwright/test'
 import type { UIUserAction } from '../../src/input/uiUserActions'
 import type { ReachMoonHighscorePendingRun } from '../../src/ui/components/MainMenuSurface'
+import type { DesktopEdgePanSpeed } from '../../src/userSettingsStorage'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -1507,6 +1508,9 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     let cameraMode: 'centered' | 'target' | 'unlocked' = 'centered'
     let cameraModeChangesLocked = false
     let coastHorizonHours = 6
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+    let desktopEdgePanSpeedVisible = true
+    const edgeSpeedChanges: DesktopEdgePanSpeed[] = []
     let settingsOpened = false
 
     outsideButton.textContent = 'Outside controls'
@@ -1517,6 +1521,8 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       getCameraMode: () => cameraMode,
       getCameraModeChangesLocked: () => cameraModeChangesLocked,
       getCoastPredictionHorizonHours: () => coastHorizonHours,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanSpeedVisible: () => desktopEdgePanSpeedVisible,
       getMaxCoastPredictionHorizonHours: () => 8,
       getMinCoastPredictionHorizonHours: () => 2,
       onAction: (action: UIUserAction) => {
@@ -1536,6 +1542,10 @@ test('keeps the in-game controls menu adapter state and actions', async ({
         if (action === 'increaseCoastHorizon') {
           coastHorizonHours = Math.min(8, coastHorizonHours + 2)
         }
+      },
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        desktopEdgePanSpeed = speed
+        edgeSpeedChanges.push(speed)
       },
       onOpenUiSettings: () => {
         settingsOpened = true
@@ -1583,6 +1593,12 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       )
     const getCoastHorizon = () =>
       menu.element.querySelector('[data-in-game-coast-horizon]')?.textContent
+    const getEdgePanSpeed = () =>
+      menu.element.querySelector('[data-in-game-edge-pan-speed]')?.textContent
+    const getEdgePanSpeedButton = (action: string) =>
+      menu.element.querySelector(
+        `[data-in-game-edge-pan-speed-action="${action}"]`,
+      ) as HTMLButtonElement | null
     const getKeyboardHints = () =>
       Array.from(
         menu.element.querySelectorAll(
@@ -1620,6 +1636,18 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const cameraStatusInitial = getCameraStatus()
     const cameraOptionsInitial = getCameraOptions()
     const coastHorizonInitial = getCoastHorizon()
+    const edgePanSpeedInitial = getEdgePanSpeed()
+    const edgePanSpeedDecreaseDisabledInitial =
+      getEdgePanSpeedButton('decrease')?.disabled
+
+    getEdgePanSpeedButton('increase')?.click()
+    const edgePanSpeedAfterIncrease = getEdgePanSpeed()
+    const edgePanSpeedIncreaseDisabledAfterIncrease =
+      getEdgePanSpeedButton('increase')?.disabled
+
+    desktopEdgePanSpeedVisible = false
+    menu.syncState()
+    const edgePanSpeedHidden = getEdgePanSpeed() === undefined
 
     getCameraOption('target')?.click()
     const cameraModeDataAfterTarget = menu.element.dataset.cameraMode
@@ -1688,6 +1716,12 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       coastHorizonAtMin,
       coastHorizonInitial,
       decreaseDisabledAtMin,
+      edgePanSpeedAfterIncrease,
+      edgePanSpeedDecreaseDisabledInitial,
+      edgePanSpeedHidden,
+      edgePanSpeedIncreaseDisabledAfterIncrease,
+      edgePanSpeedInitial,
+      edgeSpeedChanges,
       eventCountAfterDisabledDecrease,
       eventCountAfterLockedClick,
       events,
@@ -1766,6 +1800,12 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     coastHorizonAtMin: '2h',
     coastHorizonInitial: '6h',
     decreaseDisabledAtMin: true,
+    edgePanSpeedAfterIncrease: 'Fast',
+    edgePanSpeedDecreaseDisabledInitial: false,
+    edgePanSpeedHidden: true,
+    edgePanSpeedIncreaseDisabledAfterIncrease: true,
+    edgePanSpeedInitial: 'Normal',
+    edgeSpeedChanges: ['fast'],
     eventCountAfterDisabledDecrease: 3,
     eventCountAfterLockedClick: 1,
     events: [
@@ -2440,6 +2480,61 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await expect(page.getByText('Prediction horizon')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
+})
+
+test('captures the desktop edge pan speed control in the in-game controls menu', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 480, height: 720 })
+  await page.goto('/?reachmoon=1')
+  await page.addStyleTag({
+    content: `
+      #app {
+        background: #05070d !important;
+      }
+    `,
+  })
+
+  await page.evaluate(async () => {
+    const controlsMenuModulePath = '/src/ui/createInGameControlsMenu.ts'
+    const { createInGameControlsMenu } = await import(controlsMenuModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+
+    createInGameControlsMenu({
+      app,
+      getCameraMode: () => 'unlocked',
+      getCameraModeChangesLocked: () => false,
+      getCoastPredictionHorizonHours: () => 6,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanSpeedVisible: () => true,
+      getMaxCoastPredictionHorizonHours: () => 8,
+      getMinCoastPredictionHorizonHours: () => 2,
+      onAction: (_action: UIUserAction) => {},
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        desktopEdgePanSpeed = speed
+      },
+      onOpenUiSettings: () => {},
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open in-game controls' }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'In-game controls' }),
+  ).toBeVisible()
+  await expect(page.getByText('Edge pan speed')).toBeVisible()
+  await expect(page.locator('[data-in-game-edge-pan-speed]')).toHaveText(
+    'Normal',
+  )
+
+  await attachMobileScreenshot(page, testInfo, 'desktop-edge-pan-speed-menu')
 })
 
 test('captures wide in-game controls keyboard hints', async ({

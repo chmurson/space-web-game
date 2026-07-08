@@ -73,23 +73,47 @@ const createPointerEvent = (
   return event
 }
 
-const createHarness = (cameraMode: CameraControlMode = 'centered') => {
+const createHarness = (
+  initialCameraMode: CameraControlMode = 'centered',
+  options: {
+    cameraModeChangesLocked?: boolean
+    edgePanSpeedPixelsPerSecond?: number
+    edgeScrollEnabled?: boolean
+  } = {},
+) => {
   const canvas = new FakeCanvas()
   const windowTarget = new FakeWindow()
-  const onCameraPan = vi.fn(() => true)
+  let cameraMode = initialCameraMode
+  let cameraModeChangesLocked = options.cameraModeChangesLocked ?? false
+  let edgeScrollEnabled = options.edgeScrollEnabled ?? false
+  const onCameraPan = vi.fn<(delta: { x: number; y: number }) => boolean>(
+    () => true,
+  )
+  const onCameraModeSelected = vi.fn((mode: CameraControlMode) => {
+    if (cameraModeChangesLocked) {
+      return false
+    }
+    cameraMode = mode
+    return true
+  })
+  const onCameraUnlockedByEdgeScroll = vi.fn()
   const onTargetHeadingPlan = vi.fn()
   const onTargetHeadingPlanCanceled = vi.fn()
   const onTargetHeadingPlanCommitted = vi.fn(() => true)
 
-  bindPointerCameraInput({
+  const input = bindPointerCameraInput({
     camera: createCamera(),
+    getDesktopEdgePanSpeedPixelsPerSecond: () =>
+      options.edgePanSpeedPixelsPerSecond ?? 420,
     getCameraMode: () => cameraMode,
-    getCameraModeChangesLocked: () => false,
+    getCameraModeChangesLocked: () => cameraModeChangesLocked,
+    getEdgeScrollEnabled: () => edgeScrollEnabled,
     getInteractionsEnabled: () => true,
     getSpacecraftPosition: () => ({ x: 0, y: 0 }),
     getSpacecraftVisible: () => true,
-    onCameraModeSelected: () => true,
+    onCameraModeSelected,
     onCameraPan,
+    onCameraUnlockedByEdgeScroll,
     onResize: () => {},
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
@@ -102,10 +126,20 @@ const createHarness = (cameraMode: CameraControlMode = 'centered') => {
 
   return {
     canvas,
+    getCameraMode: () => cameraMode,
+    input,
+    onCameraModeSelected,
     onCameraPan,
+    onCameraUnlockedByEdgeScroll,
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
     onTargetHeadingPlanCommitted,
+    setCameraModeChangesLocked: (locked: boolean) => {
+      cameraModeChangesLocked = locked
+    },
+    setEdgeScrollEnabled: (enabled: boolean) => {
+      edgeScrollEnabled = enabled
+    },
   }
 }
 
@@ -217,7 +251,7 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(contextMenu.defaultPrevented).toBe(true)
   })
 
-  it('keeps drag gestures available for unlocked camera pan before planning', () => {
+  it('does not use desktop drag gestures for unlocked camera pan before planning', () => {
     const harness = createHarness('unlocked')
 
     harness.canvas.dispatchEvent(
@@ -230,8 +264,138 @@ describe('bindPointerCameraInput target heading planning', () => {
       createPointerEvent('pointerup', { clientX: 130, clientY: 100 }),
     )
 
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
+  })
+
+  it('keeps touch drag gestures available for unlocked camera pan before planning', () => {
+    const harness = createHarness('unlocked')
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', {
+        clientX: 130,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        clientX: 130,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
+    )
+
     expect(harness.onCameraPan).toHaveBeenCalled()
     expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
     expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
+  })
+})
+
+describe('bindPointerCameraInput desktop edge-scroll', () => {
+  it('pans from an edge while the camera is unlocked', () => {
+    const harness = createHarness('unlocked', {
+      edgePanSpeedPixelsPerSecond: 420,
+      edgeScrollEnabled: true,
+    })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
+    )
+    harness.input.updateEdgeScroll(100, 0.1)
+
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    const [delta] = harness.onCameraPan.mock.calls[0] ?? []
+    expect(delta?.x).toBeGreaterThan(0)
+  })
+
+  it('scales edge panning with the desktop edge pan speed', () => {
+    const slow = createHarness('unlocked', {
+      edgePanSpeedPixelsPerSecond: 280,
+      edgeScrollEnabled: true,
+    })
+    const fast = createHarness('unlocked', {
+      edgePanSpeedPixelsPerSecond: 620,
+      edgeScrollEnabled: true,
+    })
+
+    slow.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
+    )
+    fast.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
+    )
+    slow.input.updateEdgeScroll(100, 0.1)
+    fast.input.updateEdgeScroll(100, 0.1)
+
+    const [slowDelta] = slow.onCameraPan.mock.calls[0] ?? []
+    const [fastDelta] = fast.onCameraPan.mock.calls[0] ?? []
+
+    expect(slowDelta).toBeDefined()
+    expect(fastDelta).toBeDefined()
+    if (!slowDelta || !fastDelta) {
+      throw new Error('Expected edge pan deltas')
+    }
+    expect(fastDelta.x).toBeGreaterThan(slowDelta.x * 2)
+  })
+
+  it('waits for edge dwell before unlocking and panning locked cameras', () => {
+    const harness = createHarness('centered', {
+      edgeScrollEnabled: true,
+    })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
+    )
+    harness.input.updateEdgeScroll(0, 0.016)
+    harness.input.updateEdgeScroll(2_999, 0.016)
+
+    expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+
+    harness.input.updateEdgeScroll(3_000, 0.016)
+
+    expect(harness.onCameraModeSelected).toHaveBeenCalledWith('unlocked')
+    expect(harness.onCameraUnlockedByEdgeScroll).toHaveBeenCalledTimes(1)
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    expect(harness.getCameraMode()).toBe('unlocked')
+  })
+
+  it('does not unlock from edge dwell when camera mode changes are locked', () => {
+    const harness = createHarness('target', {
+      cameraModeChangesLocked: true,
+      edgeScrollEnabled: true,
+    })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
+    )
+    harness.input.updateEdgeScroll(0, 0.016)
+    harness.input.updateEdgeScroll(4_000, 0.016)
+
+    expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
+    expect(harness.onCameraUnlockedByEdgeScroll).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.getCameraMode()).toBe('target')
+  })
+
+  it('does not pan or unlock when desktop edge-scroll is disabled', () => {
+    const harness = createHarness('unlocked')
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
+    )
+    harness.input.updateEdgeScroll(100, 0.1)
+
+    expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 })

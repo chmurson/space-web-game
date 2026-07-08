@@ -15,10 +15,13 @@ export type TargetHeadingSelection = {
 
 export type PointerCameraInput = {
   pointerScreenPosition: PointerScreenPosition
+  updateEdgeScroll(nowMs: number, dtSeconds: number): void
 }
 
 export type PointerCameraInputOptions = {
   camera: THREE.Camera
+  getDesktopEdgePanSpeedPixelsPerSecond?: () => number
+  getEdgeScrollEnabled?: () => boolean
   getInteractionsEnabled: () => boolean
   getCameraMode: () => CameraControlMode
   getCameraModeChangesLocked: () => boolean
@@ -27,6 +30,7 @@ export type PointerCameraInputOptions = {
   getTargetHeadingSelectionEnabled?: () => boolean
   onCameraModeSelected: (mode: CameraControlMode) => boolean
   onCameraPan: (delta: Vec2) => boolean
+  onCameraUnlockedByEdgeScroll?: () => void
   onResize: () => void
   onTargetHeadingPlan: (
     heading: number,
@@ -45,6 +49,9 @@ const minWheelZoomFactor = 0.75
 const maxWheelZoomFactor = 1.35
 const wheelLineModePixels = 16
 const cameraPanTapTolerancePx = 8
+const defaultDesktopEdgePanSpeedPixelsPerSecond = 420
+const edgeScrollBandPx = 44
+const edgeUnlockDwellMs = 3_000
 const intentionalSwipeViewportRatio = 0.5
 
 const clamp = (value: number, min: number, max: number) =>
@@ -60,6 +67,42 @@ const getWheelModeScale = (deltaMode: number, viewportHeight: number) => {
   }
 
   return 1
+}
+
+const getEdgeAxis = (position: number, min: number, max: number) => {
+  const distanceFromStart = position - min
+  const distanceFromEnd = max - position
+
+  if (distanceFromStart <= edgeScrollBandPx) {
+    return -clamp(
+      (edgeScrollBandPx - distanceFromStart) / edgeScrollBandPx,
+      0,
+      1,
+    )
+  }
+
+  if (distanceFromEnd <= edgeScrollBandPx) {
+    return clamp((edgeScrollBandPx - distanceFromEnd) / edgeScrollBandPx, 0, 1)
+  }
+
+  return 0
+}
+
+const normalizeEdgeVector = (vector: Vec2): Vec2 | null => {
+  const length = Math.hypot(vector.x, vector.y)
+
+  if (length <= 0) {
+    return null
+  }
+
+  if (length <= 1) {
+    return vector
+  }
+
+  return {
+    x: vector.x / length,
+    y: vector.y / length,
+  }
 }
 
 export const getWheelZoomFactor = (
@@ -151,6 +194,9 @@ export const bindPointerCameraInput = (
       options.getInteractionsEnabled())
   let targetHeadingPlanActive = false
   let suppressNextContextMenu = false
+  let pointerInsideRenderer = false
+  let edgeDwellStartedAtMs: number | null = null
+  let edgeDwellDirectionKey = ''
   let activeCameraPan: {
     hasMovedForTap: boolean
     hasPanned: boolean
@@ -170,13 +216,30 @@ export const bindPointerCameraInput = (
     pointerScreenPosition.y = clientY
   }
 
-  options.windowTarget.addEventListener('mousemove', (event) => {
-    updatePointerPosition(event.clientX, event.clientY)
-  })
+  const clearEdgeDwell = () => {
+    edgeDwellStartedAtMs = null
+    edgeDwellDirectionKey = ''
+  }
 
-  options.windowTarget.addEventListener('pointermove', (event) => {
-    updatePointerPosition(event.clientX, event.clientY)
-  })
+  const getEdgeScrollDirection = (): Vec2 | null => {
+    const bounds = options.rendererElement.getBoundingClientRect()
+
+    if (
+      bounds.width <= 0 ||
+      bounds.height <= 0 ||
+      pointerScreenPosition.x < bounds.left ||
+      pointerScreenPosition.x > bounds.right ||
+      pointerScreenPosition.y < bounds.top ||
+      pointerScreenPosition.y > bounds.bottom
+    ) {
+      return null
+    }
+
+    return normalizeEdgeVector({
+      x: getEdgeAxis(pointerScreenPosition.x, bounds.left, bounds.right),
+      y: getEdgeAxis(pointerScreenPosition.y, bounds.top, bounds.bottom),
+    })
+  }
 
   const panCameraBetweenScreenPoints = (
     previousX: number,
@@ -196,6 +259,85 @@ export const bindPointerCameraInput = (
       y: previousWorld.y - nextWorld.y,
     })
   }
+
+  const panCameraAlongEdge = (direction: Vec2, dtSeconds: number) => {
+    const bounds = options.rendererElement.getBoundingClientRect()
+    const centerX = bounds.left + bounds.width * 0.5
+    const centerY = bounds.top + bounds.height * 0.5
+    const speed =
+      options.getDesktopEdgePanSpeedPixelsPerSecond?.() ??
+      defaultDesktopEdgePanSpeedPixelsPerSecond
+    const pixelDelta = speed * dtSeconds
+
+    if (pixelDelta <= 0) {
+      return false
+    }
+
+    return panCameraBetweenScreenPoints(
+      centerX,
+      centerY,
+      centerX - direction.x * pixelDelta,
+      centerY - direction.y * pixelDelta,
+    )
+  }
+
+  const updateEdgeScroll = (nowMs: number, dtSeconds: number) => {
+    if (
+      !pointerInsideRenderer ||
+      activeCameraPan !== null ||
+      targetHeadingPlanActive ||
+      !options.getInteractionsEnabled() ||
+      !(options.getEdgeScrollEnabled?.() ?? false)
+    ) {
+      clearEdgeDwell()
+      return
+    }
+
+    const direction = getEdgeScrollDirection()
+
+    if (!direction) {
+      clearEdgeDwell()
+      return
+    }
+
+    if (options.getCameraMode() !== 'unlocked') {
+      if (options.getCameraModeChangesLocked()) {
+        clearEdgeDwell()
+        return
+      }
+
+      const directionKey = `${Math.sign(direction.x)},${Math.sign(direction.y)}`
+      if (
+        edgeDwellStartedAtMs === null ||
+        edgeDwellDirectionKey !== directionKey
+      ) {
+        edgeDwellStartedAtMs = nowMs
+        edgeDwellDirectionKey = directionKey
+        return
+      }
+
+      if (nowMs - edgeDwellStartedAtMs < edgeUnlockDwellMs) {
+        return
+      }
+
+      if (!options.onCameraModeSelected('unlocked')) {
+        clearEdgeDwell()
+        return
+      }
+      options.onCameraUnlockedByEdgeScroll?.()
+    }
+
+    clearEdgeDwell()
+    panCameraAlongEdge(direction, dtSeconds)
+  }
+
+  options.windowTarget.addEventListener('mousemove', (event) => {
+    updatePointerPosition(event.clientX, event.clientY)
+  })
+
+  options.windowTarget.addEventListener('pointermove', (event) => {
+    updatePointerPosition(event.clientX, event.clientY)
+  })
 
   const pickTargetHeadingSelection = (
     clientX: number,
@@ -279,6 +421,9 @@ export const bindPointerCameraInput = (
   }
 
   options.rendererElement.addEventListener('pointerdown', (event) => {
+    pointerInsideRenderer = true
+    updatePointerPosition(event.clientX, event.clientY)
+
     if (!options.getInteractionsEnabled()) {
       cancelTargetHeadingPlan()
       return
@@ -320,6 +465,9 @@ export const bindPointerCameraInput = (
   })
 
   options.rendererElement.addEventListener('pointermove', (event) => {
+    pointerInsideRenderer = true
+    updatePointerPosition(event.clientX, event.clientY)
+
     if (targetHeadingPlanActive) {
       if (!getTargetHeadingSelectionEnabled()) {
         cancelTargetHeadingPlan()
@@ -354,6 +502,10 @@ export const bindPointerCameraInput = (
     const previousDistance = Math.hypot(previousDeltaX, previousDeltaY)
     if (Math.hypot(totalDeltaX, totalDeltaY) >= cameraPanTapTolerancePx) {
       activeCameraPan.hasMovedForTap = true
+    }
+
+    if (event.pointerType === 'mouse') {
+      return
     }
 
     if (options.getCameraMode() !== 'unlocked') {
@@ -411,6 +563,8 @@ export const bindPointerCameraInput = (
   })
 
   options.rendererElement.addEventListener('pointerup', (event) => {
+    updatePointerPosition(event.clientX, event.clientY)
+
     if (activeCameraPan?.pointerId === event.pointerId) {
       const completedPan =
         activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned
@@ -439,6 +593,15 @@ export const bindPointerCameraInput = (
     clearActiveCameraPan(event)
   })
 
+  options.rendererElement.addEventListener('pointerenter', () => {
+    pointerInsideRenderer = true
+  })
+
+  options.rendererElement.addEventListener('pointerleave', () => {
+    pointerInsideRenderer = false
+    clearEdgeDwell()
+  })
+
   options.rendererElement.addEventListener('contextmenu', (event) => {
     if (!suppressNextContextMenu) {
       return
@@ -462,5 +625,5 @@ export const bindPointerCameraInput = (
     { passive: false },
   )
 
-  return { pointerScreenPosition }
+  return { pointerScreenPosition, updateEdgeScroll }
 }

@@ -6,7 +6,7 @@ type ThreeModule = typeof import('three')
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
 
-test('keeps desktop pointer camera panning when spacecraft visibility blocks heading planning', async ({
+test('keeps desktop edge-scroll panning independent of heading planning visibility', async ({
   page,
 }) => {
   await page.goto('/')
@@ -19,10 +19,7 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
     )) as PointerCameraInputModule
     const THREE = (await import(threeModulePath)) as ThreeModule
 
-    const runDrag = (visibility: {
-      beforePointerDown: boolean
-      beforePointerMove: boolean
-    }) => {
+    const runEdgeScroll = (spacecraftVisible: boolean) => {
       const canvas = document.createElement('canvas')
       canvas.width = 400
       canvas.height = 400
@@ -49,16 +46,17 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
       camera.updateMatrixWorld()
       camera.updateProjectionMatrix()
 
-      let spacecraftVisible = visibility.beforePointerDown
       const canceledPlans: number[] = []
       const committedPlans: number[] = []
       const pans: { x: number; y: number }[] = []
       const plannedHeadings: number[] = []
 
-      bindPointerCameraInput({
+      const pointerInput = bindPointerCameraInput({
         camera,
+        getDesktopEdgePanSpeedPixelsPerSecond: () => 420,
         getCameraMode: () => 'unlocked',
         getCameraModeChangesLocked: () => false,
+        getEdgeScrollEnabled: () => true,
         getInteractionsEnabled: () => true,
         getSpacecraftPosition: () => ({ x: 0, y: 0 }),
         getSpacecraftVisible: () => spacecraftVisible,
@@ -85,29 +83,20 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
         windowTarget: window,
       })
 
-      const dispatchPointer = (
-        type: 'pointerdown' | 'pointermove' | 'pointerup',
-        point: { x: number; y: number },
-      ) => {
-        canvas.dispatchEvent(
-          new PointerEvent(type, {
-            bubbles: true,
-            button: type === 'pointerdown' ? 0 : -1,
-            buttons: type === 'pointerup' ? 0 : 1,
-            cancelable: true,
-            clientX: point.x,
-            clientY: point.y,
-            isPrimary: true,
-            pointerId: 17,
-            pointerType: 'mouse',
-          }),
-        )
-      }
-
-      dispatchPointer('pointerdown', { x: 100, y: 100 })
-      spacecraftVisible = visibility.beforePointerMove
-      dispatchPointer('pointermove', { x: 140, y: 118 })
-      dispatchPointer('pointerup', { x: 140, y: 118 })
+      canvas.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          button: -1,
+          buttons: 0,
+          cancelable: true,
+          clientX: 399,
+          clientY: 200,
+          isPrimary: true,
+          pointerId: 17,
+          pointerType: 'mouse',
+        }),
+      )
+      pointerInput.updateEdgeScroll(100, 0.1)
       canvas.remove()
 
       return {
@@ -119,25 +108,19 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
     }
 
     return {
-      offscreenAtStart: runDrag({
-        beforePointerDown: false,
-        beforePointerMove: false,
-      }),
-      offscreenBeforeMove: runDrag({
-        beforePointerDown: true,
-        beforePointerMove: false,
-      }),
+      offscreen: runEdgeScroll(false),
+      visible: runEdgeScroll(true),
     }
   })
 
   expect(result).toEqual({
-    offscreenAtStart: {
+    offscreen: {
       canceledPlanCount: 0,
       committedPlanCount: 0,
       panCount: 1,
       plannedHeadingCount: 0,
     },
-    offscreenBeforeMove: {
+    visible: {
       canceledPlanCount: 0,
       committedPlanCount: 0,
       panCount: 1,
@@ -286,7 +269,7 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
 
     const visible = createHarness(true)
     visible.dispatchTouch('touchstart', { x: 100, y: 120 })
-    await new Promise((resolve) => window.setTimeout(resolve, 220))
+    await new Promise((resolve) => window.setTimeout(resolve, 360))
     visible.dispatchTouch('touchmove', { x: 104, y: 122 })
     visible.dispatchTouch('touchend', { x: 104, y: 122 })
     const visibleSummary = {

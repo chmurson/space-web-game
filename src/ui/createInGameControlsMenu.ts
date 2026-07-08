@@ -1,5 +1,6 @@
 import type { UIUserAction } from '../input/uiUserActions'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
+import type { DesktopEdgePanSpeed } from '../userSettingsStorage'
 import { getCameraModeAction } from './cameraModeActions'
 import {
   InGameControlsMenuSurface,
@@ -11,6 +12,7 @@ import { formatTrajectoryHorizonDuration } from './formatters'
 export type InGameControlsMenu = {
   close: () => void
   element: HTMLElement
+  isOpen: () => boolean
   syncState: () => void
 }
 
@@ -19,14 +21,48 @@ type InGameControlsMenuRenderProps = Omit<
   'rootRef'
 >
 
+const desktopEdgePanSpeedOptions = [
+  { label: 'Slow', value: 'slow' },
+  { label: 'Normal', value: 'normal' },
+  { label: 'Fast', value: 'fast' },
+] satisfies Array<{
+  label: string
+  value: DesktopEdgePanSpeed
+}>
+
+const getDesktopEdgePanSpeedOptionIndex = (speed: DesktopEdgePanSpeed) =>
+  Math.max(
+    0,
+    desktopEdgePanSpeedOptions.findIndex((option) => option.value === speed),
+  )
+
+const getDesktopEdgePanSpeedLabel = (speed: DesktopEdgePanSpeed) =>
+  desktopEdgePanSpeedOptions[getDesktopEdgePanSpeedOptionIndex(speed)].label
+
+const getDesktopEdgePanSpeedStep = (
+  speed: DesktopEdgePanSpeed,
+  direction: -1 | 1,
+) => {
+  const index = getDesktopEdgePanSpeedOptionIndex(speed)
+  return desktopEdgePanSpeedOptions[
+    Math.min(
+      desktopEdgePanSpeedOptions.length - 1,
+      Math.max(0, index + direction),
+    )
+  ].value
+}
+
 export const createInGameControlsMenu = (options: {
   app: HTMLElement
   getCameraMode: () => CameraControlMode
   getCameraModeChangesLocked: () => boolean
   getCoastPredictionHorizonHours: () => number
+  getDesktopEdgePanSpeed: () => DesktopEdgePanSpeed
+  getDesktopEdgePanSpeedVisible: () => boolean
   getMaxCoastPredictionHorizonHours: () => number
   getMinCoastPredictionHorizonHours: () => number
   onAction: (action: UIUserAction) => void
+  onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => void
   onOpenUiSettings: () => void
 }): InGameControlsMenu => {
   const menuId = 'in-game-controls-menu-popover'
@@ -40,7 +76,14 @@ export const createInGameControlsMenu = (options: {
   let cameraModeChangesLocked = options.getCameraModeChangesLocked()
   let coastHorizonLabel = ''
   let decreaseCoastHorizonDisabled = false
+  let decreaseDesktopEdgePanSpeedDisabled = false
+  let desktopEdgePanSpeed: DesktopEdgePanSpeed =
+    options.getDesktopEdgePanSpeed()
+  let desktopEdgePanSpeedLabel =
+    getDesktopEdgePanSpeedLabel(desktopEdgePanSpeed)
+  let desktopEdgePanSpeedVisible = options.getDesktopEdgePanSpeedVisible()
   let increaseCoastHorizonDisabled = false
+  let increaseDesktopEdgePanSpeedDisabled = false
   let open = false
 
   const syncRenderState = () => {
@@ -54,20 +97,57 @@ export const createInGameControlsMenu = (options: {
       coastPredictionHorizonHours <= options.getMinCoastPredictionHorizonHours()
     const nextIncreaseCoastHorizonDisabled =
       coastPredictionHorizonHours >= options.getMaxCoastPredictionHorizonHours()
+    const nextDesktopEdgePanSpeed = options.getDesktopEdgePanSpeed()
+    const nextDesktopEdgePanSpeedIndex = getDesktopEdgePanSpeedOptionIndex(
+      nextDesktopEdgePanSpeed,
+    )
+    const nextDesktopEdgePanSpeedVisible =
+      options.getDesktopEdgePanSpeedVisible()
+    const nextDesktopEdgePanSpeedLabel = getDesktopEdgePanSpeedLabel(
+      nextDesktopEdgePanSpeed,
+    )
+    const nextDecreaseDesktopEdgePanSpeedDisabled =
+      nextDesktopEdgePanSpeedIndex <= 0
+    const nextIncreaseDesktopEdgePanSpeedDisabled =
+      nextDesktopEdgePanSpeedIndex >= desktopEdgePanSpeedOptions.length - 1
     const changed =
       nextCameraMode !== cameraMode ||
       nextCameraModeChangesLocked !== cameraModeChangesLocked ||
       nextCoastHorizonLabel !== coastHorizonLabel ||
       nextDecreaseCoastHorizonDisabled !== decreaseCoastHorizonDisabled ||
-      nextIncreaseCoastHorizonDisabled !== increaseCoastHorizonDisabled
+      nextDecreaseDesktopEdgePanSpeedDisabled !==
+        decreaseDesktopEdgePanSpeedDisabled ||
+      nextDesktopEdgePanSpeed !== desktopEdgePanSpeed ||
+      nextDesktopEdgePanSpeedLabel !== desktopEdgePanSpeedLabel ||
+      nextDesktopEdgePanSpeedVisible !== desktopEdgePanSpeedVisible ||
+      nextIncreaseCoastHorizonDisabled !== increaseCoastHorizonDisabled ||
+      nextIncreaseDesktopEdgePanSpeedDisabled !==
+        increaseDesktopEdgePanSpeedDisabled
 
     cameraMode = nextCameraMode
     cameraModeChangesLocked = nextCameraModeChangesLocked
     coastHorizonLabel = nextCoastHorizonLabel
     decreaseCoastHorizonDisabled = nextDecreaseCoastHorizonDisabled
+    decreaseDesktopEdgePanSpeedDisabled =
+      nextDecreaseDesktopEdgePanSpeedDisabled
+    desktopEdgePanSpeed = nextDesktopEdgePanSpeed
+    desktopEdgePanSpeedLabel = nextDesktopEdgePanSpeedLabel
+    desktopEdgePanSpeedVisible = nextDesktopEdgePanSpeedVisible
     increaseCoastHorizonDisabled = nextIncreaseCoastHorizonDisabled
+    increaseDesktopEdgePanSpeedDisabled =
+      nextIncreaseDesktopEdgePanSpeedDisabled
 
     return changed
+  }
+
+  const setDesktopEdgePanSpeed = (direction: -1 | 1) => {
+    const nextSpeed = getDesktopEdgePanSpeedStep(desktopEdgePanSpeed, direction)
+    if (nextSpeed === desktopEdgePanSpeed) {
+      return
+    }
+
+    options.onDesktopEdgePanSpeedChange(nextSpeed)
+    syncState()
   }
 
   const renderMenu = () => {
@@ -76,7 +156,11 @@ export const createInGameControlsMenu = (options: {
       cameraModeChangesLocked,
       coastHorizonLabel,
       decreaseCoastHorizonDisabled,
+      decreaseDesktopEdgePanSpeedDisabled,
+      desktopEdgePanSpeedLabel,
+      desktopEdgePanSpeedVisible,
       increaseCoastHorizonDisabled,
+      increaseDesktopEdgePanSpeedDisabled,
       menuId,
       open,
       onCameraModeSelect: (mode) => {
@@ -87,10 +171,12 @@ export const createInGameControlsMenu = (options: {
         options.onAction('decreaseCoastHorizon')
         syncState()
       },
+      onDecreaseDesktopEdgePanSpeed: () => setDesktopEdgePanSpeed(-1),
       onIncreaseCoastHorizon: () => {
         options.onAction('increaseCoastHorizon')
         syncState()
       },
+      onIncreaseDesktopEdgePanSpeed: () => setDesktopEdgePanSpeed(1),
       onMenuButtonClick: () => {
         setOpen(!open)
       },
@@ -144,6 +230,7 @@ export const createInGameControlsMenu = (options: {
   return {
     close: () => setOpen(false),
     element: root,
+    isOpen: () => open,
     syncState,
   }
 }

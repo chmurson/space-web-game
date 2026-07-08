@@ -33,6 +33,7 @@ const createConfig = (
     reachMoon: false,
   },
   userSettings: {
+    desktopEdgePanSpeed: 'normal',
     debugModeEnabled: false,
     mobileManeuverStartByDrag: true,
     orbitPointDisplay: {

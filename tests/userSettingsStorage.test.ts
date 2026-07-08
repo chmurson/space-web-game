@@ -48,6 +48,7 @@ describe('userSettingsStorage', () => {
 
   it('defaults touch controls to their configured sides', () => {
     expect(readUserSettings()).toEqual({
+      desktopEdgePanSpeed: 'normal',
       debugModeEnabled: false,
       mobileManeuverStartByDrag: true,
       orbitPointDisplay: defaultOrbitPointDisplay,
@@ -60,6 +61,7 @@ describe('userSettingsStorage', () => {
 
   it('persists the selected touch control sides and trajectory hidden state', () => {
     writeUserSettings({
+      desktopEdgePanSpeed: 'fast',
       debugModeEnabled: true,
       orbitPointDisplay: {
         altitudeVisible: false,
@@ -76,6 +78,7 @@ describe('userSettingsStorage', () => {
     })
 
     expect(readUserSettings()).toEqual({
+      desktopEdgePanSpeed: 'fast',
       debugModeEnabled: true,
       mobileManeuverStartByDrag: false,
       orbitPointDisplay: {
@@ -94,6 +97,7 @@ describe('userSettingsStorage', () => {
 
   it('keeps existing settings when updating one touch control side', () => {
     writeUserSettings({
+      desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
       mobileManeuverStartByDrag: false,
       orbitPointDisplay: defaultOrbitPointDisplay,
@@ -104,6 +108,7 @@ describe('userSettingsStorage', () => {
     })
 
     expect(updateUserSettings({ touchBurnControlSide: 'left' })).toEqual({
+      desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
       mobileManeuverStartByDrag: false,
       orbitPointDisplay: defaultOrbitPointDisplay,
@@ -121,6 +126,7 @@ describe('userSettingsStorage', () => {
     )
 
     expect(readUserSettings()).toEqual({
+      desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
       mobileManeuverStartByDrag: true,
       orbitPointDisplay: defaultOrbitPointDisplay,
@@ -141,6 +147,7 @@ describe('userSettingsStorage', () => {
     )
 
     expect(readUserSettings()).toEqual({
+      desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
       mobileManeuverStartByDrag: true,
       orbitPointDisplay: defaultOrbitPointDisplay,
@@ -164,6 +171,7 @@ describe('userSettingsStorage', () => {
     )
 
     expect(readUserSettings()).toEqual({
+      desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
       mobileManeuverStartByDrag: true,
       orbitPointDisplay: {
@@ -176,6 +184,28 @@ describe('userSettingsStorage', () => {
       touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
+  })
+
+  it('persists edge pan speed and falls back for invalid values', () => {
+    writeUserSettings({
+      desktopEdgePanSpeed: 'slow',
+      debugModeEnabled: false,
+      mobileManeuverStartByDrag: true,
+      orbitPointDisplay: defaultOrbitPointDisplay,
+      touchBurnControlSide: 'right',
+      touchTargetControlSide: 'left',
+      touchTrajectoryControlSide: 'hidden',
+      touchWarpControlSide: 'right',
+    })
+
+    expect(readUserSettings().desktopEdgePanSpeed).toBe('slow')
+
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ desktopEdgePanSpeed: 'warp' }),
+    )
+
+    expect(readUserSettings().desktopEdgePanSpeed).toBe('normal')
   })
 
   it('resolves scenario orbit point display overrides over user settings', () => {
