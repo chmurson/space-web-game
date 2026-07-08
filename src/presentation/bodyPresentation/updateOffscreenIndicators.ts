@@ -27,6 +27,11 @@ declare global {
 
 type MeasureElementRect = (element: HTMLElement, label: string) => DOMRect
 
+type IndicatorBounds = {
+  height: number
+  width: number
+}
+
 const offscreenIndicatorRectMeasurements = createMeasuredFunction({
   enabled: () => !!window.__measureOffscreenIndicatorRects,
   reportLabel: 'Offscreen indicator getBoundingClientRect() timings',
@@ -36,6 +41,36 @@ const measureOffscreenIndicatorRect: MeasureElementRect = (element, label) =>
   offscreenIndicatorRectMeasurements.measure(label, () =>
     element.getBoundingClientRect(),
   )
+
+const createCachedElementRectMeasurer = (): MeasureElementRect => {
+  const rects = new WeakMap<HTMLElement, DOMRect>()
+
+  return (element, label) => {
+    const cachedRect = rects.get(element)
+    if (cachedRect) {
+      return cachedRect
+    }
+
+    const rect = measureOffscreenIndicatorRect(element, label)
+    rects.set(element, rect)
+    return rect
+  }
+}
+
+const getPlacedIndicatorRect = (
+  placement: OffscreenIndicatorPlacement,
+  bounds: IndicatorBounds,
+): OffscreenIndicatorRect => {
+  const halfWidth = bounds.width * 0.5
+  const halfHeight = bounds.height * 0.5
+
+  return {
+    bottom: placement.y + halfHeight,
+    left: placement.x - halfWidth,
+    right: placement.x + halfWidth,
+    top: placement.y - halfHeight,
+  }
+}
 
 const offscreenIndicatorBlockerSelectors = [
   '.top-menu-button',
@@ -160,10 +195,11 @@ export const updateOffscreenIndicators = (options: {
     '(hover: none), (pointer: coarse)',
   ).matches
   const portraitViewport = window.innerWidth < window.innerHeight
+  const measureCachedElementRect = createCachedElementRectMeasurer()
 
   const telemetryStrip = document.querySelector<HTMLElement>('.telemetry-strip')
   const telemetryStripBottom = telemetryStrip
-    ? measureOffscreenIndicatorRect(telemetryStrip, 'telemetry-strip').bottom
+    ? measureCachedElementRect(telemetryStrip, 'telemetry-strip').bottom
     : 0
   const reservedTop = telemetryStripBottom + 12
   const bottomPill = Array.from(
@@ -179,7 +215,7 @@ export const updateOffscreenIndicators = (options: {
   })
   const bottomPillTop =
     (bottomPill
-      ? measureOffscreenIndicatorRect(bottomPill, 'bottom-pill').top
+      ? measureCachedElementRect(bottomPill, 'bottom-pill').top
       : undefined) ?? window.innerHeight
   const reservedBottom =
     bottomPillTop >= window.innerHeight * 0.5 &&
@@ -187,7 +223,7 @@ export const updateOffscreenIndicators = (options: {
       ? window.innerHeight - bottomPillTop + 12
       : edgePadding
   const blockerRects = getVisibleOffscreenIndicatorBlockerRects(
-    measureOffscreenIndicatorRect,
+    measureCachedElementRect,
   )
   const metersPerPixel =
     options.viewportSize / Math.max(window.innerHeight, 1) / RENDER_SCALE
@@ -211,7 +247,7 @@ export const updateOffscreenIndicators = (options: {
     distance: number
     indicator: HTMLElement
     priority: number
-    rect: DOMRect
+    rect: OffscreenIndicatorRect
   }> = []
 
   for (const target of targets) {
@@ -269,7 +305,7 @@ export const updateOffscreenIndicators = (options: {
     indicator.style.display = 'flex'
     indicator.style.visibility = 'hidden'
     indicator.classList.remove('offscreen-indicator-mobile-stack')
-    const resolvePlacement = (bounds: { height: number; width: number }) =>
+    const resolvePlacement = (bounds: IndicatorBounds) =>
       resolveOffscreenIndicatorPlacement({
         blockerPadding,
         blockerRects,
@@ -289,35 +325,29 @@ export const updateOffscreenIndicators = (options: {
       portraitViewport &&
       placement.y > window.innerHeight * 0.2 &&
       placement.y < window.innerHeight * 0.8
-    const bounds = measureOffscreenIndicatorRect(
+    const unstackedBounds = measureOffscreenIndicatorRect(
       indicator,
       `${target.id}:initial`,
     )
-    const initialPlacement = resolvePlacement(bounds)
-    let shouldStackIndicator = shouldStackPlacement(initialPlacement)
-    indicator.classList.toggle(
-      'offscreen-indicator-mobile-stack',
-      shouldStackIndicator,
-    )
-    const stackedBounds = measureOffscreenIndicatorRect(
-      indicator,
-      `${target.id}:stacked`,
-    )
-    let placementBounds = stackedBounds
-    let placement = resolvePlacement(stackedBounds)
-    const correctedShouldStackIndicator = shouldStackPlacement(placement)
+    const unstackedPlacement = resolvePlacement(unstackedBounds)
+    const shouldStackIndicator = shouldStackPlacement(unstackedPlacement)
+    let placementBounds = unstackedBounds
+    let placement = unstackedPlacement
 
-    if (correctedShouldStackIndicator !== shouldStackIndicator) {
-      shouldStackIndicator = correctedShouldStackIndicator
-      indicator.classList.toggle(
-        'offscreen-indicator-mobile-stack',
-        shouldStackIndicator,
-      )
-      placementBounds = measureOffscreenIndicatorRect(
+    if (shouldStackIndicator) {
+      indicator.classList.add('offscreen-indicator-mobile-stack')
+      const stackedBounds = measureOffscreenIndicatorRect(
         indicator,
-        `${target.id}:corrected`,
+        `${target.id}:stacked`,
       )
-      placement = resolvePlacement(placementBounds)
+      const stackedPlacement = resolvePlacement(stackedBounds)
+
+      if (shouldStackPlacement(stackedPlacement)) {
+        placementBounds = stackedBounds
+        placement = stackedPlacement
+      } else {
+        indicator.classList.remove('offscreen-indicator-mobile-stack')
+      }
     }
 
     const arrowSide = resolveOffscreenIndicatorArrowSide({
@@ -362,13 +392,13 @@ export const updateOffscreenIndicators = (options: {
       distance,
       indicator,
       priority: target.id === spacecraftOffscreenIndicatorId ? 0 : 1,
-      rect: measureOffscreenIndicatorRect(indicator, `${target.id}:final`),
+      rect: getPlacedIndicatorRect(placement, placementBounds),
     })
   }
 
   const overlapPadding = 6
-  const keptRects: DOMRect[] = []
-  const overlaps = (a: DOMRect, b: DOMRect) =>
+  const keptRects: OffscreenIndicatorRect[] = []
+  const overlaps = (a: OffscreenIndicatorRect, b: OffscreenIndicatorRect) =>
     a.left < b.right + overlapPadding &&
     a.right > b.left - overlapPadding &&
     a.top < b.bottom + overlapPadding &&
