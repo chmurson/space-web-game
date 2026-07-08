@@ -32,10 +32,22 @@ type IndicatorBounds = {
   width: number
 }
 
+type IndicatorPartRefs = {
+  label: HTMLElement | null
+  pointer: HTMLElement | null
+}
+
 const offscreenIndicatorRectMeasurements = createMeasuredFunction({
   enabled: () => !!window.__measureOffscreenIndicatorRects,
   reportLabel: 'Offscreen indicator getBoundingClientRect() timings',
 })
+
+const indicatorBoundsCache = new WeakMap<
+  HTMLElement,
+  Map<string, IndicatorBounds>
+>()
+const indicatorPartRefs = new WeakMap<HTMLElement, IndicatorPartRefs>()
+const maxCachedIndicatorBounds = 24
 
 const measureOffscreenIndicatorRect: MeasureElementRect = (element, label) =>
   offscreenIndicatorRectMeasurements.measure(label, () =>
@@ -55,6 +67,99 @@ const createCachedElementRectMeasurer = (): MeasureElementRect => {
     rects.set(element, rect)
     return rect
   }
+}
+
+const getIndicatorPartRefs = (indicator: HTMLElement): IndicatorPartRefs => {
+  const cachedRefs = indicatorPartRefs.get(indicator)
+  if (cachedRefs) {
+    return cachedRefs
+  }
+
+  const refs = {
+    label: indicator.querySelector<HTMLElement>('.label'),
+    pointer: indicator.querySelector<HTMLElement>('.pointer'),
+  }
+  indicatorPartRefs.set(indicator, refs)
+  return refs
+}
+
+const getIndicatorBoundsCacheKey = (options: {
+  labelText: string
+  stacked: boolean
+  viewportHeight: number
+  viewportWidth: number
+}) =>
+  [
+    options.stacked ? 'stacked' : 'inline',
+    options.viewportWidth,
+    options.viewportHeight,
+    options.labelText,
+  ].join('|')
+
+const getCachedIndicatorBounds = (
+  indicator: HTMLElement,
+  key: string,
+): IndicatorBounds | undefined => indicatorBoundsCache.get(indicator)?.get(key)
+
+const setCachedIndicatorBounds = (
+  indicator: HTMLElement,
+  key: string,
+  bounds: IndicatorBounds,
+) => {
+  let cache = indicatorBoundsCache.get(indicator)
+  if (!cache) {
+    cache = new Map()
+    indicatorBoundsCache.set(indicator, cache)
+  }
+
+  if (cache.size >= maxCachedIndicatorBounds) {
+    const oldestKey = cache.keys().next().value
+    if (oldestKey !== undefined) {
+      cache.delete(oldestKey)
+    }
+  }
+
+  cache.set(key, bounds)
+}
+
+const setLabelText = (label: HTMLElement | null, text: string) => {
+  if (label && label.textContent !== text) {
+    label.textContent = text
+  }
+}
+
+const getIndicatorBounds = (options: {
+  indicator: HTMLElement
+  label: HTMLElement | null
+  labelText: string
+  measurementLabel: string
+  stacked: boolean
+  viewportHeight: number
+  viewportWidth: number
+}): IndicatorBounds => {
+  const cacheKey = getIndicatorBoundsCacheKey({
+    labelText: options.labelText,
+    stacked: options.stacked,
+    viewportHeight: options.viewportHeight,
+    viewportWidth: options.viewportWidth,
+  })
+  const cachedBounds = getCachedIndicatorBounds(options.indicator, cacheKey)
+  if (cachedBounds) {
+    return cachedBounds
+  }
+
+  setLabelText(options.label, options.labelText)
+  const rect = measureOffscreenIndicatorRect(
+    options.indicator,
+    options.measurementLabel,
+  )
+  const bounds = {
+    height: rect.height,
+    width: rect.width,
+  }
+  setCachedIndicatorBounds(options.indicator, cacheKey, bounds)
+
+  return bounds
 }
 
 const getPlacedIndicatorRect = (
@@ -91,6 +196,8 @@ const offscreenIndicatorBlockerSelectors = [
 
 const getVisibleOffscreenIndicatorBlockerRects = (
   measureRect: MeasureElementRect,
+  viewportHeight: number,
+  viewportWidth: number,
 ): OffscreenIndicatorRect[] => {
   const elements = new Set<HTMLElement>()
 
@@ -108,8 +215,7 @@ const getVisibleOffscreenIndicatorBlockerRects = (
       element.hidden ||
       styles.display === 'none' ||
       styles.visibility === 'hidden' ||
-      opacity === 0 ||
-      element.getClientRects().length === 0
+      opacity === 0
     ) {
       return []
     }
@@ -119,9 +225,9 @@ const getVisibleOffscreenIndicatorBlockerRects = (
       rect.width <= 0 ||
       rect.height <= 0 ||
       rect.right <= 0 ||
-      rect.left >= window.innerWidth ||
+      rect.left >= viewportWidth ||
       rect.bottom <= 0 ||
-      rect.top >= window.innerHeight
+      rect.top >= viewportHeight
     ) {
       return []
     }
@@ -190,11 +296,13 @@ export const updateOffscreenIndicators = (options: {
 }) => {
   const edgePadding = 12
   const blockerPadding = 6
-  const screenCenterX = window.innerWidth * 0.5
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const screenCenterX = viewportWidth * 0.5
   const mobileViewport = window.matchMedia(
     '(hover: none), (pointer: coarse)',
   ).matches
-  const portraitViewport = window.innerWidth < window.innerHeight
+  const portraitViewport = viewportWidth < viewportHeight
   const measureCachedElementRect = createCachedElementRectMeasurer()
 
   const telemetryStrip = document.querySelector<HTMLElement>('.telemetry-strip')
@@ -202,31 +310,33 @@ export const updateOffscreenIndicators = (options: {
     ? measureCachedElementRect(telemetryStrip, 'telemetry-strip').bottom
     : 0
   const reservedTop = telemetryStripBottom + 12
-  const bottomPill = Array.from(
-    document.querySelectorAll<HTMLElement>('.bottom-pill-area > *'),
-  ).find((element) => {
+  let bottomPillTop = viewportHeight
+  for (const element of document.querySelectorAll<HTMLElement>(
+    '.bottom-pill-area > *',
+  )) {
     const styles = window.getComputedStyle(element)
 
-    return (
-      styles.display !== 'none' &&
-      styles.visibility !== 'hidden' &&
-      element.getClientRects().length > 0
-    )
-  })
-  const bottomPillTop =
-    (bottomPill
-      ? measureCachedElementRect(bottomPill, 'bottom-pill').top
-      : undefined) ?? window.innerHeight
+    if (styles.display === 'none' || styles.visibility === 'hidden') {
+      continue
+    }
+
+    const rect = measureCachedElementRect(element, 'bottom-pill')
+    if (rect.width > 0 && rect.height > 0) {
+      bottomPillTop = rect.top
+      break
+    }
+  }
   const reservedBottom =
-    bottomPillTop >= window.innerHeight * 0.5 &&
-    bottomPillTop < window.innerHeight
-      ? window.innerHeight - bottomPillTop + 12
+    bottomPillTop >= viewportHeight * 0.5 && bottomPillTop < viewportHeight
+      ? viewportHeight - bottomPillTop + 12
       : edgePadding
   const blockerRects = getVisibleOffscreenIndicatorBlockerRects(
     measureCachedElementRect,
+    viewportHeight,
+    viewportWidth,
   )
   const metersPerPixel =
-    options.viewportSize / Math.max(window.innerHeight, 1) / RENDER_SCALE
+    options.viewportSize / Math.max(viewportHeight, 1) / RENDER_SCALE
   const targets: OffscreenIndicatorTarget[] = [
     ...options.bodies.map((body) => ({
       id: body.id,
@@ -278,30 +388,27 @@ export const updateOffscreenIndicators = (options: {
       continue
     }
 
-    const projectedX = (position.x * 0.5 + 0.5) * window.innerWidth
-    const projectedY = (-position.y * 0.5 + 0.5) * window.innerHeight
-    const pointer = indicator.querySelector<HTMLElement>('.pointer')
-    const label = indicator.querySelector<HTMLElement>('.label')
+    const projectedX = (position.x * 0.5 + 0.5) * viewportWidth
+    const projectedY = (-position.y * 0.5 + 0.5) * viewportHeight
+    const { label, pointer } = getIndicatorPartRefs(indicator)
     const previousPlacement = getPreviousOffscreenIndicatorPlacement(indicator)
     const previousArrowSide = getPreviousOffscreenIndicatorArrowSide(indicator)
     const provisionalPlacement = previousPlacement ?? {
       edge: 'right' as const,
       x: screenCenterX,
-      y: window.innerHeight * 0.5,
+      y: viewportHeight * 0.5,
     }
     const provisionalVector = resolveOffscreenIndicatorVector({
       placement: provisionalPlacement,
       projectedX,
       projectedY,
-      viewportHeight: window.innerHeight,
-      viewportWidth: window.innerWidth,
+      viewportHeight,
+      viewportWidth,
     })
+    const provisionalLabelText = `${target.name} ${formatDistance(
+      provisionalVector.distancePixels * metersPerPixel,
+    )}`
 
-    if (label) {
-      label.textContent = `${target.name} ${formatDistance(
-        provisionalVector.distancePixels * metersPerPixel,
-      )}`
-    }
     indicator.style.display = 'flex'
     indicator.style.visibility = 'hidden'
     indicator.classList.remove('offscreen-indicator-mobile-stack')
@@ -317,18 +424,23 @@ export const updateOffscreenIndicators = (options: {
         projectedX,
         reservedBottom,
         reservedTop,
-        viewportHeight: window.innerHeight,
-        viewportWidth: window.innerWidth,
+        viewportHeight,
+        viewportWidth,
       })
     const shouldStackPlacement = (placement: OffscreenIndicatorPlacement) =>
       mobileViewport &&
       portraitViewport &&
-      placement.y > window.innerHeight * 0.2 &&
-      placement.y < window.innerHeight * 0.8
-    const unstackedBounds = measureOffscreenIndicatorRect(
+      placement.y > viewportHeight * 0.2 &&
+      placement.y < viewportHeight * 0.8
+    const unstackedBounds = getIndicatorBounds({
       indicator,
-      `${target.id}:initial`,
-    )
+      label,
+      labelText: provisionalLabelText,
+      measurementLabel: `${target.id}:initial`,
+      stacked: false,
+      viewportHeight,
+      viewportWidth,
+    })
     const unstackedPlacement = resolvePlacement(unstackedBounds)
     const shouldStackIndicator = shouldStackPlacement(unstackedPlacement)
     let placementBounds = unstackedBounds
@@ -336,10 +448,15 @@ export const updateOffscreenIndicators = (options: {
 
     if (shouldStackIndicator) {
       indicator.classList.add('offscreen-indicator-mobile-stack')
-      const stackedBounds = measureOffscreenIndicatorRect(
+      const stackedBounds = getIndicatorBounds({
         indicator,
-        `${target.id}:stacked`,
-      )
+        label,
+        labelText: provisionalLabelText,
+        measurementLabel: `${target.id}:stacked`,
+        stacked: true,
+        viewportHeight,
+        viewportWidth,
+      })
       const stackedPlacement = resolvePlacement(stackedBounds)
 
       if (shouldStackPlacement(stackedPlacement)) {
@@ -375,17 +492,16 @@ export const updateOffscreenIndicators = (options: {
       placement,
       projectedX,
       projectedY,
-      viewportHeight: window.innerHeight,
-      viewportWidth: window.innerWidth,
+      viewportHeight,
+      viewportWidth,
     })
     const distance = vector.distancePixels * metersPerPixel
+    const finalLabelText = `${target.name} ${formatDistance(distance)}`
 
     if (pointer) {
       pointer.style.transform = `rotate(${vector.direction + Math.PI / 2}rad)`
     }
-    if (label) {
-      label.textContent = `${target.name} ${formatDistance(distance)}`
-    }
+    setLabelText(label, finalLabelText)
 
     indicator.style.visibility = 'visible'
     visibleIndicators.push({
