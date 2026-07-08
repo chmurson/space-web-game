@@ -10,7 +10,11 @@ export type TelemetryStripRefs = {
   statTargetAltitude: HTMLElement | null
   statThrust: HTMLElement | null
   statTime: HTMLElement | null
+  targetCluster: HTMLElement | null
   targetPill: HTMLElement | null
+  targetSelectorButton: HTMLButtonElement | null
+  targetSelectorButtonStatus: HTMLElement | null
+  targetSelectorPopover: HTMLElement | null
   targetSphere: HTMLElement | null
   targetStatus: HTMLElement | null
   timeIcon: SVGSVGElement | null
@@ -191,42 +195,74 @@ export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
       </div>
     </div>
     <div
-      class="telemetry-pill telemetry-pill-target"
+      class="telemetry-target-cluster"
       ref={(element) => {
-        refs.targetPill = element
+        refs.targetCluster = element
       }}
     >
-      <span class="telemetry-target-display">
-        <span
-          class="target-body-sphere"
-          data-stat="target-sphere"
-          aria-hidden="true"
-          ref={(element) => {
-            refs.targetSphere = element
-          }}
-        />
-        <strong
-          data-stat="target"
-          ref={(element) => {
-            refs.statTarget = element
-          }}
-        />
-        <span
-          class="target-altitude"
-          data-stat="target-altitude"
-          ref={(element) => {
-            refs.statTargetAltitude = element
-          }}
-        />
+      <div
+        class="telemetry-pill telemetry-pill-target"
+        ref={(element) => {
+          refs.targetPill = element
+        }}
+      >
+        <span class="telemetry-target-display">
+          <span
+            class="target-body-sphere"
+            data-stat="target-sphere"
+            aria-hidden="true"
+            ref={(element) => {
+              refs.targetSphere = element
+            }}
+          />
+          <strong
+            data-stat="target"
+            ref={(element) => {
+              refs.statTarget = element
+            }}
+          />
+          <span
+            class="target-altitude"
+            data-stat="target-altitude"
+            ref={(element) => {
+              refs.statTargetAltitude = element
+            }}
+          />
+          <span
+            class="target-status-mark"
+            data-stat="target-status"
+            aria-hidden="true"
+            ref={(element) => {
+              refs.targetStatus = element
+            }}
+          />
+        </span>
+      </div>
+      <button
+        aria-label="Select target (T)"
+        aria-expanded="false"
+        class="desktop-target-selector-button"
+        title="Select target (T)"
+        type="button"
+        ref={(element) => {
+          refs.targetSelectorButton = element
+        }}
+      >
         <span
           class="target-status-mark"
-          data-stat="target-status"
           aria-hidden="true"
           ref={(element) => {
-            refs.targetStatus = element
+            refs.targetSelectorButtonStatus = element
           }}
         />
-      </span>
+      </button>
+      <div
+        class="desktop-target-selector-popover"
+        hidden
+        ref={(element) => {
+          refs.targetSelectorPopover = element
+        }}
+      />
     </div>
   </div>
 )

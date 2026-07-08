@@ -438,6 +438,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     statTime: null,
     statWarp: null,
     statZoom: null,
+    targetCluster: null,
     targetPill: null,
     targetRecommendationNotice: new FakeElement(
       'div',
@@ -445,6 +446,9 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     targetRecommendationNoticeDismissButton: null,
     targetRecommendationNoticeMessage: null,
     targetRecommendationNoticeOpenButton: null,
+    targetSelectorButton: null,
+    targetSelectorButtonStatus: null,
+    targetSelectorPopover: null,
     targetSphere: null,
     targetStatus: null,
     timeIcon: null,
@@ -624,7 +628,14 @@ describe('createHudPresentation', () => {
     overlayUi.statTargetAltitude = new FakeElement(
       'span',
     ) as unknown as HTMLElement
+    overlayUi.targetCluster = new FakeElement('div') as unknown as HTMLElement
     overlayUi.targetPill = new FakeElement('div') as unknown as HTMLElement
+    overlayUi.targetSelectorButton = new FakeElement(
+      'button',
+    ) as unknown as HTMLButtonElement
+    overlayUi.targetSelectorButtonStatus = new FakeElement(
+      'span',
+    ) as unknown as HTMLElement
     const runtime = createRuntime()
     const presentation = createHudPresentation({
       defaultViewport: 100,
@@ -658,6 +669,12 @@ describe('createHudPresentation', () => {
     )
     expect(overlayUi.targetPill.getAttribute('aria-label')).toBe(
       overlayUi.targetPill.title,
+    )
+    expect(overlayUi.targetSelectorButton.title).toBe(
+      'Select target (T). Moon, pinned target, altitude 84 Mm',
+    )
+    expect(overlayUi.targetSelectorButtonStatus.className).toBe(
+      'target-status-mark target-status-mark-manual',
     )
   })
 

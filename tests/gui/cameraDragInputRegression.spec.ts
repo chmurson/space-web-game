@@ -286,7 +286,7 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
 
     const visible = createHarness(true)
     visible.dispatchTouch('touchstart', { x: 100, y: 120 })
-    await new Promise((resolve) => window.setTimeout(resolve, 220))
+    await new Promise((resolve) => window.setTimeout(resolve, 360))
     visible.dispatchTouch('touchmove', { x: 104, y: 122 })
     visible.dispatchTouch('touchend', { x: 104, y: 122 })
     const visibleSummary = {
