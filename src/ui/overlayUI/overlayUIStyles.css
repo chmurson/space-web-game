@@ -466,6 +466,10 @@
   white-space: nowrap;
 }
 
+.hud-notice-transient:has(> .hud-notice-body:empty) .hud-notice-title {
+  max-width: 100%;
+}
+
 .hud-notice-body {
   flex: 1 1 auto;
   color: rgba(219, 234, 254, 0.82);
