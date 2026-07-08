@@ -221,9 +221,7 @@ export const bindPointerCameraInput = (
     edgeDwellDirectionKey = ''
   }
 
-  const getEdgeScrollDirection = (): Vec2 | null => {
-    const bounds = options.rendererElement.getBoundingClientRect()
-
+  const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
     if (
       bounds.width <= 0 ||
       bounds.height <= 0 ||
@@ -260,8 +258,11 @@ export const bindPointerCameraInput = (
     })
   }
 
-  const panCameraAlongEdge = (direction: Vec2, dtSeconds: number) => {
-    const bounds = options.rendererElement.getBoundingClientRect()
+  const panCameraAlongEdge = (
+    direction: Vec2,
+    dtSeconds: number,
+    bounds: DOMRectReadOnly,
+  ) => {
     const centerX = bounds.left + bounds.width * 0.5
     const centerY = bounds.top + bounds.height * 0.5
     const speed =
@@ -293,7 +294,8 @@ export const bindPointerCameraInput = (
       return
     }
 
-    const direction = getEdgeScrollDirection()
+    const bounds = options.rendererElement.getBoundingClientRect()
+    const direction = getEdgeScrollDirection(bounds)
 
     if (!direction) {
       clearEdgeDwell()
@@ -328,7 +330,7 @@ export const bindPointerCameraInput = (
     }
 
     clearEdgeDwell()
-    panCameraAlongEdge(direction, dtSeconds)
+    panCameraAlongEdge(direction, dtSeconds, bounds)
   }
 
   options.windowTarget.addEventListener('mousemove', (event) => {
