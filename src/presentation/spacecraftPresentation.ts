@@ -65,6 +65,19 @@ const setSvgLineEndpoints = (
   line.setAttribute('x2', `${to.x}`)
   line.setAttribute('y2', `${to.y}`)
 }
+const syncHeadingTargetPlanningState = (
+  overlayUi: OverlayUiRefs,
+  active: boolean,
+) => {
+  overlayUi.headingTargetOverlay.classList.toggle(
+    'heading-target-overlay-planning',
+    active,
+  )
+  overlayUi.headingTargetDot.classList.toggle(
+    'heading-target-dot-planning',
+    active,
+  )
+}
 const isProjectedPositionInViewport = (position: THREE.Vector3) =>
   position.x >= -1 &&
   position.x <= 1 &&
@@ -265,6 +278,7 @@ const updateSpacecraftCallout = (options: {
   committedTargetHeadingScreenPosition: { x: number; y: number } | null
   committedTargetHeadingWorldPosition: Vec2 | null
   targetHeading: number | null
+  targetHeadingPlanActive: boolean
   targetHeadingScreenPosition: { x: number; y: number } | null
   targetHeadingWorldPosition: Vec2 | null
   viewportSize: number
@@ -300,6 +314,7 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
     options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    syncHeadingTargetPlanningState(options.overlayUi, false)
     return options.displayHeadingAngle
   }
 
@@ -368,6 +383,10 @@ const updateSpacecraftCallout = (options: {
       'viewBox',
       `0 0 ${window.innerWidth} ${window.innerHeight}`,
     )
+    syncHeadingTargetPlanningState(
+      options.overlayUi,
+      options.targetHeadingPlanActive,
+    )
     setSvgLineEndpoints(
       options.overlayUi.headingTargetLine,
       spacecraftScreenPosition,
@@ -415,6 +434,7 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
     options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    syncHeadingTargetPlanningState(options.overlayUi, false)
   }
 
   return headingAngle
@@ -446,6 +466,7 @@ export const createSpacecraftPresentation = (options: {
       committedTargetHeadingScreenPosition: { x: number; y: number } | null
       committedTargetHeadingWorldPosition: Vec2 | null
       targetHeading: number | null
+      targetHeadingPlanActive: boolean
       targetHeadingScreenPosition: { x: number; y: number } | null
       targetHeadingWorldPosition: Vec2 | null
       viewportSize: number
@@ -508,6 +529,7 @@ export const createSpacecraftPresentation = (options: {
         committedTargetHeadingWorldPosition:
           state.committedTargetHeadingWorldPosition,
         targetHeading: state.targetHeading,
+        targetHeadingPlanActive: state.targetHeadingPlanActive,
         targetHeadingScreenPosition: state.targetHeadingScreenPosition,
         targetHeadingWorldPosition: state.targetHeadingWorldPosition,
         viewportSize: state.viewportSize,

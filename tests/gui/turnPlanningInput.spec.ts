@@ -34,16 +34,28 @@ const getHeadingTargetState = async (page: Page) =>
       '.heading-target-overlay',
     )
     const line = document.querySelector<SVGLineElement>('.heading-target-line')
+    const slice = document.querySelector<SVGPathElement>(
+      '.heading-target-turn-slice',
+    )
 
-    if (!dot || !overlay || !line) {
+    if (!dot || !overlay || !line || !slice) {
       throw new Error('Heading target overlay is missing')
     }
 
+    const lineStyle = getComputedStyle(line)
+    const sliceStyle = getComputedStyle(slice)
+
     return {
       dotDisplay: getComputedStyle(dot).display,
+      dotPlanning: dot.classList.contains('heading-target-dot-planning'),
       lineX2: line.getAttribute('x2'),
       lineY2: line.getAttribute('y2'),
+      lineStroke: lineStyle.stroke,
       overlayDisplay: getComputedStyle(overlay).display,
+      overlayPlanning: overlay.classList.contains(
+        'heading-target-overlay-planning',
+      ),
+      sliceFill: sliceStyle.fill,
     }
   })
 
@@ -127,6 +139,11 @@ test('mobile tap planning persists through drag release and confirms on second t
 
   await tap(page, { id: 1, x: 280, y: 360 })
   await expectHeadingTargetVisible(page)
+  const pendingPlanStyle = await getHeadingTargetState(page)
+  expect(pendingPlanStyle.overlayPlanning).toBe(true)
+  expect(pendingPlanStyle.dotPlanning).toBe(true)
+  expect(pendingPlanStyle.lineStroke).toMatch(/245,\s*158,\s*11/)
+  expect(pendingPlanStyle.sliceFill).toMatch(/245,\s*158,\s*11/)
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
     .toBeNull()

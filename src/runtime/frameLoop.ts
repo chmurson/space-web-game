@@ -115,6 +115,7 @@ export const createFrameLoop = (options: {
         targetHeadingPlan?.worldPosition ??
         options.runtime.ui.targetHeadingWorldPosition ??
         null,
+      targetHeadingPlanActive: targetHeadingPlan !== null,
     }
   }
 

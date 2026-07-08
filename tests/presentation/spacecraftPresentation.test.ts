@@ -34,9 +34,29 @@ const createStyleStub = () => ({
   transform: '',
 })
 
+const createClassListStub = () => {
+  const classes = new Set<string>()
+
+  return {
+    contains(className: string) {
+      return classes.has(className)
+    },
+    toggle(className: string, force?: boolean) {
+      const enabled = force ?? !classes.has(className)
+      if (enabled) {
+        classes.add(className)
+      } else {
+        classes.delete(className)
+      }
+      return enabled
+    },
+  }
+}
+
 const createElementStub = () => {
   const attributes = new Map<string, string>()
   return {
+    classList: createClassListStub(),
     getAttribute(name: string) {
       return attributes.get(name) ?? null
     },
@@ -155,6 +175,7 @@ describe('createSpacecraftPresentation', () => {
       committedTargetHeadingScreenPosition: null,
       committedTargetHeadingWorldPosition: null,
       targetHeading: Math.PI / 2,
+      targetHeadingPlanActive: false,
       targetHeadingScreenPosition: null,
       targetHeadingWorldPosition: { x: 0, y: 1_000_000 },
       trailTarget,
@@ -214,6 +235,7 @@ describe('createSpacecraftPresentation', () => {
       committedTargetHeadingScreenPosition: null,
       committedTargetHeadingWorldPosition: null,
       targetHeading: null,
+      targetHeadingPlanActive: false,
       targetHeadingScreenPosition: null,
       targetHeadingWorldPosition: null,
       trailTarget,
@@ -280,6 +302,7 @@ describe('createSpacecraftPresentation', () => {
       committedTargetHeadingScreenPosition: null,
       committedTargetHeadingWorldPosition: { x: 1_000_000, y: 0 },
       targetHeading: Math.PI / 2,
+      targetHeadingPlanActive: true,
       targetHeadingScreenPosition: null,
       targetHeadingWorldPosition: { x: 0, y: 1_000_000 },
       trailTarget,
@@ -300,6 +323,16 @@ describe('createSpacecraftPresentation', () => {
         overlayUi.headingTargetLine.getAttribute('y2'),
       ].join(','),
     )
+    expect(
+      overlayUi.headingTargetOverlay.classList.contains(
+        'heading-target-overlay-planning',
+      ),
+    ).toBe(true)
+    expect(
+      overlayUi.refs.headingTargetDot.classList.contains(
+        'heading-target-dot-planning',
+      ),
+    ).toBe(true)
   })
 
   it('reports the spacecraft hidden when it leaves the viewport bounds', () => {
@@ -338,6 +371,7 @@ describe('createSpacecraftPresentation', () => {
       committedTargetHeadingScreenPosition: null,
       committedTargetHeadingWorldPosition: null,
       targetHeading: null,
+      targetHeadingPlanActive: false,
       targetHeadingScreenPosition: null,
       targetHeadingWorldPosition: null,
       trailTarget,

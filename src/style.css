@@ -2159,6 +2159,13 @@ button.app-dialog-setting {
   stroke-linecap: round;
 }
 
+.heading-target-overlay-planning .heading-target-line {
+  stroke: rgba(245, 158, 11, 0.82);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 7;
+  animation: heading-target-planning-dash 900ms linear infinite;
+}
+
 .heading-committed-target-line {
   stroke: rgba(125, 211, 252, 0.18);
   stroke-width: 1;
@@ -2171,6 +2178,11 @@ button.app-dialog-setting {
   stroke: none;
 }
 
+.heading-target-overlay-planning .heading-target-turn-slice {
+  fill: rgba(245, 158, 11, 0.28);
+  animation: heading-target-planning-slice 1200ms ease-in-out infinite;
+}
+
 .heading-target-dot {
   position: fixed;
   width: 4px;
@@ -2181,6 +2193,48 @@ button.app-dialog-setting {
   pointer-events: none;
   transform: translate(-50%, -50%);
   z-index: var(--z-in-game-floating-elements);
+}
+
+.heading-target-dot-planning {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.88);
+  background: rgba(245, 158, 11, 0.14);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  opacity: 0.9;
+  animation: heading-target-planning-reticle 1200ms ease-in-out infinite;
+}
+
+.heading-target-dot-planning::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(253, 186, 116, 0.92);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+@keyframes heading-target-planning-dash {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+@keyframes heading-target-planning-slice {
+  50% {
+    fill: rgba(245, 158, 11, 0.36);
+  }
+}
+
+@keyframes heading-target-planning-reticle {
+  50% {
+    border-color: rgba(253, 186, 116, 1);
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.68);
+    transform: translate(-50%, -50%) scale(1.08);
+  }
 }
 
 .spacecraft-callout span {
@@ -2351,6 +2405,12 @@ button.app-dialog-setting {
   }
 
   .telemetry-speed-icon {
+    animation: none;
+  }
+
+  .heading-target-overlay-planning .heading-target-line,
+  .heading-target-overlay-planning .heading-target-turn-slice,
+  .heading-target-dot-planning {
     animation: none;
   }
 }
