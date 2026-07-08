@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { renderPosition } from '../render/sceneUpdates'
+import { createMeasuredFunction } from '../utils/measuredFunction'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
@@ -23,6 +24,24 @@ import {
   resolveOffscreenIndicatorPlacement,
   resolveOffscreenIndicatorVector,
 } from './offscreenIndicatorPlacement'
+
+declare global {
+  interface Window {
+    __measureOffscreenIndicatorRects?: boolean
+  }
+}
+
+type MeasureElementRect = (element: HTMLElement, label: string) => DOMRect
+
+const offscreenIndicatorRectMeasurements = createMeasuredFunction({
+  enabled: () => true,
+  reportLabel: 'Offscreen indicator getBoundingClientRect() timings',
+})
+
+const measureOffscreenIndicatorRect: MeasureElementRect = (element, label) =>
+  offscreenIndicatorRectMeasurements.measure(label, () =>
+    element.getBoundingClientRect(),
+  )
 
 const updateBodyWorldVisuals = (options: {
   allBodies: Body[]
@@ -74,52 +93,53 @@ const offscreenIndicatorBlockerSelectors = [
   '.touch-controls-tutorial-hint',
 ]
 
-const getVisibleOffscreenIndicatorBlockerRects =
-  (): OffscreenIndicatorRect[] => {
-    const elements = new Set<HTMLElement>()
+const getVisibleOffscreenIndicatorBlockerRects = (
+  measureRect: MeasureElementRect,
+): OffscreenIndicatorRect[] => {
+  const elements = new Set<HTMLElement>()
 
-    for (const selector of offscreenIndicatorBlockerSelectors) {
-      for (const element of document.querySelectorAll<HTMLElement>(selector)) {
-        elements.add(element)
-      }
+  for (const selector of offscreenIndicatorBlockerSelectors) {
+    for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+      elements.add(element)
+    }
+  }
+
+  return Array.from(elements).flatMap((element) => {
+    const styles = window.getComputedStyle(element)
+    const opacity = Number.parseFloat(styles.opacity)
+
+    if (
+      element.hidden ||
+      styles.display === 'none' ||
+      styles.visibility === 'hidden' ||
+      opacity === 0 ||
+      element.getClientRects().length === 0
+    ) {
+      return []
     }
 
-    return Array.from(elements).flatMap((element) => {
-      const styles = window.getComputedStyle(element)
-      const opacity = Number.parseFloat(styles.opacity)
+    const rect = measureRect(element, `blocker:${element.className}`)
+    if (
+      rect.width <= 0 ||
+      rect.height <= 0 ||
+      rect.right <= 0 ||
+      rect.left >= window.innerWidth ||
+      rect.bottom <= 0 ||
+      rect.top >= window.innerHeight
+    ) {
+      return []
+    }
 
-      if (
-        element.hidden ||
-        styles.display === 'none' ||
-        styles.visibility === 'hidden' ||
-        opacity === 0 ||
-        element.getClientRects().length === 0
-      ) {
-        return []
-      }
-
-      const rect = element.getBoundingClientRect()
-      if (
-        rect.width <= 0 ||
-        rect.height <= 0 ||
-        rect.right <= 0 ||
-        rect.left >= window.innerWidth ||
-        rect.bottom <= 0 ||
-        rect.top >= window.innerHeight
-      ) {
-        return []
-      }
-
-      return [
-        {
-          bottom: rect.bottom,
-          left: rect.left,
-          right: rect.right,
-          top: rect.top,
-        },
-      ]
-    })
-  }
+    return [
+      {
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+      },
+    ]
+  })
+}
 
 const isOffscreenIndicatorEdge = (
   value: string | undefined,
@@ -181,8 +201,9 @@ const updateOffscreenIndicators = (options: {
   const portraitViewport = window.innerWidth < window.innerHeight
 
   const telemetryStrip = document.querySelector<HTMLElement>('.telemetry-strip')
-  const telemetryStripBottom =
-    telemetryStrip?.getBoundingClientRect().bottom ?? 0
+  const telemetryStripBottom = telemetryStrip
+    ? measureOffscreenIndicatorRect(telemetryStrip, 'telemetry-strip').bottom
+    : 0
   const reservedTop = telemetryStripBottom + 12
   const bottomPill = Array.from(
     document.querySelectorAll<HTMLElement>('.bottom-pill-area > *'),
@@ -196,13 +217,17 @@ const updateOffscreenIndicators = (options: {
     )
   })
   const bottomPillTop =
-    bottomPill?.getBoundingClientRect().top ?? window.innerHeight
+    (bottomPill
+      ? measureOffscreenIndicatorRect(bottomPill, 'bottom-pill').top
+      : undefined) ?? window.innerHeight
   const reservedBottom =
     bottomPillTop >= window.innerHeight * 0.5 &&
     bottomPillTop < window.innerHeight
       ? window.innerHeight - bottomPillTop + 12
       : edgePadding
-  const blockerRects = getVisibleOffscreenIndicatorBlockerRects()
+  const blockerRects = getVisibleOffscreenIndicatorBlockerRects(
+    measureOffscreenIndicatorRect,
+  )
   const metersPerPixel =
     options.viewportSize / Math.max(window.innerHeight, 1) / RENDER_SCALE
   const targets: OffscreenIndicatorTarget[] = [
@@ -303,14 +328,20 @@ const updateOffscreenIndicators = (options: {
       portraitViewport &&
       placement.y > window.innerHeight * 0.2 &&
       placement.y < window.innerHeight * 0.8
-    const bounds = indicator.getBoundingClientRect()
+    const bounds = measureOffscreenIndicatorRect(
+      indicator,
+      `${target.id}:initial`,
+    )
     const initialPlacement = resolvePlacement(bounds)
     let shouldStackIndicator = shouldStackPlacement(initialPlacement)
     indicator.classList.toggle(
       'offscreen-indicator-mobile-stack',
       shouldStackIndicator,
     )
-    const stackedBounds = indicator.getBoundingClientRect()
+    const stackedBounds = measureOffscreenIndicatorRect(
+      indicator,
+      `${target.id}:stacked`,
+    )
     let placementBounds = stackedBounds
     let placement = resolvePlacement(stackedBounds)
     const correctedShouldStackIndicator = shouldStackPlacement(placement)
@@ -321,7 +352,10 @@ const updateOffscreenIndicators = (options: {
         'offscreen-indicator-mobile-stack',
         shouldStackIndicator,
       )
-      placementBounds = indicator.getBoundingClientRect()
+      placementBounds = measureOffscreenIndicatorRect(
+        indicator,
+        `${target.id}:corrected`,
+      )
       placement = resolvePlacement(placementBounds)
     }
 
@@ -367,7 +401,7 @@ const updateOffscreenIndicators = (options: {
       distance,
       indicator,
       priority: target.id === spacecraftOffscreenIndicatorId ? 0 : 1,
-      rect: indicator.getBoundingClientRect(),
+      rect: measureOffscreenIndicatorRect(indicator, `${target.id}:final`),
     })
   }
 
@@ -402,6 +436,8 @@ const updateOffscreenIndicators = (options: {
       delete indicator.dataset.offscreenIndicatorArrowSide
     }
   }
+
+  offscreenIndicatorRectMeasurements.report()
 }
 
 const updateBodyLabels = (options: {
