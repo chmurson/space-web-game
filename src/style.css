@@ -2328,7 +2328,11 @@ button.app-dialog-setting {
 }
 
 #app .body-label {
+  top: 0;
+  left: 0;
+  contain: layout style paint;
   transform: translateY(-50%);
+  will-change: transform;
 }
 
 #app .body-label-distance-context,
