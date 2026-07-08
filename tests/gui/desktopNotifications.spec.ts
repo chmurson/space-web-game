@@ -48,6 +48,8 @@ const attachScreenshot = async (
 }
 
 const expectNoticeInsideViewport = async (notice: Locator) => {
+  await expect(notice).toHaveCSS('opacity', '1')
+
   const metrics = await notice.evaluate((noticeElement) => {
     const rect = noticeElement.getBoundingClientRect()
     const style = getComputedStyle(noticeElement)
