@@ -241,6 +241,7 @@ export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
       <button
         aria-label="Select target (T)"
         aria-expanded="false"
+        aria-haspopup="dialog"
         class="desktop-target-selector-button"
         title="Select target (T)"
         type="button"

@@ -57,6 +57,14 @@ test('opens the desktop target selector from the target telemetry button and T s
   await page.keyboard.press('Escape')
   await expect(button).toHaveAttribute('aria-expanded', 'false')
   await expect(selector).toBeHidden()
+
+  await button.click()
+  await expect(button).toHaveAttribute('aria-expanded', 'true')
+  await expect(selector).toBeVisible()
+
+  await page.mouse.click(24, 140)
+  await expect(button).toHaveAttribute('aria-expanded', 'false')
+  await expect(selector).toBeHidden()
 })
 
 test('keeps the desktop target selector entry point hidden on mobile width', async ({

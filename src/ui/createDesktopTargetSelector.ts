@@ -114,7 +114,11 @@ export const createDesktopTargetSelector = (options: {
       }
       syncState()
     },
-    syncUi: targetControl.syncUi,
+    syncUi: () => {
+      if (open) {
+        targetControl.syncUi()
+      }
+    },
     toggleFromShortcut: () => {
       if (!available || !isDesktopTargetSelectorLayout()) {
         return false

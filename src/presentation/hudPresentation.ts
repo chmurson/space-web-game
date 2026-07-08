@@ -231,18 +231,16 @@ export const createHudPresentation = (options: {
     if (options.overlayUi.targetSphere) {
       syncTargetSphere(options.overlayUi.targetSphere, target)
     }
-    if (options.overlayUi.targetStatus) {
-      options.overlayUi.targetStatus.hidden = false
-      options.overlayUi.targetStatus.style.visibility =
-        targetUiState.mode === 'forced' ? 'hidden' : ''
-      options.overlayUi.targetStatus.className = `target-status-mark target-status-mark-${targetUiState.mode}`
+    const syncStatusMark = (element: HTMLElement | null) => {
+      if (!element) {
+        return
+      }
+      element.hidden = false
+      element.style.visibility = targetUiState.mode === 'forced' ? 'hidden' : ''
+      element.className = `target-status-mark target-status-mark-${targetUiState.mode}`
     }
-    if (options.overlayUi.targetSelectorButtonStatus) {
-      options.overlayUi.targetSelectorButtonStatus.hidden = false
-      options.overlayUi.targetSelectorButtonStatus.style.visibility =
-        targetUiState.mode === 'forced' ? 'hidden' : ''
-      options.overlayUi.targetSelectorButtonStatus.className = `target-status-mark target-status-mark-${targetUiState.mode}`
-    }
+    syncStatusMark(options.overlayUi.targetStatus)
+    syncStatusMark(options.overlayUi.targetSelectorButtonStatus)
   }
 
   // Create scenario prompt updater using existing UI elements from overlayUi
