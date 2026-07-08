@@ -147,6 +147,43 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
+  it('updates an active plan during a drag without committing on release', () => {
+    const harness = createHarness()
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', { clientX: 100, clientY: 100 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        clientX: 100,
+        clientY: 100,
+        pointerId: 2,
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', {
+        clientX: 120,
+        clientY: 100,
+        pointerId: 2,
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        clientX: 120,
+        clientY: 100,
+        pointerId: 2,
+      }),
+    )
+
+    expect(harness.onTargetHeadingPlan).toHaveBeenCalledTimes(2)
+    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlanCanceled).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
   it('cancels an active plan on right click without committing', () => {
     const harness = createHarness()
 
