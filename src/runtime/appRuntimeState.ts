@@ -47,6 +47,15 @@ export type RuntimeTransientNotice = {
   title: string
 }
 
+export type TargetHeadingPlan = {
+  heading: number
+  screenPosition: {
+    x: number
+    y: number
+  }
+  worldPosition: Vec2
+}
+
 export const createDefaultTouchThrustControlUiState =
   (): TouchThrustControlUiState => ({
     engaged: false,
@@ -74,6 +83,7 @@ export type AppRuntimeScenarioSlice = {
 export type AppRuntimeUiSlice = {
   camera: CameraControlUiState
   spacecraftLabelIntroUntil: number
+  targetHeadingPlan?: TargetHeadingPlan | null
   targetHeadingScreenPosition?: {
     x: number
     y: number

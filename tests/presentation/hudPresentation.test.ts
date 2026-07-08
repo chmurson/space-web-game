@@ -382,6 +382,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
   return {
     bodyLabels: new Map(),
     bottomPillArea: bottomPillArea as unknown as HTMLElement,
+    burnActiveNotice: new FakeElement('div') as unknown as HTMLElement,
     cameraUnlockNotice: new FakeElement('div') as unknown as HTMLElement,
     cameraUnlockNoticeBody: null,
     cameraUnlockNoticeTitle: null,
@@ -397,6 +398,9 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     fuelIconLevel: null,
     fuelPill: null,
     headingTargetDot: new FakeElement('div') as unknown as HTMLElement,
+    headingCommittedTargetLine: new FakeElement(
+      'line',
+    ) as unknown as SVGLineElement,
     headingTargetLine: new FakeElement('line') as unknown as SVGLineElement,
     headingTargetOverlay: new FakeElement('svg') as unknown as SVGSVGElement,
     headingTargetTurnSlice: new FakeElement(
@@ -665,7 +669,9 @@ describe('createHudPresentation', () => {
     app.id = 'app'
     app.isConnected = true
     const overlayUi = createOverlayUi(app)
-    overlayUi.fuelIconLevel = new FakeElement('rect') as unknown as SVGRectElement
+    overlayUi.fuelIconLevel = new FakeElement(
+      'rect',
+    ) as unknown as SVGRectElement
     overlayUi.fuelPill = new FakeElement('div') as unknown as HTMLElement
     overlayUi.statFuel = new FakeElement('strong') as unknown as HTMLElement
     const runtime = createRuntime()
@@ -728,6 +734,85 @@ describe('createHudPresentation', () => {
     expect(overlayUi.statFuel.textContent).toBe('0%')
     expectFuelIconLevel(fullFuelIconLevel, 0)
     expect(overlayUi.fuelPill.dataset.fuelState).toBe('depleted')
+  })
+
+  it('syncs the burn notice with active thrust and top speed telemetry', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    const burnNotice = overlayUi.burnActiveNotice as unknown as FakeElement
+    const speedPill = new FakeElement('div')
+    const statSpeed = new FakeElement('strong')
+    const speedIcon = new FakeElement('svg')
+    speedPill.className = 'telemetry-pill telemetry-pill-velocity'
+    speedPill.appendChild(statSpeed)
+    overlayUi.statSpeed = statSpeed as unknown as HTMLElement
+    overlayUi.speedIcon = speedIcon as unknown as SVGSVGElement
+    const runtime = createRuntime()
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler: {
+        getSmoothedGpuMs: vi.fn(() => 8),
+      } as unknown as RendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+
+    runtime.simulation.state.controls.main = 1
+    presentation.update(createMetrics())
+
+    expect(burnNotice.hidden).toBe(false)
+    expect(burnNotice.dataset.visible).toBe('true')
+    expect(burnNotice.getAttribute('aria-hidden')).toBe('false')
+    expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(true)
+    expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
+      true,
+    )
+
+    runtime.simulation.state.controls.main = 0
+    presentation.update(createMetrics())
+
+    expect(burnNotice.hidden).toBe(true)
+    expect(burnNotice.dataset.visible).toBe('false')
+    expect(burnNotice.getAttribute('aria-hidden')).toBe('true')
+    expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(false)
+    expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
+      false,
+    )
+
+    runtime.simulation.state.controls.main = 1
+    runtime.simulation.state.spacecraft.fuel = 0
+    presentation.update(createMetrics())
+
+    expect(burnNotice.hidden).toBe(true)
+    expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(false)
+    expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
+      false,
+    )
+
+    runtime.simulation.state.spacecraft.fuel = 1
+    runtime.simulation.crashedBodyName = 'Earth'
+    presentation.update(createMetrics())
+
+    expect(burnNotice.hidden).toBe(true)
+    expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(false)
+    expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
+      false,
+    )
   })
 
   it('renders viewport and trail detail in the debug window', async () => {

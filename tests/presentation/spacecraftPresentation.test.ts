@@ -34,9 +34,29 @@ const createStyleStub = () => ({
   transform: '',
 })
 
+const createClassListStub = () => {
+  const classes = new Set<string>()
+
+  return {
+    contains(className: string) {
+      return classes.has(className)
+    },
+    toggle(className: string, force?: boolean) {
+      const enabled = force ?? !classes.has(className)
+      if (enabled) {
+        classes.add(className)
+      } else {
+        classes.delete(className)
+      }
+      return enabled
+    },
+  }
+}
+
 const createElementStub = () => {
   const attributes = new Map<string, string>()
   return {
+    classList: createClassListStub(),
     getAttribute(name: string) {
       return attributes.get(name) ?? null
     },
@@ -49,11 +69,13 @@ const createElementStub = () => {
 
 const createOverlayUiStub = () => {
   const headingTargetLine = createElementStub()
+  const headingCommittedTargetLine = createElementStub()
   const headingTargetOverlay = createElementStub()
   const headingTargetTurnSlice = createElementStub()
   const spacecraftCallout = createElementStub()
   const refs = {
     headingTargetDot: createElementStub(),
+    headingCommittedTargetLine,
     headingTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
@@ -64,6 +86,7 @@ const createOverlayUiStub = () => {
 
   return {
     headingTargetLine,
+    headingCommittedTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
     spacecraftCallout,
@@ -148,9 +171,13 @@ describe('createSpacecraftPresentation', () => {
       isThrusting: false,
       spacecraft: createSpacecraft({ x: 0, y: 0 }),
       spacecraftLabelIntroUntil: 0,
+      committedTargetHeading: null,
+      committedTargetHeadingScreenPosition: null,
+      committedTargetHeadingWorldPosition: null,
       targetHeading: Math.PI / 2,
-      targetHeadingScreenPosition: null,
-      targetHeadingWorldPosition: { x: 0, y: 1_000_000 },
+      targetHeadingPlanActive: false,
+      targetHeadingScreenPosition: { x: 400, y: 60 },
+      targetHeadingWorldPosition: null,
       trailTarget,
       trimTrailAroundTarget: false,
       viewportSize: 480,
@@ -165,11 +192,17 @@ describe('createSpacecraftPresentation', () => {
       x: Number(overlayUi.headingTargetLine.getAttribute('x1')),
       y: Number(overlayUi.headingTargetLine.getAttribute('y1')),
     }
+    const lineEnd = {
+      x: Number(overlayUi.headingTargetLine.getAttribute('x2')),
+      y: Number(overlayUi.headingTargetLine.getAttribute('y2')),
+    }
     const points = parsePathPoints(path)
     const outerPoints = points.slice(0, points.length / 2)
     const outerDistances = outerPoints.map((point) =>
       getDistance(point, center),
     )
+    expect(getDistance(lineEnd, center)).toBeCloseTo(52, 5)
+    expect(overlayUi.refs.headingTargetDot.style.display).toBe('none')
     expect(points.length).toBeGreaterThan(12)
     expect(
       Math.max(...outerDistances) - Math.min(...outerDistances),
@@ -204,7 +237,11 @@ describe('createSpacecraftPresentation', () => {
       isThrusting: false,
       spacecraft: createSpacecraft({ x: 0, y: 0 }),
       spacecraftLabelIntroUntil: 0,
+      committedTargetHeading: null,
+      committedTargetHeadingScreenPosition: null,
+      committedTargetHeadingWorldPosition: null,
       targetHeading: null,
+      targetHeadingPlanActive: false,
       targetHeadingScreenPosition: null,
       targetHeadingWorldPosition: null,
       trailTarget,
@@ -237,5 +274,127 @@ describe('createSpacecraftPresentation', () => {
     expect(overlayUi.spacecraftCallout.style.top).toBe(
       `${(-projected.y * 0.5 + 0.5) * 600}px`,
     )
+  })
+
+  it('keeps the committed turn target visible while planning a new target', () => {
+    setWindowSize(800, 600)
+    const gameScene = createTestGameScene()
+    const overlayUi = createOverlayUiStub()
+    const trailTarget = createBody()
+    updateCameraView({
+      cameraDistance: 700,
+      cameraElevation: 1,
+      cameraTargetPosition: { x: 0, y: 0 },
+      gameScene,
+      viewportHeight: 600,
+      viewportSize: 480,
+      viewportWidth: 800,
+    })
+    const presentation = createSpacecraftPresentation({
+      defaultViewport: 480,
+      gameScene,
+      overlayUi: overlayUi.refs,
+      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      spacecraftModelZoomThreshold: 1,
+    })
+
+    presentation.updateVisuals({
+      bodies: [trailTarget],
+      elapsed: 0,
+      isThrusting: false,
+      spacecraft: createSpacecraft({ x: 0, y: 0 }),
+      spacecraftLabelIntroUntil: 0,
+      committedTargetHeading: 0,
+      committedTargetHeadingScreenPosition: { x: 760, y: 300 },
+      committedTargetHeadingWorldPosition: null,
+      targetHeading: Math.PI / 2,
+      targetHeadingPlanActive: true,
+      targetHeadingScreenPosition: { x: 400, y: 60 },
+      targetHeadingWorldPosition: null,
+      trailTarget,
+      trimTrailAroundTarget: false,
+      viewportSize: 480,
+    })
+
+    expect(overlayUi.headingTargetOverlay.style.display).toBe('block')
+    expect(overlayUi.headingCommittedTargetLine.style.display).toBe('block')
+    const center = {
+      x: Number(overlayUi.headingTargetLine.getAttribute('x1')),
+      y: Number(overlayUi.headingTargetLine.getAttribute('y1')),
+    }
+    const planningLineEnd = {
+      x: Number(overlayUi.headingTargetLine.getAttribute('x2')),
+      y: Number(overlayUi.headingTargetLine.getAttribute('y2')),
+    }
+    const committedLineEnd = {
+      x: Number(overlayUi.headingCommittedTargetLine.getAttribute('x2')),
+      y: Number(overlayUi.headingCommittedTargetLine.getAttribute('y2')),
+    }
+    expect([committedLineEnd.x, committedLineEnd.y].join(',')).not.toBe(
+      [planningLineEnd.x, planningLineEnd.y].join(','),
+    )
+    expect(getDistance(committedLineEnd, center)).toBeCloseTo(52, 5)
+    expect(getDistance(planningLineEnd, center)).toBeGreaterThan(
+      getDistance(committedLineEnd, center),
+    )
+    expect(overlayUi.refs.headingTargetDot.style.display).toBe('block')
+    expect(
+      overlayUi.headingTargetOverlay.classList.contains(
+        'heading-target-overlay-planning',
+      ),
+    ).toBe(true)
+    expect(
+      overlayUi.refs.headingTargetDot.classList.contains(
+        'heading-target-dot-planning',
+      ),
+    ).toBe(true)
+  })
+
+  it('reports the spacecraft hidden when it leaves the viewport bounds', () => {
+    setWindowSize(800, 600)
+    const gameScene = createTestGameScene()
+    const overlayUi = createOverlayUiStub()
+    const trailTarget = createBody()
+    let visible: boolean | null = null
+    updateCameraView({
+      cameraDistance: 700,
+      cameraElevation: 1,
+      cameraTargetPosition: { x: 0, y: 0 },
+      gameScene,
+      viewportHeight: 600,
+      viewportSize: 480,
+      viewportWidth: 800,
+    })
+    const presentation = createSpacecraftPresentation({
+      defaultViewport: 480,
+      gameScene,
+      onSpacecraftVisibleChange: (nextVisible) => {
+        visible = nextVisible
+      },
+      overlayUi: overlayUi.refs,
+      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      spacecraftModelZoomThreshold: 1,
+    })
+
+    presentation.updateVisuals({
+      bodies: [trailTarget],
+      elapsed: 0,
+      isThrusting: false,
+      spacecraft: createSpacecraft({ x: 1_000_000_000, y: 0 }),
+      spacecraftLabelIntroUntil: 0,
+      committedTargetHeading: null,
+      committedTargetHeadingScreenPosition: null,
+      committedTargetHeadingWorldPosition: null,
+      targetHeading: null,
+      targetHeadingPlanActive: false,
+      targetHeadingScreenPosition: null,
+      targetHeadingWorldPosition: null,
+      trailTarget,
+      trimTrailAroundTarget: false,
+      viewportSize: 480,
+    })
+
+    expect(visible).toBe(false)
+    expect(overlayUi.headingTargetOverlay.style.display).toBe('none')
   })
 })

@@ -21,6 +21,7 @@ const trailNewestColor = new THREE.Color('#7c8fa8')
 const headingTargetSliceInnerRadiusPx = 20
 const headingTargetSliceOuterRadiusPx = 52
 const headingTargetSliceArcSegmentRadians = Math.PI / 20
+const committedHeadingTargetLineRadiusPx = headingTargetSliceOuterRadiusPx
 const spacecraftTrailLift = 0.24
 const spacecraftVisualLift = 0.32
 const spacecraftMarkerLift = spacecraftVisualLift
@@ -40,6 +41,68 @@ const projectRenderPositionToScreen = (
     y: (-projected.y * 0.5 + 0.5) * window.innerHeight,
   }
 }
+const getHeadingTargetScreenPosition = (options: {
+  camera: THREE.Camera
+  screenPosition: { x: number; y: number } | null
+  worldPosition: Vec2 | null
+}) =>
+  options.worldPosition
+    ? projectRenderPositionToScreen(
+        renderPosition(
+          options.worldPosition.x,
+          options.worldPosition.y,
+          spacecraftVisualLift,
+        ),
+        options.camera,
+      )
+    : options.screenPosition
+const setSvgLineEndpoints = (
+  line: SVGLineElement,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) => {
+  line.setAttribute('x1', `${from.x}`)
+  line.setAttribute('y1', `${from.y}`)
+  line.setAttribute('x2', `${to.x}`)
+  line.setAttribute('y2', `${to.y}`)
+}
+const clampHeadingTargetLineEndpoint = (
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) => {
+  const deltaX = to.x - from.x
+  const deltaY = to.y - from.y
+  const distance = Math.hypot(deltaX, deltaY)
+  if (distance <= committedHeadingTargetLineRadiusPx || distance === 0) {
+    return to
+  }
+
+  const scale = committedHeadingTargetLineRadiusPx / distance
+  return {
+    x: from.x + deltaX * scale,
+    y: from.y + deltaY * scale,
+  }
+}
+const syncHeadingTargetPlanningState = (
+  overlayUi: OverlayUiRefs,
+  active: boolean,
+) => {
+  overlayUi.headingTargetOverlay.classList.toggle(
+    'heading-target-overlay-planning',
+    active,
+  )
+  overlayUi.headingTargetDot.classList.toggle(
+    'heading-target-dot-planning',
+    active,
+  )
+}
+const isProjectedPositionInViewport = (position: THREE.Vector3) =>
+  position.x >= -1 &&
+  position.x <= 1 &&
+  position.y >= -1 &&
+  position.y <= 1 &&
+  position.z > -1 &&
+  position.z < 1
 const getHeadingTargetPlanePoint = (options: {
   camera: THREE.Camera
   center: Vec2
@@ -229,7 +292,11 @@ const updateSpacecraftCallout = (options: {
   spacecraft: Spacecraft
   spacecraftLabelIntroUntil: number
   spacecraftModelZoomThreshold: number
+  committedTargetHeading: number | null
+  committedTargetHeadingScreenPosition: { x: number; y: number } | null
+  committedTargetHeadingWorldPosition: Vec2 | null
   targetHeading: number | null
+  targetHeadingPlanActive: boolean
   targetHeadingScreenPosition: { x: number; y: number } | null
   targetHeadingWorldPosition: Vec2 | null
   viewportSize: number
@@ -243,7 +310,7 @@ const updateSpacecraftCallout = (options: {
 
   const screenX = (position.x * 0.5 + 0.5) * window.innerWidth
   const screenY = (-position.y * 0.5 + 0.5) * window.innerHeight
-  const isVisible = position.z > -1 && position.z < 1
+  const isVisible = isProjectedPositionInViewport(position)
   const useSymbolicShip =
     options.viewportSize >
     options.defaultViewport / options.spacecraftModelZoomThreshold
@@ -264,6 +331,8 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.spacecraftIconThrust.style.display = 'none'
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
+    options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    syncHeadingTargetPlanningState(options.overlayUi, false)
     return options.displayHeadingAngle
   }
 
@@ -320,43 +389,65 @@ const updateSpacecraftCallout = (options: {
     const remainingPlaneDelta = normalizeAngleDelta(
       options.targetHeading - options.spacecraft.heading,
     )
-    const targetHeadingScreenPosition = options.targetHeadingWorldPosition
-      ? (() => {
-          const targetPosition = renderPosition(
-            options.targetHeadingWorldPosition.x,
-            options.targetHeadingWorldPosition.y,
-            spacecraftVisualLift,
-          )
-          targetPosition.project(options.gameScene.camera)
-          return {
-            x: (targetPosition.x * 0.5 + 0.5) * window.innerWidth,
-            y: (-targetPosition.y * 0.5 + 0.5) * window.innerHeight,
-          }
-        })()
-      : options.targetHeadingScreenPosition
+    const spacecraftScreenPosition = { x: screenX, y: screenY }
+    const targetHeadingScreenPosition = getHeadingTargetScreenPosition({
+      camera: options.gameScene.camera,
+      screenPosition: options.targetHeadingScreenPosition,
+      worldPosition: options.targetHeadingWorldPosition,
+    })
 
     options.overlayUi.headingTargetOverlay.style.display = 'block'
     options.overlayUi.headingTargetOverlay.setAttribute(
       'viewBox',
       `0 0 ${window.innerWidth} ${window.innerHeight}`,
     )
-    options.overlayUi.headingTargetLine.setAttribute('x1', `${screenX}`)
-    options.overlayUi.headingTargetLine.setAttribute('y1', `${screenY}`)
-    options.overlayUi.headingTargetLine.setAttribute(
-      'x2',
-      `${targetHeadingScreenPosition?.x ?? screenX}`,
+    syncHeadingTargetPlanningState(
+      options.overlayUi,
+      options.targetHeadingPlanActive,
     )
-    options.overlayUi.headingTargetLine.setAttribute(
-      'y2',
-      `${targetHeadingScreenPosition?.y ?? screenY}`,
+    setSvgLineEndpoints(
+      options.overlayUi.headingTargetLine,
+      spacecraftScreenPosition,
+      options.targetHeadingPlanActive
+        ? (targetHeadingScreenPosition ?? spacecraftScreenPosition)
+        : clampHeadingTargetLineEndpoint(
+            spacecraftScreenPosition,
+            targetHeadingScreenPosition ?? spacecraftScreenPosition,
+          ),
     )
-    options.overlayUi.headingTargetDot.style.display = 'block'
-    options.overlayUi.headingTargetDot.style.left = `${
-      targetHeadingScreenPosition?.x ?? screenX
-    }px`
-    options.overlayUi.headingTargetDot.style.top = `${
-      targetHeadingScreenPosition?.y ?? screenY
-    }px`
+    if (
+      options.committedTargetHeading !== null &&
+      (options.committedTargetHeadingWorldPosition ||
+        options.committedTargetHeadingScreenPosition)
+    ) {
+      const committedTargetHeadingScreenPosition =
+        getHeadingTargetScreenPosition({
+          camera: options.gameScene.camera,
+          screenPosition: options.committedTargetHeadingScreenPosition,
+          worldPosition: options.committedTargetHeadingWorldPosition,
+        })
+      options.overlayUi.headingCommittedTargetLine.style.display = 'block'
+      setSvgLineEndpoints(
+        options.overlayUi.headingCommittedTargetLine,
+        spacecraftScreenPosition,
+        clampHeadingTargetLineEndpoint(
+          spacecraftScreenPosition,
+          committedTargetHeadingScreenPosition ?? spacecraftScreenPosition,
+        ),
+      )
+    } else {
+      options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    }
+    options.overlayUi.headingTargetDot.style.display =
+      options.targetHeadingPlanActive ? 'block' : 'none'
+    if (options.targetHeadingPlanActive) {
+      options.overlayUi.headingTargetDot.style.left = `${
+        targetHeadingScreenPosition?.x ?? screenX
+      }px`
+      options.overlayUi.headingTargetDot.style.top = `${
+        targetHeadingScreenPosition?.y ?? screenY
+      }px`
+    }
     options.overlayUi.headingTargetTurnSlice.setAttribute(
       'd',
       getHeadingTargetSlicePath({
@@ -371,6 +462,8 @@ const updateSpacecraftCallout = (options: {
   } else {
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
+    options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    syncHeadingTargetPlanningState(options.overlayUi, false)
   }
 
   return headingAngle
@@ -379,6 +472,7 @@ const updateSpacecraftCallout = (options: {
 export const createSpacecraftPresentation = (options: {
   defaultViewport: number
   gameScene: GameSceneRefs
+  onSpacecraftVisibleChange?: (visible: boolean) => void
   overlayUi: OverlayUiRefs
   pointerCameraInput: PointerCameraInput
   spacecraftModelZoomThreshold: number
@@ -397,12 +491,24 @@ export const createSpacecraftPresentation = (options: {
       spacecraftLabelIntroUntil: number
       trailTarget: Body
       trimTrailAroundTarget: boolean
+      committedTargetHeading: number | null
+      committedTargetHeadingScreenPosition: { x: number; y: number } | null
+      committedTargetHeadingWorldPosition: Vec2 | null
       targetHeading: number | null
+      targetHeadingPlanActive: boolean
       targetHeadingScreenPosition: { x: number; y: number } | null
       targetHeadingWorldPosition: Vec2 | null
       viewportSize: number
     }) => {
       const rawMeshRotationY = -state.spacecraft.heading + Math.PI / 2
+      const spacecraftScreenPosition = renderPosition(
+        state.spacecraft.position.x,
+        state.spacecraft.position.y,
+        spacecraftVisualLift,
+      ).project(options.gameScene.camera)
+      options.onSpacecraftVisibleChange?.(
+        isProjectedPositionInViewport(spacecraftScreenPosition),
+      )
       const displayRotationY = unwrapAngle(rawMeshRotationY, lastMeshRotationY)
       lastMeshRotationY = displayRotationY
 
@@ -446,7 +552,13 @@ export const createSpacecraftPresentation = (options: {
         spacecraft: state.spacecraft,
         spacecraftLabelIntroUntil: state.spacecraftLabelIntroUntil,
         spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,
+        committedTargetHeading: state.committedTargetHeading,
+        committedTargetHeadingScreenPosition:
+          state.committedTargetHeadingScreenPosition,
+        committedTargetHeadingWorldPosition:
+          state.committedTargetHeadingWorldPosition,
         targetHeading: state.targetHeading,
+        targetHeadingPlanActive: state.targetHeadingPlanActive,
         targetHeadingScreenPosition: state.targetHeadingScreenPosition,
         targetHeadingWorldPosition: state.targetHeadingWorldPosition,
         viewportSize: state.viewportSize,

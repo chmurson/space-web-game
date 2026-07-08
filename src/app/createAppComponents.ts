@@ -165,12 +165,15 @@ const createRuntimeCoordinator = (options: {
   }
 }
 
-const getCameraNoticeModeLabel = (mode: CameraControlMode) =>
-  mode === 'unlocked'
-    ? 'Free roam'
-    : mode === 'centered'
-      ? 'Spacecraft'
-      : 'Target'
+const getCameraNoticeModeLabel = (mode: CameraControlMode) => {
+  if (mode === 'unlocked') {
+    return 'Free roam'
+  }
+  if (mode === 'centered') {
+    return 'Spacecraft'
+  }
+  return 'Target'
+}
 
 const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   let hideTimeout: number | null = null
@@ -422,6 +425,12 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
+  let mobileManeuverStartByDrag =
+    options.config.userSettings.mobileManeuverStartByDrag
+  const targetHeadingPlanLifecycleHandlers = {
+    onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
+    onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
+  }
   let uiSettingsOpen = false
   let crashCameraFocusedBodyName: string | null = null
   let getAppMode = () => options.config.initialAppMode
@@ -431,6 +440,7 @@ export const createAppComponents = (options: {
     getBaseGameInteractionsEnabled() &&
     options.runtimeState.simulation.crashedBodyName === null
   const getCameraInteractionsEnabled = getBaseGameInteractionsEnabled
+  let spacecraftVisibleInViewport = true
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
@@ -451,6 +461,8 @@ export const createAppComponents = (options: {
         options.runtimeState.simulation.timeWarpIndex
       ] ?? 1,
     getInteractionsEnabled: getGameInteractionsEnabled,
+    getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
+    getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getAssistTargetUiState: queries.getAssistTargetUiState,
     getTargetControlRows: () =>
       options.runtimeState.simulation.state.bodies.map((body, index) => ({
@@ -527,7 +539,7 @@ export const createAppComponents = (options: {
         queries.getAssistTargetUiState(),
       )
     },
-    onTargetHeadingSelected: (screenX, screenY) => {
+    onTargetHeadingPlan: (screenX, screenY) => {
       const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
 
       if (worldPosition === null) {
@@ -541,8 +553,13 @@ export const createAppComponents = (options: {
         worldPosition.x - spacecraftPosition.x,
       )
 
-      runtimeActions.setTargetHeading(heading, screenX, screenY, worldPosition)
+      runtimeActions.planTargetHeading({
+        heading,
+        screenPosition: { x: screenX, y: screenY },
+        worldPosition,
+      })
     },
+    ...targetHeadingPlanLifecycleHandlers,
     onThrustControlUiStateChange: (state) => {
       options.runtimeState.ui.touchThrustControl = state
     },
@@ -572,6 +589,7 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
+    getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
     getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTargetControlSide: () => touchTargetControlSide,
@@ -586,6 +604,10 @@ export const createAppComponents = (options: {
       if (open) {
         keyboardInput.clear()
       }
+    },
+    onMobileManeuverStartByDragChange: (startByDrag) => {
+      mobileManeuverStartByDrag = startByDrag
+      updateUserSettings({ mobileManeuverStartByDrag: startByDrag })
     },
     onTouchBurnControlSideChange: (side) => {
       touchBurnControlSide = side
@@ -651,18 +673,19 @@ export const createAppComponents = (options: {
     getInteractionsEnabled: getCameraInteractionsEnabled,
     getSpacecraftPosition: () =>
       options.runtimeState.simulation.state.spacecraft.position,
+    getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPan: runtimeActions.panCamera,
     onResize: runtimeActions.handleResize,
-    onTargetHeadingSelected: (heading, selection) => {
-      runtimeActions.setTargetHeading(
+    onTargetHeadingPlan: (heading, selection) => {
+      runtimeActions.planTargetHeading({
         heading,
-        selection.screenPosition.x,
-        selection.screenPosition.y,
-        selection.worldPosition,
-      )
+        screenPosition: selection.screenPosition,
+        worldPosition: selection.worldPosition,
+      })
     },
+    ...targetHeadingPlanLifecycleHandlers,
     onZoom: runtimeActions.zoomCamera,
     renderScale: RENDER_SCALE,
     rendererElement: renderer.domElement,
@@ -788,6 +811,12 @@ export const createAppComponents = (options: {
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport: options.config.camera.defaultViewport,
       gameScene,
+      onSpacecraftVisibleChange: (visible) => {
+        spacecraftVisibleInViewport = visible
+        if (!visible) {
+          runtimeActions.clearTargetHeadingPlan()
+        }
+      },
       overlayUi,
       pointerCameraInput,
       spacecraftModelZoomThreshold:

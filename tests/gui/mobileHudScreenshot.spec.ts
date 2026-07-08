@@ -1783,7 +1783,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Normal burn hold W / ↑',
       'Burn latch double W / ↑',
       'Cancel burn W / ↑ / S / ↓',
-      'Turn mouse double-click',
+      'Turn click, move, click',
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
       'Assist Shift + C',
@@ -1809,6 +1809,101 @@ test('shows a bottom notice when cycling camera mode from the keyboard', async (
   await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
   await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
   await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
+})
+
+test('keeps the empty camera unlock notice title readable inside the bottom pill', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  const notice = page.locator('.hud-notice-transient')
+  await page.evaluate(() => {
+    const noticeElement = document.querySelector<HTMLElement>(
+      '.hud-notice-transient',
+    )
+    const titleElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-title')
+    const bodyElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-body')
+    if (!noticeElement || !titleElement || !bodyElement) {
+      throw new Error('Missing transient notice DOM')
+    }
+
+    titleElement.textContent = 'Camera unlocked'
+    bodyElement.replaceChildren()
+    noticeElement.hidden = false
+    noticeElement.dataset.visible = 'true'
+    noticeElement.setAttribute('aria-hidden', 'false')
+    noticeElement.setAttribute(
+      'aria-label',
+      'Camera unlocked. Drag anywhere to pan.',
+    )
+  })
+
+  await expect(notice).toBeVisible()
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera unlocked',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText('')
+  await expect(notice).toHaveAttribute(
+    'aria-label',
+    'Camera unlocked. Drag anywhere to pan.',
+  )
+
+  const getMetrics = () =>
+    notice.evaluate((noticeElement) => {
+      const titleElement =
+        noticeElement.querySelector<HTMLElement>('.hud-notice-title')
+      const bodyElement =
+        noticeElement.querySelector<HTMLElement>('.hud-notice-body')
+      if (!titleElement || !bodyElement) {
+        throw new Error('Missing transient notice text spans')
+      }
+
+      return {
+        bodyDisplay: getComputedStyle(bodyElement).display,
+        noticeClientWidth: noticeElement.clientWidth,
+        noticeScrollWidth: noticeElement.scrollWidth,
+        titleClientWidth: titleElement.clientWidth,
+        titleMaxWidth: getComputedStyle(titleElement).maxWidth,
+        titleScrollWidth: titleElement.scrollWidth,
+      }
+    })
+
+  const mobileMetrics = await getMetrics()
+  expect(mobileMetrics.bodyDisplay).toBe('none')
+  expect(mobileMetrics.titleMaxWidth).toBe('100%')
+  expect(mobileMetrics.noticeScrollWidth).toBeLessThanOrEqual(
+    mobileMetrics.noticeClientWidth,
+  )
+  expect(mobileMetrics.titleScrollWidth).toBeLessThanOrEqual(
+    mobileMetrics.titleClientWidth,
+  )
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-camera-unlocked-empty-notice',
+  )
+
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await expect(notice).toBeVisible()
+
+  const wideMetrics = await getMetrics()
+  expect(wideMetrics.bodyDisplay).toBe('none')
+  expect(wideMetrics.titleMaxWidth).toBe('100%')
+  expect(wideMetrics.noticeScrollWidth).toBeLessThanOrEqual(
+    wideMetrics.noticeClientWidth,
+  )
+  expect(wideMetrics.titleScrollWidth).toBeLessThanOrEqual(
+    wideMetrics.titleClientWidth,
+  )
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'wide-camera-unlocked-empty-notice',
+  )
 })
 
 test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
@@ -1892,6 +1987,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let warpSide: 'left' | 'right' = 'left'
+    let mobileManeuverStartByDrag = true
     let orbitPointDisplay = {
       altitudeVisible: true,
       centerDistanceVisible: false,
@@ -1907,6 +2003,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     const dialog = createUiSettingsDialog({
       app,
+      getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchBurnControlSide: () => burnSide,
       getTouchTargetControlSide: () => targetSide,
@@ -1919,6 +2016,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         orbitPointDisplay = settings
       },
       onOpenChange: (open: boolean) => openEvents.push(open),
+      onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
+        events.push(`maneuver:${startByDrag}`)
+        mobileManeuverStartByDrag = startByDrag
+      },
       onTouchBurnControlSideChange: (side: 'left' | 'right') => {
         events.push(`burn:${side}`)
         burnSide = side
@@ -1993,12 +2094,24 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const spacecraftControlGroup = dialog.element.querySelector(
       '.app-dialog-setting-group-label',
     )?.textContent
+    const spacecraftControlGroups = Array.from(
+      (dialog.element as HTMLElement).querySelectorAll(
+        '.app-dialog-setting-group-label',
+      ) as NodeListOf<HTMLElement>,
+    ).map((label) => label.textContent)
     const selectedAfterOpen = {
       burn: getSelectedValue('Burn control side'),
       target: getSelectedValue('Target control side'),
       trajectory: getSelectedValue('Trajectory control side'),
       warp: getSelectedValue('Warp control side'),
     }
+    const maneuverSwitchInitial = getButtonByText(
+      'Start turning by drag',
+    )?.getAttribute('aria-checked')
+    const maneuverSwitchInitialText = getButtonByText(
+      'Start turning by drag',
+    )?.textContent
+    getButtonByText('Start turning by drag')?.click()
     getControlButton('Burn control side', 'left')?.click()
     getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
@@ -2010,6 +2123,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       trajectory: getSelectedValue('Trajectory control side'),
       warp: getSelectedValue('Warp control side'),
     }
+    const maneuverSwitchAfter = getButtonByText(
+      'Start turning by drag',
+    )?.getAttribute('aria-checked')
+    const maneuverSwitchAfterText = getButtonByText(
+      'Start turning by drag',
+    )?.textContent
     const burnLeftPressed = getControlButton(
       'Burn control side',
       'left',
@@ -2155,6 +2274,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       eventCountAfterDisabledCenterClick,
       labelSwitchDisabledWhenLabelsOff,
       labelSwitchDisabledWhenMarkersOff,
+      maneuverSwitchAfter,
+      maneuverSwitchAfterText,
+      maneuverSwitchInitial,
+      maneuverSwitchInitialText,
       markerSwitchDisabledWhenMarkersOff,
       openAfterOpen,
       openEvents,
@@ -2178,15 +2301,20 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       selectedAfterChanges,
       selectedAfterOpen,
       spacecraftControlGroup,
+      spacecraftControlGroups,
       spacecraftFocusAfterOpen,
       spacecraftSummaryAfterChangesIncludesBurnLeft:
         spacecraftSummaryAfterChanges?.includes('Burn left'),
       spacecraftSummaryAfterChangesIncludesTargetLeft:
         spacecraftSummaryAfterChanges?.includes('target left'),
+      spacecraftSummaryAfterChangesIncludesManeuverTap:
+        spacecraftSummaryAfterChanges?.includes('maneuver tap'),
       spacecraftSummaryInitialIncludesBurnRight:
         spacecraftSummaryInitial?.includes('Burn right'),
       spacecraftSummaryInitialIncludesTrajectoryHidden:
         spacecraftSummaryInitial?.includes('trajectory hidden'),
+      spacecraftSummaryInitialIncludesManeuverDrag:
+        spacecraftSummaryInitial?.includes('maneuver drag'),
       spacecraftTitleAfterOpen,
       titleAfterSpacecraftBack,
       titleAfterOrbitBack,
@@ -2199,7 +2327,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     burnLeftPressed: 'true',
     burnRightPressed: 'false',
     className: 'app-dialog ui-settings-dialog',
-    events: ['burn:left', 'target:left', 'trajectory:right', 'warp:right'],
+    events: [
+      'maneuver:false',
+      'burn:left',
+      'target:left',
+      'trajectory:right',
+      'warp:right',
+    ],
     focusAfterBackwardTrap: true,
     focusAfterForwardTrap: true,
     focusRestoredAfterBackdrop: true,
@@ -2219,6 +2353,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     eventCountAfterDisabledCenterClick: 3,
     labelSwitchDisabledWhenLabelsOff: false,
     labelSwitchDisabledWhenMarkersOff: true,
+    maneuverSwitchAfter: 'false',
+    maneuverSwitchAfterText: 'Start turning by dragStarts by tap',
+    maneuverSwitchInitial: 'true',
+    maneuverSwitchInitialText: 'Start turning by dragStarts by drag',
     markerSwitchDisabledWhenMarkersOff: false,
     openAfterOpen: true,
     openEvents: [true, false, true, false, true, false, true, false],
@@ -2261,11 +2399,14 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       warp: 'left',
     },
     spacecraftControlGroup: 'Control sides',
+    spacecraftControlGroups: ['Control sides', 'Maneuvers'],
     spacecraftFocusAfterOpen: true,
     spacecraftSummaryAfterChangesIncludesBurnLeft: true,
     spacecraftSummaryAfterChangesIncludesTargetLeft: true,
+    spacecraftSummaryAfterChangesIncludesManeuverTap: true,
     spacecraftSummaryInitialIncludesBurnRight: true,
     spacecraftSummaryInitialIncludesTrajectoryHidden: true,
+    spacecraftSummaryInitialIncludesManeuverDrag: true,
     spacecraftTitleAfterOpen: 'Spacecraft controls settings',
     titleAfterSpacecraftBack: 'UI settings',
     titleAfterOrbitBack: 'UI settings',
@@ -2347,8 +2488,11 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
     page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
   ).toBeVisible()
   await expect(page.getByRole('group', { name: 'Control sides' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Maneuvers' })).toBeVisible()
   await expect(page.getByText('Burn side')).toBeVisible()
   await expect(page.getByText('Trajectory side')).toBeVisible()
+  await expect(page.getByText('Start turning by drag')).toBeVisible()
+  await expect(page.getByText('Starts by drag')).toBeVisible()
 
   await attachMobileScreenshot(
     page,
@@ -2483,4 +2627,45 @@ test('captures the mobile thrust touch control after reveal', async ({
   await expect(thrustReveal.locator('.touch-thrust-control')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-thrust-control')
+})
+
+test('captures the mobile active burn notice pill', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        code: 'KeyW',
+        key: 'w',
+      }),
+    )
+  })
+
+  const burnNotice = page.locator('.burn-active-notice')
+  await expect(burnNotice).toBeVisible()
+  await expect(burnNotice).toHaveAttribute('data-visible', 'true')
+  await expect(page.locator('.telemetry-pill-velocity')).toHaveClass(
+    /telemetry-pill-thrusting/,
+  )
+  await expect(burnNotice.locator('.burn-active-notice-icon')).toHaveClass(
+    /telemetry-speed-icon-thrusting/,
+  )
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-burn-active-notice')
+
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new KeyboardEvent('keyup', {
+        bubbles: true,
+        cancelable: true,
+        code: 'KeyW',
+        key: 'w',
+      }),
+    )
+  })
+  await expect(burnNotice).toBeHidden()
 })

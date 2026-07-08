@@ -223,7 +223,7 @@ export const InGameControlsMenuSurface = ({
           <div class="in-game-controls-menu-keyboard-row">
             <span class="in-game-controls-menu-keyboard-name">Turn</span>
             <span class="in-game-controls-menu-keyboard-keys">
-              <span>mouse double-click</span>
+              <span>click, move, click</span>
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">

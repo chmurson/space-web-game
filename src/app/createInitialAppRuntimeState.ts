@@ -63,6 +63,7 @@ export const createInitialAppRuntimeState = (
         initialScenarioTransition.state.spacecraft.position,
       ),
       spacecraftLabelIntroUntil: performance.now() + 5_000,
+      targetHeadingPlan: null,
       targetHeadingScreenPosition: null,
       targetHeadingWorldPosition: null,
       targetHeadingSelectionEpoch: 0,
