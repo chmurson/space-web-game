@@ -1584,6 +1584,64 @@ button.app-dialog-setting {
   max-width: min(176px, calc(100vw - 168px));
 }
 
+.telemetry-target-cluster {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.desktop-target-selector-button {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: 999px;
+  background: var(--ui-glass-control-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 24px rgba(2, 6, 23, 0.2);
+  color: rgba(226, 232, 240, 0.9);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.desktop-target-selector-button .target-status-mark {
+  width: 14px;
+  height: 14px;
+}
+
+.desktop-target-selector-button:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.82);
+  outline-offset: 3px;
+}
+
+.desktop-target-selector-button-open {
+  border-color: rgba(125, 211, 252, 0.46);
+  background: rgba(14, 165, 233, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(56, 189, 248, 0.12),
+    0 12px 28px rgba(2, 6, 23, 0.3);
+}
+
+.desktop-target-selector-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-overlay-hud);
+  pointer-events: auto;
+}
+
+.desktop-target-selector-popover[hidden] {
+  display: none;
+}
+
 .telemetry-pill-target .target-body-sphere {
   font-size: 12px;
   transform: translateY(-0.25px);
@@ -1617,6 +1675,25 @@ button.app-dialog-setting {
 .telemetry-pill-target [data-stat="target-altitude"]::before {
   margin-right: 4px;
   content: "·";
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .desktop-target-selector-button:hover {
+    border-color: rgba(125, 211, 252, 0.38);
+    background: rgba(148, 163, 184, 0.09);
+  }
+
+  .desktop-target-selector-button-open:hover {
+    background: rgba(14, 165, 233, 0.16);
+  }
+}
+
+@media (min-width: 721px) {
+  .desktop-target-selector-available
+    .telemetry-pill-target
+    .target-status-mark {
+    display: none;
+  }
 }
 
 .telemetry-pill-thrust.telemetry-pill-thrust-active {
@@ -2554,6 +2631,11 @@ button.app-dialog-setting {
   .telemetry-pill-target {
     flex-shrink: 0;
     max-width: none;
+  }
+
+  .desktop-target-selector-button,
+  .desktop-target-selector-popover {
+    display: none;
   }
 
   .telemetry-pill-target [data-stat="target"] {

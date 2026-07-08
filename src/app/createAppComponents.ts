@@ -39,6 +39,7 @@ import {
 } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
+import { createDesktopTargetSelector } from '../ui/createDesktopTargetSelector'
 import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
 import { createScenarioLoadingOverlay } from '../ui/createScenarioLoadingOverlay'
@@ -443,6 +444,17 @@ export const createAppComponents = (options: {
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
+  const getTargetControlRows = () =>
+    options.runtimeState.simulation.state.bodies.map((body, index) => ({
+      body,
+      distanceMeters: queries.getCaptureMetrics(body).surfaceDistance,
+      index,
+    }))
+  const syncTargetRecommendationState = () => {
+    targetRecommendationNotice?.acknowledgeCurrentTargetState(
+      queries.getAssistTargetUiState(),
+    )
+  }
   const touchControls = createTouchControls({
     app: options.app,
     automaticTargetingAvailable:
@@ -463,12 +475,7 @@ export const createAppComponents = (options: {
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getAssistTargetUiState: queries.getAssistTargetUiState,
-    getTargetControlRows: () =>
-      options.runtimeState.simulation.state.bodies.map((body, index) => ({
-        body,
-        distanceMeters: queries.getCaptureMetrics(body).surfaceDistance,
-        index,
-      })),
+    getTargetControlRows,
     getTrajectoryHorizonPreviews: (action, count) =>
       getTrajectoryHorizonPreviews({
         action,
@@ -533,11 +540,7 @@ export const createAppComponents = (options: {
     onReturnToAutomaticTarget:
       runtimeActions.returnToAutomaticAssistTargetSelection,
     onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
-    onTargetStateChange: () => {
-      targetRecommendationNotice?.acknowledgeCurrentTargetState(
-        queries.getAssistTargetUiState(),
-      )
-    },
+    onTargetStateChange: syncTargetRecommendationState,
     onTargetHeadingPlan: (screenX, screenY) => {
       const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
 
@@ -564,8 +567,30 @@ export const createAppComponents = (options: {
     },
     onZoom: zoomCameraAroundScreenPoint,
   })
+  if (!overlayUi.targetSelectorButton || !overlayUi.targetSelectorPopover) {
+    throw new Error('Desktop target selector controls are missing')
+  }
+  const desktopTargetSelector = createDesktopTargetSelector({
+    automaticTargetingAvailable:
+      options.config.assistTarget.autoSelectNearestSurface,
+    button: overlayUi.targetSelectorButton,
+    getRows: getTargetControlRows,
+    getTargetState: queries.getAssistTargetUiState,
+    onReturnToAutomaticTarget:
+      runtimeActions.returnToAutomaticAssistTargetSelection,
+    onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
+    onStateChange: () => {
+      syncTargetRecommendationState()
+      touchControls.syncUi()
+    },
+    popover: overlayUi.targetSelectorPopover,
+  })
   targetRecommendationNotice = createTargetRecommendationNoticePresenter({
-    onOpenTargetControl: touchControls.openTargetControl,
+    onOpenTargetControl: () => {
+      if (!desktopTargetSelector.open()) {
+        touchControls.openTargetControl()
+      }
+    },
     refs: {
       dismissButton: overlayUi.targetRecommendationNoticeDismissButton,
       element: overlayUi.targetRecommendationNotice,
@@ -660,6 +685,7 @@ export const createAppComponents = (options: {
     queries,
     rendererProfiler,
     runtime: options.runtimeState,
+    desktopTargetSelector,
     targetRecommendationNotice: targetRecommendationNotice ?? undefined,
     timeWarps: options.config.controls.timeWarps,
     touchControls,
@@ -874,6 +900,7 @@ export const createAppComponents = (options: {
       options.config.assistTarget.autoSelectNearestSurface,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
     getInteractionsEnabled: getGameInteractionsEnabled,
+    handleTargetSelectorShortcut: desktopTargetSelector.toggleFromShortcut,
     handleAction: handleKeyboardAction,
     keyboardInput,
     windowTarget: window,
