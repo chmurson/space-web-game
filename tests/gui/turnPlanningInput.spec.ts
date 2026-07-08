@@ -48,6 +48,10 @@ const getHeadingTargetState = async (page: Page) =>
     return {
       dotDisplay: getComputedStyle(dot).display,
       dotPlanning: dot.classList.contains('heading-target-dot-planning'),
+      lineLength: Math.hypot(
+        Number(line.getAttribute('x2')) - Number(line.getAttribute('x1')),
+        Number(line.getAttribute('y2')) - Number(line.getAttribute('y1')),
+      ),
       lineX2: line.getAttribute('x2'),
       lineY2: line.getAttribute('y2'),
       lineStroke: lineStyle.stroke,
@@ -72,6 +76,18 @@ const expectHeadingTargetHidden = async (page: Page) => {
   await expect
     .poll(async () => (await getHeadingTargetState(page)).overlayDisplay)
     .toBe('none')
+}
+
+const expectCyanColor = (color: string) => {
+  const [red, green, blue] =
+    color
+      .match(/\d+(?:\.\d+)?/g)
+      ?.slice(0, 3)
+      .map(Number) ?? []
+
+  expect(red).toBeLessThan(150)
+  expect(green).toBeGreaterThan(150)
+  expect(blue).toBeGreaterThan(220)
 }
 
 const createTouchScreenshot = async (
@@ -142,8 +158,8 @@ test('mobile tap planning persists through drag release and confirms on second t
   const pendingPlanStyle = await getHeadingTargetState(page)
   expect(pendingPlanStyle.overlayPlanning).toBe(true)
   expect(pendingPlanStyle.dotPlanning).toBe(true)
-  expect(pendingPlanStyle.lineStroke).toMatch(/245,\s*158,\s*11/)
-  expect(pendingPlanStyle.sliceFill).toMatch(/245,\s*158,\s*11/)
+  expectCyanColor(pendingPlanStyle.lineStroke)
+  expectCyanColor(pendingPlanStyle.sliceFill)
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
     .toBeNull()
@@ -177,6 +193,13 @@ test('mobile tap planning persists through drag release and confirms on second t
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
     .not.toBeNull()
+  await expectHeadingTargetVisible(page)
+  const committedTurnStyle = await getHeadingTargetState(page)
+  expect(committedTurnStyle.overlayPlanning).toBe(false)
+  expect(committedTurnStyle.dotPlanning).toBe(false)
+  expect(committedTurnStyle.lineLength).toBeLessThanOrEqual(56)
+
+  await createTouchScreenshot(page, testInfo, 'mobile-turn-committed')
 })
 
 test('mobile two-finger tap cancels active turn planning without committing', async ({

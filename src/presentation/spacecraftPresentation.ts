@@ -21,6 +21,7 @@ const trailNewestColor = new THREE.Color('#7c8fa8')
 const headingTargetSliceInnerRadiusPx = 20
 const headingTargetSliceOuterRadiusPx = 52
 const headingTargetSliceArcSegmentRadians = Math.PI / 20
+const committedHeadingTargetLineRadiusPx = headingTargetSliceOuterRadiusPx
 const spacecraftTrailLift = 0.24
 const spacecraftVisualLift = 0.32
 const spacecraftMarkerLift = spacecraftVisualLift
@@ -64,6 +65,23 @@ const setSvgLineEndpoints = (
   line.setAttribute('y1', `${from.y}`)
   line.setAttribute('x2', `${to.x}`)
   line.setAttribute('y2', `${to.y}`)
+}
+const clampHeadingTargetLineEndpoint = (
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) => {
+  const deltaX = to.x - from.x
+  const deltaY = to.y - from.y
+  const distance = Math.hypot(deltaX, deltaY)
+  if (distance <= committedHeadingTargetLineRadiusPx || distance === 0) {
+    return to
+  }
+
+  const scale = committedHeadingTargetLineRadiusPx / distance
+  return {
+    x: from.x + deltaX * scale,
+    y: from.y + deltaY * scale,
+  }
 }
 const syncHeadingTargetPlanningState = (
   overlayUi: OverlayUiRefs,
@@ -390,7 +408,12 @@ const updateSpacecraftCallout = (options: {
     setSvgLineEndpoints(
       options.overlayUi.headingTargetLine,
       spacecraftScreenPosition,
-      targetHeadingScreenPosition ?? spacecraftScreenPosition,
+      options.targetHeadingPlanActive
+        ? (targetHeadingScreenPosition ?? spacecraftScreenPosition)
+        : clampHeadingTargetLineEndpoint(
+            spacecraftScreenPosition,
+            targetHeadingScreenPosition ?? spacecraftScreenPosition,
+          ),
     )
     if (
       options.committedTargetHeading !== null &&
@@ -407,7 +430,10 @@ const updateSpacecraftCallout = (options: {
       setSvgLineEndpoints(
         options.overlayUi.headingCommittedTargetLine,
         spacecraftScreenPosition,
-        committedTargetHeadingScreenPosition ?? spacecraftScreenPosition,
+        clampHeadingTargetLineEndpoint(
+          spacecraftScreenPosition,
+          committedTargetHeadingScreenPosition ?? spacecraftScreenPosition,
+        ),
       )
     } else {
       options.overlayUi.headingCommittedTargetLine.style.display = 'none'

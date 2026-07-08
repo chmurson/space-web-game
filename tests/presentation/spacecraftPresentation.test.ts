@@ -176,8 +176,8 @@ describe('createSpacecraftPresentation', () => {
       committedTargetHeadingWorldPosition: null,
       targetHeading: Math.PI / 2,
       targetHeadingPlanActive: false,
-      targetHeadingScreenPosition: null,
-      targetHeadingWorldPosition: { x: 0, y: 1_000_000 },
+      targetHeadingScreenPosition: { x: 400, y: 60 },
+      targetHeadingWorldPosition: null,
       trailTarget,
       trimTrailAroundTarget: false,
       viewportSize: 480,
@@ -192,11 +192,16 @@ describe('createSpacecraftPresentation', () => {
       x: Number(overlayUi.headingTargetLine.getAttribute('x1')),
       y: Number(overlayUi.headingTargetLine.getAttribute('y1')),
     }
+    const lineEnd = {
+      x: Number(overlayUi.headingTargetLine.getAttribute('x2')),
+      y: Number(overlayUi.headingTargetLine.getAttribute('y2')),
+    }
     const points = parsePathPoints(path)
     const outerPoints = points.slice(0, points.length / 2)
     const outerDistances = outerPoints.map((point) =>
       getDistance(point, center),
     )
+    expect(getDistance(lineEnd, center)).toBeCloseTo(52, 5)
     expect(points.length).toBeGreaterThan(12)
     expect(
       Math.max(...outerDistances) - Math.min(...outerDistances),
@@ -299,12 +304,12 @@ describe('createSpacecraftPresentation', () => {
       spacecraft: createSpacecraft({ x: 0, y: 0 }),
       spacecraftLabelIntroUntil: 0,
       committedTargetHeading: 0,
-      committedTargetHeadingScreenPosition: null,
-      committedTargetHeadingWorldPosition: { x: 1_000_000, y: 0 },
+      committedTargetHeadingScreenPosition: { x: 760, y: 300 },
+      committedTargetHeadingWorldPosition: null,
       targetHeading: Math.PI / 2,
       targetHeadingPlanActive: true,
-      targetHeadingScreenPosition: null,
-      targetHeadingWorldPosition: { x: 0, y: 1_000_000 },
+      targetHeadingScreenPosition: { x: 400, y: 60 },
+      targetHeadingWorldPosition: null,
       trailTarget,
       trimTrailAroundTarget: false,
       viewportSize: 480,
@@ -312,16 +317,24 @@ describe('createSpacecraftPresentation', () => {
 
     expect(overlayUi.headingTargetOverlay.style.display).toBe('block')
     expect(overlayUi.headingCommittedTargetLine.style.display).toBe('block')
-    expect(
-      [
-        overlayUi.headingCommittedTargetLine.getAttribute('x2'),
-        overlayUi.headingCommittedTargetLine.getAttribute('y2'),
-      ].join(','),
-    ).not.toBe(
-      [
-        overlayUi.headingTargetLine.getAttribute('x2'),
-        overlayUi.headingTargetLine.getAttribute('y2'),
-      ].join(','),
+    const center = {
+      x: Number(overlayUi.headingTargetLine.getAttribute('x1')),
+      y: Number(overlayUi.headingTargetLine.getAttribute('y1')),
+    }
+    const planningLineEnd = {
+      x: Number(overlayUi.headingTargetLine.getAttribute('x2')),
+      y: Number(overlayUi.headingTargetLine.getAttribute('y2')),
+    }
+    const committedLineEnd = {
+      x: Number(overlayUi.headingCommittedTargetLine.getAttribute('x2')),
+      y: Number(overlayUi.headingCommittedTargetLine.getAttribute('y2')),
+    }
+    expect([committedLineEnd.x, committedLineEnd.y].join(',')).not.toBe(
+      [planningLineEnd.x, planningLineEnd.y].join(','),
+    )
+    expect(getDistance(committedLineEnd, center)).toBeCloseTo(52, 5)
+    expect(getDistance(planningLineEnd, center)).toBeGreaterThan(
+      getDistance(committedLineEnd, center),
     )
     expect(
       overlayUi.headingTargetOverlay.classList.contains(

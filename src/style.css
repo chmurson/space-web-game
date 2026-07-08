@@ -2160,7 +2160,7 @@ button.app-dialog-setting {
 }
 
 .heading-target-overlay-planning .heading-target-line {
-  stroke: rgba(245, 158, 11, 0.82);
+  stroke: rgba(56, 189, 248, 0.9);
   stroke-width: 1.5;
   stroke-dasharray: 5 7;
   animation: heading-target-planning-dash 900ms linear infinite;
@@ -2179,7 +2179,7 @@ button.app-dialog-setting {
 }
 
 .heading-target-overlay-planning .heading-target-turn-slice {
-  fill: rgba(245, 158, 11, 0.28);
+  fill: rgba(56, 189, 248, 0.3);
   animation: heading-target-planning-slice 1200ms ease-in-out infinite;
 }
 
@@ -2198,9 +2198,9 @@ button.app-dialog-setting {
 .heading-target-dot-planning {
   width: 16px;
   height: 16px;
-  border: 1px solid rgba(245, 158, 11, 0.88);
-  background: rgba(245, 158, 11, 0.14);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  border: 1px solid rgba(56, 189, 248, 0.92);
+  background: rgba(56, 189, 248, 0.14);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.52);
   opacity: 0.9;
   animation: heading-target-planning-reticle 1200ms ease-in-out infinite;
 }
@@ -2212,7 +2212,7 @@ button.app-dialog-setting {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: rgba(253, 186, 116, 0.92);
+  background: rgba(186, 230, 253, 0.94);
   content: "";
   transform: translate(-50%, -50%);
 }
@@ -2225,14 +2225,14 @@ button.app-dialog-setting {
 
 @keyframes heading-target-planning-slice {
   50% {
-    fill: rgba(245, 158, 11, 0.36);
+    fill: rgba(125, 211, 252, 0.38);
   }
 }
 
 @keyframes heading-target-planning-reticle {
   50% {
-    border-color: rgba(253, 186, 116, 1);
-    box-shadow: 0 0 18px rgba(245, 158, 11, 0.68);
+    border-color: rgba(125, 211, 252, 1);
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.7);
     transform: translate(-50%, -50%) scale(1.08);
   }
 }
