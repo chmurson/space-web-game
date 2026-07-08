@@ -530,6 +530,50 @@
   color: rgba(251, 113, 133, 0.72);
 }
 
+.burn-active-notice {
+  order: 13;
+  max-width: min(260px, calc(100vw - 32px));
+  border-color: rgba(251, 146, 60, 0.36);
+  background: rgba(69, 46, 8, 0.54);
+  color: rgba(255, 247, 237, 0.96);
+  box-shadow:
+    0 0 0 1px rgba(251, 146, 60, 0.12),
+    0 10px 24px rgba(245, 158, 11, 0.16);
+  cursor: default;
+  pointer-events: none;
+}
+
+.burn-active-notice[hidden] {
+  display: none;
+}
+
+.burn-active-notice-icon {
+  --telemetry-speed-flame-scale: 1.6;
+
+  width: 15px;
+  height: 15px;
+  filter: drop-shadow(0 0 5px rgba(251, 146, 60, 0.28));
+}
+
+.burn-active-notice .telemetry-speed-icon-body,
+.burn-active-notice .telemetry-speed-icon-wing {
+  fill: rgba(255, 237, 213, 0.92);
+}
+
+.burn-active-notice .telemetry-speed-icon-window {
+  fill: rgba(69, 46, 8, 0.78);
+}
+
+.burn-active-notice .hud-notice-body {
+  color: rgba(255, 237, 213, 0.8);
+}
+
+.burn-active-notice .hud-notice-body::before {
+  content: "·";
+  margin: 0 6px 0 1px;
+  color: rgba(251, 146, 60, 0.78);
+}
+
 .target-recommendation-notice-open,
 .target-recommendation-notice-dismiss {
   border: 0;
@@ -680,6 +724,10 @@
 
   .bottom-pill-area .fuel-depleted-notice {
     max-width: min(300px, calc(100vw - 24px));
+  }
+
+  .bottom-pill-area .burn-active-notice {
+    max-width: min(240px, calc(100vw - 24px));
   }
 
   .in-game-controls-menu-button {

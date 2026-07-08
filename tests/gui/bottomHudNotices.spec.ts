@@ -18,8 +18,10 @@ test('creates bottom HUD notices with the preserved DOM contract', async ({
     })
 
     const fuel = overlayUi.fuelDepletedNotice
+    const burn = overlayUi.burnActiveNotice
     const camera = overlayUi.cameraUnlockNotice
     const target = overlayUi.targetRecommendationNotice
+    const burnIcon = burn.querySelector('.burn-active-notice-icon')
     const targetDismissIcon =
       overlayUi.targetRecommendationNoticeDismissButton?.querySelector(
         '[aria-hidden="true"]',
@@ -51,6 +53,23 @@ test('creates bottom HUD notices with the preserved DOM contract', async ({
         parentIsBottomPillArea: fuel.parentElement === overlayUi.bottomPillArea,
         role: fuel.getAttribute('role'),
         titleText: fuel.querySelector('.hud-notice-title')?.textContent,
+      },
+      burn: {
+        ariaAtomic: burn.getAttribute('aria-atomic'),
+        ariaHidden: burn.getAttribute('aria-hidden'),
+        ariaLabel: burn.getAttribute('aria-label'),
+        ariaLive: burn.getAttribute('aria-live'),
+        bodyText: burn.querySelector('.hud-notice-body')?.textContent,
+        className: burn.className,
+        dataVisible: burn.dataset.visible,
+        hidden: burn.hidden,
+        iconClassName: burnIcon?.getAttribute('class'),
+        iconFlameClassName: burnIcon
+          ?.querySelector('.telemetry-speed-icon-flame')
+          ?.getAttribute('class'),
+        parentIsBottomPillArea: burn.parentElement === overlayUi.bottomPillArea,
+        role: burn.getAttribute('role'),
+        titleText: burn.querySelector('.hud-notice-title')?.textContent,
       },
       target: {
         ariaAtomic: target.getAttribute('aria-atomic'),
@@ -91,6 +110,22 @@ test('creates bottom HUD notices with the preserved DOM contract', async ({
     parentIsBottomPillArea: true,
     role: 'status',
     titleText: 'Fuel depleted',
+  })
+  expect(contract.burn).toEqual({
+    ariaAtomic: 'true',
+    ariaHidden: 'true',
+    ariaLabel: 'Burn active: Thrusting',
+    ariaLive: 'polite',
+    bodyText: 'Thrusting',
+    className: 'hud-notice hud-notice-durable burn-active-notice',
+    dataVisible: 'false',
+    hidden: true,
+    iconClassName:
+      'telemetry-speed-icon telemetry-speed-icon-thrusting burn-active-notice-icon',
+    iconFlameClassName: 'telemetry-speed-icon-flame',
+    parentIsBottomPillArea: true,
+    role: 'status',
+    titleText: 'Burn active',
   })
   expect(contract.camera).toEqual({
     ariaAtomic: 'true',

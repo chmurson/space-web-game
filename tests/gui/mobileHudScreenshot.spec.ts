@@ -2484,3 +2484,44 @@ test('captures the mobile thrust touch control after reveal', async ({
 
   await attachMobileScreenshot(page, testInfo, 'mobile-thrust-control')
 })
+
+test('captures the mobile active burn notice pill', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        code: 'KeyW',
+        key: 'w',
+      }),
+    )
+  })
+
+  const burnNotice = page.locator('.burn-active-notice')
+  await expect(burnNotice).toBeVisible()
+  await expect(burnNotice).toHaveAttribute('data-visible', 'true')
+  await expect(page.locator('.telemetry-pill-velocity')).toHaveClass(
+    /telemetry-pill-thrusting/,
+  )
+  await expect(burnNotice.locator('.burn-active-notice-icon')).toHaveClass(
+    /telemetry-speed-icon-thrusting/,
+  )
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-burn-active-notice')
+
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new KeyboardEvent('keyup', {
+        bubbles: true,
+        cancelable: true,
+        code: 'KeyW',
+        key: 'w',
+      }),
+    )
+  })
+  await expect(burnNotice).toBeHidden()
+})

@@ -307,15 +307,10 @@ export const createHudPresentation = (options: {
     warpIncreaseStreak = 0
   }
 
-  const syncFuelDepletedNotice = (visible: boolean) => {
-    options.overlayUi.fuelDepletedNotice.hidden = !visible
-    options.overlayUi.fuelDepletedNotice.dataset.visible = visible
-      ? 'true'
-      : 'false'
-    options.overlayUi.fuelDepletedNotice.setAttribute(
-      'aria-hidden',
-      visible ? 'false' : 'true',
-    )
+  const syncHudNoticeVisibility = (element: HTMLElement, visible: boolean) => {
+    element.hidden = !visible
+    element.dataset.visible = visible ? 'true' : 'false'
+    element.setAttribute('aria-hidden', visible ? 'false' : 'true')
   }
 
   const syncTransientNotice = () => {
@@ -455,7 +450,10 @@ export const createHudPresentation = (options: {
       if (options.overlayUi.fuelIconLevel) {
         syncFuelIconLevel(options.overlayUi.fuelIconLevel, fuelIconFillPercent)
       }
-      syncFuelDepletedNotice(finiteFuel && spacecraft.fuel <= 0 && !crashed)
+      syncHudNoticeVisibility(
+        options.overlayUi.fuelDepletedNotice,
+        finiteFuel && spacecraft.fuel <= 0 && !crashed,
+      )
       syncTransientNotice()
       options.touchControls?.setBurnControlVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
@@ -520,6 +518,7 @@ export const createHudPresentation = (options: {
         thrustPill?.classList.remove('telemetry-pill-thrust-active')
         thrustPill?.classList.toggle('telemetry-pill-thrust-crashed', crashed)
         speedPill?.classList.toggle('telemetry-pill-thrusting', thrusting)
+        syncHudNoticeVisibility(options.overlayUi.burnActiveNotice, thrusting)
         if (options.overlayUi.speedIcon) {
           options.overlayUi.speedIcon.classList.toggle(
             'telemetry-speed-icon-thrusting',
