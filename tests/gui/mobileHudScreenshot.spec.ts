@@ -1811,6 +1811,101 @@ test('shows a bottom notice when cycling camera mode from the keyboard', async (
   await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
 })
 
+test('keeps the empty camera unlock notice title readable inside the bottom pill', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  const notice = page.locator('.hud-notice-transient')
+  await page.evaluate(() => {
+    const noticeElement = document.querySelector<HTMLElement>(
+      '.hud-notice-transient',
+    )
+    const titleElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-title')
+    const bodyElement =
+      noticeElement?.querySelector<HTMLElement>('.hud-notice-body')
+    if (!noticeElement || !titleElement || !bodyElement) {
+      throw new Error('Missing transient notice DOM')
+    }
+
+    titleElement.textContent = 'Camera unlocked'
+    bodyElement.replaceChildren()
+    noticeElement.hidden = false
+    noticeElement.dataset.visible = 'true'
+    noticeElement.setAttribute('aria-hidden', 'false')
+    noticeElement.setAttribute(
+      'aria-label',
+      'Camera unlocked. Drag anywhere to pan.',
+    )
+  })
+
+  await expect(notice).toBeVisible()
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera unlocked',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText('')
+  await expect(notice).toHaveAttribute(
+    'aria-label',
+    'Camera unlocked. Drag anywhere to pan.',
+  )
+
+  const getMetrics = () =>
+    notice.evaluate((noticeElement) => {
+      const titleElement =
+        noticeElement.querySelector<HTMLElement>('.hud-notice-title')
+      const bodyElement =
+        noticeElement.querySelector<HTMLElement>('.hud-notice-body')
+      if (!titleElement || !bodyElement) {
+        throw new Error('Missing transient notice text spans')
+      }
+
+      return {
+        bodyDisplay: getComputedStyle(bodyElement).display,
+        noticeClientWidth: noticeElement.clientWidth,
+        noticeScrollWidth: noticeElement.scrollWidth,
+        titleClientWidth: titleElement.clientWidth,
+        titleMaxWidth: getComputedStyle(titleElement).maxWidth,
+        titleScrollWidth: titleElement.scrollWidth,
+      }
+    })
+
+  const mobileMetrics = await getMetrics()
+  expect(mobileMetrics.bodyDisplay).toBe('none')
+  expect(mobileMetrics.titleMaxWidth).toBe('100%')
+  expect(mobileMetrics.noticeScrollWidth).toBeLessThanOrEqual(
+    mobileMetrics.noticeClientWidth,
+  )
+  expect(mobileMetrics.titleScrollWidth).toBeLessThanOrEqual(
+    mobileMetrics.titleClientWidth,
+  )
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-camera-unlocked-empty-notice',
+  )
+
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await expect(notice).toBeVisible()
+
+  const wideMetrics = await getMetrics()
+  expect(wideMetrics.bodyDisplay).toBe('none')
+  expect(wideMetrics.titleMaxWidth).toBe('100%')
+  expect(wideMetrics.noticeScrollWidth).toBeLessThanOrEqual(
+    wideMetrics.noticeClientWidth,
+  )
+  expect(wideMetrics.titleScrollWidth).toBeLessThanOrEqual(
+    wideMetrics.titleClientWidth,
+  )
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'wide-camera-unlocked-empty-notice',
+  )
+})
+
 test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
   page,
 }, testInfo) => {
