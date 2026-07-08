@@ -147,7 +147,7 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
-  it('updates an active plan during a drag without committing on release', () => {
+  it('updates preview but does not commit when the second gesture drags past tolerance', () => {
     const harness = createHarness()
 
     harness.canvas.dispatchEvent(
@@ -165,20 +165,26 @@ describe('bindPointerCameraInput target heading planning', () => {
     )
     harness.canvas.dispatchEvent(
       createPointerEvent('pointermove', {
-        clientX: 120,
+        clientX: 140,
         clientY: 100,
         pointerId: 2,
       }),
     )
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerup', {
-        clientX: 120,
+        clientX: 140,
         clientY: 100,
         pointerId: 2,
       }),
     )
 
     expect(harness.onTargetHeadingPlan).toHaveBeenCalledTimes(2)
+    expect(harness.onTargetHeadingPlan).toHaveBeenLastCalledWith(
+      expect.any(Number),
+      expect.objectContaining({
+        screenPosition: { x: 140, y: 100 },
+      }),
+    )
     expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
     expect(harness.onTargetHeadingPlanCanceled).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
