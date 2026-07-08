@@ -63,13 +63,17 @@ const getHeadingTargetState = async (page: Page) =>
     }
   })
 
-const expectHeadingTargetVisible = async (page: Page) => {
+const expectHeadingTargetVisible = async (
+  page: Page,
+  options: { dotVisible?: boolean } = {},
+) => {
+  const dotDisplay = options.dotVisible === false ? 'none' : 'block'
   await expect
     .poll(async () => (await getHeadingTargetState(page)).overlayDisplay)
     .toBe('block')
   await expect
     .poll(async () => (await getHeadingTargetState(page)).dotDisplay)
-    .toBe('block')
+    .toBe(dotDisplay)
 }
 
 const expectHeadingTargetHidden = async (page: Page) => {
@@ -193,10 +197,11 @@ test('mobile tap planning persists through drag release and confirms on second t
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
     .not.toBeNull()
-  await expectHeadingTargetVisible(page)
+  await expectHeadingTargetVisible(page, { dotVisible: false })
   const committedTurnStyle = await getHeadingTargetState(page)
   expect(committedTurnStyle.overlayPlanning).toBe(false)
   expect(committedTurnStyle.dotPlanning).toBe(false)
+  expect(committedTurnStyle.dotDisplay).toBe('none')
   expect(committedTurnStyle.lineLength).toBeLessThanOrEqual(56)
 
   await createTouchScreenshot(page, testInfo, 'mobile-turn-committed')

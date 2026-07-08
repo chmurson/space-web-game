@@ -202,6 +202,7 @@ describe('createSpacecraftPresentation', () => {
       getDistance(point, center),
     )
     expect(getDistance(lineEnd, center)).toBeCloseTo(52, 5)
+    expect(overlayUi.refs.headingTargetDot.style.display).toBe('none')
     expect(points.length).toBeGreaterThan(12)
     expect(
       Math.max(...outerDistances) - Math.min(...outerDistances),
@@ -336,6 +337,7 @@ describe('createSpacecraftPresentation', () => {
     expect(getDistance(planningLineEnd, center)).toBeGreaterThan(
       getDistance(committedLineEnd, center),
     )
+    expect(overlayUi.refs.headingTargetDot.style.display).toBe('block')
     expect(
       overlayUi.headingTargetOverlay.classList.contains(
         'heading-target-overlay-planning',

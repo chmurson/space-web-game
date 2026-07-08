@@ -438,13 +438,16 @@ const updateSpacecraftCallout = (options: {
     } else {
       options.overlayUi.headingCommittedTargetLine.style.display = 'none'
     }
-    options.overlayUi.headingTargetDot.style.display = 'block'
-    options.overlayUi.headingTargetDot.style.left = `${
-      targetHeadingScreenPosition?.x ?? screenX
-    }px`
-    options.overlayUi.headingTargetDot.style.top = `${
-      targetHeadingScreenPosition?.y ?? screenY
-    }px`
+    options.overlayUi.headingTargetDot.style.display =
+      options.targetHeadingPlanActive ? 'block' : 'none'
+    if (options.targetHeadingPlanActive) {
+      options.overlayUi.headingTargetDot.style.left = `${
+        targetHeadingScreenPosition?.x ?? screenX
+      }px`
+      options.overlayUi.headingTargetDot.style.top = `${
+        targetHeadingScreenPosition?.y ?? screenY
+      }px`
+    }
     options.overlayUi.headingTargetTurnSlice.setAttribute(
       'd',
       getHeadingTargetSlicePath({
