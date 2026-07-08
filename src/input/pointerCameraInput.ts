@@ -46,7 +46,6 @@ const maxWheelZoomFactor = 1.35
 const wheelLineModePixels = 16
 const cameraPanTapTolerancePx = 8
 const intentionalSwipeViewportRatio = 0.5
-const targetHeadingHoldDelayMs = 180
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -150,13 +149,8 @@ export const bindPointerCameraInput = (
     options.getSpacecraftVisible() &&
     (options.getTargetHeadingSelectionEnabled?.() ??
       options.getInteractionsEnabled())
-  let activeTargetHeadingPlan: {
-    latestX: number
-    latestY: number
-    pointerId: number
-    started: boolean
-    timeoutId: number
-  } | null = null
+  let targetHeadingPlanActive = false
+  let suppressNextContextMenu = false
   let activeCameraPan: {
     hasMovedForTap: boolean
     hasPanned: boolean
@@ -239,13 +233,35 @@ export const bindPointerCameraInput = (
     return true
   }
 
+  const beginTargetHeadingPlan = (clientX: number, clientY: number) => {
+    if (!getTargetHeadingSelectionEnabled()) {
+      return false
+    }
+
+    targetHeadingPlanActive = updateTargetHeadingPlan(clientX, clientY)
+    return targetHeadingPlanActive
+  }
+
   const cancelTargetHeadingPlan = () => {
-    if (!activeTargetHeadingPlan) {
+    if (!targetHeadingPlanActive) {
       return
     }
-    window.clearTimeout(activeTargetHeadingPlan.timeoutId)
-    activeTargetHeadingPlan = null
+    targetHeadingPlanActive = false
     options.onTargetHeadingPlanCanceled()
+  }
+
+  const commitTargetHeadingPlan = () => {
+    if (!targetHeadingPlanActive) {
+      return false
+    }
+
+    targetHeadingPlanActive = false
+    if (!getTargetHeadingSelectionEnabled()) {
+      options.onTargetHeadingPlanCanceled()
+      return false
+    }
+
+    return options.onTargetHeadingPlanCommitted()
   }
 
   const clearActiveCameraPan = (event: PointerEvent) => {
@@ -263,11 +279,26 @@ export const bindPointerCameraInput = (
   }
 
   options.rendererElement.addEventListener('pointerdown', (event) => {
+    if (!options.getInteractionsEnabled()) {
+      cancelTargetHeadingPlan()
+      return
+    }
+
     if (
-      !options.getInteractionsEnabled() ||
       !event.isPrimary ||
-      (event.pointerType === 'mouse' && event.button !== 0)
+      (event.pointerType === 'mouse' &&
+        event.button !== 0 &&
+        event.button !== 2)
     ) {
+      return
+    }
+
+    if (event.pointerType === 'mouse' && event.button === 2) {
+      if (targetHeadingPlanActive) {
+        event.preventDefault()
+        suppressNextContextMenu = true
+        cancelTargetHeadingPlan()
+      }
       return
     }
 
@@ -281,25 +312,6 @@ export const bindPointerCameraInput = (
       startY: event.clientY,
     }
 
-    if (getTargetHeadingSelectionEnabled()) {
-      const pointerId = event.pointerId
-      activeTargetHeadingPlan = {
-        latestX: event.clientX,
-        latestY: event.clientY,
-        pointerId,
-        started: false,
-        timeoutId: window.setTimeout(() => {
-          if (activeTargetHeadingPlan?.pointerId !== pointerId) {
-            return
-          }
-          activeTargetHeadingPlan.started = updateTargetHeadingPlan(
-            activeTargetHeadingPlan.latestX,
-            activeTargetHeadingPlan.latestY,
-          )
-        }, targetHeadingHoldDelayMs),
-      }
-    }
-
     try {
       options.rendererElement.setPointerCapture(event.pointerId)
     } catch {
@@ -308,18 +320,23 @@ export const bindPointerCameraInput = (
   })
 
   options.rendererElement.addEventListener('pointermove', (event) => {
-    if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
+    if (targetHeadingPlanActive) {
       if (!getTargetHeadingSelectionEnabled()) {
         cancelTargetHeadingPlan()
         return
       }
-      activeTargetHeadingPlan.latestX = event.clientX
-      activeTargetHeadingPlan.latestY = event.clientY
-      if (activeTargetHeadingPlan.started) {
-        event.preventDefault()
-        updateTargetHeadingPlan(event.clientX, event.clientY)
-        return
+
+      if (activeCameraPan?.pointerId === event.pointerId) {
+        const totalDeltaX = event.clientX - activeCameraPan.startX
+        const totalDeltaY = event.clientY - activeCameraPan.startY
+        if (Math.hypot(totalDeltaX, totalDeltaY) >= cameraPanTapTolerancePx) {
+          activeCameraPan.hasMovedForTap = true
+        }
       }
+
+      event.preventDefault()
+      updateTargetHeadingPlan(event.clientX, event.clientY)
+      return
     }
 
     if (activeCameraPan?.pointerId !== event.pointerId) {
@@ -337,12 +354,6 @@ export const bindPointerCameraInput = (
     const previousDistance = Math.hypot(previousDeltaX, previousDeltaY)
     if (Math.hypot(totalDeltaX, totalDeltaY) >= cameraPanTapTolerancePx) {
       activeCameraPan.hasMovedForTap = true
-      if (
-        activeTargetHeadingPlan?.pointerId === event.pointerId &&
-        !activeTargetHeadingPlan.started
-      ) {
-        cancelTargetHeadingPlan()
-      }
     }
 
     if (options.getCameraMode() !== 'unlocked') {
@@ -400,24 +411,40 @@ export const bindPointerCameraInput = (
   })
 
   options.rendererElement.addEventListener('pointerup', (event) => {
-    if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
-      const shouldCommit = activeTargetHeadingPlan.started
-      window.clearTimeout(activeTargetHeadingPlan.timeoutId)
-      activeTargetHeadingPlan = null
-      if (shouldCommit && getTargetHeadingSelectionEnabled()) {
+    if (activeCameraPan?.pointerId === event.pointerId) {
+      const completedPan =
+        activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned
+      clearActiveCameraPan(event)
+      if (
+        !completedPan &&
+        event.isPrimary &&
+        (event.pointerType !== 'mouse' || event.button === 0)
+      ) {
+        if (!getTargetHeadingSelectionEnabled()) {
+          cancelTargetHeadingPlan()
+          return
+        }
+
         event.preventDefault()
-        options.onTargetHeadingPlanCommitted()
-      } else {
-        options.onTargetHeadingPlanCanceled()
+        if (targetHeadingPlanActive) {
+          commitTargetHeadingPlan()
+        } else {
+          beginTargetHeadingPlan(event.clientX, event.clientY)
+        }
       }
+      return
     }
-    clearActiveCameraPan(event)
   })
   options.rendererElement.addEventListener('pointercancel', (event) => {
-    if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
-      cancelTargetHeadingPlan()
-    }
     clearActiveCameraPan(event)
+  })
+
+  options.rendererElement.addEventListener('contextmenu', (event) => {
+    if (!suppressNextContextMenu) {
+      return
+    }
+    suppressNextContextMenu = false
+    event.preventDefault()
   })
 
   options.windowTarget.addEventListener(

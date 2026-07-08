@@ -1,0 +1,47 @@
+# Persistent Turn Planning Input
+
+Branch: `codex/issue-200-turn-planning-input`
+Issue: https://github.com/chmurson/space-web-game/issues/200
+
+## What Changed
+
+Ship turn planning now uses persistent click/tap confirmation instead of hold-to-plan and release-to-commit.
+
+- Desktop: primary click starts a planned turn, mouse movement adjusts the preview, a second primary click confirms, and right click cancels.
+- Mobile: a single tap starts a planned turn, press-and-drag while planning adjusts the preview, release leaves the preview active, a second tap confirms, and a two-finger tap cancels.
+- The in-game controls hint and the direct tutorial turn prompt now describe the click/tap planning model instead of the old hold/release model.
+
+## Why
+
+Hold-to-plan made release do too much: ending a drag also committed the turn. Persistent planning separates preview adjustment from confirmation so players can inspect the target before committing delicate orbit maneuvers.
+
+## Key Files
+
+- `src/input/pointerCameraInput.ts`: owns desktop canvas pointer mapping for plan, preview, confirm, cancel, camera pan, and wheel zoom.
+- `src/ui/touchControls/createTouchControls.ts`: owns mobile touch gesture routing across planning, camera pan, pinch zoom, and touch-control panels.
+- `src/runtime/runtimeActions.ts`: remains the owner of storing, committing, and clearing target-heading plans.
+- `src/ui/components/InGameControlsMenuSurface.tsx` and `src/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow.ts`: own the updated player-facing gesture copy.
+- `tests/input/pointerCameraInput.test.ts` and `tests/gui/turnPlanningInput.spec.ts`: cover the new desktop and mobile gesture contracts.
+
+## Decisions
+
+- Kept the existing runtime target-heading plan model and changed only the input adapters.
+- Mobile idle drags still start camera pan. A tap is recognized on release to enter planning; once planning is active, a clean tap confirms and a drag adjusts the preview.
+- Two-finger touch cancels only while a turn plan is active. Outside planning, the existing pinch zoom path remains unchanged.
+- Broader tutorial wording polish remains with follow-up issue #201; this change only removes wrong hold/release instructions from active UI.
+
+## Validation
+
+- `npx biome check --write src/input/pointerCameraInput.ts src/ui/touchControls/createTouchControls.ts src/ui/components/InGameControlsMenuSurface.tsx src/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingFlow.ts tests/input/pointerCameraInput.test.ts tests/gui/turnPlanningInput.spec.ts tests/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingProgress.test.ts tests/gui/mobileHudScreenshot.spec.ts tests/runtime/runtimeActions.test.ts`
+- `npx vitest run --config vite.config.ts tests/input/pointerCameraInput.test.ts tests/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingProgress.test.ts tests/runtime/runtimeActions.test.ts`: 53 tests passed.
+- `npm test`: 502 Vitest tests and 16 automation-claim tests passed.
+- `npm run build`: config validation, TypeScript, and Vite release build passed. Vite reported the existing large chunk warning.
+- `npm run test:gui`: 39 mobile Chromium tests passed.
+- Screenshot inspection:
+  - Active plan: `tmp/playwright-results/turnPlanningInput-mobile-t-6211d--and-confirms-on-second-tap-mobile-chromium/mobile-turn-plan-active.png`
+  - Canceled plan: `tmp/playwright-results/turnPlanningInput-mobile-t-200ab-planning-without-committing-mobile-chromium/mobile-turn-plan-canceled.png`
+- `coderabbit --base main --agent` was attempted but produced no findings or completion after several minutes in analysis; the run was interrupted and recorded as a review-tool timeout.
+
+## Follow-Ups
+
+- Issue #201 owns the broader tutorial-copy pass after this control model is reviewed.

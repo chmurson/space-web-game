@@ -60,7 +60,6 @@ const doubleTapZoomStartPx = 10
 const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
 const cameraPanTapTolerancePx = 8
-const targetHeadingHoldDelayMs = 180
 const intentionalCameraUnlockSwipeViewportRatio = 0.5
 const touchControlRevealTabHeightPx = 84
 const touchControlRevealLayout = {
@@ -105,12 +104,9 @@ type ActiveGestureSession =
   | { kind: 'none' }
   | {
       kind: 'target-heading-plan'
-      latestX: number
-      latestY: number
+      hasMovedForTap: boolean
       startX: number
       startY: number
-      started: boolean
-      timeoutId: number
       touchId: number
     }
   | {
@@ -260,6 +256,7 @@ export const createTouchControls = (options: {
   let activeSession: ActiveGestureSession = { kind: 'none' }
   let lastTap: (ScreenPoint & { time: number }) | null = null
   let pinchSuppressTapUntil = 0
+  let targetHeadingPlanActive = false
   let timeWarpControlVisible = true
   let syncTargetRecommendationCue = () => {}
 
@@ -547,7 +544,7 @@ export const createTouchControls = (options: {
 
   const clearGameplayTouchInput = () => {
     clearPendingTapState()
-    clearTargetHeadingPlanSession()
+    cancelTargetHeadingPlan()
     clearZoneGesture()
     clearActiveSession()
     options.keyboardInput.clear()
@@ -563,7 +560,7 @@ export const createTouchControls = (options: {
     }
 
     const [first, second] = Array.from(touches)
-    clearTargetHeadingPlanSession()
+    cancelTargetHeadingPlan()
     clearZoneGesture()
     clearPendingTapState()
     activeSession = {
@@ -636,36 +633,16 @@ export const createTouchControls = (options: {
   }
 
   const beginTargetHeadingPlanSession = (touch: Touch) => {
-    if (!options.getSpacecraftVisible()) {
+    if (!targetHeadingPlanActive || !options.getSpacecraftVisible()) {
       return
     }
 
-    const touchId = touch.identifier
     activeSession = {
       kind: 'target-heading-plan',
-      latestX: touch.clientX,
-      latestY: touch.clientY,
+      hasMovedForTap: false,
       startX: touch.clientX,
       startY: touch.clientY,
-      started: false,
-      timeoutId: window.setTimeout(() => {
-        if (
-          activeSession.kind !== 'target-heading-plan' ||
-          activeSession.touchId !== touchId
-        ) {
-          return
-        }
-        if (!options.getSpacecraftVisible()) {
-          clearTargetHeadingPlanSession()
-          return
-        }
-        activeSession.started = true
-        options.onTargetHeadingPlan(
-          activeSession.latestX,
-          activeSession.latestY,
-        )
-      }, targetHeadingHoldDelayMs),
-      touchId,
+      touchId: touch.identifier,
     }
   }
 
@@ -673,9 +650,38 @@ export const createTouchControls = (options: {
     if (activeSession.kind !== 'target-heading-plan') {
       return
     }
-    window.clearTimeout(activeSession.timeoutId)
     activeSession = { kind: 'none' }
+  }
+
+  const cancelTargetHeadingPlan = () => {
+    if (!targetHeadingPlanActive) {
+      clearTargetHeadingPlanSession()
+      return
+    }
+
+    targetHeadingPlanActive = false
+    clearTargetHeadingPlanSession()
     options.onTargetHeadingPlanCanceled()
+  }
+
+  const beginTargetHeadingPlan = (touch: Touch) => {
+    if (!options.getSpacecraftVisible()) {
+      return false
+    }
+
+    targetHeadingPlanActive = true
+    options.onTargetHeadingPlan(touch.clientX, touch.clientY)
+    return true
+  }
+
+  const commitTargetHeadingPlan = () => {
+    if (!targetHeadingPlanActive) {
+      return false
+    }
+
+    targetHeadingPlanActive = false
+    clearTargetHeadingPlanSession()
+    return options.onTargetHeadingPlanCommitted()
   }
 
   const sessionOwnsTouch = (touchId: number) => {
@@ -728,6 +734,11 @@ export const createTouchControls = (options: {
       }
 
       const now = performance.now()
+      if (targetHeadingPlanActive && !options.getSpacecraftVisible()) {
+        cancelTargetHeadingPlan()
+        return
+      }
+
       const eventTarget = event.target
       const isTimeWarpTarget =
         timeWarpRevealControl.isOpen() &&
@@ -755,8 +766,33 @@ export const createTouchControls = (options: {
         return
       }
 
+      if (
+        targetHeadingPlanActive &&
+        !isRevealControlTarget &&
+        event.touches.length >= 2
+      ) {
+        event.preventDefault()
+        pinchSuppressTapUntil = now + pinchSuppressTapMs
+        clearPendingTapState()
+        cancelTargetHeadingPlan()
+        return
+      }
+
       for (const touch of Array.from(event.changedTouches)) {
         if (isRevealControlTarget) {
+          continue
+        }
+
+        tapTouches.set(touch.identifier, {
+          startTime: now,
+          startX: touch.clientX,
+          startY: touch.clientY,
+        })
+
+        if (targetHeadingPlanActive) {
+          if (activeSession.kind === 'none' && event.touches.length === 1) {
+            beginTargetHeadingPlanSession(touch)
+          }
           continue
         }
 
@@ -774,14 +810,8 @@ export const createTouchControls = (options: {
           continue
         }
 
-        tapTouches.set(touch.identifier, {
-          startTime: now,
-          startX: touch.clientX,
-          startY: touch.clientY,
-        })
-
         if (activeSession.kind === 'none' && event.touches.length === 1) {
-          beginTargetHeadingPlanSession(touch)
+          beginCameraPanSession(touch)
         }
       }
 
@@ -831,19 +861,12 @@ export const createTouchControls = (options: {
       switch (activeSession.kind) {
         case 'target-heading-plan': {
           if (!options.getSpacecraftVisible()) {
-            clearTargetHeadingPlanSession()
+            cancelTargetHeadingPlan()
             return
           }
 
           const touch = getTouchById(event.touches, activeSession.touchId)
           if (!touch) {
-            return
-          }
-
-          activeSession.latestX = touch.clientX
-          activeSession.latestY = touch.clientY
-          if (activeSession.started) {
-            options.onTargetHeadingPlan(touch.clientX, touch.clientY)
             return
           }
 
@@ -853,8 +876,8 @@ export const createTouchControls = (options: {
               touch.clientY - activeSession.startY,
             ) >= cameraPanTapTolerancePx
           ) {
-            clearTargetHeadingPlanSession()
-            beginCameraPanSession(touch)
+            activeSession.hasMovedForTap = true
+            options.onTargetHeadingPlan(touch.clientX, touch.clientY)
           }
           return
         }
@@ -1044,17 +1067,18 @@ export const createTouchControls = (options: {
           activeSession.kind === 'target-heading-plan' &&
           activeSession.touchId === touch.identifier
         ) {
-          const shouldCommit = activeSession.started
-          window.clearTimeout(activeSession.timeoutId)
+          const shouldCommit = !activeSession.hasMovedForTap
           activeSession = { kind: 'none' }
           if (shouldCommit) {
-            options.onTargetHeadingPlanCommitted()
+            commitTargetHeadingPlan()
             tapTouches.delete(touch.identifier)
             lastTap = null
             continue
-          } else {
-            options.onTargetHeadingPlanCanceled()
           }
+
+          tapTouches.delete(touch.identifier)
+          lastTap = null
+          continue
         }
 
         if (
@@ -1112,6 +1136,11 @@ export const createTouchControls = (options: {
           continue
         }
 
+        if (!targetHeadingPlanActive && beginTargetHeadingPlan(touch)) {
+          lastTap = null
+          continue
+        }
+
         lastTap = { time: now, x: touch.clientX, y: touch.clientY }
       }
     },
@@ -1135,7 +1164,7 @@ export const createTouchControls = (options: {
         )
       ) {
         if (activeSession.kind === 'target-heading-plan') {
-          clearTargetHeadingPlanSession()
+          cancelTargetHeadingPlan()
         } else if (activeSession.kind === 'step-selector') {
           finishStepSelectorGesture(false)
         } else if (

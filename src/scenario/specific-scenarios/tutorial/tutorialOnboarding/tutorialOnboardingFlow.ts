@@ -173,12 +173,20 @@ const tutorialOnboardingPromptDefinitions: Record<
     id: 'intro-point-and-turn',
     title: 'Plan A Turn',
     shortLabel: 'Plan A Turn',
-    description: [
-      { text: 'Press and hold open space', tone: 'concept' },
-      ' away from ',
-      { text: 'Earth', tone: 'concept' },
-      ' to plan a turn. Drag to adjust the target, then release to start turning.',
-    ],
+    description: ({ inputMode }) =>
+      inputMode === 'mobile'
+        ? [
+            { text: 'Tap open space', tone: 'concept' },
+            ' away from ',
+            { text: 'Earth', tone: 'concept' },
+            ' to plan a turn. Drag to adjust the target, then tap again to start turning.',
+          ]
+        : [
+            { text: 'Click open space', tone: 'concept' },
+            ' away from ',
+            { text: 'Earth', tone: 'concept' },
+            ' to plan a turn. Move the mouse to adjust the target, then click again to start turning.',
+          ],
     buttons: [],
     presentation: { kind: 'coach', layout: 'playfield' },
   },

@@ -1783,7 +1783,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Normal burn hold W / ↑',
       'Burn latch double W / ↑',
       'Cancel burn W / ↑ / S / ↓',
-      'Turn mouse double-click',
+      'Turn click, move, click',
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
       'Assist Shift + C',
