@@ -1783,7 +1783,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Normal burn hold W / ↑',
       'Burn latch double W / ↑',
       'Cancel burn W / ↑ / S / ↓',
-      'Turn mouse double-click',
+      'Turn click, move, click',
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
       'Assist Shift + C',
@@ -1987,6 +1987,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let warpSide: 'left' | 'right' = 'left'
+    let mobileManeuverStartByDrag = true
     let orbitPointDisplay = {
       altitudeVisible: true,
       centerDistanceVisible: false,
@@ -2002,6 +2003,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     const dialog = createUiSettingsDialog({
       app,
+      getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchBurnControlSide: () => burnSide,
       getTouchTargetControlSide: () => targetSide,
@@ -2014,6 +2016,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         orbitPointDisplay = settings
       },
       onOpenChange: (open: boolean) => openEvents.push(open),
+      onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
+        events.push(`maneuver:${startByDrag}`)
+        mobileManeuverStartByDrag = startByDrag
+      },
       onTouchBurnControlSideChange: (side: 'left' | 'right') => {
         events.push(`burn:${side}`)
         burnSide = side
@@ -2088,12 +2094,24 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const spacecraftControlGroup = dialog.element.querySelector(
       '.app-dialog-setting-group-label',
     )?.textContent
+    const spacecraftControlGroups = Array.from(
+      (dialog.element as HTMLElement).querySelectorAll(
+        '.app-dialog-setting-group-label',
+      ) as NodeListOf<HTMLElement>,
+    ).map((label) => label.textContent)
     const selectedAfterOpen = {
       burn: getSelectedValue('Burn control side'),
       target: getSelectedValue('Target control side'),
       trajectory: getSelectedValue('Trajectory control side'),
       warp: getSelectedValue('Warp control side'),
     }
+    const maneuverSwitchInitial = getButtonByText(
+      'Start turning by drag',
+    )?.getAttribute('aria-checked')
+    const maneuverSwitchInitialText = getButtonByText(
+      'Start turning by drag',
+    )?.textContent
+    getButtonByText('Start turning by drag')?.click()
     getControlButton('Burn control side', 'left')?.click()
     getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
@@ -2105,6 +2123,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       trajectory: getSelectedValue('Trajectory control side'),
       warp: getSelectedValue('Warp control side'),
     }
+    const maneuverSwitchAfter = getButtonByText(
+      'Start turning by drag',
+    )?.getAttribute('aria-checked')
+    const maneuverSwitchAfterText = getButtonByText(
+      'Start turning by drag',
+    )?.textContent
     const burnLeftPressed = getControlButton(
       'Burn control side',
       'left',
@@ -2250,6 +2274,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       eventCountAfterDisabledCenterClick,
       labelSwitchDisabledWhenLabelsOff,
       labelSwitchDisabledWhenMarkersOff,
+      maneuverSwitchAfter,
+      maneuverSwitchAfterText,
+      maneuverSwitchInitial,
+      maneuverSwitchInitialText,
       markerSwitchDisabledWhenMarkersOff,
       openAfterOpen,
       openEvents,
@@ -2273,15 +2301,20 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       selectedAfterChanges,
       selectedAfterOpen,
       spacecraftControlGroup,
+      spacecraftControlGroups,
       spacecraftFocusAfterOpen,
       spacecraftSummaryAfterChangesIncludesBurnLeft:
         spacecraftSummaryAfterChanges?.includes('Burn left'),
       spacecraftSummaryAfterChangesIncludesTargetLeft:
         spacecraftSummaryAfterChanges?.includes('target left'),
+      spacecraftSummaryAfterChangesIncludesManeuverTap:
+        spacecraftSummaryAfterChanges?.includes('maneuver tap'),
       spacecraftSummaryInitialIncludesBurnRight:
         spacecraftSummaryInitial?.includes('Burn right'),
       spacecraftSummaryInitialIncludesTrajectoryHidden:
         spacecraftSummaryInitial?.includes('trajectory hidden'),
+      spacecraftSummaryInitialIncludesManeuverDrag:
+        spacecraftSummaryInitial?.includes('maneuver drag'),
       spacecraftTitleAfterOpen,
       titleAfterSpacecraftBack,
       titleAfterOrbitBack,
@@ -2294,7 +2327,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     burnLeftPressed: 'true',
     burnRightPressed: 'false',
     className: 'app-dialog ui-settings-dialog',
-    events: ['burn:left', 'target:left', 'trajectory:right', 'warp:right'],
+    events: [
+      'maneuver:false',
+      'burn:left',
+      'target:left',
+      'trajectory:right',
+      'warp:right',
+    ],
     focusAfterBackwardTrap: true,
     focusAfterForwardTrap: true,
     focusRestoredAfterBackdrop: true,
@@ -2314,6 +2353,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     eventCountAfterDisabledCenterClick: 3,
     labelSwitchDisabledWhenLabelsOff: false,
     labelSwitchDisabledWhenMarkersOff: true,
+    maneuverSwitchAfter: 'false',
+    maneuverSwitchAfterText: 'Start turning by dragStarts by tap',
+    maneuverSwitchInitial: 'true',
+    maneuverSwitchInitialText: 'Start turning by dragStarts by drag',
     markerSwitchDisabledWhenMarkersOff: false,
     openAfterOpen: true,
     openEvents: [true, false, true, false, true, false, true, false],
@@ -2356,11 +2399,14 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       warp: 'left',
     },
     spacecraftControlGroup: 'Control sides',
+    spacecraftControlGroups: ['Control sides', 'Maneuvers'],
     spacecraftFocusAfterOpen: true,
     spacecraftSummaryAfterChangesIncludesBurnLeft: true,
     spacecraftSummaryAfterChangesIncludesTargetLeft: true,
+    spacecraftSummaryAfterChangesIncludesManeuverTap: true,
     spacecraftSummaryInitialIncludesBurnRight: true,
     spacecraftSummaryInitialIncludesTrajectoryHidden: true,
+    spacecraftSummaryInitialIncludesManeuverDrag: true,
     spacecraftTitleAfterOpen: 'Spacecraft controls settings',
     titleAfterSpacecraftBack: 'UI settings',
     titleAfterOrbitBack: 'UI settings',
@@ -2442,8 +2488,11 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
     page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
   ).toBeVisible()
   await expect(page.getByRole('group', { name: 'Control sides' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Maneuvers' })).toBeVisible()
   await expect(page.getByText('Burn side')).toBeVisible()
   await expect(page.getByText('Trajectory side')).toBeVisible()
+  await expect(page.getByText('Start turning by drag')).toBeVisible()
+  await expect(page.getByText('Starts by drag')).toBeVisible()
 
   await attachMobileScreenshot(
     page,

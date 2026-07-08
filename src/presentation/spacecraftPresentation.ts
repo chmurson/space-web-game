@@ -21,6 +21,7 @@ const trailNewestColor = new THREE.Color('#7c8fa8')
 const headingTargetSliceInnerRadiusPx = 20
 const headingTargetSliceOuterRadiusPx = 52
 const headingTargetSliceArcSegmentRadians = Math.PI / 20
+const committedHeadingTargetLineRadiusPx = headingTargetSliceOuterRadiusPx
 const spacecraftTrailLift = 0.24
 const spacecraftVisualLift = 0.32
 const spacecraftMarkerLift = spacecraftVisualLift
@@ -64,6 +65,36 @@ const setSvgLineEndpoints = (
   line.setAttribute('y1', `${from.y}`)
   line.setAttribute('x2', `${to.x}`)
   line.setAttribute('y2', `${to.y}`)
+}
+const clampHeadingTargetLineEndpoint = (
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) => {
+  const deltaX = to.x - from.x
+  const deltaY = to.y - from.y
+  const distance = Math.hypot(deltaX, deltaY)
+  if (distance <= committedHeadingTargetLineRadiusPx || distance === 0) {
+    return to
+  }
+
+  const scale = committedHeadingTargetLineRadiusPx / distance
+  return {
+    x: from.x + deltaX * scale,
+    y: from.y + deltaY * scale,
+  }
+}
+const syncHeadingTargetPlanningState = (
+  overlayUi: OverlayUiRefs,
+  active: boolean,
+) => {
+  overlayUi.headingTargetOverlay.classList.toggle(
+    'heading-target-overlay-planning',
+    active,
+  )
+  overlayUi.headingTargetDot.classList.toggle(
+    'heading-target-dot-planning',
+    active,
+  )
 }
 const isProjectedPositionInViewport = (position: THREE.Vector3) =>
   position.x >= -1 &&
@@ -265,6 +296,7 @@ const updateSpacecraftCallout = (options: {
   committedTargetHeadingScreenPosition: { x: number; y: number } | null
   committedTargetHeadingWorldPosition: Vec2 | null
   targetHeading: number | null
+  targetHeadingPlanActive: boolean
   targetHeadingScreenPosition: { x: number; y: number } | null
   targetHeadingWorldPosition: Vec2 | null
   viewportSize: number
@@ -300,6 +332,7 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
     options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    syncHeadingTargetPlanningState(options.overlayUi, false)
     return options.displayHeadingAngle
   }
 
@@ -368,10 +401,19 @@ const updateSpacecraftCallout = (options: {
       'viewBox',
       `0 0 ${window.innerWidth} ${window.innerHeight}`,
     )
+    syncHeadingTargetPlanningState(
+      options.overlayUi,
+      options.targetHeadingPlanActive,
+    )
     setSvgLineEndpoints(
       options.overlayUi.headingTargetLine,
       spacecraftScreenPosition,
-      targetHeadingScreenPosition ?? spacecraftScreenPosition,
+      options.targetHeadingPlanActive
+        ? (targetHeadingScreenPosition ?? spacecraftScreenPosition)
+        : clampHeadingTargetLineEndpoint(
+            spacecraftScreenPosition,
+            targetHeadingScreenPosition ?? spacecraftScreenPosition,
+          ),
     )
     if (
       options.committedTargetHeading !== null &&
@@ -388,18 +430,24 @@ const updateSpacecraftCallout = (options: {
       setSvgLineEndpoints(
         options.overlayUi.headingCommittedTargetLine,
         spacecraftScreenPosition,
-        committedTargetHeadingScreenPosition ?? spacecraftScreenPosition,
+        clampHeadingTargetLineEndpoint(
+          spacecraftScreenPosition,
+          committedTargetHeadingScreenPosition ?? spacecraftScreenPosition,
+        ),
       )
     } else {
       options.overlayUi.headingCommittedTargetLine.style.display = 'none'
     }
-    options.overlayUi.headingTargetDot.style.display = 'block'
-    options.overlayUi.headingTargetDot.style.left = `${
-      targetHeadingScreenPosition?.x ?? screenX
-    }px`
-    options.overlayUi.headingTargetDot.style.top = `${
-      targetHeadingScreenPosition?.y ?? screenY
-    }px`
+    options.overlayUi.headingTargetDot.style.display =
+      options.targetHeadingPlanActive ? 'block' : 'none'
+    if (options.targetHeadingPlanActive) {
+      options.overlayUi.headingTargetDot.style.left = `${
+        targetHeadingScreenPosition?.x ?? screenX
+      }px`
+      options.overlayUi.headingTargetDot.style.top = `${
+        targetHeadingScreenPosition?.y ?? screenY
+      }px`
+    }
     options.overlayUi.headingTargetTurnSlice.setAttribute(
       'd',
       getHeadingTargetSlicePath({
@@ -415,6 +463,7 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
     options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    syncHeadingTargetPlanningState(options.overlayUi, false)
   }
 
   return headingAngle
@@ -446,6 +495,7 @@ export const createSpacecraftPresentation = (options: {
       committedTargetHeadingScreenPosition: { x: number; y: number } | null
       committedTargetHeadingWorldPosition: Vec2 | null
       targetHeading: number | null
+      targetHeadingPlanActive: boolean
       targetHeadingScreenPosition: { x: number; y: number } | null
       targetHeadingWorldPosition: Vec2 | null
       viewportSize: number
@@ -508,6 +558,7 @@ export const createSpacecraftPresentation = (options: {
         committedTargetHeadingWorldPosition:
           state.committedTargetHeadingWorldPosition,
         targetHeading: state.targetHeading,
+        targetHeadingPlanActive: state.targetHeadingPlanActive,
         targetHeadingScreenPosition: state.targetHeadingScreenPosition,
         targetHeadingWorldPosition: state.targetHeadingWorldPosition,
         viewportSize: state.viewportSize,

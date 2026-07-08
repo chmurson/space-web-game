@@ -420,7 +420,7 @@ describe('createRuntimeActions', () => {
     expect(runtime.simulation.assistMode).toBe('off')
   })
 
-  it('shows a planned target heading without committing the turn until release', () => {
+  it('shows a planned target heading without committing the turn until confirmation', () => {
     const runtime = createRuntime()
     const createRipple = vi.fn()
     const runtimeActions = createTestRuntimeActions(runtime, { createRipple })

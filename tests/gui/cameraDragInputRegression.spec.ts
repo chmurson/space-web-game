@@ -138,7 +138,7 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
       plannedHeadingCount: 0,
     },
     offscreenBeforeMove: {
-      canceledPlanCount: 1,
+      canceledPlanCount: 0,
       committedPlanCount: 0,
       panCount: 1,
       plannedHeadingCount: 0,
@@ -191,6 +191,7 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
         getCurrentTimeWarp: () => 1,
         getCurrentTrajectoryHorizonHours: () => 1,
         getInteractionsEnabled: () => true,
+        getMobileManeuverStartByDrag: () => true,
         getSpacecraftVisible: () => spacecraftVisible,
         getTargetControlRows: () => [],
         getTimeWarpPreview: () => ({

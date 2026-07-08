@@ -60,7 +60,7 @@ const doubleTapZoomStartPx = 10
 const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
 const cameraPanTapTolerancePx = 8
-const targetHeadingHoldDelayMs = 180
+const targetHeadingHoldDelayMs = 320
 const intentionalCameraUnlockSwipeViewportRatio = 0.5
 const touchControlRevealTabHeightPx = 84
 const touchControlRevealLayout = {
@@ -105,6 +105,15 @@ type ActiveGestureSession =
   | { kind: 'none' }
   | {
       kind: 'target-heading-plan'
+      mode: 'tap-confirm'
+      hasMovedForTap: boolean
+      startX: number
+      startY: number
+      touchId: number
+    }
+  | {
+      kind: 'target-heading-plan'
+      mode: 'drag-release'
       latestX: number
       latestY: number
       startX: number
@@ -203,6 +212,7 @@ export const createTouchControls = (options: {
   getCurrentTrajectoryHorizonHours(): number
   getCurrentTimeWarp(): number
   getInteractionsEnabled(): boolean
+  getMobileManeuverStartByDrag(): boolean
   getSpacecraftVisible(): boolean
   getAssistTargetUiState(): AssistTargetUiState
   getTargetControlRows(): TargetControlBodyRow[]
@@ -260,6 +270,7 @@ export const createTouchControls = (options: {
   let activeSession: ActiveGestureSession = { kind: 'none' }
   let lastTap: (ScreenPoint & { time: number }) | null = null
   let pinchSuppressTapUntil = 0
+  let targetHeadingPlanActive = false
   let timeWarpControlVisible = true
   let syncTargetRecommendationCue = () => {}
 
@@ -547,7 +558,7 @@ export const createTouchControls = (options: {
 
   const clearGameplayTouchInput = () => {
     clearPendingTapState()
-    clearTargetHeadingPlanSession()
+    cancelTargetHeadingPlan()
     clearZoneGesture()
     clearActiveSession()
     options.keyboardInput.clear()
@@ -563,7 +574,7 @@ export const createTouchControls = (options: {
     }
 
     const [first, second] = Array.from(touches)
-    clearTargetHeadingPlanSession()
+    cancelTargetHeadingPlan()
     clearZoneGesture()
     clearPendingTapState()
     activeSession = {
@@ -635,7 +646,22 @@ export const createTouchControls = (options: {
     }
   }
 
-  const beginTargetHeadingPlanSession = (touch: Touch) => {
+  const beginTapConfirmTargetHeadingPlanSession = (touch: Touch) => {
+    if (!targetHeadingPlanActive || !options.getSpacecraftVisible()) {
+      return
+    }
+
+    activeSession = {
+      kind: 'target-heading-plan',
+      mode: 'tap-confirm',
+      hasMovedForTap: false,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      touchId: touch.identifier,
+    }
+  }
+
+  const beginDragReleaseTargetHeadingPlanSession = (touch: Touch) => {
     if (!options.getSpacecraftVisible()) {
       return false
     }
@@ -643,6 +669,7 @@ export const createTouchControls = (options: {
     const touchId = touch.identifier
     activeSession = {
       kind: 'target-heading-plan',
+      mode: 'drag-release',
       latestX: touch.clientX,
       latestY: touch.clientY,
       startX: touch.clientX,
@@ -651,14 +678,16 @@ export const createTouchControls = (options: {
       timeoutId: window.setTimeout(() => {
         if (
           activeSession.kind !== 'target-heading-plan' ||
+          activeSession.mode !== 'drag-release' ||
           activeSession.touchId !== touchId
         ) {
           return
         }
         if (!options.getSpacecraftVisible()) {
-          clearTargetHeadingPlanSession()
+          cancelTargetHeadingPlan()
           return
         }
+        targetHeadingPlanActive = true
         activeSession.started = true
         options.onTargetHeadingPlan(
           activeSession.latestX,
@@ -674,9 +703,41 @@ export const createTouchControls = (options: {
     if (activeSession.kind !== 'target-heading-plan') {
       return
     }
-    window.clearTimeout(activeSession.timeoutId)
+    if (activeSession.mode === 'drag-release') {
+      window.clearTimeout(activeSession.timeoutId)
+    }
     activeSession = { kind: 'none' }
+  }
+
+  const cancelTargetHeadingPlan = () => {
+    if (!targetHeadingPlanActive) {
+      clearTargetHeadingPlanSession()
+      return
+    }
+
+    targetHeadingPlanActive = false
+    clearTargetHeadingPlanSession()
     options.onTargetHeadingPlanCanceled()
+  }
+
+  const beginTargetHeadingPlan = (touch: Touch) => {
+    if (!options.getSpacecraftVisible()) {
+      return false
+    }
+
+    targetHeadingPlanActive = true
+    options.onTargetHeadingPlan(touch.clientX, touch.clientY)
+    return true
+  }
+
+  const commitTargetHeadingPlan = () => {
+    if (!targetHeadingPlanActive) {
+      return false
+    }
+
+    targetHeadingPlanActive = false
+    clearTargetHeadingPlanSession()
+    return options.onTargetHeadingPlanCommitted()
   }
 
   const sessionOwnsTouch = (touchId: number) => {
@@ -729,6 +790,11 @@ export const createTouchControls = (options: {
       }
 
       const now = performance.now()
+      if (targetHeadingPlanActive && !options.getSpacecraftVisible()) {
+        cancelTargetHeadingPlan()
+        return
+      }
+
       const eventTarget = event.target
       const isTimeWarpTarget =
         timeWarpRevealControl.isOpen() &&
@@ -756,8 +822,33 @@ export const createTouchControls = (options: {
         return
       }
 
+      if (
+        targetHeadingPlanActive &&
+        !isRevealControlTarget &&
+        event.touches.length >= 2
+      ) {
+        event.preventDefault()
+        pinchSuppressTapUntil = now + pinchSuppressTapMs
+        clearPendingTapState()
+        cancelTargetHeadingPlan()
+        return
+      }
+
       for (const touch of Array.from(event.changedTouches)) {
         if (isRevealControlTarget) {
+          continue
+        }
+
+        tapTouches.set(touch.identifier, {
+          startTime: now,
+          startX: touch.clientX,
+          startY: touch.clientY,
+        })
+
+        if (targetHeadingPlanActive) {
+          if (activeSession.kind === 'none' && event.touches.length === 1) {
+            beginTapConfirmTargetHeadingPlanSession(touch)
+          }
           continue
         }
 
@@ -775,16 +866,18 @@ export const createTouchControls = (options: {
           continue
         }
 
-        tapTouches.set(touch.identifier, {
-          startTime: now,
-          startX: touch.clientX,
-          startY: touch.clientY,
-        })
+        if (
+          options.getMobileManeuverStartByDrag() &&
+          activeSession.kind === 'none' &&
+          event.touches.length === 1
+        ) {
+          if (beginDragReleaseTargetHeadingPlanSession(touch)) {
+            continue
+          }
+        }
 
         if (activeSession.kind === 'none' && event.touches.length === 1) {
-          if (!beginTargetHeadingPlanSession(touch)) {
-            beginCameraPanSession(touch)
-          }
+          beginCameraPanSession(touch)
         }
       }
 
@@ -834,7 +927,7 @@ export const createTouchControls = (options: {
       switch (activeSession.kind) {
         case 'target-heading-plan': {
           if (!options.getSpacecraftVisible()) {
-            clearTargetHeadingPlanSession()
+            cancelTargetHeadingPlan()
             return
           }
 
@@ -843,10 +936,24 @@ export const createTouchControls = (options: {
             return
           }
 
-          activeSession.latestX = touch.clientX
-          activeSession.latestY = touch.clientY
-          if (activeSession.started) {
-            options.onTargetHeadingPlan(touch.clientX, touch.clientY)
+          if (activeSession.mode === 'drag-release') {
+            activeSession.latestX = touch.clientX
+            activeSession.latestY = touch.clientY
+
+            if (activeSession.started) {
+              options.onTargetHeadingPlan(touch.clientX, touch.clientY)
+              return
+            }
+
+            if (
+              Math.hypot(
+                touch.clientX - activeSession.startX,
+                touch.clientY - activeSession.startY,
+              ) >= cameraPanTapTolerancePx
+            ) {
+              cancelTargetHeadingPlan()
+              beginCameraPanSession(touch)
+            }
             return
           }
 
@@ -856,8 +963,8 @@ export const createTouchControls = (options: {
               touch.clientY - activeSession.startY,
             ) >= cameraPanTapTolerancePx
           ) {
-            clearTargetHeadingPlanSession()
-            beginCameraPanSession(touch)
+            activeSession.hasMovedForTap = true
+            options.onTargetHeadingPlan(touch.clientX, touch.clientY)
           }
           return
         }
@@ -1047,16 +1154,29 @@ export const createTouchControls = (options: {
           activeSession.kind === 'target-heading-plan' &&
           activeSession.touchId === touch.identifier
         ) {
-          const shouldCommit = activeSession.started
-          window.clearTimeout(activeSession.timeoutId)
-          activeSession = { kind: 'none' }
-          if (shouldCommit) {
-            options.onTargetHeadingPlanCommitted()
+          if (activeSession.mode === 'drag-release') {
+            const shouldCommit = activeSession.started
+            window.clearTimeout(activeSession.timeoutId)
+            activeSession = { kind: 'none' }
+            if (shouldCommit) {
+              commitTargetHeadingPlan()
+              tapTouches.delete(touch.identifier)
+              lastTap = null
+              continue
+            }
+          } else {
+            const shouldCommit = !activeSession.hasMovedForTap
+            activeSession = { kind: 'none' }
+            if (shouldCommit) {
+              commitTargetHeadingPlan()
+              tapTouches.delete(touch.identifier)
+              lastTap = null
+              continue
+            }
+
             tapTouches.delete(touch.identifier)
             lastTap = null
             continue
-          } else {
-            options.onTargetHeadingPlanCanceled()
           }
         }
 
@@ -1115,6 +1235,15 @@ export const createTouchControls = (options: {
           continue
         }
 
+        if (
+          !options.getMobileManeuverStartByDrag() &&
+          !targetHeadingPlanActive &&
+          beginTargetHeadingPlan(touch)
+        ) {
+          lastTap = null
+          continue
+        }
+
         lastTap = { time: now, x: touch.clientX, y: touch.clientY }
       }
     },
@@ -1138,7 +1267,7 @@ export const createTouchControls = (options: {
         )
       ) {
         if (activeSession.kind === 'target-heading-plan') {
-          clearTargetHeadingPlanSession()
+          cancelTargetHeadingPlan()
         } else if (activeSession.kind === 'step-selector') {
           finishStepSelectorGesture(false)
         } else if (

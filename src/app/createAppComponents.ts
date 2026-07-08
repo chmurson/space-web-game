@@ -424,6 +424,8 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
+  let mobileManeuverStartByDrag =
+    options.config.userSettings.mobileManeuverStartByDrag
   const targetHeadingPlanLifecycleHandlers = {
     onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
     onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
@@ -458,6 +460,7 @@ export const createAppComponents = (options: {
         options.runtimeState.simulation.timeWarpIndex
       ] ?? 1,
     getInteractionsEnabled: getGameInteractionsEnabled,
+    getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getAssistTargetUiState: queries.getAssistTargetUiState,
     getTargetControlRows: () =>
@@ -585,6 +588,7 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
+    getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
     getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTargetControlSide: () => touchTargetControlSide,
@@ -599,6 +603,10 @@ export const createAppComponents = (options: {
       if (open) {
         keyboardInput.clear()
       }
+    },
+    onMobileManeuverStartByDragChange: (startByDrag) => {
+      mobileManeuverStartByDrag = startByDrag
+      updateUserSettings({ mobileManeuverStartByDrag: startByDrag })
     },
     onTouchBurnControlSideChange: (side) => {
       touchBurnControlSide = side
