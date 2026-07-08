@@ -1,4 +1,10 @@
-import { expect, type Page, type TestInfo, test } from '@playwright/test'
+import {
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+  test,
+} from '@playwright/test'
 
 test.use({
   hasTouch: false,
@@ -41,19 +47,7 @@ const attachScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('shows transient bottom notices on desktop', async ({
-  page,
-}, testInfo) => {
-  await startReachMoonMission(page)
-
-  await page.keyboard.press('KeyC')
-
-  const notice = page.locator('.hud-notice-transient')
-  await expect(notice).toBeVisible()
-  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
-  await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
-  await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
-
+const expectNoticeInsideViewport = async (notice: Locator) => {
   const metrics = await notice.evaluate((noticeElement) => {
     const rect = noticeElement.getBoundingClientRect()
     const style = getComputedStyle(noticeElement)
@@ -80,6 +74,57 @@ test('shows transient bottom notices on desktop', async ({
   expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
   expect(metrics.opacity).toBe('1')
   expect(metrics.visibility).toBe('visible')
+}
+
+test('shows transient bottom notices on desktop', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.keyboard.press('KeyC')
+
+  const notice = page.locator('.hud-notice-transient')
+  await expect(notice).toBeVisible()
+  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
+  await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
+
+  await expectNoticeInsideViewport(notice)
 
   await attachScreenshot(page, testInfo, 'desktop-camera-mode-notice')
+})
+
+test('shows camera unlock notice when desktop drag unlocks follow camera', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  const canvas = page.locator('canvas')
+  await expect(canvas).toBeVisible()
+  const canvasBox = await canvas.boundingBox()
+  if (!canvasBox) {
+    throw new Error('Expected game canvas to have a visible bounding box')
+  }
+
+  const startX = canvasBox.x + 120
+  const startY = canvasBox.y + canvasBox.height / 2
+  const endX = canvasBox.x + canvasBox.width - 120
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  await page.mouse.move(endX, startY, { steps: 8 })
+  await page.mouse.up()
+
+  const notice = page.locator('.hud-notice-transient')
+  await expect(notice).toBeVisible()
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera unlocked',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText('')
+  await expect(notice).toHaveAttribute(
+    'aria-label',
+    'Camera unlocked. Drag anywhere to pan.',
+  )
+  await expectNoticeInsideViewport(notice)
+
+  await attachScreenshot(page, testInfo, 'desktop-camera-drag-unlock-notice')
 })
