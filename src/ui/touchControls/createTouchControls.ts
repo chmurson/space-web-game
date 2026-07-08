@@ -663,7 +663,7 @@ export const createTouchControls = (options: {
 
   const beginDragReleaseTargetHeadingPlanSession = (touch: Touch) => {
     if (!options.getSpacecraftVisible()) {
-      return
+      return false
     }
 
     const touchId = touch.identifier
@@ -696,6 +696,7 @@ export const createTouchControls = (options: {
       }, targetHeadingHoldDelayMs),
       touchId,
     }
+    return true
   }
 
   const clearTargetHeadingPlanSession = () => {
@@ -870,8 +871,9 @@ export const createTouchControls = (options: {
           activeSession.kind === 'none' &&
           event.touches.length === 1
         ) {
-          beginDragReleaseTargetHeadingPlanSession(touch)
-          continue
+          if (beginDragReleaseTargetHeadingPlanSession(touch)) {
+            continue
+          }
         }
 
         if (activeSession.kind === 'none' && event.touches.length === 1) {

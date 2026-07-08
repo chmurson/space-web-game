@@ -32,6 +32,36 @@ type FpsIndicatorSurfaceProps = {
   view: FpsIndicatorView | null
 }
 
+type RocketWithFlameIconProps = {
+  className?: string
+  rootRef?(element: SVGSVGElement | null): void
+}
+
+export const RocketWithFlameIcon = ({
+  className = 'telemetry-speed-icon',
+  rootRef,
+}: RocketWithFlameIconProps) => (
+  <svg class={className} viewBox="0 0 16 16" aria-hidden="true" ref={rootRef}>
+    <path
+      class="telemetry-speed-icon-body"
+      d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"
+    />
+    <path
+      class="telemetry-speed-icon-wing telemetry-speed-icon-wing-left"
+      d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"
+    />
+    <path
+      class="telemetry-speed-icon-wing telemetry-speed-icon-wing-right"
+      d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"
+    />
+    <circle class="telemetry-speed-icon-window" cx="8" cy="6.1" r="0.95" />
+    <path
+      class="telemetry-speed-icon-flame"
+      d="M8 14.6 C8.9 13.6, 9.3 12.4, 8 11.1 C6.7 12.4, 7.1 13.6, 8 14.6 Z"
+    />
+  </svg>
+)
+
 export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
   <div class="telemetry-strip">
     <div class="telemetry-pill telemetry-pill-time">
@@ -146,37 +176,11 @@ export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
       </div>
       <div class="telemetry-pill telemetry-pill-velocity">
         <span class="telemetry-speed-display">
-          <svg
-            class="telemetry-speed-icon"
-            viewBox="0 0 16 16"
-            aria-hidden="true"
-            ref={(element) => {
+          <RocketWithFlameIcon
+            rootRef={(element) => {
               refs.speedIcon = element
             }}
-          >
-            <path
-              class="telemetry-speed-icon-body"
-              d="M8 1.5 L10.5 6.2 L10.2 10.1 L9 12.8 L7 12.8 L5.8 10.1 L5.5 6.2 Z"
-            />
-            <path
-              class="telemetry-speed-icon-wing telemetry-speed-icon-wing-left"
-              d="M5.7 8.8 L3.9 10.8 L5.8 11.1 Z"
-            />
-            <path
-              class="telemetry-speed-icon-wing telemetry-speed-icon-wing-right"
-              d="M10.3 8.8 L12.1 10.8 L10.2 11.1 Z"
-            />
-            <circle
-              class="telemetry-speed-icon-window"
-              cx="8"
-              cy="6.1"
-              r="0.95"
-            />
-            <path
-              class="telemetry-speed-icon-flame"
-              d="M8 14.6 C8.9 13.6, 9.3 12.4, 8 11.1 C6.7 12.4, 7.1 13.6, 8 14.6 Z"
-            />
-          </svg>
+          />
           <strong
             data-stat="speed"
             ref={(element) => {
