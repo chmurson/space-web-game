@@ -637,7 +637,7 @@ export const createTouchControls = (options: {
 
   const beginTargetHeadingPlanSession = (touch: Touch) => {
     if (!options.getSpacecraftVisible()) {
-      return
+      return false
     }
 
     const touchId = touch.identifier
@@ -667,6 +667,7 @@ export const createTouchControls = (options: {
       }, targetHeadingHoldDelayMs),
       touchId,
     }
+    return true
   }
 
   const clearTargetHeadingPlanSession = () => {
@@ -781,7 +782,9 @@ export const createTouchControls = (options: {
         })
 
         if (activeSession.kind === 'none' && event.touches.length === 1) {
-          beginTargetHeadingPlanSession(touch)
+          if (!beginTargetHeadingPlanSession(touch)) {
+            beginCameraPanSession(touch)
+          }
         }
       }
 
