@@ -24,11 +24,13 @@ let activeDialogClose: ((restoreFocus?: boolean) => void) | null = null
 
 export const createUiSettingsDialog = (options: {
   app: HTMLElement
+  getMobileManeuverStartByDrag: () => boolean
   getOrbitPointDisplay: () => OrbitPointDisplaySettings
   getTouchBurnControlSide: () => TouchControlSide
   getTouchTargetControlSide: () => TouchControlSide
   getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
   getTouchWarpControlSide: () => TouchControlSide
+  onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onOpenChange?: (open: boolean) => void
   onTouchBurnControlSideChange(side: TouchControlSide): void
@@ -51,6 +53,7 @@ export const createUiSettingsDialog = (options: {
     surface.render({
       activePane,
       dialogId,
+      mobileManeuverStartByDrag: options.getMobileManeuverStartByDrag(),
       orbitPointDisplay: options.getOrbitPointDisplay(),
       open,
       touchBurnControlSide: options.getTouchBurnControlSide(),
@@ -71,6 +74,10 @@ export const createUiSettingsDialog = (options: {
         activePane = 'spacecraftControls'
         syncState()
         focusFirstElement()
+      },
+      onMobileManeuverStartByDragChange: (startByDrag) => {
+        options.onMobileManeuverStartByDragChange(startByDrag)
+        syncState()
       },
       onOrbitPointDisplayChange: (settings) => {
         options.onOrbitPointDisplayChange(settings)

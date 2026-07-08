@@ -13,7 +13,27 @@ type TouchPoint = {
   y: number
 }
 
-const startGame = async (page: Page) => {
+const userSettingsStorageKey = 'space-web-game.userSettings.v1'
+
+const startGame = async (
+  page: Page,
+  options: { mobileManeuverStartByDrag?: boolean } = {},
+) => {
+  if (options.mobileManeuverStartByDrag !== undefined) {
+    await page.addInitScript(
+      ({ key, mobileManeuverStartByDrag }) => {
+        window.localStorage.setItem(
+          key,
+          JSON.stringify({ mobileManeuverStartByDrag }),
+        )
+      },
+      {
+        key: userSettingsStorageKey,
+        mobileManeuverStartByDrag: options.mobileManeuverStartByDrag,
+      },
+    )
+  }
+
   await page.goto('/?scenario=earth-moon&devtools=1&touchTrajectorySide=hidden')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await expect(page.locator('.touch-controls')).toBeVisible()
@@ -155,7 +175,7 @@ const tap = async (page: Page, point: TouchPoint) => {
 test('mobile tap planning persists through drag release and confirms on second tap', async ({
   page,
 }, testInfo) => {
-  await startGame(page)
+  await startGame(page, { mobileManeuverStartByDrag: false })
 
   await tap(page, { id: 1, x: 280, y: 360 })
   await expectHeadingTargetVisible(page)
@@ -210,7 +230,7 @@ test('mobile tap planning persists through drag release and confirms on second t
 test('mobile two-finger tap cancels active turn planning without committing', async ({
   page,
 }, testInfo) => {
-  await startGame(page)
+  await startGame(page, { mobileManeuverStartByDrag: false })
 
   await tap(page, { id: 1, x: 280, y: 360 })
   await expectHeadingTargetVisible(page)
@@ -225,4 +245,53 @@ test('mobile two-finger tap cancels active turn planning without committing', as
     .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
     .toBeNull()
   await createTouchScreenshot(page, testInfo, 'mobile-turn-plan-canceled')
+})
+
+test('mobile default drag maneuver starts turning on release', async ({
+  page,
+}, testInfo) => {
+  await startGame(page)
+
+  await tap(page, { id: 1, x: 280, y: 360 })
+  await expectHeadingTargetHidden(page)
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
+    .toBeNull()
+  await page.waitForTimeout(360)
+
+  await dispatchTouch(
+    page,
+    'touchstart',
+    [{ id: 2, x: 280, y: 360 }],
+    [{ id: 2, x: 280, y: 360 }],
+  )
+  await page.waitForTimeout(220)
+  await expectHeadingTargetVisible(page)
+  const pendingPlanStyle = await getHeadingTargetState(page)
+  expect(pendingPlanStyle.overlayPlanning).toBe(true)
+  expect(pendingPlanStyle.dotPlanning).toBe(true)
+  expectCyanColor(pendingPlanStyle.lineStroke)
+  expectCyanColor(pendingPlanStyle.sliceFill)
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
+    .toBeNull()
+
+  await dispatchTouch(
+    page,
+    'touchmove',
+    [{ id: 2, x: 325, y: 410 }],
+    [{ id: 2, x: 325, y: 410 }],
+  )
+  await dispatchTouch(page, 'touchend', [], [{ id: 2, x: 325, y: 410 }])
+
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
+    .not.toBeNull()
+  await expectHeadingTargetVisible(page, { dotVisible: false })
+  const committedTurnStyle = await getHeadingTargetState(page)
+  expect(committedTurnStyle.overlayPlanning).toBe(false)
+  expect(committedTurnStyle.dotDisplay).toBe('none')
+  expect(committedTurnStyle.lineLength).toBeLessThanOrEqual(56)
+
+  await createTouchScreenshot(page, testInfo, 'mobile-turn-drag-committed')
 })

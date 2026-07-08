@@ -290,7 +290,7 @@ describe('tutorialOnboardingProgress', () => {
       'Click open space away from Earth to plan a turn. Move the mouse to adjust the target, then click again to start turning.',
     )
     expect(getOnboardingDescription('intro-point-and-turn', 'mobile')).toBe(
-      'Tap open space away from Earth to plan a turn. Drag to adjust the target, then tap again to start turning.',
+      'Press open space away from Earth to plan a turn. Drag to adjust the target, then release to start turning.',
     )
     expect(
       getTutorialOnboardingPromptContent('intro-point-and-turn', 'desktop')

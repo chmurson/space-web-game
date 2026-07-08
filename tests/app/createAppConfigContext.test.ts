@@ -45,6 +45,7 @@ describe('createAppConfigContext', () => {
       createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
     ).toBe(48)
     expect(createAppConfigContext().userSettings).toMatchObject({
+      mobileManeuverStartByDrag: true,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -57,6 +58,7 @@ describe('createAppConfigContext', () => {
       configurable: true,
       value: createWindowWithSearch('', {
         debugModeEnabled: false,
+        mobileManeuverStartByDrag: false,
         touchBurnControlSide: 'left',
         touchTargetControlSide: 'right',
         touchTrajectoryControlSide: 'left',
@@ -65,6 +67,7 @@ describe('createAppConfigContext', () => {
     })
 
     expect(createAppConfigContext().userSettings).toMatchObject({
+      mobileManeuverStartByDrag: false,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'left',
@@ -79,6 +82,7 @@ describe('createAppConfigContext', () => {
         '?scenario=earth-moon&touchBurnSide=left&touchTargetSide=right&touchTrajectorySide=hidden&touchWarpSide=right',
         {
           debugModeEnabled: false,
+          mobileManeuverStartByDrag: true,
           touchBurnControlSide: 'right',
           touchTargetControlSide: 'left',
           touchTrajectoryControlSide: 'left',
@@ -92,6 +96,7 @@ describe('createAppConfigContext', () => {
     expect(config.initialAppMode).toBe('game')
     expect(config.requestedScenarioId).toBe('earth-moon')
     expect(config.userSettings).toMatchObject({
+      mobileManeuverStartByDrag: true,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
@@ -106,6 +111,7 @@ describe('createAppConfigContext', () => {
         '?touchBurnSide=center&touchTargetSide=middle&touchTrajectorySide=top&touchWarpSide=bottom',
         {
           debugModeEnabled: false,
+          mobileManeuverStartByDrag: false,
           touchBurnControlSide: 'left',
           touchTargetControlSide: 'right',
           touchTrajectoryControlSide: 'right',
@@ -115,6 +121,7 @@ describe('createAppConfigContext', () => {
     })
 
     expect(createAppConfigContext().userSettings).toMatchObject({
+      mobileManeuverStartByDrag: false,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'right',

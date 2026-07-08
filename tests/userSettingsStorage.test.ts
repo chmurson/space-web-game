@@ -49,6 +49,7 @@ describe('userSettingsStorage', () => {
   it('defaults touch controls to their configured sides', () => {
     expect(readUserSettings()).toEqual({
       debugModeEnabled: false,
+      mobileManeuverStartByDrag: true,
       orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -67,6 +68,7 @@ describe('userSettingsStorage', () => {
         markersVisible: false,
         pointNameVisible: false,
       },
+      mobileManeuverStartByDrag: false,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
@@ -75,6 +77,7 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
+      mobileManeuverStartByDrag: false,
       orbitPointDisplay: {
         altitudeVisible: false,
         centerDistanceVisible: true,
@@ -92,6 +95,7 @@ describe('userSettingsStorage', () => {
   it('keeps existing settings when updating one touch control side', () => {
     writeUserSettings({
       debugModeEnabled: true,
+      mobileManeuverStartByDrag: false,
       orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -101,6 +105,7 @@ describe('userSettingsStorage', () => {
 
     expect(updateUserSettings({ touchBurnControlSide: 'left' })).toEqual({
       debugModeEnabled: true,
+      mobileManeuverStartByDrag: false,
       orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
@@ -117,6 +122,7 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
+      mobileManeuverStartByDrag: true,
       orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -136,6 +142,7 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
+      mobileManeuverStartByDrag: true,
       orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
@@ -158,6 +165,7 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings()).toEqual({
       debugModeEnabled: true,
+      mobileManeuverStartByDrag: true,
       orbitPointDisplay: {
         ...defaultOrbitPointDisplay,
         centerDistanceVisible: true,

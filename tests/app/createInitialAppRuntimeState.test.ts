@@ -34,6 +34,7 @@ const createConfig = (
   },
   userSettings: {
     debugModeEnabled: false,
+    mobileManeuverStartByDrag: true,
     orbitPointDisplay: {
       altitudeVisible: true,
       centerDistanceVisible: false,

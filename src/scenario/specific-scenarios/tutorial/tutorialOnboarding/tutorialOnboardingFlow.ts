@@ -176,10 +176,10 @@ const tutorialOnboardingPromptDefinitions: Record<
     description: ({ inputMode }) =>
       inputMode === 'mobile'
         ? [
-            { text: 'Tap open space', tone: 'concept' },
+            { text: 'Press open space', tone: 'concept' },
             ' away from ',
             { text: 'Earth', tone: 'concept' },
-            ' to plan a turn. Drag to adjust the target, then tap again to start turning.',
+            ' to plan a turn. Drag to adjust the target, then release to start turning.',
           ]
         : [
             { text: 'Click open space', tone: 'concept' },

@@ -13,6 +13,7 @@ export type OrbitPointDisplaySettingOverrides =
 
 export type UserSettings = {
   debugModeEnabled: boolean
+  mobileManeuverStartByDrag: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
   touchBurnControlSide: TouchControlSide
   touchTargetControlSide: TouchControlSide
@@ -34,6 +35,7 @@ const createDefaultOrbitPointDisplaySettings =
 
 const createDefaultUserSettings = (): UserSettings => ({
   debugModeEnabled: false,
+  mobileManeuverStartByDrag: true,
   orbitPointDisplay: createDefaultOrbitPointDisplaySettings(),
   touchBurnControlSide: 'right',
   touchTargetControlSide: 'left',
@@ -104,6 +106,10 @@ const parseUserSettings = (value: unknown): UserSettings => {
       typeof settings.debugModeEnabled === 'boolean'
         ? settings.debugModeEnabled
         : defaultUserSettings.debugModeEnabled,
+    mobileManeuverStartByDrag: parseBooleanSetting(
+      settings.mobileManeuverStartByDrag,
+      defaultUserSettings.mobileManeuverStartByDrag,
+    ),
     orbitPointDisplay: parseOrbitPointDisplaySettings(
       settings.orbitPointDisplay,
     ),

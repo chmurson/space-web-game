@@ -42,11 +42,13 @@ const getOrbitPointDisplaySummary = (settings: OrbitPointDisplaySettings) => {
 }
 
 const getSpacecraftControlsSummary = ({
+  mobileManeuverStartByDrag,
   touchBurnControlSide,
   touchTargetControlSide,
   touchTrajectoryControlSide,
   touchWarpControlSide,
 }: {
+  mobileManeuverStartByDrag: boolean
   touchBurnControlSide: TouchControlSide
   touchTargetControlSide: TouchControlSide
   touchTrajectoryControlSide: TouchTrajectoryControlState
@@ -57,6 +59,7 @@ const getSpacecraftControlsSummary = ({
     `warp ${touchWarpControlSide}`,
     `target ${touchTargetControlSide}`,
     `trajectory ${touchTrajectoryControlSide}`,
+    `maneuver ${mobileManeuverStartByDrag ? 'drag' : 'tap'}`,
   ].join(', ')
 
 const UiSettingsSegmentedControl = <TValue extends string>({
@@ -147,11 +150,13 @@ const UiSettingsSwitch = ({
   disabled = false,
   label,
   onChange,
+  summary,
 }: {
   checked: boolean
   disabled?: boolean
   label: string
   onChange(checked: boolean): void
+  summary?: string
 }) => (
   <button
     type="button"
@@ -161,7 +166,12 @@ const UiSettingsSwitch = ({
     disabled={disabled}
     onClick={() => onChange(!checked)}
   >
-    <span class="app-dialog-setting-name">{label}</span>
+    <span class={summary ? 'app-dialog-setting-copy' : undefined}>
+      <span class="app-dialog-setting-name">{label}</span>
+      {summary ? (
+        <span class="app-dialog-setting-summary">{summary}</span>
+      ) : null}
+    </span>
     <span class="app-dialog-switch-track" aria-hidden="true">
       <span />
     </span>
@@ -176,6 +186,7 @@ export type UiSettingsDialogPane =
 export type UiSettingsDialogSurfaceProps = {
   activePane: UiSettingsDialogPane
   dialogId: string
+  mobileManeuverStartByDrag: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
   open: boolean
   rootRef(element: HTMLElement | null): void
@@ -184,6 +195,7 @@ export type UiSettingsDialogSurfaceProps = {
   touchTrajectoryControlSide: TouchTrajectoryControlState
   touchWarpControlSide: TouchControlSide
   onBackToMainSettings(): void
+  onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOpenOrbitPointDisplaySettings(): void
   onOpenSpacecraftControlsSettings(): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
@@ -196,6 +208,7 @@ export type UiSettingsDialogSurfaceProps = {
 export const UiSettingsDialogSurface = ({
   activePane,
   dialogId,
+  mobileManeuverStartByDrag,
   orbitPointDisplay,
   open,
   rootRef,
@@ -204,6 +217,7 @@ export const UiSettingsDialogSurface = ({
   touchTrajectoryControlSide,
   touchWarpControlSide,
   onBackToMainSettings,
+  onMobileManeuverStartByDragChange,
   onOpenOrbitPointDisplaySettings,
   onOpenSpacecraftControlsSettings,
   onOrbitPointDisplayChange,
@@ -251,6 +265,7 @@ export const UiSettingsDialogSurface = ({
             label="Spacecraft controls settings"
             onClick={onOpenSpacecraftControlsSettings}
             summary={getSpacecraftControlsSummary({
+              mobileManeuverStartByDrag,
               touchBurnControlSide,
               touchTargetControlSide,
               touchTrajectoryControlSide,
@@ -335,6 +350,23 @@ export const UiSettingsDialogSurface = ({
               value={touchTrajectoryControlSide}
             />
           </UiSettingsRow>
+        </div>
+
+        {/* biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern. */}
+        <div
+          class="app-dialog-setting-group"
+          role="group"
+          aria-label="Maneuvers"
+        >
+          <span class="app-dialog-setting-group-label">Maneuvers</span>
+          <UiSettingsSwitch
+            checked={mobileManeuverStartByDrag}
+            label="Start turning by drag"
+            summary={
+              mobileManeuverStartByDrag ? 'Starts by drag' : 'Starts by tap'
+            }
+            onChange={onMobileManeuverStartByDragChange}
+          />
         </div>
       </div>
     </>
