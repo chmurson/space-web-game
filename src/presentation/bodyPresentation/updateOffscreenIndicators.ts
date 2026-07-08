@@ -128,6 +128,26 @@ const setLabelText = (label: HTMLElement | null, text: string) => {
   }
 }
 
+const setStyleValue = (
+  styles: CSSStyleDeclaration,
+  name: 'left' | 'top',
+  value: string,
+) => {
+  if (styles[name] !== value) {
+    styles[name] = value
+  }
+}
+
+const setDatasetValue = (
+  dataset: DOMStringMap,
+  name: 'offscreenIndicatorArrowSide' | 'offscreenIndicatorEdge',
+  value: string,
+) => {
+  if (dataset[name] !== value) {
+    dataset[name] = value
+  }
+}
+
 const getIndicatorBounds = (options: {
   indicator: HTMLElement
   label: HTMLElement | null
@@ -483,10 +503,10 @@ export const updateOffscreenIndicators = (options: {
       arrowSide === 'right',
     )
 
-    indicator.style.left = `${placement.x}px`
-    indicator.style.top = `${placement.y}px`
-    indicator.dataset.offscreenIndicatorEdge = placement.edge
-    indicator.dataset.offscreenIndicatorArrowSide = arrowSide
+    setStyleValue(indicator.style, 'left', `${placement.x}px`)
+    setStyleValue(indicator.style, 'top', `${placement.y}px`)
+    setDatasetValue(indicator.dataset, 'offscreenIndicatorEdge', placement.edge)
+    setDatasetValue(indicator.dataset, 'offscreenIndicatorArrowSide', arrowSide)
 
     const vector = resolveOffscreenIndicatorVector({
       placement,

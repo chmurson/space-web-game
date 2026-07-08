@@ -2331,6 +2331,7 @@ button.app-dialog-setting {
   top: 0;
   left: 0;
   contain: layout style paint;
+  font-variant-numeric: tabular-nums;
   transform: translateY(-50%);
   will-change: transform;
 }

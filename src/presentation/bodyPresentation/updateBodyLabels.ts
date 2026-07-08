@@ -106,6 +106,14 @@ const applyBodyLabelState = (label: HTMLElement, state: BodyLabelState) => {
   setFixedOrigin(label)
 }
 
+const getBodyLabelBoundsTextKey = (options: {
+  hasDistanceContext: boolean
+  text: string
+}) =>
+  options.hasDistanceContext
+    ? options.text.replaceAll(/\d/g, '#')
+    : options.text
+
 const getBodyLabelBoundsCacheKey = (options: {
   hasDistanceContext: boolean
   text: string
@@ -118,7 +126,7 @@ const getBodyLabelBoundsCacheKey = (options: {
     options.viewportHeight,
     options.hasDistanceContext ? 'distance' : 'name',
     options.wrap ? 'wrap' : 'nowrap',
-    options.text,
+    getBodyLabelBoundsTextKey(options),
   ].join('|')
 
 const getCachedBodyLabelBounds = (
