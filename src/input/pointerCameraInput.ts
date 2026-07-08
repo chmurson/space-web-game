@@ -311,14 +311,13 @@ export const bindPointerCameraInput = (
     if (activeTargetHeadingPlan?.pointerId === event.pointerId) {
       if (!getTargetHeadingSelectionEnabled()) {
         cancelTargetHeadingPlan()
-        return
-      }
-      activeTargetHeadingPlan.latestX = event.clientX
-      activeTargetHeadingPlan.latestY = event.clientY
-      if (activeTargetHeadingPlan.started) {
+      } else if (activeTargetHeadingPlan.started) {
         event.preventDefault()
         updateTargetHeadingPlan(event.clientX, event.clientY)
         return
+      } else {
+        activeTargetHeadingPlan.latestX = event.clientX
+        activeTargetHeadingPlan.latestY = event.clientY
       }
     }
 
