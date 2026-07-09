@@ -6,6 +6,7 @@ export const bindKeyboardShortcuts = (options: {
   autoDiscoverStrongestInfluence: boolean
   getDebugModeEnabled(): boolean
   getInteractionsEnabled(): boolean
+  handleTargetSelectorShortcut?(): boolean
   handleAction(action: UIUserAction): void
   keyboardInput: KeyboardInput
   windowTarget: Pick<Window, 'addEventListener'>
@@ -17,6 +18,18 @@ export const bindKeyboardShortcuts = (options: {
     }
 
     options.keyboardInput.press(event.code, { timeStampMs: event.timeStamp })
+
+    if (
+      !event.repeat &&
+      event.code === 'KeyT' &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey &&
+      options.handleTargetSelectorShortcut?.()
+    ) {
+      return
+    }
 
     const shortcutAction = getKeyboardShortcutAction(event, {
       autoDiscoverStrongestInfluence: options.autoDiscoverStrongestInfluence,

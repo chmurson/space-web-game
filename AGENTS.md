@@ -12,6 +12,7 @@
 - When adding a new scoped `AGENTS.md`, add a link here with a brief explanation of its scope.
 - [extension/space-web-game-devtools/AGENTS.md](extension/space-web-game-devtools/AGENTS.md): Chrome DevTools extension guidance, including when to bump the extension manifest version.
 - [docs/backoffice/AGENTS.md](docs/backoffice/AGENTS.md): Backoffice/runbook guidance for agent-assisted operational reviews such as suspicious highscore audits with Netlify CLI.
+- [src/utils/AGENTS.md](src/utils/AGENTS.md): Shared utility guidance for small helpers used across modules.
 
 ## Design Guidance
 
