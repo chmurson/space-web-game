@@ -828,16 +828,26 @@ export const createTouchControls = (options: {
       case 'rcs-yaw-active':
       case 'right-zone-pending':
       case 'right-zone-active':
-        return activeSession.kind === 'rcs-yaw-active'
-          ? rcsYawControl.ownsTouch(activeSession, touchId)
-          : activeSession.kind === 'right-zone-pending' ||
-              activeSession.kind === 'right-zone-active'
-            ? thrustControl.ownsTouch(activeSession, touchId)
-            : activeSession.kind === 'step-selector'
-              ? activeSession.controlId === 'time-warp'
-                ? timeWarpControl.ownsTouch(activeSession, touchId)
-                : trajectoryHorizonControl.ownsTouch(activeSession, touchId)
-              : activeSession.touchId === touchId
+        if (activeSession.kind === 'rcs-yaw-active') {
+          return rcsYawControl.ownsTouch(activeSession, touchId)
+        }
+
+        if (
+          activeSession.kind === 'right-zone-pending' ||
+          activeSession.kind === 'right-zone-active'
+        ) {
+          return thrustControl.ownsTouch(activeSession, touchId)
+        }
+
+        if (activeSession.kind === 'step-selector') {
+          if (activeSession.controlId === 'time-warp') {
+            return timeWarpControl.ownsTouch(activeSession, touchId)
+          }
+
+          return trajectoryHorizonControl.ownsTouch(activeSession, touchId)
+        }
+
+        return activeSession.touchId === touchId
       case 'pinch':
         return activeSession.touchIds.includes(touchId)
       case 'target-heading-plan':

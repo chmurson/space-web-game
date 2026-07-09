@@ -2,6 +2,7 @@
   --rcs-yaw-left-fill: 0px;
   --rcs-yaw-right-fill: 0px;
   --rcs-yaw-thumb-offset: 0px;
+
   display: grid;
   width: 218px;
   gap: 8px;
