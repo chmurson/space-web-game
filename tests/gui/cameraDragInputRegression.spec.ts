@@ -129,6 +129,74 @@ test('keeps desktop edge-scroll panning independent of heading planning visibili
   })
 })
 
+test('lets passive top HUD space hit-test to canvas while keeping the top menu interactive', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 800, height: 600 })
+  await page.goto('/')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const hitTest = await page.evaluate(() => {
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+
+    const canvas = document.createElement('canvas')
+    canvas.style.position = 'fixed'
+    canvas.style.inset = '0'
+    canvas.style.width = '100vw'
+    canvas.style.height = '100vh'
+
+    const topBar = document.createElement('div')
+    topBar.className = 'top-bar'
+
+    const topMenu = document.createElement('div')
+    topMenu.className = 'top-menu'
+    const topMenuButton = document.createElement('button')
+    topMenuButton.type = 'button'
+    topMenuButton.textContent = 'Open menu'
+    topMenu.append(topMenuButton)
+
+    const telemetry = document.createElement('div')
+    telemetry.className = 'telemetry-strip'
+    telemetry.textContent = 'Telemetry'
+
+    topBar.append(topMenu, telemetry)
+    app.append(canvas, topBar)
+
+    const passiveTopTarget = document.elementFromPoint(
+      window.innerWidth * 0.5,
+      2,
+    )
+    const menuBounds = topMenuButton.getBoundingClientRect()
+    const menuTarget = document.elementFromPoint(
+      menuBounds.left + menuBounds.width * 0.5,
+      menuBounds.top + menuBounds.height * 0.5,
+    )
+
+    return {
+      menuTargetText: menuTarget?.textContent ?? '',
+      menuTargetTagName: menuTarget?.tagName ?? '',
+      passiveTopClassName:
+        passiveTopTarget instanceof HTMLElement
+          ? passiveTopTarget.className.toString()
+          : '',
+      passiveTopTagName: passiveTopTarget?.tagName ?? '',
+    }
+  })
+
+  expect(hitTest).toEqual({
+    menuTargetTagName: 'BUTTON',
+    menuTargetText: 'Open menu',
+    passiveTopClassName: '',
+    passiveTopTagName: 'CANVAS',
+  })
+})
+
 test('keeps mobile touch camera panning offscreen while preserving visible heading planning', async ({
   page,
 }) => {

@@ -105,6 +105,34 @@ const normalizeEdgeVector = (vector: Vec2): Vec2 | null => {
   }
 }
 
+const getEdgeScrollCursor = (direction: Vec2) => {
+  const x = Math.sign(direction.x)
+  const y = Math.sign(direction.y)
+
+  if (x < 0 && y < 0) {
+    return 'nw-resize'
+  }
+  if (x > 0 && y < 0) {
+    return 'ne-resize'
+  }
+  if (x < 0 && y > 0) {
+    return 'sw-resize'
+  }
+  if (x > 0 && y > 0) {
+    return 'se-resize'
+  }
+  if (x < 0) {
+    return 'w-resize'
+  }
+  if (x > 0) {
+    return 'e-resize'
+  }
+  if (y < 0) {
+    return 'n-resize'
+  }
+  return 's-resize'
+}
+
 export const getWheelZoomFactor = (
   event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
   viewportHeight: number,
@@ -197,6 +225,7 @@ export const bindPointerCameraInput = (
   let pointerInsideRenderer = false
   let edgeDwellStartedAtMs: number | null = null
   let edgeDwellDirectionKey = ''
+  const defaultRendererCursor = options.rendererElement.style.cursor
   let activeCameraPan: {
     hasMovedForTap: boolean
     hasPanned: boolean
@@ -219,6 +248,14 @@ export const bindPointerCameraInput = (
   const clearEdgeDwell = () => {
     edgeDwellStartedAtMs = null
     edgeDwellDirectionKey = ''
+  }
+
+  const setEdgeScrollCursor = (cursor: string | null) => {
+    const nextCursor = cursor ?? defaultRendererCursor
+    if (options.rendererElement.style.cursor === nextCursor) {
+      return
+    }
+    options.rendererElement.style.cursor = nextCursor
   }
 
   const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
@@ -291,6 +328,7 @@ export const bindPointerCameraInput = (
       !(options.getEdgeScrollEnabled?.() ?? false)
     ) {
       clearEdgeDwell()
+      setEdgeScrollCursor(null)
       return
     }
 
@@ -299,15 +337,20 @@ export const bindPointerCameraInput = (
 
     if (!direction) {
       clearEdgeDwell()
+      setEdgeScrollCursor(null)
       return
     }
 
-    if (options.getCameraMode() !== 'unlocked') {
-      if (options.getCameraModeChangesLocked()) {
-        clearEdgeDwell()
-        return
-      }
+    const cameraMode = options.getCameraMode()
+    if (cameraMode !== 'unlocked' && options.getCameraModeChangesLocked()) {
+      clearEdgeDwell()
+      setEdgeScrollCursor(null)
+      return
+    }
 
+    setEdgeScrollCursor(getEdgeScrollCursor(direction))
+
+    if (cameraMode !== 'unlocked') {
       const directionKey = `${Math.sign(direction.x)},${Math.sign(direction.y)}`
       if (
         edgeDwellStartedAtMs === null ||
@@ -602,6 +645,7 @@ export const bindPointerCameraInput = (
   options.rendererElement.addEventListener('pointerleave', () => {
     pointerInsideRenderer = false
     clearEdgeDwell()
+    setEdgeScrollCursor(null)
   })
 
   options.rendererElement.addEventListener('contextmenu', (event) => {

@@ -5,6 +5,9 @@ import type { CameraControlMode } from '@/scenario/scenarioDirectiveTypes'
 
 class FakeCanvas extends EventTarget {
   capturedPointerIds: number[] = []
+  style = {
+    cursor: '',
+  }
 
   getBoundingClientRect() {
     return {
@@ -317,6 +320,37 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
     expect(delta?.x).toBeGreaterThan(0)
   })
 
+  it('pans upward from the top edge while the camera is unlocked', () => {
+    const harness = createHarness('unlocked', {
+      edgePanSpeedPixelsPerSecond: 420,
+      edgeScrollEnabled: true,
+    })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 100, clientY: 1 }),
+    )
+    harness.input.updateEdgeScroll(100, 0.1)
+
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    const [delta] = harness.onCameraPan.mock.calls[0] ?? []
+    expect(delta?.y).toBeLessThan(0)
+    expect(harness.canvas.style.cursor).toBe('n-resize')
+  })
+
+  it('uses a diagonal cursor near edge-scroll corners', () => {
+    const harness = createHarness('unlocked', {
+      edgeScrollEnabled: true,
+    })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 1 }),
+    )
+    harness.input.updateEdgeScroll(100, 0.1)
+
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    expect(harness.canvas.style.cursor).toBe('ne-resize')
+  })
+
   it('scales edge panning with the desktop edge pan speed', () => {
     const slow = createHarness('unlocked', {
       edgePanSpeedPixelsPerSecond: 280,
@@ -397,5 +431,6 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
 
     expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.canvas.style.cursor).toBe('')
   })
 })
