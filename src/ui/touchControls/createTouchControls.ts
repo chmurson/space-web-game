@@ -26,6 +26,7 @@ import {
   createTargetControl,
   type TargetControlBodyRow,
 } from './targetControl/createTargetControl'
+import { createRcsYawControl, type RcsYawGestureSession } from './rcsYawControl'
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
 import { createTouchControlsShell } from './touchControlsShell'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
@@ -75,6 +76,10 @@ const touchControlRevealLayout = {
       priority: 20,
     },
     trajectory: {
+      priority: 10,
+    },
+    rcsYaw: {
+      edge: 'left',
       priority: 10,
     },
     thrust: {
@@ -144,6 +149,7 @@ type ActiveGestureSession =
       lastDistance: number
       touchIds: [number, number]
     }
+  | RcsYawGestureSession
   | StepSelectorGestureSession<'time-warp'>
   | StepSelectorGestureSession<'trajectory-horizon'>
   | ThrustGestureSession
@@ -259,6 +265,7 @@ export const createTouchControls = (options: {
   const panel = touchControlsShell.element
   const {
     burn: thrustDock,
+    rcsYaw: rcsYawDock,
     target: targetDock,
     trajectory: trajectoryHorizonDock,
     warp: timeWarpDock,
@@ -276,6 +283,10 @@ export const createTouchControls = (options: {
 
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
+  }
+
+  const syncRcsYawTurn = (turn: number) => {
+    options.keyboardInput.setVirtualTurn(turn)
   }
 
   const timeWarpControl = createConfiguredTimeWarpControl({
@@ -333,6 +344,15 @@ export const createTouchControls = (options: {
     tapMoveTolerancePx,
     vibrate,
   })
+  let closeRcsYawControl = () => {}
+  const rcsYawControl = createRcsYawControl({
+    container: rcsYawDock,
+    onCloseRequest: () => closeRcsYawControl(),
+    onSessionChange: (session) => {
+      activeSession = session
+    },
+    setTurn: syncRcsYawTurn,
+  })
 
   const timeWarpRevealPlacement: TouchControlRevealPlacement = {
     edge: options.initialWarpControlSide,
@@ -345,6 +365,10 @@ export const createTouchControls = (options: {
   const targetRevealPlacement: TouchControlRevealPlacement = {
     edge: options.initialTargetControlSide,
     priority: touchControlRevealLayout.controls.target.priority,
+  }
+  const rcsYawRevealPlacement: TouchControlRevealPlacement = {
+    edge: touchControlRevealLayout.controls.rcsYaw.edge,
+    priority: touchControlRevealLayout.controls.rcsYaw.priority,
   }
   const thrustRevealPlacement: TouchControlRevealPlacement = {
     edge: options.initialBurnControlSide,
@@ -373,6 +397,20 @@ export const createTouchControls = (options: {
     placement: targetRevealPlacement,
   })
   closeTargetControl = targetRevealControl.close
+  const rcsYawRevealControl = createEdgeRevealControl({
+    className: 'touch-rcs-yaw-reveal',
+    content: rcsYawDock,
+    icon: 'RCS',
+    id: 'touch-rcs-yaw-reveal',
+    label: 'Reveal RCS yaw control',
+    onOpenChange: (open) => {
+      if (!open) {
+        clearRcsYawInput()
+      }
+    },
+    placement: rcsYawRevealPlacement,
+  })
+  closeRcsYawControl = rcsYawRevealControl.close
   const targetRevealTab =
     targetRevealControl.element.querySelector<HTMLButtonElement>(
       '.touch-edge-reveal-tab',
@@ -392,6 +430,7 @@ export const createTouchControls = (options: {
     timeWarpRevealControl,
     trajectoryHorizonRevealControl,
     targetRevealControl,
+    rcsYawRevealControl,
     thrustRevealControl,
   ]
   const tutorialFocusTargets: Record<
@@ -426,6 +465,7 @@ export const createTouchControls = (options: {
     timeWarpRevealControl.element,
     trajectoryHorizonRevealControl.element,
     targetRevealControl.element,
+    rcsYawRevealControl.element,
     thrustRevealControl.element,
   )
 
@@ -447,6 +487,9 @@ export const createTouchControls = (options: {
   const clearActiveSession = () => {
     if (activeSession.kind === 'right-zone-pending') {
       thrustControl.clearGesture(activeSession)
+    }
+    if (activeSession.kind === 'rcs-yaw-active') {
+      rcsYawControl.clearGesture(activeSession)
     }
     activeSession = { kind: 'none' }
   }
@@ -536,6 +579,21 @@ export const createTouchControls = (options: {
     syncRevealControlLayout(revealControls)
   }
 
+  const clearRcsYawGesture = () => {
+    activeSession = rcsYawControl.clearGesture(
+      activeSession as RcsYawGestureSession,
+    )
+  }
+
+  const clearRcsYawInput = () => {
+    if (activeSession.kind === 'rcs-yaw-active') {
+      clearRcsYawGesture()
+      return
+    }
+
+    rcsYawControl.clearInput()
+  }
+
   const clearRightZoneGesture = () => {
     activeSession = thrustControl.clearGesture(
       activeSession as ThrustGestureSession,
@@ -553,6 +611,11 @@ export const createTouchControls = (options: {
       activeSession.kind === 'right-zone-active'
     ) {
       clearRightZoneGesture()
+      return
+    }
+
+    if (activeSession.kind === 'rcs-yaw-active') {
+      clearRcsYawGesture()
     }
   }
 
@@ -612,6 +675,24 @@ export const createTouchControls = (options: {
     activeSession = thrustControl.beginDockedGesture(
       touch,
       activeSession as ThrustGestureSession,
+    )
+  }
+
+  const beginRcsYawSession = (touch: Touch) => {
+    if (!rcsYawRevealControl.isOpen()) {
+      return
+    }
+
+    activeSession = rcsYawControl.beginGesture(
+      touch,
+      activeSession as RcsYawGestureSession,
+    )
+  }
+
+  const updateRcsYawSession = (touch: Touch) => {
+    activeSession = rcsYawControl.updateGesture(
+      touch,
+      activeSession as RcsYawGestureSession,
     )
   }
 
@@ -744,16 +825,19 @@ export const createTouchControls = (options: {
     switch (activeSession.kind) {
       case 'double-tap-zoom':
       case 'step-selector':
+      case 'rcs-yaw-active':
       case 'right-zone-pending':
       case 'right-zone-active':
-        return activeSession.kind === 'right-zone-pending' ||
-          activeSession.kind === 'right-zone-active'
-          ? thrustControl.ownsTouch(activeSession, touchId)
-          : activeSession.kind === 'step-selector'
-            ? activeSession.controlId === 'time-warp'
-              ? timeWarpControl.ownsTouch(activeSession, touchId)
-              : trajectoryHorizonControl.ownsTouch(activeSession, touchId)
-            : activeSession.touchId === touchId
+        return activeSession.kind === 'rcs-yaw-active'
+          ? rcsYawControl.ownsTouch(activeSession, touchId)
+          : activeSession.kind === 'right-zone-pending' ||
+              activeSession.kind === 'right-zone-active'
+            ? thrustControl.ownsTouch(activeSession, touchId)
+            : activeSession.kind === 'step-selector'
+              ? activeSession.controlId === 'time-warp'
+                ? timeWarpControl.ownsTouch(activeSession, touchId)
+                : trajectoryHorizonControl.ownsTouch(activeSession, touchId)
+              : activeSession.touchId === touchId
       case 'pinch':
         return activeSession.touchIds.includes(touchId)
       case 'target-heading-plan':
@@ -805,6 +889,11 @@ export const createTouchControls = (options: {
       const isTargetControlTarget =
         targetRevealControl.isOpen() &&
         isEventTargetInside(targetRevealControl.element, eventTarget)
+      const isRcsYawRevealTarget =
+        rcsYawRevealControl.isOpen() &&
+        isEventTargetInside(rcsYawRevealControl.element, eventTarget)
+      const isRcsYawGestureTarget =
+        isRcsYawRevealTarget && rcsYawControl.containsGestureTarget(eventTarget)
       const isThrustTarget =
         thrustRevealControl.isOpen() &&
         isEventTargetInside(thrustRevealControl.element, eventTarget)
@@ -812,6 +901,7 @@ export const createTouchControls = (options: {
         isTimeWarpTarget ||
         isTrajectoryHorizonTarget ||
         isTargetControlTarget ||
+        isRcsYawRevealTarget ||
         isThrustTarget
       let startedDoubleTapZoom = false
 
@@ -897,6 +987,8 @@ export const createTouchControls = (options: {
             beginTrajectoryHorizonSession(touch)
           } else if (isTargetControlTarget) {
             continue
+          } else if (isRcsYawGestureTarget) {
+            beginRcsYawSession(touch)
           } else if (isThrustTarget) {
             beginDockedThrustSession(touch)
           }
@@ -1111,6 +1203,15 @@ export const createTouchControls = (options: {
               : trajectoryHorizonControl.updateGesture(touch, activeSession)
           return
         }
+        case 'rcs-yaw-active': {
+          const touch = getTouchById(event.touches, activeSession.touchId)
+          if (!touch) {
+            return
+          }
+
+          updateRcsYawSession(touch)
+          return
+        }
         case 'right-zone-pending':
         case 'right-zone-active': {
           const touch = getTouchById(event.touches, activeSession.touchId)
@@ -1218,6 +1319,13 @@ export const createTouchControls = (options: {
           clearRightZoneGesture()
         }
 
+        if (
+          activeSession.kind === 'rcs-yaw-active' &&
+          activeSession.touchId === touch.identifier
+        ) {
+          clearRcsYawGesture()
+        }
+
         const tapState = tapTouches.get(touch.identifier)
         tapTouches.delete(touch.identifier)
         if (!tapState || now < pinchSuppressTapUntil) {
@@ -1275,6 +1383,8 @@ export const createTouchControls = (options: {
           activeSession.kind === 'right-zone-active'
         ) {
           clearRightZoneGesture()
+        } else if (activeSession.kind === 'rcs-yaw-active') {
+          clearRcsYawGesture()
         } else {
           clearActiveSession()
         }
@@ -1284,6 +1394,7 @@ export const createTouchControls = (options: {
       syncTargetRecommendationCue()
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()
+      rcsYawControl.syncUi()
     },
     { passive: false },
   )
@@ -1294,6 +1405,7 @@ export const createTouchControls = (options: {
   targetControl.syncUi()
   syncTrajectoryControlVisibility()
   trajectoryHorizonControl.syncUi()
+  rcsYawControl.syncUi()
 
   window.addEventListener('resize', () => {
     thrustControl.syncUi()
@@ -1301,6 +1413,7 @@ export const createTouchControls = (options: {
     syncTargetRecommendationCue()
     targetControl.syncUi()
     trajectoryHorizonControl.syncUi()
+    rcsYawControl.syncUi()
   })
 
   return {
@@ -1345,6 +1458,7 @@ export const createTouchControls = (options: {
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()
       thrustControl.syncUi()
+      rcsYawControl.syncUi()
     },
     updateAssistMode: (_mode) => {},
   }

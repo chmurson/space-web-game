@@ -95,4 +95,24 @@ describe('createKeyboardInput', () => {
     keyboardInput.setVirtualKey('turnRight', true)
     expect(keyboardInput.getManualControls().turn).toBe(-1)
   })
+
+  it('supports clamped analog virtual turn input and clears it', () => {
+    const keyboardInput = createKeyboardInput()
+
+    keyboardInput.setVirtualTurn(0.42)
+    expect(keyboardInput.getManualControls().turn).toBe(0.42)
+    expect(keyboardInput.hasManualTurn()).toBe(true)
+
+    keyboardInput.setVirtualTurn(-2)
+    expect(keyboardInput.getManualControls().turn).toBe(-1)
+
+    keyboardInput.setVirtualTurn(Number.NaN)
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+
+    keyboardInput.setVirtualTurn(0.5)
+    keyboardInput.clear()
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+  })
 })

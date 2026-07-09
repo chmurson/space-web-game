@@ -15,6 +15,7 @@ export type KeyboardInput = {
   press(code: string, options?: { timeStampMs?: number }): void
   release(code: string): void
   setVirtualKey(control: VirtualControlKey, pressed: boolean): void
+  setVirtualTurn(turn: number): void
 }
 
 const mainThrustKeys = ['KeyW', 'ArrowUp']
@@ -27,6 +28,14 @@ const isMainThrustKey = (code: string) => mainThrustKeys.includes(code)
 const isReverseThrustKey = (code: string) => reverseThrustKeys.includes(code)
 const getInputTimeStampMs = () =>
   typeof performance === 'undefined' ? Date.now() : performance.now()
+const clampVirtualTurn = (turn: number) => {
+  if (!Number.isFinite(turn)) {
+    return 0
+  }
+
+  const clamped = Math.min(1, Math.max(-1, turn))
+  return Math.abs(clamped) < 0.001 ? 0 : clamped
+}
 
 export const createKeyboardInput = (): KeyboardInput => {
   const pressedKeys = new Set<string>()
@@ -38,6 +47,7 @@ export const createKeyboardInput = (): KeyboardInput => {
     turnLeft: false,
     turnRight: false,
   }
+  let virtualTurn = 0
   let mainThrustLatched = false
   let lastMainThrustTap: { code: string; timeStampMs: number } | null = null
 
@@ -54,6 +64,7 @@ export const createKeyboardInput = (): KeyboardInput => {
       ) as VirtualControlKey[]) {
         virtualControls[control] = false
       }
+      virtualTurn = 0
       clearMainThrustLatch()
     },
     getManualControls: () => ({
@@ -70,11 +81,16 @@ export const createKeyboardInput = (): KeyboardInput => {
       strafe:
         (pressedKeys.has('KeyQ') || virtualControls.strafeLeft ? -1 : 0) +
         (pressedKeys.has('KeyE') || virtualControls.strafeRight ? 1 : 0),
-      turn:
-        (virtualControls.turnLeft ? 1 : 0) +
-        (virtualControls.turnRight ? -1 : 0),
+      turn: clampVirtualTurn(
+        virtualTurn +
+          (virtualControls.turnLeft ? 1 : 0) +
+          (virtualControls.turnRight ? -1 : 0),
+      ),
     }),
-    hasManualTurn: () => virtualControls.turnLeft || virtualControls.turnRight,
+    hasManualTurn: () =>
+      virtualTurn !== 0 ||
+      virtualControls.turnLeft ||
+      virtualControls.turnRight,
     press: (code, options) => {
       if (pressedKeys.has(code)) {
         return
@@ -109,6 +125,9 @@ export const createKeyboardInput = (): KeyboardInput => {
     },
     setVirtualKey: (control, pressed) => {
       virtualControls[control] = pressed
+    },
+    setVirtualTurn: (turn) => {
+      virtualTurn = clampVirtualTurn(turn)
     },
   }
 }

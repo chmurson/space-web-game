@@ -58,6 +58,7 @@ const createBaseOptions = () => ({
     press: () => {},
     release: () => {},
     setVirtualKey: () => {},
+    setVirtualTurn: () => {},
   },
   maxControlWarp: 100,
   maxTimeWarp: null,
@@ -140,6 +141,7 @@ describe('timeWarpFeedbackPolicy', () => {
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
+        setVirtualTurn: () => {},
       },
     })
 

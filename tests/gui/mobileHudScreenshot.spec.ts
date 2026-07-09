@@ -208,6 +208,20 @@ test('captures the mobile Reach the Moon menu transition', async ({
   await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
 })
 
+test('captures the mobile RCS yaw control reveal', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Reveal RCS yaw control' }).click()
+  await expect(page.locator('#touch-rcs-yaw-reveal')).toHaveClass(
+    /touch-edge-reveal-control-open/,
+  )
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toBeVisible()
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-rcs-yaw-control')
+})
+
 test('captures the mobile Reach the Moon highscores leaderboard', async ({
   page,
 }, testInfo) => {
