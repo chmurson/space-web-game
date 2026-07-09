@@ -47,6 +47,7 @@
   .scenario-loading-panel,
   .scenario-prompt,
   .app-dialog-panel,
+  .crash-menu-panel,
   #app .debug-panel,
   #app .fps-indicator {
     zoom: var(--desktop-hud-overlay-scale);
