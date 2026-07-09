@@ -185,6 +185,8 @@ export type UiSettingsDialogPane =
 
 export type UiSettingsDialogSurfaceProps = {
   activePane: UiSettingsDialogPane
+  desktopEdgePanEnabled: boolean
+  desktopEdgePanVisible: boolean
   dialogId: string
   mobileManeuverStartByDrag: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
@@ -195,6 +197,7 @@ export type UiSettingsDialogSurfaceProps = {
   touchTrajectoryControlSide: TouchTrajectoryControlState
   touchWarpControlSide: TouchControlSide
   onBackToMainSettings(): void
+  onDesktopEdgePanEnabledChange(enabled: boolean): void
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOpenOrbitPointDisplaySettings(): void
   onOpenSpacecraftControlsSettings(): void
@@ -207,6 +210,8 @@ export type UiSettingsDialogSurfaceProps = {
 
 export const UiSettingsDialogSurface = ({
   activePane,
+  desktopEdgePanEnabled,
+  desktopEdgePanVisible,
   dialogId,
   mobileManeuverStartByDrag,
   orbitPointDisplay,
@@ -217,6 +222,7 @@ export const UiSettingsDialogSurface = ({
   touchTrajectoryControlSide,
   touchWarpControlSide,
   onBackToMainSettings,
+  onDesktopEdgePanEnabledChange,
   onMobileManeuverStartByDragChange,
   onOpenOrbitPointDisplaySettings,
   onOpenSpacecraftControlsSettings,
@@ -368,6 +374,27 @@ export const UiSettingsDialogSurface = ({
             onChange={onMobileManeuverStartByDragChange}
           />
         </div>
+
+        {desktopEdgePanVisible ? (
+          // biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern.
+          <div
+            class="app-dialog-setting-group"
+            role="group"
+            aria-label="Camera"
+          >
+            <span class="app-dialog-setting-group-label">Camera</span>
+            <UiSettingsSwitch
+              checked={desktopEdgePanEnabled}
+              label="Turn on scrolling by edge pan"
+              summary={
+                desktopEdgePanEnabled
+                  ? 'Scrolling by edge pan'
+                  : 'Scrolling by dragging'
+              }
+              onChange={onDesktopEdgePanEnabledChange}
+            />
+          </div>
+        ) : null}
       </div>
     </>
   )

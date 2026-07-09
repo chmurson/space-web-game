@@ -2027,6 +2027,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let warpSide: 'left' | 'right' = 'left'
+    let desktopEdgePanEnabled = false
     let mobileManeuverStartByDrag = true
     let orbitPointDisplay = {
       altitudeVisible: true,
@@ -2043,6 +2044,8 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     const dialog = createUiSettingsDialog({
       app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanVisible: () => true,
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchBurnControlSide: () => burnSide,
@@ -2056,6 +2059,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         orbitPointDisplay = settings
       },
       onOpenChange: (open: boolean) => openEvents.push(open),
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        events.push(`edgePan:${enabled}`)
+        desktopEdgePanEnabled = enabled
+      },
       onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
         events.push(`maneuver:${startByDrag}`)
         mobileManeuverStartByDrag = startByDrag
@@ -2152,6 +2159,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       'Start turning by drag',
     )?.textContent
     getButtonByText('Start turning by drag')?.click()
+    const edgePanSwitchInitial = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.getAttribute('aria-checked')
+    const edgePanSwitchInitialText = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.textContent
+    getButtonByText('Turn on scrolling by edge pan')?.click()
     getControlButton('Burn control side', 'left')?.click()
     getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
@@ -2168,6 +2182,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     )?.getAttribute('aria-checked')
     const maneuverSwitchAfterText = getButtonByText(
       'Start turning by drag',
+    )?.textContent
+    const edgePanSwitchAfter = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.getAttribute('aria-checked')
+    const edgePanSwitchAfterText = getButtonByText(
+      'Turn on scrolling by edge pan',
     )?.textContent
     const burnLeftPressed = getControlButton(
       'Burn control side',
@@ -2311,6 +2331,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       altitudeDisabledWhenMarkersOff,
       centerDisabledWhenLabelsOff,
       centerDisabledWhenMarkersOff,
+      edgePanSwitchAfter,
+      edgePanSwitchAfterText,
+      edgePanSwitchInitial,
+      edgePanSwitchInitialText,
       eventCountAfterDisabledCenterClick,
       labelSwitchDisabledWhenLabelsOff,
       labelSwitchDisabledWhenMarkersOff,
@@ -2369,6 +2393,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     className: 'app-dialog ui-settings-dialog',
     events: [
       'maneuver:false',
+      'edgePan:true',
       'burn:left',
       'target:left',
       'trajectory:right',
@@ -2390,6 +2415,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     altitudeDisabledWhenMarkersOff: true,
     centerDisabledWhenLabelsOff: true,
     centerDisabledWhenMarkersOff: true,
+    edgePanSwitchAfter: 'true',
+    edgePanSwitchAfterText:
+      'Turn on scrolling by edge panScrolling by edge pan',
+    edgePanSwitchInitial: 'false',
+    edgePanSwitchInitialText:
+      'Turn on scrolling by edge panScrolling by dragging',
     eventCountAfterDisabledCenterClick: 3,
     labelSwitchDisabledWhenLabelsOff: false,
     labelSwitchDisabledWhenMarkersOff: true,
@@ -2439,7 +2470,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       warp: 'left',
     },
     spacecraftControlGroup: 'Control sides',
-    spacecraftControlGroups: ['Control sides', 'Maneuvers'],
+    spacecraftControlGroups: ['Control sides', 'Maneuvers', 'Camera'],
     spacecraftFocusAfterOpen: true,
     spacecraftSummaryAfterChangesIncludesBurnLeft: true,
     spacecraftSummaryAfterChangesIncludesTargetLeft: true,
@@ -2537,6 +2568,93 @@ test('captures the desktop edge pan speed control in the in-game controls menu',
   await attachMobileScreenshot(page, testInfo, 'desktop-edge-pan-speed-menu')
 })
 
+test('captures the desktop edge pan toggle in UI settings', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 480, height: 720 })
+  await page.goto('/?reachmoon=1')
+  await page.addStyleTag({
+    content: `
+      #app {
+        background: #05070d !important;
+      }
+    `,
+  })
+
+  await page.evaluate(async () => {
+    const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
+    const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    let desktopEdgePanEnabled = false
+
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+
+    const dialog = createUiSettingsDialog({
+      app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanVisible: () => true,
+      getMobileManeuverStartByDrag: () => true,
+      getOrbitPointDisplay: () => ({
+        altitudeVisible: true,
+        centerDistanceVisible: false,
+        labelsVisible: true,
+        markersVisible: true,
+        pointNameVisible: true,
+      }),
+      getTouchBurnControlSide: () => 'right',
+      getTouchTargetControlSide: () => 'left',
+      getTouchTrajectoryControlSide: () => 'hidden',
+      getTouchWarpControlSide: () => 'right',
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        desktopEdgePanEnabled = enabled
+      },
+      onMobileManeuverStartByDragChange: () => {},
+      onOrbitPointDisplayChange: () => {},
+      onTouchBurnControlSideChange: () => {},
+      onTouchTargetControlSideChange: () => {},
+      onTouchTrajectoryControlSideChange: () => {},
+      onTouchWarpControlSideChange: () => {},
+    })
+
+    dialog.open()
+    const spacecraftControlsButton = (
+      Array.from(
+        dialog.element.querySelectorAll('button'),
+      ) as HTMLButtonElement[]
+    ).find((button) =>
+      button.textContent?.includes('Spacecraft controls settings'),
+    )
+    spacecraftControlsButton?.click()
+  })
+
+  await expect(
+    page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
+  ).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Camera' })).toBeVisible()
+  await expect(page.getByText('Turn on scrolling by edge pan')).toBeVisible()
+  await expect(
+    page.getByText('Scrolling by dragging', { exact: true }),
+  ).toBeVisible()
+
+  await page
+    .getByRole('switch', { name: /Turn on scrolling by edge pan/ })
+    .click()
+  await expect(
+    page.getByText('Scrolling by edge pan', { exact: true }),
+  ).toBeVisible()
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-edge-pan-toggle-settings',
+  )
+})
+
 test('captures wide in-game controls keyboard hints', async ({
   page,
 }, testInfo) => {
@@ -2588,6 +2706,7 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   await expect(page.getByText('Trajectory side')).toBeVisible()
   await expect(page.getByText('Start turning by drag')).toBeVisible()
   await expect(page.getByText('Starts by drag')).toBeVisible()
+  await expect(page.getByText('Turn on scrolling by edge pan')).toHaveCount(0)
 
   await attachMobileScreenshot(
     page,

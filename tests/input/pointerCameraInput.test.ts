@@ -254,8 +254,28 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(contextMenu.defaultPrevented).toBe(true)
   })
 
-  it('does not use desktop drag gestures for unlocked camera pan before planning', () => {
+  it('uses desktop drag gestures for unlocked camera pan when edge-scroll is disabled', () => {
     const harness = createHarness('unlocked')
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 130, clientY: 100 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', { clientX: 130, clientY: 100 }),
+    )
+
+    expect(harness.onCameraPan).toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
+  })
+
+  it('does not use desktop drag gestures for unlocked camera pan while edge-scroll is enabled', () => {
+    const harness = createHarness('unlocked', {
+      edgeScrollEnabled: true,
+    })
 
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),

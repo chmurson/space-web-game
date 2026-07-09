@@ -444,6 +444,7 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchWarpControlSide
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
+  let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
   let desktopEdgePanSpeed = options.config.userSettings.desktopEdgePanSpeed
   const targetHeadingPlanLifecycleHandlers = {
     onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
@@ -607,6 +608,8 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
+    getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+    getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
     getTouchBurnControlSide: () => touchBurnControlSide,
@@ -622,6 +625,10 @@ export const createAppComponents = (options: {
       if (open) {
         keyboardInput.clear()
       }
+    },
+    onDesktopEdgePanEnabledChange: (enabled) => {
+      desktopEdgePanEnabled = enabled
+      updateUserSettings({ desktopEdgePanEnabled: enabled })
     },
     onMobileManeuverStartByDragChange: (startByDrag) => {
       mobileManeuverStartByDrag = startByDrag
@@ -663,7 +670,8 @@ export const createAppComponents = (options: {
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
     getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-    getDesktopEdgePanSpeedVisible: () => desktopFinePointerMedia.matches,
+    getDesktopEdgePanSpeedVisible: () =>
+      desktopFinePointerMedia.matches && desktopEdgePanEnabled,
     getMaxCoastPredictionHorizonHours: () =>
       options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
       options.config.trajectory.maxCoastPredictionHorizonHours,
@@ -697,6 +705,7 @@ export const createAppComponents = (options: {
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     getEdgeScrollEnabled: () =>
+      desktopEdgePanEnabled &&
       desktopFinePointerMedia.matches &&
       !topMenu.isOpen() &&
       !inGameControlsMenu.isOpen() &&

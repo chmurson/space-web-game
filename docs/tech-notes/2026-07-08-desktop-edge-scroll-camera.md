@@ -4,35 +4,40 @@ Issue: https://github.com/chmurson/space-web-game/issues/204
 
 ## What Changed
 
-- Desktop mouse drag no longer pans the camera.
-- Desktop fine-pointer input now pans the camera when the pointer rests inside a small canvas edge band while the camera is in `unlocked` mode.
+- Desktop mouse drag remains the default camera scrolling behavior.
+- Desktop fine-pointer input can optionally pan the camera when the pointer rests inside a small canvas edge band while the camera is in `unlocked` mode.
 - When the camera is locked to `centered` or `target`, desktop edge hover must dwell for about 3 seconds before switching to `unlocked`; `cameraModeChangesLocked` still blocks that transition.
 - The camera-unlocked notice now has a desktop edge-scroll variant.
-- The in-game controls menu exposes a desktop-only `Edge pan speed` stepper with `Slow`, `Normal`, and `Fast` values.
+- The in-game controls menu exposes a desktop-only `Edge pan speed` stepper with `Slow`, `Normal`, and `Fast` values while edge-pan scrolling is enabled.
+- UI settings exposes a desktop-only `Turn on scrolling by edge pan` switch. Disabled status reads `Scrolling by dragging`; enabled status reads `Scrolling by edge pan`.
+- The selected edge-pan enablement persists in user settings as `desktopEdgePanEnabled`, defaulting to `false`.
 - The selected speed persists in user settings as `desktopEdgePanSpeed`.
 - Owner follow-up on 2026-07-09 fixed top-edge hit-testing so passive top HUD space no longer blocks upward edge-scroll.
 - Active edge-scroll now sets a native direction-specific cursor for cardinal and diagonal edge directions, then restores the canvas cursor when edge-scroll is inactive.
+- Owner follow-up on 2026-07-09 restored desktop drag camera scrolling as the default and made edge-scroll opt-in.
 
 ## Why
 
-Desktop primary click is now used for turn planning, so camera panning should avoid hold-and-drag gestures that conflict with heading planning. Edge-scroll keeps camera movement available without consuming click/drag input.
+Desktop primary click is now used for turn planning, but the owner follow-up restored the previous drag camera scrolling as the default. Edge-scroll remains available for players who prefer edge-driven camera movement without consuming click/drag input.
 
 ## Key Files
 
 - `src/input/pointerCameraInput.ts`: owns desktop pointer tracking, edge-zone detection, dwell unlock, and edge-scroll panning.
 - `src/runtime/frameLoop.ts`: calls the pointer edge-scroll tick once per frame.
-- `src/app/createAppComponents.ts`: wires fine-pointer gating, UI-blocking checks, speed persistence, and the edge-scroll unlock notice.
+- `src/app/createAppComponents.ts`: wires user opt-in, fine-pointer gating, UI-blocking checks, speed persistence, and the edge-scroll unlock notice.
 - `src/ui/overlayUI/overlayUIStyles.css`: keeps the top menu interactive while allowing passive top HUD space to hit-test through to the canvas.
-- `src/ui/createInGameControlsMenu.ts` and `src/ui/components/InGameControlsMenuSurface.tsx`: own the desktop-only menu control.
-- `src/userSettingsStorage.ts`: owns `desktopEdgePanSpeed` persistence and fallback parsing.
+- `src/ui/createInGameControlsMenu.ts` and `src/ui/components/InGameControlsMenuSurface.tsx`: own the desktop-only speed control.
+- `src/ui/createUiSettingsDialog.ts` and `src/ui/components/UiSettingsDialogSurface.tsx`: own the desktop-only edge-pan enable switch.
+- `src/userSettingsStorage.ts`: owns `desktopEdgePanEnabled` and `desktopEdgePanSpeed` persistence and fallback parsing.
 - `tests/input/pointerCameraInput.test.ts`, `tests/userSettingsStorage.test.ts`, and GUI specs cover the new behavior.
 
 ## Decisions
 
 - Reused the existing frame loop instead of adding a second animation loop inside pointer input.
-- Kept touch drag panning unchanged by suppressing only mouse drag camera panning.
+- Kept touch drag panning unchanged and restored mouse drag camera panning when edge-pan is disabled.
 - Kept the speed setting descriptive rather than numeric to fit the compact controls menu.
 - Edge-scroll is disabled while top menu, in-game controls menu, UI settings, crash menu, or scenario prompts are active.
+- Edge-scroll is opt-in. When disabled, desktop mouse drag handles camera panning; when enabled, mouse drag does not pan so edge-scroll owns desktop camera movement.
 - Passive top HUD space is not treated as an interaction blocker; only the actual top menu remains pointer-interactive.
 - No new shared gesture abstraction was added; the existing pointer and touch adapters remain the ownership boundary.
 
@@ -64,6 +69,19 @@ Owner follow-up validation on 2026-07-09:
 - Inspected GUI screenshots:
   - `tmp/playwright-results/mobileHudScreenshot-captur-c87eb-n-the-in-game-controls-menu-mobile-chromium/desktop-edge-pan-speed-menu.png`: edge pan speed menu still fit and used the existing glass stepper treatment.
   - `tmp/playwright-results/mobileHudScreenshot-captur-666fd-menu-open-over-gameplay-HUD-mobile-chromium/mobile-top-menu-open.png`: top menu stayed interactive and readable without HUD overlap.
+
+Owner follow-up validation on 2026-07-09 for optional edge-pan:
+
+- `npx vitest run --config vite.config.ts tests/input/pointerCameraInput.test.ts tests/userSettingsStorage.test.ts tests/app/createAppConfigContext.test.ts tests/app/createInitialAppRuntimeState.test.ts`: 33 tests passed.
+- `npx biome check src/app/createAppComponents.ts src/input/pointerCameraInput.ts src/ui/createUiSettingsDialog.ts src/ui/components/UiSettingsDialogSurface.tsx src/userSettingsStorage.ts tests/app/createAppConfigContext.test.ts tests/app/createInitialAppRuntimeState.test.ts tests/gui/mobileHudScreenshot.spec.ts tests/input/pointerCameraInput.test.ts tests/userSettingsStorage.test.ts docs/tech-notes/2026-07-08-desktop-edge-scroll-camera.md`: passed.
+- `npx playwright test --config playwright.config.ts tests/gui/mobileHudScreenshot.spec.ts -g "UI settings dialog adapter|desktop edge pan toggle|mobile UI settings dialog"`: 3 tests passed.
+- `npm run build`: passed with the existing Vite large chunk warning.
+- `npm test`: 514 Vitest tests and 16 automation-claim tests passed.
+- `npm run test:gui`: 47 tests passed.
+- `git diff --check`: passed.
+- `coderabbit --base main --agent`: completed with 0 findings.
+- Inspected GUI screenshot:
+  - `tmp/playwright-results/mobileHudScreenshot-captur-c816c-e-pan-toggle-in-UI-settings-mobile-chromium/desktop-edge-pan-toggle-settings.png`: desktop settings panel showed the new Camera group, the edge-pan switch, and the `Scrolling by edge pan` status without overlap.
 
 ## Follow-Ups
 

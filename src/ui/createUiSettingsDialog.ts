@@ -24,12 +24,15 @@ let activeDialogClose: ((restoreFocus?: boolean) => void) | null = null
 
 export const createUiSettingsDialog = (options: {
   app: HTMLElement
+  getDesktopEdgePanEnabled: () => boolean
+  getDesktopEdgePanVisible: () => boolean
   getMobileManeuverStartByDrag: () => boolean
   getOrbitPointDisplay: () => OrbitPointDisplaySettings
   getTouchBurnControlSide: () => TouchControlSide
   getTouchTargetControlSide: () => TouchControlSide
   getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
   getTouchWarpControlSide: () => TouchControlSide
+  onDesktopEdgePanEnabledChange(enabled: boolean): void
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onOpenChange?: (open: boolean) => void
@@ -52,6 +55,8 @@ export const createUiSettingsDialog = (options: {
   const renderDialog = () => {
     surface.render({
       activePane,
+      desktopEdgePanEnabled: options.getDesktopEdgePanEnabled(),
+      desktopEdgePanVisible: options.getDesktopEdgePanVisible(),
       dialogId,
       mobileManeuverStartByDrag: options.getMobileManeuverStartByDrag(),
       orbitPointDisplay: options.getOrbitPointDisplay(),
@@ -74,6 +79,10 @@ export const createUiSettingsDialog = (options: {
         activePane = 'spacecraftControls'
         syncState()
         focusFirstElement()
+      },
+      onDesktopEdgePanEnabledChange: (enabled) => {
+        options.onDesktopEdgePanEnabledChange(enabled)
+        syncState()
       },
       onMobileManeuverStartByDragChange: (startByDrag) => {
         options.onMobileManeuverStartByDragChange(startByDrag)

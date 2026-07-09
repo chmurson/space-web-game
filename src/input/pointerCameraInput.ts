@@ -549,7 +549,10 @@ export const bindPointerCameraInput = (
       activeCameraPan.hasMovedForTap = true
     }
 
-    if (event.pointerType === 'mouse') {
+    if (
+      event.pointerType === 'mouse' &&
+      (options.getEdgeScrollEnabled?.() ?? false)
+    ) {
       return
     }
 

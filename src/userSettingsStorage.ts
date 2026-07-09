@@ -12,6 +12,7 @@ export type OrbitPointDisplaySettingOverrides =
   Partial<OrbitPointDisplaySettings>
 
 export type UserSettings = {
+  desktopEdgePanEnabled: boolean
   desktopEdgePanSpeed: DesktopEdgePanSpeed
   debugModeEnabled: boolean
   mobileManeuverStartByDrag: boolean
@@ -36,6 +37,7 @@ const createDefaultOrbitPointDisplaySettings =
   })
 
 const createDefaultUserSettings = (): UserSettings => ({
+  desktopEdgePanEnabled: false,
   desktopEdgePanSpeed: 'normal',
   debugModeEnabled: false,
   mobileManeuverStartByDrag: true,
@@ -110,6 +112,10 @@ const parseUserSettings = (value: unknown): UserSettings => {
       .touchControlSide,
   )
   return {
+    desktopEdgePanEnabled: parseBooleanSetting(
+      settings.desktopEdgePanEnabled,
+      defaultUserSettings.desktopEdgePanEnabled,
+    ),
     desktopEdgePanSpeed:
       parseDesktopEdgePanSpeed(settings.desktopEdgePanSpeed) ??
       defaultUserSettings.desktopEdgePanSpeed,
