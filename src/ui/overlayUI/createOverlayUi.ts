@@ -9,6 +9,7 @@ import {
 } from '../components/HudTelemetrySurface'
 import { createPreactUiSurface } from '../createPreactUiSurface'
 import { createDebugPanel, type DebugPanel } from '../debugPanel'
+import { installNativeTouchZoomSuppression } from '../nativeTouchZoomSuppression'
 import {
   createScenarioPromptUI,
   type ScenarioPromptSurfaceRenderer,
@@ -163,10 +164,12 @@ const createTrajectoryEventMarkerLabel = (
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const topBar = document.createElement('div')
   topBar.className = 'top-bar'
+  installNativeTouchZoomSuppression(topBar)
   options.app.appendChild(topBar)
 
   const bottomHudNotices = createBottomHudNoticesSurface(options.app)
   const { bottomPillArea } = bottomHudNotices
+  installNativeTouchZoomSuppression(bottomPillArea)
 
   const debugPanel = createDebugPanel(options.app)
 
@@ -176,6 +179,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   })
 
   const scenarioPromptUi = createScenarioPromptUI(options.app, bottomPillArea)
+  installNativeTouchZoomSuppression(scenarioPromptUi.backdropElement)
 
   const spacecraftCallout = document.createElement('div')
   spacecraftCallout.className = 'spacecraft-callout'
