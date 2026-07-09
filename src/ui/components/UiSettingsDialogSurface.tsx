@@ -185,9 +185,13 @@ export type UiSettingsDialogPane =
 
 export type UiSettingsDialogSurfaceProps = {
   activePane: UiSettingsDialogPane
+  decreaseDesktopEdgePanSpeedDisabled: boolean
   desktopEdgePanEnabled: boolean
+  desktopEdgePanSpeedLabel: string
+  desktopEdgePanSpeedVisible: boolean
   desktopEdgePanVisible: boolean
   dialogId: string
+  increaseDesktopEdgePanSpeedDisabled: boolean
   mobileManeuverStartByDrag: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
   open: boolean
@@ -197,7 +201,9 @@ export type UiSettingsDialogSurfaceProps = {
   touchTrajectoryControlSide: TouchTrajectoryControlState
   touchWarpControlSide: TouchControlSide
   onBackToMainSettings(): void
+  onDecreaseDesktopEdgePanSpeed(): void
   onDesktopEdgePanEnabledChange(enabled: boolean): void
+  onIncreaseDesktopEdgePanSpeed(): void
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOpenOrbitPointDisplaySettings(): void
   onOpenSpacecraftControlsSettings(): void
@@ -210,9 +216,13 @@ export type UiSettingsDialogSurfaceProps = {
 
 export const UiSettingsDialogSurface = ({
   activePane,
+  decreaseDesktopEdgePanSpeedDisabled,
   desktopEdgePanEnabled,
+  desktopEdgePanSpeedLabel,
+  desktopEdgePanSpeedVisible,
   desktopEdgePanVisible,
   dialogId,
+  increaseDesktopEdgePanSpeedDisabled,
   mobileManeuverStartByDrag,
   orbitPointDisplay,
   open,
@@ -222,7 +232,9 @@ export const UiSettingsDialogSurface = ({
   touchTrajectoryControlSide,
   touchWarpControlSide,
   onBackToMainSettings,
+  onDecreaseDesktopEdgePanSpeed,
   onDesktopEdgePanEnabledChange,
+  onIncreaseDesktopEdgePanSpeed,
   onMobileManeuverStartByDragChange,
   onOpenOrbitPointDisplaySettings,
   onOpenSpacecraftControlsSettings,
@@ -393,6 +405,47 @@ export const UiSettingsDialogSurface = ({
               }
               onChange={onDesktopEdgePanEnabledChange}
             />
+            {desktopEdgePanSpeedVisible ? (
+              // biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern.
+              <div
+                class="app-dialog-setting app-dialog-stepper"
+                role="group"
+                aria-label="Edge pan speed"
+              >
+                <span class="app-dialog-setting-copy">
+                  <span class="app-dialog-setting-name">Edge pan speed</span>
+                  <span
+                    class="app-dialog-setting-summary"
+                    data-ui-settings-edge-pan-speed=""
+                    aria-live="polite"
+                  >
+                    {desktopEdgePanSpeedLabel}
+                  </span>
+                </span>
+                <span class="app-dialog-stepper-controls">
+                  <button
+                    type="button"
+                    class="app-dialog-button app-dialog-stepper-button"
+                    data-ui-settings-edge-pan-speed-action="decrease"
+                    aria-label="Decrease edge pan speed"
+                    disabled={decreaseDesktopEdgePanSpeedDisabled}
+                    onClick={onDecreaseDesktopEdgePanSpeed}
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    class="app-dialog-button app-dialog-stepper-button"
+                    data-ui-settings-edge-pan-speed-action="increase"
+                    aria-label="Increase edge pan speed"
+                    disabled={increaseDesktopEdgePanSpeedDisabled}
+                    onClick={onIncreaseDesktopEdgePanSpeed}
+                  >
+                    +
+                  </button>
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

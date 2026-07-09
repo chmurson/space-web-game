@@ -609,6 +609,7 @@ export const createAppComponents = (options: {
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
     getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+    getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
     getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
@@ -629,6 +630,10 @@ export const createAppComponents = (options: {
     onDesktopEdgePanEnabledChange: (enabled) => {
       desktopEdgePanEnabled = enabled
       updateUserSettings({ desktopEdgePanEnabled: enabled })
+    },
+    onDesktopEdgePanSpeedChange: (speed) => {
+      desktopEdgePanSpeed = speed
+      updateUserSettings({ desktopEdgePanSpeed: speed })
     },
     onMobileManeuverStartByDragChange: (startByDrag) => {
       mobileManeuverStartByDrag = startByDrag
@@ -669,19 +674,12 @@ export const createAppComponents = (options: {
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
-    getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-    getDesktopEdgePanSpeedVisible: () =>
-      desktopFinePointerMedia.matches && desktopEdgePanEnabled,
     getMaxCoastPredictionHorizonHours: () =>
       options.runtimeState.scenario.directives.maxCoastPredictionHorizonHours ??
       options.config.trajectory.maxCoastPredictionHorizonHours,
     getMinCoastPredictionHorizonHours: () =>
       options.config.trajectory.minCoastPredictionHorizonHours,
     onAction: (action) => dispatchRuntimeAction(action),
-    onDesktopEdgePanSpeedChange: (speed) => {
-      desktopEdgePanSpeed = speed
-      updateUserSettings({ desktopEdgePanSpeed: speed })
-    },
     onOpenUiSettings: uiSettingsDialog.open,
   })
   const hudPresentation = createHudPresentation({
