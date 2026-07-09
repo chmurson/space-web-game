@@ -1,13 +1,14 @@
 import { createSelectorTimeWarpControl } from './selectorTimeWarpControl/createSelectorTimeWarpControl'
 import { createSwipeTimeWarpControl } from './swipeTimeWarpControl/createSwipeTimeWarpControl'
+import { createTimeWarpTapeControl } from './timeWarpTapeControl/createTimeWarpTapeControl'
 import type {
   TimeWarpControl,
   TimeWarpControlOptions,
 } from './timeWarpControlTypes'
 
-type TimeWarpControlVariant = 'default' | 'selector'
+type TimeWarpControlVariant = 'default' | 'selector' | 'tape'
 
-const timeWarpControlVariant = 'selector' as TimeWarpControlVariant
+const timeWarpControlVariant = 'tape' as TimeWarpControlVariant
 
 export const createConfiguredTimeWarpControl = (
   options: TimeWarpControlOptions,
@@ -17,5 +18,7 @@ export const createConfiguredTimeWarpControl = (
       return createSwipeTimeWarpControl(options)
     case 'selector':
       return createSelectorTimeWarpControl(options)
+    case 'tape':
+      return createTimeWarpTapeControl(options)
   }
 }

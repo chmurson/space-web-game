@@ -1,0 +1,215 @@
+.touch-time-warp-reveal-dock {
+  width: min(calc(100vw - 42px), 360px);
+}
+
+.touch-time-warp-tape {
+  --touch-time-warp-tape-accent: #f59e0b;
+  --touch-time-warp-tape-accent-rgb: 245 158 11;
+  --touch-time-warp-tape-drag-x: 0px;
+  --touch-time-warp-tape-step-width: 28px;
+  display: grid;
+  width: 100%;
+  min-height: 112px;
+  align-content: center;
+  gap: 10px;
+  padding: 12px 14px 13px;
+  border: 1px solid var(--ui-glass-panel-border);
+  border-radius: var(--touch-control-radius);
+  background:
+    radial-gradient(
+      circle at 50% 34%,
+      rgb(var(--touch-time-warp-tape-accent-rgb) / 0.12),
+      transparent 42%
+    ),
+    var(--ui-glass-panel-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    var(--ui-glass-panel-shadow);
+  color: rgba(226, 232, 240, 0.72);
+  backdrop-filter: var(--ui-glass-panel-blur);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.touch-time-warp-tape:active {
+  cursor: grabbing;
+}
+
+.touch-time-warp-tape-header {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: center;
+  gap: 9px;
+  color: rgba(226, 232, 240, 0.66);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.touch-time-warp-tape-header strong {
+  color: var(--touch-time-warp-tape-accent);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  text-shadow:
+    0 0 7px rgb(var(--touch-time-warp-tape-accent-rgb) / 0.36),
+    0 0 14px rgb(var(--touch-time-warp-tape-accent-rgb) / 0.18);
+}
+
+.touch-time-warp-tape-window {
+  position: relative;
+  height: 52px;
+  overflow: hidden;
+  border-top: 1px solid rgba(245, 158, 11, 0.13);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.1);
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 13%,
+    #000 87%,
+    transparent
+  );
+}
+
+.touch-time-warp-tape-track {
+  position: absolute;
+  inset: 0;
+  transform: translateX(var(--touch-time-warp-tape-drag-x));
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-time-warp-tape-dragging .touch-time-warp-tape-track {
+  transition-duration: 45ms;
+}
+
+.touch-time-warp-tape-step {
+  position: absolute;
+  top: 7px;
+  left: calc(
+    50% +
+    var(--touch-time-warp-tape-step-offset) *
+    var(--touch-time-warp-tape-step-width)
+  );
+  display: grid;
+  min-width: 32px;
+  justify-items: center;
+  gap: 7px;
+  opacity: 0.58;
+  transform: translateX(-50%);
+  transition:
+    color 140ms ease,
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.touch-time-warp-tape-step[data-tone="current"] {
+  color: var(--touch-time-warp-tape-accent);
+  opacity: 1;
+  text-shadow:
+    0 0 7px rgb(var(--touch-time-warp-tape-accent-rgb) / 0.34),
+    0 0 14px rgb(var(--touch-time-warp-tape-accent-rgb) / 0.16);
+  transform: translateX(-50%) scale(1.12);
+}
+
+.touch-time-warp-tape-step[data-tone="blocked"] {
+  opacity: 0.24;
+}
+
+.touch-time-warp-tape-commit-ready
+  .touch-time-warp-tape-step[data-tone="current"] {
+  opacity: 0.72;
+}
+
+.touch-time-warp-tape-tick {
+  display: block;
+  width: 1px;
+  height: 13px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.68;
+}
+
+.touch-time-warp-tape-step[data-tone="current"] .touch-time-warp-tape-tick {
+  height: 20px;
+  opacity: 0.95;
+}
+
+.touch-time-warp-tape-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.touch-time-warp-tape-step[data-tone="current"] .touch-time-warp-tape-label {
+  font-size: 13px;
+}
+
+.touch-time-warp-tape-reader {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 50%;
+  width: 1px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(251, 191, 36, 0.86) 18%,
+    rgba(251, 191, 36, 0.96) 50%,
+    rgba(251, 191, 36, 0.82) 82%,
+    transparent
+  );
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.18),
+    0 0 16px rgba(245, 158, 11, 0.26);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.touch-time-warp-tape-reader::before,
+.touch-time-warp-tape-reader::after {
+  position: absolute;
+  left: 50%;
+  width: 7px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.88);
+  box-shadow: 0 0 9px rgba(245, 158, 11, 0.3);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.touch-time-warp-tape-reader::before {
+  top: 0;
+}
+
+.touch-time-warp-tape-reader::after {
+  bottom: 0;
+}
+
+@media (max-width: 520px) {
+  .touch-time-warp-reveal-dock {
+    width: min(calc(100vw - 34px), 344px);
+  }
+
+  .touch-time-warp-tape {
+    min-height: 106px;
+    padding: 11px 12px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .touch-time-warp-tape-track,
+  .touch-time-warp-tape-step {
+    transition: none;
+  }
+}

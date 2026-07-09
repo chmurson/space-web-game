@@ -9,6 +9,7 @@ export type StepSelectorGestureSession<ControlId extends string = string> = {
   committedStepCount: number
   kind: 'step-selector'
   controlId: ControlId
+  stepAnchorX?: number
   stepAnchorY: number
   startX: number
   startY: number
