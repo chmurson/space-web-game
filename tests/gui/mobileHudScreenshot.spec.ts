@@ -1786,7 +1786,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Turn click, move, click',
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
-      'Assist Shift + C',
+      'Target selector T',
       'Camera C',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',
