@@ -245,11 +245,11 @@ export const InGameControlsMenuSurface = ({
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">
-            <span class="in-game-controls-menu-keyboard-name">Assist</span>
+            <span class="in-game-controls-menu-keyboard-name">
+              Target selector
+            </span>
             <span class="in-game-controls-menu-keyboard-keys">
-              <kbd>Shift</kbd>
-              <span> + </span>
-              <kbd>C</kbd>
+              <kbd>T</kbd>
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">
