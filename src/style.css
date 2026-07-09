@@ -37,7 +37,7 @@
 
 @media (min-width: 721px) and (hover: hover) and (pointer: fine) {
   :root {
-    --desktop-hud-overlay-scale: 1.5;
+    --desktop-hud-overlay-scale: 1.25;
   }
 
   .top-menu,
