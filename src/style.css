@@ -32,6 +32,25 @@
   --ui-glass-panel-shadow: 0 16px 32px rgba(2, 6, 23, 0.28);
   --ui-glass-label-bg: rgba(8, 13, 24, 0.58);
   --ui-glass-row-bg: rgba(148, 163, 184, 0.055);
+  --desktop-hud-overlay-scale: 1;
+}
+
+@media (min-width: 721px) and (hover: hover) and (pointer: fine) {
+  :root {
+    --desktop-hud-overlay-scale: 1.5;
+  }
+
+  .top-menu,
+  .telemetry-strip,
+  .in-game-controls-menu,
+  .bottom-pill-area > *,
+  .scenario-loading-panel,
+  .scenario-prompt,
+  .app-dialog-panel,
+  #app .debug-panel,
+  #app .fps-indicator {
+    zoom: var(--desktop-hud-overlay-scale);
+  }
 }
 
 html,
