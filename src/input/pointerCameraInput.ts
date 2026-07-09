@@ -25,6 +25,7 @@ export type PointerCameraInputOptions = {
   getSpacecraftVisible: () => boolean
   getSpacecraftPosition: () => Vec2
   getTargetHeadingSelectionEnabled?: () => boolean
+  onCameraUnlockedByDrag?: () => void
   onCameraModeSelected: (mode: CameraControlMode) => boolean
   onCameraPan: (delta: Vec2) => boolean
   onResize: () => void
@@ -381,6 +382,9 @@ export const bindPointerCameraInput = (
 
       event.preventDefault()
       if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
+        if (event.pointerType !== 'touch') {
+          options.onCameraUnlockedByDrag?.()
+        }
         activeCameraPan.hasPanned =
           panCameraBetweenScreenPoints(
             thresholdPoint.x,

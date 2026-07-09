@@ -700,6 +700,7 @@ export const createAppComponents = (options: {
       options.runtimeState.simulation.state.spacecraft.position,
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
+    onCameraUnlockedByDrag: cameraNotice.showUnlockedBySwipe,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPan: runtimeActions.panCamera,
     onResize: runtimeActions.handleResize,
