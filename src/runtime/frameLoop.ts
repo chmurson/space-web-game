@@ -216,8 +216,12 @@ export const createFrameLoop = (options: {
       previousHeading: previousSpacecraftHeading,
       rcsTurnActive:
         !gameplayPaused &&
-        options.keyboardInput.hasManualTurn() &&
-        options.runtime.simulation.state.controls.turn !== 0,
+        ((options.keyboardInput.hasManualTurn() &&
+          options.runtime.simulation.state.controls.turn !== 0) ||
+          (options.runtime.ui.rcsActualTurnFeedback?.phase === 'active' &&
+            Math.abs(
+              options.runtime.simulation.state.spacecraft.angularVelocity ?? 0,
+            ) > 0.001)),
     })
 
     options.trajectoryPresentation.maybeRefreshPrediction(realDt)

@@ -28,6 +28,7 @@ Issue #222 requests temporary mobile rotational maneuvering that feels like a pr
 - Desktop keyboard behavior is unchanged; keyboard left/right keys still do not produce manual turn.
 - The actual-turn feedback arc is driven from the spacecraft heading delta after simulation advances. It does not read or mutate `targetHeading`, `targetHeadingTurn`, or the `headingTargetTurnSlice` element.
 - The feedback arc reuses the heading-slice visual radius/path language through generic presentation geometry, but renders in its own SVG overlay and clears through its own runtime UI state.
+- PR #223’s turning-response follow-up stores angular velocity on the spacecraft. The RCS knob still changes its requested turn speed immediately, while physics ramps toward that speed and brakes smoothly to rest after release; the feedback arc remains active while that residual rotation is real.
 
 ## Validation
 
@@ -53,6 +54,10 @@ PR #223 follow-up validation:
 - `npx biome check ...` on the changed source, test, and CSS files; passed with the existing `src/style.css` `!important` warnings. Markdown tech notes are ignored by the repo Biome config.
 - `git diff --check`
 - `coderabbit --base main --agent`; zero findings.
+
+Turning-response follow-up validation:
+
+- `npx vitest run --config vite.config.ts tests/simulation/physics/semiImplicitEuler.test.ts tests/runtime/simulationStep.test.ts tests/runtime/rcsActualTurnFeedback.test.ts`
 
 ## Follow-Ups
 
