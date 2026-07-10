@@ -6,57 +6,57 @@
   --touch-time-warp-tape-accent: #f59e0b;
   --touch-time-warp-tape-accent-rgb: 245 158 11;
   --touch-time-warp-tape-accent-wash: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.12
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.12
   );
   --touch-time-warp-tape-accent-line: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.13
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.13
   );
   --touch-time-warp-tape-accent-line-muted: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.1
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.1
   );
   --touch-time-warp-tape-accent-glow-strong: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.36
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.36
   );
   --touch-time-warp-tape-accent-glow: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.18
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.18
   );
   --touch-time-warp-tape-accent-current-glow-strong: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.34
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.34
   );
   --touch-time-warp-tape-accent-current-glow: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.16
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.16
   );
   --touch-time-warp-tape-reader-glow: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.26
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.26
   );
   --touch-time-warp-tape-reader-cap-glow: rgb(
-    var(--touch-time-warp-tape-accent-rgb) /
-    0.3
+    var(--touch-time-warp-tape-accent-rgb)
+    / 0.3
   );
   --touch-time-warp-tape-reader-highlight-rgb: 251 191 36;
   --touch-time-warp-tape-reader-highlight-top: rgb(
-    var(--touch-time-warp-tape-reader-highlight-rgb) /
-    0.86
+    var(--touch-time-warp-tape-reader-highlight-rgb)
+    / 0.86
   );
   --touch-time-warp-tape-reader-highlight-core: rgb(
-    var(--touch-time-warp-tape-reader-highlight-rgb) /
-    0.96
+    var(--touch-time-warp-tape-reader-highlight-rgb)
+    / 0.96
   );
   --touch-time-warp-tape-reader-highlight-bottom: rgb(
-    var(--touch-time-warp-tape-reader-highlight-rgb) /
-    0.82
+    var(--touch-time-warp-tape-reader-highlight-rgb)
+    / 0.82
   );
   --touch-time-warp-tape-reader-highlight-cap: rgb(
-    var(--touch-time-warp-tape-reader-highlight-rgb) /
-    0.88
+    var(--touch-time-warp-tape-reader-highlight-rgb)
+    / 0.88
   );
   --touch-time-warp-tape-drag-x: 0px;
   --touch-time-warp-tape-step-width: 28px;
