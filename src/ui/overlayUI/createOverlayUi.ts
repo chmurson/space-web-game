@@ -23,7 +23,6 @@ export const spacecraftOffscreenIndicatorId = '__spacecraft__'
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   bottomPillArea: HTMLElement
-  burnActiveNotice: HTMLElement
   cameraUnlockNotice: HTMLElement
   cameraUnlockNoticeBody: HTMLSpanElement | null
   cameraUnlockNoticeTitle: HTMLSpanElement | null
@@ -267,7 +266,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   return {
     bodyLabels,
     bottomPillArea,
-    burnActiveNotice: bottomHudNotices.burnActiveNotice,
     cameraUnlockNotice: bottomHudNotices.cameraUnlockNotice,
     cameraUnlockNoticeBody: bottomHudNotices.cameraUnlockNoticeBody,
     cameraUnlockNoticeTitle: bottomHudNotices.cameraUnlockNoticeTitle,
