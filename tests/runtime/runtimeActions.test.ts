@@ -15,13 +15,14 @@ import {
 } from '@/scenario/scenarioSession'
 import { RENDER_SCALE } from '@/simulation/constants'
 import type { Body } from '@/simulation/types'
+import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const globalScenarioDirectiveLimits = {
   defaultViewportSize: 520,
   maxCoastPredictionHorizonHours: 48,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
+  timeWarps: requestedTimeWarps,
 }
 
 const runtimeScenarioOptions = {
@@ -142,7 +143,7 @@ const createTestRuntimeActions = (
     runtime,
     globalScenarioDirectiveLimits,
     runtimeScenarioOptions,
-    timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
+    timeWarps: requestedTimeWarps,
     updateUserSettings: () => {},
     gameHighLevelActions: new GameHighLevelActionsMediator(),
   })
@@ -427,7 +428,7 @@ describe('createRuntimeActions', () => {
 
     runtime.simulation.targetHeading = null
     runtime.simulation.assistMode = 'capture'
-    runtime.simulation.timeWarpIndex = 6
+    runtime.simulation.timeWarpIndex = requestedTimeWarps.indexOf(3600)
     runtimeActions.planTargetHeading({
       heading: 1.2,
       screenPosition: { x: 300, y: 200 },
@@ -435,7 +436,9 @@ describe('createRuntimeActions', () => {
     })
 
     expect(runtime.simulation.targetHeading).toBeNull()
-    expect(runtime.simulation.timeWarpIndex).toBe(3)
+    expect(runtime.simulation.timeWarpIndex).toBe(
+      requestedTimeWarps.indexOf(60),
+    )
     expect(runtime.ui.targetHeadingPlan).toEqual({
       heading: 1.2,
       screenPosition: { x: 300, y: 200 },
@@ -593,7 +596,7 @@ describe('createRuntimeActions', () => {
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
-    expect(runtime.simulation.timeWarpIndex).toBe(4)
+    expect(requestedTimeWarps[runtime.simulation.timeWarpIndex]).toBe(240)
   })
 
   it('syncs directives immediately after acknowledging the tutorial intro prompt', () => {
@@ -717,7 +720,7 @@ describe('createRuntimeActions', () => {
         runtime,
         globalScenarioDirectiveLimits,
         runtimeScenarioOptions,
-        timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
+        timeWarps: requestedTimeWarps,
         updateUserSettings: () => {},
         gameHighLevelActions: new GameHighLevelActionsMediator(),
       })

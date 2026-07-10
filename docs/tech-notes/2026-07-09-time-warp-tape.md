@@ -3,8 +3,8 @@
 ## What Changed
 
 - Replaced the active mobile Time Warp selector with a horizontal tape control in the existing edge-reveal dock.
-- Expanded the central configured Time Warp values to second precision from `x1s` through `x59s`, minute precision through `x59m`, and hour precision through the existing `x5h` maximum.
-- Added focused unit and browser coverage for the tape value model, drag direction, snap threshold, and mouse drag behavior.
+- Kept the tape driven by the central configured Time Warp ladder, including the smoother `x1s` through `x15h` sequence that landed on main after the initial tape branch.
+- Added focused unit and browser coverage for drag direction, snap threshold, and mouse drag behavior.
 
 ## Why
 
@@ -16,19 +16,19 @@ Issue #224 asked for Time Warp to behave like a simulation-time instrument inste
 - `src/ui/touchControls/createTimeWarpControl.ts`: selects the Time Warp tape as the active configured mobile control.
 - `src/ui/touchControls/timeWarpTapeControl/`: owns Time Warp-specific tape rendering, drag mapping, and styling.
 - `src/ui/touchControls/stepSelectorControl/stepSelectorControlTypes.ts`: keeps the shared gesture session compatible with a horizontal step anchor.
-- `tests/config/timeWarpValues.test.ts`, `tests/ui/touchControls/timeWarpTapeControl.test.ts`, and `tests/gui/timeWarpTapeControl.spec.ts`: cover the new value precision and tape interaction.
+- `tests/ui/touchControls/timeWarpTapeControl.test.ts` and `tests/gui/timeWarpTapeControl.spec.ts`: cover the tape interaction.
 - `tests/gui/mobileHudScreenshot.spec.ts`: keeps the existing mobile Time Warp screenshot artifact pointed at the revealed tape state.
 
 ## Decisions
 
-- Kept runtime `timeWarpIndex` as the single source of truth by expanding the configured values instead of adding a mobile-only mapping layer.
+- Kept runtime `timeWarpIndex` as the single source of truth instead of adding a mobile-only mapping layer.
 - Left Main Thrust, RCS/steering, target selection, and trajectory controls on their existing components.
 - Reused the existing `TimeWarpControlOptions` preview/commit callbacks so scenario max warp, control caps, blocked states, and min/max bounds continue to flow through the runtime policy.
 - Added mouse drag directly in the tape component for desktop testing while mobile touch still uses the existing touch-control gesture coordinator.
 
 ## Validation
 
-- Focused Vitest passed for Time Warp values, tape math, existing selector presenter behavior, and Time Warp feedback policy.
+- Focused Vitest passed for tape math, existing selector presenter behavior, and Time Warp feedback policy.
 - Full unit/script test suite passed.
 - Focused Playwright passed for mouse drag left/right behavior and mobile touch drag through the edge-reveal coordinator.
 - Full GUI suite passed and the `mobile-time-warp-control.png` screenshot was inspected.

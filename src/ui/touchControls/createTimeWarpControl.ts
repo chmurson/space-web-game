@@ -1,10 +1,10 @@
 import { createSelectorTimeWarpControl } from './selectorTimeWarpControl/createSelectorTimeWarpControl'
 import { createSwipeTimeWarpControl } from './swipeTimeWarpControl/createSwipeTimeWarpControl'
-import { createTimeWarpTapeControl } from './timeWarpTapeControl/createTimeWarpTapeControl'
 import type {
   TimeWarpControl,
   TimeWarpControlOptions,
 } from './timeWarpControlTypes'
+import { createTimeWarpTapeControl } from './timeWarpTapeControl/createTimeWarpTapeControl'
 
 type TimeWarpControlVariant = 'default' | 'selector' | 'tape'
 

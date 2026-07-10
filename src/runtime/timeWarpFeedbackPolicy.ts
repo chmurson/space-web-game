@@ -1,12 +1,12 @@
 import type { AssistMode } from '../assist/orbitalAssist'
 import type { KeyboardInput } from '../input/keyboardInput'
+import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import type { SimulationState } from '../simulation/types'
+import type { GameQueries } from './gameQueries'
 import {
   resolveSimulationTimeWarp,
   type TimeWarpConstraintReason,
 } from './simulationStep'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
-import type { GameQueries } from './gameQueries'
 
 type TimeWarpFeedbackQueries = Pick<
   GameQueries,

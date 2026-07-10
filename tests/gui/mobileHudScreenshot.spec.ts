@@ -2658,6 +2658,38 @@ test('captures the mobile active burn notice pill', async ({
   await expect(burnNotice.locator('.burn-active-notice-icon')).toHaveClass(
     /telemetry-speed-icon-thrusting/,
   )
+  const activePillStyles = await page.evaluate(() => {
+    const speedPill = document.querySelector<HTMLElement>(
+      '.telemetry-pill-velocity.telemetry-pill-thrusting',
+    )
+    const burnPill = document.querySelector<HTMLElement>(
+      '.burn-active-notice:not([hidden])',
+    )
+    if (!speedPill || !burnPill) {
+      throw new Error('Expected active speed and burn pills to be present')
+    }
+
+    const borderSides = (style: CSSStyleDeclaration) => ({
+      bottomColor: style.borderBottomColor,
+      bottomWidth: style.borderBottomWidth,
+      leftColor: style.borderLeftColor,
+      leftWidth: style.borderLeftWidth,
+      rightColor: style.borderRightColor,
+      rightWidth: style.borderRightWidth,
+      topColor: style.borderTopColor,
+      topWidth: style.borderTopWidth,
+    })
+    const speedStyle = window.getComputedStyle(speedPill)
+    const burnStyle = window.getComputedStyle(burnPill)
+    return {
+      burnBackground: burnStyle.backgroundColor,
+      burnBorder: borderSides(burnStyle),
+      speedBackground: speedStyle.backgroundColor,
+      speedBorder: borderSides(speedStyle),
+    }
+  })
+  expect(activePillStyles.speedBackground).toBe(activePillStyles.burnBackground)
+  expect(activePillStyles.speedBorder).toEqual(activePillStyles.burnBorder)
 
   await attachMobileScreenshot(page, testInfo, 'mobile-burn-active-notice')
 
