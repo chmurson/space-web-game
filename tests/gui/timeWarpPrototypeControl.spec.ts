@@ -6,6 +6,8 @@ import type {
 
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
+type TimeWarpControlModule =
+  typeof import('../../src/ui/touchControls/createTimeWarpControl')
 
 test('routes the horizontal prototype time warp control to shared state', async ({
   page,
@@ -237,7 +239,10 @@ test('routes the horizontal prototype time warp control to shared state', async 
           '.touch-step-selector-value-up-far, .touch-step-selector-value-up-near, .touch-step-selector-value-current, .touch-step-selector-value-down-near, .touch-step-selector-value-down-far',
         ),
       )
-      if (!currentValue || !decreaseValue || !increaseValue) {
+      const track = prototypeControl.querySelector<HTMLElement>(
+        '.touch-step-selector-horizontal-track',
+      )
+      if (!currentValue || !decreaseValue || !increaseValue || !track) {
         throw new Error('Expected horizontal selector values to render')
       }
       const targetValue = distanceX > 0 ? increaseValue : decreaseValue
@@ -259,6 +264,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       )
       const currentStartX = getCenterX(currentValue)
       const targetStartX = getCenterX(targetValue)
+      const valueStartXs = stripValues.map(getCenterX)
       prototypeControl.dispatchEvent(
         new MouseEvent('mousedown', {
           bubbles: true,
@@ -286,14 +292,14 @@ test('routes the horizontal prototype time warp control to shared state', async 
           '--touch-step-selector-drag-progress',
         ),
       )
-      const valueOffsets = stripValues.map((value) => {
-        const transform = getComputedStyle(value).transform
-        return {
-          className: value.className,
-          translateX:
-            transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m41,
-        }
-      })
+      const trackTransform = getComputedStyle(track).transform
+      const trackTranslateX =
+        trackTransform === 'none'
+          ? 0
+          : new DOMMatrixReadOnly(trackTransform).m41
+      const valueTranslations = stripValues.map(
+        (value, index) => getCenterX(value) - valueStartXs[index],
+      )
       const targetEndX = getCenterX(targetValue)
       window.dispatchEvent(new Event('blur'))
       return {
@@ -303,15 +309,16 @@ test('routes the horizontal prototype time warp control to shared state', async 
         minimumValueGap,
         targetEndX,
         targetStartX,
+        trackTranslateX,
         valueCenterYs,
-        valueOffsets,
+        valueTranslations,
       }
     }
 
     timeWarpIndex = 1
     controls.syncUi()
-    const leftDragAnimation = await inspectSwipeAnimation(-24)
-    const rightDragAnimation = await inspectSwipeAnimation(24)
+    const leftDragAnimation = await inspectSwipeAnimation(-22)
+    const rightDragAnimation = await inspectSwipeAnimation(22)
     timeWarpIndex = 0
     controls.syncUi()
     dragPrototype()
@@ -321,7 +328,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       beforeMouseup: () => {
         interactionsEnabled = false
       },
-      distanceX: 24,
+      distanceX: 22,
     })
     const disabledMouseupTimeWarp = timeWarps[timeWarpIndex]
     interactionsEnabled = true
@@ -333,7 +340,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       beforeMouseup: () => {
         window.dispatchEvent(new Event('blur'))
       },
-      distanceX: 24,
+      distanceX: 22,
     })
     const blurCancelTimeWarp = timeWarps[timeWarpIndex]
 
@@ -367,9 +374,14 @@ test('routes the horizontal prototype time warp control to shared state', async 
     'touch-step-selector-target-decrease',
   )
   expect(result.leftDragAnimation.dragProgress).toBeGreaterThan(0)
-  for (const value of result.leftDragAnimation.valueOffsets) {
-    expect(value.translateX, value.className).toBeLessThan(0)
+  expect(result.leftDragAnimation.trackTranslateX).toBeLessThan(0)
+  for (const translation of result.leftDragAnimation.valueTranslations) {
+    expect(translation).toBeLessThan(0)
   }
+  expect(
+    Math.max(...result.leftDragAnimation.valueTranslations) -
+      Math.min(...result.leftDragAnimation.valueTranslations),
+  ).toBeLessThan(1)
   expect(result.leftDragAnimation.targetStartX).toBeGreaterThan(
     result.leftDragAnimation.currentStartX,
   )
@@ -388,9 +400,14 @@ test('routes the horizontal prototype time warp control to shared state', async 
     'touch-step-selector-target-increase',
   )
   expect(result.rightDragAnimation.dragProgress).toBeGreaterThan(0)
-  for (const value of result.rightDragAnimation.valueOffsets) {
-    expect(value.translateX, value.className).toBeGreaterThan(0)
+  expect(result.rightDragAnimation.trackTranslateX).toBeGreaterThan(0)
+  for (const translation of result.rightDragAnimation.valueTranslations) {
+    expect(translation).toBeGreaterThan(0)
   }
+  expect(
+    Math.max(...result.rightDragAnimation.valueTranslations) -
+      Math.min(...result.rightDragAnimation.valueTranslations),
+  ).toBeLessThan(1)
   expect(result.rightDragAnimation.targetStartX).toBeLessThan(
     result.rightDragAnimation.currentStartX,
   )
@@ -407,4 +424,321 @@ test('routes the horizontal prototype time warp control to shared state', async 
   )
   expect(result.originalText).toContain('x1m')
   expect(result.prototypeText).toContain('x1m')
+})
+
+test('keeps the horizontal track anchored while midpoint commits settle smoothly', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const timeWarpControlModulePath =
+      '/src/ui/touchControls/createTimeWarpControl.ts'
+    const { createPrototypeTimeWarpControl2 } = (await import(
+      timeWarpControlModulePath
+    )) as TimeWarpControlModule
+    await import(
+      '/src/ui/touchControls/stepSelectorControl/stepSelectorControl.css'
+    )
+
+    const timeWarps = [1, 10, 30, 60, 300, 1_800, 3_600, 7_200]
+    let timeWarpIndex = 3
+    const getTimeWarpPreviews = (action: TimeWarpAction, count: number) =>
+      Array.from({ length: count }, (_, offset) => {
+        const nextIndex =
+          timeWarpIndex +
+          (action === 'increaseTimeWarp' ? offset + 1 : -offset - 1)
+        const clampedIndex = Math.max(
+          0,
+          Math.min(timeWarps.length - 1, nextIndex),
+        )
+        let reason: TimeWarpFeedbackReason | null = null
+        if (nextIndex !== clampedIndex) {
+          reason = action === 'increaseTimeWarp' ? 'global-max' : 'global-min'
+        }
+        return {
+          canCommit: nextIndex === clampedIndex,
+          reason,
+          value: timeWarps[clampedIndex],
+        }
+      })
+    const panel = document.createElement('div')
+    document.body.append(panel)
+    const control = createPrototypeTimeWarpControl2({
+      commitTimeWarp: (action) => {
+        if (action === 'increaseTimeWarp') {
+          timeWarpIndex = Math.min(timeWarps.length - 1, timeWarpIndex + 1)
+        } else {
+          timeWarpIndex = Math.max(0, timeWarpIndex - 1)
+        }
+      },
+      getCurrentTimeWarp: () => timeWarps[timeWarpIndex],
+      getTimeWarpPreview: (action) => getTimeWarpPreviews(action, 1)[0],
+      getTimeWarpPreviews,
+      onSessionChange: () => {},
+      panel,
+    })
+    control.element.classList.add('time-warp-track-regression')
+
+    const nextFrame = () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    const wait = (delayMs: number) =>
+      new Promise<void>((resolve) => window.setTimeout(resolve, delayMs))
+    const getCenterX = (element: HTMLElement) => {
+      const rect = element.getBoundingClientRect()
+      return rect.left + rect.width / 2
+    }
+    const getTrack = () => {
+      const track = control.element.querySelector<HTMLElement>(
+        '.touch-step-selector-horizontal-track',
+      )
+      if (!track) {
+        throw new Error('Expected horizontal selector track to render')
+      }
+      return track
+    }
+    const getTrackTranslateX = () => {
+      const transform = getComputedStyle(getTrack()).transform
+      return transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m41
+    }
+    const getSteps = () =>
+      Array.from(
+        control.element.querySelectorAll<HTMLElement>(
+          '.touch-step-selector-horizontal-step',
+        ),
+      )
+    const getLabel = (label: string) => {
+      const value = Array.from(
+        control.element.querySelectorAll<HTMLElement>(
+          '.touch-step-selector-value',
+        ),
+      ).find((element) => element.textContent === label)
+      if (!value) {
+        throw new Error(`Expected ${label} to render`)
+      }
+      return value
+    }
+    const getTrackWindowCenterX = () => {
+      const windowElement = control.element.querySelector<HTMLElement>(
+        '.touch-step-selector-horizontal-window',
+      )
+      if (!windowElement) {
+        throw new Error('Expected horizontal selector window to render')
+      }
+      const rect = windowElement.getBoundingClientRect()
+      return rect.left + rect.width / 2
+    }
+
+    await nextFrame()
+    const origin = { clientX: 100, clientY: 100, identifier: 17 }
+    let session = control.beginGesture(origin)
+    const initialNodes = getSteps()
+    const initialLabels = initialNodes.map((node) => node.textContent ?? '')
+    const initialStepCenters = initialNodes.map(getCenterX)
+
+    const moveTo = async (distanceX: number) => {
+      session = control.updateGesture(
+        {
+          clientX: origin.clientX + distanceX,
+          clientY: origin.clientY,
+          identifier: origin.identifier,
+        },
+        session,
+      )
+      await nextFrame()
+      const nodes = getSteps()
+      const centers = nodes.map(getCenterX)
+      const translations = centers.map(
+        (center, index) => center - initialStepCenters[index],
+      )
+      const centerYs = nodes.map((node) => {
+        const rect = node.getBoundingClientRect()
+        return rect.top + rect.height / 2
+      })
+      return {
+        anchorStable:
+          session.stepAnchorX === origin.clientX &&
+          session.stepAnchorY === origin.clientY &&
+          session.startX === origin.clientX &&
+          session.startY === origin.clientY,
+        committedStepCount: session.committedStepCount,
+        currentLabel:
+          control.element.querySelector<HTMLElement>(
+            '.touch-step-selector-value-current',
+          )?.textContent ?? '',
+        currentValue: timeWarps[timeWarpIndex],
+        domStable:
+          nodes.length === initialNodes.length &&
+          nodes.every((node, index) => node === initialNodes[index]),
+        labelsStable: nodes.every(
+          (node, index) => node.textContent === initialLabels[index],
+        ),
+        trackTranslateX: getTrackTranslateX(),
+        translationSpread:
+          Math.max(...translations) - Math.min(...translations),
+        ySpread: Math.max(...centerYs) - Math.min(...centerYs),
+      }
+    }
+
+    const outward22 = await moveTo(22)
+    const outward23 = await moveTo(23)
+    const outward68 = await moveTo(68)
+    const outward69 = await moveTo(69)
+    const outward114 = await moveTo(114)
+    const outward115 = await moveTo(115)
+    const reverse114 = await moveTo(114)
+    const reverse68 = await moveTo(68)
+    const reverse22 = await moveTo(22)
+    const reverse23 = await moveTo(-23)
+    control.finishGesture(session, false)
+    await nextFrame()
+
+    const settleGesture = async (distanceX: number, selectedLabel: string) => {
+      timeWarpIndex = 3
+      control.syncUi()
+      await nextFrame()
+      const settleOrigin = {
+        clientX: 100,
+        clientY: 100,
+        identifier: 23,
+      }
+      let settleSession = control.beginGesture(settleOrigin)
+      settleSession = control.updateGesture(
+        {
+          clientX: settleOrigin.clientX + distanceX,
+          clientY: settleOrigin.clientY,
+          identifier: settleOrigin.identifier,
+        },
+        settleSession,
+      )
+      await wait(70)
+      const selectedBeforeRelease = getLabel(selectedLabel)
+      const beforeReleaseCenterX = getCenterX(selectedBeforeRelease)
+      const committedValue = timeWarps[timeWarpIndex]
+      const track = getTrack()
+
+      control.finishGesture(settleSession, true)
+      const selectedImmediatelyAfterRelease = getLabel(selectedLabel)
+      const immediateCenterX = getCenterX(selectedImmediatelyAfterRelease)
+      const runningTrackAnimations = track
+        .getAnimations()
+        .filter(
+          (animation) => animation.playState === 'running' || animation.pending,
+        ).length
+      await wait(70)
+      const inFlightCenterX = getCenterX(getLabel(selectedLabel))
+      await wait(150)
+      const finalCurrent = control.element.querySelector<HTMLElement>(
+        '.touch-step-selector-value-current',
+      )
+      if (!finalCurrent) {
+        throw new Error('Expected settled current value to render')
+      }
+
+      return {
+        beforeReleaseCenterX,
+        committedValue,
+        finalCenterX: getCenterX(finalCurrent),
+        finalLabel: finalCurrent.textContent ?? '',
+        immediateCenterX,
+        inFlightCenterX,
+        runningTrackAnimations,
+        sameNodeImmediately:
+          selectedImmediatelyAfterRelease === selectedBeforeRelease,
+        targetCenterX: getTrackWindowCenterX(),
+      }
+    }
+
+    const committedSettle = await settleGesture(69, 'x30m')
+    const subThresholdSettle = await settleGesture(22, 'x1m')
+
+    return {
+      committedSettle,
+      dragSnapshots: [
+        outward22,
+        outward23,
+        outward68,
+        outward69,
+        outward114,
+        outward115,
+        reverse114,
+        reverse68,
+        reverse22,
+        reverse23,
+      ],
+      outward22,
+      outward23,
+      outward68,
+      outward69,
+      outward114,
+      outward115,
+      reverse114,
+      reverse68,
+      subThresholdSettle,
+    }
+  })
+
+  expect(result.dragSnapshots.map((snapshot) => snapshot.currentValue)).toEqual(
+    [60, 300, 300, 1_800, 1_800, 3_600, 1_800, 300, 60, 30],
+  )
+  expect(
+    result.dragSnapshots.map((snapshot) => snapshot.committedStepCount),
+  ).toEqual([0, 1, 1, 2, 2, 3, 2, 1, 0, -1])
+  for (const snapshot of result.dragSnapshots) {
+    expect(snapshot.anchorStable).toBe(true)
+    expect(snapshot.domStable).toBe(true)
+    expect(snapshot.labelsStable).toBe(true)
+    expect(snapshot.currentLabel).toBe('x1m')
+    expect(snapshot.translationSpread).toBeLessThan(1)
+    expect(snapshot.ySpread).toBeLessThan(1)
+  }
+
+  const forwardThresholdDeltas = [
+    result.outward23.trackTranslateX - result.outward22.trackTranslateX,
+    result.outward69.trackTranslateX - result.outward68.trackTranslateX,
+    result.outward115.trackTranslateX - result.outward114.trackTranslateX,
+  ]
+  for (const delta of forwardThresholdDeltas) {
+    expect(delta).toBeGreaterThan(0)
+    expect(delta).toBeLessThan(2)
+  }
+  expect(
+    Math.max(...forwardThresholdDeltas) - Math.min(...forwardThresholdDeltas),
+  ).toBeLessThan(0.1)
+  expect(
+    result.reverse114.trackTranslateX - result.outward115.trackTranslateX,
+  ).toBeLessThan(0)
+  expect(result.reverse114.trackTranslateX).toBeCloseTo(
+    result.outward114.trackTranslateX,
+    3,
+  )
+  expect(result.reverse68.trackTranslateX).toBeCloseTo(
+    result.outward68.trackTranslateX,
+    3,
+  )
+
+  const expectSmoothSettle = (
+    settle: typeof result.committedSettle,
+    expectedValue: number,
+    expectedLabel: string,
+  ) => {
+    expect(settle.committedValue).toBe(expectedValue)
+    expect(settle.sameNodeImmediately).toBe(true)
+    expect(
+      Math.abs(settle.immediateCenterX - settle.beforeReleaseCenterX),
+    ).toBeLessThan(1)
+    expect(settle.runningTrackAnimations).toBeGreaterThan(0)
+    const settleDistance = settle.finalCenterX - settle.beforeReleaseCenterX
+    const inFlightDistance =
+      settle.inFlightCenterX - settle.beforeReleaseCenterX
+    expect(Math.sign(inFlightDistance)).toBe(Math.sign(settleDistance))
+    expect(Math.abs(inFlightDistance)).toBeGreaterThan(0)
+    expect(Math.abs(inFlightDistance)).toBeLessThan(Math.abs(settleDistance))
+    expect(settle.finalLabel).toBe(expectedLabel)
+    expect(settle.finalCenterX).toBeCloseTo(settle.targetCenterX, 0)
+  }
+
+  expectSmoothSettle(result.committedSettle, 1_800, 'x30m')
+  expectSmoothSettle(result.subThresholdSettle, 60, 'x1m')
 })

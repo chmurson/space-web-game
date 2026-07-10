@@ -2,6 +2,7 @@
   --touch-step-selector-accent: #f59e0b;
   --touch-step-selector-accent-rgb: 245 158 11;
   --touch-step-selector-drag-progress: 0;
+  --touch-step-selector-horizontal-track-offset: 0%;
   --touch-step-selector-hit-overhang-x: 25%;
   --touch-step-selector-hit-overhang-y: 25%;
   position: fixed;
@@ -62,6 +63,42 @@
   padding: 9px 12px;
 }
 
+.touch-step-selector-horizontal-window {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 46px;
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.touch-step-selector-horizontal-track {
+  position: absolute;
+  inset: 0;
+  transform: translateX(var(--touch-step-selector-horizontal-track-offset));
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-step-selector-horizontal.touch-step-selector-dragging
+  .touch-step-selector-horizontal-track {
+  transition: none;
+}
+
+.touch-step-selector-horizontal-step {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  width: 20%;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+}
+
+.touch-step-selector-horizontal-step.touch-step-selector-current {
+  display: flex;
+}
+
 .touch-edge-reveal-content .touch-step-selector {
   position: relative;
   bottom: auto;
@@ -88,7 +125,8 @@
 }
 
 .touch-step-selector-instant,
-.touch-step-selector-instant .touch-step-selector-value {
+.touch-step-selector-instant .touch-step-selector-value,
+.touch-step-selector-instant .touch-step-selector-horizontal-track {
   transition: none;
 }
 
@@ -131,31 +169,6 @@
 .touch-step-selector-value-next {
   color: rgba(203, 213, 225, 0.68);
   font-size: 10px;
-}
-
-.touch-step-selector-horizontal .touch-step-selector-value-up-far {
-  grid-column: 5;
-  grid-row: 1;
-}
-
-.touch-step-selector-horizontal .touch-step-selector-value-up-near {
-  grid-column: 4;
-  grid-row: 1;
-}
-
-.touch-step-selector-horizontal .touch-step-selector-current {
-  grid-column: 3;
-  grid-row: 1;
-}
-
-.touch-step-selector-horizontal .touch-step-selector-value-down-near {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.touch-step-selector-horizontal .touch-step-selector-value-down-far {
-  grid-column: 1;
-  grid-row: 1;
 }
 
 .touch-step-selector-target-increase .touch-step-selector-value-current {
@@ -236,67 +249,10 @@
 }
 
 .touch-step-selector-horizontal.touch-step-selector-target-increase
-  .touch-step-selector-value-current {
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 25px))
-    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
-}
-
+  .touch-step-selector-value,
 .touch-step-selector-horizontal.touch-step-selector-target-decrease
-  .touch-step-selector-value-current {
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -24px))
-    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-increase
-  .touch-step-selector-value-up-far {
-  opacity: calc(0.56 - var(--touch-step-selector-drag-progress) * 0.56);
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 12px));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-increase
-  .touch-step-selector-value-up-near {
-  opacity: calc(0.68 - var(--touch-step-selector-drag-progress) * 0.12);
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 11px))
-    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.1));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-increase
-  .touch-step-selector-value-down-far {
-  opacity: calc(0.56 + var(--touch-step-selector-drag-progress) * 0.12);
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 12px))
-    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.11));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-decrease
-  .touch-step-selector-value-up-far {
-  opacity: calc(0.56 + var(--touch-step-selector-drag-progress) * 0.12);
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -11px))
-    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.1));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-decrease
-  .touch-step-selector-value-down-near {
-  opacity: calc(0.68 - var(--touch-step-selector-drag-progress) * 0.12);
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -11px))
-    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.1));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-decrease
-  .touch-step-selector-value-down-far {
-  opacity: calc(0.56 - var(--touch-step-selector-drag-progress) * 0.56);
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -12px));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-increase
-  .touch-step-selector-value-down-near {
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 24px))
-    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
-}
-
-.touch-step-selector-horizontal.touch-step-selector-target-decrease
-  .touch-step-selector-value-up-near {
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -25px))
-    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
+  .touch-step-selector-value {
+  transform: none;
 }
 
 .touch-step-selector .touch-step-selector-value-disabled {
@@ -438,11 +394,16 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     padding-inline: 10px;
   }
+
+  .touch-step-selector-horizontal-window {
+    min-height: 42px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .touch-step-selector,
-  .touch-step-selector-value {
+  .touch-step-selector-value,
+  .touch-step-selector-horizontal-track {
     transition: none;
   }
 }

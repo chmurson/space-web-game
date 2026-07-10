@@ -2585,6 +2585,13 @@ test('captures the mobile time warp touch control after reveal', async ({
   await expect(
     timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
   ).toHaveCount(0)
+  await expect(timeWarpReveal.locator('.touch-edge-reveal-content')).toHaveCSS(
+    'transform',
+    'matrix(1, 0, 0, 1, 0, 0)',
+  )
+  await expect(
+    timeWarpPrototypeReveal.locator('.touch-edge-reveal-content'),
+  ).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
 })

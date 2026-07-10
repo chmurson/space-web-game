@@ -71,6 +71,46 @@ const StepSelectorControlSurface = ({
   </>
 )
 
+const HorizontalStepSelectorControlSurface = ({
+  renderState,
+}: {
+  renderState: StepSelectorControlRenderState
+}) => (
+  <div class="touch-step-selector-horizontal-window">
+    <div class="touch-step-selector-horizontal-track">
+      {renderState.horizontalSteps.map((step) => (
+        <div
+          class={[
+            'touch-step-selector-horizontal-step',
+            step.tone === 'current' ? 'touch-step-selector-current' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          key={step.key}
+          style={{ left: `${50 + step.offset * 20}%` }}
+        >
+          <div
+            class={[
+              'touch-step-selector-value',
+              step.tone === 'current'
+                ? 'touch-step-selector-value-current'
+                : 'touch-step-selector-value-next',
+              step.className,
+              step.tone === 'blocked'
+                ? 'touch-step-selector-value-disabled'
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {step.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)
+
 const getContentRenderKey = (renderState: StepSelectorControlRenderState) =>
   JSON.stringify({
     currentLabel: renderState.currentLabel,
@@ -80,6 +120,7 @@ const getContentRenderKey = (renderState: StepSelectorControlRenderState) =>
     upExtraStep: renderState.upExtraStep,
     upFarStep: renderState.upFarStep,
     upNearStep: renderState.upNearStep,
+    horizontalSteps: renderState.horizontalSteps,
   })
 
 export const createStepSelectorControlView = (options: {
@@ -106,6 +147,10 @@ export const createStepSelectorControlView = (options: {
       element.style.setProperty(
         '--touch-step-selector-drag-progress',
         renderState.dragProgress.toFixed(3),
+      )
+      element.style.setProperty(
+        '--touch-step-selector-horizontal-track-offset',
+        `${(renderState.visualStepOffset * 20).toFixed(3)}%`,
       )
       element.classList.toggle(
         'touch-step-selector-dragging',
@@ -138,7 +183,14 @@ export const createStepSelectorControlView = (options: {
       }
       lastContentRenderKey = contentRenderKey
 
-      render(<StepSelectorControlSurface renderState={renderState} />, element)
+      render(
+        axis === 'horizontal' ? (
+          <HorizontalStepSelectorControlSurface renderState={renderState} />
+        ) : (
+          <StepSelectorControlSurface renderState={renderState} />
+        ),
+        element,
+      )
     },
   }
 }
