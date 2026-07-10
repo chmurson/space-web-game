@@ -1769,7 +1769,6 @@ button.app-dialog-setting {
   box-shadow:
     0 0 0 1px rgba(251, 146, 60, 0.14),
     0 10px 24px rgba(245, 158, 11, 0.18);
-  filter: brightness(1.14);
   transform: scale(1.16);
 }
 
