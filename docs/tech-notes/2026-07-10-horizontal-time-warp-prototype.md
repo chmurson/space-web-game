@@ -6,7 +6,8 @@
 - Kept the existing Time Warp selector visible and usable in its original reveal panel.
 - Put the horizontal prototype in a separate reveal panel so the two controls can be compared independently.
 - Made control 2 use horizontal left/right drag distance while keeping its labels upright.
-- Made control 2's commit animation continue opposite to the finger movement, matching its drag preview direction.
+- Made control 2's commit animation move in the finger direction, including left drag left and right drag right.
+- Lengthened the horizontal control slightly to give its values more space.
 - Disabled control 2's edge-panel slide-away gesture so horizontal drags belong exclusively to the selector.
 - Routed both controls through the same existing Time Warp commit, current-value, and preview APIs.
 
