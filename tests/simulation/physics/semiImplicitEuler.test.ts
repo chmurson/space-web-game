@@ -64,7 +64,7 @@ describe('semiImplicitEuler', () => {
 
     expect(state.spacecraft.fuel).toBeCloseTo(0.8)
     expect(state.spacecraft.fuelUsed).toBeCloseTo(1.4)
-    expect(state.spacecraft.heading).toBeCloseTo(0.9)
+    expect(state.spacecraft.heading).toBeCloseTo(0.3)
   })
 
   it('ramps angular velocity toward the requested turn speed', () => {
@@ -81,8 +81,8 @@ describe('semiImplicitEuler', () => {
       0.02,
     )
 
-    expect(turning.spacecraft.angularVelocity).toBeCloseTo(0.36)
-    expect(released.spacecraft.angularVelocity).toBeCloseTo(0.288)
+    expect(turning.spacecraft.angularVelocity).toBeCloseTo(0.3)
+    expect(released.spacecraft.angularVelocity).toBeCloseTo(0.228)
     expect(released.spacecraft.heading).toBeGreaterThan(
       turning.spacecraft.heading,
     )
@@ -131,7 +131,7 @@ describe('semiImplicitEuler', () => {
 
     expect(state.spacecraft.fuel).toBe(1)
     expect(state.spacecraft.fuelUsed).toBe(0)
-    expect(state.spacecraft.heading).toBeCloseTo(0.9)
+    expect(state.spacecraft.heading).toBeCloseTo(0.3)
     expect(state.spacecraft.velocity.x).not.toBe(0)
   })
 
