@@ -208,18 +208,47 @@ test('captures the mobile Reach the Moon menu transition', async ({
   await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
 })
 
-test('captures the mobile RCS yaw control reveal', async ({
+test('captures the mobile RCS yaw and thrust controls together', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
 
   await page.getByRole('button', { name: 'Reveal RCS yaw control' }).click()
+  await page.getByRole('button', { name: 'Reveal thrust control' }).click()
   await expect(page.locator('#touch-rcs-yaw-reveal')).toHaveClass(
     /touch-edge-reveal-control-open/,
   )
+  await expect(page.locator('#touch-thrust-reveal')).toHaveClass(
+    /touch-edge-reveal-control-open/,
+  )
   await expect(page.locator('.touch-rcs-yaw-control-track')).toBeVisible()
+  await expect(page.locator('.touch-thrust-control-track')).toBeVisible()
+  await expect(page.locator('.touch-rcs-yaw-control')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-rcs-yaw-control-thumb')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-thrust-control-track')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-thrust-control-thumb')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
 
-  await attachMobileScreenshot(page, testInfo, 'mobile-rcs-yaw-control')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-rcs-yaw-and-thrust-controls',
+  )
 })
 
 test('captures the mobile Reach the Moon highscores leaderboard', async ({

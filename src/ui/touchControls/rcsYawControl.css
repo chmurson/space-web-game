@@ -65,7 +65,7 @@
   height: 58px;
   overflow: hidden;
   border: 1px solid var(--ui-glass-control-border);
-  border-radius: 999px;
+  border-radius: var(--touch-control-radius);
   background:
     linear-gradient(90deg, rgba(14, 116, 144, 0.18), rgba(14, 116, 144, 0)),
     rgba(8, 13, 24, 0.64);
@@ -152,7 +152,7 @@
   width: 48px;
   height: 48px;
   border: 1px solid rgba(186, 230, 253, 0.58);
-  border-radius: 999px;
+  border-radius: var(--touch-control-radius);
   background:
     radial-gradient(
       circle at 35% 30%,

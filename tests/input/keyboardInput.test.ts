@@ -103,6 +103,9 @@ describe('createKeyboardInput', () => {
     expect(keyboardInput.getManualControls().turn).toBe(0.42)
     expect(keyboardInput.hasManualTurn()).toBe(true)
 
+    keyboardInput.setVirtualTurn(2)
+    expect(keyboardInput.getManualControls().turn).toBe(1)
+
     keyboardInput.setVirtualTurn(-2)
     expect(keyboardInput.getManualControls().turn).toBe(-1)
 
