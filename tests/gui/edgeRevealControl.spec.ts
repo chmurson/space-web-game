@@ -203,8 +203,10 @@ test('can keep a reveal panel open when its content owns horizontal dragging', a
   await page.goto('/')
 
   const result = await page.evaluate(async () => {
-    const { createEdgeRevealControl } = (await import(
+    const edgeRevealControlModulePath =
       '/src/ui/touchControls/edgeRevealControl.ts'
+    const { createEdgeRevealControl } = (await import(
+      edgeRevealControlModulePath
     )) as EdgeRevealControlModule
     const control = createEdgeRevealControl({
       allowContentSwipeClose: false,
