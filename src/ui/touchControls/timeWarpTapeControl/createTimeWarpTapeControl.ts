@@ -14,8 +14,8 @@ import {
 
 const tapeStepWidthPx = 28
 const previewStepCount = 5
-// Keep blocked previews below the half-step release threshold.
-const blockedPreviewClampStepRatio = 0.46
+// Blocked previews must stay below the half-step release threshold.
+const blockedPreviewMaxStepRatio = 0.46
 
 type TimeWarpTapeRuntimeSnapshot = {
   currentValue: number
@@ -52,7 +52,7 @@ export const getTimeWarpTapeGesturePreviewDeltaX = (
 const clampPreviewDeltaX = (deltaX: number, target: TimeWarpPreview | null) => {
   const limit = target?.canCommit
     ? tapeStepWidthPx
-    : tapeStepWidthPx * blockedPreviewClampStepRatio
+    : tapeStepWidthPx * blockedPreviewMaxStepRatio
   return Math.max(-limit, Math.min(limit, deltaX))
 }
 
