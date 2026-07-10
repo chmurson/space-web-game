@@ -15,6 +15,7 @@ Issue: https://github.com/chmurson/space-web-game/issues/204
 - Owner follow-up on 2026-07-09 fixed top-edge hit-testing so passive top HUD space no longer blocks upward edge-scroll.
 - Active edge-scroll now sets a native direction-specific cursor for cardinal and diagonal edge directions, then restores the canvas cursor when edge-scroll is inactive.
 - Owner follow-up on 2026-07-09 restored desktop drag camera scrolling as the default and made edge-scroll opt-in.
+- Owner follow-up on 2026-07-10 routed edge-pan dwell through the same pointer-camera free-roam unlock path as drag unlock and added a close-to-cursor progress indicator while the edge dwell is loading free roam.
 
 ## Why
 
@@ -40,6 +41,7 @@ Desktop primary click is now used for turn planning, but the owner follow-up res
 - Edge-scroll is opt-in. When disabled, desktop mouse drag handles camera panning; when enabled, mouse drag does not pan so edge-scroll owns desktop camera movement.
 - Passive top HUD space is not treated as an interaction blocker; only the actual top menu remains pointer-interactive.
 - No new shared gesture abstraction was added; the existing pointer and touch adapters remain the ownership boundary.
+- Edge dwell reports pending free-roam progress through the pointer input callback; overlay UI owns DOM placement and styling so input code does not own HUD elements.
 
 ## Validation
 
@@ -92,6 +94,19 @@ Owner follow-up validation on 2026-07-10 for settings layout:
 - `git diff --check`: passed.
 - Inspected GUI screenshot:
   - `tmp/playwright-results/mobileHudScreenshot-captur-82cf3-le-and-speed-in-UI-settings-mobile-chromium/desktop-edge-pan-toggle-settings.png`: desktop settings panel showed the edge-pan switch and speed stepper together in the Camera group without overlap.
+
+Owner follow-up validation on 2026-07-10 for edge-pan unlock parity:
+
+- `npx vitest run --config vite.config.ts tests/input/pointerCameraInput.test.ts`: 15 tests passed.
+- `npx playwright test --config playwright.config.ts tests/gui/mobileHudScreenshot.spec.ts -g "edge-pan free-roam progress indicator|desktop edge pan toggle|mobile UI settings dialog"`: 3 tests passed.
+- `npx biome check src/app/createAppComponents.ts src/input/pointerCameraInput.ts src/ui/overlayUI/createOverlayUi.ts src/ui/overlayUI/overlayUIStyles.css tests/input/pointerCameraInput.test.ts tests/gui/mobileHudScreenshot.spec.ts tests/presentation/hudPresentation.test.ts`: passed.
+- `npm run build`: passed with the existing Vite large chunk warning.
+- `npm test`: 516 Vitest tests and 16 automation-claim tests passed.
+- `npm run test:gui`: 47 tests passed.
+- `git diff --check`: passed.
+- `coderabbit --base main --agent`: completed with 3 minor findings; all were fixed by measuring the progress pill dimensions before clamping, allowing the hide transition to finish, and using the shared glass border token.
+- Inspected GUI screenshot:
+  - `tmp/playwright-results/mobileHudScreenshot-keeps--b910d-s-indicator-near-the-cursor-mobile-chromium/desktop-edge-pan-unlock-progress.png`: the free-roam progress pill rendered near the cursor area, remained compact, and did not overlap the menu surface.
 
 ## Follow-Ups
 

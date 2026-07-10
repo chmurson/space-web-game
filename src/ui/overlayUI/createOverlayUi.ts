@@ -26,6 +26,7 @@ export type OverlayUiRefs = {
   cameraUnlockNotice: HTMLElement
   cameraUnlockNoticeBody: HTMLSpanElement | null
   cameraUnlockNoticeTitle: HTMLSpanElement | null
+  cameraUnlockProgress: HTMLElement
   debugPanel: DebugPanel
   fpsIndicator: HTMLElement
   fuelDepletedNotice: HTMLElement
@@ -160,6 +161,20 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const bottomHudNotices = createBottomHudNoticesSurface(options.app)
   const { bottomPillArea } = bottomHudNotices
 
+  const cameraUnlockProgress = document.createElement('div')
+  cameraUnlockProgress.className = 'camera-unlock-progress'
+  cameraUnlockProgress.hidden = true
+  cameraUnlockProgress.dataset.visible = 'false'
+  cameraUnlockProgress.setAttribute('aria-hidden', 'true')
+  cameraUnlockProgress.setAttribute('aria-label', 'Loading free roam')
+  cameraUnlockProgress.setAttribute('aria-valuemax', '100')
+  cameraUnlockProgress.setAttribute('aria-valuemin', '0')
+  cameraUnlockProgress.setAttribute('aria-valuenow', '0')
+  cameraUnlockProgress.setAttribute('role', 'progressbar')
+  cameraUnlockProgress.innerHTML =
+    '<span class="camera-unlock-progress-label">Free roam</span><span class="camera-unlock-progress-track"><span class="camera-unlock-progress-fill"></span></span>'
+  options.app.appendChild(cameraUnlockProgress)
+
   const debugPanel = createDebugPanel(options.app)
 
   const hudTelemetry = createHudTelemetryShells({
@@ -259,6 +274,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     cameraUnlockNotice: bottomHudNotices.cameraUnlockNotice,
     cameraUnlockNoticeBody: bottomHudNotices.cameraUnlockNoticeBody,
     cameraUnlockNoticeTitle: bottomHudNotices.cameraUnlockNoticeTitle,
+    cameraUnlockProgress,
     debugPanel,
     fpsIndicator: hudTelemetry.fpsIndicator,
     fuelDepletedNotice: bottomHudNotices.fuelDepletedNotice,

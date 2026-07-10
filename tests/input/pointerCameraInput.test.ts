@@ -99,7 +99,8 @@ const createHarness = (
     cameraMode = mode
     return true
   })
-  const onCameraUnlockedByEdgeScroll = vi.fn()
+  const onCameraUnlockProgressChange = vi.fn()
+  const onCameraUnlocked = vi.fn()
   const onTargetHeadingPlan = vi.fn()
   const onTargetHeadingPlanCanceled = vi.fn()
   const onTargetHeadingPlanCommitted = vi.fn(() => true)
@@ -116,7 +117,8 @@ const createHarness = (
     getSpacecraftVisible: () => true,
     onCameraModeSelected,
     onCameraPan,
-    onCameraUnlockedByEdgeScroll,
+    onCameraUnlockProgressChange,
+    onCameraUnlocked,
     onResize: () => {},
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
@@ -133,7 +135,8 @@ const createHarness = (
     input,
     onCameraModeSelected,
     onCameraPan,
-    onCameraUnlockedByEdgeScroll,
+    onCameraUnlockProgressChange,
+    onCameraUnlocked,
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
     onTargetHeadingPlanCommitted,
@@ -292,6 +295,21 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
   })
 
+  it('uses the shared unlock callback when desktop drag enters free roam', () => {
+    const harness = createHarness('centered')
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 201, clientY: 100 }),
+    )
+
+    expect(harness.onCameraModeSelected).toHaveBeenCalledWith('unlocked')
+    expect(harness.onCameraUnlocked).toHaveBeenCalledTimes(1)
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps touch drag gestures available for unlocked camera pan before planning', () => {
     const harness = createHarness('unlocked')
 
@@ -418,9 +436,22 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
     harness.input.updateEdgeScroll(3_000, 0.016)
 
     expect(harness.onCameraModeSelected).toHaveBeenCalledWith('unlocked')
-    expect(harness.onCameraUnlockedByEdgeScroll).toHaveBeenCalledTimes(1)
+    expect(harness.onCameraUnlocked).toHaveBeenCalledTimes(1)
     expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
     expect(harness.getCameraMode()).toBe('unlocked')
+    expect(harness.onCameraUnlockProgressChange).toHaveBeenNthCalledWith(1, {
+      progress: 0,
+      screenPosition: { x: 199, y: 100 },
+    })
+    expect(harness.onCameraUnlockProgressChange).toHaveBeenNthCalledWith(2, {
+      progress: 2_999 / 3_000,
+      screenPosition: { x: 199, y: 100 },
+    })
+    expect(harness.onCameraUnlockProgressChange).toHaveBeenNthCalledWith(3, {
+      progress: 1,
+      screenPosition: { x: 199, y: 100 },
+    })
+    expect(harness.onCameraUnlockProgressChange).toHaveBeenLastCalledWith(null)
   })
 
   it('does not unlock from edge dwell when camera mode changes are locked', () => {
@@ -436,9 +467,29 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
     harness.input.updateEdgeScroll(4_000, 0.016)
 
     expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
-    expect(harness.onCameraUnlockedByEdgeScroll).not.toHaveBeenCalled()
+    expect(harness.onCameraUnlocked).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.onCameraUnlockProgressChange).not.toHaveBeenCalled()
     expect(harness.getCameraMode()).toBe('target')
+  })
+
+  it('clears edge dwell progress when the pointer leaves the edge', () => {
+    const harness = createHarness('centered', {
+      edgeScrollEnabled: true,
+    })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
+    )
+    harness.input.updateEdgeScroll(0, 0.016)
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 100, clientY: 100 }),
+    )
+    harness.input.updateEdgeScroll(1_000, 0.016)
+
+    expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.onCameraUnlockProgressChange).toHaveBeenLastCalledWith(null)
   })
 
   it('does not pan or unlock when desktop edge-scroll is disabled', () => {

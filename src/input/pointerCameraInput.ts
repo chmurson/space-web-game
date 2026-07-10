@@ -13,6 +13,11 @@ export type TargetHeadingSelection = {
   worldPosition: Vec2
 }
 
+export type CameraUnlockProgress = {
+  progress: number
+  screenPosition: PointerScreenPosition
+}
+
 export type PointerCameraInput = {
   pointerScreenPosition: PointerScreenPosition
   updateEdgeScroll(nowMs: number, dtSeconds: number): void
@@ -30,7 +35,8 @@ export type PointerCameraInputOptions = {
   getTargetHeadingSelectionEnabled?: () => boolean
   onCameraModeSelected: (mode: CameraControlMode) => boolean
   onCameraPan: (delta: Vec2) => boolean
-  onCameraUnlockedByEdgeScroll?: () => void
+  onCameraUnlockProgressChange?: (progress: CameraUnlockProgress | null) => void
+  onCameraUnlocked?: () => void
   onResize: () => void
   onTargetHeadingPlan: (
     heading: number,
@@ -225,6 +231,7 @@ export const bindPointerCameraInput = (
   let pointerInsideRenderer = false
   let edgeDwellStartedAtMs: number | null = null
   let edgeDwellDirectionKey = ''
+  let cameraUnlockProgressVisible = false
   const defaultRendererCursor = options.rendererElement.style.cursor
   let activeCameraPan: {
     hasMovedForTap: boolean
@@ -245,17 +252,48 @@ export const bindPointerCameraInput = (
     pointerScreenPosition.y = clientY
   }
 
-  const clearEdgeDwell = () => {
-    edgeDwellStartedAtMs = null
-    edgeDwellDirectionKey = ''
-  }
-
   const setEdgeScrollCursor = (cursor: string | null) => {
     const nextCursor = cursor ?? defaultRendererCursor
     if (options.rendererElement.style.cursor === nextCursor) {
       return
     }
     options.rendererElement.style.cursor = nextCursor
+  }
+
+  const syncCameraUnlockProgress = (progress: number) => {
+    cameraUnlockProgressVisible = true
+    options.onCameraUnlockProgressChange?.({
+      progress: clamp(progress, 0, 1),
+      screenPosition: { ...pointerScreenPosition },
+    })
+  }
+
+  const clearCameraUnlockProgress = () => {
+    if (!cameraUnlockProgressVisible) {
+      return
+    }
+    cameraUnlockProgressVisible = false
+    options.onCameraUnlockProgressChange?.(null)
+  }
+
+  const clearEdgeDwell = () => {
+    edgeDwellStartedAtMs = null
+    edgeDwellDirectionKey = ''
+    clearCameraUnlockProgress()
+  }
+
+  const unlockCameraForFreeRoam = () => {
+    if (options.getCameraMode() === 'unlocked') {
+      return true
+    }
+    if (options.getCameraModeChangesLocked()) {
+      return false
+    }
+    if (!options.onCameraModeSelected('unlocked')) {
+      return false
+    }
+    options.onCameraUnlocked?.()
+    return true
   }
 
   const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
@@ -358,18 +396,20 @@ export const bindPointerCameraInput = (
       ) {
         edgeDwellStartedAtMs = nowMs
         edgeDwellDirectionKey = directionKey
+        syncCameraUnlockProgress(0)
         return
       }
 
-      if (nowMs - edgeDwellStartedAtMs < edgeUnlockDwellMs) {
+      const progress = (nowMs - edgeDwellStartedAtMs) / edgeUnlockDwellMs
+      syncCameraUnlockProgress(progress)
+      if (progress < 1) {
         return
       }
 
-      if (!options.onCameraModeSelected('unlocked')) {
+      if (!unlockCameraForFreeRoam()) {
         clearEdgeDwell()
         return
       }
-      options.onCameraUnlockedByEdgeScroll?.()
     }
 
     clearEdgeDwell()
@@ -580,7 +620,7 @@ export const bindPointerCameraInput = (
       })
 
       event.preventDefault()
-      if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
+      if (thresholdPoint && unlockCameraForFreeRoam()) {
         activeCameraPan.hasPanned =
           panCameraBetweenScreenPoints(
             thresholdPoint.x,

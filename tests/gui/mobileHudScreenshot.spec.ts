@@ -1907,6 +1907,60 @@ test('keeps the empty camera unlock notice title readable inside the bottom pill
   )
 })
 
+test('keeps the edge-pan free-roam progress indicator near the cursor', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await openReachMoonMainMenu(page)
+
+  const metrics = await page.evaluate(() => {
+    const indicator = document.querySelector<HTMLElement>(
+      '.camera-unlock-progress',
+    )
+    if (!indicator) {
+      throw new Error('Missing camera unlock progress indicator')
+    }
+
+    indicator.hidden = false
+    indicator.dataset.visible = 'true'
+    indicator.setAttribute('aria-hidden', 'false')
+    indicator.setAttribute('aria-valuenow', '68')
+    indicator.style.left = '868px'
+    indicator.style.top = '58px'
+    indicator.style.setProperty('--camera-unlock-progress', '0.68')
+
+    const bounds = indicator.getBoundingClientRect()
+    return {
+      ariaLabel: indicator.getAttribute('aria-label'),
+      ariaValueNow: indicator.getAttribute('aria-valuenow'),
+      bottom: bounds.bottom,
+      left: bounds.left,
+      right: bounds.right,
+      text: indicator.textContent?.trim(),
+      top: bounds.top,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    }
+  })
+
+  expect(metrics).toMatchObject({
+    ariaLabel: 'Loading free roam',
+    ariaValueNow: '68',
+    text: 'Free roam',
+  })
+  expect(metrics.left).toBeGreaterThanOrEqual(0)
+  expect(metrics.top).toBeGreaterThanOrEqual(0)
+  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
+
+  await expect(page.locator('.camera-unlock-progress')).toBeVisible()
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-edge-pan-unlock-progress',
+  )
+})
+
 test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
   page,
 }, testInfo) => {

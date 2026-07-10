@@ -4,6 +4,7 @@ import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
   bindPointerCameraInput,
+  type CameraUnlockProgress,
   createScreenPointWorldPicker,
 } from '../input/pointerCameraInput'
 import type { UIUserAction } from '../input/uiUserActions'
@@ -78,6 +79,9 @@ type AppRuntimeCoordinator = {
 }
 
 const cameraNoticeDurationMs = 2400
+const cameraUnlockProgressOffsetPx = 14
+const cameraUnlockProgressFallbackWidthPx = 148
+const cameraUnlockProgressFallbackHeightPx = 32
 const desktopFinePointerQuery = '(hover: hover) and (pointer: fine)'
 const desktopEdgePanSpeedPixelsPerSecond: Record<DesktopEdgePanSpeed, number> =
   {
@@ -189,6 +193,7 @@ const getCameraNoticeModeLabel = (mode: CameraControlMode) => {
 const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   let hideTimeout: number | null = null
   let finishHideTimeout: number | null = null
+  let finishProgressHideTimeout: number | null = null
 
   const hide = () => {
     overlayUi.cameraUnlockNotice.dataset.visible = 'false'
@@ -230,6 +235,61 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
     hideTimeout = window.setTimeout(hide, cameraNoticeDurationMs)
   }
 
+  const setUnlockProgress = (progress: CameraUnlockProgress | null) => {
+    if (progress === null) {
+      overlayUi.cameraUnlockProgress.dataset.visible = 'false'
+      overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'true')
+      overlayUi.cameraUnlockProgress.setAttribute('aria-valuenow', '0')
+      overlayUi.cameraUnlockProgress.style.removeProperty(
+        '--camera-unlock-progress',
+      )
+      if (finishProgressHideTimeout !== null) {
+        window.clearTimeout(finishProgressHideTimeout)
+      }
+      finishProgressHideTimeout = window.setTimeout(() => {
+        if (overlayUi.cameraUnlockProgress.dataset.visible !== 'true') {
+          overlayUi.cameraUnlockProgress.hidden = true
+        }
+        finishProgressHideTimeout = null
+      }, 120)
+      return
+    }
+
+    if (finishProgressHideTimeout !== null) {
+      window.clearTimeout(finishProgressHideTimeout)
+      finishProgressHideTimeout = null
+    }
+    overlayUi.cameraUnlockProgress.hidden = false
+
+    const clampedProgress = THREE.MathUtils.clamp(progress.progress, 0, 1)
+    const bounds = overlayUi.cameraUnlockProgress.getBoundingClientRect()
+    const width = bounds.width || cameraUnlockProgressFallbackWidthPx
+    const height = bounds.height || cameraUnlockProgressFallbackHeightPx
+    const left = THREE.MathUtils.clamp(
+      progress.screenPosition.x + cameraUnlockProgressOffsetPx,
+      8,
+      Math.max(8, window.innerWidth - width - 8),
+    )
+    const top = THREE.MathUtils.clamp(
+      progress.screenPosition.y + cameraUnlockProgressOffsetPx,
+      8,
+      Math.max(8, window.innerHeight - height - 8),
+    )
+
+    overlayUi.cameraUnlockProgress.dataset.visible = 'true'
+    overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'false')
+    overlayUi.cameraUnlockProgress.setAttribute(
+      'aria-valuenow',
+      Math.round(clampedProgress * 100).toString(),
+    )
+    overlayUi.cameraUnlockProgress.style.left = `${left}px`
+    overlayUi.cameraUnlockProgress.style.top = `${top}px`
+    overlayUi.cameraUnlockProgress.style.setProperty(
+      '--camera-unlock-progress',
+      clampedProgress.toFixed(3),
+    )
+  }
+
   return {
     showModeChange(mode: CameraControlMode) {
       const label = getCameraNoticeModeLabel(mode)
@@ -239,15 +299,10 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
         title: 'Camera mode',
       })
     },
-    showUnlockedByEdgeScroll() {
+    setUnlockProgress,
+    showUnlockedForFreeRoam() {
       show({
-        ariaLabel: 'Camera unlocked. Edge-scroll to pan.',
-        title: 'Camera unlocked',
-      })
-    },
-    showUnlockedBySwipe() {
-      show({
-        ariaLabel: 'Camera unlocked. Drag anywhere to pan.',
+        ariaLabel: 'Camera unlocked. Free roam is active.',
         title: 'Camera unlocked',
       })
     },
@@ -547,7 +602,7 @@ export const createAppComponents = (options: {
     keyboardInput,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
-    onCameraUnlockedBySwipe: cameraNotice.showUnlockedBySwipe,
+    onCameraUnlockedBySwipe: cameraNotice.showUnlockedForFreeRoam,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
@@ -717,7 +772,8 @@ export const createAppComponents = (options: {
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPan: runtimeActions.panCamera,
-    onCameraUnlockedByEdgeScroll: cameraNotice.showUnlockedByEdgeScroll,
+    onCameraUnlockProgressChange: cameraNotice.setUnlockProgress,
+    onCameraUnlocked: cameraNotice.showUnlockedForFreeRoam,
     onResize: runtimeActions.handleResize,
     onTargetHeadingPlan: (heading, selection) => {
       runtimeActions.planTargetHeading({
