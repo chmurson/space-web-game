@@ -57,7 +57,8 @@ const wheelLineModePixels = 16
 const cameraPanTapTolerancePx = 8
 const defaultDesktopEdgePanSpeedPixelsPerSecond = 420
 const edgeScrollBandPx = 44
-const edgeUnlockDwellMs = 3_000
+const edgeUnlockDwellMs = 1_500
+const edgeUnlockProgressDelayMs = 1_000
 const intentionalSwipeViewportRatio = 0.5
 
 const clamp = (value: number, min: number, max: number) =>
@@ -396,12 +397,16 @@ export const bindPointerCameraInput = (
       ) {
         edgeDwellStartedAtMs = nowMs
         edgeDwellDirectionKey = directionKey
-        syncCameraUnlockProgress(0)
         return
       }
 
       const progress = (nowMs - edgeDwellStartedAtMs) / edgeUnlockDwellMs
-      syncCameraUnlockProgress(progress)
+      if (nowMs - edgeDwellStartedAtMs >= edgeUnlockProgressDelayMs) {
+        syncCameraUnlockProgress(
+          (nowMs - edgeDwellStartedAtMs - edgeUnlockProgressDelayMs) /
+            (edgeUnlockDwellMs - edgeUnlockProgressDelayMs),
+        )
+      }
       if (progress < 1) {
         return
       }

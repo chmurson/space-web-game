@@ -419,7 +419,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
     expect(fastDelta.x).toBeGreaterThan(slowDelta.x * 2)
   })
 
-  it('waits for edge dwell before unlocking and panning locked cameras', () => {
+  it('delays free-roam loading progress and shortens edge dwell before unlocking', () => {
     const harness = createHarness('centered', {
       edgeScrollEnabled: true,
     })
@@ -428,12 +428,19 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
       createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
     )
     harness.input.updateEdgeScroll(0, 0.016)
-    harness.input.updateEdgeScroll(2_999, 0.016)
+    harness.input.updateEdgeScroll(999, 0.016)
+
+    expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.onCameraUnlockProgressChange).not.toHaveBeenCalled()
+
+    harness.input.updateEdgeScroll(1_000, 0.016)
+    harness.input.updateEdgeScroll(1_499, 0.016)
 
     expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
 
-    harness.input.updateEdgeScroll(3_000, 0.016)
+    harness.input.updateEdgeScroll(1_500, 0.016)
 
     expect(harness.onCameraModeSelected).toHaveBeenCalledWith('unlocked')
     expect(harness.onCameraUnlocked).toHaveBeenCalledTimes(1)
@@ -444,7 +451,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
       screenPosition: { x: 199, y: 100 },
     })
     expect(harness.onCameraUnlockProgressChange).toHaveBeenNthCalledWith(2, {
-      progress: 2_999 / 3_000,
+      progress: 499 / 500,
       screenPosition: { x: 199, y: 100 },
     })
     expect(harness.onCameraUnlockProgressChange).toHaveBeenNthCalledWith(3, {
@@ -482,10 +489,11 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
       createPointerEvent('pointermove', { clientX: 199, clientY: 100 }),
     )
     harness.input.updateEdgeScroll(0, 0.016)
+    harness.input.updateEdgeScroll(1_000, 0.016)
     harness.canvas.dispatchEvent(
       createPointerEvent('pointermove', { clientX: 100, clientY: 100 }),
     )
-    harness.input.updateEdgeScroll(1_000, 0.016)
+    harness.input.updateEdgeScroll(1_001, 0.016)
 
     expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
