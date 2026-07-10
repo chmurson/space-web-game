@@ -9,7 +9,10 @@ import {
 } from '../input/pointerCameraInput'
 import type { UIUserAction } from '../input/uiUserActions'
 import { createBodyPresentation } from '../presentation/bodyPresentation'
-import { createHudPresentation } from '../presentation/hudPresentation'
+import {
+  createHudPresentation,
+  type TouchControlAvailability,
+} from '../presentation/hudPresentation'
 import { createSpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import { createTrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import { createRendererProfiler } from '../render/rendererProfiler'
@@ -43,6 +46,7 @@ import {
 } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
+import { createDesktopTargetSelector } from '../ui/createDesktopTargetSelector'
 import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
 import { createScenarioLoadingOverlay } from '../ui/createScenarioLoadingOverlay'
@@ -497,6 +501,19 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
+  let touchControlAvailability: TouchControlAvailability = {
+    burn: true,
+    target: true,
+    trajectory: true,
+    warp: true,
+  }
+  const isSameTouchControlAvailability = (
+    nextVisibility: TouchControlAvailability,
+  ) =>
+    touchControlAvailability.burn === nextVisibility.burn &&
+    touchControlAvailability.target === nextVisibility.target &&
+    touchControlAvailability.trajectory === nextVisibility.trajectory &&
+    touchControlAvailability.warp === nextVisibility.warp
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
   let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
@@ -518,6 +535,17 @@ export const createAppComponents = (options: {
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
+  const getTargetControlRows = () =>
+    options.runtimeState.simulation.state.bodies.map((body, index) => ({
+      body,
+      distanceMeters: queries.getCaptureMetrics(body).surfaceDistance,
+      index,
+    }))
+  const syncTargetRecommendationState = () => {
+    targetRecommendationNotice?.acknowledgeCurrentTargetState(
+      queries.getAssistTargetUiState(),
+    )
+  }
   const touchControls = createTouchControls({
     app: options.app,
     automaticTargetingAvailable:
@@ -538,12 +566,7 @@ export const createAppComponents = (options: {
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getAssistTargetUiState: queries.getAssistTargetUiState,
-    getTargetControlRows: () =>
-      options.runtimeState.simulation.state.bodies.map((body, index) => ({
-        body,
-        distanceMeters: queries.getCaptureMetrics(body).surfaceDistance,
-        index,
-      })),
+    getTargetControlRows,
     getTrajectoryHorizonPreviews: (action, count) =>
       getTrajectoryHorizonPreviews({
         action,
@@ -608,11 +631,7 @@ export const createAppComponents = (options: {
     onReturnToAutomaticTarget:
       runtimeActions.returnToAutomaticAssistTargetSelection,
     onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
-    onTargetStateChange: () => {
-      targetRecommendationNotice?.acknowledgeCurrentTargetState(
-        queries.getAssistTargetUiState(),
-      )
-    },
+    onTargetStateChange: syncTargetRecommendationState,
     onTargetHeadingPlan: (screenX, screenY) => {
       const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
 
@@ -639,8 +658,30 @@ export const createAppComponents = (options: {
     },
     onZoom: zoomCameraAroundScreenPoint,
   })
+  if (!overlayUi.targetSelectorButton || !overlayUi.targetSelectorPopover) {
+    throw new Error('Desktop target selector controls are missing')
+  }
+  const desktopTargetSelector = createDesktopTargetSelector({
+    automaticTargetingAvailable:
+      options.config.assistTarget.autoSelectNearestSurface,
+    button: overlayUi.targetSelectorButton,
+    getRows: getTargetControlRows,
+    getTargetState: queries.getAssistTargetUiState,
+    onReturnToAutomaticTarget:
+      runtimeActions.returnToAutomaticAssistTargetSelection,
+    onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
+    onStateChange: () => {
+      syncTargetRecommendationState()
+      touchControls.syncUi()
+    },
+    popover: overlayUi.targetSelectorPopover,
+  })
   targetRecommendationNotice = createTargetRecommendationNoticePresenter({
-    onOpenTargetControl: touchControls.openTargetControl,
+    onOpenTargetControl: () => {
+      if (!desktopTargetSelector.open()) {
+        touchControls.openTargetControl()
+      }
+    },
     refs: {
       dismissButton: overlayUi.targetRecommendationNoticeDismissButton,
       element: overlayUi.targetRecommendationNotice,
@@ -668,9 +709,14 @@ export const createAppComponents = (options: {
     getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
+    getTouchBurnControlAvailable: () => touchControlAvailability.burn,
     getTouchBurnControlSide: () => touchBurnControlSide,
+    getTouchTargetControlAvailable: () => touchControlAvailability.target,
     getTouchTargetControlSide: () => touchTargetControlSide,
+    getTouchTrajectoryControlAvailable: () =>
+      touchControlAvailability.trajectory,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
+    getTouchWarpControlAvailable: () => touchControlAvailability.warp,
     getTouchWarpControlSide: () => touchWarpControlSide,
     onOrbitPointDisplayChange: (settings) => {
       userOrbitPointDisplaySettings = { ...settings }
@@ -746,7 +792,18 @@ export const createAppComponents = (options: {
     queries,
     rendererProfiler,
     runtime: options.runtimeState,
+    desktopTargetSelector,
     targetRecommendationNotice: targetRecommendationNotice ?? undefined,
+    onTouchControlAvailabilityChange: (visibility) => {
+      if (isSameTouchControlAvailability(visibility)) {
+        return
+      }
+
+      touchControlAvailability = visibility
+      if (uiSettingsOpen) {
+        uiSettingsDialog.syncState()
+      }
+    },
     timeWarps: options.config.controls.timeWarps,
     touchControls,
     trajectoryPresentation,
@@ -973,6 +1030,7 @@ export const createAppComponents = (options: {
       options.config.assistTarget.autoSelectNearestSurface,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
     getInteractionsEnabled: getGameInteractionsEnabled,
+    handleTargetSelectorShortcut: desktopTargetSelector.toggleFromShortcut,
     handleAction: handleKeyboardAction,
     keyboardInput,
     windowTarget: window,

@@ -35,6 +35,18 @@ import { createBodyDistanceContext } from './bodyDistanceContext'
 import { getSpacecraftTrailDetail } from './spacecraftTrail'
 import type { TrajectoryPresentation } from './trajectoryPresentation'
 
+type TargetSelectorControls = {
+  setTargetControlVisible(visible: boolean): void
+  syncUi(): void
+}
+
+export type TouchControlAvailability = {
+  burn: boolean
+  target: boolean
+  trajectory: boolean
+  warp: boolean
+}
+
 const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
   auto: 'tracking target',
   forced: 'locked target',
@@ -77,6 +89,7 @@ const debugPanelUpdateIntervalMs = 500
 const fpsIndicatorUpdateFrameCycleInterval = 4
 const fpsIndicatorSlowFrameMs = 1000 / 15
 const transientNoticeDurationMs = 3_000
+const transientNoticeHideSettleMs = 180
 
 const createDebugStateCopyPayload = (options: {
   capturedAtMs: number
@@ -167,9 +180,11 @@ export const createHudPresentation = (options: {
   queries: GameQueries
   rendererProfiler: RendererProfiler
   runtime: AppRuntimeState
+  desktopTargetSelector?: TargetSelectorControls
   targetRecommendationNotice?: {
     sync(targetUiState: AssistTargetUiState): void
   }
+  onTouchControlAvailabilityChange?(visibility: TouchControlAvailability): void
   timeWarps: number[]
   touchControls?: TouchControls
   trajectoryPresentation: TrajectoryPresentation
@@ -177,6 +192,7 @@ export const createHudPresentation = (options: {
   let lastTimeWarpIndex: number | null = null
   let lastTransientNoticeId: string | null = null
   let transientNoticeHideTimeoutId: number | null = null
+  let transientNoticeFinishHideTimeoutId: number | null = null
   let lastTimeIconUpdateAt: number | null = null
   let timeIconAngle = 0
   let lastUiEffectEpoch = options.runtime.ui.uiEffectEpoch
@@ -205,6 +221,9 @@ export const createHudPresentation = (options: {
       options.overlayUi.targetPill.setAttribute('aria-label', targetLabel)
       options.overlayUi.targetPill.title = targetLabel
     }
+    if (options.overlayUi.targetSelectorButton) {
+      options.overlayUi.targetSelectorButton.title = `Select target (T). ${targetLabel}`
+    }
     if (
       options.overlayUi.statTarget &&
       options.overlayUi.statTarget.textContent !== target.name
@@ -222,12 +241,16 @@ export const createHudPresentation = (options: {
     if (options.overlayUi.targetSphere) {
       syncTargetSphere(options.overlayUi.targetSphere, target)
     }
-    if (options.overlayUi.targetStatus) {
-      options.overlayUi.targetStatus.hidden = false
-      options.overlayUi.targetStatus.style.visibility =
-        targetUiState.mode === 'forced' ? 'hidden' : ''
-      options.overlayUi.targetStatus.className = `target-status-mark target-status-mark-${targetUiState.mode}`
+    const syncStatusMark = (element: HTMLElement | null) => {
+      if (!element) {
+        return
+      }
+      element.hidden = false
+      element.style.visibility = targetUiState.mode === 'forced' ? 'hidden' : ''
+      element.className = `target-status-mark target-status-mark-${targetUiState.mode}`
     }
+    syncStatusMark(options.overlayUi.targetStatus)
+    syncStatusMark(options.overlayUi.targetSelectorButtonStatus)
   }
 
   // Create scenario prompt updater using existing UI elements from overlayUi
@@ -320,6 +343,10 @@ export const createHudPresentation = (options: {
     }
 
     lastTransientNoticeId = notice.id
+    if (transientNoticeFinishHideTimeoutId !== null) {
+      window.clearTimeout(transientNoticeFinishHideTimeoutId)
+      transientNoticeFinishHideTimeoutId = null
+    }
     options.overlayUi.cameraUnlockNotice.hidden = false
     options.overlayUi.cameraUnlockNoticeTitle?.replaceChildren(notice.title)
     options.overlayUi.cameraUnlockNoticeBody?.replaceChildren(notice.body ?? '')
@@ -338,6 +365,12 @@ export const createHudPresentation = (options: {
       if (options.runtime.ui.transientNotice?.id === notice.id) {
         options.overlayUi.cameraUnlockNotice.dataset.visible = 'false'
         options.overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'true')
+        transientNoticeFinishHideTimeoutId = window.setTimeout(() => {
+          if (options.overlayUi.cameraUnlockNotice.dataset.visible !== 'true') {
+            options.overlayUi.cameraUnlockNotice.hidden = true
+          }
+          transientNoticeFinishHideTimeoutId = null
+        }, transientNoticeHideSettleMs)
       }
       transientNoticeHideTimeoutId = null
     }, transientNoticeDurationMs)
@@ -455,9 +488,16 @@ export const createHudPresentation = (options: {
         finiteFuel && spacecraft.fuel <= 0 && !crashed,
       )
       syncTransientNotice()
+      options.onTouchControlAvailabilityChange?.({
+        burn: showThrustControl,
+        target: showTargetControl,
+        trajectory: showTrajectoryControl,
+        warp: showTimePill,
+      })
       options.touchControls?.setBurnControlVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
       options.touchControls?.setTargetControlVisible(showTargetControl)
+      options.desktopTargetSelector?.setTargetControlVisible(showTargetControl)
       options.touchControls?.setTrajectoryControlVisible(showTrajectoryControl)
 
       if (options.overlayUi.statEngine) {
@@ -507,9 +547,13 @@ export const createHudPresentation = (options: {
           speedPill.style.display =
             !crashed && showSpeedPill ? 'inline-flex' : 'none'
         }
-        if (targetPill) {
-          targetPill.style.display =
+        const targetCluster = options.overlayUi.targetCluster ?? targetPill
+        if (targetCluster) {
+          targetCluster.style.display =
             !crashed && showTargetPill ? 'inline-flex' : 'none'
+        }
+        if (targetPill) {
+          targetPill.style.display = 'inline-flex'
         }
         if (thrustPill) {
           thrustPill.style.display =
@@ -518,7 +562,6 @@ export const createHudPresentation = (options: {
         thrustPill?.classList.remove('telemetry-pill-thrust-active')
         thrustPill?.classList.toggle('telemetry-pill-thrust-crashed', crashed)
         speedPill?.classList.toggle('telemetry-pill-thrusting', thrusting)
-        syncHudNoticeVisibility(options.overlayUi.burnActiveNotice, thrusting)
         if (options.overlayUi.speedIcon) {
           options.overlayUi.speedIcon.classList.toggle(
             'telemetry-speed-icon-thrusting',
@@ -549,6 +592,7 @@ export const createHudPresentation = (options: {
         options.runtime.simulation.assistMode,
       )
       options.touchControls?.syncUi()
+      options.desktopTargetSelector?.syncUi()
       options.touchControls?.setTutorialHintTarget(
         prompts.active?.kind === 'coach' && prompts.active.layout === 'anchored'
           ? (prompts.active.touchHintTarget ?? null)

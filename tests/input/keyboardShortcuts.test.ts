@@ -121,4 +121,28 @@ describe('getKeyboardShortcutAction', () => {
       ),
     ).toBeNull()
   })
+
+  it('maps T to target cycling when automatic target discovery is disabled', () => {
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('KeyT'), {
+        autoDiscoverStrongestInfluence: false,
+        debugModeEnabled: false,
+      }),
+    ).toBe('cycleAssistTarget')
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('KeyT'), {
+        autoDiscoverStrongestInfluence: true,
+        debugModeEnabled: false,
+      }),
+    ).toBeNull()
+    expect(
+      getKeyboardShortcutAction(
+        { ...createDebugShortcutEvent('KeyT'), repeat: true },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBeNull()
+  })
 })

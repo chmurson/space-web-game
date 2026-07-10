@@ -9,6 +9,7 @@ import {
 } from '../components/HudTelemetrySurface'
 import { createPreactUiSurface } from '../createPreactUiSurface'
 import { createDebugPanel, type DebugPanel } from '../debugPanel'
+import { installNativeTouchZoomSuppression } from '../nativeTouchZoomSuppression'
 import {
   createScenarioPromptUI,
   type ScenarioPromptSurfaceRenderer,
@@ -22,7 +23,6 @@ export const spacecraftOffscreenIndicatorId = '__spacecraft__'
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   bottomPillArea: HTMLElement
-  burnActiveNotice: HTMLElement
   cameraUnlockNotice: HTMLElement
   cameraUnlockNoticeBody: HTMLSpanElement | null
   cameraUnlockNoticeTitle: HTMLSpanElement | null
@@ -68,7 +68,11 @@ export type OverlayUiRefs = {
   speedIcon: SVGSVGElement | null
   statTarget: HTMLElement | null
   statTargetAltitude: HTMLElement | null
+  targetCluster: HTMLElement | null
   targetPill: HTMLElement | null
+  targetSelectorButton: HTMLButtonElement | null
+  targetSelectorButtonStatus: HTMLElement | null
+  targetSelectorPopover: HTMLElement | null
   targetSphere: HTMLElement | null
   targetStatus: HTMLElement | null
   statTargetSpeed: HTMLElement | null
@@ -99,7 +103,11 @@ const createEmptyTelemetryRefs = (): TelemetryStripRefs => ({
   statTargetAltitude: null,
   statThrust: null,
   statTime: null,
+  targetCluster: null,
   targetPill: null,
+  targetSelectorButton: null,
+  targetSelectorButtonStatus: null,
+  targetSelectorPopover: null,
   targetSphere: null,
   targetStatus: null,
   timeIcon: null,
@@ -156,10 +164,12 @@ const createTrajectoryEventMarkerLabel = (
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const topBar = document.createElement('div')
   topBar.className = 'top-bar'
+  installNativeTouchZoomSuppression(topBar)
   options.app.appendChild(topBar)
 
   const bottomHudNotices = createBottomHudNoticesSurface(options.app)
   const { bottomPillArea } = bottomHudNotices
+  installNativeTouchZoomSuppression(bottomPillArea)
 
   const cameraUnlockProgress = document.createElement('div')
   cameraUnlockProgress.className = 'camera-unlock-progress'
@@ -183,6 +193,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   })
 
   const scenarioPromptUi = createScenarioPromptUI(options.app, bottomPillArea)
+  installNativeTouchZoomSuppression(scenarioPromptUi.backdropElement)
 
   const spacecraftCallout = document.createElement('div')
   spacecraftCallout.className = 'spacecraft-callout'
@@ -270,7 +281,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   return {
     bodyLabels,
     bottomPillArea,
-    burnActiveNotice: bottomHudNotices.burnActiveNotice,
     cameraUnlockNotice: bottomHudNotices.cameraUnlockNotice,
     cameraUnlockNoticeBody: bottomHudNotices.cameraUnlockNoticeBody,
     cameraUnlockNoticeTitle: bottomHudNotices.cameraUnlockNoticeTitle,
@@ -320,7 +330,12 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     speedIcon: hudTelemetry.telemetryRefs.speedIcon,
     statTarget: hudTelemetry.telemetryRefs.statTarget,
     statTargetAltitude: hudTelemetry.telemetryRefs.statTargetAltitude,
+    targetCluster: hudTelemetry.telemetryRefs.targetCluster,
     targetPill: hudTelemetry.telemetryRefs.targetPill,
+    targetSelectorButton: hudTelemetry.telemetryRefs.targetSelectorButton,
+    targetSelectorButtonStatus:
+      hudTelemetry.telemetryRefs.targetSelectorButtonStatus,
+    targetSelectorPopover: hudTelemetry.telemetryRefs.targetSelectorPopover,
     targetSphere: hudTelemetry.telemetryRefs.targetSphere,
     targetStatus: hudTelemetry.telemetryRefs.targetStatus,
     statTargetSpeed: null,

@@ -116,4 +116,46 @@ describe('bindKeyboardShortcuts', () => {
     expect(handleAction).toHaveBeenCalledWith('resetScenario')
     expect(keyboardInput.getManualControls().main).toBe(0)
   })
+
+  it('lets the desktop target selector consume plain T before runtime actions', () => {
+    const keyboardInput = createKeyboardInput()
+    const keyboardTarget = createKeyboardTarget()
+    const handleAction = vi.fn()
+    const handleTargetSelectorShortcut = vi.fn(() => true)
+
+    bindKeyboardShortcuts({
+      autoDiscoverStrongestInfluence: true,
+      getDebugModeEnabled: () => false,
+      getInteractionsEnabled: () => true,
+      handleAction,
+      handleTargetSelectorShortcut,
+      keyboardInput,
+      windowTarget: keyboardTarget,
+    })
+
+    keyboardTarget.dispatch('keydown', 'KeyT')
+
+    expect(handleTargetSelectorShortcut).toHaveBeenCalledTimes(1)
+    expect(handleAction).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the existing target shortcut when desktop selector is unavailable', () => {
+    const keyboardInput = createKeyboardInput()
+    const keyboardTarget = createKeyboardTarget()
+    const handleAction = vi.fn()
+
+    bindKeyboardShortcuts({
+      autoDiscoverStrongestInfluence: false,
+      getDebugModeEnabled: () => false,
+      getInteractionsEnabled: () => true,
+      handleAction,
+      handleTargetSelectorShortcut: () => false,
+      keyboardInput,
+      windowTarget: keyboardTarget,
+    })
+
+    keyboardTarget.dispatch('keydown', 'KeyT')
+
+    expect(handleAction).toHaveBeenCalledWith('cycleAssistTarget')
+  })
 })

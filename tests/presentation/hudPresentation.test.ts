@@ -382,7 +382,6 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
   return {
     bodyLabels: new Map(),
     bottomPillArea: bottomPillArea as unknown as HTMLElement,
-    burnActiveNotice: new FakeElement('div') as unknown as HTMLElement,
     cameraUnlockNotice: new FakeElement('div') as unknown as HTMLElement,
     cameraUnlockNoticeBody: null,
     cameraUnlockNoticeTitle: null,
@@ -439,6 +438,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     statTime: null,
     statWarp: null,
     statZoom: null,
+    targetCluster: null,
     targetPill: null,
     targetRecommendationNotice: new FakeElement(
       'div',
@@ -446,6 +446,9 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     targetRecommendationNoticeDismissButton: null,
     targetRecommendationNoticeMessage: null,
     targetRecommendationNoticeOpenButton: null,
+    targetSelectorButton: null,
+    targetSelectorButtonStatus: null,
+    targetSelectorPopover: null,
     targetSphere: null,
     targetStatus: null,
     timeIcon: null,
@@ -510,6 +513,7 @@ describe('createHudPresentation', () => {
   afterEach(() => {
     restoreFakeDom()
     vi.restoreAllMocks()
+    vi.useRealTimers()
   })
 
   it('mounts and renders the FPS meter only while it is visible', async () => {
@@ -625,7 +629,14 @@ describe('createHudPresentation', () => {
     overlayUi.statTargetAltitude = new FakeElement(
       'span',
     ) as unknown as HTMLElement
+    overlayUi.targetCluster = new FakeElement('div') as unknown as HTMLElement
     overlayUi.targetPill = new FakeElement('div') as unknown as HTMLElement
+    overlayUi.targetSelectorButton = new FakeElement(
+      'button',
+    ) as unknown as HTMLButtonElement
+    overlayUi.targetSelectorButtonStatus = new FakeElement(
+      'span',
+    ) as unknown as HTMLElement
     const runtime = createRuntime()
     const presentation = createHudPresentation({
       defaultViewport: 100,
@@ -659,6 +670,12 @@ describe('createHudPresentation', () => {
     )
     expect(overlayUi.targetPill.getAttribute('aria-label')).toBe(
       overlayUi.targetPill.title,
+    )
+    expect(overlayUi.targetSelectorButton.title).toBe(
+      'Select target (T). Moon, pinned target, altitude 84 Mm',
+    )
+    expect(overlayUi.targetSelectorButtonStatus.className).toBe(
+      'target-status-mark target-status-mark-manual',
     )
   })
 
@@ -737,7 +754,7 @@ describe('createHudPresentation', () => {
     expect(overlayUi.fuelPill.dataset.fuelState).toBe('depleted')
   })
 
-  it('syncs the burn notice with active thrust and top speed telemetry', async () => {
+  it('syncs active thrust with top speed telemetry only', async () => {
     const { createHudPresentation } = await import(
       '@/presentation/hudPresentation'
     )
@@ -745,7 +762,6 @@ describe('createHudPresentation', () => {
     app.id = 'app'
     app.isConnected = true
     const overlayUi = createOverlayUi(app)
-    const burnNotice = overlayUi.burnActiveNotice as unknown as FakeElement
     const speedPill = new FakeElement('div')
     const statSpeed = new FakeElement('strong')
     const speedIcon = new FakeElement('svg')
@@ -776,9 +792,6 @@ describe('createHudPresentation', () => {
     runtime.simulation.state.controls.main = 1
     presentation.update(createMetrics())
 
-    expect(burnNotice.hidden).toBe(false)
-    expect(burnNotice.dataset.visible).toBe('true')
-    expect(burnNotice.getAttribute('aria-hidden')).toBe('false')
     expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(true)
     expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
       true,
@@ -787,9 +800,6 @@ describe('createHudPresentation', () => {
     runtime.simulation.state.controls.main = 0
     presentation.update(createMetrics())
 
-    expect(burnNotice.hidden).toBe(true)
-    expect(burnNotice.dataset.visible).toBe('false')
-    expect(burnNotice.getAttribute('aria-hidden')).toBe('true')
     expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(false)
     expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
       false,
@@ -799,7 +809,6 @@ describe('createHudPresentation', () => {
     runtime.simulation.state.spacecraft.fuel = 0
     presentation.update(createMetrics())
 
-    expect(burnNotice.hidden).toBe(true)
     expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(false)
     expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
       false,
@@ -809,11 +818,99 @@ describe('createHudPresentation', () => {
     runtime.simulation.crashedBodyName = 'Earth'
     presentation.update(createMetrics())
 
-    expect(burnNotice.hidden).toBe(true)
     expect(speedPill.classList.contains('telemetry-pill-thrusting')).toBe(false)
     expect(speedIcon.classList.contains('telemetry-speed-icon-thrusting')).toBe(
       false,
     )
+  })
+
+  it('fully hides expired runtime transient notices after the fade', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const fakeWindow = window as unknown as {
+      clearTimeout: typeof globalThis.clearTimeout
+      requestAnimationFrame: (callback: FrameRequestCallback) => number
+      setTimeout: typeof globalThis.setTimeout
+    }
+    vi.useFakeTimers()
+    fakeWindow.clearTimeout = globalThis.clearTimeout
+    fakeWindow.requestAnimationFrame = (callback) => {
+      callback(0)
+      return 1
+    }
+    fakeWindow.setTimeout = globalThis.setTimeout
+
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    const notice = overlayUi.cameraUnlockNotice as unknown as FakeElement
+    const noticeBody = new FakeElement('span')
+    const noticeTitle = new FakeElement('span')
+    overlayUi.cameraUnlockNoticeBody = noticeBody as unknown as HTMLSpanElement
+    overlayUi.cameraUnlockNoticeTitle =
+      noticeTitle as unknown as HTMLSpanElement
+    const runtime = createRuntime()
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler: {
+        getSmoothedGpuMs: vi.fn(() => 8),
+      } as unknown as RendererProfiler,
+      runtime,
+      timeWarps: [1],
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+
+    runtime.ui.transientNotice = {
+      body: 'Stable lunar orbit',
+      id: 'notice-1',
+      title: 'Orbit improved',
+    }
+    presentation.update(createMetrics())
+
+    expect(notice.hidden).toBe(false)
+    expect(notice.dataset.visible).toBe('true')
+    expect(notice.getAttribute('aria-hidden')).toBe('false')
+    expect(notice.getAttribute('aria-label')).toBe(
+      'Orbit improved: Stable lunar orbit',
+    )
+
+    vi.advanceTimersByTime(3_000)
+
+    expect(notice.hidden).toBe(false)
+    expect(notice.dataset.visible).toBe('false')
+    expect(notice.getAttribute('aria-hidden')).toBe('true')
+
+    runtime.ui.transientNotice = {
+      id: 'notice-2',
+      title: 'Second notice',
+    }
+    presentation.update(createMetrics())
+
+    vi.advanceTimersByTime(180)
+
+    expect(notice.hidden).toBe(false)
+    expect(notice.dataset.visible).toBe('true')
+    expect(notice.getAttribute('aria-hidden')).toBe('false')
+    expect(notice.getAttribute('aria-label')).toBe('Second notice')
+    expect(noticeBody.textContent).toBe('')
+    expect(noticeTitle.textContent).toBe('Second notice')
+
+    vi.advanceTimersByTime(3_180)
+
+    expect(notice.hidden).toBe(true)
+    expect(notice.dataset.visible).toBe('false')
+    expect(notice.getAttribute('aria-hidden')).toBe('true')
   })
 
   it('renders viewport and trail detail in the debug window', async () => {
