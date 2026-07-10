@@ -20,6 +20,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
     )) as TouchControlsModule
     const timeWarps = [1, 10, 30, 60]
     let timeWarpIndex = 0
+    let interactionsEnabled = true
     const body = {
       color: '#38BDF8',
       id: 'earth',
@@ -79,7 +80,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       getCameraModeChangesLocked: () => false,
       getCurrentTimeWarp: () => timeWarps[timeWarpIndex],
       getCurrentTrajectoryHorizonHours: () => 1,
-      getInteractionsEnabled: () => true,
+      getInteractionsEnabled: () => interactionsEnabled,
       getMobileManeuverStartByDrag: () => true,
       getSpacecraftVisible: () => true,
       getTargetControlRows: () => [],
@@ -130,49 +131,87 @@ test('routes the horizontal prototype time warp control to shared state', async 
       throw new Error('Expected both time warp controls to render')
     }
 
-    const rect = prototypeControl.getBoundingClientRect()
-    const start = {
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
+    const dragPrototype = (
+      params: { beforeMouseup?: () => void; distanceX?: number } = {},
+    ) => {
+      const rect = prototypeControl.getBoundingClientRect()
+      const start = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      }
+      const end = { x: start.x + (params.distanceX ?? 54), y: start.y }
+      prototypeControl.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          button: 0,
+          cancelable: true,
+          clientX: start.x,
+          clientY: start.y,
+        }),
+      )
+      window.dispatchEvent(
+        new MouseEvent('mousemove', {
+          bubbles: true,
+          button: 0,
+          cancelable: true,
+          clientX: end.x,
+          clientY: end.y,
+        }),
+      )
+      params.beforeMouseup?.()
+      window.dispatchEvent(
+        new MouseEvent('mouseup', {
+          bubbles: true,
+          button: 0,
+          cancelable: true,
+          clientX: end.x,
+          clientY: end.y,
+        }),
+      )
     }
-    const end = { x: start.x + 54, y: start.y }
-    prototypeControl.dispatchEvent(
-      new MouseEvent('mousedown', {
-        bubbles: true,
-        button: 0,
-        cancelable: true,
-        clientX: start.x,
-        clientY: start.y,
-      }),
-    )
-    window.dispatchEvent(
-      new MouseEvent('mousemove', {
-        bubbles: true,
-        button: 0,
-        cancelable: true,
-        clientX: end.x,
-        clientY: end.y,
-      }),
-    )
-    window.dispatchEvent(
-      new MouseEvent('mouseup', {
-        bubbles: true,
-        button: 0,
-        cancelable: true,
-        clientX: end.x,
-        clientY: end.y,
-      }),
-    )
+
+    dragPrototype()
+    const firstCommitTimeWarp = timeWarps[timeWarpIndex]
+
+    dragPrototype({
+      beforeMouseup: () => {
+        interactionsEnabled = false
+      },
+      distanceX: 24,
+    })
+    const disabledMouseupTimeWarp = timeWarps[timeWarpIndex]
+    interactionsEnabled = true
+
+    dragPrototype()
+    const postDisabledRecoveryTimeWarp = timeWarps[timeWarpIndex]
+
+    dragPrototype({
+      beforeMouseup: () => {
+        window.dispatchEvent(new Event('blur'))
+      },
+      distanceX: 24,
+    })
+    const blurCancelTimeWarp = timeWarps[timeWarpIndex]
+
+    dragPrototype()
     controls.syncUi()
 
     return {
+      blurCancelTimeWarp,
       currentTimeWarp: timeWarps[timeWarpIndex],
+      disabledMouseupTimeWarp,
+      firstCommitTimeWarp,
       originalText: originalControl.textContent,
+      postDisabledRecoveryTimeWarp,
       prototypeText: prototypeControl.textContent,
     }
   })
 
-  expect(result.currentTimeWarp).toBe(10)
-  expect(result.originalText).toContain('x10s')
-  expect(result.prototypeText).toContain('x10s')
+  expect(result.firstCommitTimeWarp).toBe(10)
+  expect(result.disabledMouseupTimeWarp).toBe(10)
+  expect(result.postDisabledRecoveryTimeWarp).toBe(30)
+  expect(result.blurCancelTimeWarp).toBe(30)
+  expect(result.currentTimeWarp).toBe(60)
+  expect(result.originalText).toContain('x1m')
+  expect(result.prototypeText).toContain('x1m')
 })

@@ -670,6 +670,10 @@ export const createTouchControls = (options: {
     identifier: mouseStepSelectorTouchId,
   })
 
+  const isMouseStepSelectorSession = () =>
+    activeSession.kind === 'step-selector' &&
+    activeSession.touchId === mouseStepSelectorTouchId
+
   const updateStepSelectorSession = (point: StepSelectorGesturePoint) => {
     if (activeSession.kind !== 'step-selector') {
       return
@@ -1403,10 +1407,7 @@ export const createTouchControls = (options: {
   })
 
   window.addEventListener('mousemove', (event) => {
-    if (
-      activeSession.kind !== 'step-selector' ||
-      activeSession.touchId !== mouseStepSelectorTouchId
-    ) {
+    if (!isMouseStepSelectorSession()) {
       return
     }
 
@@ -1420,15 +1421,25 @@ export const createTouchControls = (options: {
   })
 
   window.addEventListener('mouseup', (event) => {
-    if (
-      activeSession.kind !== 'step-selector' ||
-      activeSession.touchId !== mouseStepSelectorTouchId
-    ) {
+    if (!isMouseStepSelectorSession()) {
+      return
+    }
+
+    if (!options.getInteractionsEnabled()) {
+      clearGameplayTouchInput()
       return
     }
 
     event.preventDefault()
     finishStepSelectorGesture(true)
+  })
+
+  window.addEventListener('blur', () => {
+    if (!isMouseStepSelectorSession()) {
+      return
+    }
+
+    finishStepSelectorGesture(false)
   })
 
   options.app.appendChild(panel)
