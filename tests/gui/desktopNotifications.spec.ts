@@ -130,3 +130,45 @@ test('shows camera unlock notice when desktop drag unlocks follow camera', async
 
   await attachScreenshot(page, testInfo, 'desktop-camera-drag-unlock-notice')
 })
+
+test('hides mobile-only spacecraft settings in desktop UI settings', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByRole('button', { name: 'Open in-game controls' }).click()
+  await page.getByRole('button', { name: 'UI settings' }).click()
+
+  const spacecraftSettingsButton = page.getByRole('button', {
+    name: /Spacecraft controls settings/,
+  })
+  await expect(spacecraftSettingsButton).toBeVisible()
+  await expect(spacecraftSettingsButton).toHaveAccessibleName(
+    'Spacecraft controls settings: Keyboard and mouse active',
+  )
+  await expect(spacecraftSettingsButton).not.toContainText('Burn')
+  await expect(spacecraftSettingsButton).not.toContainText('warp')
+  await expect(spacecraftSettingsButton).not.toContainText('target')
+  await expect(spacecraftSettingsButton).not.toContainText('trajectory')
+  await expect(spacecraftSettingsButton).not.toContainText('maneuver')
+
+  await spacecraftSettingsButton.click()
+  const dialog = page.getByRole('dialog', {
+    name: 'Spacecraft controls settings',
+  })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Keyboard and mouse active')).toBeVisible()
+  await expect(
+    dialog.getByRole('group', { name: 'Control sides' }),
+  ).toBeHidden()
+  await expect(dialog.getByRole('group', { name: 'Maneuvers' })).toBeHidden()
+  await expect(dialog.getByText('Burn side')).toBeHidden()
+  await expect(dialog.getByText('Trajectory side')).toBeHidden()
+  await expect(dialog.getByText('Starts by drag or tap')).toBeHidden()
+
+  await attachScreenshot(
+    page,
+    testInfo,
+    'desktop-spacecraft-controls-settings-dialog',
+  )
+})

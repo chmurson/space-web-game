@@ -22,14 +22,20 @@ type UiSettingsDialogRenderProps = Omit<UiSettingsDialogSurfaceProps, 'rootRef'>
 
 let nextUiSettingsDialogId = 0
 let activeDialogClose: ((restoreFocus?: boolean) => void) | null = null
+const touchControlsVisibleQuery = '(hover: none), (pointer: coarse)'
 
 export const createUiSettingsDialog = (options: {
   app: HTMLElement
   getMobileManeuverStartByDrag: () => boolean
   getOrbitPointDisplay: () => OrbitPointDisplaySettings
+  getTouchBurnControlAvailable?: () => boolean
   getTouchBurnControlSide: () => TouchControlSide
+  getTouchControlsVisible?: () => boolean
+  getTouchTargetControlAvailable?: () => boolean
   getTouchTargetControlSide: () => TouchControlSide
+  getTouchTrajectoryControlAvailable?: () => boolean
   getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
+  getTouchWarpControlAvailable?: () => boolean
   getTouchWarpControlSide: () => TouchControlSide
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
@@ -40,6 +46,7 @@ export const createUiSettingsDialog = (options: {
   onTouchWarpControlSideChange(side: TouchControlSide): void
 }): UiSettingsDialog => {
   const dialogId = `app-dialog-${++nextUiSettingsDialogId}`
+  const touchControlsVisibleMedia = window.matchMedia(touchControlsVisibleQuery)
   const surface = createPreactUiSurface<UiSettingsDialogRenderProps>({
     app: options.app,
     component: UiSettingsDialogSurface,
@@ -57,9 +64,20 @@ export const createUiSettingsDialog = (options: {
       mobileManeuverStartByDrag: options.getMobileManeuverStartByDrag(),
       orbitPointDisplay: options.getOrbitPointDisplay(),
       open,
+      touchBurnControlAvailable:
+        options.getTouchBurnControlAvailable?.() ?? true,
       touchBurnControlSide: options.getTouchBurnControlSide(),
+      touchControlsVisible:
+        options.getTouchControlsVisible?.() ??
+        touchControlsVisibleMedia.matches,
+      touchTargetControlAvailable:
+        options.getTouchTargetControlAvailable?.() ?? true,
       touchTargetControlSide: options.getTouchTargetControlSide(),
+      touchTrajectoryControlAvailable:
+        options.getTouchTrajectoryControlAvailable?.() ?? true,
       touchTrajectoryControlSide: options.getTouchTrajectoryControlSide(),
+      touchWarpControlAvailable:
+        options.getTouchWarpControlAvailable?.() ?? true,
       touchWarpControlSide: options.getTouchWarpControlSide(),
       onBackToMainSettings: () => {
         activePane = 'main'
@@ -176,6 +194,7 @@ export const createUiSettingsDialog = (options: {
     focusFirstElement()
   }
 
+  touchControlsVisibleMedia.addEventListener('change', syncState)
   renderDialog()
   const root = surface.element
   installNativeTouchZoomSuppression(root)
