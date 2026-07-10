@@ -212,13 +212,13 @@
 
 .touch-step-selector-horizontal.touch-step-selector-target-increase
   .touch-step-selector-value-current {
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 25px))
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -25px))
     scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
 }
 
 .touch-step-selector-horizontal.touch-step-selector-target-decrease
   .touch-step-selector-value-current {
-  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -24px))
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 24px))
     scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
 }
 

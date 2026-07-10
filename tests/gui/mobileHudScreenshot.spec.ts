@@ -2564,15 +2564,27 @@ test('captures the mobile time warp touch control after reveal', async ({
 }, testInfo) => {
   await startReachMoonMission(page)
 
-  await page.getByRole('button', { name: 'Reveal time warp control' }).click()
+  await page
+    .getByRole('button', { exact: true, name: 'Reveal time warp control' })
+    .click()
+  await page.getByRole('button', { name: 'Reveal Time Warp control 2' }).click()
   const timeWarpReveal = page.locator('#touch-time-warp-reveal')
+  const timeWarpPrototypeReveal = page.locator(
+    '#touch-time-warp-prototype-reveal',
+  )
   await expect(timeWarpReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await expect(timeWarpPrototypeReveal).toHaveClass(
+    /touch-edge-reveal-control-open/,
+  )
   await expect(
     timeWarpReveal.getByLabel('Time warp control', { exact: true }),
   ).toBeVisible()
   await expect(
-    timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
+    timeWarpPrototypeReveal.getByLabel('Time Warp control 2', { exact: true }),
   ).toBeVisible()
+  await expect(
+    timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
+  ).toHaveCount(0)
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
 })

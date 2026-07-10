@@ -270,12 +270,10 @@ export const createTouchControls = (options: {
     target: targetDock,
     trajectory: trajectoryHorizonDock,
     warp: timeWarpDock,
+    warpPrototype: timeWarpPrototypeDock,
   } = touchControlsShell.docks
 
   const tutorialHint = createTouchControlsTutorialHint({ container: panel })
-  const timeWarpPrototypeControls = document.createElement('div')
-  timeWarpPrototypeControls.className = 'touch-time-warp-prototype-controls'
-  timeWarpDock.appendChild(timeWarpPrototypeControls)
 
   const tapTouches = new Map<number, TapState>()
   let activeSession: ActiveGestureSession = { kind: 'none' }
@@ -290,7 +288,7 @@ export const createTouchControls = (options: {
   }
 
   const timeWarpControl = createConfiguredTimeWarpControl({
-    container: timeWarpPrototypeControls,
+    container: timeWarpDock,
     commitTimeWarp: options.commitTimeWarp,
     getCurrentTimeWarp: options.getCurrentTimeWarp,
     getTimeWarpPreview: options.getTimeWarpPreview,
@@ -301,7 +299,7 @@ export const createTouchControls = (options: {
     panel,
   })
   const timeWarpControl2 = createPrototypeTimeWarpControl2({
-    container: timeWarpPrototypeControls,
+    container: timeWarpPrototypeDock,
     commitTimeWarp: options.commitTimeWarp,
     getCurrentTimeWarp: options.getCurrentTimeWarp,
     getTimeWarpPreview: options.getTimeWarpPreview,
@@ -330,10 +328,15 @@ export const createTouchControls = (options: {
     session.controlId === 'time-warp-2' ? timeWarpControl2 : timeWarpControl
   const getTimeWarpControlForTarget = (
     target: EventTarget | null,
-  ): TimeWarpControl =>
-    isEventTargetInside(timeWarpControl2.element, target)
-      ? timeWarpControl2
-      : timeWarpControl
+  ): TimeWarpControl | null => {
+    if (isEventTargetInside(timeWarpControl2.element, target)) {
+      return timeWarpControl2
+    }
+    if (isEventTargetInside(timeWarpControl.element, target)) {
+      return timeWarpControl
+    }
+    return null
+  }
 
   const trajectoryHorizonControl = createTrajectoryHorizonControl({
     container: trajectoryHorizonDock,
@@ -383,6 +386,10 @@ export const createTouchControls = (options: {
     edge: options.initialWarpControlSide,
     priority: touchControlRevealLayout.controls.timeWarp.priority,
   }
+  const timeWarpPrototypeRevealPlacement: TouchControlRevealPlacement = {
+    edge: options.initialWarpControlSide,
+    priority: touchControlRevealLayout.controls.timeWarp.priority,
+  }
   const trajectoryHorizonRevealPlacement: TouchControlRevealPlacement = {
     edge: getRevealEdge(options.initialTrajectoryControlSide),
     priority: touchControlRevealLayout.controls.trajectory.priority,
@@ -402,6 +409,13 @@ export const createTouchControls = (options: {
     id: 'touch-time-warp-reveal',
     label: 'Reveal time warp control',
     placement: timeWarpRevealPlacement,
+  })
+  const timeWarpPrototypeRevealControl = createEdgeRevealControl({
+    content: timeWarpPrototypeDock,
+    icon: 'Warp 2',
+    id: 'touch-time-warp-prototype-reveal',
+    label: 'Reveal Time Warp control 2',
+    placement: timeWarpPrototypeRevealPlacement,
   })
   const trajectoryHorizonRevealControl = createEdgeRevealControl({
     content: trajectoryHorizonDock,
@@ -435,6 +449,7 @@ export const createTouchControls = (options: {
   })
   const revealControls = [
     timeWarpRevealControl,
+    timeWarpPrototypeRevealControl,
     trajectoryHorizonRevealControl,
     targetRevealControl,
     thrustRevealControl,
@@ -469,6 +484,7 @@ export const createTouchControls = (options: {
   syncRevealControlLayout(revealControls)
   panel.append(
     timeWarpRevealControl.element,
+    timeWarpPrototypeRevealControl.element,
     trajectoryHorizonRevealControl.element,
     targetRevealControl.element,
     thrustRevealControl.element,
@@ -528,6 +544,7 @@ export const createTouchControls = (options: {
       finishStepSelectorGesture(false)
     }
     timeWarpRevealControl.setAvailable(visible)
+    timeWarpPrototypeRevealControl.setAvailable(visible)
     timeWarpControl.setVisible(visible)
     timeWarpControl2.setVisible(visible)
     syncRevealControlLayout(revealControls)
@@ -633,11 +650,24 @@ export const createTouchControls = (options: {
     point: StepSelectorGesturePoint,
     target: EventTarget | null,
   ) => {
-    if (!timeWarpControlVisible || !timeWarpRevealControl.isOpen()) {
+    if (!timeWarpControlVisible) {
       return
     }
 
-    activeSession = getTimeWarpControlForTarget(target).beginGesture(point)
+    const timeWarpSessionControl = getTimeWarpControlForTarget(target)
+    if (!timeWarpSessionControl) {
+      return
+    }
+
+    const revealControl =
+      timeWarpSessionControl === timeWarpControl2
+        ? timeWarpPrototypeRevealControl
+        : timeWarpRevealControl
+    if (!revealControl.isOpen()) {
+      return
+    }
+
+    activeSession = timeWarpSessionControl.beginGesture(point)
   }
 
   const beginTrajectoryHorizonSession = (point: StepSelectorGesturePoint) => {
@@ -892,6 +922,9 @@ export const createTouchControls = (options: {
       const isTimeWarpTarget =
         timeWarpRevealControl.isOpen() &&
         isEventTargetInside(timeWarpRevealControl.element, eventTarget)
+      const isTimeWarpPrototypeTarget =
+        timeWarpPrototypeRevealControl.isOpen() &&
+        isEventTargetInside(timeWarpPrototypeRevealControl.element, eventTarget)
       const isTrajectoryHorizonTarget =
         trajectoryHorizonRevealControl.isOpen() &&
         isEventTargetInside(trajectoryHorizonRevealControl.element, eventTarget)
@@ -903,6 +936,7 @@ export const createTouchControls = (options: {
         isEventTargetInside(thrustRevealControl.element, eventTarget)
       const isRevealControlTarget =
         isTimeWarpTarget ||
+        isTimeWarpPrototypeTarget ||
         isTrajectoryHorizonTarget ||
         isTargetControlTarget ||
         isThrustTarget
@@ -984,7 +1018,7 @@ export const createTouchControls = (options: {
         }
 
         for (const touch of Array.from(event.changedTouches)) {
-          if (isTimeWarpTarget) {
+          if (isTimeWarpTarget || isTimeWarpPrototypeTarget) {
             beginTimeWarpSession(touch, eventTarget)
           } else if (isTrajectoryHorizonTarget) {
             beginTrajectoryHorizonSession(touch)
@@ -1387,18 +1421,25 @@ export const createTouchControls = (options: {
     const isTimeWarpTarget =
       timeWarpRevealControl.isOpen() &&
       isEventTargetInside(timeWarpRevealControl.element, eventTarget)
+    const isTimeWarpPrototypeTarget =
+      timeWarpPrototypeRevealControl.isOpen() &&
+      isEventTargetInside(timeWarpPrototypeRevealControl.element, eventTarget)
     const isTrajectoryHorizonTarget =
       trajectoryHorizonRevealControl.isOpen() &&
       isEventTargetInside(trajectoryHorizonRevealControl.element, eventTarget)
 
-    if (!isTimeWarpTarget && !isTrajectoryHorizonTarget) {
+    if (
+      !isTimeWarpTarget &&
+      !isTimeWarpPrototypeTarget &&
+      !isTrajectoryHorizonTarget
+    ) {
       return
     }
 
     event.preventDefault()
     clearPendingTapState()
     const point = getMouseStepSelectorPoint(event)
-    if (isTimeWarpTarget) {
+    if (isTimeWarpTarget || isTimeWarpPrototypeTarget) {
       beginTimeWarpSession(point, eventTarget)
       return
     }
@@ -1487,6 +1528,7 @@ export const createTouchControls = (options: {
     setTrajectoryControlVisible,
     setWarpControlSide: (side) => {
       timeWarpRevealControl.setEdge(side)
+      timeWarpPrototypeRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)
     },
     setTimeWarpControlVisible,
