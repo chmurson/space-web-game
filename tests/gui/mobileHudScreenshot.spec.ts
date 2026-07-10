@@ -1946,7 +1946,7 @@ test('keeps the edge-pan free-roam progress indicator near the cursor', async ({
   expect(metrics).toMatchObject({
     ariaLabel: 'Loading free roam',
     ariaValueNow: '68',
-    text: 'Free roam',
+    text: '',
   })
   expect(metrics.left).toBeGreaterThanOrEqual(0)
   expect(metrics.top).toBeGreaterThanOrEqual(0)

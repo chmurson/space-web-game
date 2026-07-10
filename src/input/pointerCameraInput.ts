@@ -57,7 +57,7 @@ const wheelLineModePixels = 16
 const cameraPanTapTolerancePx = 8
 const defaultDesktopEdgePanSpeedPixelsPerSecond = 420
 const edgeScrollBandPx = 44
-const edgeUnlockDwellMs = 1_500
+const edgeUnlockDwellMs = 2_000
 const edgeUnlockProgressDelayMs = 1_000
 const intentionalSwipeViewportRatio = 0.5
 

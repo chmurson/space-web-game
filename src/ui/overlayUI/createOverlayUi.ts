@@ -182,7 +182,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   cameraUnlockProgress.setAttribute('aria-valuenow', '0')
   cameraUnlockProgress.setAttribute('role', 'progressbar')
   cameraUnlockProgress.innerHTML =
-    '<span class="camera-unlock-progress-label">Free roam</span><span class="camera-unlock-progress-track"><span class="camera-unlock-progress-fill"></span></span>'
+    '<span class="camera-unlock-progress-ring"></span>'
   options.app.appendChild(cameraUnlockProgress)
 
   const debugPanel = createDebugPanel(options.app)

@@ -419,7 +419,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
     expect(fastDelta.x).toBeGreaterThan(slowDelta.x * 2)
   })
 
-  it('delays free-roam loading progress and shortens edge dwell before unlocking', () => {
+  it('delays free-roam loading progress before unlocking after two seconds', () => {
     const harness = createHarness('centered', {
       edgeScrollEnabled: true,
     })
@@ -435,12 +435,12 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
     expect(harness.onCameraUnlockProgressChange).not.toHaveBeenCalled()
 
     harness.input.updateEdgeScroll(1_000, 0.016)
-    harness.input.updateEdgeScroll(1_499, 0.016)
+    harness.input.updateEdgeScroll(1_999, 0.016)
 
     expect(harness.onCameraModeSelected).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
 
-    harness.input.updateEdgeScroll(1_500, 0.016)
+    harness.input.updateEdgeScroll(2_000, 0.016)
 
     expect(harness.onCameraModeSelected).toHaveBeenCalledWith('unlocked')
     expect(harness.onCameraUnlocked).toHaveBeenCalledTimes(1)
@@ -451,7 +451,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
       screenPosition: { x: 199, y: 100 },
     })
     expect(harness.onCameraUnlockProgressChange).toHaveBeenNthCalledWith(2, {
-      progress: 499 / 500,
+      progress: 999 / 1_000,
       screenPosition: { x: 199, y: 100 },
     })
     expect(harness.onCameraUnlockProgressChange).toHaveBeenNthCalledWith(3, {

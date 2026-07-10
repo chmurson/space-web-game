@@ -16,6 +16,7 @@ Issue: https://github.com/chmurson/space-web-game/issues/204
 - Active edge-scroll now sets a native direction-specific cursor for cardinal and diagonal edge directions, then restores the canvas cursor when edge-scroll is inactive.
 - Owner follow-up on 2026-07-09 restored desktop drag camera scrolling as the default and made edge-scroll opt-in.
 - Owner follow-up on 2026-07-10 routed edge-pan dwell through the same pointer-camera free-roam unlock path as drag unlock and added a close-to-cursor progress indicator while the edge dwell is loading free roam.
+- Owner follow-up on 2026-07-10 changed the indicator into a compact label-free donut that closes around an empty core during the two-second edge dwell.
 
 ## Why
 
