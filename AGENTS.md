@@ -98,10 +98,10 @@
 
 ## Shipit Reviews
 
-- Run CodeRabbit as part of Shipit review with `coderabbit --base main --agent`.
 - Apply the Ponytail review lens during Shipit review: look for code to delete, simplify, or replace with native/standard-library behavior, and call out YAGNI/speculative abstractions before approving the branch.
-- If CodeRabbit fails, times out, or cannot produce findings for any reason, explicitly alert the user so they can debug it or run it themselves.
-- Treat automated review findings, including CodeRabbit findings, as hypotheses rather than facts. Inspect the current code and diff before deciding whether each finding is valid, stale, out of scope, or based on an incorrect proposed fix.
+- Complete the built-in Shipit self-review and solution retrospect before opening or updating the PR.
+- Handle external and automated review feedback on the PR rather than as a local Shipit review step.
+- Treat external and automated review findings as hypotheses rather than facts. Inspect the current code and diff before deciding whether each finding is valid, stale, out of scope, or based on an incorrect proposed fix.
 
 ## Main Branch Merges
 
