@@ -1763,7 +1763,9 @@ button.app-dialog-setting {
 
 .telemetry-pill-velocity.telemetry-pill-thrusting {
   z-index: 1;
-  background: rgba(15, 23, 42, 0.62);
+  padding: 4px 7px;
+  border: 1px solid rgba(251, 146, 60, 0.36);
+  background: rgba(69, 46, 8, 0.54);
   box-shadow:
     0 0 0 1px rgba(251, 146, 60, 0.14),
     0 10px 24px rgba(245, 158, 11, 0.18);
