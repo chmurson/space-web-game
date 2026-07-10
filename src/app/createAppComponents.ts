@@ -198,6 +198,8 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   let hideTimeout: number | null = null
   let finishHideTimeout: number | null = null
   let finishProgressHideTimeout: number | null = null
+  let revealProgressFrame: number | null = null
+  let cameraUnlockProgressVisible = false
 
   const hide = () => {
     overlayUi.cameraUnlockNotice.dataset.visible = 'false'
@@ -241,6 +243,11 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
 
   const setUnlockProgress = (progress: CameraUnlockProgress | null) => {
     if (progress === null) {
+      cameraUnlockProgressVisible = false
+      if (revealProgressFrame !== null) {
+        window.cancelAnimationFrame(revealProgressFrame)
+        revealProgressFrame = null
+      }
       overlayUi.cameraUnlockProgress.dataset.visible = 'false'
       overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'true')
       overlayUi.cameraUnlockProgress.setAttribute('aria-valuenow', '0')
@@ -264,6 +271,15 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
       finishProgressHideTimeout = null
     }
     overlayUi.cameraUnlockProgress.hidden = false
+    if (!cameraUnlockProgressVisible) {
+      cameraUnlockProgressVisible = true
+      revealProgressFrame = window.requestAnimationFrame(() => {
+        revealProgressFrame = null
+        if (cameraUnlockProgressVisible) {
+          overlayUi.cameraUnlockProgress.dataset.visible = 'true'
+        }
+      })
+    }
 
     const clampedProgress = THREE.MathUtils.clamp(progress.progress, 0, 1)
     const bounds = overlayUi.cameraUnlockProgress.getBoundingClientRect()
@@ -280,7 +296,6 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
       Math.max(8, window.innerHeight - height - 8),
     )
 
-    overlayUi.cameraUnlockProgress.dataset.visible = 'true'
     overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'false')
     overlayUi.cameraUnlockProgress.setAttribute(
       'aria-valuenow',
