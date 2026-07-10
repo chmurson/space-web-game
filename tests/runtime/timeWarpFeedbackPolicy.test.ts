@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { getTimeWarpFeedbackPreview } from '@/runtime/timeWarpFeedbackPolicy'
 
+const requestedTimeWarps = [
+  1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800,
+  54000,
+]
+
 const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
   elapsed: 0,
   bodies: [
@@ -64,7 +69,7 @@ const createBaseOptions = () => ({
   shouldCaptureBurn: () => false,
   state: createRuntimeState(),
   targetHeading: null,
-  timeWarps: [1, 10, 30, 60, 300, 1800],
+  timeWarps: requestedTimeWarps,
 })
 
 describe('timeWarpFeedbackPolicy', () => {
@@ -72,6 +77,7 @@ describe('timeWarpFeedbackPolicy', () => {
     const preview = getTimeWarpFeedbackPreview({
       ...createBaseOptions(),
       action: 'increaseTimeWarp',
+      currentTimeWarpIndex: requestedTimeWarps.indexOf(60),
       getAutopilotTurn: () => 1,
       targetHeading: Math.PI / 2,
     })
@@ -88,14 +94,14 @@ describe('timeWarpFeedbackPolicy', () => {
     const preview = getTimeWarpFeedbackPreview({
       ...createBaseOptions(),
       action: 'increaseTimeWarp',
-      currentTimeWarpIndex: 5,
+      currentTimeWarpIndex: requestedTimeWarps.length - 1,
     })
 
     expect(preview).toEqual({
       action: 'increaseTimeWarp',
       canCommit: false,
       reason: 'global-max',
-      value: 1800,
+      value: 54000,
     })
   })
 
@@ -118,6 +124,7 @@ describe('timeWarpFeedbackPolicy', () => {
     const preview = getTimeWarpFeedbackPreview({
       ...createBaseOptions(),
       action: 'increaseTimeWarp',
+      currentTimeWarpIndex: requestedTimeWarps.indexOf(60),
       maxTimeWarp: 60,
     })
 
@@ -133,6 +140,7 @@ describe('timeWarpFeedbackPolicy', () => {
     const preview = getTimeWarpFeedbackPreview({
       ...createBaseOptions(),
       action: 'increaseTimeWarp',
+      currentTimeWarpIndex: requestedTimeWarps.indexOf(60),
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({ main: 1, reverse: 0, strafe: 0, turn: 0 }),

@@ -19,12 +19,17 @@ import { registerTutorialScenario } from '@/scenario/specific-scenarios/tutorial
 import { escapeEarthTrajectoryViewportSize } from '@/scenario/specific-scenarios/tutorial/tutorialSceneRouter'
 import { EARTH_MOON_DISTANCE, G } from '@/simulation/constants'
 
+const requestedTimeWarps = [
+  1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800,
+  54000,
+]
+
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 72,
   defaultViewportSize: 520,
   maxViewportSize: 800,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
+  timeWarps: requestedTimeWarps,
 }
 
 const createRuntime = (): AppRuntimeState => ({

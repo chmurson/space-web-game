@@ -4,6 +4,10 @@ import type { AppConfigContext } from '@/app/createAppConfigContext'
 import { createInitialAppRuntimeState } from '@/app/createInitialAppRuntimeState'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
+const requestedTimeWarps = [
+  1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800,
+  54000,
+]
 
 const createWindowWithStorage = (storedSnapshot?: unknown) => {
   const values = new Map<string, string>()
@@ -48,7 +52,7 @@ const createConfig = (
     touchWarpControlSide: 'right',
   },
   controls: {
-    timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
+    timeWarps: requestedTimeWarps,
     autopilotRotationRate: 1,
   },
   assistTarget: {
@@ -95,7 +99,7 @@ const createConfig = (
     maxCoastPredictionHorizonHours: 48,
     maxViewportSize: 1200,
     minViewportSize: 104,
-    timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000],
+    timeWarps: requestedTimeWarps,
   },
   ...overrides,
 })
@@ -118,12 +122,11 @@ describe('createInitialAppRuntimeState', () => {
   })
 
   it('boots the menu background scenario in menu mode', () => {
-    const runtime = createInitialAppRuntimeState(
-      createConfig({
-        initialAppMode: 'menu',
-        requestedScenarioId: 'tutorial',
-      }),
-    )
+    const config = createConfig({
+      initialAppMode: 'menu',
+      requestedScenarioId: 'tutorial',
+    })
+    const runtime = createInitialAppRuntimeState(config)
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.scenario.metadata.title).toBe('Menu background')
@@ -131,7 +134,9 @@ describe('createInitialAppRuntimeState', () => {
       markersVisible: false,
     })
     expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
-    expect(runtime.simulation.timeWarpIndex).toBe(4)
+    expect(config.controls.timeWarps[runtime.simulation.timeWarpIndex]).toBe(
+      240,
+    )
   })
 
   it('boots the menu at the nearest configured warp at or below the menu target', () => {
