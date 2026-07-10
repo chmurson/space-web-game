@@ -144,6 +144,9 @@ test('routes the horizontal prototype time warp control to shared state', async 
     }
     const instantAnimationStyle = document.createElement('style')
     instantAnimationStyle.textContent = `
+      .touch-controls {
+        display: block !important;
+      }
       .touch-step-selector-value {
         transition: none !important;
       }
@@ -214,12 +217,36 @@ test('routes the horizontal prototype time warp control to shared state', async 
       )
     }
 
-    const inspectLeftSwipeAnimation = async () => {
+    const inspectSwipeAnimation = async (distanceX: number) => {
       const rect = prototypeControl.getBoundingClientRect()
       const start = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
       }
+      const currentValue = prototypeControl.querySelector<HTMLElement>(
+        '.touch-step-selector-value-current',
+      )
+      const decreaseValue = prototypeControl.querySelector<HTMLElement>(
+        '.touch-step-selector-value-up-near',
+      )
+      const increaseValue = prototypeControl.querySelector<HTMLElement>(
+        '.touch-step-selector-value-down-near',
+      )
+      const stripValues = Array.from(
+        prototypeControl.querySelectorAll<HTMLElement>(
+          '.touch-step-selector-value-up-far, .touch-step-selector-value-up-near, .touch-step-selector-value-current, .touch-step-selector-value-down-near, .touch-step-selector-value-down-far',
+        ),
+      )
+      if (!currentValue || !decreaseValue || !increaseValue) {
+        throw new Error('Expected horizontal selector values to render')
+      }
+      const targetValue = distanceX > 0 ? increaseValue : decreaseValue
+      const getCenterX = (element: HTMLElement) => {
+        const valueRect = element.getBoundingClientRect()
+        return valueRect.left + valueRect.width / 2
+      }
+      const currentStartX = getCenterX(currentValue)
+      const targetStartX = getCenterX(targetValue)
       prototypeControl.dispatchEvent(
         new MouseEvent('mousedown', {
           bubbles: true,
@@ -234,19 +261,10 @@ test('routes the horizontal prototype time warp control to shared state', async 
           bubbles: true,
           button: 0,
           cancelable: true,
-          clientX: start.x - 24,
+          clientX: start.x + distanceX,
           clientY: start.y,
         }),
       )
-      const currentValue = prototypeControl.querySelector(
-        '.touch-step-selector-value-current',
-      )
-      const previousValue = prototypeControl.querySelector(
-        '.touch-step-selector-value-up-near',
-      )
-      if (!currentValue || !previousValue) {
-        throw new Error('Expected horizontal selector values to render')
-      }
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve()),
       )
@@ -256,53 +274,30 @@ test('routes the horizontal prototype time warp control to shared state', async 
           '--touch-step-selector-drag-progress',
         ),
       )
-      const matchingRules = Array.from(document.styleSheets).flatMap(
-        (sheet) => {
-          try {
-            return Array.from(sheet.cssRules).map((rule) => rule.cssText)
-          } catch {
-            return []
-          }
-        },
-      )
-      const currentDragRule = matchingRules.find(
-        (cssText) =>
-          cssText.includes(
-            '.touch-step-selector-horizontal.touch-step-selector-target-decrease',
-          ) && cssText.includes('.touch-step-selector-value-current'),
-      )
-      const previousRule = matchingRules.find(
-        (cssText) =>
-          cssText.includes(
-            '.touch-step-selector-horizontal.touch-step-selector-target-decrease',
-          ) && cssText.includes('.touch-step-selector-value-up-near'),
-      )
-      const currentCommitRule = matchingRules.find(
-        (cssText) =>
-          cssText.includes(
-            '.touch-step-selector-horizontal.touch-step-selector-step-down',
-          ) && cssText.includes('.touch-step-selector-value-current'),
-      )
-      const nextCommitRule = matchingRules.find(
-        (cssText) =>
-          cssText.includes(
-            '.touch-step-selector-horizontal.touch-step-selector-step-up',
-          ) && cssText.includes('.touch-step-selector-value-current'),
-      )
+      const valueOffsets = stripValues.map((value) => {
+        const transform = getComputedStyle(value).transform
+        return {
+          className: value.className,
+          translateX:
+            transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m41,
+        }
+      })
+      const targetEndX = getCenterX(targetValue)
       window.dispatchEvent(new Event('blur'))
       return {
         className,
-        currentCommitRule,
-        currentDragRule,
+        currentStartX,
         dragProgress,
-        nextCommitRule,
-        previousRule,
+        targetEndX,
+        targetStartX,
+        valueOffsets,
       }
     }
 
     timeWarpIndex = 1
     controls.syncUi()
-    const leftSwipeAnimation = await inspectLeftSwipeAnimation()
+    const leftDragAnimation = await inspectSwipeAnimation(-24)
+    const rightDragAnimation = await inspectSwipeAnimation(24)
     timeWarpIndex = 0
     controls.syncUi()
     dragPrototype()
@@ -336,10 +331,11 @@ test('routes the horizontal prototype time warp control to shared state', async 
       currentTimeWarp: timeWarps[timeWarpIndex],
       disabledMouseupTimeWarp,
       firstCommitTimeWarp,
-      leftSwipeAnimation,
+      leftDragAnimation,
       originalText: originalControl.textContent,
       postDisabledRecoveryTimeWarp,
       prototypeText: prototypeControl.textContent,
+      rightDragAnimation,
     }
   })
 
@@ -348,19 +344,47 @@ test('routes the horizontal prototype time warp control to shared state', async 
   expect(result.postDisabledRecoveryTimeWarp).toBe(30)
   expect(result.blurCancelTimeWarp).toBe(30)
   expect(result.currentTimeWarp).toBe(60)
-  expect(result.leftSwipeAnimation.className).toContain(
+  expect(result.leftDragAnimation.className).toContain(
     'touch-step-selector-target-decrease',
   )
-  expect(result.leftSwipeAnimation.dragProgress).toBeGreaterThan(0)
-  expect(result.leftSwipeAnimation.currentDragRule).toContain(
-    'var(--touch-step-selector-drag-progress) * 24px',
+  expect(result.leftDragAnimation.dragProgress).toBeGreaterThan(0)
+  for (const value of result.leftDragAnimation.valueOffsets) {
+    expect(value.translateX, value.className).toBeLessThan(0)
+  }
+  expect(result.leftDragAnimation.targetStartX).toBeGreaterThan(
+    result.leftDragAnimation.currentStartX,
   )
-  expect(result.leftSwipeAnimation.currentCommitRule).toContain(
-    'translateX(-2px)',
+  expect(
+    Math.abs(
+      result.leftDragAnimation.targetEndX -
+        result.leftDragAnimation.currentStartX,
+    ),
+  ).toBeLessThan(
+    Math.abs(
+      result.leftDragAnimation.targetStartX -
+        result.leftDragAnimation.currentStartX,
+    ),
   )
-  expect(result.leftSwipeAnimation.nextCommitRule).toContain('translateX(2px)')
-  expect(result.leftSwipeAnimation.previousRule).toContain(
-    'var(--touch-step-selector-drag-progress) * 25px',
+  expect(result.rightDragAnimation.className).toContain(
+    'touch-step-selector-target-increase',
+  )
+  expect(result.rightDragAnimation.dragProgress).toBeGreaterThan(0)
+  for (const value of result.rightDragAnimation.valueOffsets) {
+    expect(value.translateX, value.className).toBeGreaterThan(0)
+  }
+  expect(result.rightDragAnimation.targetStartX).toBeLessThan(
+    result.rightDragAnimation.currentStartX,
+  )
+  expect(
+    Math.abs(
+      result.rightDragAnimation.targetEndX -
+        result.rightDragAnimation.currentStartX,
+    ),
+  ).toBeLessThan(
+    Math.abs(
+      result.rightDragAnimation.targetStartX -
+        result.rightDragAnimation.currentStartX,
+    ),
   )
   expect(result.originalText).toContain('x1m')
   expect(result.prototypeText).toContain('x1m')
