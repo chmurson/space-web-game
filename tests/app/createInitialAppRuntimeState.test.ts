@@ -2,12 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AppConfigContext } from '@/app/createAppConfigContext'
 import { createInitialAppRuntimeState } from '@/app/createInitialAppRuntimeState'
+import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
-const requestedTimeWarps = [
-  1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800,
-  54000,
-]
 
 const createWindowWithStorage = (storedSnapshot?: unknown) => {
   const values = new Map<string, string>()

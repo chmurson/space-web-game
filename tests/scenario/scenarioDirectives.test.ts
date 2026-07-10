@@ -14,11 +14,7 @@ import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTyp
 import { getRuntimeScenarioDefinition } from '@/scenario/scenarioRegistry'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import { escapeEarthTrajectoryViewportSize } from '@/scenario/specific-scenarios/tutorial/tutorialSceneRouter'
-
-const requestedTimeWarps = [
-  1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800,
-  54000,
-]
+import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,

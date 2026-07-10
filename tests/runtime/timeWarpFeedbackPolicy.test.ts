@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest'
+
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { getTimeWarpFeedbackPreview } from '@/runtime/timeWarpFeedbackPolicy'
-
-const requestedTimeWarps = [
-  1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800,
-  54000,
-]
+import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const createRuntimeState = (): AppRuntimeState['simulation']['state'] => ({
   elapsed: 0,

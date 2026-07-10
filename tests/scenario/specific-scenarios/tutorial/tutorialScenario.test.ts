@@ -18,11 +18,7 @@ import { tutorialOnboardingStepOrder } from '@/scenario/specific-scenarios/tutor
 import { registerTutorialScenario } from '@/scenario/specific-scenarios/tutorial/tutorialScenario'
 import { escapeEarthTrajectoryViewportSize } from '@/scenario/specific-scenarios/tutorial/tutorialSceneRouter'
 import { EARTH_MOON_DISTANCE, G } from '@/simulation/constants'
-
-const requestedTimeWarps = [
-  1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800,
-  54000,
-]
+import { requestedTimeWarps } from '../../../fixtures/requestedTimeWarps'
 
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 72,
