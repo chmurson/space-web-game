@@ -58,7 +58,7 @@
   width: 172px;
   min-height: 66px;
   grid-template-rows: auto;
-  grid-template-columns: 18px 18px minmax(48px, auto) 18px 18px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   padding: 9px 12px;
 }
 
@@ -135,22 +135,27 @@
 
 .touch-step-selector-horizontal .touch-step-selector-value-up-far {
   grid-column: 5;
+  grid-row: 1;
 }
 
 .touch-step-selector-horizontal .touch-step-selector-value-up-near {
   grid-column: 4;
+  grid-row: 1;
 }
 
 .touch-step-selector-horizontal .touch-step-selector-current {
   grid-column: 3;
+  grid-row: 1;
 }
 
 .touch-step-selector-horizontal .touch-step-selector-value-down-near {
   grid-column: 2;
+  grid-row: 1;
 }
 
 .touch-step-selector-horizontal .touch-step-selector-value-down-far {
   grid-column: 1;
+  grid-row: 1;
 }
 
 .touch-step-selector-target-increase .touch-step-selector-value-current {
@@ -430,7 +435,7 @@
   .touch-step-selector-horizontal {
     width: 160px;
     min-height: 62px;
-    grid-template-columns: 16px 16px minmax(44px, auto) 16px 16px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     padding-inline: 10px;
   }
 }

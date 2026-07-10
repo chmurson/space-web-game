@@ -245,6 +245,18 @@ test('routes the horizontal prototype time warp control to shared state', async 
         const valueRect = element.getBoundingClientRect()
         return valueRect.left + valueRect.width / 2
       }
+      const valueCenterYs = stripValues.map((value) => {
+        const valueRect = value.getBoundingClientRect()
+        return valueRect.top + valueRect.height / 2
+      })
+      const orderedValueRects = stripValues
+        .map((value) => value.getBoundingClientRect())
+        .sort((left, right) => left.left - right.left)
+      const minimumValueGap = Math.min(
+        ...orderedValueRects
+          .slice(1)
+          .map((rect, index) => rect.left - orderedValueRects[index].right),
+      )
       const currentStartX = getCenterX(currentValue)
       const targetStartX = getCenterX(targetValue)
       prototypeControl.dispatchEvent(
@@ -288,8 +300,10 @@ test('routes the horizontal prototype time warp control to shared state', async 
         className,
         currentStartX,
         dragProgress,
+        minimumValueGap,
         targetEndX,
         targetStartX,
+        valueCenterYs,
         valueOffsets,
       }
     }
@@ -344,6 +358,11 @@ test('routes the horizontal prototype time warp control to shared state', async 
   expect(result.postDisabledRecoveryTimeWarp).toBe(30)
   expect(result.blurCancelTimeWarp).toBe(30)
   expect(result.currentTimeWarp).toBe(60)
+  expect(
+    Math.max(...result.leftDragAnimation.valueCenterYs) -
+      Math.min(...result.leftDragAnimation.valueCenterYs),
+  ).toBeLessThan(1)
+  expect(result.leftDragAnimation.minimumValueGap).toBeGreaterThanOrEqual(0)
   expect(result.leftDragAnimation.className).toContain(
     'touch-step-selector-target-decrease',
   )

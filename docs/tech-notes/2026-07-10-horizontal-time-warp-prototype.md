@@ -26,6 +26,8 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 
 - The step selector now has a vertical default and an optional horizontal axis so trajectory horizon and the original Time Warp control keep their existing behavior.
 - The horizontal value order is the clockwise rotation of the vertical selector: increase values sit left of the current value and decrease values sit right, allowing the selected value to settle into the center while the strip follows the finger.
+- All five main horizontal values are pinned to the same grid row; explicit reversed columns must not trigger CSS Grid's implicit-row auto-placement.
+- The five horizontal columns share the available width evenly so inline labels do not collide.
 - Control 2 uses a separate internal gesture ID, `time-warp-2`, because routing two DOM controls through one active gesture ID would send drag updates to the wrong view.
 - Control 2 also uses a separate reveal dock/control so its horizontal panel can open independently from the original Time Warp panel.
 - The edge reveal control exposes a narrow opt-out for content swipe closing; only control 2 uses it because its content owns horizontal drag gestures.
@@ -33,12 +35,13 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 
 ## Validation
 
-- `npx playwright test tests/gui/timeWarpPrototypeControl.spec.ts --project=mobile-chromium` passed: 1 test, including computed left/right value-strip offsets.
+- `npx playwright test tests/gui/timeWarpPrototypeControl.spec.ts --project=mobile-chromium` passed: 1 test, including computed left/right value-strip offsets, single-row alignment, and non-overlapping labels.
 - `npm run build` passed after config validation and TypeScript checks. Vite still reports the existing chunk-size warning.
 - `npm run test:gui` passed: 52 mobile Chromium GUI tests.
 - `npx biome check` on the edited CSS and GUI spec passed after formatting.
 - `git diff --check` passed.
-- Inspected `tmp/playwright-results/mobileHudScreenshot-captur-51097--touch-control-after-reveal-mobile-chromium/mobile-time-warp-control.png`; both controls were visible, readable, upright, and did not overlap the HUD or bottom controls. Control 2 showed increase values left of center and decrease values right of center as intended.
+- In-app browser computed-style inspection confirmed the five horizontal positions resolve to columns `5,4,3,2,1` on row `1`.
+- Inspected `tmp/playwright-results/mobileHudScreenshot-captur-51097--touch-control-after-reveal-mobile-chromium/mobile-time-warp-control.png`; both controls were visible, readable, upright, and did not overlap the HUD or bottom controls. Control 2 showed all values on one line with increase values left of center and decrease values right of center.
 
 ## Follow-Ups
 
