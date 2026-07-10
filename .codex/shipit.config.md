@@ -41,35 +41,28 @@
 
 These rules copy the durable Shipit review requirements from `AGENTS.md` into the project Shipit harness. They supplement the built-in Shipit review mode.
 
-- Run CodeRabbit as part of Shipit review:
-
-```sh
-coderabbit --base main --agent
-```
-
-- If CodeRabbit fails, times out, or cannot produce findings, record that in the workflow review notes and explicitly alert the user.
-- Treat CodeRabbit findings and all automated review findings as hypotheses, not facts.
-- Inspect the current code and diff before deciding whether each automated finding is valid, stale, out of scope, or based on an incorrect proposed fix.
-- Process supplied or automated findings before the final self-review.
+- Treat supplied external or automated review findings as hypotheses, not facts.
+- Inspect the current code and diff before deciding whether each supplied finding is valid, stale, out of scope, or based on an incorrect proposed fix.
+- Process supplied findings before the final self-review.
 - Fix only still-valid, in-scope findings; record skipped findings with concise reasons.
 - Apply the Ponytail review lens during Shipit review:
   - look for code to delete or simplify
   - prefer native or standard-library behavior where it replaces unnecessary custom code
   - call out YAGNI, speculative abstractions, over-broad APIs, and needless dependency or asset-pipeline complexity
 - Record the Ponytail review outcome even when it finds nothing to change.
-- After automated findings and the Ponytail pass, complete the normal reviewer self-review and solution retrospect.
+- After supplied findings and the Ponytail pass, complete the normal reviewer self-review and solution retrospect.
 - Do not mark `Review complete` until review notes include:
-  - CodeRabbit status
-  - automated findings fixed or skipped, if any
+  - supplied findings fixed or skipped, if any
   - Ponytail lens outcome
   - self-review outcome
   - solution retrospect
   - residual risk
   - validation results or explicitly accepted validation gaps
+- Handle new external and automated feedback on the PR after the local Shipit review gate is complete.
 
 ## Shipit Yeet Gate
 
-When Shipit review is complete and the user asks to yeet the work, open or update the GitHub PR in ready-for-review state so CodeRabbit and other automated reviewers can run on the PR.
+When Shipit review is complete and the user asks to yeet the work, open or update the GitHub PR in ready-for-review state so human reviewers and automated checks can run on the PR.
 
 - This repo-level rule intentionally overrides the generic Yeet skill's draft-PR default after review has passed.
 - Do not create a draft PR after the Shipit review gate has passed unless the human explicitly asks for a draft.
