@@ -378,12 +378,12 @@
 
 .touch-step-selector-horizontal.touch-step-selector-step-up
   .touch-step-selector-value-current {
-  transform: translateX(2px) scale(1.08);
+  transform: translateX(-2px) scale(1.08);
 }
 
 .touch-step-selector-horizontal.touch-step-selector-step-down
   .touch-step-selector-value-current {
-  transform: translateX(-2px) scale(1.08);
+  transform: translateX(2px) scale(1.08);
 }
 
 @media (max-width: 520px) {

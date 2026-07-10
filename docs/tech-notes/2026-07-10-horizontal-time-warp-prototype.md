@@ -6,7 +6,8 @@
 - Kept the existing Time Warp selector visible and usable in its original reveal panel.
 - Put the horizontal prototype in a separate reveal panel so the two controls can be compared independently.
 - Made control 2 use horizontal left/right drag distance while keeping its labels upright.
-- Made the horizontal current-value animation move in the same swipe direction as the surrounding previous/next values.
+- Made control 2's commit animation continue opposite to the finger movement, matching its drag preview direction.
+- Disabled control 2's edge-panel slide-away gesture so horizontal drags belong exclusively to the selector.
 - Routed both controls through the same existing Time Warp commit, current-value, and preview APIs.
 
 ## Context
@@ -15,7 +16,7 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 
 ## Key Files
 
-- `src/ui/touchControls/createTouchControls.ts` owns the separate Time Warp reveal-panel wiring, gesture routing, and mouse drag bridge for open step selectors.
+- `src/ui/touchControls/createTouchControls.ts` owns the separate Time Warp reveal-panel wiring, including the prototype-only disabled content slide-away gesture, gesture routing, and mouse drag bridge for open step selectors.
 - `src/ui/touchControls/createTimeWarpControl.ts` owns the temporary control 2 factory.
 - `src/ui/touchControls/stepSelectorControl/*` owns the shared selector axis math, view class, and horizontal styling.
 - `tests/gui/timeWarpPrototypeControl.spec.ts` covers shared-state routing for the horizontal prototype.
@@ -25,6 +26,7 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 - The step selector now has a vertical default and an optional horizontal axis so trajectory horizon and the original Time Warp control keep their existing behavior.
 - Control 2 uses a separate internal gesture ID, `time-warp-2`, because routing two DOM controls through one active gesture ID would send drag updates to the wrong view.
 - Control 2 also uses a separate reveal dock/control so its horizontal panel can open independently from the original Time Warp panel.
+- The edge reveal control exposes a narrow opt-out for content swipe closing; only control 2 uses it because its content owns horizontal drag gestures.
 - The prototype is intentionally concentrated in the Time Warp touch-control boundary, with a `ponytail` comment marking the temporary factory.
 
 ## Validation

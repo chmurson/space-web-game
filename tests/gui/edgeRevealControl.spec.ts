@@ -196,3 +196,56 @@ test('preserves tab swipe, ignored click after swipe, and content swipe close', 
     tabStartPrevented: true,
   })
 })
+
+test('can keep a reveal panel open when its content owns horizontal dragging', async ({
+  page,
+}) => {
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const { createEdgeRevealControl } = (await import(
+      '/src/ui/touchControls/edgeRevealControl.ts'
+    )) as EdgeRevealControlModule
+    const control = createEdgeRevealControl({
+      allowContentSwipeClose: false,
+      content: document.createElement('div'),
+      id: 'edge-no-content-close-test',
+      label: 'Reveal drag control',
+      placement: { edge: 'left', priority: 0 },
+    })
+    document.body.append(control.element)
+    control.setOpen(true)
+    const content = control.element.querySelector<HTMLElement>(
+      '.touch-edge-reveal-content',
+    )
+    if (!content) {
+      throw new Error('Expected reveal content')
+    }
+    const dispatchTouch = (
+      type: 'touchend' | 'touchmove' | 'touchstart',
+      x: number,
+    ) => {
+      const touch = new Touch({
+        clientX: x,
+        clientY: 10,
+        identifier: 24,
+        target: content,
+      })
+      content.dispatchEvent(
+        new TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          changedTouches: [touch],
+          targetTouches: type === 'touchend' ? [] : [touch],
+          touches: type === 'touchend' ? [] : [touch],
+        }),
+      )
+    }
+    dispatchTouch('touchstart', 100)
+    dispatchTouch('touchmove', 56)
+    dispatchTouch('touchend', 56)
+    return control.isOpen()
+  })
+
+  expect(result).toBe(true)
+})

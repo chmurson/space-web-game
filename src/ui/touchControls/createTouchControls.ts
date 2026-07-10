@@ -411,6 +411,7 @@ export const createTouchControls = (options: {
     placement: timeWarpRevealPlacement,
   })
   const timeWarpPrototypeRevealControl = createEdgeRevealControl({
+    allowContentSwipeClose: false,
     content: timeWarpPrototypeDock,
     icon: 'Warp 2',
     id: 'touch-time-warp-prototype-reveal',

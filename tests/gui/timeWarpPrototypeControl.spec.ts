@@ -265,7 +265,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
           }
         },
       )
-      const currentRule = matchingRules.find(
+      const currentDragRule = matchingRules.find(
         (cssText) =>
           cssText.includes(
             '.touch-step-selector-horizontal.touch-step-selector-target-decrease',
@@ -277,8 +277,20 @@ test('routes the horizontal prototype time warp control to shared state', async 
             '.touch-step-selector-horizontal.touch-step-selector-target-decrease',
           ) && cssText.includes('.touch-step-selector-value-up-near'),
       )
+      const currentCommitRule = matchingRules.find(
+        (cssText) =>
+          cssText.includes(
+            '.touch-step-selector-horizontal.touch-step-selector-step-down',
+          ) && cssText.includes('.touch-step-selector-value-current'),
+      )
       window.dispatchEvent(new Event('blur'))
-      return { className, currentRule, dragProgress, previousRule }
+      return {
+        className,
+        currentCommitRule,
+        currentDragRule,
+        dragProgress,
+        previousRule,
+      }
     }
 
     timeWarpIndex = 1
@@ -333,8 +345,11 @@ test('routes the horizontal prototype time warp control to shared state', async 
     'touch-step-selector-target-decrease',
   )
   expect(result.leftSwipeAnimation.dragProgress).toBeGreaterThan(0)
-  expect(result.leftSwipeAnimation.currentRule).toContain(
+  expect(result.leftSwipeAnimation.currentDragRule).toContain(
     'var(--touch-step-selector-drag-progress) * 24px',
+  )
+  expect(result.leftSwipeAnimation.currentCommitRule).toContain(
+    'translateX(2px)',
   )
   expect(result.leftSwipeAnimation.previousRule).toContain(
     'var(--touch-step-selector-drag-progress) * 25px',
