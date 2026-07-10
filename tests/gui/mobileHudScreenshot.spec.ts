@@ -2629,7 +2629,7 @@ test('captures the mobile thrust touch control after reveal', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-thrust-control')
 })
 
-test('captures the mobile active burn notice pill', async ({
+test('captures mobile active thrust without a bottom burn notice pill', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -2646,48 +2646,38 @@ test('captures the mobile active burn notice pill', async ({
   })
 
   const burnNotice = page.locator('.burn-active-notice')
-  await expect(burnNotice).toBeVisible()
-  await expect(burnNotice).toHaveAttribute('data-visible', 'true')
+  await expect(burnNotice).toHaveCount(0)
   await expect(page.locator('.telemetry-pill-velocity')).toHaveClass(
     /telemetry-pill-thrusting/,
   )
-  await expect(burnNotice.locator('.burn-active-notice-icon')).toHaveClass(
+  await expect(page.locator('.telemetry-speed-icon')).toHaveClass(
     /telemetry-speed-icon-thrusting/,
   )
-  const activePillStyles = await page.evaluate(() => {
+  const activePillState = await page.evaluate(() => {
     const speedPill = document.querySelector<HTMLElement>(
       '.telemetry-pill-velocity.telemetry-pill-thrusting',
     )
-    const burnPill = document.querySelector<HTMLElement>(
-      '.burn-active-notice:not([hidden])',
-    )
-    if (!speedPill || !burnPill) {
-      throw new Error('Expected active speed and burn pills to be present')
+    const burnPill = document.querySelector<HTMLElement>('.burn-active-notice')
+    if (!speedPill || burnPill) {
+      throw new Error('Expected active speed pill and no burn notice pill')
     }
 
-    const borderSides = (style: CSSStyleDeclaration) => ({
-      bottomColor: style.borderBottomColor,
-      bottomWidth: style.borderBottomWidth,
-      leftColor: style.borderLeftColor,
-      leftWidth: style.borderLeftWidth,
-      rightColor: style.borderRightColor,
-      rightWidth: style.borderRightWidth,
-      topColor: style.borderTopColor,
-      topWidth: style.borderTopWidth,
-    })
-    const speedStyle = window.getComputedStyle(speedPill)
-    const burnStyle = window.getComputedStyle(burnPill)
     return {
-      burnBackground: burnStyle.backgroundColor,
-      burnBorder: borderSides(burnStyle),
-      speedBackground: speedStyle.backgroundColor,
-      speedBorder: borderSides(speedStyle),
+      burnNoticeCount: document.querySelectorAll('.burn-active-notice').length,
+      speedPillClassName: speedPill.className,
     }
   })
-  expect(activePillStyles.speedBackground).toBe(activePillStyles.burnBackground)
-  expect(activePillStyles.speedBorder).toEqual(activePillStyles.burnBorder)
+  expect(activePillState).toEqual({
+    burnNoticeCount: 0,
+    speedPillClassName:
+      'telemetry-pill telemetry-pill-velocity telemetry-pill-thrusting',
+  })
 
-  await attachMobileScreenshot(page, testInfo, 'mobile-burn-active-notice')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-active-thrust-speed-pill',
+  )
 
   await page.evaluate(() => {
     window.dispatchEvent(
@@ -2699,5 +2689,7 @@ test('captures the mobile active burn notice pill', async ({
       }),
     )
   })
-  await expect(burnNotice).toBeHidden()
+  await expect(page.locator('.telemetry-pill-velocity')).not.toHaveClass(
+    /telemetry-pill-thrusting/,
+  )
 })

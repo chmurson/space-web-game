@@ -1,10 +1,8 @@
-import { RocketWithFlameIcon } from '../components/HudTelemetrySurface'
 import type { SurfaceRootRefProps } from '../createPreactUiSurface'
 import { createPreactUiSurface } from '../createPreactUiSurface'
 
 export type BottomHudNoticesRefs = {
   bottomPillArea: HTMLElement
-  burnActiveNotice: HTMLElement
   cameraUnlockNotice: HTMLElement
   cameraUnlockNoticeBody: HTMLSpanElement
   cameraUnlockNoticeTitle: HTMLSpanElement
@@ -43,20 +41,6 @@ const BottomHudNoticesSurface = ({ rootRef }: BottomHudNoticesSurfaceProps) => (
     >
       <span class="hud-notice-title">Fuel depleted</span>
       <span class="hud-notice-body">Thrusters disabled</span>
-    </div>
-    <div
-      class="hud-notice hud-notice-durable burn-active-notice"
-      data-visible="false"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      aria-hidden="true"
-      aria-label="Burn active: Thrusting"
-      hidden
-    >
-      <RocketWithFlameIcon className="telemetry-speed-icon telemetry-speed-icon-thrusting burn-active-notice-icon" />
-      <span class="hud-notice-title">Burn active</span>
-      <span class="hud-notice-body">Thrusting</span>
     </div>
     <div
       class="hud-notice hud-notice-transient"
@@ -109,10 +93,6 @@ export const createBottomHudNoticesSurface = (
     bottomPillArea.querySelector<HTMLElement>('.fuel-depleted-notice'),
     'Failed to create fuel depleted notice',
   )
-  const burnActiveNotice = getRequiredElement(
-    bottomPillArea.querySelector<HTMLElement>('.burn-active-notice'),
-    'Failed to create burn active notice',
-  )
   const cameraUnlockNotice = getRequiredElement(
     bottomPillArea.querySelector<HTMLElement>('.hud-notice-transient'),
     'Failed to create camera unlock notice',
@@ -124,7 +104,6 @@ export const createBottomHudNoticesSurface = (
 
   return {
     bottomPillArea,
-    burnActiveNotice,
     cameraUnlockNotice,
     cameraUnlockNoticeBody: getRequiredElement(
       cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-body'),

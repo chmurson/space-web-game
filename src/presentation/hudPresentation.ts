@@ -548,7 +548,6 @@ export const createHudPresentation = (options: {
         thrustPill?.classList.remove('telemetry-pill-thrust-active')
         thrustPill?.classList.toggle('telemetry-pill-thrust-crashed', crashed)
         speedPill?.classList.toggle('telemetry-pill-thrusting', thrusting)
-        syncHudNoticeVisibility(options.overlayUi.burnActiveNotice, thrusting)
         if (options.overlayUi.speedIcon) {
           options.overlayUi.speedIcon.classList.toggle(
             'telemetry-speed-icon-thrusting',
