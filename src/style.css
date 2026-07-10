@@ -2287,8 +2287,7 @@ button.app-dialog-setting {
 
 .rcs-actual-turn-slice {
   fill: rgba(56, 189, 248, 0.28);
-  stroke: rgba(125, 211, 252, 0.42);
-  stroke-width: 1;
+  stroke: none;
   filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.42));
 }
 

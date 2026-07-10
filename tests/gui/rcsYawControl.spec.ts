@@ -104,6 +104,10 @@ test('wires the RCS yaw reveal to analog turn drag, release, and close reset', a
     }
 
     tab.click()
+    if (!reveal.classList.contains('touch-edge-reveal-control-open')) {
+      throw new Error('RCS yaw reveal did not open after tab click')
+    }
+
     const rect = track.getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
     const centerY = rect.top + rect.height / 2
@@ -143,6 +147,10 @@ test('wires the RCS yaw reveal to analog turn drag, release, and close reset', a
       '--rcs-yaw-thumb-offset',
     )
 
+    track.focus()
+    if (document.activeElement !== track) {
+      throw new Error('RCS yaw slider did not receive keyboard focus')
+    }
     track.dispatchEvent(
       new KeyboardEvent('keydown', {
         bubbles: true,

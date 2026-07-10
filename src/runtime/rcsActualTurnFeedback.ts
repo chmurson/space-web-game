@@ -90,7 +90,7 @@ export const updateRcsActualTurnFeedback = ({
 
   return {
     currentHeading: normalizeAngle(settleCurrentHeading),
-    opacity: 1 - progress,
+    opacity: 1,
     phase: 'settling',
     settleCurrentHeading: normalizeAngle(settleCurrentHeading),
     settleElapsedSeconds,

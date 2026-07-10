@@ -266,15 +266,19 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
         identifier: 223,
         target: track,
       })
-    const dispatch = (type: 'touchmove' | 'touchstart', x: number) => {
+    const dispatch = (
+      type: 'touchend' | 'touchmove' | 'touchstart',
+      x: number,
+    ) => {
       const touch = createTouch(x)
+      const activeTouches = type === 'touchend' ? [] : [touch]
       track.dispatchEvent(
         new TouchEvent(type, {
           bubbles: true,
           cancelable: true,
           changedTouches: [touch],
-          targetTouches: [touch],
-          touches: [touch],
+          targetTouches: activeTouches,
+          touches: activeTouches,
         }),
       )
     }
@@ -293,7 +297,42 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
         .evaluate((slice) => slice.getAttribute('d')),
     )
     .toMatch(/^M .* Z$/)
-  await page.waitForTimeout(250)
+  await page.evaluate(() => {
+    const track = document.querySelector<HTMLElement>(
+      '.touch-rcs-yaw-control-track',
+    )
+    if (!track) {
+      throw new Error('RCS yaw track is missing')
+    }
+
+    const rect = track.getBoundingClientRect()
+    const centerY = rect.top + rect.height / 2
+    const touch = new Touch({
+      clientX: rect.left + rect.width / 2 + 58,
+      clientY: centerY,
+      identifier: 223,
+      target: track,
+    })
+    track.dispatchEvent(
+      new TouchEvent('touchend', {
+        bubbles: true,
+        cancelable: true,
+        changedTouches: [touch],
+        targetTouches: [],
+        touches: [],
+      }),
+    )
+  })
+  await page.waitForTimeout(150)
+  await expect(page.locator('.rcs-actual-turn-overlay')).toHaveCSS(
+    'display',
+    'block',
+  )
+  await expect(page.locator('.rcs-actual-turn-slice')).toHaveCSS('opacity', '1')
+  await expect(page.locator('.rcs-actual-turn-slice')).toHaveCSS(
+    'stroke',
+    'none',
+  )
 
   await attachMobileScreenshot(
     page,

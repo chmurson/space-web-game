@@ -34,7 +34,7 @@ describe('updateRcsActualTurnFeedback', () => {
     expect(nextFeedback?.startHeading).toBe(0)
   })
 
-  it('trims from the original heading and fades after rotation stops', () => {
+  it('trims from the original heading without fading after rotation stops', () => {
     const activeFeedback: RcsActualTurnFeedback = {
       currentHeading: 0.42,
       opacity: 1,
@@ -55,7 +55,7 @@ describe('updateRcsActualTurnFeedback', () => {
 
     expect(settling).toMatchObject({
       currentHeading: 0.42,
-      opacity: 0.5,
+      opacity: 1,
       phase: 'settling',
     })
     expect(settling?.startHeading).toBeCloseTo(0.21)
