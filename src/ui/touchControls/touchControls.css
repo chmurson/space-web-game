@@ -143,6 +143,24 @@
   justify-items: end;
 }
 
+.touch-time-warp-reveal-dock {
+  width: max-content;
+}
+
+.touch-time-warp-prototype-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.touch-edge-reveal-control-left .touch-time-warp-prototype-controls {
+  flex-direction: row;
+}
+
+.touch-edge-reveal-control-right .touch-time-warp-prototype-controls {
+  flex-direction: row-reverse;
+}
+
 .touch-edge-reveal-control-open .touch-edge-reveal-content {
   opacity: 1;
   pointer-events: auto;

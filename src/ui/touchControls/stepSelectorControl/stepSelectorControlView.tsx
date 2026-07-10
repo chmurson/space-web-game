@@ -9,6 +9,8 @@ type StepSelectorControlView = {
   render(renderState: StepSelectorControlRenderState): void
 }
 
+type StepSelectorAxis = 'horizontal' | 'vertical'
+
 type StepSelectorValueProps = {
   className: string
   step: StepSelectorRenderStep
@@ -82,10 +84,16 @@ const getContentRenderKey = (renderState: StepSelectorControlRenderState) =>
 
 export const createStepSelectorControlView = (options: {
   ariaLabel: string
+  axis?: StepSelectorAxis
   className?: string
 }): StepSelectorControlView => {
   const element = document.createElement('div')
-  element.className = ['touch-step-selector', options.className ?? '']
+  const axis = options.axis ?? 'vertical'
+  element.className = [
+    'touch-step-selector',
+    axis === 'horizontal' ? 'touch-step-selector-horizontal' : '',
+    options.className ?? '',
+  ]
     .filter(Boolean)
     .join(' ')
   element.setAttribute('role', 'group')

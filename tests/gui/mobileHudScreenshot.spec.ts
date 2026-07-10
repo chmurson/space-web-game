@@ -2570,6 +2570,9 @@ test('captures the mobile time warp touch control after reveal', async ({
   await expect(
     timeWarpReveal.getByLabel('Time warp control', { exact: true }),
   ).toBeVisible()
+  await expect(
+    timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
+  ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getStepSelectorGestureCommittedStepCount,
+  getStepSelectorGestureDelta,
   getStepSelectorGestureDirection,
   getStepSelectorGesturePreviewDeltaY,
   getStepSelectorReleaseWillCommit,
@@ -24,6 +25,25 @@ describe('createStepSelectorControl', () => {
     expect(getStepSelectorGesturePreviewDeltaY(92, 100)).toBe(-8)
     expect(getStepSelectorGesturePreviewDeltaY(100, 92)).toBe(8)
     expect(getStepSelectorGesturePreviewDeltaY(100, 100)).toBe(0)
+  })
+
+  it('maps horizontal right swipes to the same increase direction as upward swipes', () => {
+    expect(
+      getStepSelectorGestureDelta(
+        'horizontal',
+        { clientX: 146, clientY: 0 },
+        { x: 100, y: 0 },
+      ),
+    ).toBe(-46)
+    expect(
+      getStepSelectorGestureDirection(
+        getStepSelectorGestureDelta(
+          'horizontal',
+          { clientX: 54, clientY: 0 },
+          { x: 100, y: 0 },
+        ),
+      ),
+    ).toBe('decrease')
   })
 
   it('settles release to the nearest value after the midpoint', () => {

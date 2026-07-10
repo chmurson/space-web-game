@@ -54,6 +54,14 @@
   --touch-step-selector-accent-rgb: 56 189 248;
 }
 
+.touch-step-selector-horizontal {
+  width: 156px;
+  min-height: 66px;
+  grid-template-rows: auto;
+  grid-template-columns: 18px 18px minmax(48px, auto) 18px 18px;
+  padding: 9px 12px;
+}
+
 .touch-edge-reveal-content .touch-step-selector {
   position: relative;
   bottom: auto;
@@ -202,6 +210,70 @@
     scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
 }
 
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value-current {
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 25px))
+    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value-current {
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -24px))
+    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.38));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value-up-far {
+  opacity: calc(0.56 - var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -12px));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value-up-near {
+  opacity: calc(0.68 - var(--touch-step-selector-drag-progress) * 0.12);
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -11px))
+    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.1));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value-down-far {
+  opacity: calc(0.56 + var(--touch-step-selector-drag-progress) * 0.12);
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -12px))
+    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.11));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value-up-far {
+  opacity: calc(0.56 + var(--touch-step-selector-drag-progress) * 0.12);
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 11px))
+    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.1));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value-down-near {
+  opacity: calc(0.68 - var(--touch-step-selector-drag-progress) * 0.12);
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 11px))
+    scale(calc(1 - var(--touch-step-selector-drag-progress) * 0.1));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value-down-far {
+  opacity: calc(0.56 - var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 12px));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value-down-near {
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * -24px))
+    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value-up-near {
+  transform: translateX(calc(var(--touch-step-selector-drag-progress) * 25px))
+    scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
+}
+
 .touch-step-selector .touch-step-selector-value-disabled {
   color: rgba(203, 213, 225, 0.68);
   opacity: 0.22;
@@ -230,6 +302,22 @@
   transform: translateX(-50%) translateY(12px) scale(0.72);
 }
 
+.touch-step-selector-horizontal .touch-step-selector-value-extra {
+  top: 50%;
+  left: auto;
+}
+
+.touch-step-selector-horizontal .touch-step-selector-value-up-extra {
+  left: 12px;
+  transform: translateY(-50%) translateX(-12px) scale(0.72);
+}
+
+.touch-step-selector-horizontal .touch-step-selector-value-down-extra {
+  right: 12px;
+  bottom: auto;
+  transform: translateY(-50%) translateX(12px) scale(0.72);
+}
+
 .touch-step-selector-target-increase .touch-step-selector-value-down-extra {
   opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
   transform: translateX(-50%)
@@ -239,10 +327,30 @@
     scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
 }
 
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value-down-extra {
+  opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateY(-50%)
+    translateX(
+      calc((1 - var(--touch-step-selector-drag-progress)) * 12px - 1.5px)
+    )
+    scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
+}
+
 .touch-step-selector-target-decrease .touch-step-selector-value-up-extra {
   opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
   transform: translateX(-50%)
     translateY(
+      calc((1 - var(--touch-step-selector-drag-progress)) * -12px + 1.5px)
+    )
+    scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value-up-extra {
+  opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateY(-50%)
+    translateX(
       calc((1 - var(--touch-step-selector-drag-progress)) * -12px + 1.5px)
     )
     scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
@@ -268,6 +376,16 @@
   transform: translateY(2px) scale(1.08);
 }
 
+.touch-step-selector-horizontal.touch-step-selector-step-up
+  .touch-step-selector-value-current {
+  transform: translateX(2px) scale(1.08);
+}
+
+.touch-step-selector-horizontal.touch-step-selector-step-down
+  .touch-step-selector-value-current {
+  transform: translateX(-2px) scale(1.08);
+}
+
 @media (max-width: 520px) {
   .touch-step-selector {
     width: 64px;
@@ -286,6 +404,13 @@
 
   .touch-step-selector-value-secondary {
     font-size: 8px;
+  }
+
+  .touch-step-selector-horizontal {
+    width: 144px;
+    min-height: 62px;
+    grid-template-columns: 16px 16px minmax(44px, auto) 16px 16px;
+    padding-inline: 10px;
   }
 }
 
