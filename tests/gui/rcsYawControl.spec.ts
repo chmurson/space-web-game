@@ -190,14 +190,14 @@ test('wires the RCS yaw reveal to analog turn drag, release, and close reset', a
     }
   })
 
-  expect(result.turnAfterRightDrag).toBeLessThan(-0.6)
+  expect(result.turnAfterRightDrag).toBeGreaterThan(0.6)
   expect(result.rightThumbOffset).not.toBe('0px')
   expect(result.turnAfterRelease).toBe(0)
   expect(result.releaseThumbOffset).toBe('0px')
-  expect(result.turnAfterKeyboardLeft).toBe(1)
+  expect(result.turnAfterKeyboardLeft).toBe(-1)
   expect(result.ariaAfterKeyboardLeft).toBe('Yaw left 1.00')
   expect(result.turnAfterKeyboardRelease).toBe(0)
-  expect(result.turnAfterLeftDrag).toBeGreaterThan(0.6)
+  expect(result.turnAfterLeftDrag).toBeLessThan(-0.6)
   expect(result.turnAfterClose).toBe(0)
   expect(result.closeThumbOffset).toBe('0px')
   expect(result.revealOpenAfterClose).toBe(false)

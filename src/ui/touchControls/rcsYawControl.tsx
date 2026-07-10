@@ -115,11 +115,11 @@ const formatTurnValue = (turn: number) => turn.toFixed(2)
 
 const formatTurnText = (turn: number) => {
   if (turn > 0) {
-    return `Yaw left ${formatTurnValue(turn)}`
+    return `Yaw right ${formatTurnValue(turn)}`
   }
 
   if (turn < 0) {
-    return `Yaw right ${formatTurnValue(Math.abs(turn))}`
+    return `Yaw left ${formatTurnValue(Math.abs(turn))}`
   }
 
   return 'Neutral'
@@ -219,7 +219,7 @@ export const createRcsYawControl = (options: {
     }
 
     event.preventDefault()
-    applyTurn(event.key === 'ArrowLeft' ? 1 : -1)
+    applyTurn(event.key === 'ArrowLeft' ? -1 : 1)
   })
   track.addEventListener('keyup', (event) => {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {

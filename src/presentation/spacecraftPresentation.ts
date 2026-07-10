@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import type { PointerCameraInput } from '../input/pointerCameraInput'
 import { renderPosition } from '../render/sceneUpdates'
+import type { RcsActualTurnFeedback } from '../runtime/rcsActualTurnFeedback'
 import type {
   GameSceneRefs,
   SpacecraftTrailPoint,
@@ -18,10 +19,10 @@ import {
 
 const trailOldestColor = new THREE.Color('#0b1220')
 const trailNewestColor = new THREE.Color('#7c8fa8')
-const headingTargetSliceInnerRadiusPx = 20
-const headingTargetSliceOuterRadiusPx = 52
-const headingTargetSliceArcSegmentRadians = Math.PI / 20
-const committedHeadingTargetLineRadiusPx = headingTargetSliceOuterRadiusPx
+const headingFeedbackSliceInnerRadiusPx = 20
+const headingFeedbackSliceOuterRadiusPx = 52
+const headingFeedbackSliceArcSegmentRadians = Math.PI / 20
+const committedHeadingTargetLineRadiusPx = headingFeedbackSliceOuterRadiusPx
 const spacecraftTrailLift = 0.24
 const spacecraftVisualLift = 0.32
 const spacecraftMarkerLift = spacecraftVisualLift
@@ -96,6 +97,11 @@ const syncHeadingTargetPlanningState = (
     active,
   )
 }
+const hideRcsActualTurnFeedback = (overlayUi: OverlayUiRefs) => {
+  overlayUi.rcsActualTurnOverlay.style.display = 'none'
+  overlayUi.rcsActualTurnSlice.style.opacity = '0'
+  overlayUi.rcsActualTurnSlice.setAttribute('d', '')
+}
 const isProjectedPositionInViewport = (position: THREE.Vector3) =>
   position.x >= -1 &&
   position.x <= 1 &&
@@ -103,7 +109,7 @@ const isProjectedPositionInViewport = (position: THREE.Vector3) =>
   position.y <= 1 &&
   position.z > -1 &&
   position.z < 1
-const getHeadingTargetPlanePoint = (options: {
+const getHeadingFeedbackPlanePoint = (options: {
   camera: THREE.Camera
   center: Vec2
   lift: number
@@ -123,7 +129,7 @@ const getHeadingTargetPlanePoint = (options: {
   position.z += Math.sin(options.planeAngle) * radius
   return projectRenderPositionToScreen(position, options.camera)
 }
-const getHeadingTargetSlicePath = (options: {
+const getHeadingFeedbackSlicePath = (options: {
   camera: THREE.Camera
   center: Vec2
   deltaAngle: number
@@ -134,7 +140,7 @@ const getHeadingTargetSlicePath = (options: {
   const segmentCount = Math.max(
     1,
     Math.ceil(
-      Math.abs(options.deltaAngle) / headingTargetSliceArcSegmentRadians,
+      Math.abs(options.deltaAngle) / headingFeedbackSliceArcSegmentRadians,
     ),
   )
   const points: { x: number; y: number }[] = []
@@ -142,10 +148,10 @@ const getHeadingTargetSlicePath = (options: {
   for (let index = 0; index <= segmentCount; index += 1) {
     const progress = index / segmentCount
     points.push(
-      getHeadingTargetPlanePoint({
+      getHeadingFeedbackPlanePoint({
         ...options,
         planeAngle: options.startAngle + options.deltaAngle * progress,
-        radiusPx: headingTargetSliceOuterRadiusPx,
+        radiusPx: headingFeedbackSliceOuterRadiusPx,
       }),
     )
   }
@@ -153,10 +159,10 @@ const getHeadingTargetSlicePath = (options: {
   for (let index = segmentCount; index >= 0; index -= 1) {
     const progress = index / segmentCount
     points.push(
-      getHeadingTargetPlanePoint({
+      getHeadingFeedbackPlanePoint({
         ...options,
         planeAngle: options.startAngle + options.deltaAngle * progress,
-        radiusPx: headingTargetSliceInnerRadiusPx,
+        radiusPx: headingFeedbackSliceInnerRadiusPx,
       }),
     )
   }
@@ -289,6 +295,7 @@ const updateSpacecraftCallout = (options: {
   isThrusting: boolean
   overlayUi: OverlayUiRefs
   pointerCameraInput: PointerCameraInput
+  rcsActualTurnFeedback: RcsActualTurnFeedback | null
   spacecraft: Spacecraft
   spacecraftLabelIntroUntil: number
   spacecraftModelZoomThreshold: number
@@ -332,6 +339,7 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.headingTargetDot.style.display = 'none'
     options.overlayUi.headingTargetOverlay.style.display = 'none'
     options.overlayUi.headingCommittedTargetLine.style.display = 'none'
+    hideRcsActualTurnFeedback(options.overlayUi)
     syncHeadingTargetPlanningState(options.overlayUi, false)
     return options.displayHeadingAngle
   }
@@ -380,6 +388,32 @@ const updateSpacecraftCallout = (options: {
     options.overlayUi.spacecraftIconThrust.style.left = `${screenX - Math.cos(headingAngle) * backOffset}px`
     options.overlayUi.spacecraftIconThrust.style.top = `${screenY - Math.sin(headingAngle) * backOffset}px`
     options.overlayUi.spacecraftIconThrust.style.transform = `translate(-50%, -50%) rotate(${headingAngle}rad)`
+  }
+
+  if (options.rcsActualTurnFeedback) {
+    const rcsActualTurnDelta = normalizeAngleDelta(
+      options.rcsActualTurnFeedback.currentHeading -
+        options.rcsActualTurnFeedback.startHeading,
+    )
+    options.overlayUi.rcsActualTurnOverlay.style.display = 'block'
+    options.overlayUi.rcsActualTurnOverlay.setAttribute(
+      'viewBox',
+      `0 0 ${window.innerWidth} ${window.innerHeight}`,
+    )
+    options.overlayUi.rcsActualTurnSlice.style.opacity = `${options.rcsActualTurnFeedback.opacity}`
+    options.overlayUi.rcsActualTurnSlice.setAttribute(
+      'd',
+      getHeadingFeedbackSlicePath({
+        camera: options.gameScene.camera,
+        center: options.spacecraft.position,
+        deltaAngle: rcsActualTurnDelta,
+        lift: spacecraftVisualLift,
+        startAngle: options.rcsActualTurnFeedback.startHeading,
+        viewportSize: options.viewportSize,
+      }),
+    )
+  } else {
+    hideRcsActualTurnFeedback(options.overlayUi)
   }
 
   if (
@@ -450,7 +484,7 @@ const updateSpacecraftCallout = (options: {
     }
     options.overlayUi.headingTargetTurnSlice.setAttribute(
       'd',
-      getHeadingTargetSlicePath({
+      getHeadingFeedbackSlicePath({
         camera: options.gameScene.camera,
         center: options.spacecraft.position,
         deltaAngle: remainingPlaneDelta,
@@ -489,6 +523,7 @@ export const createSpacecraftPresentation = (options: {
       isThrusting: boolean
       spacecraft: Spacecraft
       spacecraftLabelIntroUntil: number
+      rcsActualTurnFeedback: RcsActualTurnFeedback | null
       trailTarget: Body
       trimTrailAroundTarget: boolean
       committedTargetHeading: number | null
@@ -549,6 +584,7 @@ export const createSpacecraftPresentation = (options: {
         isThrusting: state.isThrusting,
         overlayUi: options.overlayUi,
         pointerCameraInput: options.pointerCameraInput,
+        rcsActualTurnFeedback: state.rcsActualTurnFeedback,
         spacecraft: state.spacecraft,
         spacecraftLabelIntroUntil: state.spacecraftLabelIntroUntil,
         spacecraftModelZoomThreshold: options.spacecraftModelZoomThreshold,

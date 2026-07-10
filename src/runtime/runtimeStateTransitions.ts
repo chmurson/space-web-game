@@ -28,6 +28,7 @@ export const clearTransientScenarioRuntimeState = (
   runtime.simulation.targetHeadingTurn = null
   runtime.simulation.assistMode = 'off'
   runtime.simulation.crashedBodyName = null
+  runtime.ui.rcsActualTurnFeedback = null
   runtime.ui.spacecraftLabelIntroUntil = performance.now() + 5_000
   runtime.ui.targetHeadingScreenPosition = null
   runtime.ui.targetHeadingWorldPosition = null

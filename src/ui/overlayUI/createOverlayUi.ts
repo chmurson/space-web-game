@@ -38,6 +38,8 @@ export type OverlayUiRefs = {
   headingTargetOverlay: SVGSVGElement
   headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
+  rcsActualTurnOverlay: SVGSVGElement
+  rcsActualTurnSlice: SVGPathElement
   renderScenarioPromptSurface: ScenarioPromptSurfaceRenderer
   renderFpsIndicator(view: FpsIndicatorView | null): void
   scenarioPrompt: HTMLElement
@@ -227,6 +229,26 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   headingTargetOverlay.appendChild(headingTargetTurnSlice)
   options.app.appendChild(headingTargetOverlay)
 
+  const rcsActualTurnOverlay = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'svg',
+  )
+  rcsActualTurnOverlay.classList.add('rcs-actual-turn-overlay')
+  rcsActualTurnOverlay.setAttribute('aria-hidden', 'true')
+  rcsActualTurnOverlay.setAttribute(
+    'viewBox',
+    `0 0 ${window.innerWidth} ${window.innerHeight}`,
+  )
+  rcsActualTurnOverlay.style.display = 'none'
+
+  const rcsActualTurnSlice = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'path',
+  )
+  rcsActualTurnSlice.classList.add('rcs-actual-turn-slice')
+  rcsActualTurnOverlay.appendChild(rcsActualTurnSlice)
+  options.app.appendChild(rcsActualTurnOverlay)
+
   const headingTargetDot = document.createElement('div')
   headingTargetDot.className = 'heading-target-dot'
   headingTargetDot.style.display = 'none'
@@ -282,6 +304,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     headingTargetOverlay,
     headingTargetTurnSlice,
     offscreenIndicators,
+    rcsActualTurnOverlay,
+    rcsActualTurnSlice,
     renderScenarioPromptSurface: scenarioPromptUi.renderSurface,
     renderFpsIndicator: hudTelemetry.renderFpsIndicator,
     scenarioPrompt: scenarioPromptUi.backdropElement,

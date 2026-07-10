@@ -25,14 +25,14 @@ describe('RCS yaw control model', () => {
       leftFillPx: 33,
       offsetPx: -33,
       rightFillPx: 0,
-      turn: 0.5,
+      turn: -0.5,
     })
 
     expect(getRcsYawAnalogSnapshot({ ...params, clientX: 133 })).toEqual({
       leftFillPx: 0,
       offsetPx: 33,
       rightFillPx: 33,
-      turn: -0.5,
+      turn: 0.5,
     })
   })
 
@@ -43,16 +43,16 @@ describe('RCS yaw control model', () => {
     }
 
     expect(getRcsYawAnalogSnapshotFromTurn({ ...params, turn: 0.5 })).toEqual({
-      leftFillPx: 33,
-      offsetPx: -33,
-      rightFillPx: 0,
+      leftFillPx: 0,
+      offsetPx: 33,
+      rightFillPx: 33,
       turn: 0.5,
     })
 
     expect(getRcsYawAnalogSnapshotFromTurn({ ...params, turn: -2 })).toEqual({
-      leftFillPx: 0,
-      offsetPx: 66,
-      rightFillPx: 66,
+      leftFillPx: 66,
+      offsetPx: -66,
+      rightFillPx: 0,
       turn: -1,
     })
   })
@@ -68,14 +68,14 @@ describe('RCS yaw control model', () => {
       leftFillPx: 66,
       offsetPx: -66,
       rightFillPx: 0,
-      turn: 1,
+      turn: -1,
     })
 
     expect(getRcsYawAnalogSnapshot({ ...params, clientX: 400 })).toEqual({
       leftFillPx: 0,
       offsetPx: 66,
       rightFillPx: 66,
-      turn: -1,
+      turn: 1,
     })
 
     expect(getNeutralRcsYawAnalogSnapshot()).toEqual({

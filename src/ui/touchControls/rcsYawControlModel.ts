@@ -44,7 +44,7 @@ const createSnapshotFromOffset = (
   maxOffsetPx: number,
 ): RcsYawAnalogSnapshot => {
   const normalizedOffset = offsetPx / maxOffsetPx
-  const turn = sanitizeTurn(-normalizedOffset)
+  const turn = sanitizeTurn(normalizedOffset)
 
   return {
     leftFillPx: Math.max(0, -offsetPx),
@@ -73,7 +73,7 @@ export const getRcsYawAnalogSnapshotFromTurn = ({
   turn,
 }: RcsYawTurnParams): RcsYawAnalogSnapshot => {
   const maxOffsetPx = getMaxOffsetPx(trackWidth, thumbWidth)
-  const offsetPx = -sanitizeTurn(turn) * maxOffsetPx
+  const offsetPx = sanitizeTurn(turn) * maxOffsetPx
 
   return createSnapshotFromOffset(offsetPx, maxOffsetPx)
 }

@@ -21,6 +21,7 @@ const screenshotCss = `
   .body-label,
   .heading-target-dot,
   .heading-target-overlay,
+  .rcs-actual-turn-overlay,
   .offscreen-indicator,
   .spacecraft-callout,
   .spacecraft-icon-thrust {
@@ -212,6 +213,10 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
+  await page.addStyleTag({
+    content:
+      '.rcs-actual-turn-overlay, .spacecraft-callout { visibility: visible !important; }',
+  })
 
   await page.getByRole('button', { name: 'Reveal RCS yaw control' }).click()
   await page.getByRole('button', { name: 'Reveal thrust control' }).click()
@@ -243,11 +248,57 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
     'border-radius',
     '15px',
   )
+  await page.evaluate(() => {
+    const track = document.querySelector<HTMLElement>(
+      '.touch-rcs-yaw-control-track',
+    )
+    if (!track) {
+      throw new Error('RCS yaw track is missing')
+    }
+
+    const rect = track.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const createTouch = (x: number) =>
+      new Touch({
+        clientX: x,
+        clientY: centerY,
+        identifier: 223,
+        target: track,
+      })
+    const dispatch = (type: 'touchmove' | 'touchstart', x: number) => {
+      const touch = createTouch(x)
+      track.dispatchEvent(
+        new TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          changedTouches: [touch],
+          targetTouches: [touch],
+          touches: [touch],
+        }),
+      )
+    }
+
+    dispatch('touchstart', centerX)
+    dispatch('touchmove', centerX + 58)
+  })
+  await expect(page.locator('.rcs-actual-turn-overlay')).toHaveCSS(
+    'display',
+    'block',
+  )
+  await expect
+    .poll(async () =>
+      page
+        .locator('.rcs-actual-turn-slice')
+        .evaluate((slice) => slice.getAttribute('d')),
+    )
+    .toMatch(/^M .* Z$/)
+  await page.waitForTimeout(250)
 
   await attachMobileScreenshot(
     page,
     testInfo,
-    'mobile-rcs-yaw-and-thrust-controls',
+    'mobile-rcs-yaw-actual-turn-feedback',
   )
 })
 
