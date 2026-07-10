@@ -8,7 +8,10 @@ import {
 } from '../input/pointerCameraInput'
 import type { UIUserAction } from '../input/uiUserActions'
 import { createBodyPresentation } from '../presentation/bodyPresentation'
-import { createHudPresentation } from '../presentation/hudPresentation'
+import {
+  createHudPresentation,
+  type TouchControlAvailability,
+} from '../presentation/hudPresentation'
 import { createSpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import { createTrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import { createRendererProfiler } from '../render/rendererProfiler'
@@ -425,6 +428,19 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
+  let touchControlAvailability: TouchControlAvailability = {
+    burn: true,
+    target: true,
+    trajectory: true,
+    warp: true,
+  }
+  const isSameTouchControlAvailability = (
+    nextVisibility: TouchControlAvailability,
+  ) =>
+    touchControlAvailability.burn === nextVisibility.burn &&
+    touchControlAvailability.target === nextVisibility.target &&
+    touchControlAvailability.trajectory === nextVisibility.trajectory &&
+    touchControlAvailability.warp === nextVisibility.warp
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
   const targetHeadingPlanLifecycleHandlers = {
@@ -615,9 +631,14 @@ export const createAppComponents = (options: {
     app: options.app,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
+    getTouchBurnControlAvailable: () => touchControlAvailability.burn,
     getTouchBurnControlSide: () => touchBurnControlSide,
+    getTouchTargetControlAvailable: () => touchControlAvailability.target,
     getTouchTargetControlSide: () => touchTargetControlSide,
+    getTouchTrajectoryControlAvailable: () =>
+      touchControlAvailability.trajectory,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
+    getTouchWarpControlAvailable: () => touchControlAvailability.warp,
     getTouchWarpControlSide: () => touchWarpControlSide,
     onOrbitPointDisplayChange: (settings) => {
       userOrbitPointDisplaySettings = { ...settings }
@@ -687,6 +708,16 @@ export const createAppComponents = (options: {
     runtime: options.runtimeState,
     desktopTargetSelector,
     targetRecommendationNotice: targetRecommendationNotice ?? undefined,
+    onTouchControlAvailabilityChange: (visibility) => {
+      if (isSameTouchControlAvailability(visibility)) {
+        return
+      }
+
+      touchControlAvailability = visibility
+      if (uiSettingsOpen) {
+        uiSettingsDialog.syncState()
+      }
+    },
     timeWarps: options.config.controls.timeWarps,
     touchControls,
     trajectoryPresentation,
