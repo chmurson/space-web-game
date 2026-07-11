@@ -48,8 +48,6 @@
 - The default non-production staging target can be changed per worktree by creating the gitignored `.netlify-deploy.local.json` with `{ "defaultStagingTarget": "woven-moth" }` or another supported staging target key.
 - Do not deploy directly to Netlify production after commits or merges. Pushes to `main` automatically update the default shared staging site; production releases require an explicit manual workflow dispatch.
 - For ordinary PR work targeting `main`, rely on the automated PR preview instead of running manual staging deploys.
-- On non-`main` branches not covered by a PR preview, deploy to the configured staging site after each meaningful code change unless there is a clear reason not to.
-- Before handing back non-`main` work that changed executable app code, runtime behavior, or user-visible site output, either confirm the automated PR preview covers the branch or deploy to the configured staging site.
 - Planning-only, docs-only, and repository-instruction-only edits do not require Netlify deploys.
 - Do not deploy non-`main` branches to the `main` production site.
 - Use `npm run deploy:netlify` for branch-aware deploys.
