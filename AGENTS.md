@@ -34,24 +34,28 @@
 - Woven moth staging site: `space-web-game-woven-moth`
 - Woven moth staging URL: `https://space-web-game-woven-moth.netlify.app`
 - Woven moth staging site ID: `65b8db6a-f0cc-49e3-b4e4-cc994699ba6a`
+- Every push to `main` uses `.github/workflows/netlify-main-staging.yml` to deploy the built commit to the primary URL of the default shared staging site.
+- Production releases use `.github/workflows/netlify-production.yml` only through manual workflow dispatch. The optional `commit` input selects a commit or ref; an empty input deploys the current `main` HEAD. After a successful deploy, the workflow force-updates the UTC-dated `prod-YYYYMMDD` tag to the deployed commit.
 - PRs targeting `main` use the automated Netlify PR preview workflow in `.github/workflows/netlify-pr-preview.yml`.
 - The PR preview workflow builds the PR head, deploys `dist/` with a stable `pr-<number>` Netlify alias, and reports the preview URL in the workflow summary and a stable PR comment.
 - Stable `pr-<number>` aliases are Netlify branch deploys for runtime context purposes, with branch `pr-<number>`; they are not true Netlify Deploy Previews even though the workflow is named "PR preview".
-- Required PR preview secret is `NETLIFY_AUTH_TOKEN`; preview deploys reuse the production Netlify site ID with a non-production `pr-<number>` alias and do not pass `--prod`.
+- Required PR preview secret is `NETLIFY_AUTH_TOKEN`; preview deploys use the default shared staging site ID with a non-production `pr-<number>` alias and do not pass `--prod`.
 - Netlify Function environment variables used by stable PR aliases must be configured in the non-production branch deploy context, or the branch-specific `pr-<number>` context. For `REACH_MOON_RUN_RECEIPT_SECRET`, use a fresh non-production value there; never reuse the production secret for PR aliases.
 - Do not rely on Netlify's `deploy-preview` environment context for stable `pr-<number>` aliases. The workflow intentionally omits `--context deploy-preview`; if that flag is reintroduced, verify the Netlify Function runtime context before depending on it for secrets.
 - After redeploying a PR alias that needs Reach the Moon receipts, validate `POST /api/reach-moon/run-receipt` against the alias URL and confirm it returns `201` with a `runReceipt` object instead of `missing_receipt_secret`.
 - The PR preview workflow runs for same-repository PRs; forked PRs do not receive repository secrets and need explicit maintainer staging if a preview is required.
 - Deploy scripts use explicit `--site` selection and do not rely on `.netlify/state.json`.
 - The default non-production staging target can be changed per worktree by creating the gitignored `.netlify-deploy.local.json` with `{ "defaultStagingTarget": "woven-moth" }` or another supported staging target key.
-- If the current branch is `main`, deploy to Netlify after each commit that changes executable app code, runtime behavior, or user-visible site output.
+- Do not deploy directly to Netlify production after commits or merges. Pushes to `main` automatically update the default shared staging site; production releases require an explicit manual workflow dispatch.
 - For ordinary PR work targeting `main`, rely on the automated PR preview instead of running manual staging deploys.
 - On non-`main` branches not covered by a PR preview, deploy to the configured staging site after each meaningful code change unless there is a clear reason not to.
 - Before handing back non-`main` work that changed executable app code, runtime behavior, or user-visible site output, either confirm the automated PR preview covers the branch or deploy to the configured staging site.
 - Planning-only, docs-only, and repository-instruction-only edits do not require Netlify deploys.
 - Do not deploy non-`main` branches to the `main` production site.
 - Use `npm run deploy:netlify` for branch-aware deploys.
-- Use `npm run deploy:netlify:production` or `npm run deploy:netlify:staging` only when an explicit override is needed.
+- `npm run deploy:netlify` defaults to shared staging, including on `main`.
+- `npm run deploy:netlify:production` is reserved for the manual production workflow; do not run it directly unless the user explicitly authorizes an emergency production deploy.
+- Use `npm run deploy:netlify:staging` when an explicit staging override is needed.
 - Use `npm run deploy:netlify:staging:woven-moth` to explicitly deploy to the woven moth staging site.
 - After any staging deploy, share the staging URL with the user.
 

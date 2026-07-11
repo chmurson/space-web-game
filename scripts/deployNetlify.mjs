@@ -96,7 +96,7 @@ const resolveStagingTarget = (requestedTarget, localConfig) => {
   return STAGING_TARGETS[DEFAULT_STAGING_TARGET]
 }
 
-const resolveTarget = (mode, branch, requestedStagingTarget, localConfig) => {
+const resolveTarget = (mode, requestedStagingTarget, localConfig) => {
   if (mode === 'production') {
     return {
       label: 'production',
@@ -104,21 +104,14 @@ const resolveTarget = (mode, branch, requestedStagingTarget, localConfig) => {
     }
   }
 
-  if (mode === 'staging' || branch !== 'main') {
-    return resolveStagingTarget(requestedStagingTarget, localConfig)
-  }
-
-  return {
-    label: 'production',
-    siteId: process.env.NETLIFY_PRODUCTION_SITE_ID || PRODUCTION_SITE_ID,
-  }
+  return resolveStagingTarget(requestedStagingTarget, localConfig)
 }
 
 const { mode, stagingTarget } = parseArgs()
 const localDeployConfig = readLocalDeployConfig()
 const branch = getCurrentBranch()
 const commit = getCurrentCommit()
-const target = resolveTarget(mode, branch, stagingTarget, localDeployConfig)
+const target = resolveTarget(mode, stagingTarget, localDeployConfig)
 const message = `${target.label} deploy from ${branch}@${commit}`
 
 console.log(
