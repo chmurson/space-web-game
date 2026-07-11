@@ -1,16 +1,19 @@
 name: Netlify Production Deploy
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Commit SHA or ref to deploy (defaults to main HEAD)
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: netlify-production-${{ github.ref }}
-  cancel-in-progress: true
+  group: netlify-production
+  cancel-in-progress: false
 
 jobs:
   deploy-production:
@@ -21,7 +24,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          persist-credentials: false
+          ref: ${{ inputs.commit || 'main' }}
+
+      - name: Resolve deployed commit
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -40,6 +47,16 @@ jobs:
 
       - name: Deploy to Netlify production
         env:
-          BRANCH: ${{ github.ref_name }}
+          BRANCH: ${{ inputs.commit || 'main' }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: npm run deploy:netlify:production
+
+      - name: Tag deployed commit
+        env:
+          DEPLOYED_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          tag="prod-$(date -u +%Y%m%d)"
+          git tag --force "${tag}" "${DEPLOYED_SHA}"
+          git push --force origin "refs/tags/${tag}"
+          echo "Production tag: ${tag}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Deployed commit: ${DEPLOYED_SHA}" >> "${GITHUB_STEP_SUMMARY}"
