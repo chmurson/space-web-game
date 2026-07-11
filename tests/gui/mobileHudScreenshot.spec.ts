@@ -2620,6 +2620,14 @@ test('captures the mobile time warp touch control after reveal', async ({
     'mobile-time-warp-control-dragging',
   )
   await page.mouse.up()
+  await expect(
+    timeWarpPrototypeControl.locator('.touch-step-selector-value-current'),
+  ).toHaveText('x30s')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-time-warp-control-elevated-spacing',
+  )
 })
 
 test('captures the mobile trajectory horizon touch control after reveal', async ({

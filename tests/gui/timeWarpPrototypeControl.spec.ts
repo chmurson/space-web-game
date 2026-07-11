@@ -378,10 +378,6 @@ test('routes the horizontal prototype time warp control to shared state', async 
   for (const translation of result.leftDragAnimation.valueTranslations) {
     expect(translation).toBeLessThan(0)
   }
-  expect(
-    Math.max(...result.leftDragAnimation.valueTranslations) -
-      Math.min(...result.leftDragAnimation.valueTranslations),
-  ).toBeLessThan(1)
   expect(result.leftDragAnimation.targetStartX).toBeGreaterThan(
     result.leftDragAnimation.currentStartX,
   )
@@ -404,10 +400,6 @@ test('routes the horizontal prototype time warp control to shared state', async 
   for (const translation of result.rightDragAnimation.valueTranslations) {
     expect(translation).toBeGreaterThan(0)
   }
-  expect(
-    Math.max(...result.rightDragAnimation.valueTranslations) -
-      Math.min(...result.rightDragAnimation.valueTranslations),
-  ).toBeLessThan(1)
   expect(result.rightDragAnimation.targetStartX).toBeLessThan(
     result.rightDragAnimation.currentStartX,
   )
@@ -533,6 +525,11 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       x5m: getAppearance('x5m'),
       x30m: getAppearance('x30m'),
     })
+    const getTrackedCenters = () => ({
+      x1m: getCenterX(getLabel('x1m')),
+      x5m: getCenterX(getLabel('x5m')),
+      x30m: getCenterX(getLabel('x30m')),
+    })
     const getMinimumTrackedGap = () => {
       const rects = ['x1m', 'x5m', 'x30m']
         .map((label) => getLabel(label).getBoundingClientRect())
@@ -578,7 +575,6 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     let session = control.beginGesture(origin)
     const initialNodes = getSteps()
     const initialLabels = initialNodes.map((node) => node.textContent ?? '')
-    const initialStepCenters = initialNodes.map(getCenterX)
 
     const moveTo = async (distanceX: number) => {
       session = control.updateGesture(
@@ -591,10 +587,6 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       )
       await nextFrame()
       const nodes = getSteps()
-      const centers = nodes.map(getCenterX)
-      const translations = centers.map(
-        (center, index) => center - initialStepCenters[index],
-      )
       const centerYs = nodes.map((node) => {
         const rect = node.getBoundingClientRect()
         return rect.top + rect.height / 2
@@ -619,9 +611,8 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
         ),
         appearances: getTrackedAppearances(),
         minimumTrackedGap: getMinimumTrackedGap(),
+        trackedCenters: getTrackedCenters(),
         trackTranslateX: getTrackTranslateX(),
-        translationSpread:
-          Math.max(...translations) - Math.min(...translations),
         ySpread: Math.max(...centerYs) - Math.min(...centerYs),
       }
     }
@@ -754,7 +745,6 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(snapshot.domStable).toBe(true)
     expect(snapshot.labelsStable).toBe(true)
     expect(snapshot.currentLabel).toBe('x1m')
-    expect(snapshot.translationSpread).toBeLessThan(1)
     expect(snapshot.ySpread).toBeLessThan(1)
   }
   expect(result.cappedOverdrag.committedStepCount).toBe(4)
@@ -818,6 +808,40 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   ]) {
     expect(snapshot.minimumTrackedGap).toBeGreaterThanOrEqual(0)
   }
+
+  const getCenterDistance = (left: number, right: number) =>
+    Math.abs(left - right)
+  const nonElevatedStepDistance = getCenterDistance(
+    result.rest.trackedCenters.x5m,
+    result.rest.trackedCenters.x30m,
+  )
+  expect(
+    getCenterDistance(
+      result.rest.trackedCenters.x1m,
+      result.rest.trackedCenters.x5m,
+    ) - nonElevatedStepDistance,
+  ).toBeGreaterThan(5)
+  expect(
+    getCenterDistance(
+      result.outward46.trackedCenters.x5m,
+      result.outward46.trackedCenters.x30m,
+    ) - nonElevatedStepDistance,
+  ).toBeGreaterThan(5)
+  expect(
+    getCenterDistance(
+      result.outward46.trackedCenters.x1m,
+      result.outward46.trackedCenters.x5m,
+    ) - nonElevatedStepDistance,
+  ).toBeGreaterThan(5)
+  expect(
+    getCenterDistance(
+      result.outward69.trackedCenters.x5m,
+      result.outward69.trackedCenters.x30m,
+    ) - nonElevatedStepDistance,
+  ).toBeGreaterThan(5)
+  expect(result.reverse46.trackedCenters).toEqual(
+    result.outward46.trackedCenters,
+  )
 
   expectSameAppearance(
     result.outward46.appearances.x5m,
