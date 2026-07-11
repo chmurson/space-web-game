@@ -40,7 +40,6 @@ describe('createAppConfigContext', () => {
 
   it('uses configured default touch control settings without stored settings', () => {
     expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
-    expect(createAppConfigContext().featureFlags.reachMoon).toBe(false)
     expect(
       createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
     ).toBe(48)
@@ -129,28 +128,16 @@ describe('createAppConfigContext', () => {
     })
   })
 
-  it('gates direct Reach the Moon startup behind the URL feature flag', () => {
+  it('allows direct Reach the Moon startup', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch('?scenario=reach-moon'),
     })
 
-    const unflaggedConfig = createAppConfigContext()
+    const config = createAppConfigContext()
 
-    expect(unflaggedConfig.initialAppMode).toBe('game')
-    expect(unflaggedConfig.featureFlags.reachMoon).toBe(false)
-    expect(unflaggedConfig.requestedScenarioId).toBe('earth-moon')
-
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: createWindowWithSearch('?scenario=reach-moon&reachmoon=1'),
-    })
-
-    const flaggedConfig = createAppConfigContext()
-
-    expect(flaggedConfig.initialAppMode).toBe('game')
-    expect(flaggedConfig.featureFlags.reachMoon).toBe(true)
-    expect(flaggedConfig.requestedScenarioId).toBe('reach-moon')
+    expect(config.initialAppMode).toBe('game')
+    expect(config.requestedScenarioId).toBe('reach-moon')
   })
 
   it('allows extended trajectory horizons only behind the exact URL feature flag', () => {

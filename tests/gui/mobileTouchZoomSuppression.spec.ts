@@ -123,7 +123,7 @@ test('suppresses native zoom defaults without swallowing app-owned touch events'
 test('installs scoped zoom suppression on gameplay HUD and overlay roots', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(() => {

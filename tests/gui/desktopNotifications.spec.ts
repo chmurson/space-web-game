@@ -13,7 +13,7 @@ test.use({
 })
 
 const startReachMoonMission = async (page: Page) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
 
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await expect(page.locator('.main-menu')).toBeVisible()
