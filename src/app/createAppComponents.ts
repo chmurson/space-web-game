@@ -750,7 +750,6 @@ export const createAppComponents = (options: {
   })
   const mainMenu = createMainMenu({
     app: options.app,
-    reachMoonFeatureEnabled: options.config.featureFlags.reachMoon,
     onFreeRoam: () =>
       gameHighLevelActionsMediator.dispatch({ type: 'startFreeRoam' }),
     onLoadGame: () =>

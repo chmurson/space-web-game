@@ -55,8 +55,7 @@ const expectWorldVisualsSuppressed = async (page: Page) => {
   )
 }
 
-const getReachMoonUrl = (query = '') =>
-  query ? `/?reachmoon=1&${query}` : '/?reachmoon=1'
+const getReachMoonUrl = (query = '') => (query ? `/?${query}` : '/')
 
 const highscoreScore = {
   baseScorePoints: 0,
@@ -479,7 +478,6 @@ test('backs out of Reach the Moon highscores one menu step', async ({
     app.replaceChildren()
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: true,
       onFreeRoam: () => undefined,
       onLoadGame: () => undefined,
       onReachMoon: () => undefined,
@@ -691,7 +689,7 @@ test('autosubmits completion highscores and retries failures', async ({
     })
   })
 
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await page.addStyleTag({ content: screenshotCss })
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
@@ -706,7 +704,6 @@ test('autosubmits completion highscores and retries failures', async ({
     app.replaceChildren()
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: true,
       onFreeRoam: () => undefined,
       onLoadGame: () => undefined,
       onReachMoon: () => undefined,
@@ -738,57 +735,6 @@ test('autosubmits completion highscores and retries failures', async ({
   await expect(page.getByRole('cell', { name: 'Retry Pilot' })).toBeVisible()
   expect(postBodies).toHaveLength(2)
   expect(postBodies[1].playerName).toBe('Retry Pilot')
-})
-
-test('skips highscore requests when the Reach the Moon feature is disabled', async ({
-  page,
-}) => {
-  let highscoreRequestCount = 0
-  await page.route('**/api/reach-moon/highscores**', async (route) => {
-    highscoreRequestCount += 1
-    await route.fulfill({
-      body: JSON.stringify({ rollups: {} }),
-      contentType: 'application/json',
-      status: 200,
-    })
-  })
-
-  await page.goto('/?reachmoon=1')
-  await expect(page.locator('[data-boot-screen]')).toBeHidden()
-
-  const result = await page.evaluate(async (pendingRun) => {
-    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
-    const { createMainMenu } = await import(mainMenuModulePath)
-    const app = document.createElement('div')
-    document.body.append(app)
-
-    const menu = createMainMenu({
-      app,
-      reachMoonFeatureEnabled: false,
-      onFreeRoam: () => undefined,
-      onLoadGame: () => undefined,
-      onReachMoon: () => undefined,
-      onTutorial: () => undefined,
-    })
-    menu.showReachMoonHighscores(pendingRun)
-
-    return {
-      highscorePanelCount: menu.element.querySelectorAll(
-        '[data-main-menu-view="reach-moon-highscores"]',
-      ).length,
-      mainHidden:
-        menu.element
-          .querySelector('[data-main-menu-view="main"]')
-          ?.hasAttribute('hidden') ?? true,
-    }
-  }, completedHighscoreRun)
-
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(resolve)),
-  )
-
-  expect(result).toEqual({ highscorePanelCount: 0, mainHidden: false })
-  expect(highscoreRequestCount).toBe(0)
 })
 
 test('keeps loading the active period when submit rollups omit it', async ({
@@ -845,7 +791,7 @@ test('keeps loading the active period when submit rollups omit it', async ({
     })
   })
 
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   await page.evaluate(async (pendingRun) => {
@@ -859,7 +805,6 @@ test('keeps loading the active period when submit rollups omit it', async ({
     app.replaceChildren()
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: true,
       onFreeRoam: () => undefined,
       onLoadGame: () => undefined,
       onReachMoon: () => undefined,
@@ -960,7 +905,7 @@ test('keeps the Reach the Moon replay pill wired to the prompt adapter', async (
 test('refreshes stale main menu load state when the snapshot disappears', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -990,7 +935,6 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
 
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: false,
       onFreeRoam: () => events.push('free-roam'),
       onLoadGame: () => events.push('load'),
       onReachMoon: () => events.push('reach-moon'),
@@ -1073,7 +1017,7 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
 test('keeps the crash menu adapter state, focus, and keyboard behavior', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -1212,7 +1156,7 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
 test('keeps the top menu adapter state, focus, keyboard, and debug behavior', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -1495,7 +1439,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
 test('keeps the in-game controls menu adapter state and actions', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -1973,7 +1917,7 @@ test('keeps the lunar orbit quality notice text inside the bottom pill', async (
 test('keeps the UI settings dialog adapter state, focus, and change behavior', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -2417,7 +2361,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 test('hides desktop-only irrelevant spacecraft settings without resetting saved mobile values', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {

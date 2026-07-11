@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('keeps the scenario loading overlay adapter state and delayed hide behavior', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {

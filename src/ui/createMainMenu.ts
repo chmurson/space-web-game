@@ -65,7 +65,6 @@ const readHighscoreResponse = async <T>(response: Response): Promise<T> => {
 
 export const createMainMenu = (options: {
   app: HTMLElement
-  reachMoonFeatureEnabled: boolean
   onFreeRoam(): void
   onLoadGame(): void
   onReachMoon(): void
@@ -133,12 +132,7 @@ export const createMainMenu = (options: {
   }
 
   const setActiveView = (view: MainMenuView) => {
-    activeView =
-      options.reachMoonFeatureEnabled ||
-      view === 'load-game' ||
-      view === 'load-game-snapshot'
-        ? view
-        : 'main'
+    activeView = view
   }
 
   const mergeReachMoonHighscoreRollups = (
@@ -215,7 +209,6 @@ export const createMainMenu = (options: {
         submittedRecord: reachMoonHighscoreSubmittedRecord,
         submitStatus: reachMoonHighscoreSubmitStatus,
       },
-      reachMoonFeatureEnabled: options.reachMoonFeatureEnabled,
       selectedRecentSnapshotId,
       visible,
       onFreeRoam: () => handleActionThatClosesMenu(options.onFreeRoam),
@@ -311,10 +304,6 @@ export const createMainMenu = (options: {
       period,
     ),
   ) => {
-    if (!options.reachMoonFeatureEnabled) {
-      return
-    }
-
     reachMoonHighscoreLoadRequestId += 1
     const requestId = reachMoonHighscoreLoadRequestId
     reachMoonHighscoreLoadingFallbackRollup = loadingFallbackRollup
@@ -360,10 +349,6 @@ export const createMainMenu = (options: {
   }
 
   const submitReachMoonHighscore = () => {
-    if (!options.reachMoonFeatureEnabled) {
-      return
-    }
-
     const pendingRun = reachMoonHighscorePendingRun
     const runReceipt = pendingRun?.runReceipt
     reachMoonHighscoreSubmitRequestId += 1
@@ -462,15 +447,6 @@ export const createMainMenu = (options: {
     setVisible,
     showReachMoonHighscores: (pendingRun) => {
       visible = true
-      if (!options.reachMoonFeatureEnabled) {
-        reachMoonHighscorePendingRun = null
-        reachMoonHighscoreLoadingFallbackRollup = null
-        resetReachMoonHighscoreSubmitState()
-        setActiveView('main')
-        renderMenu()
-        return
-      }
-
       reachMoonHighscorePendingRun = pendingRun ?? null
       reachMoonHighscoreBackView = 'reach-moon'
       reachMoonHighscoreLoadingFallbackRollup = null
