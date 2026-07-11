@@ -6,7 +6,7 @@
     env(safe-area-inset-left, 0px)
   );
 
-  --bottom-hud-edge-gap: 6px;
+  --bottom-hud-edge-gap: 12px;
 }
 
 /* Top bar layout - contains menu and telemetry strip */
