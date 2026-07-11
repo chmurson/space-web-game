@@ -154,7 +154,7 @@
 
 .touch-step-selector-horizontal-step::after {
   position: absolute;
-  top: calc(50% + 12px);
+  top: calc(50% + 14px);
   left: 50%;
   width: calc(
     1px +
