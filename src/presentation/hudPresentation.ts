@@ -40,6 +40,13 @@ type TargetSelectorControls = {
   syncUi(): void
 }
 
+export type TouchControlAvailability = {
+  burn: boolean
+  target: boolean
+  trajectory: boolean
+  warp: boolean
+}
+
 const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
   auto: 'tracking target',
   forced: 'locked target',
@@ -177,6 +184,7 @@ export const createHudPresentation = (options: {
   targetRecommendationNotice?: {
     sync(targetUiState: AssistTargetUiState): void
   }
+  onTouchControlAvailabilityChange?(visibility: TouchControlAvailability): void
   timeWarps: number[]
   touchControls?: TouchControls
   trajectoryPresentation: TrajectoryPresentation
@@ -480,6 +488,12 @@ export const createHudPresentation = (options: {
         finiteFuel && spacecraft.fuel <= 0 && !crashed,
       )
       syncTransientNotice()
+      options.onTouchControlAvailabilityChange?.({
+        burn: showThrustControl,
+        target: showTargetControl,
+        trajectory: showTrajectoryControl,
+        warp: showTimePill,
+      })
       options.touchControls?.setBurnControlVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
       options.touchControls?.setTargetControlVisible(showTargetControl)
@@ -548,7 +562,6 @@ export const createHudPresentation = (options: {
         thrustPill?.classList.remove('telemetry-pill-thrust-active')
         thrustPill?.classList.toggle('telemetry-pill-thrust-crashed', crashed)
         speedPill?.classList.toggle('telemetry-pill-thrusting', thrusting)
-        syncHudNoticeVisibility(options.overlayUi.burnActiveNotice, thrusting)
         if (options.overlayUi.speedIcon) {
           options.overlayUi.speedIcon.classList.toggle(
             'telemetry-speed-icon-thrusting',

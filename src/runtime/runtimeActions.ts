@@ -127,9 +127,11 @@ export const createRuntimeActions = (options: {
   }
 
   const setTimeWarp = (warp: number) => {
-    const desiredIndex = options.timeWarps.indexOf(warp)
-    options.runtime.simulation.timeWarpIndex =
-      desiredIndex >= 0 ? desiredIndex : 0
+    options.runtime.simulation.timeWarpIndex = options.timeWarps.reduce(
+      (targetIndex, timeWarp, index) =>
+        timeWarp <= warp ? index : targetIndex,
+      0,
+    )
   }
   const capTimeWarpAt = (warp: number) => {
     const maxIndex = options.timeWarps.indexOf(warp)
