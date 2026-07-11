@@ -519,6 +519,28 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       }
       return value
     }
+    const getAppearance = (label: string) => {
+      const style = getComputedStyle(getLabel(label))
+      return {
+        color: style.color,
+        fontSize: Number.parseFloat(style.fontSize),
+        opacity: Number.parseFloat(style.opacity),
+        textShadow: style.textShadow,
+      }
+    }
+    const getTrackedAppearances = () => ({
+      x1m: getAppearance('x1m'),
+      x5m: getAppearance('x5m'),
+      x30m: getAppearance('x30m'),
+    })
+    const getMinimumTrackedGap = () => {
+      const rects = ['x1m', 'x5m', 'x30m']
+        .map((label) => getLabel(label).getBoundingClientRect())
+        .sort((left, right) => left.left - right.left)
+      return Math.min(
+        ...rects.slice(1).map((rect, index) => rect.left - rects[index].right),
+      )
+    }
     const getTrackWindowCenterX = () => {
       const windowElement = control.element.querySelector<HTMLElement>(
         '.touch-step-selector-horizontal-window',
@@ -528,6 +550,27 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       }
       const rect = windowElement.getBoundingClientRect()
       return rect.left + rect.width / 2
+    }
+    const getCenteredBlockedStep = () => {
+      const windowCenterX = getTrackWindowCenterX()
+      const blockedValues = Array.from(
+        control.element.querySelectorAll<HTMLElement>(
+          '.touch-step-selector-value-disabled',
+        ),
+      )
+      const centeredValue = blockedValues.sort(
+        (left, right) =>
+          Math.abs(getCenterX(left) - windowCenterX) -
+          Math.abs(getCenterX(right) - windowCenterX),
+      )[0]
+      if (!centeredValue) {
+        throw new Error('Expected a blocked cap value to render')
+      }
+      return {
+        centerDistance: Math.abs(getCenterX(centeredValue) - windowCenterX),
+        label: centeredValue.textContent ?? '',
+        opacity: Number.parseFloat(getComputedStyle(centeredValue).opacity),
+      }
     }
 
     await nextFrame()
@@ -574,6 +617,8 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
         labelsStable: nodes.every(
           (node, index) => node.textContent === initialLabels[index],
         ),
+        appearances: getTrackedAppearances(),
+        minimumTrackedGap: getMinimumTrackedGap(),
         trackTranslateX: getTrackTranslateX(),
         translationSpread:
           Math.max(...translations) - Math.min(...translations),
@@ -581,16 +626,22 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       }
     }
 
+    const rest = await moveTo(0)
     const outward22 = await moveTo(22)
     const outward23 = await moveTo(23)
+    const outward46 = await moveTo(46)
     const outward68 = await moveTo(68)
     const outward69 = await moveTo(69)
+    const outward92 = await moveTo(92)
     const outward114 = await moveTo(114)
     const outward115 = await moveTo(115)
     const reverse114 = await moveTo(114)
     const reverse68 = await moveTo(68)
+    const reverse46 = await moveTo(46)
     const reverse22 = await moveTo(22)
     const reverse23 = await moveTo(-23)
+    const cappedOverdrag = await moveTo(230)
+    const centeredBlockedStep = getCenteredBlockedStep()
     control.finishGesture(session, false)
     await nextFrame()
 
@@ -615,12 +666,14 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       await wait(70)
       const selectedBeforeRelease = getLabel(selectedLabel)
       const beforeReleaseCenterX = getCenterX(selectedBeforeRelease)
+      const beforeReleaseAppearance = getAppearance(selectedLabel)
       const committedValue = timeWarps[timeWarpIndex]
       const track = getTrack()
 
       control.finishGesture(settleSession, true)
       const selectedImmediatelyAfterRelease = getLabel(selectedLabel)
       const immediateCenterX = getCenterX(selectedImmediatelyAfterRelease)
+      const immediateAppearance = getAppearance(selectedLabel)
       const runningTrackAnimations = track
         .getAnimations()
         .filter(
@@ -628,6 +681,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
         ).length
       await wait(70)
       const inFlightCenterX = getCenterX(getLabel(selectedLabel))
+      const inFlightAppearance = getAppearance(selectedLabel)
       await wait(150)
       const finalCurrent = control.element.querySelector<HTMLElement>(
         '.touch-step-selector-value-current',
@@ -638,10 +692,14 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
 
       return {
         beforeReleaseCenterX,
+        beforeReleaseAppearance,
         committedValue,
+        finalAppearance: getAppearance(finalCurrent.textContent ?? ''),
         finalCenterX: getCenterX(finalCurrent),
         finalLabel: finalCurrent.textContent ?? '',
+        immediateAppearance,
         immediateCenterX,
+        inFlightAppearance,
         inFlightCenterX,
         runningTrackAnimations,
         sameNodeImmediately:
@@ -654,6 +712,8 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     const subThresholdSettle = await settleGesture(22, 'x1m')
 
     return {
+      cappedOverdrag,
+      centeredBlockedStep,
       committedSettle,
       dragSnapshots: [
         outward22,
@@ -669,10 +729,14 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       ],
       outward22,
       outward23,
+      outward46,
       outward68,
       outward69,
+      outward92,
       outward114,
       outward115,
+      rest,
+      reverse46,
       reverse114,
       reverse68,
       subThresholdSettle,
@@ -685,7 +749,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   expect(
     result.dragSnapshots.map((snapshot) => snapshot.committedStepCount),
   ).toEqual([0, 1, 1, 2, 2, 3, 2, 1, 0, -1])
-  for (const snapshot of result.dragSnapshots) {
+  for (const snapshot of [...result.dragSnapshots, result.cappedOverdrag]) {
     expect(snapshot.anchorStable).toBe(true)
     expect(snapshot.domStable).toBe(true)
     expect(snapshot.labelsStable).toBe(true)
@@ -693,6 +757,11 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(snapshot.translationSpread).toBeLessThan(1)
     expect(snapshot.ySpread).toBeLessThan(1)
   }
+  expect(result.cappedOverdrag.committedStepCount).toBe(4)
+  expect(result.cappedOverdrag.currentValue).toBe(7_200)
+  expect(result.centeredBlockedStep.label).toBe('x2h')
+  expect(result.centeredBlockedStep.centerDistance).toBeLessThan(1)
+  expect(result.centeredBlockedStep.opacity).toBeCloseTo(0.22, 2)
 
   const forwardThresholdDeltas = [
     result.outward23.trackTranslateX - result.outward22.trackTranslateX,
@@ -718,6 +787,79 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     3,
   )
 
+  const expectSameAppearance = (
+    actual: typeof result.rest.appearances.x1m,
+    expected: typeof result.rest.appearances.x1m,
+  ) => {
+    expect(actual.color).toBe(expected.color)
+    expect(actual.fontSize).toBeCloseTo(expected.fontSize, 2)
+    expect(actual.opacity).toBeCloseTo(expected.opacity, 2)
+    expect(actual.textShadow).toBe(expected.textShadow)
+  }
+
+  expect(result.rest.appearances.x1m.fontSize).toBeGreaterThan(
+    result.rest.appearances.x5m.fontSize,
+  )
+  expect(result.rest.appearances.x5m.fontSize).toBeGreaterThan(
+    result.rest.appearances.x30m.fontSize,
+  )
+  expect(result.rest.appearances.x30m.opacity).toBeLessThan(
+    result.rest.appearances.x5m.opacity,
+  )
+  expect(result.rest.appearances.x1m.color).not.toBe(
+    result.rest.appearances.x5m.color,
+  )
+  for (const snapshot of [
+    result.rest,
+    result.outward46,
+    result.outward69,
+    result.outward92,
+    result.reverse46,
+  ]) {
+    expect(snapshot.minimumTrackedGap).toBeGreaterThanOrEqual(0)
+  }
+
+  expectSameAppearance(
+    result.outward46.appearances.x5m,
+    result.rest.appearances.x1m,
+  )
+  expectSameAppearance(
+    result.outward46.appearances.x1m,
+    result.rest.appearances.x5m,
+  )
+  expectSameAppearance(
+    result.outward46.appearances.x30m,
+    result.rest.appearances.x5m,
+  )
+  expectSameAppearance(
+    result.outward69.appearances.x5m,
+    result.outward69.appearances.x30m,
+  )
+  expectSameAppearance(
+    result.outward92.appearances.x30m,
+    result.rest.appearances.x1m,
+  )
+  expectSameAppearance(
+    result.outward92.appearances.x5m,
+    result.rest.appearances.x5m,
+  )
+  expectSameAppearance(
+    result.outward92.appearances.x1m,
+    result.rest.appearances.x30m,
+  )
+  expectSameAppearance(
+    result.reverse46.appearances.x1m,
+    result.outward46.appearances.x1m,
+  )
+  expectSameAppearance(
+    result.reverse46.appearances.x5m,
+    result.outward46.appearances.x5m,
+  )
+  expectSameAppearance(
+    result.reverse46.appearances.x30m,
+    result.outward46.appearances.x30m,
+  )
+
   const expectSmoothSettle = (
     settle: typeof result.committedSettle,
     expectedValue: number,
@@ -725,6 +867,14 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   ) => {
     expect(settle.committedValue).toBe(expectedValue)
     expect(settle.sameNodeImmediately).toBe(true)
+    expect(settle.immediateAppearance.fontSize).toBeCloseTo(
+      settle.beforeReleaseAppearance.fontSize,
+      2,
+    )
+    expect(settle.immediateAppearance.opacity).toBeCloseTo(
+      settle.beforeReleaseAppearance.opacity,
+      2,
+    )
     expect(
       Math.abs(settle.immediateCenterX - settle.beforeReleaseCenterX),
     ).toBeLessThan(1)
@@ -735,6 +885,13 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(Math.sign(inFlightDistance)).toBe(Math.sign(settleDistance))
     expect(Math.abs(inFlightDistance)).toBeGreaterThan(0)
     expect(Math.abs(inFlightDistance)).toBeLessThan(Math.abs(settleDistance))
+    expect(settle.inFlightAppearance.fontSize).toBeGreaterThan(
+      settle.beforeReleaseAppearance.fontSize,
+    )
+    expect(settle.inFlightAppearance.fontSize).toBeLessThan(
+      settle.finalAppearance.fontSize,
+    )
+    expectSameAppearance(settle.finalAppearance, result.rest.appearances.x1m)
     expect(settle.finalLabel).toBe(expectedLabel)
     expect(settle.finalCenterX).toBeCloseTo(settle.targetCenterX, 0)
   }

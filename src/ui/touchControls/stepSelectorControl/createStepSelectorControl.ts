@@ -18,7 +18,7 @@ const swipeCommitDistancePx = 46
 const commitSettleDelayMs = 180
 const fullSwipeAnimationDistancePx = swipeCommitDistancePx
 const previewStepCount = 3
-const horizontalPreviewStepCount = 64
+const horizontalPreviewStepCount = 9
 
 export const getStepSelectorGestureDirection = (
   gestureDelta: number,

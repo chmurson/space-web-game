@@ -87,7 +87,10 @@ const HorizontalStepSelectorControlSurface = ({
             .filter(Boolean)
             .join(' ')}
           key={step.key}
-          style={{ left: `${50 + step.offset * 20}%` }}
+          style={{
+            '--touch-step-selector-horizontal-step-offset': step.offset,
+            left: `${50 + step.offset * 20}%`,
+          }}
         >
           <div
             class={[
@@ -151,6 +154,10 @@ export const createStepSelectorControlView = (options: {
       element.style.setProperty(
         '--touch-step-selector-horizontal-track-offset',
         `${(renderState.visualStepOffset * 20).toFixed(3)}%`,
+      )
+      element.style.setProperty(
+        '--touch-step-selector-horizontal-visual-step-offset',
+        renderState.visualStepOffset.toFixed(3),
       )
       element.classList.toggle(
         'touch-step-selector-dragging',

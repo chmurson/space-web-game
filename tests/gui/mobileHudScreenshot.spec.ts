@@ -2579,9 +2579,11 @@ test('captures the mobile time warp touch control after reveal', async ({
   await expect(
     timeWarpReveal.getByLabel('Time warp control', { exact: true }),
   ).toBeVisible()
-  await expect(
-    timeWarpPrototypeReveal.getByLabel('Time Warp control 2', { exact: true }),
-  ).toBeVisible()
+  const timeWarpPrototypeControl = timeWarpPrototypeReveal.getByLabel(
+    'Time Warp control 2',
+    { exact: true },
+  )
+  await expect(timeWarpPrototypeControl).toBeVisible()
   await expect(
     timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
   ).toHaveCount(0)
@@ -2594,6 +2596,30 @@ test('captures the mobile time warp touch control after reveal', async ({
   ).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
+
+  const prototypeBox = await timeWarpPrototypeControl.boundingBox()
+  if (!prototypeBox) {
+    throw new Error('Expected Time Warp control 2 bounds')
+  }
+  await page.mouse.move(
+    prototypeBox.x + prototypeBox.width / 2,
+    prototypeBox.y + prototypeBox.height / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    prototypeBox.x + prototypeBox.width / 2 + 69,
+    prototypeBox.y + prototypeBox.height / 2,
+    { steps: 3 },
+  )
+  await expect(timeWarpPrototypeControl).toHaveClass(
+    /touch-step-selector-dragging/,
+  )
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-time-warp-control-dragging',
+  )
+  await page.mouse.up()
 })
 
 test('captures the mobile trajectory horizon touch control after reveal', async ({
