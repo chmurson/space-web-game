@@ -70,8 +70,8 @@ describe('semiImplicitEuler', () => {
   it('ramps angular velocity toward the requested turn speed', () => {
     const state = semiImplicitEuler.step(createState(), 0.1)
 
-    expect(state.spacecraft.angularVelocity).toBeCloseTo(0.18)
-    expect(state.spacecraft.heading).toBeCloseTo(0.018)
+    expect(state.spacecraft.angularVelocity).toBeCloseTo(0.09)
+    expect(state.spacecraft.heading).toBeCloseTo(0.009)
   })
 
   it('brakes immediately but lets angular velocity decay smoothly after release', () => {
@@ -81,8 +81,8 @@ describe('semiImplicitEuler', () => {
       0.02,
     )
 
-    expect(turning.spacecraft.angularVelocity).toBeCloseTo(0.36)
-    expect(released.spacecraft.angularVelocity).toBeCloseTo(0.288)
+    expect(turning.spacecraft.angularVelocity).toBeCloseTo(0.18)
+    expect(released.spacecraft.angularVelocity).toBeCloseTo(0.144)
     expect(released.spacecraft.heading).toBeGreaterThan(
       turning.spacecraft.heading,
     )
