@@ -107,6 +107,10 @@
     calc(2 - var(--touch-step-selector-horizontal-distance)),
     1
   );
+  --touch-step-selector-horizontal-nearest-proximity: calc(
+    var(--touch-step-selector-horizontal-near-proximity) -
+    var(--touch-step-selector-horizontal-center-proximity)
+  );
   --touch-step-selector-horizontal-spacing-direction: clamp(
     -1,
     var(--touch-step-selector-horizontal-signed-distance),
@@ -138,7 +142,11 @@
   align-items: center;
   justify-content: center;
   transform: translate(
-    calc(-50% + var(--touch-step-selector-horizontal-spacing-direction) * 6px),
+    calc(
+      -50% +
+      var(--touch-step-selector-horizontal-spacing-direction) *
+      (6px + var(--touch-step-selector-horizontal-nearest-proximity) * 5px)
+    ),
     -50%
   );
   transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);

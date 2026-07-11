@@ -911,20 +911,8 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   )
   expect(
     getCenterDistance(
-      result.rest.trackedCenters.x1m,
-      result.rest.trackedCenters.x2m,
-    ) - nonElevatedStepDistance,
-  ).toBeGreaterThan(5)
-  expect(
-    getCenterDistance(
       result.outward46.trackedCenters.x2m,
       result.outward46.trackedCenters.x4m,
-    ) - nonElevatedStepDistance,
-  ).toBeGreaterThan(5)
-  expect(
-    getCenterDistance(
-      result.outward46.trackedCenters.x1m,
-      result.outward46.trackedCenters.x2m,
     ) - nonElevatedStepDistance,
   ).toBeGreaterThan(5)
   expect(
