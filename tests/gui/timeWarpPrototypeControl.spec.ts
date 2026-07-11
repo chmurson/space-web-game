@@ -546,10 +546,44 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
         textShadow: style.textShadow,
       }
     }
+    const getTickAppearance = (label: string) => {
+      const labelElement = getLabel(label)
+      const step = labelElement.closest<HTMLElement>(
+        '.touch-step-selector-horizontal-step',
+      )
+      if (!step) {
+        throw new Error(`Expected ${label} to belong to a horizontal step`)
+      }
+      const windowElement = control.element.querySelector<HTMLElement>(
+        '.touch-step-selector-horizontal-window',
+      )
+      if (!windowElement) {
+        throw new Error('Expected horizontal selector window to render')
+      }
+      const style = getComputedStyle(step, '::after')
+      const height = Number.parseFloat(style.height)
+      const tickTop =
+        step.getBoundingClientRect().top + Number.parseFloat(style.top)
+      return {
+        backgroundColor: style.backgroundColor,
+        boxShadow: style.boxShadow,
+        gapBelowLabel: tickTop - labelElement.getBoundingClientRect().bottom,
+        height,
+        opacity: Number.parseFloat(style.opacity),
+        transitionDuration: style.transitionDuration,
+        windowBottomClearance:
+          windowElement.getBoundingClientRect().bottom - tickTop - height,
+      }
+    }
     const getTrackedAppearances = () => ({
       x1m: getAppearance('x1m'),
       x2m: getAppearance('x2m'),
       x4m: getAppearance('x4m'),
+    })
+    const getTrackedTickAppearances = () => ({
+      x1m: getTickAppearance('x1m'),
+      x2m: getTickAppearance('x2m'),
+      x4m: getTickAppearance('x4m'),
     })
     const getTrackedCenters = () => ({
       x1m: getCenterX(getLabel('x1m')),
@@ -579,6 +613,20 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     const minimumHighestValueCount = minimumValueLabels.filter(
       (label) => label === 'x15h',
     ).length
+    const minimumBlockedStep = getSteps().find((node) =>
+      node.querySelector('.touch-step-selector-value-disabled'),
+    )
+    if (!minimumBlockedStep) {
+      throw new Error('Expected a blocked endpoint step at the minimum')
+    }
+    const minimumBlockedTickStyle = getComputedStyle(
+      minimumBlockedStep,
+      '::after',
+    )
+    const minimumBlockedTick = {
+      boxShadow: minimumBlockedTickStyle.boxShadow,
+      opacity: Number.parseFloat(minimumBlockedTickStyle.opacity),
+    }
     timeWarpIndex = initialTimeWarpIndex
     control.syncUi()
     await nextFrame()
@@ -624,6 +672,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
         appearances: getTrackedAppearances(),
         minimumTrackedGap: getMinimumTrackedGap(),
         trackedCenters: getTrackedCenters(),
+        ticks: getTrackedTickAppearances(),
         trackTranslateX: getTrackTranslateX(),
         ySpread: Math.max(...centerYs) - Math.min(...centerYs),
       }
@@ -669,6 +718,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       const selectedBeforeRelease = getLabel(selectedLabel)
       const beforeReleaseCenterX = getCenterX(selectedBeforeRelease)
       const beforeReleaseAppearance = getAppearance(selectedLabel)
+      const beforeReleaseTickAppearance = getTickAppearance(selectedLabel)
       const committedValue = timeWarps[timeWarpIndex]
       const track = getTrack()
 
@@ -676,6 +726,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       const selectedImmediatelyAfterRelease = getLabel(selectedLabel)
       const immediateCenterX = getCenterX(selectedImmediatelyAfterRelease)
       const immediateAppearance = getAppearance(selectedLabel)
+      const immediateTickAppearance = getTickAppearance(selectedLabel)
       const runningTrackAnimations = track
         .getAnimations()
         .filter(
@@ -684,6 +735,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       await wait(70)
       const inFlightCenterX = getCenterX(getLabel(selectedLabel))
       const inFlightAppearance = getAppearance(selectedLabel)
+      const inFlightTickAppearance = getTickAppearance(selectedLabel)
       await wait(150)
       const finalCurrent = control.element.querySelector<HTMLElement>(
         '.touch-step-selector-value-current',
@@ -695,14 +747,18 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       return {
         beforeReleaseCenterX,
         beforeReleaseAppearance,
+        beforeReleaseTickAppearance,
         committedValue,
         finalAppearance: getAppearance(finalCurrent.textContent ?? ''),
         finalCenterX: getCenterX(finalCurrent),
         finalLabel: finalCurrent.textContent ?? '',
+        finalTickAppearance: getTickAppearance(finalCurrent.textContent ?? ''),
         immediateAppearance,
         immediateCenterX,
+        immediateTickAppearance,
         inFlightAppearance,
         inFlightCenterX,
+        inFlightTickAppearance,
         runningTrackAnimations,
         sameNodeImmediately:
           selectedImmediatelyAfterRelease === selectedBeforeRelease,
@@ -716,6 +772,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     return {
       cappedOverdrag,
       committedSettle,
+      minimumBlockedTick,
       minimumHighestValueCount,
       dragSnapshots: [
         outward22,
@@ -759,6 +816,8 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(snapshot.ySpread).toBeLessThan(1)
   }
   expect(result.minimumHighestValueCount).toBe(1)
+  expect(result.minimumBlockedTick.boxShadow).toBe('none')
+  expect(result.minimumBlockedTick.opacity).toBeCloseTo(0.22, 2)
   expect(result.cappedOverdrag.committedStepCount).toBe(10)
   expect(result.cappedOverdrag.currentValue).toBe(54_000)
 
@@ -795,6 +854,14 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(actual.opacity).toBeCloseTo(expected.opacity, 2)
     expect(actual.textShadow).toBe(expected.textShadow)
   }
+  const expectSameTickAppearance = (
+    actual: typeof result.rest.ticks.x1m,
+    expected: typeof result.rest.ticks.x1m,
+  ) => {
+    expect(actual.backgroundColor).toBe(expected.backgroundColor)
+    expect(actual.height).toBeCloseTo(expected.height, 2)
+    expect(actual.opacity).toBeCloseTo(expected.opacity, 2)
+  }
 
   expect(result.rest.appearances.x1m.fontSize).toBeGreaterThan(
     result.rest.appearances.x2m.fontSize,
@@ -808,6 +875,24 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   expect(result.rest.appearances.x1m.color).not.toBe(
     result.rest.appearances.x2m.color,
   )
+  expect(result.rest.ticks.x1m.height).toBeGreaterThan(
+    result.rest.ticks.x2m.height,
+  )
+  expect(result.rest.ticks.x2m.height).toBeGreaterThan(
+    result.rest.ticks.x4m.height,
+  )
+  expect(result.rest.ticks.x2m.opacity).toBeGreaterThan(
+    result.rest.ticks.x4m.opacity,
+  )
+  expect(result.rest.ticks.x1m.backgroundColor).not.toBe(
+    result.rest.ticks.x2m.backgroundColor,
+  )
+  expect(result.rest.ticks.x1m.boxShadow).not.toBe('none')
+  expect(result.outward22.ticks.x1m.transitionDuration).toBe('0s')
+  for (const tick of Object.values(result.rest.ticks)) {
+    expect(tick.gapBelowLabel).toBeGreaterThan(1)
+    expect(tick.windowBottomClearance).toBeGreaterThanOrEqual(2.5)
+  }
   for (const snapshot of [
     result.rest,
     result.outward46,
@@ -892,6 +977,11 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     result.reverse46.appearances.x4m,
     result.outward46.appearances.x4m,
   )
+  expectSameTickAppearance(result.outward46.ticks.x2m, result.rest.ticks.x1m)
+  expectSameTickAppearance(
+    result.outward69.ticks.x2m,
+    result.outward69.ticks.x4m,
+  )
 
   const expectSmoothSettle = (
     settle: typeof result.committedSettle,
@@ -924,6 +1014,21 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(settle.inFlightAppearance.fontSize).toBeLessThan(
       settle.finalAppearance.fontSize,
     )
+    expect(settle.immediateTickAppearance.height).toBeCloseTo(
+      settle.beforeReleaseTickAppearance.height,
+      2,
+    )
+    expect(settle.immediateTickAppearance.opacity).toBeCloseTo(
+      settle.beforeReleaseTickAppearance.opacity,
+      2,
+    )
+    expect(settle.inFlightTickAppearance.height).toBeGreaterThan(
+      settle.beforeReleaseTickAppearance.height,
+    )
+    expect(settle.inFlightTickAppearance.height).toBeLessThan(
+      settle.finalTickAppearance.height,
+    )
+    expectSameTickAppearance(settle.finalTickAppearance, result.rest.ticks.x1m)
     expectSameAppearance(settle.finalAppearance, result.rest.appearances.x1m)
     expect(settle.finalLabel).toBe(expectedLabel)
     expect(settle.finalCenterX).toBeCloseTo(settle.targetCenterX, 0)
