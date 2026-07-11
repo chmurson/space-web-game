@@ -31,7 +31,6 @@ const createConfig = (
   requestedScenarioId: 'tutorial',
   featureFlags: {
     noHorizonLimit: false,
-    reachMoon: false,
   },
   userSettings: {
     debugModeEnabled: false,
