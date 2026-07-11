@@ -7,6 +7,7 @@ import {
 } from '@playwright/test'
 import type { UIUserAction } from '../../src/input/uiUserActions'
 import type { ReachMoonHighscorePendingRun } from '../../src/ui/components/MainMenuSurface'
+import type { DesktopEdgePanSpeed } from '../../src/userSettingsStorage'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -1850,6 +1851,60 @@ test('keeps the empty camera unlock notice title readable inside the bottom pill
   )
 })
 
+test('keeps the edge-pan free-roam progress indicator near the cursor', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await openReachMoonMainMenu(page)
+
+  const metrics = await page.evaluate(() => {
+    const indicator = document.querySelector<HTMLElement>(
+      '.camera-unlock-progress',
+    )
+    if (!indicator) {
+      throw new Error('Missing camera unlock progress indicator')
+    }
+
+    indicator.hidden = false
+    indicator.dataset.visible = 'true'
+    indicator.setAttribute('aria-hidden', 'false')
+    indicator.setAttribute('aria-valuenow', '68')
+    indicator.style.left = '868px'
+    indicator.style.top = '58px'
+    indicator.style.setProperty('--camera-unlock-progress', '0.68')
+
+    const bounds = indicator.getBoundingClientRect()
+    return {
+      ariaLabel: indicator.getAttribute('aria-label'),
+      ariaValueNow: indicator.getAttribute('aria-valuenow'),
+      bottom: bounds.bottom,
+      left: bounds.left,
+      right: bounds.right,
+      text: indicator.textContent?.trim(),
+      top: bounds.top,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    }
+  })
+
+  expect(metrics).toMatchObject({
+    ariaLabel: 'Loading free roam',
+    ariaValueNow: '68',
+    text: '',
+  })
+  expect(metrics.left).toBeGreaterThanOrEqual(0)
+  expect(metrics.top).toBeGreaterThanOrEqual(0)
+  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
+
+  await expect(page.locator('.camera-unlock-progress')).toBeVisible()
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-edge-pan-unlock-progress',
+  )
+})
+
 test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
   page,
 }, testInfo) => {
@@ -1931,6 +1986,8 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let warpSide: 'left' | 'right' = 'left'
+    let desktopEdgePanEnabled = false
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
     let orbitPointDisplay = {
       altitudeVisible: true,
@@ -1947,6 +2004,9 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     const dialog = createUiSettingsDialog({
       app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanVisible: () => true,
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchBurnControlSide: () => burnSide,
@@ -1960,6 +2020,14 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         orbitPointDisplay = settings
       },
       onOpenChange: (open: boolean) => openEvents.push(open),
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        events.push(`edgePan:${enabled}`)
+        desktopEdgePanEnabled = enabled
+      },
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        events.push(`edgePanSpeed:${speed}`)
+        desktopEdgePanSpeed = speed
+      },
       onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
         events.push(`maneuver:${startByDrag}`)
         mobileManeuverStartByDrag = startByDrag
@@ -2003,6 +2071,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
           (dialog.element as HTMLElement).querySelectorAll('button'),
         ) as HTMLButtonElement[]
       ).find((button) => button.textContent?.includes(text))
+    const getEdgePanSpeed = () =>
+      dialog.element.querySelector('[data-ui-settings-edge-pan-speed]')
+        ?.textContent
+    const getEdgePanSpeedButton = (action: string) =>
+      dialog.element.querySelector(
+        `[data-ui-settings-edge-pan-speed-action="${action}"]`,
+      ) as HTMLButtonElement | null
     const getFocusableButtons = (): HTMLButtonElement[] =>
       Array.from(
         (dialog.element as HTMLElement).querySelectorAll('button'),
@@ -2056,6 +2131,21 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       'Starts by drag or tap',
     )?.textContent
     getButtonByText('Starts by drag or tap')?.click()
+    const edgePanSwitchInitial = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.getAttribute('aria-checked')
+    const edgePanSwitchInitialText = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.textContent
+    const edgePanSpeedHiddenInitial = getEdgePanSpeed() === undefined
+    getButtonByText('Turn on scrolling by edge pan')?.click()
+    const edgePanSpeedAfterToggle = getEdgePanSpeed()
+    const edgePanSpeedDecreaseDisabledAfterToggle =
+      getEdgePanSpeedButton('decrease')?.disabled
+    getEdgePanSpeedButton('increase')?.click()
+    const edgePanSpeedAfterIncrease = getEdgePanSpeed()
+    const edgePanSpeedIncreaseDisabledAfterIncrease =
+      getEdgePanSpeedButton('increase')?.disabled
     getControlButton('Burn control side', 'left')?.click()
     getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
@@ -2072,6 +2162,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     )?.getAttribute('aria-checked')
     const maneuverSwitchAfterText = getButtonByText(
       'Starts by drag or tap',
+    )?.textContent
+    const edgePanSwitchAfter = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.getAttribute('aria-checked')
+    const edgePanSwitchAfterText = getButtonByText(
+      'Turn on scrolling by edge pan',
     )?.textContent
     const burnLeftPressed = getControlButton(
       'Burn control side',
@@ -2215,6 +2311,15 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       altitudeDisabledWhenMarkersOff,
       centerDisabledWhenLabelsOff,
       centerDisabledWhenMarkersOff,
+      edgePanSwitchAfter,
+      edgePanSwitchAfterText,
+      edgePanSwitchInitial,
+      edgePanSwitchInitialText,
+      edgePanSpeedAfterIncrease,
+      edgePanSpeedAfterToggle,
+      edgePanSpeedDecreaseDisabledAfterToggle,
+      edgePanSpeedHiddenInitial,
+      edgePanSpeedIncreaseDisabledAfterIncrease,
       eventCountAfterDisabledCenterClick,
       labelSwitchDisabledWhenLabelsOff,
       labelSwitchDisabledWhenMarkersOff,
@@ -2273,6 +2378,8 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     className: 'app-dialog ui-settings-dialog',
     events: [
       'maneuver:false',
+      'edgePan:true',
+      'edgePanSpeed:fast',
       'burn:left',
       'target:left',
       'trajectory:right',
@@ -2294,6 +2401,17 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     altitudeDisabledWhenMarkersOff: true,
     centerDisabledWhenLabelsOff: true,
     centerDisabledWhenMarkersOff: true,
+    edgePanSwitchAfter: 'true',
+    edgePanSwitchAfterText:
+      'Turn on scrolling by edge panScrolling by edge pan',
+    edgePanSwitchInitial: 'false',
+    edgePanSwitchInitialText:
+      'Turn on scrolling by edge panScrolling by dragging',
+    edgePanSpeedAfterIncrease: 'Fast',
+    edgePanSpeedAfterToggle: 'Normal',
+    edgePanSpeedDecreaseDisabledAfterToggle: false,
+    edgePanSpeedHiddenInitial: true,
+    edgePanSpeedIncreaseDisabledAfterIncrease: true,
     eventCountAfterDisabledCenterClick: 3,
     labelSwitchDisabledWhenLabelsOff: false,
     labelSwitchDisabledWhenMarkersOff: true,
@@ -2343,7 +2461,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       warp: 'left',
     },
     spacecraftControlGroup: 'Control sides',
-    spacecraftControlGroups: ['Control sides', 'Maneuvers'],
+    spacecraftControlGroups: ['Control sides', 'Maneuvers', 'Camera'],
     spacecraftFocusAfterOpen: true,
     spacecraftSummaryAfterChangesIncludesBurnLeft: true,
     spacecraftSummaryAfterChangesIncludesTargetLeft: true,
@@ -2378,6 +2496,8 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let warpSide: 'left' | 'right' = 'right'
+    let desktopEdgePanEnabled = false
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
     const orbitPointDisplay = {
       altitudeVisible: true,
@@ -2391,6 +2511,9 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
 
     const dialog = createUiSettingsDialog({
       app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanVisible: () => false,
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchBurnControlAvailable: () => burnControlAvailable,
@@ -2402,6 +2525,14 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
       getTouchTrajectoryControlSide: () => trajectorySide,
       getTouchWarpControlAvailable: () => warpControlAvailable,
       getTouchWarpControlSide: () => warpSide,
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        events.push(`edgePan:${enabled}`)
+        desktopEdgePanEnabled = enabled
+      },
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        events.push(`edgePanSpeed:${speed}`)
+        desktopEdgePanSpeed = speed
+      },
       onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
         events.push(`maneuver:${startByDrag}`)
         mobileManeuverStartByDrag = startByDrag
@@ -2553,6 +2684,103 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
 })
 
+test('captures the desktop edge pan toggle and speed in UI settings', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 480, height: 720 })
+  await page.goto('/?reachmoon=1')
+  await page.addStyleTag({
+    content: `
+      #app {
+        background: #05070d !important;
+      }
+    `,
+  })
+
+  await page.evaluate(async () => {
+    const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
+    const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    let desktopEdgePanEnabled = false
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+
+    const dialog = createUiSettingsDialog({
+      app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanVisible: () => true,
+      getMobileManeuverStartByDrag: () => true,
+      getOrbitPointDisplay: () => ({
+        altitudeVisible: true,
+        centerDistanceVisible: false,
+        labelsVisible: true,
+        markersVisible: true,
+        pointNameVisible: true,
+      }),
+      getTouchBurnControlSide: () => 'right',
+      getTouchTargetControlSide: () => 'left',
+      getTouchTrajectoryControlSide: () => 'hidden',
+      getTouchWarpControlSide: () => 'right',
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        desktopEdgePanEnabled = enabled
+      },
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        desktopEdgePanSpeed = speed
+      },
+      onMobileManeuverStartByDragChange: () => {},
+      onOrbitPointDisplayChange: () => {},
+      onTouchBurnControlSideChange: () => {},
+      onTouchTargetControlSideChange: () => {},
+      onTouchTrajectoryControlSideChange: () => {},
+      onTouchWarpControlSideChange: () => {},
+    })
+
+    dialog.open()
+    const spacecraftControlsButton = (
+      Array.from(
+        dialog.element.querySelectorAll('button'),
+      ) as HTMLButtonElement[]
+    ).find((button) =>
+      button.textContent?.includes('Spacecraft controls settings'),
+    )
+    spacecraftControlsButton?.click()
+  })
+
+  await expect(
+    page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
+  ).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Camera' })).toBeVisible()
+  await expect(page.getByText('Turn on scrolling by edge pan')).toBeVisible()
+  await expect(
+    page.getByText('Scrolling by dragging', { exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('Edge pan speed')).toHaveCount(0)
+
+  await page
+    .getByRole('switch', { name: /Turn on scrolling by edge pan/ })
+    .click()
+  await expect(
+    page.getByText('Scrolling by edge pan', { exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('Edge pan speed')).toBeVisible()
+  await expect(page.locator('[data-ui-settings-edge-pan-speed]')).toHaveText(
+    'Normal',
+  )
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-edge-pan-toggle-settings',
+  )
+})
+
 test('captures wide in-game controls keyboard hints', async ({
   page,
 }, testInfo) => {
@@ -2604,6 +2832,7 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   await expect(page.getByText('Trajectory side')).toBeVisible()
   await expect(page.getByText('Starts by drag or tap')).toBeVisible()
   await expect(page.getByText('Starts by drag', { exact: true })).toBeVisible()
+  await expect(page.getByText('Turn on scrolling by edge pan')).toHaveCount(0)
 
   await attachMobileScreenshot(
     page,

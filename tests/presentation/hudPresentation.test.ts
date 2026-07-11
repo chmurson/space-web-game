@@ -385,6 +385,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     cameraUnlockNotice: new FakeElement('div') as unknown as HTMLElement,
     cameraUnlockNoticeBody: null,
     cameraUnlockNoticeTitle: null,
+    cameraUnlockProgress: new FakeElement('div') as unknown as HTMLElement,
     debugPanel: {
       element: new FakeElement('div') as unknown as HTMLElement,
       setCloseHandler: vi.fn(),

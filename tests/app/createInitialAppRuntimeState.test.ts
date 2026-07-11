@@ -33,6 +33,8 @@ const createConfig = (
     noHorizonLimit: false,
   },
   userSettings: {
+    desktopEdgePanEnabled: false,
+    desktopEdgePanSpeed: 'normal',
     debugModeEnabled: false,
     mobileManeuverStartByDrag: true,
     orbitPointDisplay: {

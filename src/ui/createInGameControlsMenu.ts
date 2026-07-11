@@ -12,6 +12,7 @@ import { installNativeTouchZoomSuppression } from './nativeTouchZoomSuppression'
 export type InGameControlsMenu = {
   close: () => void
   element: HTMLElement
+  isOpen: () => boolean
   syncState: () => void
 }
 
@@ -146,6 +147,7 @@ export const createInGameControlsMenu = (options: {
   return {
     close: () => setOpen(false),
     element: root,
+    isOpen: () => open,
     syncState,
   }
 }

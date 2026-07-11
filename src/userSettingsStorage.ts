@@ -12,6 +12,8 @@ export type OrbitPointDisplaySettingOverrides =
   Partial<OrbitPointDisplaySettings>
 
 export type UserSettings = {
+  desktopEdgePanEnabled: boolean
+  desktopEdgePanSpeed: DesktopEdgePanSpeed
   debugModeEnabled: boolean
   mobileManeuverStartByDrag: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
@@ -21,6 +23,7 @@ export type UserSettings = {
   touchWarpControlSide: TouchControlSide
 }
 
+export type DesktopEdgePanSpeed = 'slow' | 'normal' | 'fast'
 export type TouchControlSide = 'left' | 'right'
 export type TouchTrajectoryControlState = TouchControlSide | 'hidden'
 
@@ -34,6 +37,8 @@ const createDefaultOrbitPointDisplaySettings =
   })
 
 const createDefaultUserSettings = (): UserSettings => ({
+  desktopEdgePanEnabled: false,
+  desktopEdgePanSpeed: 'normal',
   debugModeEnabled: false,
   mobileManeuverStartByDrag: true,
   orbitPointDisplay: createDefaultOrbitPointDisplaySettings(),
@@ -52,6 +57,11 @@ const parseTouchTrajectoryControlState = (
   value: unknown,
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSide(value)
+
+const parseDesktopEdgePanSpeed = (
+  value: unknown,
+): DesktopEdgePanSpeed | null =>
+  value === 'slow' || value === 'normal' || value === 'fast' ? value : null
 
 const parseBooleanSetting = (value: unknown, fallback: boolean) =>
   typeof value === 'boolean' ? value : fallback
@@ -102,6 +112,13 @@ const parseUserSettings = (value: unknown): UserSettings => {
       .touchControlSide,
   )
   return {
+    desktopEdgePanEnabled: parseBooleanSetting(
+      settings.desktopEdgePanEnabled,
+      defaultUserSettings.desktopEdgePanEnabled,
+    ),
+    desktopEdgePanSpeed:
+      parseDesktopEdgePanSpeed(settings.desktopEdgePanSpeed) ??
+      defaultUserSettings.desktopEdgePanSpeed,
     debugModeEnabled:
       typeof settings.debugModeEnabled === 'boolean'
         ? settings.debugModeEnabled

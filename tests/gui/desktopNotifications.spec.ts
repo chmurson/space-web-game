@@ -124,7 +124,7 @@ test('shows camera unlock notice when desktop drag unlocks follow camera', async
   await expect(notice.locator('.hud-notice-body')).toHaveText('')
   await expect(notice).toHaveAttribute(
     'aria-label',
-    'Camera unlocked. Drag anywhere to pan.',
+    'Camera unlocked. Free roam is active.',
   )
   await expectNoticeInsideViewport(notice)
 
