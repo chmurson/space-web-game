@@ -38,7 +38,7 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 - Release presentation first animates the stable track to the successfully committed integer offset, then applies the deferred runtime snapshot and resets the track without a second visible movement. Reduced-motion mode applies the result immediately.
 - The immutable-track behavior is horizontal-only. The original vertical selector retains its existing full-step continuous commit and residual-preview path.
 - The horizontal track positions values on one row at equal one-fifth-width intervals, preserving the inline layout and spacing while offscreen previews remain clipped inside the control. The mobile surface is 172px wide so the two enlarged midpoint labels remain separated.
-- Horizontal snapshots request at most nine previews in either direction: eight traversable values plus the first muted blocked sentinel beyond the endpoint. This covers the current nine-value Time Warp ladder from end to end while bounding the frozen DOM and hot-path preview work.
+- Horizontal snapshots request at most 16 previews in either direction. Together with the separately rendered current value, this exposes the complete 17-value Time Warp ladder from `x1s` through `x15h` from any starting value, while preserving the existing endpoint behavior and bounding the frozen DOM and hot-path preview work.
 - Control 2 uses a separate internal gesture ID, `time-warp-2`, because routing two DOM controls through one active gesture ID would send drag updates to the wrong view.
 - Control 2 also uses a separate reveal dock/control so its horizontal panel can open independently from the original Time Warp panel.
 - The edge reveal control exposes a narrow opt-out for content swipe closing; only control 2 uses it because its content owns horizontal drag gestures.
@@ -46,10 +46,10 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 
 ## Validation
 
-- `npx playwright test tests/gui/timeWarpPrototypeControl.spec.ts --project=mobile-chromium` passed: 2 tests covering shared-state routing, uniform left/right track motion, exact midpoint commits, a three-step drag, reverse crossings, immutable gesture anchors and label DOM, center-distance appearance parity, midpoint symmetry, no overlap, and committed/sub-threshold release settling.
+- The focused Time Warp Playwright run passed: 3 tests covering shared-state routing, the full configured ladder, uniform left/right track motion, exact midpoint commits, a multi-step drag to the global cap, reverse crossings, immutable gesture anchors and label DOM, center-distance appearance parity, midpoint symmetry, no overlap, committed/sub-threshold release settling, and the mobile screenshot states.
 - Focused step-selector model, presenter, and gesture helper tests passed: 3 files and 8 tests.
-- `npm test` passed: 59 Vitest files with 509 tests, plus all 16 automation-claim tests.
-- `npm run test:gui` passed on the final application behavior: 53 mobile Chromium GUI tests, including resting, held-drag, and settled elevated-value Time Warp screenshots.
+- `npm test` passed: 60 Vitest files with 510 tests, plus all 16 automation-claim tests.
+- `npm run test:gui` passed on the final application behavior: 55 mobile Chromium GUI tests, including resting, held-drag, and settled elevated-value Time Warp screenshots.
 - `npm run build` passed after config validation and TypeScript checks. Vite still reports the existing chunk-size warning.
 - Biome checks on all edited TypeScript, TSX, CSS, and GUI test files passed; `git diff --check` passed.
 - In-app browser smoke testing reached Free Roam without console errors. Its fine-pointer environment hides touch controls, so the touch-enabled Playwright suite remains the visual authority.

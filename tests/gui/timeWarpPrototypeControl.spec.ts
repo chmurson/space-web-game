@@ -8,6 +8,7 @@ type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
 type TimeWarpControlModule =
   typeof import('../../src/ui/touchControls/createTimeWarpControl')
+type GameConfigModule = typeof import('../../src/config/gameConfig')
 
 test('routes the horizontal prototype time warp control to shared state', async ({
   page,
@@ -427,34 +428,59 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   const result = await page.evaluate(async () => {
     const timeWarpControlModulePath =
       '/src/ui/touchControls/createTimeWarpControl.ts'
+    const gameConfigModulePath = '/src/config/gameConfig.ts'
     const { createPrototypeTimeWarpControl2 } = (await import(
       timeWarpControlModulePath
     )) as TimeWarpControlModule
+    const { gameConfig } = (await import(
+      gameConfigModulePath
+    )) as GameConfigModule
     await import(
       '/src/ui/touchControls/stepSelectorControl/stepSelectorControl.css'
     )
 
-    const timeWarps = [1, 10, 30, 60, 300, 1_800, 3_600, 7_200]
-    let timeWarpIndex = 3
-    const getTimeWarpPreviews = (action: TimeWarpAction, count: number) =>
-      Array.from({ length: count }, (_, offset) => {
+    const timeWarps = [...gameConfig.controls.timeWarps]
+    const initialTimeWarpIndex = timeWarps.indexOf(60)
+    if (initialTimeWarpIndex < 0) {
+      throw new Error('Expected the configured Time Warp ladder to contain 60')
+    }
+    let timeWarpIndex = 0
+    const getTimeWarpPreviews = (action: TimeWarpAction, count: number) => {
+      const previews: Array<{
+        canCommit: boolean
+        reason: TimeWarpFeedbackReason | null
+        value: number
+      }> = []
+      let previewIndex = timeWarpIndex
+
+      for (let step = 0; step < count; step += 1) {
         const nextIndex =
-          timeWarpIndex +
-          (action === 'increaseTimeWarp' ? offset + 1 : -offset - 1)
+          previewIndex + (action === 'increaseTimeWarp' ? 1 : -1)
         const clampedIndex = Math.max(
           0,
           Math.min(timeWarps.length - 1, nextIndex),
         )
+        if (step > 0 && clampedIndex === previewIndex) {
+          break
+        }
         let reason: TimeWarpFeedbackReason | null = null
         if (nextIndex !== clampedIndex) {
           reason = action === 'increaseTimeWarp' ? 'global-max' : 'global-min'
         }
-        return {
+        const preview = {
           canCommit: nextIndex === clampedIndex,
           reason,
           value: timeWarps[clampedIndex],
         }
-      })
+        previews.push(preview)
+        if (!preview.canCommit) {
+          break
+        }
+        previewIndex = clampedIndex
+      }
+
+      return previews
+    }
     const panel = document.createElement('div')
     document.body.append(panel)
     const control = createPrototypeTimeWarpControl2({
@@ -522,16 +548,16 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     }
     const getTrackedAppearances = () => ({
       x1m: getAppearance('x1m'),
-      x5m: getAppearance('x5m'),
-      x30m: getAppearance('x30m'),
+      x2m: getAppearance('x2m'),
+      x4m: getAppearance('x4m'),
     })
     const getTrackedCenters = () => ({
       x1m: getCenterX(getLabel('x1m')),
-      x5m: getCenterX(getLabel('x5m')),
-      x30m: getCenterX(getLabel('x30m')),
+      x2m: getCenterX(getLabel('x2m')),
+      x4m: getCenterX(getLabel('x4m')),
     })
     const getMinimumTrackedGap = () => {
-      const rects = ['x1m', 'x5m', 'x30m']
+      const rects = ['x1m', 'x2m', 'x4m']
         .map((label) => getLabel(label).getBoundingClientRect())
         .sort((left, right) => left.left - right.left)
       return Math.min(
@@ -548,29 +574,15 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       const rect = windowElement.getBoundingClientRect()
       return rect.left + rect.width / 2
     }
-    const getCenteredBlockedStep = () => {
-      const windowCenterX = getTrackWindowCenterX()
-      const blockedValues = Array.from(
-        control.element.querySelectorAll<HTMLElement>(
-          '.touch-step-selector-value-disabled',
-        ),
-      )
-      const centeredValue = blockedValues.sort(
-        (left, right) =>
-          Math.abs(getCenterX(left) - windowCenterX) -
-          Math.abs(getCenterX(right) - windowCenterX),
-      )[0]
-      if (!centeredValue) {
-        throw new Error('Expected a blocked cap value to render')
-      }
-      return {
-        centerDistance: Math.abs(getCenterX(centeredValue) - windowCenterX),
-        label: centeredValue.textContent ?? '',
-        opacity: Number.parseFloat(getComputedStyle(centeredValue).opacity),
-      }
-    }
-
     await nextFrame()
+    const minimumValueLabels = getSteps().map((node) => node.textContent ?? '')
+    const minimumHighestValueCount = minimumValueLabels.filter(
+      (label) => label === 'x15h',
+    ).length
+    timeWarpIndex = initialTimeWarpIndex
+    control.syncUi()
+    await nextFrame()
+
     const origin = { clientX: 100, clientY: 100, identifier: 17 }
     let session = control.beginGesture(origin)
     const initialNodes = getSteps()
@@ -631,13 +643,12 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     const reverse46 = await moveTo(46)
     const reverse22 = await moveTo(22)
     const reverse23 = await moveTo(-23)
-    const cappedOverdrag = await moveTo(230)
-    const centeredBlockedStep = getCenteredBlockedStep()
+    const cappedOverdrag = await moveTo(506)
     control.finishGesture(session, false)
     await nextFrame()
 
     const settleGesture = async (distanceX: number, selectedLabel: string) => {
-      timeWarpIndex = 3
+      timeWarpIndex = initialTimeWarpIndex
       control.syncUi()
       await nextFrame()
       const settleOrigin = {
@@ -699,13 +710,13 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       }
     }
 
-    const committedSettle = await settleGesture(69, 'x30m')
+    const committedSettle = await settleGesture(69, 'x4m')
     const subThresholdSettle = await settleGesture(22, 'x1m')
 
     return {
       cappedOverdrag,
-      centeredBlockedStep,
       committedSettle,
+      minimumHighestValueCount,
       dragSnapshots: [
         outward22,
         outward23,
@@ -735,7 +746,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   })
 
   expect(result.dragSnapshots.map((snapshot) => snapshot.currentValue)).toEqual(
-    [60, 300, 300, 1_800, 1_800, 3_600, 1_800, 300, 60, 30],
+    [60, 120, 120, 240, 240, 480, 240, 120, 60, 30],
   )
   expect(
     result.dragSnapshots.map((snapshot) => snapshot.committedStepCount),
@@ -747,11 +758,9 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(snapshot.currentLabel).toBe('x1m')
     expect(snapshot.ySpread).toBeLessThan(1)
   }
-  expect(result.cappedOverdrag.committedStepCount).toBe(4)
-  expect(result.cappedOverdrag.currentValue).toBe(7_200)
-  expect(result.centeredBlockedStep.label).toBe('x2h')
-  expect(result.centeredBlockedStep.centerDistance).toBeLessThan(1)
-  expect(result.centeredBlockedStep.opacity).toBeCloseTo(0.22, 2)
+  expect(result.minimumHighestValueCount).toBe(1)
+  expect(result.cappedOverdrag.committedStepCount).toBe(10)
+  expect(result.cappedOverdrag.currentValue).toBe(54_000)
 
   const forwardThresholdDeltas = [
     result.outward23.trackTranslateX - result.outward22.trackTranslateX,
@@ -788,16 +797,16 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   }
 
   expect(result.rest.appearances.x1m.fontSize).toBeGreaterThan(
-    result.rest.appearances.x5m.fontSize,
+    result.rest.appearances.x2m.fontSize,
   )
-  expect(result.rest.appearances.x5m.fontSize).toBeGreaterThan(
-    result.rest.appearances.x30m.fontSize,
+  expect(result.rest.appearances.x2m.fontSize).toBeGreaterThan(
+    result.rest.appearances.x4m.fontSize,
   )
-  expect(result.rest.appearances.x30m.opacity).toBeLessThan(
-    result.rest.appearances.x5m.opacity,
+  expect(result.rest.appearances.x4m.opacity).toBeLessThan(
+    result.rest.appearances.x2m.opacity,
   )
   expect(result.rest.appearances.x1m.color).not.toBe(
-    result.rest.appearances.x5m.color,
+    result.rest.appearances.x2m.color,
   )
   for (const snapshot of [
     result.rest,
@@ -812,31 +821,31 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   const getCenterDistance = (left: number, right: number) =>
     Math.abs(left - right)
   const nonElevatedStepDistance = getCenterDistance(
-    result.rest.trackedCenters.x5m,
-    result.rest.trackedCenters.x30m,
+    result.rest.trackedCenters.x2m,
+    result.rest.trackedCenters.x4m,
   )
   expect(
     getCenterDistance(
       result.rest.trackedCenters.x1m,
-      result.rest.trackedCenters.x5m,
+      result.rest.trackedCenters.x2m,
     ) - nonElevatedStepDistance,
   ).toBeGreaterThan(5)
   expect(
     getCenterDistance(
-      result.outward46.trackedCenters.x5m,
-      result.outward46.trackedCenters.x30m,
+      result.outward46.trackedCenters.x2m,
+      result.outward46.trackedCenters.x4m,
     ) - nonElevatedStepDistance,
   ).toBeGreaterThan(5)
   expect(
     getCenterDistance(
       result.outward46.trackedCenters.x1m,
-      result.outward46.trackedCenters.x5m,
+      result.outward46.trackedCenters.x2m,
     ) - nonElevatedStepDistance,
   ).toBeGreaterThan(5)
   expect(
     getCenterDistance(
-      result.outward69.trackedCenters.x5m,
-      result.outward69.trackedCenters.x30m,
+      result.outward69.trackedCenters.x2m,
+      result.outward69.trackedCenters.x4m,
     ) - nonElevatedStepDistance,
   ).toBeGreaterThan(5)
   expect(result.reverse46.trackedCenters).toEqual(
@@ -844,44 +853,44 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
   )
 
   expectSameAppearance(
-    result.outward46.appearances.x5m,
+    result.outward46.appearances.x2m,
     result.rest.appearances.x1m,
   )
   expectSameAppearance(
     result.outward46.appearances.x1m,
-    result.rest.appearances.x5m,
+    result.rest.appearances.x2m,
   )
   expectSameAppearance(
-    result.outward46.appearances.x30m,
-    result.rest.appearances.x5m,
+    result.outward46.appearances.x4m,
+    result.rest.appearances.x2m,
   )
   expectSameAppearance(
-    result.outward69.appearances.x5m,
-    result.outward69.appearances.x30m,
+    result.outward69.appearances.x2m,
+    result.outward69.appearances.x4m,
   )
   expectSameAppearance(
-    result.outward92.appearances.x30m,
+    result.outward92.appearances.x4m,
     result.rest.appearances.x1m,
   )
   expectSameAppearance(
-    result.outward92.appearances.x5m,
-    result.rest.appearances.x5m,
+    result.outward92.appearances.x2m,
+    result.rest.appearances.x2m,
   )
   expectSameAppearance(
     result.outward92.appearances.x1m,
-    result.rest.appearances.x30m,
+    result.rest.appearances.x4m,
   )
   expectSameAppearance(
     result.reverse46.appearances.x1m,
     result.outward46.appearances.x1m,
   )
   expectSameAppearance(
-    result.reverse46.appearances.x5m,
-    result.outward46.appearances.x5m,
+    result.reverse46.appearances.x2m,
+    result.outward46.appearances.x2m,
   )
   expectSameAppearance(
-    result.reverse46.appearances.x30m,
-    result.outward46.appearances.x30m,
+    result.reverse46.appearances.x4m,
+    result.outward46.appearances.x4m,
   )
 
   const expectSmoothSettle = (
@@ -920,6 +929,6 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(settle.finalCenterX).toBeCloseTo(settle.targetCenterX, 0)
   }
 
-  expectSmoothSettle(result.committedSettle, 1_800, 'x30m')
+  expectSmoothSettle(result.committedSettle, 240, 'x4m')
   expectSmoothSettle(result.subThresholdSettle, 60, 'x1m')
 })
