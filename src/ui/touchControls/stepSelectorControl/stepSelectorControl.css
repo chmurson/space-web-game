@@ -154,7 +154,7 @@
     1px
   );
   height: calc(
-    3px +
+    4px +
     var(--touch-step-selector-horizontal-near-proximity) *
     2px +
     var(--touch-step-selector-horizontal-center-proximity) *
