@@ -87,7 +87,7 @@ const presentHorizontalSteps = (
       className: getHorizontalStepClassName('decrease', index),
       key: `decrease-${index + 1}-${step.value}`,
       label: formatValue(step.value),
-      offset: index + 1,
+      offset: -index - 1,
       tone: step.canCommit ? ('available' as const) : ('blocked' as const),
     })),
   {
@@ -101,7 +101,7 @@ const presentHorizontalSteps = (
     className: getHorizontalStepClassName('increase', index),
     key: `increase-${index + 1}-${step.value}`,
     label: formatValue(step.value),
-    offset: -index - 1,
+    offset: index + 1,
     tone: step.canCommit ? ('available' as const) : ('blocked' as const),
   })),
 ]

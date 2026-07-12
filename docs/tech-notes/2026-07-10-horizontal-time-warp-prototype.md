@@ -6,6 +6,7 @@
 - Kept the existing Time Warp selector visible and usable in its original reveal panel.
 - Put the horizontal prototype in a separate reveal panel so the two controls can be compared independently.
 - Made control 2 use horizontal left/right drag distance while keeping its labels upright.
+- Ordered control 2 from the lowest value on the left to the highest value on the right.
 - Made control 2's whole value strip follow total finger displacement from one immutable gesture origin: left drag moves left and right drag moves right.
 - Made long drags select across multiple values at symmetric half-slot thresholds, including when the drag reverses.
 - Kept the gesture-start labels fixed while dragging so logical Time Warp commits cannot rebuild, recenter, or jump the strip.
@@ -31,7 +32,7 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 ## Decisions
 
 - The step selector now has a vertical default and an optional horizontal axis so trajectory horizon and the original Time Warp control keep their existing behavior.
-- The horizontal value order is the clockwise rotation of the vertical selector: increase values sit left of the current value and decrease values sit right, allowing the selected value to settle into the center while the strip follows the finger.
+- The horizontal value order runs from low on the left to high on the right. Increase values sit right of the current value and decrease values sit left, so dragging left pulls a higher value toward the center while the strip follows the finger.
 - Horizontal drag commits are measured from the original pointer position for the entire gesture. Crossing `0.5`, `1.5`, `2.5`, and later slot midpoints updates shared Time Warp state one step at a time; crossing those thresholds in reverse applies the inverse steps.
 - Runtime snapshots committed during a horizontal gesture stay deferred in the existing step-selector model. The horizontal track renders every available gesture-start preview once and translates that stable DOM from total pointer displacement, so state changes cannot alter presentation under the pointer.
 - The view publishes the same immutable displacement used by the track plus each frozen label's start offset. CSS combines those two numbers into absolute center distance, so color, size, glow, and opacity remain entirely pointer-driven while the gesture is held. At a midpoint the two adjacent labels therefore have identical presentation, independent of which logical value is committed.
@@ -56,6 +57,7 @@ Issue #226 asks for a comparison prototype after the broader horizontal redesign
 - Biome checks on all edited TypeScript, TSX, CSS, and GUI test files passed; `git diff --check` passed.
 - In-app browser smoke testing reached Free Roam without console errors. Its fine-pointer environment hides touch controls, so the touch-enabled Playwright suite remains the visual authority.
 - Inspected `tmp/playwright-results/mobileHudScreenshot-captur-51097--touch-control-after-reveal-mobile-chromium/mobile-time-warp-control.png`, `mobile-time-warp-control-dragging.png`, and `mobile-time-warp-control-elevated-spacing.png`; both controls are visible, readable, upright, and unobstructed. The grip ticks remain aligned beneath their labels, the held midpoint shares elevation across both matching ticks, and the settled centered tick stays clear of the clipped window edge.
+- For the low-to-high order follow-up, 7 focused selector unit tests, both prototype GUI tests, the targeted Time Warp screenshot test, the full 55-test GUI suite, Biome, diff checking, and the production build passed. The three regenerated Time Warp screenshots show ascending values, finger-following drag motion, and a centered `x4s` settle without overlap.
 
 ## Follow-Ups
 

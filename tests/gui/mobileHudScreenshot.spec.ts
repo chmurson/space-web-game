@@ -2774,7 +2774,7 @@ test('captures the mobile time warp touch control after reveal', async ({
   )
   await page.mouse.down()
   await page.mouse.move(
-    prototypeBox.x + prototypeBox.width / 2 + 69,
+    prototypeBox.x + prototypeBox.width / 2 - 69,
     prototypeBox.y + prototypeBox.height / 2,
     { steps: 3 },
   )

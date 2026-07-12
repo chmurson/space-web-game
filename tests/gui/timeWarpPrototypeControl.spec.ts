@@ -189,7 +189,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
       }
-      const end = { x: start.x + (params.distanceX ?? 54), y: start.y }
+      const end = { x: start.x + (params.distanceX ?? -54), y: start.y }
       prototypeControl.dispatchEvent(
         new MouseEvent('mousedown', {
           bubbles: true,
@@ -246,7 +246,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       if (!currentValue || !decreaseValue || !increaseValue || !track) {
         throw new Error('Expected horizontal selector values to render')
       }
-      const targetValue = distanceX > 0 ? increaseValue : decreaseValue
+      const targetValue = distanceX < 0 ? increaseValue : decreaseValue
       const getCenterX = (element: HTMLElement) => {
         const valueRect = element.getBoundingClientRect()
         return valueRect.left + valueRect.width / 2
@@ -372,7 +372,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
   ).toBeLessThan(1)
   expect(result.leftDragAnimation.minimumValueGap).toBeGreaterThanOrEqual(0)
   expect(result.leftDragAnimation.className).toContain(
-    'touch-step-selector-target-decrease',
+    'touch-step-selector-target-increase',
   )
   expect(result.leftDragAnimation.dragProgress).toBeGreaterThan(0)
   expect(result.leftDragAnimation.trackTranslateX).toBeLessThan(0)
@@ -394,7 +394,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
     ),
   )
   expect(result.rightDragAnimation.className).toContain(
-    'touch-step-selector-target-increase',
+    'touch-step-selector-target-decrease',
   )
   expect(result.rightDragAnimation.dragProgress).toBeGreaterThan(0)
   expect(result.rightDragAnimation.trackTranslateX).toBeGreaterThan(0)
@@ -679,20 +679,20 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     }
 
     const rest = await moveTo(0)
-    const outward22 = await moveTo(22)
-    const outward23 = await moveTo(23)
-    const outward46 = await moveTo(46)
-    const outward68 = await moveTo(68)
-    const outward69 = await moveTo(69)
-    const outward92 = await moveTo(92)
-    const outward114 = await moveTo(114)
-    const outward115 = await moveTo(115)
-    const reverse114 = await moveTo(114)
-    const reverse68 = await moveTo(68)
-    const reverse46 = await moveTo(46)
-    const reverse22 = await moveTo(22)
-    const reverse23 = await moveTo(-23)
-    const cappedOverdrag = await moveTo(506)
+    const outward22 = await moveTo(-22)
+    const outward23 = await moveTo(-23)
+    const outward46 = await moveTo(-46)
+    const outward68 = await moveTo(-68)
+    const outward69 = await moveTo(-69)
+    const outward92 = await moveTo(-92)
+    const outward114 = await moveTo(-114)
+    const outward115 = await moveTo(-115)
+    const reverse114 = await moveTo(-114)
+    const reverse68 = await moveTo(-68)
+    const reverse46 = await moveTo(-46)
+    const reverse22 = await moveTo(-22)
+    const reverse23 = await moveTo(23)
+    const cappedOverdrag = await moveTo(-506)
     control.finishGesture(session, false)
     await nextFrame()
 
@@ -766,8 +766,8 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
       }
     }
 
-    const committedSettle = await settleGesture(69, 'x4m')
-    const subThresholdSettle = await settleGesture(22, 'x1m')
+    const committedSettle = await settleGesture(-69, 'x4m')
+    const subThresholdSettle = await settleGesture(-22, 'x1m')
 
     return {
       cappedOverdrag,
@@ -816,6 +816,12 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     expect(snapshot.ySpread).toBeLessThan(1)
   }
   expect(result.minimumHighestValueCount).toBe(1)
+  expect(result.rest.trackedCenters.x1m).toBeLessThan(
+    result.rest.trackedCenters.x2m,
+  )
+  expect(result.rest.trackedCenters.x2m).toBeLessThan(
+    result.rest.trackedCenters.x4m,
+  )
   expect(result.minimumBlockedTick.boxShadow).toBe('none')
   expect(result.minimumBlockedTick.opacity).toBeCloseTo(0.22, 2)
   expect(result.cappedOverdrag.committedStepCount).toBe(10)
@@ -827,15 +833,15 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     result.outward115.trackTranslateX - result.outward114.trackTranslateX,
   ]
   for (const delta of forwardThresholdDeltas) {
-    expect(delta).toBeGreaterThan(0)
-    expect(delta).toBeLessThan(2)
+    expect(delta).toBeLessThan(0)
+    expect(delta).toBeGreaterThan(-2)
   }
   expect(
     Math.max(...forwardThresholdDeltas) - Math.min(...forwardThresholdDeltas),
   ).toBeLessThan(0.1)
   expect(
     result.reverse114.trackTranslateX - result.outward115.trackTranslateX,
-  ).toBeLessThan(0)
+  ).toBeGreaterThan(0)
   expect(result.reverse114.trackTranslateX).toBeCloseTo(
     result.outward114.trackTranslateX,
     3,

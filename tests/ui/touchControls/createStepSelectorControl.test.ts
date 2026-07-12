@@ -31,11 +31,11 @@ describe('createStepSelectorControl', () => {
     expect(getStepSelectorGesturePreviewDeltaY(100, 100)).toBe(0)
   })
 
-  it('maps horizontal right swipes to the same increase direction as upward swipes', () => {
+  it('maps horizontal left swipes to the same increase direction as upward swipes', () => {
     expect(
       getStepSelectorGestureDelta(
         'horizontal',
-        { clientX: 146, clientY: 0 },
+        { clientX: 54, clientY: 0 },
         { x: 100, y: 0 },
       ),
     ).toBe(-46)
@@ -43,7 +43,7 @@ describe('createStepSelectorControl', () => {
       getStepSelectorGestureDirection(
         getStepSelectorGestureDelta(
           'horizontal',
-          { clientX: 54, clientY: 0 },
+          { clientX: 146, clientY: 0 },
           { x: 100, y: 0 },
         ),
       ),

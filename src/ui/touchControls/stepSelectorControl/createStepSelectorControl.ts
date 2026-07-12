@@ -40,7 +40,7 @@ export const getStepSelectorGestureDelta = (
   point: Pick<StepSelectorGesturePoint, 'clientX' | 'clientY'>,
   anchor: { x: number; y: number },
 ) =>
-  axis === 'horizontal' ? anchor.x - point.clientX : point.clientY - anchor.y
+  axis === 'horizontal' ? point.clientX - anchor.x : point.clientY - anchor.y
 
 const getStepSelectorConsumedAnchorDelta = (
   axis: StepSelectorAxis,
@@ -48,8 +48,8 @@ const getStepSelectorConsumedAnchorDelta = (
 ) => {
   if (axis === 'horizontal') {
     return direction === 'increase'
-      ? swipeCommitDistancePx
-      : -swipeCommitDistancePx
+      ? -swipeCommitDistancePx
+      : swipeCommitDistancePx
   }
 
   return direction === 'increase'
@@ -426,7 +426,7 @@ export const createStepSelectorControl = <ControlId extends string>(
       if (axis === 'horizontal') {
         model.setRuntimeSnapshot(getRuntimeSnapshot())
         if (commitPreview && !reducedMotion) {
-          settleHorizontalGesture(session.committedStepCount)
+          settleHorizontalGesture(-session.committedStepCount)
         } else {
           finishCommitSettle()
         }
@@ -481,7 +481,7 @@ export const createStepSelectorControl = <ControlId extends string>(
         })
         const nextSession = commitHorizontalGestureSteps(gestureDelta, session)
         updateGesturePreview(gestureDelta, {
-          visualStepOffset: -gestureDelta / swipeCommitDistancePx,
+          visualStepOffset: gestureDelta / swipeCommitDistancePx,
         })
         setSession(nextSession)
         return nextSession
