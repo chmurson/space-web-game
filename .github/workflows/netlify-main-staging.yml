@@ -35,7 +35,20 @@ jobs:
       - name: Build release
         run: npm run build
 
+      - name: Add cached Netlify CLI to PATH
+        run: echo "${RUNNER_TEMP}/netlify-cli/bin" >> "${GITHUB_PATH}"
+
+      - name: Restore Netlify CLI cache
+        id: netlify-cli-cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ${{ runner.temp }}/netlify-cli
+          key: netlify-cli-${{ runner.os }}-node-22-v26.1.0
+
       - name: Install Netlify CLI
+        if: steps.netlify-cli-cache.outputs.cache-hit != 'true'
+        env:
+          NPM_CONFIG_PREFIX: ${{ runner.temp }}/netlify-cli
         run: npm install --global netlify-cli@26.1.0
 
       - name: Deploy main to Netlify staging
