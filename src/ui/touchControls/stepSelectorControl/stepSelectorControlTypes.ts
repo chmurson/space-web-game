@@ -1,5 +1,13 @@
 export type StepSelectorDirection = 'increase' | 'decrease'
 
+export type StepSelectorAxis = 'horizontal' | 'vertical'
+
+export type StepSelectorGesturePoint = {
+  clientX: number
+  clientY: number
+  identifier: number
+}
+
 export type StepSelectorPreview = {
   canCommit: boolean
   value: number
@@ -8,7 +16,9 @@ export type StepSelectorPreview = {
 export type StepSelectorGestureSession<ControlId extends string = string> = {
   committedStepCount: number
   kind: 'step-selector'
+  axis: StepSelectorAxis
   controlId: ControlId
+  stepAnchorX: number
   stepAnchorY: number
   startX: number
   startY: number
@@ -17,6 +27,7 @@ export type StepSelectorGestureSession<ControlId extends string = string> = {
 
 export type StepSelectorControlOptions<ControlId extends string = string> = {
   ariaLabel: string
+  axis?: StepSelectorAxis
   className?: string
   commitStep(direction: StepSelectorDirection): void
   container?: HTMLElement
@@ -38,7 +49,10 @@ export type StepSelectorControlOptions<ControlId extends string = string> = {
 }
 
 export type StepSelectorControl<ControlId extends string = string> = {
-  beginGesture(touch: Touch): StepSelectorGestureSession<ControlId>
+  beginGesture(
+    point: StepSelectorGesturePoint,
+  ): StepSelectorGestureSession<ControlId>
+  element: HTMLElement
   finishGesture(
     session: StepSelectorGestureSession<ControlId>,
     commitPreview: boolean,
@@ -53,7 +67,7 @@ export type StepSelectorControl<ControlId extends string = string> = {
   ): void
   syncUi(): void
   updateGesture(
-    touch: Touch,
+    point: StepSelectorGesturePoint,
     session: StepSelectorGestureSession<ControlId>,
   ): StepSelectorGestureSession<ControlId>
 }

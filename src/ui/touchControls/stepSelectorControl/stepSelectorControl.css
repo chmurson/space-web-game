@@ -1,9 +1,14 @@
 .touch-step-selector {
   --touch-step-selector-accent: #f59e0b;
   --touch-step-selector-accent-rgb: 245 158 11;
+  --touch-step-selector-current-font-size: 16px;
   --touch-step-selector-drag-progress: 0;
+  --touch-step-selector-horizontal-track-offset: 0%;
+  --touch-step-selector-horizontal-visual-step-offset: 0;
   --touch-step-selector-hit-overhang-x: 25%;
   --touch-step-selector-hit-overhang-y: 25%;
+  --touch-step-selector-near-font-size: 10px;
+  --touch-step-selector-secondary-font-size: 9px;
   position: fixed;
   bottom: max(14px, env(safe-area-inset-bottom));
   left: max(14px, env(safe-area-inset-left));
@@ -54,6 +59,138 @@
   --touch-step-selector-accent-rgb: 56 189 248;
 }
 
+.touch-step-selector-horizontal {
+  width: 172px;
+  min-height: 62px;
+  grid-template-rows: auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 9px 12px;
+}
+
+.touch-step-selector-horizontal-window {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 42px;
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.touch-step-selector-horizontal-track {
+  position: absolute;
+  inset: 0;
+  transform: translateX(var(--touch-step-selector-horizontal-track-offset));
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-step-selector-horizontal.touch-step-selector-dragging
+  .touch-step-selector-horizontal-track {
+  transition: none;
+}
+
+.touch-step-selector-horizontal-step {
+  --touch-step-selector-horizontal-signed-distance: calc(
+    var(--touch-step-selector-horizontal-step-offset) +
+    var(--touch-step-selector-horizontal-visual-step-offset)
+  );
+  --touch-step-selector-horizontal-distance: max(
+    var(--touch-step-selector-horizontal-signed-distance),
+    calc(-1 * var(--touch-step-selector-horizontal-signed-distance))
+  );
+  --touch-step-selector-horizontal-center-proximity: clamp(
+    0,
+    calc(1 - var(--touch-step-selector-horizontal-distance)),
+    1
+  );
+  --touch-step-selector-horizontal-near-proximity: clamp(
+    0,
+    calc(2 - var(--touch-step-selector-horizontal-distance)),
+    1
+  );
+  --touch-step-selector-horizontal-nearest-proximity: calc(
+    var(--touch-step-selector-horizontal-near-proximity) -
+    var(--touch-step-selector-horizontal-center-proximity)
+  );
+  --touch-step-selector-horizontal-spacing-direction: clamp(
+    -1,
+    var(--touch-step-selector-horizontal-signed-distance),
+    1
+  );
+  --touch-step-selector-horizontal-visible-proximity: clamp(
+    0,
+    calc(3 - var(--touch-step-selector-horizontal-distance)),
+    1
+  );
+  --touch-step-selector-horizontal-tone: color-mix(
+    in srgb,
+    rgba(203, 213, 225, 0.68)
+      calc((1 - var(--touch-step-selector-horizontal-center-proximity)) * 100%),
+    var(--touch-step-selector-accent)
+      calc(var(--touch-step-selector-horizontal-center-proximity) * 100%)
+  );
+  --touch-step-selector-horizontal-opacity: calc(
+    0.56 *
+    var(--touch-step-selector-horizontal-visible-proximity) +
+    0.44 *
+    var(--touch-step-selector-horizontal-near-proximity)
+  );
+  position: absolute;
+  top: 30%;
+  display: flex;
+  width: 20%;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  transform: translate(
+    calc(
+      -50% +
+      var(--touch-step-selector-horizontal-spacing-direction) *
+      (6px + var(--touch-step-selector-horizontal-nearest-proximity) * 5px)
+    ),
+    -50%
+  );
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-step-selector-horizontal-step::after {
+  position: absolute;
+  top: calc(50% + 14px);
+  left: 50%;
+  width: calc(
+    1px +
+    var(--touch-step-selector-horizontal-center-proximity) *
+    1px
+  );
+  height: calc(
+    4px +
+    var(--touch-step-selector-horizontal-near-proximity) *
+    2px +
+    var(--touch-step-selector-horizontal-center-proximity) *
+    4px
+  );
+  border-radius: 999px;
+  background-color: var(--touch-step-selector-horizontal-tone);
+  box-shadow: 0 0 2px
+    rgb(
+      var(--touch-step-selector-accent-rgb) /
+      calc(var(--touch-step-selector-horizontal-center-proximity) * 0.32)
+    );
+  content: "";
+  opacity: var(--touch-step-selector-horizontal-opacity);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition:
+    background-color 160ms ease,
+    box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease,
+    width 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-step-selector-horizontal-step.touch-step-selector-current {
+  display: flex;
+}
+
 .touch-edge-reveal-content .touch-step-selector {
   position: relative;
   bottom: auto;
@@ -80,7 +217,8 @@
 }
 
 .touch-step-selector-instant,
-.touch-step-selector-instant .touch-step-selector-value {
+.touch-step-selector-instant .touch-step-selector-value,
+.touch-step-selector-instant .touch-step-selector-horizontal-track {
   transition: none;
 }
 
@@ -90,7 +228,7 @@
 
 .touch-step-selector-value-current {
   color: var(--touch-step-selector-accent);
-  font-size: 16px;
+  font-size: var(--touch-step-selector-current-font-size);
   letter-spacing: 0;
   opacity: 1;
   text-shadow:
@@ -122,7 +260,7 @@
 
 .touch-step-selector-value-next {
   color: rgba(203, 213, 225, 0.68);
-  font-size: 10px;
+  font-size: var(--touch-step-selector-near-font-size);
 }
 
 .touch-step-selector-target-increase .touch-step-selector-value-current {
@@ -202,6 +340,72 @@
     scale(calc(1 + var(--touch-step-selector-drag-progress) * 0.6));
 }
 
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value,
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value {
+  transform: none;
+}
+
+.touch-step-selector-horizontal .touch-step-selector-value {
+  color: var(--touch-step-selector-horizontal-tone);
+  font-size: calc(
+    var(--touch-step-selector-secondary-font-size) *
+    (0.72 + 0.28 * var(--touch-step-selector-horizontal-visible-proximity)) +
+    (
+      var(--touch-step-selector-near-font-size) -
+      var(--touch-step-selector-secondary-font-size)
+    ) *
+    var(--touch-step-selector-horizontal-near-proximity) +
+    (
+      var(--touch-step-selector-current-font-size) -
+      var(--touch-step-selector-near-font-size)
+    ) *
+    var(--touch-step-selector-horizontal-center-proximity)
+  );
+  opacity: var(--touch-step-selector-horizontal-opacity);
+  text-shadow:
+    0 0 7px
+    rgb(
+      var(--touch-step-selector-accent-rgb) /
+      calc(var(--touch-step-selector-horizontal-center-proximity) * 0.36)
+    ),
+    0 0 12px
+    rgb(
+      var(--touch-step-selector-accent-rgb) /
+      calc(var(--touch-step-selector-horizontal-center-proximity) * 0.16)
+    );
+  transition:
+    color 160ms ease,
+    font-size 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease,
+    text-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-step-selector-horizontal.touch-step-selector-dragging
+  .touch-step-selector-horizontal-step,
+.touch-step-selector-horizontal.touch-step-selector-instant
+  .touch-step-selector-horizontal-step,
+.touch-step-selector-horizontal.touch-step-selector-dragging
+  .touch-step-selector-horizontal-step::after,
+.touch-step-selector-horizontal.touch-step-selector-instant
+  .touch-step-selector-horizontal-step::after,
+.touch-step-selector-horizontal.touch-step-selector-dragging
+  .touch-step-selector-value,
+.touch-step-selector-horizontal.touch-step-selector-instant
+  .touch-step-selector-value {
+  transition: none;
+}
+
+.touch-step-selector-horizontal-step:has(
+    .touch-step-selector-value-disabled
+  )::after {
+  background-color: rgba(203, 213, 225, 0.68);
+  box-shadow: none;
+  opacity: 0.22;
+}
+
 .touch-step-selector .touch-step-selector-value-disabled {
   color: rgba(203, 213, 225, 0.68);
   opacity: 0.22;
@@ -209,7 +413,7 @@
 }
 
 .touch-step-selector-value-secondary {
-  font-size: 9px;
+  font-size: var(--touch-step-selector-secondary-font-size);
   opacity: 0.56;
 }
 
@@ -230,6 +434,23 @@
   transform: translateX(-50%) translateY(12px) scale(0.72);
 }
 
+.touch-step-selector-horizontal .touch-step-selector-value-extra {
+  top: 50%;
+  left: auto;
+}
+
+.touch-step-selector-horizontal .touch-step-selector-value-up-extra {
+  right: 12px;
+  transform: translateY(-50%) translateX(12px) scale(0.72);
+}
+
+.touch-step-selector-horizontal .touch-step-selector-value-down-extra {
+  right: auto;
+  bottom: auto;
+  left: 12px;
+  transform: translateY(-50%) translateX(-12px) scale(0.72);
+}
+
 .touch-step-selector-target-increase .touch-step-selector-value-down-extra {
   opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
   transform: translateX(-50%)
@@ -239,11 +460,31 @@
     scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
 }
 
+.touch-step-selector-horizontal.touch-step-selector-target-increase
+  .touch-step-selector-value-down-extra {
+  opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateY(-50%)
+    translateX(
+      calc((1 - var(--touch-step-selector-drag-progress)) * -12px + 1.5px)
+    )
+    scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
+}
+
 .touch-step-selector-target-decrease .touch-step-selector-value-up-extra {
   opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
   transform: translateX(-50%)
     translateY(
       calc((1 - var(--touch-step-selector-drag-progress)) * -12px + 1.5px)
+    )
+    scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
+}
+
+.touch-step-selector-horizontal.touch-step-selector-target-decrease
+  .touch-step-selector-value-up-extra {
+  opacity: calc(var(--touch-step-selector-drag-progress) * 0.56);
+  transform: translateY(-50%)
+    translateX(
+      calc((1 - var(--touch-step-selector-drag-progress)) * 12px - 1.5px)
     )
     scale(calc(0.72 + var(--touch-step-selector-drag-progress) * 0.28));
 }
@@ -268,30 +509,35 @@
   transform: translateY(2px) scale(1.08);
 }
 
+.touch-step-selector-horizontal.touch-step-selector-step-up
+  .touch-step-selector-value-current {
+  transform: translateX(2px) scale(1.08);
+}
+
+.touch-step-selector-horizontal.touch-step-selector-step-down
+  .touch-step-selector-value-current {
+  transform: translateX(-2px) scale(1.08);
+}
+
 @media (max-width: 520px) {
-  .touch-step-selector {
+  .touch-step-selector:not(.touch-step-selector-horizontal) {
+    --touch-step-selector-current-font-size: 15px;
+    --touch-step-selector-near-font-size: 9px;
+    --touch-step-selector-secondary-font-size: 8px;
     width: 64px;
     min-height: 108px;
     border-radius: var(--touch-control-radius);
     grid-template-rows: 11px 11px auto 11px 11px;
   }
-
-  .touch-step-selector-value-current {
-    font-size: 15px;
-  }
-
-  .touch-step-selector-value-next {
-    font-size: 9px;
-  }
-
-  .touch-step-selector-value-secondary {
-    font-size: 8px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .touch-step-selector,
-  .touch-step-selector-value {
+  .touch-step-selector-value,
+  .touch-step-selector-horizontal-step,
+  .touch-step-selector-horizontal-step::after,
+  .touch-step-selector-horizontal .touch-step-selector-value,
+  .touch-step-selector-horizontal-track {
     transition: none;
   }
 }

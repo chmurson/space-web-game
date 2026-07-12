@@ -34,12 +34,19 @@ test('renders the touch controls shell and dock host hooks through Preact', asyn
   })
 
   expect(result).toEqual({
-    dockCount: 4,
+    dockCount: 5,
     dockSummaries: [
       {
         className: 'touch-edge-reveal-dock touch-time-warp-reveal-dock',
         dataDock: 'warp',
         dockId: 'warp',
+        parentClassName: 'touch-controls',
+      },
+      {
+        className:
+          'touch-edge-reveal-dock touch-time-warp-prototype-reveal-dock',
+        dataDock: 'warpPrototype',
+        dockId: 'warpPrototype',
         parentClassName: 'touch-controls',
       },
       {
