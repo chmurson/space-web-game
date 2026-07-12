@@ -6,7 +6,7 @@ type ThreeModule = typeof import('three')
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
 
-test('keeps desktop pointer camera panning when spacecraft visibility blocks heading planning', async ({
+test('keeps desktop edge-scroll panning independent of heading planning visibility', async ({
   page,
 }) => {
   await page.goto('/')
@@ -19,10 +19,7 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
     )) as PointerCameraInputModule
     const THREE = (await import(threeModulePath)) as ThreeModule
 
-    const runDrag = (visibility: {
-      beforePointerDown: boolean
-      beforePointerMove: boolean
-    }) => {
+    const runEdgeScroll = (spacecraftVisible: boolean) => {
       const canvas = document.createElement('canvas')
       canvas.width = 400
       canvas.height = 400
@@ -49,16 +46,17 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
       camera.updateMatrixWorld()
       camera.updateProjectionMatrix()
 
-      let spacecraftVisible = visibility.beforePointerDown
       const canceledPlans: number[] = []
       const committedPlans: number[] = []
       const pans: { x: number; y: number }[] = []
       const plannedHeadings: number[] = []
 
-      bindPointerCameraInput({
+      const pointerInput = bindPointerCameraInput({
         camera,
+        getDesktopEdgePanSpeedPixelsPerSecond: () => 420,
         getCameraMode: () => 'unlocked',
         getCameraModeChangesLocked: () => false,
+        getEdgeScrollEnabled: () => true,
         getInteractionsEnabled: () => true,
         getSpacecraftPosition: () => ({ x: 0, y: 0 }),
         getSpacecraftVisible: () => spacecraftVisible,
@@ -85,29 +83,20 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
         windowTarget: window,
       })
 
-      const dispatchPointer = (
-        type: 'pointerdown' | 'pointermove' | 'pointerup',
-        point: { x: number; y: number },
-      ) => {
-        canvas.dispatchEvent(
-          new PointerEvent(type, {
-            bubbles: true,
-            button: type === 'pointerdown' ? 0 : -1,
-            buttons: type === 'pointerup' ? 0 : 1,
-            cancelable: true,
-            clientX: point.x,
-            clientY: point.y,
-            isPrimary: true,
-            pointerId: 17,
-            pointerType: 'mouse',
-          }),
-        )
-      }
-
-      dispatchPointer('pointerdown', { x: 100, y: 100 })
-      spacecraftVisible = visibility.beforePointerMove
-      dispatchPointer('pointermove', { x: 140, y: 118 })
-      dispatchPointer('pointerup', { x: 140, y: 118 })
+      canvas.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          button: -1,
+          buttons: 0,
+          cancelable: true,
+          clientX: 399,
+          clientY: 200,
+          isPrimary: true,
+          pointerId: 17,
+          pointerType: 'mouse',
+        }),
+      )
+      pointerInput.updateEdgeScroll(100, 0.1)
       canvas.remove()
 
       return {
@@ -119,30 +108,92 @@ test('keeps desktop pointer camera panning when spacecraft visibility blocks hea
     }
 
     return {
-      offscreenAtStart: runDrag({
-        beforePointerDown: false,
-        beforePointerMove: false,
-      }),
-      offscreenBeforeMove: runDrag({
-        beforePointerDown: true,
-        beforePointerMove: false,
-      }),
+      offscreen: runEdgeScroll(false),
+      visible: runEdgeScroll(true),
     }
   })
 
   expect(result).toEqual({
-    offscreenAtStart: {
+    offscreen: {
       canceledPlanCount: 0,
       committedPlanCount: 0,
       panCount: 1,
       plannedHeadingCount: 0,
     },
-    offscreenBeforeMove: {
+    visible: {
       canceledPlanCount: 0,
       committedPlanCount: 0,
       panCount: 1,
       plannedHeadingCount: 0,
     },
+  })
+})
+
+test('lets passive top HUD space hit-test to canvas while keeping the top menu interactive', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 800, height: 600 })
+  await page.goto('/')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const hitTest = await page.evaluate(() => {
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+
+    const canvas = document.createElement('canvas')
+    canvas.style.position = 'fixed'
+    canvas.style.inset = '0'
+    canvas.style.width = '100vw'
+    canvas.style.height = '100vh'
+
+    const topBar = document.createElement('div')
+    topBar.className = 'top-bar'
+
+    const topMenu = document.createElement('div')
+    topMenu.className = 'top-menu'
+    const topMenuButton = document.createElement('button')
+    topMenuButton.type = 'button'
+    topMenuButton.textContent = 'Open menu'
+    topMenu.append(topMenuButton)
+
+    const telemetry = document.createElement('div')
+    telemetry.className = 'telemetry-strip'
+    telemetry.textContent = 'Telemetry'
+
+    topBar.append(topMenu, telemetry)
+    app.append(canvas, topBar)
+
+    const passiveTopTarget = document.elementFromPoint(
+      window.innerWidth * 0.5,
+      2,
+    )
+    const menuBounds = topMenuButton.getBoundingClientRect()
+    const menuTarget = document.elementFromPoint(
+      menuBounds.left + menuBounds.width * 0.5,
+      menuBounds.top + menuBounds.height * 0.5,
+    )
+
+    return {
+      menuTargetText: menuTarget?.textContent ?? '',
+      menuTargetTagName: menuTarget?.tagName ?? '',
+      passiveTopClassName:
+        passiveTopTarget instanceof HTMLElement
+          ? passiveTopTarget.className.toString()
+          : '',
+      passiveTopTagName: passiveTopTarget?.tagName ?? '',
+    }
+  })
+
+  expect(hitTest).toEqual({
+    menuTargetTagName: 'BUTTON',
+    menuTargetText: 'Open menu',
+    passiveTopClassName: '',
+    passiveTopTagName: 'CANVAS',
   })
 })
 

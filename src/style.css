@@ -1236,6 +1236,29 @@ button.app-dialog-setting {
   line-height: 1.3;
 }
 
+.app-dialog-stepper-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-dialog-button.app-dialog-stepper-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.app-dialog-button.app-dialog-stepper-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .app-dialog-setting-chevron {
   color: rgba(125, 211, 252, 0.78);
   font-size: 15px;
@@ -1763,11 +1786,12 @@ button.app-dialog-setting {
 
 .telemetry-pill-velocity.telemetry-pill-thrusting {
   z-index: 1;
-  background: rgba(15, 23, 42, 0.62);
+  padding: 4px 7px;
+  border: 1px solid rgba(251, 146, 60, 0.36);
+  background: rgba(69, 46, 8, 0.54);
   box-shadow:
     0 0 0 1px rgba(251, 146, 60, 0.14),
     0 10px 24px rgba(245, 158, 11, 0.18);
-  filter: brightness(1.14);
   transform: scale(1.16);
 }
 

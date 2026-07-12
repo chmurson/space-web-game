@@ -13,7 +13,8 @@ camera:
 
 controls:
   autopilotRotationRate: 0.9
-  timeWarps: [1, 10, 30, 60, 300, 1800, 3600, 7200, 18000]
+  timeWarps:
+    [1, 2, 4, 8, 15, 30, 60, 120, 240, 480, 900, 1800, 3600, 7200, 14400, 28800, 54000]
 
 trajectory:
   horizon:

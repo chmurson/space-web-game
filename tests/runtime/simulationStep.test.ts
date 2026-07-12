@@ -6,6 +6,7 @@ import {
   stepSimulationFrame,
 } from '@/runtime/simulationStep'
 import type { TargetHeadingTurn } from '@/simulation/types'
+import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const normalizeAngle = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
@@ -168,12 +169,12 @@ describe('stepSimulationFrame', () => {
       shouldCaptureBurn: () => false,
       state: createRuntimeState(),
       targetHeading: null,
-      timeWarpIndex: 5,
-      timeWarps: [1, 10, 30, 60, 300, 1800],
+      timeWarpIndex: requestedTimeWarps.indexOf(1800),
+      timeWarps: requestedTimeWarps,
     })
 
     expect(result.reason).toBe('active-controls')
-    expect(result.timeWarpIndex).toBe(3)
+    expect(result.timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
     expect(result.simulationControls.controls.main).toBe(1)
   })
 
@@ -273,11 +274,11 @@ describe('stepSimulationFrame', () => {
       shouldCaptureBurn: () => false,
       state: createRuntimeState(),
       targetHeading: Math.PI / 2,
-      timeWarpIndex: 5,
-      timeWarps: [1, 10, 30, 60, 300, 1800],
+      timeWarpIndex: requestedTimeWarps.indexOf(1800),
+      timeWarps: requestedTimeWarps,
     })
 
-    expect(result.timeWarpIndex).toBe(3)
+    expect(result.timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
   })
 
   it('clears the target heading once target-heading rotation completes', () => {

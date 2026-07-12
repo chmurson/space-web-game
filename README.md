@@ -37,20 +37,23 @@ npm run deploy:netlify
 
 Deployment scripts:
 
-- `npm run deploy:netlify` selects the target from the current branch. `main`
-  deploys to production; any other branch deploys to shared staging.
-- `npm run deploy:netlify:production` forces a production deploy.
+- `npm run deploy:netlify` deploys to shared staging by default.
+- `npm run deploy:netlify:production` forces a production deploy and is
+  reserved for the manual production workflow.
 - `npm run deploy:netlify:staging` forces a staging deploy.
 
-Production deploy automation:
+Deployment automation:
 
-- `.github/workflows/netlify-production.yml` starts on every push to `main` and
-  deploys the latest successful release build to Netlify production. Superseded
-  in-flight runs are canceled so an older commit cannot overwrite a newer one.
+- `.github/workflows/netlify-main-staging.yml` starts on every push to `main`
+  and deploys that commit to the primary URL of the shared staging site.
+- `.github/workflows/netlify-production.yml` is manual-only. Its optional
+  `commit` input accepts a commit SHA or ref; when omitted, it deploys the
+  current `main` HEAD. After a successful deploy it force-updates the UTC-dated
+  `prod-YYYYMMDD` tag to the deployed commit.
 - The GitHub Actions repository secret `NETLIFY_AUTH_TOKEN` must be configured
-  for production deploys.
+  for staging, preview, and production deploys.
 - `.github/workflows/netlify-pr-preview.yml` deploys same-repository PRs to
-  stable `pr-<number>` aliases on the production Netlify site.
+  stable `pr-<number>` aliases on the shared staging Netlify site.
 - Reach the Moon highscore submissions on PR aliases require
   `REACH_MOON_RUN_RECEIPT_SECRET` in a non-production branch-deploy context,
   using a fresh staging/non-production value.
@@ -59,7 +62,7 @@ Stable PR alias previews:
 
 - `.github/workflows/netlify-pr-preview.yml` runs for same-repository PRs
   targeting `main`, builds the PR head, and deploys `dist/` to a stable Netlify
-  alias like `https://pr-130--space-web-game.netlify.app`.
+  alias like `https://pr-130--fanciful-bunny-d77b4b.netlify.app`.
 - These stable aliases are Netlify branch deploys with branch `pr-<number>`.
   They are not true Netlify Deploy Previews, even though the repo calls the
   workflow output a PR preview.
@@ -73,7 +76,7 @@ Stable PR alias previews:
 
   ```sh
   curl -sS -X POST \
-    https://pr-<number>--space-web-game.netlify.app/api/reach-moon/run-receipt
+    https://pr-<number>--fanciful-bunny-d77b4b.netlify.app/api/reach-moon/run-receipt
   ```
 
   The response should be `201` JSON with a `runReceipt` object. A

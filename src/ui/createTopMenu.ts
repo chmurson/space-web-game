@@ -14,6 +14,7 @@ import { createPreactUiSurface } from './createPreactUiSurface'
 export type TopMenu = {
   close: () => void
   element: HTMLElement
+  isOpen: () => boolean
   syncState: () => void
 }
 
@@ -288,6 +289,7 @@ export const createTopMenu = (options: {
   return {
     close: () => setOpen(false),
     element: root,
+    isOpen: () => open,
     syncState,
   }
 }

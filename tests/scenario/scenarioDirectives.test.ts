@@ -14,13 +14,14 @@ import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTyp
 import { getRuntimeScenarioDefinition } from '@/scenario/scenarioRegistry'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import { escapeEarthTrajectoryViewportSize } from '@/scenario/specific-scenarios/tutorial/tutorialSceneRouter'
+import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const globalScenarioDirectiveLimits = {
   maxCoastPredictionHorizonHours: 48,
   defaultViewportSize: 520,
   maxViewportSize: 800,
   minViewportSize: EARTH_VIEWPORT_SIZE,
-  timeWarps: [1, 10, 50, 100, 500, 2000],
+  timeWarps: requestedTimeWarps,
 }
 
 const createRuntime = (): AppRuntimeState => ({
@@ -201,6 +202,13 @@ describe('scenarioDirectives', () => {
   it('keeps time warp index within the configured max warp cap', () => {
     expect(getConstrainedTimeWarpIndex(3, [1, 10, 100, 1000], 100)).toBe(2)
     expect(getConstrainedTimeWarpIndex(1, [1, 10, 100, 1000], null)).toBe(1)
+    expect(
+      getConstrainedTimeWarpIndex(
+        requestedTimeWarps.length - 1,
+        requestedTimeWarps,
+        300,
+      ),
+    ).toBe(requestedTimeWarps.indexOf(240))
   })
 
   it('derives tutorial phase-1 directives from tutorial scenario state', () => {
