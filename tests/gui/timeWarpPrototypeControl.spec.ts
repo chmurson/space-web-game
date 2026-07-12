@@ -419,6 +419,100 @@ test('routes the horizontal prototype time warp control to shared state', async 
   expect(result.prototypeText).toContain('x1m')
 })
 
+test('flings the horizontal prototype only for a recent fast release', async ({
+  page,
+}) => {
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const timeWarpControlModulePath =
+      '/src/ui/touchControls/createTimeWarpControl.ts'
+    const { createPrototypeTimeWarpControl2 } = (await import(
+      timeWarpControlModulePath
+    )) as TimeWarpControlModule
+    const timeWarps = [1, 10, 30, 60, 120]
+    let timeWarpIndex = 1
+    const panel = document.createElement('div')
+    document.body.append(panel)
+    const createControl = () =>
+      createPrototypeTimeWarpControl2({
+        commitTimeWarp: (action) => {
+          timeWarpIndex = Math.max(
+            0,
+            Math.min(
+              timeWarps.length - 1,
+              timeWarpIndex + (action === 'increaseTimeWarp' ? 1 : -1),
+            ),
+          )
+        },
+        getCurrentTimeWarp: () => timeWarps[timeWarpIndex],
+        getTimeWarpPreview: (action) => getPreviews(action, 1)[0],
+        getTimeWarpPreviews: getPreviews,
+        onSessionChange: () => {},
+        panel,
+      })
+    const getPreviews = (action: TimeWarpAction, count: number) =>
+      Array.from({ length: count }, (_, offset) => {
+        const nextIndex =
+          timeWarpIndex +
+          (action === 'increaseTimeWarp' ? offset + 1 : -offset - 1)
+        const clampedIndex = Math.max(
+          0,
+          Math.min(timeWarps.length - 1, nextIndex),
+        )
+        return {
+          canCommit: nextIndex === clampedIndex,
+          reason: null,
+          value: timeWarps[clampedIndex],
+        }
+      })
+    const wait = (delayMs: number) =>
+      new Promise<void>((resolve) => window.setTimeout(resolve, delayMs))
+    const fling = async (params: {
+      distanceX: number
+      holdAfterMoveMs?: number
+      moveDelayMs: number
+    }) => {
+      const control = createControl()
+      const origin = { clientX: 100, clientY: 100, identifier: 1 }
+      let session = control.beginGesture(origin)
+      await wait(params.moveDelayMs)
+      session = control.updateGesture(
+        {
+          clientX: origin.clientX + params.distanceX,
+          clientY: origin.clientY,
+          identifier: origin.identifier,
+        },
+        session,
+      )
+      if (params.holdAfterMoveMs) {
+        await wait(params.holdAfterMoveMs)
+      }
+      control.finishGesture(session, true)
+      await wait(230)
+      return timeWarpIndex
+    }
+
+    const fastRelease = await fling({ distanceX: -46, moveDelayMs: 60 })
+    timeWarpIndex = 1
+    const pausedRelease = await fling({
+      distanceX: -46,
+      holdAfterMoveMs: 80,
+      moveDelayMs: 20,
+    })
+    timeWarpIndex = 1
+    const tinyRelease = await fling({ distanceX: -9, moveDelayMs: 20 })
+    timeWarpIndex = timeWarps.length - 2
+    const cappedRelease = await fling({ distanceX: -46, moveDelayMs: 20 })
+    return { cappedRelease, fastRelease, pausedRelease, tinyRelease }
+  })
+
+  expect(result.fastRelease).toBe(3)
+  expect(result.pausedRelease).toBe(2)
+  expect(result.tinyRelease).toBe(1)
+  expect(result.cappedRelease).toBe(4)
+})
+
 test('keeps the horizontal track anchored while midpoint commits settle smoothly', async ({
   page,
 }) => {
@@ -714,7 +808,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
         },
         settleSession,
       )
-      await wait(70)
+      await wait(80)
       const selectedBeforeRelease = getLabel(selectedLabel)
       const beforeReleaseCenterX = getCenterX(selectedBeforeRelease)
       const beforeReleaseAppearance = getAppearance(selectedLabel)

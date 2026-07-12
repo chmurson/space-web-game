@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getHorizontalMomentumStepCount,
   getStepSelectorGestureCommittedStepCount,
   getStepSelectorGestureDelta,
   getStepSelectorGestureDirection,
@@ -55,5 +56,42 @@ describe('createStepSelectorControl', () => {
     expect(getStepSelectorReleaseWillCommit(23)).toBe(false)
     expect(getStepSelectorReleaseWillCommit(-24)).toBe(true)
     expect(getStepSelectorReleaseWillCommit(24)).toBe(true)
+  })
+
+  it('only flings for recent, fast horizontal movement', () => {
+    expect(
+      getHorizontalMomentumStepCount({
+        recentTravelPx: 12,
+        releaseVelocityPxPerSecond: 450,
+        stationaryDurationMs: 79,
+      }),
+    ).toBe(1)
+    expect(
+      getHorizontalMomentumStepCount({
+        recentTravelPx: 12,
+        releaseVelocityPxPerSecond: 900,
+        stationaryDurationMs: 79,
+      }),
+    ).toBe(2)
+
+    for (const params of [
+      {
+        recentTravelPx: 9,
+        releaseVelocityPxPerSecond: 900,
+        stationaryDurationMs: 0,
+      },
+      {
+        recentTravelPx: 12,
+        releaseVelocityPxPerSecond: 449,
+        stationaryDurationMs: 0,
+      },
+      {
+        recentTravelPx: 12,
+        releaseVelocityPxPerSecond: 900,
+        stationaryDurationMs: 80,
+      },
+    ]) {
+      expect(getHorizontalMomentumStepCount(params)).toBe(0)
+    }
   })
 })

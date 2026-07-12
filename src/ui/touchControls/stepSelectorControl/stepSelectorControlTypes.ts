@@ -16,6 +16,7 @@ export type StepSelectorPreview = {
 export type StepSelectorGestureSession<ControlId extends string = string> = {
   committedStepCount: number
   kind: 'step-selector'
+  horizontalMotionSamples: { time: number; x: number }[]
   axis: StepSelectorAxis
   controlId: ControlId
   stepAnchorX: number
@@ -32,6 +33,7 @@ export type StepSelectorControlOptions<ControlId extends string = string> = {
   commitStep(direction: StepSelectorDirection): void
   container?: HTMLElement
   controlId: ControlId
+  enableHorizontalMomentum?: boolean
   formatValue(value: number): string
   getCurrentValue(): number
   getStepPreviews(
