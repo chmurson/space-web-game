@@ -181,7 +181,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       throw new Error('Expected step selector styles to load')
     }
 
-    const dragPrototype = (
+    const dragPrototype = async (
       params: { beforeMouseup?: () => void; distanceX?: number } = {},
     ) => {
       const rect = prototypeControl.getBoundingClientRect()
@@ -209,6 +209,8 @@ test('routes the horizontal prototype time warp control to shared state', async 
         }),
       )
       params.beforeMouseup?.()
+      // Keep this routing fixture outside the fling's recent-motion window.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 80))
       window.dispatchEvent(
         new MouseEvent('mouseup', {
           bubbles: true,
@@ -322,10 +324,10 @@ test('routes the horizontal prototype time warp control to shared state', async 
     const rightDragAnimation = await inspectSwipeAnimation(22)
     timeWarpIndex = 0
     controls.syncUi()
-    dragPrototype()
+    await dragPrototype()
     const firstCommitTimeWarp = timeWarps[timeWarpIndex]
 
-    dragPrototype({
+    await dragPrototype({
       beforeMouseup: () => {
         interactionsEnabled = false
       },
@@ -334,10 +336,10 @@ test('routes the horizontal prototype time warp control to shared state', async 
     const disabledMouseupTimeWarp = timeWarps[timeWarpIndex]
     interactionsEnabled = true
 
-    dragPrototype()
+    await dragPrototype()
     const postDisabledRecoveryTimeWarp = timeWarps[timeWarpIndex]
 
-    dragPrototype({
+    await dragPrototype({
       beforeMouseup: () => {
         window.dispatchEvent(new Event('blur'))
       },
@@ -345,7 +347,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
     })
     const blurCancelTimeWarp = timeWarps[timeWarpIndex]
 
-    dragPrototype()
+    await dragPrototype()
     controls.syncUi()
 
     return {
@@ -430,7 +432,7 @@ test('flings the horizontal prototype only for a recent fast release', async ({
     const { createPrototypeTimeWarpControl2 } = (await import(
       timeWarpControlModulePath
     )) as TimeWarpControlModule
-    const timeWarps = [1, 10, 30, 60, 120]
+    const timeWarps = [1, 10, 30, 60, 120, 180, 240, 300, 360, 420, 480, 540]
     let timeWarpIndex = 1
     const panel = document.createElement('div')
     document.body.append(panel)
@@ -507,10 +509,10 @@ test('flings the horizontal prototype only for a recent fast release', async ({
     return { cappedRelease, fastRelease, pausedRelease, tinyRelease }
   })
 
-  expect(result.fastRelease).toBe(3)
+  expect(result.fastRelease).toBe(6)
   expect(result.pausedRelease).toBe(2)
   expect(result.tinyRelease).toBe(1)
-  expect(result.cappedRelease).toBe(4)
+  expect(result.cappedRelease).toBe(11)
 })
 
 test('keeps the horizontal track anchored while midpoint commits settle smoothly', async ({

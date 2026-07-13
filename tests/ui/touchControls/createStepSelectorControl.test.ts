@@ -65,14 +65,14 @@ describe('createStepSelectorControl', () => {
         releaseVelocityPxPerSecond: 450,
         stationaryDurationMs: 79,
       }),
-    ).toBe(1)
+    ).toBe(4)
     expect(
       getHorizontalMomentumStepCount({
         recentTravelPx: 12,
         releaseVelocityPxPerSecond: 900,
         stationaryDurationMs: 79,
       }),
-    ).toBe(2)
+    ).toBe(6)
 
     for (const params of [
       {

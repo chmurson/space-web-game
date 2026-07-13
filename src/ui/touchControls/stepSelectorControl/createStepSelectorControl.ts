@@ -42,8 +42,8 @@ export const getHorizontalMomentumStepCount = (params: {
 
   return Math.abs(params.releaseVelocityPxPerSecond) >=
     horizontalMomentumStrongVelocityPxPerSecond
-    ? 2
-    : 1
+    ? 6
+    : 4
 }
 
 export const getStepSelectorGestureDirection = (
