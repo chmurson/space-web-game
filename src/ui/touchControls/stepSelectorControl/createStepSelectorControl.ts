@@ -15,7 +15,8 @@ import type {
 import { createStepSelectorControlView } from './stepSelectorControlView'
 
 const swipeCommitDistancePx = 46
-const commitSettleDelayMs = 220
+const commitSettleDelayMs = 180
+const horizontalMomentumSettleDelayMs = 220
 const fullSwipeAnimationDistancePx = swipeCommitDistancePx
 const previewStepCount = 3
 const horizontalPreviewStepCount = 16
@@ -385,7 +386,7 @@ export const createStepSelectorControl = <ControlId extends string>(
     commitSettleTimer = window.setTimeout(() => {
       commitSettleTimer = null
       finishCommitSettle({ instantRender: true })
-    }, commitSettleDelayMs)
+    }, horizontalMomentumSettleDelayMs)
   }
 
   const getHorizontalMomentumStepCountForSession = (
