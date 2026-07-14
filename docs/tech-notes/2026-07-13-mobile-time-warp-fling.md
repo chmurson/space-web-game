@@ -8,6 +8,7 @@ The temporary horizontal `Time Warp control 2` now carries a fast recent drag br
 
 - `src/ui/touchControls/stepSelectorControl/createStepSelectorControl.ts` owns the short recent-motion sample, fling gate, constrained extra commits, and the 220ms horizontal settle.
 - `src/ui/touchControls/createTimeWarpControl.ts` opts in only the temporary horizontal prototype. The original vertical selector and trajectory selector do not use momentum.
+- The issue's one/two-step values were initial tuning. After human testing found that effect hard to distinguish, the maintainer [requested four/six-step momentum](https://github.com/chmurson/space-web-game/pull/252#issuecomment-4956344819); the focused tests lock in that updated tuning.
 - Existing preview and commit callbacks remain the authority for min/max and scenario caps. The fling loops for at most six attempts and stops at the first blocked step.
 
 ## Validation

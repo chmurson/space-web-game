@@ -495,7 +495,7 @@ test('flings the horizontal prototype only for a recent fast release', async ({
       return timeWarpIndex
     }
 
-    const fastRelease = await fling({ distanceX: -46, moveDelayMs: 60 })
+    const fastRelease = await fling({ distanceX: -46, moveDelayMs: 20 })
     timeWarpIndex = 1
     const pausedRelease = await fling({
       distanceX: -46,
@@ -509,7 +509,7 @@ test('flings the horizontal prototype only for a recent fast release', async ({
     return { cappedRelease, fastRelease, pausedRelease, tinyRelease }
   })
 
-  expect(result.fastRelease).toBe(6)
+  expect(result.fastRelease).toBe(8)
   expect(result.pausedRelease).toBe(2)
   expect(result.tinyRelease).toBe(1)
   expect(result.cappedRelease).toBe(11)

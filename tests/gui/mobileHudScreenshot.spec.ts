@@ -2967,7 +2967,7 @@ test('captures the mobile time warp touch control after reveal', async ({
   )
   await expect(
     timeWarpPrototypeControl.locator('.touch-step-selector-value-current'),
-  ).toHaveText('x15s')
+  ).toHaveText('x4m')
   await attachMobileScreenshot(
     page,
     testInfo,
