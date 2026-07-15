@@ -207,15 +207,15 @@ test('covers all DOM game surfaces with one top-level guard', async ({
     }
 
     const selectors = {
-      bottomHud: '.bottom-pill-area',
-      crashMenu: '.crash-menu',
-      inGameControls: '.in-game-controls-menu',
-      mainMenu: '.main-menu',
-      scenarioLoading: '.scenario-loading-overlay',
-      scenarioPrompt: '.scenario-prompt-backdrop',
-      topHud: '.top-bar',
-      touchControls: '.touch-controls',
-      uiSettings: '.ui-settings-dialog',
+      bottomHud: '[data-visible="false"][role="status"]',
+      crashMenu: '[data-crash-menu-action="restart"]',
+      inGameControls: '[data-in-game-action="openUiSettings"]',
+      mainMenu: '[data-main-menu-view="main"]',
+      scenarioLoading: '[data-visible="false"] > [role="status"]',
+      scenarioPrompt: '[data-prompt-mode="modal"]',
+      topHud: '[data-menu-action="toggleDebugMode"]',
+      touchControls: '[data-touch-control-dock="warp"]',
+      uiSettings: '[data-dialog-close="true"]',
     }
 
     const surfacesInsideGuard = Object.fromEntries(
