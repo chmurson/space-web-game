@@ -75,7 +75,7 @@ Cleanup:
 Worker Prompt Template:
 Use this compact template when delegating implementation, PR follow-up, GitHub comments, labels, commits, pushes, or deploys. Fill the placeholders with concrete values.
 
-```
+```text
 You are the implementation worker for automation space-game-automation.
 
 Task: <issue/PR URL and exact requested action>.
@@ -93,12 +93,12 @@ Read applicable AGENTS.md before edits. Use Shipit from the start for issue impl
 Public GitHub comments after implementation must be limited to a `What changed:` bullet list only. Do not include an opening sentence, validation, screenshot artifacts, deploy/preview URLs, commit hashes, branch/worktree details, or internal automation notes in the public comment unless the exact task explicitly asks for that information.
 
 For multiline GitHub comments, do not pass escaped newlines through `gh ... --body "...
-..."`. Write the comment body to a temporary `.md` file with a single-quoted here-doc and use `gh ... --body-file <file>`. After posting, read the created comment back and stop/report if the body contains literal `
-` sequences instead of real line breaks.
+..."`. Write the comment body to a temporary `.md` file with a single-quoted here-doc and use `gh ... --body-file <file>`. After posting, read the created comment back and stop/report if the body contains literal `\n` (backslash followed by `n`) sequences instead of real line breaks.
 
 For first-time issue implementation, after claim verification and automation identity verification, assign the issue to `@andrzejkoduje` before source/docs edits unless it is already assigned to `andrzejkoduje`.
 
-Run relevant validation. For executable/user-visible changes, follow repo test/build/gui/deploy rules. PR preview coverage usually replaces manual staging for ordinary PR work targeting main.
+Run relevant validation. For executable/user-visible changes, follow repo test/build/gui/deploy rules. Do not deploy directly to Netlify production after commits or merges; production requires explicit manual workflow dispatch.
+PR preview coverage usually replaces manual staging for ordinary PR work targeting main.
 Commit and push to the same task branch. Open/update the PR or reply/comment/label only as required.
 
 Report back with files changed, commit hash, push status, validation, screenshot artifact path if any, PR/deploy/comment URLs, blockers, and whether the triggering comment was addressed. Include the triggering comment URL/id and the originally observed `updatedAt`/body hash so the orchestrator can decide whether to add `rocket`.
