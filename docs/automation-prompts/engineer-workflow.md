@@ -29,18 +29,35 @@ Task claims:
 - Pass the token file path to the worker. Workers must verify the same claim before edits, verification commands, commits, pushes, deploys, or GitHub replies, and heartbeat during long work.
 - Release a claim only after the delegated worker finishes or the task is intentionally abandoned. Keep it active while a worker is running.
 
+Mandatory PR conversation inventory:
+- For every automation-owned open PR, fetch every page of issue-level PR Conversation comments (`GET /repos/{owner}/{repo}/issues/{number}/comments`) and every page of inline pull-request review comments (`GET /repos/{owner}/{repo}/pulls/{number}/comments`) as two independent data sources. Fetch review-thread resolution state separately through GraphQL and join it to inline comments when available. Review submissions or a merged timeline may supplement this inventory, but must not replace either required comment fetch.
+- Do not use notifications, search results, requested-review state, unresolved-thread lists, CodeRabbit summaries, or a clean checks result as evidence that either comment stream is empty. Issue-level PR comments do not appear in formal review-thread results.
+- If either required fetch fails, is truncated, or has uncertain pagination, PR triage is incomplete. Retry the failed source; if it still cannot be inventoried, stop before lower-priority issue intake or cleanup and report the affected PR and source. Never convert a fetch failure into “no actionable comments.”
+- Build a fresh per-PR inventory before applying the priority order. For every comment record `kind` (`issue_comment` or `review_comment`), id, URL, author login/account type/association, body, `createdAt`, `updatedAt`, reactions, and review-thread id/resolution when applicable. Compute a body hash from the fetched body and retain the fetch timestamp and per-source counts in the run evidence. If a normalized tool omits a required field such as `updatedAt`, fetch that source through the underlying paginated API instead of treating the missing value as unchanged.
+- Classify every inventory entry independently as `actionable`, `informational`, `automation_self`, `bot_status`, or `addressed`, with a short reason. A merged timeline may be used for chronological context only after both source inventories are complete.
+
+Human-comment actionability:
+- Treat an entry as human-authored when its author is not a Bot/App and the comment id is not a known automation-authored write. Do not infer that a comment is automated merely because it is outside a formal review or authored by the repository maintainer, a contributor, or the PR author.
+- A direct `@andrzejkoduje` mention creates an explicit triage obligation: classify the comment and record either the requested action or a concrete reason it is informational. A mention combined with a request, question, reminder, or acceptance criteria is actionable.
+- Treat concrete requests as actionable even without a mention. This includes imperatives, “could/would you” questions, requested behavior changes, unchecked task-list items, numbered acceptance criteria, and requests to inspect or respond to an earlier comment.
+- When a comment points to an earlier request (“check my last comment”), classify the reminder and the referenced comment together. The reminder remains actionable until the underlying request is addressed or explicitly declined with a recorded reason.
+- Reclassify an edited comment whenever its current `updatedAt` or body hash differs from tracking metadata. An existing `eyes` or `rocket` on an older version does not address the edit.
+- Approval, thanks, status-only notes, and already-answered questions may be informational, but record why. Human actionability is independent of checks, requested-review state, resolved formal threads, and CodeRabbit status; clean automated/formal-review signals cannot downgrade a human request.
+- Regression guard: [`PR #252 issue comment 4980190452`](https://github.com/chmurson/space-web-game/pull/252#issuecomment-4980190452) is an actionable human-authored `issue_comment`: it directly mentions `@andrzejkoduje` and contains an unchecked concrete checklist. It must be surfaced even when all inline review threads are resolved and CodeRabbit has no actionable finding. This guard is about future triage; do not assume or implement the product request while validating the workflow.
+
 PR comment tracking:
-- For actionable external/human PR comments or review comments, the orchestrator owns acknowledgement and addressed markers. Workers must not add these markers.
-- After acquiring the matching task claim and before spawning a worker, record sidecar metadata next to the token file with the triggering comment URL/id, comment kind, `updatedAt`, body hash, claim fields, status `in_progress`, and worker/run id when known.
-- After recording metadata, add the automation `eyes` reaction to the exact triggering comment using the correct GitHub reactions endpoint for that comment kind. `eyes` means read/in progress.
-- Pass the triggering comment URL/id, `updatedAt`, and body hash to the worker as part of the task scope.
-- When the worker reports success, re-fetch the triggering comment. Add the automation `rocket` reaction only if the comment `updatedAt` and body hash still match the metadata, then mark the sidecar status `addressed`. `rocket` means addressed.
-- If the triggering comment changed after `eyes`, do not add `rocket`; mark the sidecar `stale` and re-triage the new comment version.
+- For each actionable external/human issue-level PR comment or inline review comment, the orchestrator owns acknowledgement and addressed markers. Workers must not add these markers.
+- After acquiring the matching task claim and before spawning a worker, create one sidecar record per triggering comment next to the token file. Record the comment URL/id, comment kind, `updatedAt`, body hash, extracted request/checklist items, claim fields, status `in_progress`, and worker/run id when known.
+- After recording metadata, add the automation `eyes` reaction to each exact triggering comment using the endpoint for that comment kind. `eyes` means read/in progress; a reaction on one comment never acknowledges another comment.
+- Multiple related comments may be delegated to one worker, but pass every triggering comment URL/id, kind, `updatedAt`, body hash, and extracted request/checklist item to the worker as explicit task scope.
+- Require the worker’s internal report to map every extracted request/checklist item to `addressed`, `not_addressed`, or `not_applicable`, with a concise reason. Worker success on unrelated scope, a commit, or a reply does not implicitly address the triggering comment.
+- When the worker reports success, re-fetch each triggering comment from its original comment source. Add the automation `rocket` reaction only when all actionable items for that exact comment were addressed, its `updatedAt` and body hash still match the sidecar, and the reaction is applied through the correct endpoint. Then mark only that sidecar record `addressed`. `rocket` means addressed.
+- If a triggering comment changed after `eyes`, was only partially addressed, or has uncertain item coverage, do not add `rocket`; mark the sidecar `stale` or `partial` and re-triage the current comment version.
 - If the worker reports a blocker or failure, do not add `rocket`; leave `eyes`, record the blocker in metadata, and keep or create the normal concise GitHub reply when useful.
 - During PR triage, treat an automation `rocket` as addressed only when the comment has not been edited after the recorded metadata/reaction. Otherwise treat it as actionable again.
 
 Priority order:
-1. Actionable external/human PR comments on automation-owned open PRs.
+1. Actionable external/human PR comments on automation-owned open PRs, after completing both mandatory comment-source inventories.
 2. Failing required checks or deploy/preview failures on automation-owned open PRs.
 3. Unresolved review threads or CodeRabbit findings on automation-owned open PRs, treating automated findings as hypotheses.
 4. New open issues with exact `Ready for dev` and without exact `Human input wanted` and without exact `Blocked`.
@@ -81,7 +98,7 @@ You are the implementation worker for automation space-game-automation.
 Task: <issue/PR URL and exact requested action>.
 Worktree/branch: <existing or task-scoped worktree path>, branch `<branch>`. Reuse this context; do not work in the orchestrator checkout.
 Claim: kind `<pr|issue>`, id `<id>`, branch `<branch if applicable>`, token file `<token-file>`.
-Triggering comment, when applicable: `<comment URL/id>`, observed `updatedAt` `<timestamp>`, body hash `<hash>`.
+Triggering comments, when applicable: `<one record per comment: URL/id, kind, observed updatedAt, body hash, and extracted request/checklist items>`.
 
 Before source/docs edits, verification commands, staging, commits, pushes, deploys, labels, or GitHub replies, verify the claim:
 `npm run claim:task -- verify --kind <kind> --id <id> [--branch <branch>] --token-file <token-file>`
@@ -101,20 +118,21 @@ Run relevant validation. For executable/user-visible changes, follow repo test/b
 PR preview coverage usually replaces manual staging for ordinary PR work targeting main.
 Commit and push to the same task branch. Open/update the PR or reply/comment/label only as required.
 
-Report back with files changed, commit hash, push status, validation, screenshot artifact path if any, PR/deploy/comment URLs, blockers, and whether the triggering comment was addressed. Include the triggering comment URL/id and the originally observed `updatedAt`/body hash so the orchestrator can decide whether to add `rocket`. Include a brief plain-language summary of what changed and why it matters. If the summary is omitted, obtain human approval, record the approval and reason in transient Shipit state, and mention the omission in the final report.
+Report back with files changed, commit hash, push status, validation, screenshot artifact path if any, PR/deploy/comment URLs, and blockers. For each triggering comment, include its URL/id/kind, originally observed `updatedAt`/body hash, and a per-request/checklist-item `addressed`, `not_addressed`, or `not_applicable` result so the orchestrator can independently decide whether to add `rocket`. Include a brief plain-language summary of what changed and why it matters. If the summary is omitted, obtain human approval, record the approval and reason in transient Shipit state, and mention the omission in the final report.
 ```
 
 ## Run Checklist
 
 1. Verify generated worktree freshness and move to current `origin/main`.
 2. Read automation memory, then inspect automation-owned open PRs and branches/worktrees.
-3. Apply the priority order. Claim only the first actionable task this run can safely own.
-4. For a PR candidate, acquire `pr` claim with branch, record triggering-comment metadata, add the automation `eyes` reaction, then delegate using the Worker Prompt Template.
-5. If no PR follow-up is claimable, inspect exact-label `Ready for dev` issues without `Human input wanted` or `Blocked`, reading body and comments before choosing. Use `Human input wanted` for unclear scope, conflicting comments, splitting needs, or product judgment; use `Blocked` for unresolved dependencies or external conditions.
-6. For a selected issue, acquire `issue` claim and delegate implementation in a task-scoped worktree. The worker must verify the claim, verify automation identity, assign the issue to `@andrzejkoduje` if this is the first implementation start and it is not already assigned to `andrzejkoduje`, and use Shipit. Before product-code changes, the worker must mark the issue in progress using the repo's current tracking mechanism and record relevant scope decisions and uncertainty in transient Shipit state or task notes. Then implement, validate, commit, push, and open/update a PR.
-7. For eligible-but-unsuitable issues, acquire an issue claim and delegate only the concise skip comment plus the appropriate `Human input wanted` or `Blocked` label if no equivalent explanation/label exists.
-8. If no implementation work is suitable, classify a small batch of unclassified issues as `Ready for dev`, `Human input wanted`, or `Blocked` only when defensible after reading full context.
-9. After worker completion, add the automation `rocket` reaction and mark metadata `addressed` only when the worker succeeded and the triggering comment is unchanged; otherwise mark stale/blocker as appropriate. Release claims acquired by this run after completion or intentional abandonment. Keep claims active while workers run.
-10. Perform conservative cleanup only when safety is unambiguous.
-11. Update automation memory with concise outcome and current run time.
-12. Final report: start with the current run-completion timestamp in ISO 8601 format (including timezone), then report freshness, task claim outcome, selected issue/PR, branch/worktree/PR, whether context was reused, worker used, validation, deploy/preview URL if applicable, comments/labels, cleanup, and blockers. Include a brief plain-language summary of what changed and why it matters. If the summary is omitted, obtain human approval, record the approval and reason in transient Shipit state, and mention the omission in the final report.
+3. For every automation-owned open PR, independently fetch all issue-level PR comments and all inline review comments, fetch review-thread state, and build the classified inventory. Record source counts and failures; do not advance if either required source is incomplete.
+4. Apply the priority order to the classified inventories. Claim only the first actionable task this run can safely own.
+5. For a PR candidate, acquire `pr` claim with branch, record one sidecar per triggering comment, add `eyes` to each exact comment, then delegate using the Worker Prompt Template.
+6. If no PR follow-up is claimable, inspect exact-label `Ready for dev` issues without `Human input wanted` or `Blocked`, reading body and comments before choosing. Use `Human input wanted` for unclear scope, conflicting comments, splitting needs, or product judgment; use `Blocked` for unresolved dependencies or external conditions.
+7. For a selected issue, acquire `issue` claim and delegate implementation in a task-scoped worktree. The worker must verify the claim, verify automation identity, assign the issue to `@andrzejkoduje` if this is the first implementation start and it is not already assigned to `andrzejkoduje`, and use Shipit. Before product-code changes, the worker must mark the issue in progress using the repo's current tracking mechanism and record relevant scope decisions and uncertainty in transient Shipit state or task notes. Then implement, validate, commit, push, and open/update a PR.
+8. For eligible-but-unsuitable issues, acquire an issue claim and delegate only the concise skip comment plus the appropriate `Human input wanted` or `Blocked` label if no equivalent explanation/label exists.
+9. If no implementation work is suitable, classify a small batch of unclassified issues as `Ready for dev`, `Human input wanted`, or `Blocked` only when defensible after reading full context.
+10. After worker completion, re-fetch every triggering comment from its original source. Add `rocket` and mark only matching sidecars `addressed` when all items were handled and the comment version is unchanged; otherwise mark stale/partial/blocker as appropriate. Release claims acquired by this run after completion or intentional abandonment. Keep claims active while workers run.
+11. Perform conservative cleanup only when safety is unambiguous.
+12. Update automation memory with concise outcome and current run time.
+13. Final report: start with the current run-completion timestamp in ISO 8601 format (including timezone), then report freshness, task claim outcome, per-PR issue-comment/review-comment inventory counts or failures, selected issue/PR, branch/worktree/PR, whether context was reused, worker used, validation, deploy/preview URL if applicable, comments/labels, cleanup, and blockers. Include a brief plain-language summary of what changed and why it matters. If the summary is omitted, obtain human approval, record the approval and reason in transient Shipit state, and mention the omission in the final report.
