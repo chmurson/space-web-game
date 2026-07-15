@@ -715,7 +715,146 @@ describe('createTrajectoryPredictionRuntime', () => {
     }
   })
 
-  it('does not queue far work for coasting drift or turn-only controls', () => {
+  it('queues the completed burn state while active far work is still running', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      setTimeWarp,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    setTimeWarp(60)
+
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      controls: { ...state().controls, main: 1 },
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    setState({
+      ...state(),
+      controls: idleControls(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 30, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(farWorker.clients[0]?.requests).toHaveLength(1)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      pendingFar: true,
+      refreshReason: 'spacecraft-change',
+    })
+
+    farWorker.completeRequest(0, 0)
+    expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    expect(predictionRuntime.getDiagnostics().farCalculationSampleCount).toBe(0)
+    expect(farWorker.getRequest(0, 1).state).toMatchObject({
+      controls: idleControls(),
+      spacecraft: {
+        velocity: { x: 30, y: 0 },
+      },
+    })
+
+    farWorker.completeRequest(0, 1)
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 9_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 27_010, y: 0 },
+        { x: 36_010, y: 0 },
+      ],
+    )
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farVisible: 'current',
+      pendingFar: false,
+    })
+  })
+
+  it('refreshes coasting far work after its cooldown despite continuous drift refreshes', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      setTimeWarp,
+      state,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig({
+        ...createLongHorizonPredictionConfig(),
+        horizonSeconds: 48 * 3_600,
+        refreshInterval: 0.4,
+      })
+      setTimeWarp(3_600)
+
+      predictionRuntime.refresh(getOptions())
+      farWorker.completeRequest(0, 0)
+      expect(
+        predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds,
+      ).toBe(1)
+
+      now = 500
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          position: { x: 5_010, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0.5, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+        'spacecraft-change',
+      )
+      expect(farWorker.clients[0]?.requests).toHaveLength(1)
+
+      now = 1_100
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          position: { x: 10_010, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0.6, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+        'spacecraft-change',
+      )
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+
+      now = 1_200
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          position: { x: 15_010, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0.1, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().pendingFar).toBe(false)
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('coalesces immediate far work for coasting drift with turn-only controls', () => {
     const {
       farWorker,
       getOptions,
@@ -744,7 +883,9 @@ describe('createTrajectoryPredictionRuntime', () => {
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
     expect(farWorker.clients[0]?.requests).toHaveLength(1)
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
-      farCoalescingSkippedCount: 0,
+      farCoalescingLastSkipReason: 'cooldown',
+      farCoalescingLastSkipStage: 'request',
+      farCoalescingSkippedCount: 1,
       farVisible: 'retained-stale',
       refreshReason: 'spacecraft-change',
     })
@@ -760,7 +901,7 @@ describe('createTrajectoryPredictionRuntime', () => {
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
     expect(farWorker.clients[0]?.requests).toHaveLength(1)
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
-      farCoalescingSkippedCount: 0,
+      farCoalescingSkippedCount: 2,
       refreshReason: 'body-state-change',
     })
   })

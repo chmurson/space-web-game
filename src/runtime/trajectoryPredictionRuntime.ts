@@ -665,6 +665,7 @@ export const createTrajectoryPredictionRuntime = (
     null
   let farCoalescingLastSkipStage: TrajectoryPredictionFarCoalescingSkipStage | null =
     null
+  let predictionInputHadActiveThrust = false
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
   let previousDiagnosticEventTimeMs: number | null = null
@@ -720,16 +721,23 @@ export const createTrajectoryPredictionRuntime = (
   const getFarRequestCoalescingMinIntervalSeconds = (
     options: RefreshTrajectoryPredictionOptions,
     reason: TrajectoryPredictionRefreshReason,
+    activeThrustEnded: boolean,
   ): number | null | false => {
-    if (forcesFarPredictionRefresh(reason)) {
+    if (activeThrustEnded || forcesFarPredictionRefresh(reason)) {
       return null
     }
     if (isActiveThrustControl(options.state.controls)) {
       return getActiveThrustCoalescingMinIntervalSeconds(options)
     }
-    return reason === 'timed-refresh'
-      ? getFarCoalescingMinIntervalSeconds(options)
-      : false
+    const isCoastingDriftRefresh =
+      reason === 'spacecraft-change' || reason === 'body-state-change'
+    if (isCoastingDriftRefresh && activeFarPredictionRequest) {
+      return false
+    }
+    if (reason === 'timed-refresh' || isCoastingDriftRefresh) {
+      return getFarCoalescingMinIntervalSeconds(options)
+    }
+    return false
   }
 
   const updateFarCoalescingDiagnostics = (
@@ -1361,6 +1369,13 @@ export const createTrajectoryPredictionRuntime = (
         )
       : predictionConfig
     const previousInputKeyParts = predictionInputKeyParts
+    const activeThrustEnded =
+      previousInputKeyParts !== null &&
+      predictionInputHadActiveThrust &&
+      !isActiveThrustControl(options.state.controls)
+    if (activeThrustEnded) {
+      farSemanticGeneration += 1
+    }
     const nearPrediction = predictTierWithTiming(
       options,
       target,
@@ -1371,7 +1386,11 @@ export const createTrajectoryPredictionRuntime = (
     nearPredictionTier = nearTier
     let replacedPendingFar = false
     const farRequestCoalescingMinIntervalSeconds =
-      getFarRequestCoalescingMinIntervalSeconds(options, reason)
+      getFarRequestCoalescingMinIntervalSeconds(
+        options,
+        reason,
+        activeThrustEnded,
+      )
 
     if (!splitPredictionHorizon) {
       farPredictionTier = null
@@ -1399,6 +1418,9 @@ export const createTrajectoryPredictionRuntime = (
     }
 
     predictionInputKeyParts = nextInputKeyParts
+    predictionInputHadActiveThrust = isActiveThrustControl(
+      options.state.controls,
+    )
     applyPredictionTier({
       changedParts: getChangedPredictionInputParts(
         previousInputKeyParts,
