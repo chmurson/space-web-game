@@ -7,7 +7,6 @@ import {
 } from './components/InGameControlsMenuSurface'
 import { createPreactUiSurface } from './createPreactUiSurface'
 import { formatTrajectoryHorizonDuration } from './formatters'
-import { installNativeTouchZoomSuppression } from './nativeTouchZoomSuppression'
 
 export type InGameControlsMenu = {
   close: () => void
@@ -122,7 +121,6 @@ export const createInGameControlsMenu = (options: {
   syncRenderState()
   renderMenu()
   const root = surface.element
-  installNativeTouchZoomSuppression(root)
   const button = root.querySelector<HTMLButtonElement>(
     '.in-game-controls-menu-button',
   )
