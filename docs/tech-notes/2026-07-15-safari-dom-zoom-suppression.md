@@ -6,11 +6,14 @@ Issue: https://github.com/chmurson/space-web-game/issues/256
 
 - Installed the existing native touch zoom suppression policy once on the top-level `#app` element during startup.
 - Removed the repeated allowlist-style installation from selected HUD, prompt, menu, and dialog roots.
+- Added a Safari fallback for rapid repeated single-finger taps on the same native button, while preserving both button activations.
 - Updated focused mobile GUI coverage to verify that all representative DOM game surfaces live under the guarded app root, browser zoom defaults are prevented, and app-owned event propagation and canvas touch behavior remain available.
 
 ## Why
 
 The previous implementation guarded only selected gameplay HUD and overlay roots. DOM-rendered surfaces outside that list, including the main menu and loading UI, could still begin Safari pinch or double-tap browser zoom and change the viewport. The app is a fixed, full-screen game with no intended native page scrolling or zooming, so its single root is the narrowest complete ownership boundary.
+
+Maintainer testing then confirmed that pinch zoom was suppressed, but Safari could still zoom after rapid taps on the prediction-horizon increase button. That button already uses `touch-action: manipulation`; Safari's touch-generated double tap does not reliably reach the existing cancelable `dblclick` fallback. The app now recognizes a second completed single-finger tap on the same button within Safari's 350 ms double-tap window, prevents only that `touchend` default, and calls the button's native `click()` method so the second requested action still runs.
 
 ## Key Files and Ownership
 
@@ -24,19 +27,22 @@ The previous implementation guarded only selected gameplay HUD and overlay roots
 - Kept the existing viewport policy in `index.html` and the Safari `gesture*`, multi-touch, and `dblclick` fallbacks in the shared helper.
 - Applied `touch-action: none` at `#app`, which owns the entire non-scrolling game surface, rather than maintaining a list of current UI roots.
 - Continued to call only `preventDefault()` for browser-owned zoom behavior; events still propagate to app-owned taps, drags, selectors, reveal controls, and camera handlers.
+- Limited the double-tap fallback to the same native button and reset its state around multi-touch, canceled, already-handled, or non-button touch sequences.
+- Used the native `HTMLButtonElement.click()` behavior after canceling the second tap, matching WebKit's documented fast-tap pattern without adding a parallel control-action API.
 - Kept the canvas-specific `touch-action: none` policy unchanged.
 - Added no gesture abstraction or dependency.
 
 ## Validation
 
-- `npx playwright test --config playwright.config.ts tests/gui/mobileTouchZoomSuppression.spec.ts --project=mobile-chromium`: passed 2 tests.
-- `npm run test:gui`: passed all 57 mobile Chromium GUI tests.
+- `npx playwright test --config playwright.config.ts tests/gui/mobileTouchZoomSuppression.spec.ts --project=mobile-chromium`: passed 3 tests.
+- `npm run test:gui`: passed all 58 mobile Chromium GUI tests.
 - `npm run build`: passed; Vite reported the existing large-chunk warning.
 - `npx biome check src/main.ts src/ui/createInGameControlsMenu.ts src/ui/createUiSettingsDialog.ts src/ui/overlayUI/createOverlayUi.ts tests/gui/mobileTouchZoomSuppression.spec.ts docs/tech-notes/2026-07-15-safari-dom-zoom-suppression.md`: passed.
 - `git diff --check`: passed.
 - Inspected the following generated screenshots and found the expected coherent UI state with no visual regression:
   - `tmp/playwright-results/mobileHudScreenshot-captur-92051-th-world-visuals-suppressed-mobile-chromium/mobile-main-menu.png`
   - `tmp/playwright-results/mobileHudScreenshot-captur-144e3-menu-open-over-gameplay-HUD-mobile-chromium/mobile-in-game-controls-menu.png`
+  - `tmp/playwright-results/mobileHudScreenshot-captur-6fc5d--touch-control-after-reveal-mobile-chromium/mobile-trajectory-horizon-control.png`
   - `tmp/playwright-results/mobileHudScreenshot-captur-c8a0e-pened-from-in-game-controls-mobile-chromium/mobile-ui-settings-dialog.png`
   - `tmp/playwright-results/mobileHudScreenshot-captur-37d0d-tor-side-panel-after-reveal-mobile-chromium/mobile-target-selector.png`
   - `tmp/playwright-results/mobileHudScreenshot-captur-51097--touch-control-after-reveal-mobile-chromium/mobile-time-warp-control-dragging.png`

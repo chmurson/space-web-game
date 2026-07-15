@@ -90,6 +90,106 @@ test('suppresses browser zoom from DOM game UI without swallowing app events', a
   })
 })
 
+test('prevents rapid repeated button taps while preserving button activation', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>(
+      '[data-in-game-action="increaseCoastHorizon"]',
+    )
+    if (!button || button.disabled) {
+      throw new Error('Missing enabled prediction-horizon increase button')
+    }
+
+    let clickCount = 0
+    let nextTouchIdentifier = 1
+    button.addEventListener('click', () => {
+      clickCount += 1
+    })
+
+    const createTouch = () =>
+      new Touch({
+        clientX: 40,
+        clientY: 40,
+        identifier: nextTouchIdentifier++,
+        target: button,
+      })
+
+    const dispatchTouch = (
+      type: 'touchend' | 'touchstart',
+      activeTouches: Touch[],
+      changedTouches: Touch[],
+    ) => {
+      const event = new TouchEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        changedTouches,
+        targetTouches: activeTouches,
+        touches: activeTouches,
+      })
+      button.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+
+    const dispatchSingleTap = () => {
+      const touch = createTouch()
+      const touchStartPrevented = dispatchTouch('touchstart', [touch], [touch])
+      const touchEndPrevented = dispatchTouch('touchend', [], [touch])
+      return { touchEndPrevented, touchStartPrevented }
+    }
+
+    const firstTap = dispatchSingleTap()
+    button.click()
+    const secondTap = dispatchSingleTap()
+    const clickCountAfterDoubleTap = clickCount
+
+    const multiTouches = [createTouch(), createTouch()]
+    const multiTouchStartPrevented = dispatchTouch(
+      'touchstart',
+      multiTouches,
+      multiTouches,
+    )
+    const multiTouchEndPrevented = dispatchTouch('touchend', [], multiTouches)
+
+    const tapAfterMultiTouch = dispatchSingleTap()
+    button.click()
+
+    return {
+      clickCountAfterDoubleTap,
+      finalClickCount: clickCount,
+      firstTap,
+      multiTouchEndPrevented,
+      multiTouchStartPrevented,
+      secondTap,
+      tapAfterMultiTouch,
+      touchAction: getComputedStyle(button).touchAction,
+    }
+  })
+
+  expect(result).toEqual({
+    clickCountAfterDoubleTap: 2,
+    finalClickCount: 3,
+    firstTap: {
+      touchEndPrevented: false,
+      touchStartPrevented: false,
+    },
+    multiTouchEndPrevented: true,
+    multiTouchStartPrevented: true,
+    secondTap: {
+      touchEndPrevented: true,
+      touchStartPrevented: false,
+    },
+    tapAfterMultiTouch: {
+      touchEndPrevented: false,
+      touchStartPrevented: false,
+    },
+    touchAction: 'manipulation',
+  })
+})
+
 test('covers all DOM game surfaces with one top-level guard', async ({
   page,
 }) => {
