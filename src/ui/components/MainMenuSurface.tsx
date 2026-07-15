@@ -699,6 +699,7 @@ export const MainMenuSurface = ({
             action="load-last"
             actionAttribute={mainMenuActionAttribute}
             disabled={!loadGameAvailable}
+            variant="secondary"
             onClick={onLoadGame}
           >
             Load last game
@@ -706,6 +707,7 @@ export const MainMenuSurface = ({
           <MenuActionButton
             action="load-any-menu"
             actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
             onClick={onRecentSnapshotMenu}
           >
             Load any game
@@ -713,6 +715,7 @@ export const MainMenuSurface = ({
           <MenuActionButton
             action="load-back"
             actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
             onClick={onLoadGameBack}
           >
             Back
@@ -764,6 +767,7 @@ export const MainMenuSurface = ({
               action="load-any"
               actionAttribute={mainMenuActionAttribute}
               disabled={!selectedRecentSnapshotId}
+              variant="secondary"
               onClick={onRecentSnapshotLoad}
             >
               Load
@@ -772,6 +776,7 @@ export const MainMenuSurface = ({
           <MenuActionButton
             action="load-back"
             actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
             onClick={onLoadGameBack}
           >
             Back
@@ -804,6 +809,7 @@ export const MainMenuSurface = ({
           <MenuActionButton
             action="reach-moon-highscores"
             actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
             onClick={onReachMoonHighscores}
           >
             Highscores

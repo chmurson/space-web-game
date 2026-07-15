@@ -111,6 +111,14 @@ components:
     typography: "{typography.control}"
     rounded: "{rounded.panel}"
     padding: "15px 18px"
+  menu-action-secondary:
+    backgroundColor: "{colors.surface-panel}"
+    textColor: "{colors.text-panel}"
+    typography: "{typography.control}"
+    rounded: "{rounded.panel}"
+    padding: "15px 18px"
+  menu-action-disabled:
+    opacity: 0.5
   menu-panel:
     backgroundColor: "{colors.surface-panel}"
     textColor: "{colors.text-panel}"
@@ -255,7 +263,7 @@ Keep shapes stable across hover, active, disabled, and focused states. Hover or 
 
 **Menus and dialogs:** Build main menu, crash menu, top menu, in-game controls, and settings dialog from the existing Preact surfaces under `src/ui/components/` where possible. Use `MenuSurfacePrimitives.tsx` for menu panels, copy, action groups, and buttons.
 
-**Buttons and controls:** Use real buttons with `type="button"`, visible `:focus-visible` outlines, clear labels, and `touch-action: manipulation` where appropriate. Primary actions use cyan glass gradients. Danger actions use rose/dark red treatment. Steppers and switches should keep stable dimensions.
+**Buttons and controls:** Use real buttons with `type="button"`, visible `:focus-visible` outlines, clear labels, and `touch-action: manipulation` where appropriate. Primary menu actions use cyan glass gradients. Secondary main-menu actions use the neutral dark-glass treatment with full text contrast so they remain visibly available. Disabled menu actions dim the full control regardless of variant. Danger actions use rose/dark red treatment. Steppers and switches should keep stable dimensions.
 
 **HUD and telemetry:** Keep telemetry compact, mostly non-interactive, and readable while the canvas moves. Use icons or short labels before long text. Use ellipsis or visually hidden target text on small screens rather than widening the top bar.
 

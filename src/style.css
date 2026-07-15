@@ -735,10 +735,6 @@ canvas {
     border-color 120ms ease;
 }
 
-.menu-actions button:disabled {
-  color: rgba(240, 249, 255, 0.42);
-}
-
 .menu-actions button[hidden] {
   display: none;
 }
@@ -751,11 +747,6 @@ canvas {
     var(--ui-glass-control-bg);
 }
 
-.menu-actions button.menu-action-secondary,
-.menu-actions button.main-menu-action-secondary {
-  color: rgba(226, 232, 240, 0.78);
-}
-
 .menu-actions button.menu-action-danger-primary,
 .menu-actions button.crash-menu-primary-action {
   border-color: rgba(251, 113, 133, 0.36);
@@ -765,6 +756,11 @@ canvas {
   box-shadow:
     0 0 0 1px rgba(251, 113, 133, 0.12),
     0 16px 36px rgba(127, 29, 29, 0.28);
+}
+
+.menu-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .menu-actions button:focus-visible {

@@ -188,7 +188,43 @@ test('captures the mobile main menu HUD with world visuals suppressed', async ({
 }, testInfo) => {
   await openReachMoonMainMenu(page)
 
+  await expect(
+    page.locator(
+      '.main-menu .menu-action:not(.menu-action-primary):not(.menu-action-secondary)',
+    ),
+  ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Tutorial' })).toHaveClass(
+    /menu-action-primary/,
+  )
+  await expect(page.getByRole('button', { name: 'Free Roam' })).toHaveClass(
+    /menu-action-secondary/,
+  )
+  await expect(page.getByRole('button', { name: 'Free Roam' })).toHaveCSS(
+    'opacity',
+    '1',
+  )
   await attachMobileScreenshot(page, testInfo, 'mobile-main-menu')
+
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  const loadLastButton = page.getByRole('button', { name: 'Load last game' })
+  await expect(loadLastButton).toBeDisabled()
+  await expect(loadLastButton).toHaveClass(/menu-action-secondary/)
+  await expect(loadLastButton).toHaveCSS('opacity', '0.5')
+  await expect(page.getByRole('button', { name: 'Load any game' })).toHaveClass(
+    /menu-action-secondary/,
+  )
+  await attachMobileScreenshot(page, testInfo, 'mobile-main-menu-load-disabled')
+
+  await page.getByRole('button', { name: 'Load any game' }).click()
+  const loadButton = page.getByRole('button', { name: 'Load', exact: true })
+  await expect(loadButton).toBeDisabled()
+  await expect(loadButton).toHaveClass(/menu-action-secondary/)
+  await expect(loadButton).toHaveCSS('opacity', '0.5')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-main-menu-snapshot-load-disabled',
+  )
 })
 
 test('captures the mobile Reach the Moon menu transition', async ({
