@@ -2,6 +2,7 @@ import './swipeTimeWarpControl.css'
 import type {
   TimeWarpControl,
   TimeWarpControlOptions,
+  TimeWarpGesturePoint,
   TimeWarpGestureSession,
 } from '../timeWarpControlTypes'
 import { createTimeWarpFeedbackModel } from './timeWarpFeedbackModel'
@@ -52,10 +53,14 @@ export const createSwipeTimeWarpControl = (
     feedbackView.render(presentTimeWarpFeedback(feedbackModel.cancelPreview()))
   }
 
-  const beginGesture = (touch: Touch): ActiveTimeWarpGestureSession => ({
+  const beginGesture = (
+    touch: TimeWarpGesturePoint,
+  ): ActiveTimeWarpGestureSession => ({
+    axis: 'horizontal',
     committedStepCount: 0,
     kind: 'step-selector',
     controlId: 'time-warp',
+    stepAnchorX: touch.clientX,
     stepAnchorY: touch.clientY,
     startX: touch.clientX,
     startY: touch.clientY,
@@ -63,7 +68,7 @@ export const createSwipeTimeWarpControl = (
   })
 
   const updateGesture = (
-    touch: Touch,
+    touch: TimeWarpGesturePoint,
     session: ActiveTimeWarpGestureSession,
   ): ActiveTimeWarpGestureSession => {
     if (
@@ -134,6 +139,7 @@ export const createSwipeTimeWarpControl = (
       setSession(nextSession)
       return nextSession
     },
+    element: timeWarpFeedback,
     ownsTouch(session: TimeWarpGestureSession, touchId: number) {
       return (
         session.kind === 'step-selector' &&
@@ -149,7 +155,10 @@ export const createSwipeTimeWarpControl = (
     },
     setSession,
     syncUi,
-    updateGesture(touch: Touch, session: ActiveTimeWarpGestureSession) {
+    updateGesture(
+      touch: TimeWarpGesturePoint,
+      session: ActiveTimeWarpGestureSession,
+    ) {
       const nextSession = updateGesture(touch, session)
       setSession(nextSession)
       return nextSession

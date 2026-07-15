@@ -5,9 +5,11 @@ import {
 } from './stepSelectorControlModel'
 import { presentStepSelectorControl } from './stepSelectorControlPresenter'
 import type {
+  StepSelectorAxis,
   StepSelectorControl,
   StepSelectorControlOptions,
   StepSelectorDirection,
+  StepSelectorGesturePoint,
   StepSelectorGestureSession,
 } from './stepSelectorControlTypes'
 import { createStepSelectorControlView } from './stepSelectorControlView'
@@ -16,36 +18,72 @@ const swipeCommitDistancePx = 46
 const commitSettleDelayMs = 180
 const fullSwipeAnimationDistancePx = swipeCommitDistancePx
 const previewStepCount = 3
+const horizontalPreviewStepCount = 16
 
 export const getStepSelectorGestureDirection = (
-  deltaY: number,
+  gestureDelta: number,
 ): StepSelectorDirection | null =>
-  deltaY < 0 ? 'increase' : deltaY > 0 ? 'decrease' : null
+  gestureDelta < 0 ? 'increase' : gestureDelta > 0 ? 'decrease' : null
 
-export const getStepSelectorGestureCommittedStepCount = (deltaY: number) =>
-  Math.floor(Math.abs(deltaY) / swipeCommitDistancePx)
+export const getStepSelectorGestureCommittedStepCount = (
+  gestureDelta: number,
+) => Math.floor(Math.abs(gestureDelta) / swipeCommitDistancePx + 0.5)
 
-export const getStepSelectorReleaseWillCommit = (deltaY: number) =>
-  Math.abs(deltaY) > swipeCommitDistancePx / 2
+export const getStepSelectorReleaseWillCommit = (gestureDelta: number) =>
+  Math.abs(gestureDelta) > swipeCommitDistancePx / 2
+
+const getStepSelectorFullStepCount = (gestureDelta: number) =>
+  Math.floor(Math.abs(gestureDelta) / swipeCommitDistancePx)
+
+export const getStepSelectorGestureDelta = (
+  axis: StepSelectorAxis,
+  point: Pick<StepSelectorGesturePoint, 'clientX' | 'clientY'>,
+  anchor: { x: number; y: number },
+) =>
+  axis === 'horizontal' ? point.clientX - anchor.x : point.clientY - anchor.y
+
+const getStepSelectorConsumedAnchorDelta = (
+  axis: StepSelectorAxis,
+  direction: StepSelectorDirection,
+) => {
+  if (axis === 'horizontal') {
+    return direction === 'increase'
+      ? -swipeCommitDistancePx
+      : swipeCommitDistancePx
+  }
+
+  return direction === 'increase'
+    ? -swipeCommitDistancePx
+    : swipeCommitDistancePx
+}
 
 export const getStepSelectorGesturePreviewDeltaY = (
   currentY: number,
   stepAnchorY: number,
-) => {
-  const previewDeltaY = currentY - stepAnchorY
-  if (previewDeltaY === 0) {
-    return 0
-  }
+) =>
+  getStepSelectorGestureDelta(
+    'vertical',
+    { clientX: 0, clientY: currentY },
+    { x: 0, y: stepAnchorY },
+  )
 
-  return previewDeltaY
+const trimStepsAfterFirstBlocked = <Step extends { canCommit: boolean }>(
+  steps: Step[],
+) => {
+  const firstBlockedIndex = steps.findIndex((step) => !step.canCommit)
+  return firstBlockedIndex === -1
+    ? steps
+    : steps.slice(0, firstBlockedIndex + 1)
 }
 
 export const createStepSelectorControl = <ControlId extends string>(
   options: StepSelectorControlOptions<ControlId>,
 ): StepSelectorControl<ControlId> => {
+  const axis = options.axis ?? 'vertical'
   const model = createStepSelectorControlModel()
   const view = createStepSelectorControlView({
     ariaLabel: options.ariaLabel,
+    axis,
     className: options.className,
   })
   const parentElement = options.container ?? options.panel
@@ -62,11 +100,24 @@ export const createStepSelectorControl = <ControlId extends string>(
     options.onSessionChange(session)
   }
 
-  const getRuntimeSnapshot = (): StepSelectorRuntimeSnapshot => ({
-    currentValue: options.getCurrentValue(),
-    decreaseSteps: options.getStepPreviews('decrease', previewStepCount),
-    increaseSteps: options.getStepPreviews('increase', previewStepCount),
-  })
+  const getRuntimeSnapshot = (): StepSelectorRuntimeSnapshot => {
+    const stepCount =
+      axis === 'horizontal' ? horizontalPreviewStepCount : previewStepCount
+    const decreaseSteps = options.getStepPreviews('decrease', stepCount)
+    const increaseSteps = options.getStepPreviews('increase', stepCount)
+
+    return {
+      currentValue: options.getCurrentValue(),
+      decreaseSteps:
+        axis === 'horizontal'
+          ? trimStepsAfterFirstBlocked(decreaseSteps)
+          : decreaseSteps,
+      increaseSteps:
+        axis === 'horizontal'
+          ? trimStepsAfterFirstBlocked(increaseSteps)
+          : increaseSteps,
+    }
+  }
 
   const renderControlSnapshot = (
     snapshot: ReturnType<typeof model.getSnapshot>,
@@ -81,6 +132,7 @@ export const createStepSelectorControl = <ControlId extends string>(
 
     view.render(
       presentStepSelectorControl(snapshot, {
+        axis,
         formatValue: options.formatValue,
       }),
     )
@@ -139,8 +191,48 @@ export const createStepSelectorControl = <ControlId extends string>(
     model.startGesture()
   }
 
+  const commitHorizontalGestureSteps = (
+    gestureDelta: number,
+    session: StepSelectorGestureSession<ControlId>,
+  ): StepSelectorGestureSession<ControlId> => {
+    const direction = getStepSelectorGestureDirection(gestureDelta)
+    const crossedStepCount =
+      getStepSelectorGestureCommittedStepCount(gestureDelta)
+    let desiredStepOffset = 0
+    if (direction === 'increase') {
+      desiredStepOffset = crossedStepCount
+    } else if (direction === 'decrease') {
+      desiredStepOffset = -crossedStepCount
+    }
+
+    let committedStepCount = session.committedStepCount
+    while (committedStepCount !== desiredStepOffset) {
+      const commitDirection: StepSelectorDirection =
+        committedStepCount < desiredStepOffset ? 'increase' : 'decrease'
+      const runtimeSnapshot = getRuntimeSnapshot()
+      const target = getNearStep(runtimeSnapshot, commitDirection)
+      if (!target?.canCommit) {
+        break
+      }
+
+      options.commitStep(commitDirection)
+      const nextRuntimeSnapshot = getRuntimeSnapshot()
+      if (nextRuntimeSnapshot.currentValue === runtimeSnapshot.currentValue) {
+        break
+      }
+
+      model.setRuntimeSnapshot(nextRuntimeSnapshot)
+      committedStepCount += commitDirection === 'increase' ? 1 : -1
+    }
+
+    return {
+      ...session,
+      committedStepCount,
+    }
+  }
+
   const commitContinuousGestureSteps = (
-    currentY: number,
+    point: StepSelectorGesturePoint,
     session: StepSelectorGestureSession<ControlId>,
   ): {
     didCommit: boolean
@@ -150,12 +242,22 @@ export const createStepSelectorControl = <ControlId extends string>(
     let nextSession = session
 
     while (
-      getStepSelectorGestureCommittedStepCount(
-        currentY - nextSession.stepAnchorY,
+      getStepSelectorFullStepCount(
+        getStepSelectorGestureDelta(nextSession.axis, point, {
+          x: nextSession.stepAnchorX,
+          y: nextSession.stepAnchorY,
+        }),
       ) > 0
     ) {
-      const deltaY = currentY - nextSession.stepAnchorY
-      const direction = getStepSelectorGestureDirection(deltaY)
+      const gestureDelta = getStepSelectorGestureDelta(
+        nextSession.axis,
+        point,
+        {
+          x: nextSession.stepAnchorX,
+          y: nextSession.stepAnchorY,
+        },
+      )
+      const direction = getStepSelectorGestureDirection(gestureDelta)
       if (!direction) {
         break
       }
@@ -174,14 +276,19 @@ export const createStepSelectorControl = <ControlId extends string>(
 
       syncCommittedRuntimeSnapshot(nextRuntimeSnapshot)
       didCommit = true
-      const consumedDistance =
-        direction === 'increase'
-          ? -swipeCommitDistancePx
-          : swipeCommitDistancePx
+      const consumedDistance = getStepSelectorConsumedAnchorDelta(
+        nextSession.axis,
+        direction,
+      )
       nextSession = {
         ...nextSession,
         committedStepCount: nextSession.committedStepCount + 1,
-        stepAnchorY: nextSession.stepAnchorY + consumedDistance,
+        stepAnchorX:
+          nextSession.stepAnchorX +
+          (nextSession.axis === 'horizontal' ? consumedDistance : 0),
+        stepAnchorY:
+          nextSession.stepAnchorY +
+          (nextSession.axis === 'vertical' ? consumedDistance : 0),
       }
     }
 
@@ -190,7 +297,10 @@ export const createStepSelectorControl = <ControlId extends string>(
 
   const updateGesturePreview = (
     deltaY: number,
-    params?: { instantRender?: boolean },
+    params?: {
+      instantRender?: boolean
+      visualStepOffset?: number
+    },
   ) => {
     const distance = Math.abs(deltaY)
     const direction: StepSelectorDirection | null =
@@ -199,10 +309,12 @@ export const createStepSelectorControl = <ControlId extends string>(
     const progress = Math.min(1, distance / fullSwipeAnimationDistancePx)
     const runtimeSnapshot = model.getSnapshot().runtimeSnapshot
     const target = direction ? getNearStep(runtimeSnapshot, direction) : null
+    const crossedReleaseThreshold =
+      axis === 'horizontal'
+        ? getStepSelectorGestureCommittedStepCount(deltaY) > 0
+        : getStepSelectorReleaseWillCommit(deltaY)
     const releaseWillCommit = Boolean(
-      direction &&
-        target?.canCommit &&
-        getStepSelectorReleaseWillCommit(deltaY),
+      direction && target?.canCommit && crossedReleaseThreshold,
     )
 
     const snapshot = model.updateGesture({
@@ -211,6 +323,7 @@ export const createStepSelectorControl = <ControlId extends string>(
       releaseWillCommit,
       target: target ?? null,
       visualDirection,
+      visualStepOffset: params?.visualStepOffset,
     })
     renderControlSnapshot(snapshot, params)
   }
@@ -228,8 +341,26 @@ export const createStepSelectorControl = <ControlId extends string>(
       releaseWillCommit: gesture.releaseWillCommit,
       target: gesture.target,
       visualDirection: gesture.visualDirection,
+      visualStepOffset: gesture.visualStepOffset,
     })
     renderControlSnapshot(nextSnapshot)
+  }
+
+  const settleHorizontalGesture = (committedStepCount: number) => {
+    const snapshot = model.updateGesture({
+      direction: null,
+      progress: 0,
+      releaseWillCommit: false,
+      target: null,
+      visualDirection: null,
+      visualStepOffset: committedStepCount,
+    })
+    renderControlSnapshot(snapshot)
+    clearCommitSettleTimer()
+    commitSettleTimer = window.setTimeout(() => {
+      commitSettleTimer = null
+      finishCommitSettle({ instantRender: true })
+    }, commitSettleDelayMs)
   }
 
   const resolveReleaseCommit = () => {
@@ -262,25 +393,28 @@ export const createStepSelectorControl = <ControlId extends string>(
   syncRuntimeSnapshot()
 
   return {
-    beginGesture(touch) {
+    beginGesture(point) {
       if (commitSettleTimer !== null) {
-        finishCommitSettle()
+        finishCommitSettle({ instantRender: axis === 'horizontal' })
       }
       syncRuntimeSnapshot()
       model.startGesture()
       renderSnapshot()
       const session: StepSelectorGestureSession<ControlId> = {
+        axis,
         committedStepCount: 0,
         kind: 'step-selector',
         controlId: options.controlId,
-        stepAnchorY: touch.clientY,
-        startX: touch.clientX,
-        startY: touch.clientY,
-        touchId: touch.identifier,
+        stepAnchorX: point.clientX,
+        stepAnchorY: point.clientY,
+        startX: point.clientX,
+        startY: point.clientY,
+        touchId: point.identifier,
       }
       setSession(session)
       return session
     },
+    element: view.element,
     finishGesture(session, commitPreview) {
       if (
         session.kind !== 'step-selector' ||
@@ -288,6 +422,19 @@ export const createStepSelectorControl = <ControlId extends string>(
       ) {
         return session
       }
+
+      if (axis === 'horizontal') {
+        model.setRuntimeSnapshot(getRuntimeSnapshot())
+        if (commitPreview && !reducedMotion) {
+          settleHorizontalGesture(-session.committedStepCount)
+        } else {
+          finishCommitSettle()
+        }
+        const nextSession = { kind: 'none' } as const
+        setSession(nextSession)
+        return nextSession
+      }
+
       const didCommit = commitPreview ? resolveReleaseCommit() : false
       if (!commitPreview) {
         model.setRuntimeSnapshot(getRuntimeSnapshot())
@@ -318,22 +465,39 @@ export const createStepSelectorControl = <ControlId extends string>(
     },
     setSession,
     syncUi: syncRuntimeSnapshot,
-    updateGesture(touch, session) {
+    updateGesture(point, session) {
       if (
         session.kind !== 'step-selector' ||
         session.controlId !== options.controlId ||
-        session.touchId !== touch.identifier
+        session.touchId !== point.identifier
       ) {
         return session
       }
 
-      const commitResult = commitContinuousGestureSteps(touch.clientY, session)
+      if (axis === 'horizontal') {
+        const gestureDelta = getStepSelectorGestureDelta(axis, point, {
+          x: session.startX,
+          y: session.startY,
+        })
+        const nextSession = commitHorizontalGestureSteps(gestureDelta, session)
+        updateGesturePreview(gestureDelta, {
+          visualStepOffset: gestureDelta / swipeCommitDistancePx,
+        })
+        setSession(nextSession)
+        return nextSession
+      }
+
+      const commitResult = commitContinuousGestureSteps(point, session)
       const nextSession = commitResult.session
-      const previewDeltaY = getStepSelectorGesturePreviewDeltaY(
-        touch.clientY,
-        nextSession.stepAnchorY,
+      const previewDelta = getStepSelectorGestureDelta(
+        nextSession.axis,
+        point,
+        {
+          x: nextSession.stepAnchorX,
+          y: nextSession.stepAnchorY,
+        },
       )
-      updateGesturePreview(previewDeltaY, {
+      updateGesturePreview(previewDelta, {
         instantRender: commitResult.didCommit,
       })
       setSession(nextSession)

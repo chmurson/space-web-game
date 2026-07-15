@@ -188,7 +188,43 @@ test('captures the mobile main menu HUD with world visuals suppressed', async ({
 }, testInfo) => {
   await openReachMoonMainMenu(page)
 
+  await expect(
+    page.locator(
+      '.main-menu .menu-action:not(.menu-action-primary):not(.menu-action-secondary)',
+    ),
+  ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Tutorial' })).toHaveClass(
+    /menu-action-primary/,
+  )
+  await expect(page.getByRole('button', { name: 'Free Roam' })).toHaveClass(
+    /menu-action-secondary/,
+  )
+  await expect(page.getByRole('button', { name: 'Free Roam' })).toHaveCSS(
+    'opacity',
+    '1',
+  )
   await attachMobileScreenshot(page, testInfo, 'mobile-main-menu')
+
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  const loadLastButton = page.getByRole('button', { name: 'Load last game' })
+  await expect(loadLastButton).toBeDisabled()
+  await expect(loadLastButton).toHaveClass(/menu-action-secondary/)
+  await expect(loadLastButton).toHaveCSS('opacity', '0.5')
+  await expect(page.getByRole('button', { name: 'Load any game' })).toHaveClass(
+    /menu-action-secondary/,
+  )
+  await attachMobileScreenshot(page, testInfo, 'mobile-main-menu-load-disabled')
+
+  await page.getByRole('button', { name: 'Load any game' }).click()
+  const loadButton = page.getByRole('button', { name: 'Load', exact: true })
+  await expect(loadButton).toBeDisabled()
+  await expect(loadButton).toHaveClass(/menu-action-secondary/)
+  await expect(loadButton).toHaveCSS('opacity', '0.5')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-main-menu-snapshot-load-disabled',
+  )
 })
 
 test('captures the mobile Reach the Moon menu transition', async ({
@@ -2904,14 +2940,70 @@ test('captures the mobile time warp touch control after reveal', async ({
 }, testInfo) => {
   await startReachMoonMission(page)
 
-  await page.getByRole('button', { name: 'Reveal time warp control' }).click()
+  await page
+    .getByRole('button', { exact: true, name: 'Reveal time warp control' })
+    .click()
+  await page.getByRole('button', { name: 'Reveal Time Warp control 2' }).click()
   const timeWarpReveal = page.locator('#touch-time-warp-reveal')
+  const timeWarpPrototypeReveal = page.locator(
+    '#touch-time-warp-prototype-reveal',
+  )
   await expect(timeWarpReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await expect(timeWarpPrototypeReveal).toHaveClass(
+    /touch-edge-reveal-control-open/,
+  )
   await expect(
     timeWarpReveal.getByLabel('Time warp control', { exact: true }),
   ).toBeVisible()
+  const timeWarpPrototypeControl = timeWarpPrototypeReveal.getByLabel(
+    'Time Warp control 2',
+    { exact: true },
+  )
+  await expect(timeWarpPrototypeControl).toBeVisible()
+  await expect(
+    timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
+  ).toHaveCount(0)
+  await expect(timeWarpReveal.locator('.touch-edge-reveal-content')).toHaveCSS(
+    'transform',
+    'matrix(1, 0, 0, 1, 0, 0)',
+  )
+  await expect(
+    timeWarpPrototypeReveal.locator('.touch-edge-reveal-content'),
+  ).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
+
+  const prototypeBox = await timeWarpPrototypeControl.boundingBox()
+  if (!prototypeBox) {
+    throw new Error('Expected Time Warp control 2 bounds')
+  }
+  await page.mouse.move(
+    prototypeBox.x + prototypeBox.width / 2,
+    prototypeBox.y + prototypeBox.height / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    prototypeBox.x + prototypeBox.width / 2 - 69,
+    prototypeBox.y + prototypeBox.height / 2,
+    { steps: 3 },
+  )
+  await expect(timeWarpPrototypeControl).toHaveClass(
+    /touch-step-selector-dragging/,
+  )
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-time-warp-control-dragging',
+  )
+  await page.mouse.up()
+  await expect(
+    timeWarpPrototypeControl.locator('.touch-step-selector-value-current'),
+  ).toHaveText('x4s')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-time-warp-control-elevated-spacing',
+  )
 })
 
 test('captures the mobile trajectory horizon touch control after reveal', async ({

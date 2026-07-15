@@ -16,6 +16,7 @@ export type StepSelectorGestureState = {
   startCurrentValue: number
   target: StepSelectorPreview | null
   visualDirection: StepSelectorDirection | null
+  visualStepOffset: number
 }
 
 export type StepSelectorSnapshot = {
@@ -40,6 +41,7 @@ export type StepSelectorControlModel = {
     releaseWillCommit: boolean
     target: StepSelectorPreview | null
     visualDirection: StepSelectorDirection | null
+    visualStepOffset?: number
   }): StepSelectorSnapshot
 }
 
@@ -73,6 +75,7 @@ const createSnapshot = (
           ? cloneStep(snapshot.gesture.target)
           : null,
         visualDirection: snapshot.gesture.visualDirection,
+        visualStepOffset: snapshot.gesture.visualStepOffset,
       }
     : null,
   runtimeSnapshot: cloneRuntimeSnapshot(snapshot.runtimeSnapshot),
@@ -127,6 +130,7 @@ export const createStepSelectorControlModel = (): StepSelectorControlModel => {
         startCurrentValue: snapshot.runtimeSnapshot.currentValue,
         target: null,
         visualDirection: null,
+        visualStepOffset: 0,
       }
       snapshot.animationDirection = null
       snapshot.deferredRuntimeSnapshot = null
@@ -142,6 +146,7 @@ export const createStepSelectorControlModel = (): StepSelectorControlModel => {
       releaseWillCommit,
       target,
       visualDirection,
+      visualStepOffset = 0,
     }) {
       if (!snapshot.gesture) {
         return createSnapshot(snapshot)
@@ -152,6 +157,7 @@ export const createStepSelectorControlModel = (): StepSelectorControlModel => {
       snapshot.gesture.releaseWillCommit = releaseWillCommit
       snapshot.gesture.target = target ? cloneStep(target) : null
       snapshot.gesture.visualDirection = visualDirection
+      snapshot.gesture.visualStepOffset = visualStepOffset
       return createSnapshot(snapshot)
     },
   }

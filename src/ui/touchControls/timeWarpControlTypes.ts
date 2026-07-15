@@ -3,7 +3,9 @@ import type {
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type {
+  StepSelectorAxis,
   StepSelectorControl,
+  StepSelectorGesturePoint,
   StepSelectorGestureSession,
 } from './stepSelectorControl/stepSelectorControlTypes'
 
@@ -13,12 +15,18 @@ export type TimeWarpPreview = {
   value: number
 }
 
+export type TimeWarpControlId = 'time-warp' | 'time-warp-2'
+
 export type TimeWarpGestureSession =
   | { kind: 'none' }
-  | StepSelectorGestureSession<'time-warp'>
+  | StepSelectorGestureSession<TimeWarpControlId>
 
 export type TimeWarpControlOptions = {
+  ariaLabel?: string
+  axis?: StepSelectorAxis
+  className?: string
   commitTimeWarp(action: TimeWarpAction): void
+  controlId?: TimeWarpControlId
   getCurrentTimeWarp(): number
   getTimeWarpPreview(action: TimeWarpAction): TimeWarpPreview
   getTimeWarpPreviews(action: TimeWarpAction, count: number): TimeWarpPreview[]
@@ -27,4 +35,6 @@ export type TimeWarpControlOptions = {
   panel: HTMLElement
 }
 
-export type TimeWarpControl = StepSelectorControl<'time-warp'>
+export type TimeWarpControl = StepSelectorControl<TimeWarpControlId>
+
+export type TimeWarpGesturePoint = StepSelectorGesturePoint
