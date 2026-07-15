@@ -23,7 +23,7 @@ Task claims:
 - Do not use a run-wide lock. Use task-scoped claims only.
 - Claim helper syntax is `npm run claim:task -- acquire|heartbeat|verify|release --kind pr|issue --id <id>`.
 - Use `--ttl <seconds>` for claim duration. Do not use `--ttl-ms`.
-- Claims live under `${CODEX_HOME:-~/.codex}/automation-locks/space-web-game/tasks/`. Token files should live under `~/.codex/automations/space-game-good-first-issue-task-intake-and-pr-monitor/tokens/`.
+- Claims live under `${HOME}/.codex/automation-locks/space-web-game/tasks/`. Token files should live under `${HOME}/.codex/automations/space-game-good-first-issue-task-intake-and-pr-monitor/tokens/`.
 - Before spawning a worker or causing a GitHub write for a PR/issue, acquire the exact task claim. Include `--branch <branch>` for branch-bound PR/follow-up work, `--owner <run/thread>`, `--purpose <reason>`, `--ttl <seconds>`, and `--token-file <path>`.
 - If claim acquisition fails or claim liveness is uncertain, skip that task or stop. Only the helper's normal stale-replacement path may replace stale claims.
 - Pass the token file path to the worker. Workers must verify the same claim before edits, verification commands, commits, pushes, deploys, or GitHub replies, and heartbeat during long work.
@@ -101,7 +101,7 @@ Run relevant validation. For executable/user-visible changes, follow repo test/b
 PR preview coverage usually replaces manual staging for ordinary PR work targeting main.
 Commit and push to the same task branch. Open/update the PR or reply/comment/label only as required.
 
-Report back with files changed, commit hash, push status, validation, screenshot artifact path if any, PR/deploy/comment URLs, blockers, and whether the triggering comment was addressed. Include the triggering comment URL/id and the originally observed `updatedAt`/body hash so the orchestrator can decide whether to add `rocket`.
+Report back with files changed, commit hash, push status, validation, screenshot artifact path if any, PR/deploy/comment URLs, blockers, and whether the triggering comment was addressed. Include the triggering comment URL/id and the originally observed `updatedAt`/body hash so the orchestrator can decide whether to add `rocket`. Include a brief plain-language summary of what changed and why it matters. If the summary is omitted, obtain human approval, record the approval and reason in transient Shipit state, and mention the omission in the final report.
 ```
 
 ## Run Checklist
@@ -111,10 +111,10 @@ Report back with files changed, commit hash, push status, validation, screenshot
 3. Apply the priority order. Claim only the first actionable task this run can safely own.
 4. For a PR candidate, acquire `pr` claim with branch, record triggering-comment metadata, add the automation `eyes` reaction, then delegate using the Worker Prompt Template.
 5. If no PR follow-up is claimable, inspect exact-label `Ready for dev` issues without `Human input wanted` or `Blocked`, reading body and comments before choosing. Use `Human input wanted` for unclear scope, conflicting comments, splitting needs, or product judgment; use `Blocked` for unresolved dependencies or external conditions.
-6. For a selected issue, acquire `issue` claim and delegate implementation in a task-scoped worktree. The worker must verify the claim, verify automation identity, assign the issue to `@andrzejkoduje` if this is the first implementation start and it is not already assigned to `andrzejkoduje`, use Shipit, mark the issue in progress using the repo's current tracking mechanism, implement, validate, commit, push, and open/update a PR.
+6. For a selected issue, acquire `issue` claim and delegate implementation in a task-scoped worktree. The worker must verify the claim, verify automation identity, assign the issue to `@andrzejkoduje` if this is the first implementation start and it is not already assigned to `andrzejkoduje`, and use Shipit. Before product-code changes, the worker must mark the issue in progress using the repo's current tracking mechanism and record relevant scope decisions and uncertainty in transient Shipit state or task notes. Then implement, validate, commit, push, and open/update a PR.
 7. For eligible-but-unsuitable issues, acquire an issue claim and delegate only the concise skip comment plus the appropriate `Human input wanted` or `Blocked` label if no equivalent explanation/label exists.
 8. If no implementation work is suitable, classify a small batch of unclassified issues as `Ready for dev`, `Human input wanted`, or `Blocked` only when defensible after reading full context.
 9. After worker completion, add the automation `rocket` reaction and mark metadata `addressed` only when the worker succeeded and the triggering comment is unchanged; otherwise mark stale/blocker as appropriate. Release claims acquired by this run after completion or intentional abandonment. Keep claims active while workers run.
 10. Perform conservative cleanup only when safety is unambiguous.
 11. Update automation memory with concise outcome and current run time.
-12. Final report: start with the current run-completion timestamp in ISO 8601 format (including timezone), then report freshness, task claim outcome, selected issue/PR, branch/worktree/PR, whether context was reused, worker used, validation, deploy/preview URL if applicable, comments/labels, cleanup, and blockers.
+12. Final report: start with the current run-completion timestamp in ISO 8601 format (including timezone), then report freshness, task claim outcome, selected issue/PR, branch/worktree/PR, whether context was reused, worker used, validation, deploy/preview URL if applicable, comments/labels, cleanup, and blockers. Include a brief plain-language summary of what changed and why it matters. If the summary is omitted, obtain human approval, record the approval and reason in transient Shipit state, and mention the omission in the final report.
