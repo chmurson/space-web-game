@@ -36,7 +36,7 @@ const waitForDevtoolsBridge = async (page: Page) => {
 }
 
 const seedTutorialEscapeCheckpoint = async (page: Page) => {
-  await page.goto('/?devtools=1&reachmoon=1')
+  await page.goto('/?devtools=1')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const storageKeys: ReplayStorageKeys = {
@@ -288,7 +288,7 @@ test('replays tutorial transfer trail debug state from a fixed checkpoint', asyn
   page,
 }, testInfo) => {
   await seedTutorialEscapeCheckpoint(page)
-  await page.goto('/?scenario=debug-snapshot&devtools=1&reachmoon=1')
+  await page.goto('/?scenario=debug-snapshot&devtools=1')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await waitForDevtoolsBridge(page)
 

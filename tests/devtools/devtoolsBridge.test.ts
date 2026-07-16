@@ -46,6 +46,11 @@ const createTrajectoryPredictionDiagnostics = (
     countLastTenSeconds: 2,
     countLastThirtySeconds: 3,
   },
+  farCoalescingLastSkipReason: null,
+  farCoalescingLastSkipStage: null,
+  farCoalescingMinIntervalOverrideSeconds: null,
+  farCoalescingMinIntervalSeconds: 0.5,
+  farCoalescingSkippedCount: 0,
   farInputKeyShort: 'far-key',
   farPointCount: 10,
   farVisible: 'current',
@@ -179,6 +184,7 @@ const createRuntime = (): AppRuntimeState => ({
 
 const createBridgeHarness = (runtime = createRuntime()) => {
   const dispatchedActions: UIUserAction[] = []
+  let farCoalescingOverrideSeconds: number | null = null
   const setCameraMode = vi.fn((mode: CameraControlMode) => {
     if (runtime.scenario.directives.cameraModeChangesLocked) {
       return false
@@ -201,10 +207,22 @@ const createBridgeHarness = (runtime = createRuntime()) => {
     maxPredictionLoopRevolutions: 2.5,
     predictionSampling,
     runtimeActions: { setCameraMode },
+    setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds: vi.fn(
+      (value) => {
+        farCoalescingOverrideSeconds = value
+        return true
+      },
+    ),
     timeWarps,
   })
 
-  return { bridge, dispatchedActions, runtime, setCameraMode }
+  return {
+    bridge,
+    dispatchedActions,
+    getFarCoalescingOverrideSeconds: () => farCoalescingOverrideSeconds,
+    runtime,
+    setCameraMode,
+  }
 }
 
 describe('createDevtoolsSnapshot', () => {
@@ -272,6 +290,7 @@ describe('createDevtoolsSnapshot', () => {
       absolutePointCount: 12,
       events: [{ event: 'refresh', farApplied: true }],
       eventMarkerCount: 2,
+      farCoalescingMinIntervalSeconds: 0.5,
       farVisible: 'current',
       pendingFar: false,
       nearCalculationTravel: {
@@ -412,5 +431,37 @@ describe('createDevtoolsBridge', () => {
       error: 'set-debug-flag requires a writable debug flag',
     })
     expect(dispatchedActions).toEqual([])
+  })
+
+  it('sets and clears the far coalescing override', () => {
+    const { bridge, getFarCoalescingOverrideSeconds } = createBridgeHarness()
+
+    const setResponse = bridge.handleRequest({
+      type: 'set-far-coalescing-min-interval-override',
+      value: 2.5,
+    })
+
+    expect(setResponse.ok).toBe(true)
+    expect(getFarCoalescingOverrideSeconds()).toBe(2.5)
+
+    const clearResponse = bridge.handleRequest({
+      type: 'set-far-coalescing-min-interval-override',
+      value: null,
+    })
+
+    expect(clearResponse.ok).toBe(true)
+    expect(getFarCoalescingOverrideSeconds()).toBe(null)
+  })
+
+  it('rejects invalid far coalescing override values', () => {
+    const { bridge, getFarCoalescingOverrideSeconds } = createBridgeHarness()
+
+    const response = bridge.handleRequest({
+      type: 'set-far-coalescing-min-interval-override',
+      value: -1,
+    })
+
+    expect(response.ok).toBe(false)
+    expect(getFarCoalescingOverrideSeconds()).toBe(null)
   })
 })

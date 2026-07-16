@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import type { KeyboardInput } from '../input/keyboardInput'
+import type { PointerCameraInput } from '../input/pointerCameraInput'
 import { createBodyDistanceContext } from '../presentation/bodyDistanceContext'
 import type { BodyPresentation } from '../presentation/bodyPresentation'
 import type { HudPresentation } from '../presentation/hudPresentation'
@@ -30,6 +31,7 @@ export const createFrameLoop = (options: {
   gameScene: GameSceneRefs
   hudPresentation: HudPresentation
   keyboardInput: KeyboardInput
+  pointerCameraInput?: Pick<PointerCameraInput, 'updateEdgeScroll'>
   physicsEngine: PhysicsEngine
   queries: GameQueries
   rendererProfiler: RendererProfiler
@@ -177,6 +179,7 @@ export const createFrameLoop = (options: {
     const gameplayPaused =
       (prompts.active?.pausesGameplay ?? false) ||
       (options.getGameplayPaused?.() ?? false)
+    options.pointerCameraInput?.updateEdgeScroll(time, realDt)
 
     const isThrusting =
       !gameplayPaused &&
@@ -238,6 +241,8 @@ export const createFrameLoop = (options: {
           horizonHours * 60 * 60,
         ),
         state: options.runtime.simulation.state,
+        timeWarp:
+          options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
       }
 
       if (

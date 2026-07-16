@@ -194,6 +194,11 @@ const createPredictionRuntime = (
         countLastTenSeconds: 0,
         countLastThirtySeconds: 0,
       },
+      farCoalescingLastSkipReason: null,
+      farCoalescingLastSkipStage: null,
+      farCoalescingMinIntervalOverrideSeconds: null,
+      farCoalescingMinIntervalSeconds: 0,
+      farCoalescingSkippedCount: 0,
       farInputKeyShort: null,
       farPointCount: 0,
       farVisible,
@@ -254,6 +259,7 @@ const createPredictionRuntime = (
     maybeRefresh: () => false,
     recordGeometryUpdate: () => {},
     refresh: () => {},
+    setFarCoalescingMinIntervalOverrideSeconds: () => true,
   }) as TrajectoryPredictionRuntime
 
 const createTestPresentation = (options: {
@@ -300,6 +306,7 @@ const createTestPresentation = (options: {
       physicsEngine,
       queries: createQueries(target),
       runtime,
+      timeWarps: [1],
       trajectoryEventMarkerLabels,
       trajectoryPredictionRuntime: createPredictionRuntime(
         () => target.id,

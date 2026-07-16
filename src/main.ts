@@ -3,12 +3,15 @@ import './ui/timeWarpFeedback.css'
 
 import { createGameApp } from './app/createGameApp'
 import { gameConfig } from './config/gameConfig'
+import { installNativeTouchZoomSuppression } from './ui/nativeTouchZoomSuppression'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 
 if (!app) {
   throw new Error('Missing #app element')
 }
+
+installNativeTouchZoomSuppression(app)
 
 const tabTitleSuffix = gameConfig.tabTitleSuffix?.trim()
 

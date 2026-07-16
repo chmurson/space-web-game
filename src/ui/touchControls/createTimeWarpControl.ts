@@ -19,3 +19,15 @@ export const createConfiguredTimeWarpControl = (
       return createSelectorTimeWarpControl(options)
   }
 }
+
+export const createPrototypeTimeWarpControl2 = (
+  options: TimeWarpControlOptions,
+): TimeWarpControl =>
+  createSelectorTimeWarpControl({
+    ...options,
+    ariaLabel: 'Time Warp control 2',
+    axis: 'horizontal',
+    className: 'touch-step-selector-time-warp-prototype-2',
+    // ponytail: Temporary issue #226 comparison UI; remove with the prototype.
+    controlId: 'time-warp-2',
+  })

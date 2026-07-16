@@ -4,6 +4,7 @@ import { createStepSelectorControl } from '../stepSelectorControl/createStepSele
 import type { StepSelectorDirection } from '../stepSelectorControl/stepSelectorControlTypes'
 import type {
   TimeWarpControl,
+  TimeWarpControlId,
   TimeWarpControlOptions,
 } from '../timeWarpControlTypes'
 
@@ -14,13 +15,16 @@ export const createSelectorTimeWarpControl = (
   options: TimeWarpControlOptions,
 ): TimeWarpControl =>
   createStepSelectorControl({
-    ariaLabel: 'Time warp control',
-    className: 'touch-step-selector-time-warp',
+    ariaLabel: options.ariaLabel ?? 'Time warp control',
+    axis: options.axis,
+    className: ['touch-step-selector-time-warp', options.className ?? '']
+      .filter(Boolean)
+      .join(' '),
     commitStep: (direction) => {
       options.commitTimeWarp(getAction(direction))
     },
     container: options.container,
-    controlId: 'time-warp',
+    controlId: options.controlId ?? ('time-warp' satisfies TimeWarpControlId),
     formatValue: formatTimeWarpLabel,
     getCurrentValue: options.getCurrentTimeWarp,
     getStepPreviews: (direction, count) =>

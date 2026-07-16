@@ -91,7 +91,6 @@ export type MainMenuSurfaceProps = {
   recentSnapshots: DebugScenarioSnapshotEntry[]
   reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null
   reachMoonHighscoreState: ReachMoonHighscoreMenuState
-  reachMoonFeatureEnabled: boolean
   selectedRecentSnapshotId: string
   rootRef(element: HTMLElement | null): void
   visible: boolean
@@ -590,7 +589,6 @@ export const MainMenuSurface = ({
   recentSnapshots,
   reachMoonHighscorePendingRun,
   reachMoonHighscoreState,
-  reachMoonFeatureEnabled,
   rootRef,
   selectedRecentSnapshotId,
   visible,
@@ -640,76 +638,46 @@ export const MainMenuSurface = ({
         <MenuCopy className="main-menu-copy">
           <MenuKicker className="main-menu-kicker">Space Web Game</MenuKicker>
           <MenuDescription>
-            {reachMoonFeatureEnabled
-              ? 'Learn the flight model, then take the Earth-Moon run.'
-              : 'Drift above Earth, resume a saved snapshot, or jump straight into the tutorial.'}
+            Learn the flight model, then take the Earth-Moon run.
           </MenuDescription>
         </MenuCopy>
         <MenuActions className="main-menu-actions">
-          {reachMoonFeatureEnabled ? (
-            <>
-              <MenuActionButton
-                action="tutorial"
-                actionAttribute={mainMenuActionAttribute}
-                className="main-menu-action-primary"
-                variant="primary"
-                onClick={onTutorial}
-              >
-                Tutorial
-              </MenuActionButton>
-              <MenuActionButton
-                action="reach-moon-menu"
-                actionAttribute={mainMenuActionAttribute}
-                className="main-menu-action-primary"
-                variant="primary"
-                onClick={onReachMoonMenu}
-              >
-                Reach the Moon
-              </MenuActionButton>
-              <MenuActionButton
-                action="free-roam"
-                actionAttribute={mainMenuActionAttribute}
-                className="main-menu-action-secondary"
-                variant="secondary"
-                onClick={onFreeRoam}
-              >
-                Free Roam
-              </MenuActionButton>
-              <MenuActionButton
-                action="load-menu"
-                actionAttribute={mainMenuActionAttribute}
-                className="main-menu-action-secondary"
-                variant="secondary"
-                onClick={onLoadGameMenu}
-              >
-                Load Game
-              </MenuActionButton>
-            </>
-          ) : (
-            <>
-              <MenuActionButton
-                action="load-menu"
-                actionAttribute={mainMenuActionAttribute}
-                onClick={onLoadGameMenu}
-              >
-                Load Game
-              </MenuActionButton>
-              <MenuActionButton
-                action="tutorial"
-                actionAttribute={mainMenuActionAttribute}
-                onClick={onTutorial}
-              >
-                Tutorial
-              </MenuActionButton>
-              <MenuActionButton
-                action="free-roam"
-                actionAttribute={mainMenuActionAttribute}
-                onClick={onFreeRoam}
-              >
-                Free Roam
-              </MenuActionButton>
-            </>
-          )}
+          <MenuActionButton
+            action="tutorial"
+            actionAttribute={mainMenuActionAttribute}
+            className="main-menu-action-primary"
+            variant="primary"
+            onClick={onTutorial}
+          >
+            Tutorial
+          </MenuActionButton>
+          <MenuActionButton
+            action="reach-moon-menu"
+            actionAttribute={mainMenuActionAttribute}
+            className="main-menu-action-primary"
+            variant="primary"
+            onClick={onReachMoonMenu}
+          >
+            Reach the Moon
+          </MenuActionButton>
+          <MenuActionButton
+            action="free-roam"
+            actionAttribute={mainMenuActionAttribute}
+            className="main-menu-action-secondary"
+            variant="secondary"
+            onClick={onFreeRoam}
+          >
+            Free Roam
+          </MenuActionButton>
+          <MenuActionButton
+            action="load-menu"
+            actionAttribute={mainMenuActionAttribute}
+            className="main-menu-action-secondary"
+            variant="secondary"
+            onClick={onLoadGameMenu}
+          >
+            Load Game
+          </MenuActionButton>
         </MenuActions>
       </MenuPanel>
 
@@ -731,6 +699,7 @@ export const MainMenuSurface = ({
             action="load-last"
             actionAttribute={mainMenuActionAttribute}
             disabled={!loadGameAvailable}
+            variant="secondary"
             onClick={onLoadGame}
           >
             Load last game
@@ -738,6 +707,7 @@ export const MainMenuSurface = ({
           <MenuActionButton
             action="load-any-menu"
             actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
             onClick={onRecentSnapshotMenu}
           >
             Load any game
@@ -745,6 +715,7 @@ export const MainMenuSurface = ({
           <MenuActionButton
             action="load-back"
             actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
             onClick={onLoadGameBack}
           >
             Back
@@ -796,6 +767,7 @@ export const MainMenuSurface = ({
               action="load-any"
               actionAttribute={mainMenuActionAttribute}
               disabled={!selectedRecentSnapshotId}
+              variant="secondary"
               onClick={onRecentSnapshotLoad}
             >
               Load
@@ -804,6 +776,7 @@ export const MainMenuSurface = ({
           <MenuActionButton
             action="load-back"
             actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
             onClick={onLoadGameBack}
           >
             Back
@@ -811,114 +784,107 @@ export const MainMenuSurface = ({
         </MenuActions>
       </MenuPanel>
 
-      {reachMoonFeatureEnabled ? (
-        <>
-          <MenuPanel
-            className="main-menu-panel"
-            view="reach-moon"
-            viewAttribute={mainMenuViewAttribute}
-            hidden={displayedView !== 'reach-moon'}
+      <MenuPanel
+        className="main-menu-panel"
+        view="reach-moon"
+        viewAttribute={mainMenuViewAttribute}
+        hidden={displayedView !== 'reach-moon'}
+      >
+        <MenuCopy className="main-menu-copy">
+          <MenuKicker className="main-menu-kicker">Reach the Moon</MenuKicker>
+          <MenuDescription>
+            Launch into the Earth-Moon mission route.
+          </MenuDescription>
+        </MenuCopy>
+        <MenuActions className="main-menu-actions">
+          <MenuActionButton
+            action="reach-moon-start"
+            actionAttribute={mainMenuActionAttribute}
+            className="main-menu-action-primary"
+            variant="primary"
+            onClick={onReachMoon}
           >
-            <MenuCopy className="main-menu-copy">
-              <MenuKicker className="main-menu-kicker">
-                Reach the Moon
-              </MenuKicker>
-              <MenuDescription>
-                Launch into the Earth-Moon mission route.
-              </MenuDescription>
-            </MenuCopy>
-            <MenuActions className="main-menu-actions">
-              <MenuActionButton
-                action="reach-moon-start"
-                actionAttribute={mainMenuActionAttribute}
-                className="main-menu-action-primary"
-                variant="primary"
-                onClick={onReachMoon}
-              >
-                Start
-              </MenuActionButton>
-              <MenuActionButton
-                action="reach-moon-highscores"
-                actionAttribute={mainMenuActionAttribute}
-                onClick={onReachMoonHighscores}
-              >
-                Highscores
-              </MenuActionButton>
-              <MenuActionButton
-                action="reach-moon-back"
-                actionAttribute={mainMenuActionAttribute}
-                className="main-menu-action-secondary"
-                variant="secondary"
-                onClick={onReachMoonBack}
-              >
-                Back
-              </MenuActionButton>
-            </MenuActions>
-          </MenuPanel>
+            Start
+          </MenuActionButton>
+          <MenuActionButton
+            action="reach-moon-highscores"
+            actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
+            onClick={onReachMoonHighscores}
+          >
+            Highscores
+          </MenuActionButton>
+          <MenuActionButton
+            action="reach-moon-back"
+            actionAttribute={mainMenuActionAttribute}
+            className="main-menu-action-secondary"
+            variant="secondary"
+            onClick={onReachMoonBack}
+          >
+            Back
+          </MenuActionButton>
+        </MenuActions>
+      </MenuPanel>
 
-          <MenuPanel
-            className="main-menu-panel main-menu-panel-highscores"
-            view="reach-moon-highscores"
-            viewAttribute={mainMenuViewAttribute}
-            hidden={displayedView !== 'reach-moon-highscores'}
-          >
-            <MenuCopy className="main-menu-copy">
-              <MenuKicker className="main-menu-kicker">
-                Reach the Moon Highscores
-              </MenuKicker>
-              <MenuDescription>{highscoreDescription}</MenuDescription>
-            </MenuCopy>
-            <fieldset class="reach-moon-highscore-filters">
-              <legend class="reach-moon-highscore-filters-label">
-                Leaderboard period
-              </legend>
-              {reachMoonHighscorePeriodOptions.map(({ label, period }) => (
-                <button
-                  aria-pressed={reachMoonHighscoreState.activePeriod === period}
-                  class={
-                    reachMoonHighscoreState.activePeriod === period
-                      ? 'reach-moon-highscore-filter reach-moon-highscore-filter-active'
-                      : 'reach-moon-highscore-filter'
-                  }
-                  key={period}
-                  type="button"
-                  onClick={() => onReachMoonHighscorePeriod(period)}
-                >
-                  {label}
-                </button>
-              ))}
-            </fieldset>
-            <ReachMoonHighscoreSubmitPanel
-              pendingRun={reachMoonHighscorePendingRun}
-              state={reachMoonHighscoreState}
-              onPlayerName={onReachMoonHighscorePlayerName}
-              onSubmitRetry={onReachMoonHighscoreSubmitRetry}
-            />
-            <ReachMoonHighscoreBoard
-              activePeriod={reachMoonHighscoreState.activePeriod}
-              loadError={reachMoonHighscoreState.loadError}
-              loading={highscoreLoading}
-              loadingFallbackRollup={
-                reachMoonHighscoreState.loadingFallbackRollup
+      <MenuPanel
+        className="main-menu-panel main-menu-panel-highscores"
+        view="reach-moon-highscores"
+        viewAttribute={mainMenuViewAttribute}
+        hidden={displayedView !== 'reach-moon-highscores'}
+      >
+        <MenuCopy className="main-menu-copy">
+          <MenuKicker className="main-menu-kicker">
+            Reach the Moon Highscores
+          </MenuKicker>
+          <MenuDescription>{highscoreDescription}</MenuDescription>
+        </MenuCopy>
+        <fieldset class="reach-moon-highscore-filters">
+          <legend class="reach-moon-highscore-filters-label">
+            Leaderboard period
+          </legend>
+          {reachMoonHighscorePeriodOptions.map(({ label, period }) => (
+            <button
+              aria-pressed={reachMoonHighscoreState.activePeriod === period}
+              class={
+                reachMoonHighscoreState.activePeriod === period
+                  ? 'reach-moon-highscore-filter reach-moon-highscore-filter-active'
+                  : 'reach-moon-highscore-filter'
               }
-              rollup={activeHighscoreRollup}
-              showGlobalEmptyState={!hasHighscoreEntries}
-              onRetry={onReachMoonHighscoreRetry}
-            />
-            <MenuActions className="main-menu-actions">
-              <MenuActionButton
-                action="reach-moon-back"
-                actionAttribute={mainMenuActionAttribute}
-                className="main-menu-action-secondary"
-                variant="secondary"
-                onClick={onReachMoonBack}
-              >
-                Back
-              </MenuActionButton>
-            </MenuActions>
-          </MenuPanel>
-        </>
-      ) : null}
+              key={period}
+              type="button"
+              onClick={() => onReachMoonHighscorePeriod(period)}
+            >
+              {label}
+            </button>
+          ))}
+        </fieldset>
+        <ReachMoonHighscoreSubmitPanel
+          pendingRun={reachMoonHighscorePendingRun}
+          state={reachMoonHighscoreState}
+          onPlayerName={onReachMoonHighscorePlayerName}
+          onSubmitRetry={onReachMoonHighscoreSubmitRetry}
+        />
+        <ReachMoonHighscoreBoard
+          activePeriod={reachMoonHighscoreState.activePeriod}
+          loadError={reachMoonHighscoreState.loadError}
+          loading={highscoreLoading}
+          loadingFallbackRollup={reachMoonHighscoreState.loadingFallbackRollup}
+          rollup={activeHighscoreRollup}
+          showGlobalEmptyState={!hasHighscoreEntries}
+          onRetry={onReachMoonHighscoreRetry}
+        />
+        <MenuActions className="main-menu-actions">
+          <MenuActionButton
+            action="reach-moon-back"
+            actionAttribute={mainMenuActionAttribute}
+            className="main-menu-action-secondary"
+            variant="secondary"
+            onClick={onReachMoonBack}
+          >
+            Back
+          </MenuActionButton>
+        </MenuActions>
+      </MenuPanel>
     </section>
   )
 }

@@ -4,11 +4,15 @@ import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
   bindPointerCameraInput,
+  type CameraUnlockProgress,
   createScreenPointWorldPicker,
 } from '../input/pointerCameraInput'
 import type { UIUserAction } from '../input/uiUserActions'
 import { createBodyPresentation } from '../presentation/bodyPresentation'
-import { createHudPresentation } from '../presentation/hudPresentation'
+import {
+  createHudPresentation,
+  type TouchControlAvailability,
+} from '../presentation/hudPresentation'
 import { createSpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import { createTrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import { createRendererProfiler } from '../render/rendererProfiler'
@@ -31,7 +35,10 @@ import {
 import { getTrajectoryHorizonPreviews } from '../runtime/trajectoryHorizonControlPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
 import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
-import { parsePromptAction } from '../scenario/scenarioPrompts'
+import {
+  parsePromptAction,
+  resolveScenarioPrompts,
+} from '../scenario/scenarioPrompts'
 import {
   applyBodyTextureAssetsToScene,
   applyScenarioRenderConfigToScene,
@@ -60,6 +67,7 @@ import {
 import { createRipple, type Ripple } from '../ui/overlayUpdates'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
+  type DesktopEdgePanSpeed,
   type OrbitPointDisplaySettings,
   resolveOrbitPointDisplaySettings,
   type TouchControlSide,
@@ -75,6 +83,16 @@ type AppRuntimeCoordinator = {
 }
 
 const cameraNoticeDurationMs = 2400
+const cameraUnlockProgressOffsetPx = 14
+const cameraUnlockProgressFallbackWidthPx = 148
+const cameraUnlockProgressFallbackHeightPx = 32
+const desktopFinePointerQuery = '(hover: hover) and (pointer: fine)'
+const desktopEdgePanSpeedPixelsPerSecond: Record<DesktopEdgePanSpeed, number> =
+  {
+    slow: 280,
+    normal: 420,
+    fast: 620,
+  }
 
 export type AppComponents = {
   renderer: THREE.WebGLRenderer
@@ -179,6 +197,9 @@ const getCameraNoticeModeLabel = (mode: CameraControlMode) => {
 const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   let hideTimeout: number | null = null
   let finishHideTimeout: number | null = null
+  let finishProgressHideTimeout: number | null = null
+  let revealProgressFrame: number | null = null
+  let cameraUnlockProgressVisible = false
 
   const hide = () => {
     overlayUi.cameraUnlockNotice.dataset.visible = 'false'
@@ -220,6 +241,74 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
     hideTimeout = window.setTimeout(hide, cameraNoticeDurationMs)
   }
 
+  const setUnlockProgress = (progress: CameraUnlockProgress | null) => {
+    if (progress === null) {
+      cameraUnlockProgressVisible = false
+      if (revealProgressFrame !== null) {
+        window.cancelAnimationFrame(revealProgressFrame)
+        revealProgressFrame = null
+      }
+      overlayUi.cameraUnlockProgress.dataset.visible = 'false'
+      overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'true')
+      overlayUi.cameraUnlockProgress.setAttribute('aria-valuenow', '0')
+      overlayUi.cameraUnlockProgress.style.removeProperty(
+        '--camera-unlock-progress',
+      )
+      if (finishProgressHideTimeout !== null) {
+        window.clearTimeout(finishProgressHideTimeout)
+      }
+      finishProgressHideTimeout = window.setTimeout(() => {
+        if (overlayUi.cameraUnlockProgress.dataset.visible !== 'true') {
+          overlayUi.cameraUnlockProgress.hidden = true
+        }
+        finishProgressHideTimeout = null
+      }, 120)
+      return
+    }
+
+    if (finishProgressHideTimeout !== null) {
+      window.clearTimeout(finishProgressHideTimeout)
+      finishProgressHideTimeout = null
+    }
+    overlayUi.cameraUnlockProgress.hidden = false
+    if (!cameraUnlockProgressVisible) {
+      cameraUnlockProgressVisible = true
+      revealProgressFrame = window.requestAnimationFrame(() => {
+        revealProgressFrame = null
+        if (cameraUnlockProgressVisible) {
+          overlayUi.cameraUnlockProgress.dataset.visible = 'true'
+        }
+      })
+    }
+
+    const clampedProgress = THREE.MathUtils.clamp(progress.progress, 0, 1)
+    const bounds = overlayUi.cameraUnlockProgress.getBoundingClientRect()
+    const width = bounds.width || cameraUnlockProgressFallbackWidthPx
+    const height = bounds.height || cameraUnlockProgressFallbackHeightPx
+    const left = THREE.MathUtils.clamp(
+      progress.screenPosition.x + cameraUnlockProgressOffsetPx,
+      8,
+      Math.max(8, window.innerWidth - width - 8),
+    )
+    const top = THREE.MathUtils.clamp(
+      progress.screenPosition.y + cameraUnlockProgressOffsetPx,
+      8,
+      Math.max(8, window.innerHeight - height - 8),
+    )
+
+    overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'false')
+    overlayUi.cameraUnlockProgress.setAttribute(
+      'aria-valuenow',
+      Math.round(clampedProgress * 100).toString(),
+    )
+    overlayUi.cameraUnlockProgress.style.left = `${left}px`
+    overlayUi.cameraUnlockProgress.style.top = `${top}px`
+    overlayUi.cameraUnlockProgress.style.setProperty(
+      '--camera-unlock-progress',
+      clampedProgress.toFixed(3),
+    )
+  }
+
   return {
     showModeChange(mode: CameraControlMode) {
       const label = getCameraNoticeModeLabel(mode)
@@ -229,9 +318,10 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
         title: 'Camera mode',
       })
     },
-    showUnlockedBySwipe() {
+    setUnlockProgress,
+    showUnlockedForFreeRoam() {
       show({
-        ariaLabel: 'Camera unlocked. Drag anywhere to pan.',
+        ariaLabel: 'Camera unlocked. Free roam is active.',
         title: 'Camera unlocked',
       })
     },
@@ -244,6 +334,7 @@ export const createAppComponents = (options: {
   runtimeState: AppRuntimeState
   startupAssets: ScenarioAssets
 }): AppComponents => {
+  const desktopFinePointerMedia = window.matchMedia(desktopFinePointerQuery)
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(window.innerWidth, window.innerHeight)
@@ -342,6 +433,7 @@ export const createAppComponents = (options: {
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
+    timeWarps: options.config.controls.timeWarps,
     trajectoryEventMarkerLabels: overlayUi.trajectoryEventMarkerLabels,
     trajectoryPredictionRuntime,
   })
@@ -425,8 +517,23 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTrajectoryControlSide
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
+  let touchControlAvailability: TouchControlAvailability = {
+    burn: true,
+    target: true,
+    trajectory: true,
+    warp: true,
+  }
+  const isSameTouchControlAvailability = (
+    nextVisibility: TouchControlAvailability,
+  ) =>
+    touchControlAvailability.burn === nextVisibility.burn &&
+    touchControlAvailability.target === nextVisibility.target &&
+    touchControlAvailability.trajectory === nextVisibility.trajectory &&
+    touchControlAvailability.warp === nextVisibility.warp
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
+  let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
+  let desktopEdgePanSpeed = options.config.userSettings.desktopEdgePanSpeed
   const targetHeadingPlanLifecycleHandlers = {
     onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
     onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
@@ -534,7 +641,7 @@ export const createAppComponents = (options: {
     keyboardInput,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
-    onCameraUnlockedBySwipe: cameraNotice.showUnlockedBySwipe,
+    onCameraUnlockedBySwipe: cameraNotice.showUnlockedForFreeRoam,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
@@ -613,11 +720,19 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
+    getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+    getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+    getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
+    getTouchBurnControlAvailable: () => touchControlAvailability.burn,
     getTouchBurnControlSide: () => touchBurnControlSide,
+    getTouchTargetControlAvailable: () => touchControlAvailability.target,
     getTouchTargetControlSide: () => touchTargetControlSide,
+    getTouchTrajectoryControlAvailable: () =>
+      touchControlAvailability.trajectory,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
+    getTouchWarpControlAvailable: () => touchControlAvailability.warp,
     getTouchWarpControlSide: () => touchWarpControlSide,
     onOrbitPointDisplayChange: (settings) => {
       userOrbitPointDisplaySettings = { ...settings }
@@ -628,6 +743,14 @@ export const createAppComponents = (options: {
       if (open) {
         keyboardInput.clear()
       }
+    },
+    onDesktopEdgePanEnabledChange: (enabled) => {
+      desktopEdgePanEnabled = enabled
+      updateUserSettings({ desktopEdgePanEnabled: enabled })
+    },
+    onDesktopEdgePanSpeedChange: (speed) => {
+      desktopEdgePanSpeed = speed
+      updateUserSettings({ desktopEdgePanSpeed: speed })
     },
     onMobileManeuverStartByDragChange: (startByDrag) => {
       mobileManeuverStartByDrag = startByDrag
@@ -687,22 +810,43 @@ export const createAppComponents = (options: {
     runtime: options.runtimeState,
     desktopTargetSelector,
     targetRecommendationNotice: targetRecommendationNotice ?? undefined,
+    onTouchControlAvailabilityChange: (visibility) => {
+      if (isSameTouchControlAvailability(visibility)) {
+        return
+      }
+
+      touchControlAvailability = visibility
+      if (uiSettingsOpen) {
+        uiSettingsDialog.syncState()
+      }
+    },
     timeWarps: options.config.controls.timeWarps,
     touchControls,
     trajectoryPresentation,
   })
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
+    getDesktopEdgePanSpeedPixelsPerSecond: () =>
+      desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
+    getEdgeScrollEnabled: () =>
+      desktopEdgePanEnabled &&
+      desktopFinePointerMedia.matches &&
+      !topMenu.isOpen() &&
+      !inGameControlsMenu.isOpen() &&
+      !uiSettingsOpen &&
+      options.runtimeState.simulation.crashedBodyName === null &&
+      resolveScenarioPrompts(options.runtimeState, 'desktop').active === null,
     getInteractionsEnabled: getCameraInteractionsEnabled,
     getSpacecraftPosition: () =>
       options.runtimeState.simulation.state.spacecraft.position,
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
-    onCameraUnlockedByDrag: cameraNotice.showUnlockedBySwipe,
     onCameraModeSelected: runtimeActions.setCameraMode,
     onCameraPan: runtimeActions.panCamera,
+    onCameraUnlockProgressChange: cameraNotice.setUnlockProgress,
+    onCameraUnlocked: cameraNotice.showUnlockedForFreeRoam,
     onResize: runtimeActions.handleResize,
     onTargetHeadingPlan: (heading, selection) => {
       runtimeActions.planTargetHeading({
@@ -719,7 +863,6 @@ export const createAppComponents = (options: {
   })
   const mainMenu = createMainMenu({
     app: options.app,
-    reachMoonFeatureEnabled: options.config.featureFlags.reachMoon,
     onFreeRoam: () =>
       gameHighLevelActionsMediator.dispatch({ type: 'startFreeRoam' }),
     onLoadGame: () =>
@@ -826,6 +969,7 @@ export const createAppComponents = (options: {
       getAppMode() === 'game' &&
       options.runtimeState.simulation.crashedBodyName === null,
     keyboardInput,
+    pointerCameraInput,
     physicsEngine: options.config.physicsEngine,
     queries,
     rendererProfiler,
@@ -883,6 +1027,10 @@ export const createAppComponents = (options: {
     predictionSampling: options.config.trajectory.predictionSampling,
     runtime: options.runtimeState,
     runtimeActions,
+    setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds: (value) =>
+      trajectoryPredictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(
+        value,
+      ),
     timeWarps: options.config.controls.timeWarps,
   })
 

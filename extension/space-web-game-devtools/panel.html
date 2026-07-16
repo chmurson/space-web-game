@@ -53,6 +53,21 @@
 
       <section class="card">
         <h2>Sampling</h2>
+        <div class="control-group">
+          <label class="inline-toggle">
+            <input id="farCoalescingOverrideEnabled" type="checkbox" />
+            Far cooldown override
+          </label>
+          <input
+            id="farCoalescingOverrideSeconds"
+            type="number"
+            min="0"
+            step="0.1"
+            inputmode="decimal"
+            aria-label="Far cooldown override seconds"
+          />
+          <button id="farCoalescingApplyButton" type="button">Apply</button>
+        </div>
         <dl class="kv-list sampling-list">
           <div><dt>Sample step</dt><dd id="predictionSampleStep">—</dd></div>
           <div><dt>Integrate max</dt><dd id="predictionIntegrationStep">—</dd></div>
@@ -61,6 +76,7 @@
           <div><dt>Last refresh</dt><dd id="predictionRefreshSummary">—</dd></div>
           <div><dt>Near calc</dt><dd id="predictionNearCalculation">—</dd></div>
           <div><dt>Far calc</dt><dd id="predictionFarCalculation">—</dd></div>
+          <div><dt>Far coalescing</dt><dd id="predictionFarCoalescing">—</dd></div>
           <div><dt>Near travel</dt><dd id="predictionNearTravel">—</dd></div>
           <div><dt>Integration</dt><dd id="predictionIntegrationStats">—</dd></div>
           <div><dt>Geometry</dt><dd id="predictionGeometryDuration">—</dd></div>

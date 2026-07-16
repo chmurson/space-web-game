@@ -848,6 +848,7 @@ export const createTrajectoryPresentation = (options: {
   physicsEngine: PhysicsEngine
   queries: GameQueries
   runtime: AppRuntimeState
+  timeWarps: number[]
   trajectoryEventMarkerLabels: TrajectoryEventMarkerLabelRefs
   trajectoryPredictionRuntime: TrajectoryPredictionRuntime
 }) => {
@@ -885,6 +886,8 @@ export const createTrajectoryPresentation = (options: {
       physicsEngine: options.physicsEngine,
       predictionConfig: options.queries.getPredictionConfig(),
       state: options.runtime.simulation.state,
+      timeWarp:
+        options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
     })
     syncInertialPredictionVisual()
   }
@@ -956,6 +959,8 @@ export const createTrajectoryPresentation = (options: {
           physicsEngine: options.physicsEngine,
           predictionConfig: options.queries.getPredictionConfig(),
           state: options.runtime.simulation.state,
+          timeWarp:
+            options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
         },
       )
 

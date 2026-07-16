@@ -168,7 +168,10 @@ describe('createSpacecraftPresentation', () => {
       defaultViewport: 480,
       gameScene,
       overlayUi: overlayUi.refs,
-      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
       spacecraftModelZoomThreshold: 1,
     })
 
@@ -235,7 +238,10 @@ describe('createSpacecraftPresentation', () => {
       defaultViewport: 480,
       gameScene,
       overlayUi: overlayUi.refs,
-      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
       spacecraftModelZoomThreshold: 1,
     })
 
@@ -296,7 +302,10 @@ describe('createSpacecraftPresentation', () => {
       defaultViewport: 480,
       gameScene,
       overlayUi: overlayUi.refs,
-      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
       spacecraftModelZoomThreshold: 1,
     })
 
@@ -354,7 +363,10 @@ describe('createSpacecraftPresentation', () => {
       defaultViewport: 480,
       gameScene,
       overlayUi: overlayUi.refs,
-      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
       spacecraftModelZoomThreshold: 1,
     })
 
@@ -422,7 +434,10 @@ describe('createSpacecraftPresentation', () => {
       defaultViewport: 480,
       gameScene,
       overlayUi: overlayUi.refs,
-      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
       spacecraftModelZoomThreshold: 1,
     })
 
@@ -501,7 +516,10 @@ describe('createSpacecraftPresentation', () => {
         visible = nextVisible
       },
       overlayUi: overlayUi.refs,
-      pointerCameraInput: { pointerScreenPosition: { x: 0, y: 0 } },
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
       spacecraftModelZoomThreshold: 1,
     })
 

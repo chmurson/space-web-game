@@ -13,6 +13,7 @@ export type EdgeRevealControlOptions = {
   icon?: string
   id: string
   label: string
+  allowContentSwipeClose?: boolean
   onOpenChange?(open: boolean): void
   placement: TouchControlRevealPlacement
   revealThresholdPx?: number
@@ -191,7 +192,10 @@ export const createEdgeRevealControl = (
       return
     }
 
-    if (applyRevealGestureMove(contentGesture, touch)) {
+    if (
+      options.allowContentSwipeClose !== false &&
+      applyRevealGestureMove(contentGesture, touch)
+    ) {
       event.preventDefault()
     }
   })

@@ -7,6 +7,7 @@ import {
 } from '@playwright/test'
 import type { UIUserAction } from '../../src/input/uiUserActions'
 import type { ReachMoonHighscorePendingRun } from '../../src/ui/components/MainMenuSurface'
+import type { DesktopEdgePanSpeed } from '../../src/userSettingsStorage'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -57,8 +58,7 @@ const expectWorldVisualsSuppressed = async (page: Page) => {
   )
 }
 
-const getReachMoonUrl = (query = '') =>
-  query ? `/?reachmoon=1&${query}` : '/?reachmoon=1'
+const getReachMoonUrl = (query = '') => (query ? `/?${query}` : '/')
 
 const highscoreScore = {
   baseScorePoints: 0,
@@ -190,7 +190,43 @@ test('captures the mobile main menu HUD with world visuals suppressed', async ({
 }, testInfo) => {
   await openReachMoonMainMenu(page)
 
+  await expect(
+    page.locator(
+      '.main-menu .menu-action:not(.menu-action-primary):not(.menu-action-secondary)',
+    ),
+  ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Tutorial' })).toHaveClass(
+    /menu-action-primary/,
+  )
+  await expect(page.getByRole('button', { name: 'Free Roam' })).toHaveClass(
+    /menu-action-secondary/,
+  )
+  await expect(page.getByRole('button', { name: 'Free Roam' })).toHaveCSS(
+    'opacity',
+    '1',
+  )
   await attachMobileScreenshot(page, testInfo, 'mobile-main-menu')
+
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  const loadLastButton = page.getByRole('button', { name: 'Load last game' })
+  await expect(loadLastButton).toBeDisabled()
+  await expect(loadLastButton).toHaveClass(/menu-action-secondary/)
+  await expect(loadLastButton).toHaveCSS('opacity', '0.5')
+  await expect(page.getByRole('button', { name: 'Load any game' })).toHaveClass(
+    /menu-action-secondary/,
+  )
+  await attachMobileScreenshot(page, testInfo, 'mobile-main-menu-load-disabled')
+
+  await page.getByRole('button', { name: 'Load any game' }).click()
+  const loadButton = page.getByRole('button', { name: 'Load', exact: true })
+  await expect(loadButton).toBeDisabled()
+  await expect(loadButton).toHaveClass(/menu-action-secondary/)
+  await expect(loadButton).toHaveCSS('opacity', '0.5')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-main-menu-snapshot-load-disabled',
+  )
 })
 
 test('captures the mobile Reach the Moon menu transition', async ({
@@ -650,7 +686,6 @@ test('backs out of Reach the Moon highscores one menu step', async ({
     app.replaceChildren()
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: true,
       onFreeRoam: () => undefined,
       onLoadGame: () => undefined,
       onReachMoon: () => undefined,
@@ -862,7 +897,7 @@ test('autosubmits completion highscores and retries failures', async ({
     })
   })
 
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await page.addStyleTag({ content: screenshotCss })
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
@@ -877,7 +912,6 @@ test('autosubmits completion highscores and retries failures', async ({
     app.replaceChildren()
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: true,
       onFreeRoam: () => undefined,
       onLoadGame: () => undefined,
       onReachMoon: () => undefined,
@@ -909,57 +943,6 @@ test('autosubmits completion highscores and retries failures', async ({
   await expect(page.getByRole('cell', { name: 'Retry Pilot' })).toBeVisible()
   expect(postBodies).toHaveLength(2)
   expect(postBodies[1].playerName).toBe('Retry Pilot')
-})
-
-test('skips highscore requests when the Reach the Moon feature is disabled', async ({
-  page,
-}) => {
-  let highscoreRequestCount = 0
-  await page.route('**/api/reach-moon/highscores**', async (route) => {
-    highscoreRequestCount += 1
-    await route.fulfill({
-      body: JSON.stringify({ rollups: {} }),
-      contentType: 'application/json',
-      status: 200,
-    })
-  })
-
-  await page.goto('/?reachmoon=1')
-  await expect(page.locator('[data-boot-screen]')).toBeHidden()
-
-  const result = await page.evaluate(async (pendingRun) => {
-    const mainMenuModulePath = '/src/ui/createMainMenu.ts'
-    const { createMainMenu } = await import(mainMenuModulePath)
-    const app = document.createElement('div')
-    document.body.append(app)
-
-    const menu = createMainMenu({
-      app,
-      reachMoonFeatureEnabled: false,
-      onFreeRoam: () => undefined,
-      onLoadGame: () => undefined,
-      onReachMoon: () => undefined,
-      onTutorial: () => undefined,
-    })
-    menu.showReachMoonHighscores(pendingRun)
-
-    return {
-      highscorePanelCount: menu.element.querySelectorAll(
-        '[data-main-menu-view="reach-moon-highscores"]',
-      ).length,
-      mainHidden:
-        menu.element
-          .querySelector('[data-main-menu-view="main"]')
-          ?.hasAttribute('hidden') ?? true,
-    }
-  }, completedHighscoreRun)
-
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(resolve)),
-  )
-
-  expect(result).toEqual({ highscorePanelCount: 0, mainHidden: false })
-  expect(highscoreRequestCount).toBe(0)
 })
 
 test('keeps loading the active period when submit rollups omit it', async ({
@@ -1016,7 +999,7 @@ test('keeps loading the active period when submit rollups omit it', async ({
     })
   })
 
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   await page.evaluate(async (pendingRun) => {
@@ -1030,7 +1013,6 @@ test('keeps loading the active period when submit rollups omit it', async ({
     app.replaceChildren()
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: true,
       onFreeRoam: () => undefined,
       onLoadGame: () => undefined,
       onReachMoon: () => undefined,
@@ -1131,7 +1113,7 @@ test('keeps the Reach the Moon replay pill wired to the prompt adapter', async (
 test('refreshes stale main menu load state when the snapshot disappears', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -1161,7 +1143,6 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
 
     const menu = createMainMenu({
       app,
-      reachMoonFeatureEnabled: false,
       onFreeRoam: () => events.push('free-roam'),
       onLoadGame: () => events.push('load'),
       onReachMoon: () => events.push('reach-moon'),
@@ -1244,7 +1225,7 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
 test('keeps the crash menu adapter state, focus, and keyboard behavior', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -1383,7 +1364,7 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
 test('keeps the top menu adapter state, focus, keyboard, and debug behavior', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -1666,7 +1647,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
 test('keeps the in-game controls menu adapter state and actions', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -2077,6 +2058,60 @@ test('keeps the empty camera unlock notice title readable inside the bottom pill
   )
 })
 
+test('keeps the edge-pan free-roam progress indicator near the cursor', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await openReachMoonMainMenu(page)
+
+  const metrics = await page.evaluate(() => {
+    const indicator = document.querySelector<HTMLElement>(
+      '.camera-unlock-progress',
+    )
+    if (!indicator) {
+      throw new Error('Missing camera unlock progress indicator')
+    }
+
+    indicator.hidden = false
+    indicator.dataset.visible = 'true'
+    indicator.setAttribute('aria-hidden', 'false')
+    indicator.setAttribute('aria-valuenow', '68')
+    indicator.style.left = '868px'
+    indicator.style.top = '58px'
+    indicator.style.setProperty('--camera-unlock-progress', '0.68')
+
+    const bounds = indicator.getBoundingClientRect()
+    return {
+      ariaLabel: indicator.getAttribute('aria-label'),
+      ariaValueNow: indicator.getAttribute('aria-valuenow'),
+      bottom: bounds.bottom,
+      left: bounds.left,
+      right: bounds.right,
+      text: indicator.textContent?.trim(),
+      top: bounds.top,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    }
+  })
+
+  expect(metrics).toMatchObject({
+    ariaLabel: 'Loading free roam',
+    ariaValueNow: '68',
+    text: '',
+  })
+  expect(metrics.left).toBeGreaterThanOrEqual(0)
+  expect(metrics.top).toBeGreaterThanOrEqual(0)
+  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
+
+  await expect(page.locator('.camera-unlock-progress')).toBeVisible()
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-edge-pan-unlock-progress',
+  )
+})
+
 test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
   page,
 }, testInfo) => {
@@ -2144,7 +2179,7 @@ test('keeps the lunar orbit quality notice text inside the bottom pill', async (
 test('keeps the UI settings dialog adapter state, focus, and change behavior', async ({
   page,
 }) => {
-  await page.goto('/?reachmoon=1')
+  await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(async () => {
@@ -2158,6 +2193,8 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let warpSide: 'left' | 'right' = 'left'
+    let desktopEdgePanEnabled = false
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
     let orbitPointDisplay = {
       altitudeVisible: true,
@@ -2174,6 +2211,9 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     const dialog = createUiSettingsDialog({
       app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanVisible: () => true,
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchBurnControlSide: () => burnSide,
@@ -2187,6 +2227,14 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         orbitPointDisplay = settings
       },
       onOpenChange: (open: boolean) => openEvents.push(open),
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        events.push(`edgePan:${enabled}`)
+        desktopEdgePanEnabled = enabled
+      },
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        events.push(`edgePanSpeed:${speed}`)
+        desktopEdgePanSpeed = speed
+      },
       onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
         events.push(`maneuver:${startByDrag}`)
         mobileManeuverStartByDrag = startByDrag
@@ -2230,6 +2278,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
           (dialog.element as HTMLElement).querySelectorAll('button'),
         ) as HTMLButtonElement[]
       ).find((button) => button.textContent?.includes(text))
+    const getEdgePanSpeed = () =>
+      dialog.element.querySelector('[data-ui-settings-edge-pan-speed]')
+        ?.textContent
+    const getEdgePanSpeedButton = (action: string) =>
+      dialog.element.querySelector(
+        `[data-ui-settings-edge-pan-speed-action="${action}"]`,
+      ) as HTMLButtonElement | null
     const getFocusableButtons = (): HTMLButtonElement[] =>
       Array.from(
         (dialog.element as HTMLElement).querySelectorAll('button'),
@@ -2277,12 +2332,27 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       warp: getSelectedValue('Warp control side'),
     }
     const maneuverSwitchInitial = getButtonByText(
-      'Start turning by drag',
+      'Starts by drag or tap',
     )?.getAttribute('aria-checked')
     const maneuverSwitchInitialText = getButtonByText(
-      'Start turning by drag',
+      'Starts by drag or tap',
     )?.textContent
-    getButtonByText('Start turning by drag')?.click()
+    getButtonByText('Starts by drag or tap')?.click()
+    const edgePanSwitchInitial = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.getAttribute('aria-checked')
+    const edgePanSwitchInitialText = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.textContent
+    const edgePanSpeedHiddenInitial = getEdgePanSpeed() === undefined
+    getButtonByText('Turn on scrolling by edge pan')?.click()
+    const edgePanSpeedAfterToggle = getEdgePanSpeed()
+    const edgePanSpeedDecreaseDisabledAfterToggle =
+      getEdgePanSpeedButton('decrease')?.disabled
+    getEdgePanSpeedButton('increase')?.click()
+    const edgePanSpeedAfterIncrease = getEdgePanSpeed()
+    const edgePanSpeedIncreaseDisabledAfterIncrease =
+      getEdgePanSpeedButton('increase')?.disabled
     getControlButton('Burn control side', 'left')?.click()
     getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
@@ -2295,10 +2365,16 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       warp: getSelectedValue('Warp control side'),
     }
     const maneuverSwitchAfter = getButtonByText(
-      'Start turning by drag',
+      'Starts by drag or tap',
     )?.getAttribute('aria-checked')
     const maneuverSwitchAfterText = getButtonByText(
-      'Start turning by drag',
+      'Starts by drag or tap',
+    )?.textContent
+    const edgePanSwitchAfter = getButtonByText(
+      'Turn on scrolling by edge pan',
+    )?.getAttribute('aria-checked')
+    const edgePanSwitchAfterText = getButtonByText(
+      'Turn on scrolling by edge pan',
     )?.textContent
     const burnLeftPressed = getControlButton(
       'Burn control side',
@@ -2442,6 +2518,15 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       altitudeDisabledWhenMarkersOff,
       centerDisabledWhenLabelsOff,
       centerDisabledWhenMarkersOff,
+      edgePanSwitchAfter,
+      edgePanSwitchAfterText,
+      edgePanSwitchInitial,
+      edgePanSwitchInitialText,
+      edgePanSpeedAfterIncrease,
+      edgePanSpeedAfterToggle,
+      edgePanSpeedDecreaseDisabledAfterToggle,
+      edgePanSpeedHiddenInitial,
+      edgePanSpeedIncreaseDisabledAfterIncrease,
       eventCountAfterDisabledCenterClick,
       labelSwitchDisabledWhenLabelsOff,
       labelSwitchDisabledWhenMarkersOff,
@@ -2500,6 +2585,8 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     className: 'app-dialog ui-settings-dialog',
     events: [
       'maneuver:false',
+      'edgePan:true',
+      'edgePanSpeed:fast',
       'burn:left',
       'target:left',
       'trajectory:right',
@@ -2521,13 +2608,24 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     altitudeDisabledWhenMarkersOff: true,
     centerDisabledWhenLabelsOff: true,
     centerDisabledWhenMarkersOff: true,
+    edgePanSwitchAfter: 'true',
+    edgePanSwitchAfterText:
+      'Turn on scrolling by edge panScrolling by edge pan',
+    edgePanSwitchInitial: 'false',
+    edgePanSwitchInitialText:
+      'Turn on scrolling by edge panScrolling by dragging',
+    edgePanSpeedAfterIncrease: 'Fast',
+    edgePanSpeedAfterToggle: 'Normal',
+    edgePanSpeedDecreaseDisabledAfterToggle: false,
+    edgePanSpeedHiddenInitial: true,
+    edgePanSpeedIncreaseDisabledAfterIncrease: true,
     eventCountAfterDisabledCenterClick: 3,
     labelSwitchDisabledWhenLabelsOff: false,
     labelSwitchDisabledWhenMarkersOff: true,
     maneuverSwitchAfter: 'false',
-    maneuverSwitchAfterText: 'Start turning by dragStarts by tap',
+    maneuverSwitchAfterText: 'Starts by drag or tapStarts by tap',
     maneuverSwitchInitial: 'true',
-    maneuverSwitchInitialText: 'Start turning by dragStarts by drag',
+    maneuverSwitchInitialText: 'Starts by drag or tapStarts by drag',
     markerSwitchDisabledWhenMarkersOff: false,
     openAfterOpen: true,
     openEvents: [true, false, true, false, true, false, true, false],
@@ -2570,7 +2668,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       warp: 'left',
     },
     spacecraftControlGroup: 'Control sides',
-    spacecraftControlGroups: ['Control sides', 'Maneuvers'],
+    spacecraftControlGroups: ['Control sides', 'Maneuvers', 'Camera'],
     spacecraftFocusAfterOpen: true,
     spacecraftSummaryAfterChangesIncludesBurnLeft: true,
     spacecraftSummaryAfterChangesIncludesTargetLeft: true,
@@ -2582,6 +2680,186 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     titleAfterSpacecraftBack: 'UI settings',
     titleAfterOrbitBack: 'UI settings',
     targetSyncedOnOpen: 'left',
+  })
+})
+
+test('hides desktop-only irrelevant spacecraft settings without resetting saved mobile values', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(async () => {
+    const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
+    const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
+    const app = document.createElement('div')
+    const events: string[] = []
+    let touchControlsVisible = false
+    const burnControlAvailable = true
+    let targetControlAvailable = true
+    const trajectoryControlAvailable = true
+    let warpControlAvailable = true
+    let burnSide: 'left' | 'right' = 'left'
+    let targetSide: 'left' | 'right' = 'right'
+    let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
+    let warpSide: 'left' | 'right' = 'right'
+    let desktopEdgePanEnabled = false
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+    let mobileManeuverStartByDrag = true
+    const orbitPointDisplay = {
+      altitudeVisible: true,
+      centerDistanceVisible: true,
+      labelsVisible: true,
+      markersVisible: true,
+      pointNameVisible: true,
+    }
+
+    document.body.append(app)
+
+    const dialog = createUiSettingsDialog({
+      app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanVisible: () => false,
+      getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
+      getOrbitPointDisplay: () => orbitPointDisplay,
+      getTouchBurnControlAvailable: () => burnControlAvailable,
+      getTouchBurnControlSide: () => burnSide,
+      getTouchControlsVisible: () => touchControlsVisible,
+      getTouchTargetControlAvailable: () => targetControlAvailable,
+      getTouchTargetControlSide: () => targetSide,
+      getTouchTrajectoryControlAvailable: () => trajectoryControlAvailable,
+      getTouchTrajectoryControlSide: () => trajectorySide,
+      getTouchWarpControlAvailable: () => warpControlAvailable,
+      getTouchWarpControlSide: () => warpSide,
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        events.push(`edgePan:${enabled}`)
+        desktopEdgePanEnabled = enabled
+      },
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        events.push(`edgePanSpeed:${speed}`)
+        desktopEdgePanSpeed = speed
+      },
+      onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
+        events.push(`maneuver:${startByDrag}`)
+        mobileManeuverStartByDrag = startByDrag
+      },
+      onOrbitPointDisplayChange: () => {
+        events.push('orbit')
+      },
+      onOpenChange: () => {},
+      onTouchBurnControlSideChange: (side: 'left' | 'right') => {
+        events.push(`burn:${side}`)
+        burnSide = side
+      },
+      onTouchTargetControlSideChange: (side: 'left' | 'right') => {
+        events.push(`target:${side}`)
+        targetSide = side
+      },
+      onTouchTrajectoryControlSideChange: (
+        side: 'left' | 'right' | 'hidden',
+      ) => {
+        events.push(`trajectory:${side}`)
+        trajectorySide = side
+      },
+      onTouchWarpControlSideChange: (side: 'left' | 'right') => {
+        events.push(`warp:${side}`)
+        warpSide = side
+      },
+    })
+
+    const getButtonByText = (text: string): HTMLButtonElement | undefined =>
+      (
+        Array.from(
+          (dialog.element as HTMLElement).querySelectorAll('button'),
+        ) as HTMLButtonElement[]
+      ).find((button) => button.textContent?.includes(text))
+    const getSummaryText = () =>
+      getButtonByText('Spacecraft controls settings')?.textContent ?? ''
+    const readVisibleText = () => dialog.element.textContent ?? ''
+
+    dialog.open()
+    const desktopSummary = getSummaryText()
+    getButtonByText('Spacecraft controls settings')?.click()
+    const desktopPaneText = readVisibleText()
+    const desktopControlSideGroup = dialog.element.querySelector(
+      '[aria-label="Control sides"]',
+    )
+    const desktopManeuverSwitch = getButtonByText('Starts by drag or tap')
+
+    touchControlsVisible = true
+    dialog.syncState()
+    const mobilePaneText = readVisibleText()
+    const mobileControlSideGroup = dialog.element.querySelector(
+      '[aria-label="Control sides"]',
+    )
+    const mobileManeuverSwitch = getButtonByText('Starts by drag or tap')
+
+    targetControlAvailable = false
+    warpControlAvailable = false
+    dialog.syncState()
+    getButtonByText('Back')?.click()
+    const partiallyHiddenSummary = getSummaryText()
+    getButtonByText('Spacecraft controls settings')?.click()
+    const partiallyHiddenPaneText = readVisibleText()
+
+    return {
+      desktopControlSideGroupHidden: desktopControlSideGroup === null,
+      desktopManeuverSwitchHidden: desktopManeuverSwitch === undefined,
+      desktopPaneText,
+      desktopSummary,
+      events,
+      mobileControlSideGroupVisible: mobileControlSideGroup !== null,
+      mobileManeuverSwitchVisible: mobileManeuverSwitch !== undefined,
+      mobilePaneText,
+      partiallyHiddenPaneText,
+      partiallyHiddenSummary,
+      savedValues: {
+        burnSide,
+        mobileManeuverStartByDrag,
+        targetSide,
+        trajectorySide,
+        warpSide,
+      },
+    }
+  })
+
+  expect(result.desktopSummary).toContain('Keyboard and mouse active')
+  expect(result.desktopSummary).not.toContain('Burn left')
+  expect(result.desktopSummary).not.toContain('warp right')
+  expect(result.desktopSummary).not.toContain('target right')
+  expect(result.desktopSummary).not.toContain('trajectory hidden')
+  expect(result.desktopSummary).not.toContain('maneuver drag')
+  expect(result.desktopControlSideGroupHidden).toBe(true)
+  expect(result.desktopManeuverSwitchHidden).toBe(true)
+  expect(result.desktopPaneText).toContain('Keyboard and mouse active')
+  expect(result.desktopPaneText).not.toContain('Burn side')
+  expect(result.desktopPaneText).not.toContain('Starts by drag or tap')
+
+  expect(result.mobileControlSideGroupVisible).toBe(true)
+  expect(result.mobileManeuverSwitchVisible).toBe(true)
+  expect(result.mobilePaneText).toContain('Burn side')
+  expect(result.mobilePaneText).toContain('Warp side')
+  expect(result.mobilePaneText).toContain('Target side')
+  expect(result.mobilePaneText).toContain('Trajectory side')
+  expect(result.mobilePaneText).toContain('Starts by drag or tap')
+
+  expect(result.partiallyHiddenSummary).toContain('Burn left')
+  expect(result.partiallyHiddenSummary).toContain('trajectory hidden')
+  expect(result.partiallyHiddenSummary).toContain('maneuver drag')
+  expect(result.partiallyHiddenSummary).not.toContain('warp right')
+  expect(result.partiallyHiddenSummary).not.toContain('target right')
+  expect(result.partiallyHiddenPaneText).toContain('Burn side')
+  expect(result.partiallyHiddenPaneText).toContain('Trajectory side')
+  expect(result.partiallyHiddenPaneText).not.toContain('Warp side')
+  expect(result.partiallyHiddenPaneText).not.toContain('Target side')
+  expect(result.events).toEqual([])
+  expect(result.savedValues).toEqual({
+    burnSide: 'left',
+    mobileManeuverStartByDrag: true,
+    targetSide: 'right',
+    trajectorySide: 'hidden',
+    warpSide: 'right',
   })
 })
 
@@ -2611,6 +2889,103 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await expect(page.getByText('Prediction horizon')).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
+})
+
+test('captures the desktop edge pan toggle and speed in UI settings', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 480, height: 720 })
+  await page.goto('/?reachmoon=1')
+  await page.addStyleTag({
+    content: `
+      #app {
+        background: #05070d !important;
+      }
+    `,
+  })
+
+  await page.evaluate(async () => {
+    const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
+    const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
+    const app = document.querySelector<HTMLElement>('#app')
+    let desktopEdgePanEnabled = false
+    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+
+    const dialog = createUiSettingsDialog({
+      app,
+      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
+      getDesktopEdgePanVisible: () => true,
+      getMobileManeuverStartByDrag: () => true,
+      getOrbitPointDisplay: () => ({
+        altitudeVisible: true,
+        centerDistanceVisible: false,
+        labelsVisible: true,
+        markersVisible: true,
+        pointNameVisible: true,
+      }),
+      getTouchBurnControlSide: () => 'right',
+      getTouchTargetControlSide: () => 'left',
+      getTouchTrajectoryControlSide: () => 'hidden',
+      getTouchWarpControlSide: () => 'right',
+      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
+        desktopEdgePanEnabled = enabled
+      },
+      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
+        desktopEdgePanSpeed = speed
+      },
+      onMobileManeuverStartByDragChange: () => {},
+      onOrbitPointDisplayChange: () => {},
+      onTouchBurnControlSideChange: () => {},
+      onTouchTargetControlSideChange: () => {},
+      onTouchTrajectoryControlSideChange: () => {},
+      onTouchWarpControlSideChange: () => {},
+    })
+
+    dialog.open()
+    const spacecraftControlsButton = (
+      Array.from(
+        dialog.element.querySelectorAll('button'),
+      ) as HTMLButtonElement[]
+    ).find((button) =>
+      button.textContent?.includes('Spacecraft controls settings'),
+    )
+    spacecraftControlsButton?.click()
+  })
+
+  await expect(
+    page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
+  ).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Camera' })).toBeVisible()
+  await expect(page.getByText('Turn on scrolling by edge pan')).toBeVisible()
+  await expect(
+    page.getByText('Scrolling by dragging', { exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('Edge pan speed')).toHaveCount(0)
+
+  await page
+    .getByRole('switch', { name: /Turn on scrolling by edge pan/ })
+    .click()
+  await expect(
+    page.getByText('Scrolling by edge pan', { exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('Edge pan speed')).toBeVisible()
+  await expect(page.locator('[data-ui-settings-edge-pan-speed]')).toHaveText(
+    'Normal',
+  )
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-edge-pan-toggle-settings',
+  )
 })
 
 test('captures wide in-game controls keyboard hints', async ({
@@ -2662,8 +3037,9 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   await expect(page.getByRole('group', { name: 'Maneuvers' })).toBeVisible()
   await expect(page.getByText('Burn side')).toBeVisible()
   await expect(page.getByText('Trajectory side')).toBeVisible()
-  await expect(page.getByText('Start turning by drag')).toBeVisible()
-  await expect(page.getByText('Starts by drag')).toBeVisible()
+  await expect(page.getByText('Starts by drag or tap')).toBeVisible()
+  await expect(page.getByText('Starts by drag', { exact: true })).toBeVisible()
+  await expect(page.getByText('Turn on scrolling by edge pan')).toHaveCount(0)
 
   await attachMobileScreenshot(
     page,
@@ -2735,14 +3111,70 @@ test('captures the mobile time warp touch control after reveal', async ({
 }, testInfo) => {
   await startReachMoonMission(page)
 
-  await page.getByRole('button', { name: 'Reveal time warp control' }).click()
+  await page
+    .getByRole('button', { exact: true, name: 'Reveal time warp control' })
+    .click()
+  await page.getByRole('button', { name: 'Reveal Time Warp control 2' }).click()
   const timeWarpReveal = page.locator('#touch-time-warp-reveal')
+  const timeWarpPrototypeReveal = page.locator(
+    '#touch-time-warp-prototype-reveal',
+  )
   await expect(timeWarpReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await expect(timeWarpPrototypeReveal).toHaveClass(
+    /touch-edge-reveal-control-open/,
+  )
   await expect(
     timeWarpReveal.getByLabel('Time warp control', { exact: true }),
   ).toBeVisible()
+  const timeWarpPrototypeControl = timeWarpPrototypeReveal.getByLabel(
+    'Time Warp control 2',
+    { exact: true },
+  )
+  await expect(timeWarpPrototypeControl).toBeVisible()
+  await expect(
+    timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
+  ).toHaveCount(0)
+  await expect(timeWarpReveal.locator('.touch-edge-reveal-content')).toHaveCSS(
+    'transform',
+    'matrix(1, 0, 0, 1, 0, 0)',
+  )
+  await expect(
+    timeWarpPrototypeReveal.locator('.touch-edge-reveal-content'),
+  ).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
+
+  const prototypeBox = await timeWarpPrototypeControl.boundingBox()
+  if (!prototypeBox) {
+    throw new Error('Expected Time Warp control 2 bounds')
+  }
+  await page.mouse.move(
+    prototypeBox.x + prototypeBox.width / 2,
+    prototypeBox.y + prototypeBox.height / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    prototypeBox.x + prototypeBox.width / 2 - 69,
+    prototypeBox.y + prototypeBox.height / 2,
+    { steps: 3 },
+  )
+  await expect(timeWarpPrototypeControl).toHaveClass(
+    /touch-step-selector-dragging/,
+  )
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-time-warp-control-dragging',
+  )
+  await page.mouse.up()
+  await expect(
+    timeWarpPrototypeControl.locator('.touch-step-selector-value-current'),
+  ).toHaveText('x4s')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-time-warp-control-elevated-spacing',
+  )
 })
 
 test('captures the mobile trajectory horizon touch control after reveal', async ({
@@ -2800,7 +3232,7 @@ test('captures the mobile thrust touch control after reveal', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-thrust-control')
 })
 
-test('captures the mobile active burn notice pill', async ({
+test('captures mobile active thrust without a bottom burn notice pill', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -2817,16 +3249,38 @@ test('captures the mobile active burn notice pill', async ({
   })
 
   const burnNotice = page.locator('.burn-active-notice')
-  await expect(burnNotice).toBeVisible()
-  await expect(burnNotice).toHaveAttribute('data-visible', 'true')
+  await expect(burnNotice).toHaveCount(0)
   await expect(page.locator('.telemetry-pill-velocity')).toHaveClass(
     /telemetry-pill-thrusting/,
   )
-  await expect(burnNotice.locator('.burn-active-notice-icon')).toHaveClass(
+  await expect(page.locator('.telemetry-speed-icon')).toHaveClass(
     /telemetry-speed-icon-thrusting/,
   )
+  const activePillState = await page.evaluate(() => {
+    const speedPill = document.querySelector<HTMLElement>(
+      '.telemetry-pill-velocity.telemetry-pill-thrusting',
+    )
+    const burnPill = document.querySelector<HTMLElement>('.burn-active-notice')
+    if (!speedPill || burnPill) {
+      throw new Error('Expected active speed pill and no burn notice pill')
+    }
 
-  await attachMobileScreenshot(page, testInfo, 'mobile-burn-active-notice')
+    return {
+      burnNoticeCount: document.querySelectorAll('.burn-active-notice').length,
+      speedPillClassName: speedPill.className,
+    }
+  })
+  expect(activePillState).toEqual({
+    burnNoticeCount: 0,
+    speedPillClassName:
+      'telemetry-pill telemetry-pill-velocity telemetry-pill-thrusting',
+  })
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-active-thrust-speed-pill',
+  )
 
   await page.evaluate(() => {
     window.dispatchEvent(
@@ -2838,5 +3292,7 @@ test('captures the mobile active burn notice pill', async ({
       }),
     )
   })
-  await expect(burnNotice).toBeHidden()
+  await expect(page.locator('.telemetry-pill-velocity')).not.toHaveClass(
+    /telemetry-pill-thrusting/,
+  )
 })

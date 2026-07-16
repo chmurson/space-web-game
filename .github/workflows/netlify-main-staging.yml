@@ -1,0 +1,58 @@
+name: Netlify Main Staging Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: netlify-main-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    name: Deploy main to staging
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build release
+        run: npm run build
+
+      - name: Add cached Netlify CLI to PATH
+        run: echo "${RUNNER_TEMP}/netlify-cli/bin" >> "${GITHUB_PATH}"
+
+      - name: Restore Netlify CLI cache
+        id: netlify-cli-cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ${{ runner.temp }}/netlify-cli
+          key: netlify-cli-${{ runner.os }}-node-22-v26.1.0
+
+      - name: Install Netlify CLI
+        if: steps.netlify-cli-cache.outputs.cache-hit != 'true'
+        env:
+          NPM_CONFIG_PREFIX: ${{ runner.temp }}/netlify-cli
+        run: npm install --global netlify-cli@26.1.0
+
+      - name: Deploy main to Netlify staging
+        env:
+          BRANCH: ${{ github.ref_name }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: npm run deploy:netlify:staging

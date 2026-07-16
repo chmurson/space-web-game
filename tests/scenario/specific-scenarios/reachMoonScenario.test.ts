@@ -214,7 +214,7 @@ describe('reachMoonScenario', () => {
     expect(directives.maxViewportSize).toBe(EARTH_MOON_VIEWPORT_SIZE)
     expect(
       globalScenarioDirectiveLimits.timeWarps[globalMaxTimeWarpIndex],
-    ).toBe(18_000)
+    ).toBe(54_000)
     expect(
       getConstrainedTimeWarpIndex(
         globalMaxTimeWarpIndex,

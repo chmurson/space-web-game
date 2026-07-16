@@ -27,6 +27,7 @@ body {
 }
 
 button,
+input[type="number"],
 select {
     background: var(--bg-subtle);
     border: 1px solid var(--border);
@@ -42,6 +43,7 @@ button {
 }
 
 button:hover,
+input[type="number"]:hover,
 select:hover {
     border-color: #56617a;
 }
@@ -249,8 +251,19 @@ main {
 .control-group {
     align-items: center;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 10px;
+}
+
+.control-group input[type="number"] {
+    width: 92px;
+}
+
+.inline-toggle {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
 }
 
 .button-row,

@@ -6,6 +6,10 @@ const touchControlDockDefinitions = [
     id: 'warp',
   },
   {
+    className: 'touch-edge-reveal-dock touch-time-warp-prototype-reveal-dock',
+    id: 'warpPrototype',
+  },
+  {
     className: 'touch-edge-reveal-dock touch-trajectory-horizon-reveal-dock',
     id: 'trajectory',
   },
@@ -78,6 +82,7 @@ export const createTouchControlsShell = (): TouchControlsShell => {
     <TouchControlsShellSurface
       dockRefs={{
         warp: createDockRef('warp'),
+        warpPrototype: createDockRef('warpPrototype'),
         trajectory: createDockRef('trajectory'),
         target: createDockRef('target'),
         rcsYaw: createDockRef('rcsYaw'),
@@ -95,6 +100,10 @@ export const createTouchControlsShell = (): TouchControlsShell => {
       warp: getRequiredElement<HTMLDivElement>(
         docks.warp,
         'Touch controls shell rendered without warp dock',
+      ),
+      warpPrototype: getRequiredElement<HTMLDivElement>(
+        docks.warpPrototype,
+        'Touch controls shell rendered without warp prototype dock',
       ),
       trajectory: getRequiredElement<HTMLDivElement>(
         docks.trajectory,

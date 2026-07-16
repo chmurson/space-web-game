@@ -21,7 +21,6 @@ export type AppConfigContext = {
   requestedScenarioId: string
   featureFlags: {
     noHorizonLimit: boolean
-    reachMoon: boolean
   }
   userSettings: UserSettings
   controls: {
@@ -83,13 +82,9 @@ export const createAppConfigContext = (): AppConfigContext => {
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
-    reachMoon: urlParams.get('reachmoon') === '1',
   }
   const requestedScenarioParam = urlParams.get('scenario')
-  const requestedScenarioId =
-    requestedScenarioParam === 'reach-moon' && !featureFlags.reachMoon
-      ? 'earth-moon'
-      : (requestedScenarioParam ?? 'earth-moon')
+  const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'
   const storedUserSettings = readUserSettings()
   const userSettings: UserSettings = {
     ...storedUserSettings,
