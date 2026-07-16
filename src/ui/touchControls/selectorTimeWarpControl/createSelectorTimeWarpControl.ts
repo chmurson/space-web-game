@@ -20,6 +20,7 @@ export const createSelectorTimeWarpControl = (
     className: ['touch-step-selector-time-warp', options.className ?? '']
       .filter(Boolean)
       .join(' '),
+    enableHorizontalMomentum: options.enableHorizontalMomentum,
     commitStep: (direction) => {
       options.commitTimeWarp(getAction(direction))
     },

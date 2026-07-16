@@ -16,9 +16,44 @@ import { createStepSelectorControlView } from './stepSelectorControlView'
 
 const swipeCommitDistancePx = 46
 const commitSettleDelayMs = 180
+const horizontalSettleDelayBufferMs = 40
 const fullSwipeAnimationDistancePx = swipeCommitDistancePx
 const previewStepCount = 3
 const horizontalPreviewStepCount = 16
+const horizontalMomentumWindowMs = 100
+const horizontalMomentumStationaryThresholdMs = 80
+const horizontalMomentumMinimumTravelPx = 10
+const horizontalMomentumMinimumVelocityPxPerSecond = 450
+const horizontalMomentumVelocityPerAdditionalStepPxPerSecond = 150
+const horizontalMomentumMaximumStepCount = 6
+const horizontalMomentumBaseSettleDurationMs = 280
+const horizontalMomentumSettleDurationPerAdditionalStepMs = 70
+
+export const getHorizontalMomentumStepCount = (params: {
+  recentTravelPx: number
+  releaseVelocityPxPerSecond: number
+  stationaryDurationMs: number
+}) => {
+  if (
+    Math.abs(params.recentTravelPx) < horizontalMomentumMinimumTravelPx ||
+    Math.abs(params.releaseVelocityPxPerSecond) <
+      horizontalMomentumMinimumVelocityPxPerSecond ||
+    params.stationaryDurationMs >= horizontalMomentumStationaryThresholdMs
+  ) {
+    return 0
+  }
+
+  const velocityAboveMinimum =
+    Math.abs(params.releaseVelocityPxPerSecond) -
+    horizontalMomentumMinimumVelocityPxPerSecond
+  return Math.min(
+    horizontalMomentumMaximumStepCount,
+    Math.floor(
+      velocityAboveMinimum /
+        horizontalMomentumVelocityPerAdditionalStepPxPerSecond,
+    ) + 1,
+  )
+}
 
 export const getStepSelectorGestureDirection = (
   gestureDelta: number,
@@ -93,6 +128,7 @@ export const createStepSelectorControl = <ControlId extends string>(
   ).matches
   let commitSettleTimer: number | null = null
   let instantRenderFrameId: number | null = null
+  let momentumAnimationFrameId: number | null = null
 
   const setSession = (
     session: StepSelectorGestureSession<ControlId> | { kind: 'none' },
@@ -163,8 +199,18 @@ export const createStepSelectorControl = <ControlId extends string>(
     commitSettleTimer = null
   }
 
+  const clearMomentumAnimationFrame = () => {
+    if (momentumAnimationFrameId === null) {
+      return
+    }
+
+    window.cancelAnimationFrame(momentumAnimationFrameId)
+    momentumAnimationFrameId = null
+  }
+
   const finishCommitSettle = (params?: { instantRender?: boolean }) => {
     clearCommitSettleTimer()
+    clearMomentumAnimationFrame()
     if (params?.instantRender) {
       if (instantRenderFrameId !== null) {
         window.cancelAnimationFrame(instantRenderFrameId)
@@ -360,7 +406,147 @@ export const createStepSelectorControl = <ControlId extends string>(
     commitSettleTimer = window.setTimeout(() => {
       commitSettleTimer = null
       finishCommitSettle({ instantRender: true })
-    }, commitSettleDelayMs)
+    }, commitSettleDelayMs + horizontalSettleDelayBufferMs)
+  }
+
+  const getHorizontalMomentumStepCountForSession = (
+    session: StepSelectorGestureSession<ControlId>,
+  ) => {
+    if (!options.enableHorizontalMomentum || reducedMotion) {
+      return 0
+    }
+
+    const samples = session.horizontalMotionSamples
+    const firstSample = samples[0]
+    const latestSample = samples.at(-1)
+    if (!firstSample || !latestSample || latestSample === firstSample) {
+      return 0
+    }
+
+    const now = performance.now()
+    const durationMs = latestSample.time - firstSample.time
+    if (durationMs <= 0) {
+      return 0
+    }
+
+    return getHorizontalMomentumStepCount({
+      recentTravelPx: latestSample.x - firstSample.x,
+      releaseVelocityPxPerSecond:
+        ((latestSample.x - firstSample.x) / durationMs) * 1_000,
+      stationaryDurationMs: now - latestSample.time,
+    })
+  }
+
+  const getConstrainedHorizontalMomentumStepCount = (
+    direction: StepSelectorDirection,
+    requestedStepCount: number,
+  ) => {
+    const runtimeSnapshot = getRuntimeSnapshot()
+    const steps =
+      direction === 'increase'
+        ? runtimeSnapshot.increaseSteps
+        : runtimeSnapshot.decreaseSteps
+    let availableStepCount = 0
+    for (const step of steps.slice(0, requestedStepCount)) {
+      if (!step.canCommit) {
+        break
+      }
+
+      availableStepCount += 1
+    }
+    return availableStepCount
+  }
+
+  const renderHorizontalMomentum = (
+    direction: StepSelectorDirection,
+    visualStepOffset: number,
+    params?: { instantRender?: boolean },
+  ) => {
+    const runtimeSnapshot = model.getSnapshot().runtimeSnapshot
+    const target = getNearStep(runtimeSnapshot, direction)
+    const snapshot = model.updateGesture({
+      direction,
+      progress: Math.min(1, Math.abs(visualStepOffset)),
+      releaseWillCommit: false,
+      target: target ?? null,
+      visualDirection: direction,
+      visualStepOffset,
+    })
+    renderControlSnapshot(snapshot, params)
+  }
+
+  const startHorizontalMomentum = (
+    session: StepSelectorGestureSession<ControlId>,
+    direction: StepSelectorDirection,
+    momentumStepCount: number,
+  ) => {
+    const gesture = model.getSnapshot().gesture
+    const startVisualStepOffset =
+      (gesture?.visualStepOffset ?? 0) + session.committedStepCount
+    const directionOffset = direction === 'increase' ? -1 : 1
+    const finalVisualStepOffset = directionOffset * momentumStepCount
+    const settleDurationMs =
+      horizontalMomentumBaseSettleDurationMs +
+      (momentumStepCount - 1) *
+        horizontalMomentumSettleDurationPerAdditionalStepMs
+    let committedStepCount = 0
+
+    syncCommittedRuntimeSnapshot(getRuntimeSnapshot())
+    renderHorizontalMomentum(direction, startVisualStepOffset, {
+      instantRender: true,
+    })
+    const startTime = performance.now()
+
+    const animateMomentum = (now: number) => {
+      momentumAnimationFrameId = null
+      const linearProgress = Math.min(1, (now - startTime) / settleDurationMs)
+      const easedProgress = 1 - (1 - linearProgress) ** 3
+      const visualStepOffset =
+        startVisualStepOffset +
+        (finalVisualStepOffset - startVisualStepOffset) * easedProgress
+      const desiredCommittedStepCount = Math.min(
+        momentumStepCount,
+        Math.max(0, Math.floor(visualStepOffset * directionOffset + 0.5)),
+      )
+      let blocked = false
+
+      while (committedStepCount < desiredCommittedStepCount) {
+        const runtimeSnapshot = getRuntimeSnapshot()
+        const target = getNearStep(runtimeSnapshot, direction)
+        if (!target?.canCommit) {
+          blocked = true
+          break
+        }
+
+        options.commitStep(direction)
+        const nextRuntimeSnapshot = getRuntimeSnapshot()
+        if (nextRuntimeSnapshot.currentValue === runtimeSnapshot.currentValue) {
+          blocked = true
+          break
+        }
+
+        syncCommittedRuntimeSnapshot(nextRuntimeSnapshot)
+        committedStepCount += 1
+      }
+
+      if (blocked) {
+        finishCommitSettle({ instantRender: true })
+        return
+      }
+
+      renderHorizontalMomentum(
+        direction,
+        visualStepOffset - directionOffset * committedStepCount,
+      )
+      if (linearProgress >= 1) {
+        finishCommitSettle()
+        return
+      }
+
+      momentumAnimationFrameId = window.requestAnimationFrame(animateMomentum)
+    }
+
+    momentumAnimationFrameId = window.requestAnimationFrame(animateMomentum)
   }
 
   const resolveReleaseCommit = () => {
@@ -394,7 +580,7 @@ export const createStepSelectorControl = <ControlId extends string>(
 
   return {
     beginGesture(point) {
-      if (commitSettleTimer !== null) {
+      if (commitSettleTimer !== null || momentumAnimationFrameId !== null) {
         finishCommitSettle({ instantRender: axis === 'horizontal' })
       }
       syncRuntimeSnapshot()
@@ -405,6 +591,10 @@ export const createStepSelectorControl = <ControlId extends string>(
         committedStepCount: 0,
         kind: 'step-selector',
         controlId: options.controlId,
+        horizontalMotionSamples:
+          axis === 'horizontal'
+            ? [{ time: performance.now(), x: point.clientX }]
+            : [],
         stepAnchorX: point.clientX,
         stepAnchorY: point.clientY,
         startX: point.clientX,
@@ -426,7 +616,31 @@ export const createStepSelectorControl = <ControlId extends string>(
       if (axis === 'horizontal') {
         model.setRuntimeSnapshot(getRuntimeSnapshot())
         if (commitPreview && !reducedMotion) {
-          settleHorizontalGesture(-session.committedStepCount)
+          const samples = session.horizontalMotionSamples
+          const firstSample = samples[0]
+          const latestSample = samples.at(-1)
+          const direction =
+            firstSample && latestSample
+              ? getStepSelectorGestureDirection(latestSample.x - firstSample.x)
+              : null
+          const momentumStepCount = direction
+            ? getHorizontalMomentumStepCountForSession(session)
+            : 0
+          const constrainedMomentumStepCount = direction
+            ? getConstrainedHorizontalMomentumStepCount(
+                direction,
+                momentumStepCount,
+              )
+            : 0
+          if (direction && constrainedMomentumStepCount > 0) {
+            startHorizontalMomentum(
+              session,
+              direction,
+              constrainedMomentumStepCount,
+            )
+          } else {
+            settleHorizontalGesture(-session.committedStepCount)
+          }
         } else {
           finishCommitSettle()
         }
@@ -461,6 +675,12 @@ export const createStepSelectorControl = <ControlId extends string>(
       )
     },
     setVisible(visible) {
+      if (
+        !visible &&
+        (commitSettleTimer !== null || momentumAnimationFrameId !== null)
+      ) {
+        finishCommitSettle({ instantRender: axis === 'horizontal' })
+      }
       view.element.style.display = visible ? 'grid' : 'none'
     },
     setSession,
@@ -475,11 +695,16 @@ export const createStepSelectorControl = <ControlId extends string>(
       }
 
       if (axis === 'horizontal') {
+        const now = performance.now()
         const gestureDelta = getStepSelectorGestureDelta(axis, point, {
           x: session.startX,
           y: session.startY,
         })
         const nextSession = commitHorizontalGestureSteps(gestureDelta, session)
+        nextSession.horizontalMotionSamples = [
+          ...nextSession.horizontalMotionSamples,
+          { time: now, x: point.clientX },
+        ].filter((sample) => now - sample.time <= horizontalMomentumWindowMs)
         updateGesturePreview(gestureDelta, {
           visualStepOffset: gestureDelta / swipeCommitDistancePx,
         })

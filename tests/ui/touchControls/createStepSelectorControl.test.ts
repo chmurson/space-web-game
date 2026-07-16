@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getHorizontalMomentumStepCount,
   getStepSelectorGestureCommittedStepCount,
   getStepSelectorGestureDelta,
   getStepSelectorGestureDirection,
@@ -55,5 +56,49 @@ describe('createStepSelectorControl', () => {
     expect(getStepSelectorReleaseWillCommit(23)).toBe(false)
     expect(getStepSelectorReleaseWillCommit(-24)).toBe(true)
     expect(getStepSelectorReleaseWillCommit(24)).toBe(true)
+  })
+
+  it('scales recent horizontal momentum from one to six steps', () => {
+    for (const [releaseVelocityPxPerSecond, expectedStepCount] of [
+      [450, 1],
+      [599, 1],
+      [600, 2],
+      [750, 3],
+      [900, 4],
+      [1_050, 5],
+      [1_200, 6],
+      [1_800, 6],
+      [-1_050, 5],
+    ] as const) {
+      expect(
+        getHorizontalMomentumStepCount({
+          recentTravelPx: 12,
+          releaseVelocityPxPerSecond,
+          stationaryDurationMs: 79,
+        }),
+      ).toBe(expectedStepCount)
+    }
+  })
+
+  it('rejects slow, tiny, or paused horizontal releases', () => {
+    for (const params of [
+      {
+        recentTravelPx: 12,
+        releaseVelocityPxPerSecond: 449,
+        stationaryDurationMs: 0,
+      },
+      {
+        recentTravelPx: 9,
+        releaseVelocityPxPerSecond: 1_200,
+        stationaryDurationMs: 0,
+      },
+      {
+        recentTravelPx: 12,
+        releaseVelocityPxPerSecond: 1_200,
+        stationaryDurationMs: 80,
+      },
+    ]) {
+      expect(getHorizontalMomentumStepCount(params)).toBe(0)
+    }
   })
 })

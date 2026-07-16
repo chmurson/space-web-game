@@ -4,6 +4,7 @@
   --touch-step-selector-current-font-size: 16px;
   --touch-step-selector-drag-progress: 0;
   --touch-step-selector-horizontal-track-offset: 0%;
+  --touch-step-selector-horizontal-settle-duration: 180ms;
   --touch-step-selector-horizontal-visual-step-offset: 0;
   --touch-step-selector-hit-overhang-x: 25%;
   --touch-step-selector-hit-overhang-y: 25%;
@@ -80,7 +81,8 @@
   position: absolute;
   inset: 0;
   transform: translateX(var(--touch-step-selector-horizontal-track-offset));
-  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--touch-step-selector-horizontal-settle-duration)
+    cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .touch-step-selector-horizontal.touch-step-selector-dragging
