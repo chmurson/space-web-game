@@ -14,6 +14,7 @@ export type Spacecraft = {
   position: Vec2
   velocity: Vec2
   heading: number
+  angularVelocity?: number
   fuel: number
   fuelUsed: number
   dryMass: number

@@ -27,6 +27,7 @@ const setWindowSize = (innerWidth: number, innerHeight: number) => {
 const createStyleStub = () => ({
   display: '',
   left: '',
+  opacity: '',
   setProperty(name: string, value: string) {
     Reflect.set(this, name, value)
   },
@@ -72,6 +73,8 @@ const createOverlayUiStub = () => {
   const headingCommittedTargetLine = createElementStub()
   const headingTargetOverlay = createElementStub()
   const headingTargetTurnSlice = createElementStub()
+  const rcsActualTurnOverlay = createElementStub()
+  const rcsActualTurnSlices = Array.from({ length: 40 }, createElementStub)
   const spacecraftCallout = createElementStub()
   const refs = {
     headingTargetDot: createElementStub(),
@@ -79,6 +82,8 @@ const createOverlayUiStub = () => {
     headingTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
+    rcsActualTurnOverlay,
+    rcsActualTurnSlices,
     spacecraftCallout,
     spacecraftCalloutLabel: null,
     spacecraftIconThrust: createElementStub(),
@@ -89,6 +94,8 @@ const createOverlayUiStub = () => {
     headingCommittedTargetLine,
     headingTargetOverlay,
     headingTargetTurnSlice,
+    rcsActualTurnOverlay,
+    rcsActualTurnSlices,
     spacecraftCallout,
     refs,
   }
@@ -174,6 +181,7 @@ describe('createSpacecraftPresentation', () => {
       isThrusting: false,
       spacecraft: createSpacecraft({ x: 0, y: 0 }),
       spacecraftLabelIntroUntil: 0,
+      rcsActualTurnFeedback: null,
       committedTargetHeading: null,
       committedTargetHeadingScreenPosition: null,
       committedTargetHeadingWorldPosition: null,
@@ -212,6 +220,131 @@ describe('createSpacecraftPresentation', () => {
     ).toBeGreaterThan(2)
   })
 
+  it('renders RCS actual-turn feedback without target-heading state', () => {
+    setWindowSize(800, 600)
+    const gameScene = createTestGameScene()
+    const overlayUi = createOverlayUiStub()
+    const trailTarget = createBody()
+    updateCameraView({
+      cameraDistance: 700,
+      cameraElevation: 1,
+      cameraTargetPosition: { x: 0, y: 0 },
+      gameScene,
+      viewportHeight: 600,
+      viewportSize: 480,
+      viewportWidth: 800,
+    })
+    const presentation = createSpacecraftPresentation({
+      defaultViewport: 480,
+      gameScene,
+      overlayUi: overlayUi.refs,
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
+      spacecraftModelZoomThreshold: 1,
+    })
+
+    presentation.updateVisuals({
+      bodies: [trailTarget],
+      elapsed: 0,
+      isThrusting: false,
+      spacecraft: createSpacecraft({ x: 0, y: 0 }, Math.PI / 3),
+      spacecraftLabelIntroUntil: 0,
+      rcsActualTurnFeedback: {
+        currentHeading: Math.PI / 3,
+        opacity: 0.72,
+        phase: 'active',
+        settleCurrentHeading: Math.PI / 3,
+        settleElapsedSeconds: 0,
+        settleStartHeading: 0,
+        startHeading: 0,
+      },
+      committedTargetHeading: null,
+      committedTargetHeadingScreenPosition: null,
+      committedTargetHeadingWorldPosition: null,
+      targetHeading: null,
+      targetHeadingPlanActive: false,
+      targetHeadingScreenPosition: null,
+      targetHeadingWorldPosition: null,
+      trailTarget,
+      trimTrailAroundTarget: false,
+      viewportSize: 480,
+    })
+
+    expect(overlayUi.rcsActualTurnOverlay.style.display).toBe('block')
+    const visibleSlices = overlayUi.rcsActualTurnSlices.filter(
+      (slice) => slice.style.display === 'block',
+    )
+    expect(visibleSlices.length).toBeGreaterThan(1)
+    expect(Number(visibleSlices[0].style.opacity)).toBeLessThan(
+      Number(visibleSlices.at(-1)?.style.opacity),
+    )
+    expect(visibleSlices.at(-1)?.getAttribute('d')).toMatch(/^M .* Z$/)
+    expect(overlayUi.headingTargetOverlay.style.display).toBe('none')
+  })
+
+  it('renders RCS feedback continuously beyond 180 degrees', () => {
+    setWindowSize(800, 600)
+    const gameScene = createTestGameScene()
+    const overlayUi = createOverlayUiStub()
+    const trailTarget = createBody()
+    updateCameraView({
+      cameraDistance: 700,
+      cameraElevation: 1,
+      cameraTargetPosition: { x: 0, y: 0 },
+      gameScene,
+      viewportHeight: 600,
+      viewportSize: 480,
+      viewportWidth: 800,
+    })
+    const presentation = createSpacecraftPresentation({
+      defaultViewport: 480,
+      gameScene,
+      overlayUi: overlayUi.refs,
+      pointerCameraInput: {
+        pointerScreenPosition: { x: 0, y: 0 },
+        updateEdgeScroll: () => {},
+      },
+      spacecraftModelZoomThreshold: 1,
+    })
+
+    presentation.updateVisuals({
+      bodies: [trailTarget],
+      elapsed: 0,
+      isThrusting: false,
+      spacecraft: createSpacecraft({ x: 0, y: 0 }, -Math.PI / 2),
+      spacecraftLabelIntroUntil: 0,
+      rcsActualTurnFeedback: {
+        currentHeading: (Math.PI * 3) / 2,
+        opacity: 1,
+        phase: 'active',
+        settleCurrentHeading: (Math.PI * 3) / 2,
+        settleElapsedSeconds: 0,
+        settleStartHeading: 0,
+        startHeading: 0,
+      },
+      committedTargetHeading: null,
+      committedTargetHeadingScreenPosition: null,
+      committedTargetHeadingWorldPosition: null,
+      targetHeading: null,
+      targetHeadingPlanActive: false,
+      targetHeadingScreenPosition: null,
+      targetHeadingWorldPosition: null,
+      trailTarget,
+      trimTrailAroundTarget: false,
+      viewportSize: 480,
+    })
+
+    const visibleSlices = overlayUi.rcsActualTurnSlices.filter(
+      (slice) => slice.style.display === 'block',
+    )
+    expect(visibleSlices).toHaveLength(30)
+    expect(Number(visibleSlices[0].style.opacity)).toBeLessThan(
+      Number(visibleSlices.at(-1)?.style.opacity),
+    )
+  })
+
   it('places spacecraft indicators close to the trajectory plane', () => {
     setWindowSize(800, 600)
     const gameScene = createTestGameScene()
@@ -243,6 +376,7 @@ describe('createSpacecraftPresentation', () => {
       isThrusting: false,
       spacecraft: createSpacecraft({ x: 0, y: 0 }),
       spacecraftLabelIntroUntil: 0,
+      rcsActualTurnFeedback: null,
       committedTargetHeading: null,
       committedTargetHeadingScreenPosition: null,
       committedTargetHeadingWorldPosition: null,
@@ -313,6 +447,7 @@ describe('createSpacecraftPresentation', () => {
       isThrusting: false,
       spacecraft: createSpacecraft({ x: 0, y: 0 }),
       spacecraftLabelIntroUntil: 0,
+      rcsActualTurnFeedback: null,
       committedTargetHeading: 0,
       committedTargetHeadingScreenPosition: { x: 760, y: 300 },
       committedTargetHeadingWorldPosition: null,
@@ -394,6 +529,15 @@ describe('createSpacecraftPresentation', () => {
       isThrusting: false,
       spacecraft: createSpacecraft({ x: 1_000_000_000, y: 0 }),
       spacecraftLabelIntroUntil: 0,
+      rcsActualTurnFeedback: {
+        currentHeading: Math.PI / 2,
+        opacity: 1,
+        phase: 'active',
+        settleCurrentHeading: Math.PI / 2,
+        settleElapsedSeconds: 0,
+        settleStartHeading: 0,
+        startHeading: 0,
+      },
       committedTargetHeading: null,
       committedTargetHeadingScreenPosition: null,
       committedTargetHeadingWorldPosition: null,
@@ -408,5 +552,6 @@ describe('createSpacecraftPresentation', () => {
 
     expect(visible).toBe(false)
     expect(overlayUi.headingTargetOverlay.style.display).toBe('none')
+    expect(overlayUi.rcsActualTurnOverlay.style.display).toBe('none')
   })
 })

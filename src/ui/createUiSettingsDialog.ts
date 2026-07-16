@@ -10,7 +10,6 @@ import {
   type UiSettingsDialogSurfaceProps,
 } from './components/UiSettingsDialogSurface'
 import { createPreactUiSurface } from './createPreactUiSurface'
-import { installNativeTouchZoomSuppression } from './nativeTouchZoomSuppression'
 
 export type UiSettingsDialog = {
   close: (restoreFocus?: boolean) => void
@@ -266,7 +265,6 @@ export const createUiSettingsDialog = (options: {
   touchControlsVisibleMedia.addEventListener('change', syncState)
   renderDialog()
   const root = surface.element
-  installNativeTouchZoomSuppression(root)
 
   root.addEventListener('click', (event) => {
     const target = event.target

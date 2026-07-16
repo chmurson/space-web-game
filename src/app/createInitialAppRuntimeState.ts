@@ -62,6 +62,7 @@ export const createInitialAppRuntimeState = (
         initialScenarioTransition.cameraMode,
         initialScenarioTransition.state.spacecraft.position,
       ),
+      rcsActualTurnFeedback: null,
       spacecraftLabelIntroUntil: performance.now() + 5_000,
       targetHeadingPlan: null,
       targetHeadingScreenPosition: null,

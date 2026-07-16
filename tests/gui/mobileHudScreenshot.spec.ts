@@ -22,6 +22,7 @@ const screenshotCss = `
   .body-label,
   .heading-target-dot,
   .heading-target-overlay,
+  .rcs-actual-turn-overlay,
   .offscreen-indicator,
   .spacecraft-callout,
   .spacecraft-icon-thrust {
@@ -33,11 +34,11 @@ const attachMobileScreenshot = async (
   page: Page,
   testInfo: TestInfo,
   name: string,
-  options?: { animations?: 'allow' | 'disabled' },
+  options: { animations?: 'allow' | 'disabled' } = {},
 ) => {
   const screenshotPath = testInfo.outputPath(`${name}.png`)
   const screenshot = await page.screenshot({
-    animations: options?.animations ?? 'disabled',
+    animations: options.animations ?? 'disabled',
     fullPage: false,
     path: screenshotPath,
   })
@@ -243,6 +244,205 @@ test('captures the mobile Reach the Moon menu transition', async ({
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page.locator('[data-main-menu-view="main"]')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
+})
+
+test('captures the mobile RCS yaw and thrust controls together', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page, 'devtools=1')
+  await page.addStyleTag({
+    content:
+      '.rcs-actual-turn-overlay, .spacecraft-callout { visibility: visible !important; }',
+  })
+  await page.waitForFunction(
+    () =>
+      '__SPACE_WEB_GAME_DEVTOOLS__' in window &&
+      window.__SPACE_WEB_GAME_DEVTOOLS__ !== undefined,
+  )
+  await page.evaluate(() => {
+    const result = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      index: 2,
+      type: 'set-time-warp-index',
+    })
+    if (!result?.ok) {
+      throw new Error(result?.error ?? 'Devtools time warp bridge is missing')
+    }
+  })
+
+  await page.getByRole('button', { name: 'Reveal RCS yaw control' }).click()
+  await page.getByRole('button', { name: 'Reveal thrust control' }).click()
+  await expect(page.locator('#touch-rcs-yaw-reveal')).toHaveClass(
+    /touch-edge-reveal-control-open/,
+  )
+  await expect(page.locator('#touch-thrust-reveal')).toHaveClass(
+    /touch-edge-reveal-control-open/,
+  )
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toBeVisible()
+  await expect(page.locator('.touch-thrust-control-track')).toBeVisible()
+  await expect(page.locator('.touch-rcs-yaw-control')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toHaveCSS(
+    'overflow',
+    'visible',
+  )
+  await expect(page.locator('.touch-rcs-yaw-control-thumb')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-thrust-control-track')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await expect(page.locator('.touch-thrust-control-thumb')).toHaveCSS(
+    'border-radius',
+    '15px',
+  )
+  await page.evaluate(() => {
+    const track = document.querySelector<HTMLElement>(
+      '.touch-rcs-yaw-control-track',
+    )
+    if (!track) {
+      throw new Error('RCS yaw track is missing')
+    }
+
+    const rect = track.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const createTouch = (x: number) =>
+      new Touch({
+        clientX: x,
+        clientY: centerY,
+        identifier: 223,
+        target: track,
+      })
+    const dispatch = (
+      type: 'touchend' | 'touchmove' | 'touchstart',
+      x: number,
+    ) => {
+      const touch = createTouch(x)
+      const activeTouches = type === 'touchend' ? [] : [touch]
+      track.dispatchEvent(
+        new TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          changedTouches: [touch],
+          targetTouches: activeTouches,
+          touches: activeTouches,
+        }),
+      )
+    }
+
+    dispatch('touchstart', centerX)
+    dispatch('touchmove', rect.right + rect.width)
+  })
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toHaveAttribute(
+    'data-rcs-yaw-turn',
+    '1.00',
+  )
+  await expect
+    .poll(() =>
+      page.locator('.touch-rcs-yaw-control-track').evaluate((track) => {
+        const thumb = track.querySelector<HTMLElement>(
+          '.touch-rcs-yaw-control-thumb',
+        )
+        if (!thumb) {
+          throw new Error('RCS yaw thumb is missing')
+        }
+
+        return Math.abs(
+          track.getBoundingClientRect().right -
+            thumb.getBoundingClientRect().right,
+        )
+      }),
+    )
+    .toBeLessThan(0.5)
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-rcs-yaw-control-far-edge',
+  )
+  await expect(page.locator('.rcs-actual-turn-overlay')).toHaveCSS(
+    'display',
+    'block',
+  )
+  await expect
+    .poll(async () =>
+      page
+        .locator('.rcs-actual-turn-slice')
+        .first()
+        .evaluate((slice) => slice.getAttribute('d')),
+    )
+    .toMatch(/^M .* Z$/)
+  await expect
+    .poll(() =>
+      page.locator('.rcs-actual-turn-slice[style*="display: block"]').count(),
+    )
+    .toBeGreaterThan(20)
+  await page.evaluate(() => {
+    const result = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      index: 0,
+      type: 'set-time-warp-index',
+    })
+    if (!result?.ok) {
+      throw new Error(result?.error ?? 'Devtools time warp bridge is missing')
+    }
+  })
+  await expect(page.locator('[data-stat="time"]')).toContainText('x1')
+  await page.evaluate(() => {
+    const track = document.querySelector<HTMLElement>(
+      '.touch-rcs-yaw-control-track',
+    )
+    if (!track) {
+      throw new Error('RCS yaw track is missing')
+    }
+
+    const rect = track.getBoundingClientRect()
+    const centerY = rect.top + rect.height / 2
+    const touch = new Touch({
+      clientX: rect.right + rect.width,
+      clientY: centerY,
+      identifier: 223,
+      target: track,
+    })
+    track.dispatchEvent(
+      new TouchEvent('touchend', {
+        bubbles: true,
+        cancelable: true,
+        changedTouches: [touch],
+        targetTouches: [],
+        touches: [],
+      }),
+    )
+  })
+  await page.waitForTimeout(50)
+  await expect
+    .poll(() =>
+      page.locator('.rcs-actual-turn-slice[style*="display: block"]').count(),
+    )
+    .toBeGreaterThan(20)
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-rcs-yaw-actual-turn-feedback',
+    { animations: 'allow' },
+  )
+
+  await page.waitForTimeout(100)
+  await expect(page.locator('.rcs-actual-turn-overlay')).toHaveCSS(
+    'display',
+    'block',
+  )
+  await expect(page.locator('.rcs-actual-turn-slice').first()).toHaveCSS(
+    'stroke',
+    'none',
+  )
 })
 
 test('captures the mobile Reach the Moon highscores leaderboard', async ({

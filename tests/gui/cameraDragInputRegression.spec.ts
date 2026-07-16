@@ -268,6 +268,7 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
           press: () => {},
           release: () => {},
           setVirtualKey: () => {},
+          setVirtualTurn: () => {},
         },
         onCameraModeSelected: () => true,
         onCameraPanGesture: (previous, next) => {

@@ -1,0 +1,186 @@
+.touch-rcs-yaw-control {
+  --rcs-yaw-left-fill: 0px;
+  --rcs-yaw-right-fill: 0px;
+  --rcs-yaw-thumb-offset: 0px;
+
+  display: grid;
+  width: 218px;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--ui-glass-panel-border);
+  border-radius: var(--touch-control-radius);
+  background:
+    linear-gradient(180deg, rgba(56, 189, 248, 0.12), transparent),
+    var(--ui-glass-panel-bg);
+  box-shadow: var(--ui-glass-panel-shadow);
+  backdrop-filter: var(--ui-glass-panel-blur);
+  color: rgba(240, 249, 255, 0.92);
+  touch-action: none;
+  user-select: none;
+}
+
+.touch-rcs-yaw-control-header {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.touch-rcs-yaw-control-title {
+  color: rgba(125, 211, 252, 0.86);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.touch-rcs-yaw-control-close {
+  display: grid;
+  width: 28px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: 999px;
+  background: var(--ui-glass-control-bg);
+  color: rgba(226, 232, 240, 0.82);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0;
+  touch-action: manipulation;
+}
+
+.touch-rcs-yaw-control-close:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.82);
+  outline-offset: 2px;
+}
+
+.touch-rcs-yaw-control-track {
+  position: relative;
+  width: 188px;
+  height: 58px;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: var(--touch-control-radius);
+  background:
+    linear-gradient(90deg, rgba(14, 116, 144, 0.18), rgba(14, 116, 144, 0)),
+    rgba(8, 13, 24, 0.64);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -12px 22px rgba(2, 6, 23, 0.2),
+    0 12px 24px rgba(2, 6, 23, 0.2);
+  touch-action: none;
+}
+
+.touch-rcs-yaw-control-track:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.82);
+  outline-offset: 3px;
+}
+
+.touch-rcs-yaw-control-center-mark {
+  position: absolute;
+  top: 11px;
+  bottom: 11px;
+  left: calc(50% - 1px);
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(240, 249, 255, 0.42);
+  box-shadow: 0 0 12px rgba(125, 211, 252, 0.22);
+  content: "";
+}
+
+.touch-rcs-yaw-control-energy {
+  position: absolute;
+  top: 50%;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(125, 211, 252, 0.24),
+    rgba(56, 189, 248, 0.72)
+  );
+  opacity: 0.28;
+  transform: translateY(-50%);
+  transition:
+    opacity 120ms ease,
+    width 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-rcs-yaw-control-energy-left {
+  right: 50%;
+  width: var(--rcs-yaw-left-fill);
+}
+
+.touch-rcs-yaw-control-energy-right {
+  left: 50%;
+  width: var(--rcs-yaw-right-fill);
+}
+
+.touch-rcs-yaw-control-active .touch-rcs-yaw-control-energy {
+  opacity: 0.82;
+}
+
+.touch-rcs-yaw-control-indicator {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  color: rgba(125, 211, 252, 0.58);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.touch-rcs-yaw-control-indicator-left {
+  left: 14px;
+}
+
+.touch-rcs-yaw-control-indicator-right {
+  right: 14px;
+}
+
+.touch-rcs-yaw-control-thumb {
+  position: absolute;
+  top: 5px;
+  left: calc(50% + var(--rcs-yaw-thumb-offset));
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(186, 230, 253, 0.58);
+  border-radius: var(--touch-control-radius);
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      rgba(255, 255, 255, 0.64),
+      transparent 42%
+    ),
+    linear-gradient(180deg, rgba(125, 211, 252, 0.96), rgba(14, 116, 144, 0.92));
+  box-shadow:
+    inset 0 -6px 14px rgba(8, 47, 73, 0.34),
+    0 8px 18px rgba(14, 165, 233, 0.24);
+  transform: translateX(-50%);
+  transition:
+    left 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 140ms ease,
+    border-color 140ms ease;
+  pointer-events: none;
+}
+
+.touch-rcs-yaw-control-active .touch-rcs-yaw-control-thumb {
+  border-color: rgba(240, 249, 255, 0.76);
+  box-shadow:
+    inset 0 -6px 14px rgba(8, 47, 73, 0.28),
+    0 0 0 1px rgba(125, 211, 252, 0.3),
+    0 0 24px rgba(56, 189, 248, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .touch-rcs-yaw-control-energy,
+  .touch-rcs-yaw-control-thumb {
+    transition: none;
+  }
+}

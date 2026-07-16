@@ -95,4 +95,52 @@ describe('createKeyboardInput', () => {
     keyboardInput.setVirtualKey('turnRight', true)
     expect(keyboardInput.getManualControls().turn).toBe(-1)
   })
+
+  it('supports clamped analog virtual turn input and clears it', () => {
+    const keyboardInput = createKeyboardInput()
+
+    keyboardInput.setVirtualTurn(0.42)
+    expect(keyboardInput.getManualControls().turn).toBe(0.42)
+    expect(keyboardInput.hasManualTurn()).toBe(true)
+
+    keyboardInput.setVirtualTurn(2)
+    expect(keyboardInput.getManualControls().turn).toBe(1)
+
+    keyboardInput.setVirtualTurn(-2)
+    expect(keyboardInput.getManualControls().turn).toBe(-1)
+
+    keyboardInput.setVirtualTurn(Number.NaN)
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+
+    keyboardInput.setVirtualTurn(0.5)
+    keyboardInput.clear()
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+  })
+
+  it('combines analog virtual turn with digital virtual turn keys', () => {
+    const keyboardInput = createKeyboardInput()
+
+    keyboardInput.setVirtualTurn(0.7)
+    keyboardInput.setVirtualKey('turnLeft', true)
+    expect(keyboardInput.getManualControls().turn).toBe(1)
+    expect(keyboardInput.hasManualTurn()).toBe(true)
+
+    keyboardInput.setVirtualKey('turnLeft', false)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(0.7)
+
+    keyboardInput.setVirtualKey('turnRight', true)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-0.3)
+
+    keyboardInput.setVirtualTurn(-0.7)
+    expect(keyboardInput.getManualControls().turn).toBe(-1)
+
+    keyboardInput.setVirtualKey('turnRight', false)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-0.7)
+
+    keyboardInput.clear()
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+  })
 })

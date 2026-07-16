@@ -113,6 +113,7 @@ test('hands interrupted control gestures to the newest touch', async ({
               thrustEngagementCount += 1
             }
           },
+          setVirtualTurn: () => {},
         },
         onCameraModeSelected: () => true,
         onCameraPanGesture: () => false,

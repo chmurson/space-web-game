@@ -41,6 +41,10 @@ type RevealGesture = {
 const getTouchById = (touches: TouchList, touchId: number) =>
   Array.from(touches).find((touch) => touch.identifier === touchId) ?? null
 
+const isEdgeRevealGestureTarget = (target: EventTarget | null) =>
+  target instanceof Element &&
+  Boolean(target.closest('[data-touch-edge-reveal-gesture-target]'))
+
 export const createEdgeRevealControl = (
   options: EdgeRevealControlOptions,
 ): EdgeRevealControl => {
@@ -172,7 +176,7 @@ export const createEdgeRevealControl = (
 
   content.addEventListener('touchstart', (event) => {
     const touch = event.changedTouches[0]
-    if (!touch || !open) {
+    if (!touch || !open || isEdgeRevealGestureTarget(event.target)) {
       return
     }
     contentGesture = beginRevealGesture(touch)

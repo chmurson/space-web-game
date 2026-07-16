@@ -9,7 +9,6 @@ import {
 } from '../components/HudTelemetrySurface'
 import { createPreactUiSurface } from '../createPreactUiSurface'
 import { createDebugPanel, type DebugPanel } from '../debugPanel'
-import { installNativeTouchZoomSuppression } from '../nativeTouchZoomSuppression'
 import {
   createScenarioPromptUI,
   type ScenarioPromptSurfaceRenderer,
@@ -38,6 +37,8 @@ export type OverlayUiRefs = {
   headingTargetOverlay: SVGSVGElement
   headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
+  rcsActualTurnOverlay: SVGSVGElement
+  rcsActualTurnSlices: SVGPathElement[]
   renderScenarioPromptSurface: ScenarioPromptSurfaceRenderer
   renderFpsIndicator(view: FpsIndicatorView | null): void
   scenarioPrompt: HTMLElement
@@ -164,12 +165,10 @@ const createTrajectoryEventMarkerLabel = (
 export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const topBar = document.createElement('div')
   topBar.className = 'top-bar'
-  installNativeTouchZoomSuppression(topBar)
   options.app.appendChild(topBar)
 
   const bottomHudNotices = createBottomHudNoticesSurface(options.app)
   const { bottomPillArea } = bottomHudNotices
-  installNativeTouchZoomSuppression(bottomPillArea)
 
   const cameraUnlockProgress = document.createElement('div')
   cameraUnlockProgress.className = 'camera-unlock-progress'
@@ -193,7 +192,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   })
 
   const scenarioPromptUi = createScenarioPromptUI(options.app, bottomPillArea)
-  installNativeTouchZoomSuppression(scenarioPromptUi.backdropElement)
 
   const spacecraftCallout = document.createElement('div')
   spacecraftCallout.className = 'spacecraft-callout'
@@ -240,6 +238,34 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   headingTargetTurnSlice.classList.add('heading-target-turn-slice')
   headingTargetOverlay.appendChild(headingTargetTurnSlice)
   options.app.appendChild(headingTargetOverlay)
+
+  const rcsActualTurnOverlay = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'svg',
+  )
+  rcsActualTurnOverlay.classList.add('rcs-actual-turn-overlay')
+  rcsActualTurnOverlay.setAttribute('aria-hidden', 'true')
+  rcsActualTurnOverlay.setAttribute(
+    'viewBox',
+    `0 0 ${window.innerWidth} ${window.innerHeight}`,
+  )
+  rcsActualTurnOverlay.style.display = 'none'
+
+  const rcsActualTurnSlicesGroup = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'g',
+  )
+  rcsActualTurnSlicesGroup.classList.add('rcs-actual-turn-slices')
+  rcsActualTurnOverlay.appendChild(rcsActualTurnSlicesGroup)
+
+  const rcsActualTurnSlices = Array.from({ length: 40 }, () => {
+    const slice = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    slice.classList.add('rcs-actual-turn-slice')
+    slice.style.display = 'none'
+    rcsActualTurnSlicesGroup.appendChild(slice)
+    return slice
+  })
+  options.app.appendChild(rcsActualTurnOverlay)
 
   const headingTargetDot = document.createElement('div')
   headingTargetDot.className = 'heading-target-dot'
@@ -296,6 +322,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     headingTargetOverlay,
     headingTargetTurnSlice,
     offscreenIndicators,
+    rcsActualTurnOverlay,
+    rcsActualTurnSlices,
     renderScenarioPromptSurface: scenarioPromptUi.renderSurface,
     renderFpsIndicator: hudTelemetry.renderFpsIndicator,
     scenarioPrompt: scenarioPromptUi.backdropElement,
