@@ -33,10 +33,11 @@ const attachMobileScreenshot = async (
   page: Page,
   testInfo: TestInfo,
   name: string,
+  options: { animations?: 'allow' | 'disabled' } = {},
 ) => {
   const screenshotPath = testInfo.outputPath(`${name}.png`)
   const screenshot = await page.screenshot({
-    animations: 'disabled',
+    animations: options.animations ?? 'disabled',
     fullPage: false,
     path: screenshotPath,
   })
@@ -212,10 +213,24 @@ test('captures the mobile Reach the Moon menu transition', async ({
 test('captures the mobile RCS yaw and thrust controls together', async ({
   page,
 }, testInfo) => {
-  await startReachMoonMission(page)
+  await startReachMoonMission(page, 'devtools=1')
   await page.addStyleTag({
     content:
       '.rcs-actual-turn-overlay, .spacecraft-callout { visibility: visible !important; }',
+  })
+  await page.waitForFunction(
+    () =>
+      '__SPACE_WEB_GAME_DEVTOOLS__' in window &&
+      window.__SPACE_WEB_GAME_DEVTOOLS__ !== undefined,
+  )
+  await page.evaluate(() => {
+    const result = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      index: 2,
+      type: 'set-time-warp-index',
+    })
+    if (!result?.ok) {
+      throw new Error(result?.error ?? 'Devtools time warp bridge is missing')
+    }
   })
 
   await page.getByRole('button', { name: 'Reveal RCS yaw control' }).click()
@@ -294,9 +309,25 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
     .poll(async () =>
       page
         .locator('.rcs-actual-turn-slice')
+        .first()
         .evaluate((slice) => slice.getAttribute('d')),
     )
     .toMatch(/^M .* Z$/)
+  await expect
+    .poll(() =>
+      page.locator('.rcs-actual-turn-slice[style*="display: block"]').count(),
+    )
+    .toBeGreaterThan(20)
+  await page.evaluate(() => {
+    const result = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      index: 0,
+      type: 'set-time-warp-index',
+    })
+    if (!result?.ok) {
+      throw new Error(result?.error ?? 'Devtools time warp bridge is missing')
+    }
+  })
+  await expect(page.locator('[data-stat="time"]')).toContainText('x1')
   await page.evaluate(() => {
     const track = document.querySelector<HTMLElement>(
       '.touch-rcs-yaw-control-track',
@@ -323,21 +354,28 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
       }),
     )
   })
-  await page.waitForTimeout(150)
-  await expect(page.locator('.rcs-actual-turn-overlay')).toHaveCSS(
-    'display',
-    'block',
-  )
-  await expect(page.locator('.rcs-actual-turn-slice')).toHaveCSS('opacity', '1')
-  await expect(page.locator('.rcs-actual-turn-slice')).toHaveCSS(
-    'stroke',
-    'none',
-  )
+  await page.waitForTimeout(50)
+  await expect
+    .poll(() =>
+      page.locator('.rcs-actual-turn-slice[style*="display: block"]').count(),
+    )
+    .toBeGreaterThan(20)
 
   await attachMobileScreenshot(
     page,
     testInfo,
     'mobile-rcs-yaw-actual-turn-feedback',
+    { animations: 'allow' },
+  )
+
+  await page.waitForTimeout(100)
+  await expect(page.locator('.rcs-actual-turn-overlay')).toHaveCSS(
+    'display',
+    'block',
+  )
+  await expect(page.locator('.rcs-actual-turn-slice').first()).toHaveCSS(
+    'stroke',
+    'none',
   )
 })
 

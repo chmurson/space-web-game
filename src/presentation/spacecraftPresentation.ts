@@ -22,6 +22,7 @@ const trailNewestColor = new THREE.Color('#7c8fa8')
 const headingFeedbackSliceInnerRadiusPx = 20
 const headingFeedbackSliceOuterRadiusPx = 52
 const headingFeedbackSliceArcSegmentRadians = Math.PI / 20
+const fullRotationRadians = Math.PI * 2
 const committedHeadingTargetLineRadiusPx = headingFeedbackSliceOuterRadiusPx
 const spacecraftTrailLift = 0.24
 const spacecraftVisualLift = 0.32
@@ -99,8 +100,11 @@ const syncHeadingTargetPlanningState = (
 }
 const hideRcsActualTurnFeedback = (overlayUi: OverlayUiRefs) => {
   overlayUi.rcsActualTurnOverlay.style.display = 'none'
-  overlayUi.rcsActualTurnSlice.style.opacity = '0'
-  overlayUi.rcsActualTurnSlice.setAttribute('d', '')
+  for (const slice of overlayUi.rcsActualTurnSlices) {
+    slice.style.display = 'none'
+    slice.style.opacity = '0'
+    slice.setAttribute('d', '')
+  }
 }
 const isProjectedPositionInViewport = (position: THREE.Vector3) =>
   position.x >= -1 &&
@@ -173,6 +177,60 @@ const getHeadingFeedbackSlicePath = (options: {
     ),
     'Z',
   ].join(' ')
+}
+
+const syncRcsActualTurnFeedback = (options: {
+  camera: THREE.Camera
+  center: Vec2
+  feedback: RcsActualTurnFeedback
+  overlayUi: OverlayUiRefs
+  viewportSize: number
+}) => {
+  const totalDelta =
+    options.feedback.currentHeading - options.feedback.startHeading
+  const segmentCount = Math.min(
+    options.overlayUi.rcsActualTurnSlices.length,
+    Math.max(
+      1,
+      Math.ceil(Math.abs(totalDelta) / headingFeedbackSliceArcSegmentRadians),
+    ),
+  )
+  const segmentDelta = totalDelta / segmentCount
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const slice = options.overlayUi.rcsActualTurnSlices[index]
+    const distanceFromCurrent =
+      Math.abs(totalDelta) * (1 - (index + 0.5) / segmentCount)
+    const trailOpacity = Math.max(
+      0,
+      1 - distanceFromCurrent / fullRotationRadians,
+    )
+
+    slice.style.display = 'block'
+    slice.style.opacity = `${options.feedback.opacity * trailOpacity}`
+    slice.setAttribute(
+      'd',
+      getHeadingFeedbackSlicePath({
+        camera: options.camera,
+        center: options.center,
+        deltaAngle: segmentDelta,
+        lift: spacecraftVisualLift,
+        startAngle: options.feedback.startHeading + segmentDelta * index,
+        viewportSize: options.viewportSize,
+      }),
+    )
+  }
+
+  for (
+    let index = segmentCount;
+    index < options.overlayUi.rcsActualTurnSlices.length;
+    index += 1
+  ) {
+    const slice = options.overlayUi.rcsActualTurnSlices[index]
+    slice.style.display = 'none'
+    slice.style.opacity = '0'
+    slice.setAttribute('d', '')
+  }
 }
 
 const syncSpacecraftTrailGeometry = (
@@ -391,27 +449,18 @@ const updateSpacecraftCallout = (options: {
   }
 
   if (options.rcsActualTurnFeedback) {
-    const rcsActualTurnDelta = normalizeAngleDelta(
-      options.rcsActualTurnFeedback.currentHeading -
-        options.rcsActualTurnFeedback.startHeading,
-    )
     options.overlayUi.rcsActualTurnOverlay.style.display = 'block'
     options.overlayUi.rcsActualTurnOverlay.setAttribute(
       'viewBox',
       `0 0 ${window.innerWidth} ${window.innerHeight}`,
     )
-    options.overlayUi.rcsActualTurnSlice.style.opacity = `${options.rcsActualTurnFeedback.opacity}`
-    options.overlayUi.rcsActualTurnSlice.setAttribute(
-      'd',
-      getHeadingFeedbackSlicePath({
-        camera: options.gameScene.camera,
-        center: options.spacecraft.position,
-        deltaAngle: rcsActualTurnDelta,
-        lift: spacecraftVisualLift,
-        startAngle: options.rcsActualTurnFeedback.startHeading,
-        viewportSize: options.viewportSize,
-      }),
-    )
+    syncRcsActualTurnFeedback({
+      camera: options.gameScene.camera,
+      center: options.spacecraft.position,
+      feedback: options.rcsActualTurnFeedback,
+      overlayUi: options.overlayUi,
+      viewportSize: options.viewportSize,
+    })
   } else {
     hideRcsActualTurnFeedback(options.overlayUi)
   }

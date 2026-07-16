@@ -408,7 +408,10 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     ) as unknown as SVGPathElement,
     offscreenIndicators: new Map(),
     rcsActualTurnOverlay: new FakeElement('svg') as unknown as SVGSVGElement,
-    rcsActualTurnSlice: new FakeElement('path') as unknown as SVGPathElement,
+    rcsActualTurnSlices: Array.from(
+      { length: 40 },
+      () => new FakeElement('path') as unknown as SVGPathElement,
+    ),
     renderScenarioPromptSurface: vi.fn(),
     renderFpsIndicator,
     scenarioPrompt: createScenarioPrompt() as unknown as HTMLElement,

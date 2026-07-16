@@ -2285,10 +2285,13 @@ button.app-dialog-setting {
   stroke: none;
 }
 
+.rcs-actual-turn-slices {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.42));
+}
+
 .rcs-actual-turn-slice {
   fill: rgba(56, 189, 248, 0.28);
   stroke: none;
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.42));
 }
 
 .heading-target-overlay-planning .heading-target-turn-slice {

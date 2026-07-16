@@ -18,25 +18,42 @@ export type UpdateRcsActualTurnFeedbackOptions = {
 
 const minFeedbackAngleRadians = 0.001
 const settleDurationSeconds = 0.42
+const fullRotationRadians = Math.PI * 2
 
 const normalizeAngle = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 
-const normalizeAngleDelta = (angle: number) =>
-  Math.atan2(Math.sin(angle), Math.cos(angle))
+const getVisibleStartHeading = (
+  startHeading: number,
+  currentHeading: number,
+) => {
+  const delta = currentHeading - startHeading
+  if (Math.abs(delta) <= fullRotationRadians) {
+    return startHeading
+  }
+
+  return currentHeading - Math.sign(delta) * fullRotationRadians
+}
 
 const createActiveFeedback = (
   startHeading: number,
   currentHeading: number,
-): RcsActualTurnFeedback => ({
-  currentHeading: normalizeAngle(currentHeading),
-  opacity: 1,
-  phase: 'active',
-  settleCurrentHeading: normalizeAngle(currentHeading),
-  settleElapsedSeconds: 0,
-  settleStartHeading: normalizeAngle(startHeading),
-  startHeading: normalizeAngle(startHeading),
-})
+): RcsActualTurnFeedback => {
+  const visibleStartHeading = getVisibleStartHeading(
+    startHeading,
+    currentHeading,
+  )
+
+  return {
+    currentHeading,
+    opacity: 1,
+    phase: 'active',
+    settleCurrentHeading: currentHeading,
+    settleElapsedSeconds: 0,
+    settleStartHeading: visibleStartHeading,
+    startHeading: visibleStartHeading,
+  }
+}
 
 export const updateRcsActualTurnFeedback = ({
   currentHeading,
@@ -46,18 +63,21 @@ export const updateRcsActualTurnFeedback = ({
   rcsTurnActive,
 }: UpdateRcsActualTurnFeedbackOptions): RcsActualTurnFeedback | null => {
   const safeDt = Number.isFinite(dt) ? Math.max(0, dt) : 0
-  const actualDelta = normalizeAngleDelta(currentHeading - previousHeading)
+  const actualDelta = normalizeAngle(currentHeading - previousHeading)
 
   if (rcsTurnActive) {
     if (feedback?.phase === 'active') {
-      return createActiveFeedback(feedback.startHeading, currentHeading)
+      return createActiveFeedback(
+        feedback.startHeading,
+        feedback.currentHeading + actualDelta,
+      )
     }
 
     if (Math.abs(actualDelta) < minFeedbackAngleRadians) {
       return null
     }
 
-    return createActiveFeedback(previousHeading, currentHeading)
+    return createActiveFeedback(previousHeading, previousHeading + actualDelta)
   }
 
   if (!feedback) {
@@ -72,9 +92,7 @@ export const updateRcsActualTurnFeedback = ({
     feedback.phase === 'settling'
       ? feedback.settleCurrentHeading
       : feedback.currentHeading
-  const totalDelta = normalizeAngleDelta(
-    settleCurrentHeading - settleStartHeading,
-  )
+  const totalDelta = settleCurrentHeading - settleStartHeading
 
   if (Math.abs(totalDelta) < minFeedbackAngleRadians) {
     return null
@@ -89,12 +107,12 @@ export const updateRcsActualTurnFeedback = ({
   }
 
   return {
-    currentHeading: normalizeAngle(settleCurrentHeading),
+    currentHeading: settleCurrentHeading,
     opacity: 1,
     phase: 'settling',
-    settleCurrentHeading: normalizeAngle(settleCurrentHeading),
+    settleCurrentHeading,
     settleElapsedSeconds,
-    settleStartHeading: normalizeAngle(settleStartHeading),
-    startHeading: normalizeAngle(settleStartHeading + totalDelta * progress),
+    settleStartHeading,
+    startHeading: settleStartHeading + totalDelta * progress,
   }
 }

@@ -5,7 +5,7 @@ import { add, fromAngle, lengthSq, scale, sub, type Vec2, vec } from '../vector'
 const MAIN_THRUST = 120_000
 const REVERSE_THRUST = 35_000
 const STRAFE_THRUST = 25_000
-const ROTATION_RATE = 0.45
+const ROTATION_RATE = 0.225
 const ROTATION_ACCELERATION = 0.9
 const ROTATION_BRAKING = 1.8
 const FUEL_FLOW = 7

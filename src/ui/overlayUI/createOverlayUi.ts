@@ -39,7 +39,7 @@ export type OverlayUiRefs = {
   headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
   rcsActualTurnOverlay: SVGSVGElement
-  rcsActualTurnSlice: SVGPathElement
+  rcsActualTurnSlices: SVGPathElement[]
   renderScenarioPromptSurface: ScenarioPromptSurfaceRenderer
   renderFpsIndicator(view: FpsIndicatorView | null): void
   scenarioPrompt: HTMLElement
@@ -241,12 +241,20 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   )
   rcsActualTurnOverlay.style.display = 'none'
 
-  const rcsActualTurnSlice = document.createElementNS(
+  const rcsActualTurnSlicesGroup = document.createElementNS(
     'http://www.w3.org/2000/svg',
-    'path',
+    'g',
   )
-  rcsActualTurnSlice.classList.add('rcs-actual-turn-slice')
-  rcsActualTurnOverlay.appendChild(rcsActualTurnSlice)
+  rcsActualTurnSlicesGroup.classList.add('rcs-actual-turn-slices')
+  rcsActualTurnOverlay.appendChild(rcsActualTurnSlicesGroup)
+
+  const rcsActualTurnSlices = Array.from({ length: 40 }, () => {
+    const slice = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    slice.classList.add('rcs-actual-turn-slice')
+    slice.style.display = 'none'
+    rcsActualTurnSlicesGroup.appendChild(slice)
+    return slice
+  })
   options.app.appendChild(rcsActualTurnOverlay)
 
   const headingTargetDot = document.createElement('div')
@@ -305,7 +313,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     headingTargetTurnSlice,
     offscreenIndicators,
     rcsActualTurnOverlay,
-    rcsActualTurnSlice,
+    rcsActualTurnSlices,
     renderScenarioPromptSurface: scenarioPromptUi.renderSurface,
     renderFpsIndicator: hudTelemetry.renderFpsIndicator,
     scenarioPrompt: scenarioPromptUi.backdropElement,
