@@ -210,6 +210,7 @@ const createRuntimeHarness = () => {
   let predictionConfig = createPredictionConfig()
   let state = createState()
   let target = earth
+  let timeWarp = 1
   const farWorker = createFarWorkerHarness()
   const engineStep = vi.fn(physicsEngine.step)
   const engine: PhysicsEngine = {
@@ -229,6 +230,7 @@ const createRuntimeHarness = () => {
     physicsEngine: engine,
     predictionConfig,
     state,
+    timeWarp,
   })
 
   return {
@@ -247,6 +249,9 @@ const createRuntimeHarness = () => {
     },
     setTarget: (nextTarget: Body) => {
       target = nextTarget
+    },
+    setTimeWarp: (nextTimeWarp: number) => {
+      timeWarp = nextTimeWarp
     },
     state: () => state,
   }
@@ -605,6 +610,434 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
+  it('coalesces timed far requests while the cooldown override is active', () => {
+    const { farWorker, getOptions, predictionRuntime, setPredictionConfig } =
+      createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig(createLongHorizonPredictionConfig())
+      expect(
+        predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(10),
+      ).toBe(true)
+
+      predictionRuntime.refresh(getOptions())
+      farWorker.completeRequest(0, 0)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCalculationSampleCount: 1,
+        farCoalescingMinIntervalOverrideSeconds: 10,
+        farCoalescingMinIntervalSeconds: 10,
+        farCoalescingSkippedCount: 0,
+      })
+
+      now = 1_000
+      expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(1)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCoalescingLastSkipReason: 'cooldown',
+        farCoalescingLastSkipStage: 'request',
+        farCoalescingSkippedCount: 1,
+        farVisible: 'current',
+        refreshReason: 'timed-refresh',
+      })
+
+      now = 11_000
+      expect(predictionRuntime.maybeRefresh(999, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('uses a timewarp-only far cooldown while actively thrusting', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      setTimeWarp,
+      state,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig(createLongHorizonPredictionConfig())
+      setTimeWarp(1)
+      setState({
+        ...state(),
+        controls: { ...state().controls, main: 1 },
+      })
+
+      predictionRuntime.refresh(getOptions())
+      farWorker.completeRequest(0, 0)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCalculationSampleCount: 1,
+        farCoalescingMinIntervalSeconds: 1,
+      })
+
+      now = 500
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          velocity: { x: 20, y: 0 },
+        },
+      })
+
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(1)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCoalescingLastSkipReason: 'cooldown',
+        farCoalescingLastSkipStage: 'request',
+        farCoalescingMinIntervalSeconds: 1,
+        farCoalescingSkippedCount: 1,
+        refreshReason: 'spacecraft-change',
+      })
+
+      now = 1_100
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          velocity: { x: 30, y: 0 },
+        },
+      })
+
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('queues the completed burn state while active far work is still running', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      setTimeWarp,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    setTimeWarp(60)
+
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      controls: { ...state().controls, main: 1 },
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    setState({
+      ...state(),
+      controls: idleControls(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 30, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(farWorker.clients[0]?.requests).toHaveLength(1)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      pendingFar: true,
+      refreshReason: 'spacecraft-change',
+    })
+
+    farWorker.completeRequest(0, 0)
+    expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    expect(predictionRuntime.getDiagnostics().farCalculationSampleCount).toBe(0)
+    expect(farWorker.getRequest(0, 1).state).toMatchObject({
+      controls: idleControls(),
+      spacecraft: {
+        velocity: { x: 30, y: 0 },
+      },
+    })
+
+    farWorker.completeRequest(0, 1)
+    expect(predictionRuntime.getState().targetRelativePredictionPoints).toEqual(
+      [
+        { x: 9_010, y: 0 },
+        { x: 18_010, y: 0 },
+        { x: 27_010, y: 0 },
+        { x: 36_010, y: 0 },
+      ],
+    )
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farVisible: 'current',
+      pendingFar: false,
+    })
+  })
+
+  it('refreshes coasting far work after its cooldown despite continuous drift refreshes', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      setTimeWarp,
+      state,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig({
+        ...createLongHorizonPredictionConfig(),
+        horizonSeconds: 48 * 3_600,
+        refreshInterval: 0.4,
+      })
+      setTimeWarp(3_600)
+
+      predictionRuntime.refresh(getOptions())
+      farWorker.completeRequest(0, 0)
+      expect(
+        predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds,
+      ).toBe(1)
+
+      now = 500
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          position: { x: 5_010, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0.5, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+        'spacecraft-change',
+      )
+      expect(farWorker.clients[0]?.requests).toHaveLength(1)
+
+      now = 1_100
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          position: { x: 10_010, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0.6, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
+        'spacecraft-change',
+      )
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+
+      now = 1_200
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          position: { x: 15_010, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0.1, getOptions())).toBe(true)
+      expect(predictionRuntime.getDiagnostics().pendingFar).toBe(false)
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('coalesces immediate far work for coasting drift with turn-only controls', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    setState({
+      ...state(),
+      controls: { ...state().controls, turn: 1 },
+    })
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 20, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(farWorker.clients[0]?.requests).toHaveLength(1)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      farCoalescingLastSkipReason: 'cooldown',
+      farCoalescingLastSkipStage: 'request',
+      farCoalescingSkippedCount: 1,
+      farVisible: 'retained-stale',
+      refreshReason: 'spacecraft-change',
+    })
+
+    setState({
+      ...state(),
+      bodies: [
+        state().bodies[0] ?? earth,
+        { ...moon, position: { x: 7_000, y: 0 } },
+      ],
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(farWorker.clients[0]?.requests).toHaveLength(1)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      farCoalescingSkippedCount: 2,
+      refreshReason: 'body-state-change',
+    })
+  })
+
+  it('coalesces pending far results that complete before the override interval', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig(createLongHorizonPredictionConfig())
+      predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(10)
+      setState({
+        ...state(),
+        controls: { ...state().controls, main: 1 },
+      })
+      predictionRuntime.refresh(getOptions())
+
+      setState({
+        ...state(),
+        spacecraft: {
+          ...state().spacecraft,
+          velocity: { x: 20, y: 0 },
+        },
+      })
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+      expect(farWorker.clients[0]?.requests).toHaveLength(1)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        activeFar: true,
+        pendingFar: true,
+      })
+
+      farWorker.completeRequest(0, 0)
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        activeFar: true,
+        farCalculationSampleCount: 1,
+      })
+
+      now = 1_000
+      farWorker.completeRequest(0, 1)
+
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        activeFar: false,
+        farCalculationSampleCount: 1,
+        farCoalescingLastSkipReason: 'cooldown',
+        farCoalescingLastSkipStage: 'result',
+        farCoalescingSkippedCount: 1,
+      })
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('does not coalesce semantic far refreshes during the cooldown', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setTarget,
+    } = createRuntimeHarness()
+    const nowSpy = vi.spyOn(performance, 'now')
+    let now = 0
+    nowSpy.mockImplementation(() => now)
+
+    try {
+      setPredictionConfig(createLongHorizonPredictionConfig())
+      predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(10)
+      predictionRuntime.refresh(getOptions())
+      farWorker.completeRequest(0, 0)
+
+      now = 1_000
+      setTarget(moon)
+      expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+      expect(farWorker.clients[0]?.requests).toHaveLength(2)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCoalescingSkippedCount: 0,
+        refreshReason: 'target-change',
+      })
+
+      farWorker.completeRequest(0, 1)
+      expect(predictionRuntime.getDiagnostics()).toMatchObject({
+        farCalculationSampleCount: 2,
+        farCoalescingSkippedCount: 0,
+        farVisible: 'current',
+      })
+      expect(predictionRuntime.getState().targetId).toBe('moon')
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('uses the last configured warp factor bucket above the largest warp factor ceiling', () => {
+    const { getOptions, predictionRuntime, setPredictionConfig, setTimeWarp } =
+      createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    setTimeWarp(18_000)
+    predictionRuntime.refresh(getOptions())
+    const largestConfiguredWarpInterval =
+      predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds
+
+    setTimeWarp(999_999)
+    predictionRuntime.maybeRefresh(0, getOptions())
+
+    expect(
+      predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds,
+    ).toBe(largestConfiguredWarpInterval)
+  })
+
+  it('calculates the default cooldown from horizon travel time at current warp', () => {
+    const { getOptions, predictionRuntime, setPredictionConfig, setTimeWarp } =
+      createRuntimeHarness()
+    setPredictionConfig({
+      ...createLongHorizonPredictionConfig(),
+      horizonSeconds: 768 * 3_600,
+    })
+    setTimeWarp(18_000)
+
+    predictionRuntime.refresh(getOptions())
+
+    expect(
+      predictionRuntime.getDiagnostics().farCoalescingMinIntervalSeconds,
+    ).toBeCloseTo(6.4)
+  })
+
   it('accepts a worker result after spacecraft drift and then replaces it with the newer pending job', () => {
     const {
       farWorker,
@@ -615,6 +1048,11 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
+    setState({
+      ...state(),
+      controls: { ...state().controls, main: 1 },
+    })
     predictionRuntime.refresh(getOptions())
 
     setState({
@@ -796,6 +1234,11 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
+    setState({
+      ...state(),
+      controls: { ...state().controls, main: 1 },
+    })
     predictionRuntime.refresh(getOptions())
 
     setState({
@@ -864,6 +1307,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
     predictionRuntime.refresh(getOptions())
 
     setState({
@@ -990,6 +1434,11 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
+    setState({
+      ...state(),
+      controls: { ...state().controls, main: 1 },
+    })
     predictionRuntime.refresh(getOptions())
     farWorker.completeRequest(0, 0)
 
@@ -1147,6 +1596,10 @@ describe('createTrajectoryPredictionRuntime', () => {
       state,
     } = createRuntimeHarness()
     setPredictionConfig(createLongHorizonPredictionConfig())
+    setState({
+      ...state(),
+      controls: { ...state().controls, main: 1 },
+    })
     predictionRuntime.refresh(getOptions())
 
     setState({

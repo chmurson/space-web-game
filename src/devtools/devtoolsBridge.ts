@@ -1,3 +1,4 @@
+import type { AppMode } from '../app/createAppConfigContext'
 import { getCaptureMetricsForState } from '../assist/orbitalAssist'
 import { isUIUserAction, type UIUserAction } from '../input/uiUserActions'
 import {
@@ -5,18 +6,17 @@ import {
   getTrajectoryPredictionConfig,
   type TrajectoryPredictionSamplingConfig,
 } from '../prediction/trajectoryPrediction'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
-import {
-  isCameraControlMode,
-  type CameraControlMode,
-} from '../scenario/scenarioDirectiveTypes'
 import type {
   AppRuntimeDebugSlice,
   AppRuntimeState,
 } from '../runtime/appRuntimeState'
 import type { RuntimeActions } from '../runtime/runtimeActions'
 import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
-import type { AppMode } from '../app/createAppConfigContext'
+import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
+import {
+  type CameraControlMode,
+  isCameraControlMode,
+} from '../scenario/scenarioDirectiveTypes'
 import type { Body, ControlInput, Spacecraft } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 
@@ -37,6 +37,9 @@ type DevtoolsBridgeOptions = {
   predictionSampling: TrajectoryPredictionSamplingConfig
   runtime: AppRuntimeState
   runtimeActions: Pick<RuntimeActions, 'setCameraMode'>
+  setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds(
+    value: number | null,
+  ): boolean
   timeWarps: number[]
 }
 
@@ -125,6 +128,10 @@ export type DevtoolsBridgeRequest =
   | { type: 'get-snapshot' }
   | { type: 'set-camera-mode'; mode: CameraControlMode }
   | { type: 'set-debug-flag'; flag: WritableDebugFlag; value: boolean }
+  | {
+      type: 'set-far-coalescing-min-interval-override'
+      value: number | null
+    }
   | { type: 'set-time-warp-index'; index: number }
 
 export type DevtoolsBridgeResponse =
@@ -392,6 +399,29 @@ export const createDevtoolsBridge = (
         }
 
         return handleSetDebugFlag(request.flag, request.value)
+      }
+
+      if (request.type === 'set-far-coalescing-min-interval-override') {
+        if (
+          request.value !== null &&
+          (typeof request.value !== 'number' ||
+            !Number.isFinite(request.value) ||
+            request.value < 0)
+        ) {
+          return fail(
+            'set-far-coalescing-min-interval-override requires null or a non-negative number',
+          )
+        }
+
+        return options.setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds(
+          request.value,
+        )
+          ? ok(
+              request.value === null
+                ? 'far coalescing override disabled'
+                : `far coalescing override set to ${request.value}s`,
+            )
+          : fail('unable to update far coalescing override')
       }
 
       return fail(`unknown request type: ${request.type}`)
