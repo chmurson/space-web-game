@@ -27,6 +27,7 @@ export type TimeWarpControlOptions = {
   className?: string
   commitTimeWarp(action: TimeWarpAction): void
   controlId?: TimeWarpControlId
+  enableHorizontalMomentum?: boolean
   getCurrentTimeWarp(): number
   getTimeWarpPreview(action: TimeWarpAction): TimeWarpPreview
   getTimeWarpPreviews(action: TimeWarpAction, count: number): TimeWarpPreview[]
