@@ -3,6 +3,7 @@ import {
   createFarTrajectoryPredictionStateSnapshot,
   type FarTrajectoryPredictionRequestPayload,
   type FarTrajectoryPredictionResultPayload,
+  type FarTrajectoryPredictionReuseFallbackReason,
 } from '../prediction/farTrajectoryPrediction'
 import {
   getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
@@ -145,6 +146,10 @@ export type TrajectoryPredictionDiagnostics = {
   farCoalescingSkippedCount: number
   farInputKeyShort: string | null
   farPointCount: number
+  farReuseExtendedSeconds: number
+  farReuseFallbackReason: FarTrajectoryPredictionReuseFallbackReason | null
+  farReuseMode: 'full' | 'trim-extend' | null
+  farReuseRetainedPointCount: number
   farVisible: TrajectoryPredictionFarVisibility
   geometryUpdateMs: number
   hasFarTier: boolean
@@ -265,6 +270,10 @@ export const emptyTrajectoryPredictionDiagnostics =
     farCoalescingSkippedCount: 0,
     farInputKeyShort: null,
     farPointCount: 0,
+    farReuseExtendedSeconds: 0,
+    farReuseFallbackReason: null,
+    farReuseMode: null,
+    farReuseRetainedPointCount: 0,
     farVisible: 'none',
     geometryUpdateMs: 0,
     hasFarTier: false,
@@ -1095,6 +1104,13 @@ export const createTrajectoryPredictionRuntime = (
 
     predictionRefreshTimesMs.push(refreshStartMs)
     farPredictionTier = createFarTierFromWorkerResult(result)
+    predictionDiagnostics = {
+      ...predictionDiagnostics,
+      farReuseExtendedSeconds: result.reuse.extendedSeconds,
+      farReuseFallbackReason: result.reuse.fallbackReason,
+      farReuseMode: result.reuse.mode,
+      farReuseRetainedPointCount: result.reuse.retainedPointCount,
+    }
     const liveNearPredictionConfig = createPredictionConfigWithHorizon(
       options.predictionConfig,
       getNearPredictionHorizonSeconds(options.predictionConfig),

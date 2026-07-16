@@ -1,7 +1,7 @@
 import {
+  createFarTrajectoryPredictor,
   type FarTrajectoryPredictionRequestPayload,
   type FarTrajectoryPredictionResultPayload,
-  predictFarTrajectory,
 } from '../prediction/farTrajectoryPrediction'
 import { getErrorMessage } from './errorMessage'
 
@@ -24,6 +24,7 @@ const workerScope = self as unknown as {
     | null
   postMessage(message: FarTrajectoryPredictionWorkerMessage): void
 }
+const predictFarTrajectory = createFarTrajectoryPredictor()
 
 workerScope.onmessage = (
   event: MessageEvent<FarTrajectoryPredictionRequestPayload>,

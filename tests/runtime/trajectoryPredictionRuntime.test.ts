@@ -139,6 +139,12 @@ const createFarWorkerResult = (
     },
     inputKey: request.inputKey,
     jobId: request.jobId,
+    reuse: {
+      extendedSeconds: 0,
+      fallbackReason: 'no-cache',
+      mode: 'full',
+      retainedPointCount: 0,
+    },
     semanticInputKey: request.semanticInputKey,
     targetId: request.targetId,
   }
@@ -594,6 +600,10 @@ describe('createTrajectoryPredictionRuntime', () => {
       farCalculationMs: 4,
       farCalculationSampleCount: 1,
       farPointCount: 4,
+      farReuseExtendedSeconds: 0,
+      farReuseFallbackReason: 'no-cache',
+      farReuseMode: 'full',
+      farReuseRetainedPointCount: 0,
       farVisible: 'current',
       hasFarTier: true,
       nearPointCount: 2,

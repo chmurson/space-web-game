@@ -24,6 +24,7 @@ const elements = {
     predictionEventSummary: document.querySelector('#predictionEventSummary'),
     predictionFarCalculation: document.querySelector('#predictionFarCalculation'),
     predictionFarCoalescing: document.querySelector('#predictionFarCoalescing'),
+    predictionFarReuse: document.querySelector('#predictionFarReuse'),
     predictionGeometryDuration: document.querySelector('#predictionGeometryDuration'),
     predictionInputKeys: document.querySelector('#predictionInputKeys'),
     predictionIntegrationStats: document.querySelector('#predictionIntegrationStats'),
@@ -147,6 +148,15 @@ const formatFarCoalescing = (prediction) =>
     ]
         .filter(Boolean)
         .join(' · ')
+const formatFarReuse = (prediction) => {
+    if (prediction.farReuseMode === 'trim-extend') {
+        return `trim + extend · kept ${formatNumber(prediction.farReuseRetainedPointCount, 0)} pts · extended ${formatSeconds(prediction.farReuseExtendedSeconds)}`
+    }
+    if (prediction.farReuseMode === 'full') {
+        return `full${prediction.farReuseFallbackReason ? ` · ${prediction.farReuseFallbackReason}` : ''}`
+    }
+    return '—'
+}
 let latestRawSnapshotJson = '{}'
 
 const escapeHtml = (value) =>
@@ -463,6 +473,7 @@ const renderPredictionSampling = (snapshot) => {
         prediction.farCalculationAgeSeconds,
         prediction.farCalculationWindows,
     )
+    elements.predictionFarReuse.textContent = formatFarReuse(prediction)
     elements.predictionFarCoalescing.textContent = formatFarCoalescing(prediction)
     renderFarCoalescingControls(prediction)
     elements.predictionNearTravel.textContent = formatNearTravel(
