@@ -13,6 +13,17 @@ const safariGestureEventTypes = [
 
 const nonPassiveOptions = { passive: false } satisfies AddEventListenerOptions
 const doubleTapThresholdMs = 350
+const preservedNonButtonInteractionSelector = [
+  'a[href]',
+  'canvas',
+  'input:not([disabled])',
+  'label',
+  'select:not([disabled])',
+  'summary',
+  'textarea:not([disabled])',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
 
 const preventCancelableDefault = (event: Event) => {
   if (event.cancelable) {
@@ -25,13 +36,26 @@ const hasMultipleTouches = (event: TouchEvent) =>
   event.targetTouches.length > 1 ||
   event.changedTouches.length > 1
 
-const findButtonTarget = (element: HTMLElement, event: TouchEvent) => {
+const findRapidTapTarget = (element: HTMLElement, event: TouchEvent) => {
   if (!(event.target instanceof Element)) {
     return null
   }
 
   const button = event.target.closest<HTMLButtonElement>('button')
-  return button && element.contains(button) ? button : null
+  if (button && element.contains(button)) {
+    return { button, target: button }
+  }
+
+  const interactiveTarget = event.target.closest(
+    preservedNonButtonInteractionSelector,
+  )
+  if (interactiveTarget && element.contains(interactiveTarget)) {
+    return null
+  }
+
+  return element.contains(event.target)
+    ? { button: null, target: event.target }
+    : null
 }
 
 export const installNativeTouchZoomSuppression = (element: HTMLElement) => {
@@ -39,18 +63,18 @@ export const installNativeTouchZoomSuppression = (element: HTMLElement) => {
   element.style.touchAction = 'none'
 
   let touchSequenceHadMultipleTouches = false
-  let lastButtonTap: { button: HTMLButtonElement; endedAt: number } | undefined
+  let lastCompletedTap: { endedAt: number; target: Element } | undefined
 
   const suppressBrowserTouchZoom = (event: TouchEvent) => {
     const multiTouchEvent = hasMultipleTouches(event)
     if (multiTouchEvent) {
       touchSequenceHadMultipleTouches = true
-      lastButtonTap = undefined
+      lastCompletedTap = undefined
       preventCancelableDefault(event)
     }
 
     if (event.type === 'touchcancel') {
-      lastButtonTap = undefined
+      lastCompletedTap = undefined
       if (event.touches.length === 0) {
         touchSequenceHadMultipleTouches = false
       }
@@ -72,36 +96,41 @@ export const installNativeTouchZoomSuppression = (element: HTMLElement) => {
       event.defaultPrevented ||
       event.changedTouches.length !== 1
     ) {
-      lastButtonTap = undefined
+      lastCompletedTap = undefined
       return
     }
 
-    const button = findButtonTarget(element, event)
-    if (!button) {
-      lastButtonTap = undefined
+    const rapidTapTarget = findRapidTapTarget(element, event)
+    if (!rapidTapTarget) {
+      lastCompletedTap = undefined
       return
     }
 
-    const elapsedSinceLastTap = lastButtonTap
-      ? event.timeStamp - lastButtonTap.endedAt
+    const elapsedSinceLastTap = lastCompletedTap
+      ? event.timeStamp - lastCompletedTap.endedAt
       : Number.POSITIVE_INFINITY
     if (
-      lastButtonTap?.button !== button ||
+      lastCompletedTap?.target !== rapidTapTarget.target ||
       elapsedSinceLastTap < 0 ||
       elapsedSinceLastTap > doubleTapThresholdMs
     ) {
-      lastButtonTap = { button, endedAt: event.timeStamp }
+      lastCompletedTap = {
+        endedAt: event.timeStamp,
+        target: rapidTapTarget.target,
+      }
       return
     }
 
-    lastButtonTap = undefined
+    lastCompletedTap = undefined
     if (!event.cancelable) {
       return
     }
 
     event.preventDefault()
-    // Canceling touchend also suppresses Safari's compatibility click.
-    button.click()
+    if (rapidTapTarget.button) {
+      // Canceling touchend also suppresses Safari's compatibility click.
+      rapidTapTarget.button.click()
+    }
   }
 
   for (const eventType of touchEventTypes) {

@@ -190,6 +190,110 @@ test('prevents rapid repeated button taps while preserving button activation', a
   })
 })
 
+test('prevents rapid repeated taps on non-interactable DOM without swallowing touch handlers', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  const result = await page.evaluate(() => {
+    const app = document.querySelector<HTMLElement>('#app')
+    const staticSurface = document.querySelector<HTMLElement>(
+      '[data-main-menu-view="main"] .main-menu-copy',
+    )
+    if (!app || !staticSurface) {
+      throw new Error('Missing guarded app or static main-menu surface')
+    }
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    app.appendChild(input)
+
+    let nextTouchIdentifier = 1
+    let staticTouchEndCount = 0
+    let inputTouchEndCount = 0
+    staticSurface.addEventListener('touchend', () => {
+      staticTouchEndCount += 1
+    })
+    input.addEventListener('touchend', () => {
+      inputTouchEndCount += 1
+    })
+
+    const dispatchSingleTap = (target: Element) => {
+      const touch = new Touch({
+        clientX: 40,
+        clientY: 40,
+        identifier: nextTouchIdentifier++,
+        target,
+      })
+      const touchStart = new TouchEvent('touchstart', {
+        bubbles: true,
+        cancelable: true,
+        changedTouches: [touch],
+        targetTouches: [touch],
+        touches: [touch],
+      })
+      target.dispatchEvent(touchStart)
+
+      const touchEnd = new TouchEvent('touchend', {
+        bubbles: true,
+        cancelable: true,
+        changedTouches: [touch],
+        targetTouches: [],
+        touches: [],
+      })
+      target.dispatchEvent(touchEnd)
+
+      return {
+        touchEndPrevented: touchEnd.defaultPrevented,
+        touchStartPrevented: touchStart.defaultPrevented,
+      }
+    }
+
+    const firstStaticTap = dispatchSingleTap(staticSurface)
+    const secondStaticTap = dispatchSingleTap(staticSurface)
+    const tapAfterCompletedDoubleTap = dispatchSingleTap(staticSurface)
+    const firstInputTap = dispatchSingleTap(input)
+    const secondInputTap = dispatchSingleTap(input)
+    input.remove()
+
+    return {
+      firstInputTap,
+      firstStaticTap,
+      inputTouchEndCount,
+      secondInputTap,
+      secondStaticTap,
+      staticTouchEndCount,
+      tapAfterCompletedDoubleTap,
+    }
+  })
+
+  expect(result).toEqual({
+    firstInputTap: {
+      touchEndPrevented: false,
+      touchStartPrevented: false,
+    },
+    firstStaticTap: {
+      touchEndPrevented: false,
+      touchStartPrevented: false,
+    },
+    inputTouchEndCount: 2,
+    secondInputTap: {
+      touchEndPrevented: false,
+      touchStartPrevented: false,
+    },
+    secondStaticTap: {
+      touchEndPrevented: true,
+      touchStartPrevented: false,
+    },
+    staticTouchEndCount: 3,
+    tapAfterCompletedDoubleTap: {
+      touchEndPrevented: false,
+      touchStartPrevented: false,
+    },
+  })
+})
+
 test('covers all DOM game surfaces with one top-level guard', async ({
   page,
 }) => {
