@@ -25,7 +25,9 @@ Task claims:
 - Use `--ttl <seconds>` for claim duration. Do not use `--ttl-ms`.
 - Claims live under `${HOME}/.codex/automation-locks/space-web-game/tasks/`. Token files should live under `${HOME}/.codex/automations/space-game-good-first-issue-task-intake-and-pr-monitor/tokens/`.
 - Before spawning a worker or causing a GitHub write for a PR/issue, acquire the exact task claim. Include `--branch <branch>` for branch-bound PR/follow-up work, `--owner <run/thread>`, `--purpose <reason>`, `--ttl <seconds>`, and `--token-file <path>`.
-- If claim acquisition fails or claim liveness is uncertain, skip that task or stop. Only the helper's normal stale-replacement path may replace stale claims.
+- If acquisition reports a valid live claim owned by another worker, skip that task and continue to the next eligible task. Do not retry, release, or replace that claim.
+- Stop the run only when claim state is unreadable or genuinely uncertain. Make no changes to that task and report the exact helper error.
+- Only the helper's normal stale-replacement path may replace stale claims.
 - Pass the token file path to the worker. Workers must verify the same claim before edits, verification commands, commits, pushes, deploys, or GitHub replies, and heartbeat during long work.
 - Release a claim only after the delegated worker finishes or the task is intentionally abandoned. Keep it active while a worker is running.
 
@@ -126,7 +128,7 @@ Report back with files changed, commit hash, push status, validation, screenshot
 1. Verify generated worktree freshness and move to current `origin/main`.
 2. Read automation memory, then inspect automation-owned open PRs and branches/worktrees.
 3. For every automation-owned open PR, independently fetch all issue-level PR comments and all inline review comments, fetch review-thread state, and build the classified inventory. Record source counts and failures; do not advance if either required source is incomplete.
-4. Apply the priority order to the classified inventories. Claim only the first actionable task this run can safely own.
+4. Apply the priority order and try eligible tasks in order. If the first eligible task has a valid live claim owned by another worker, skip it and continue to the next eligible task; claim the first actionable task this run can safely own.
 5. For a PR candidate, acquire `pr` claim with branch, record one sidecar per triggering comment, add `eyes` to each exact comment, then delegate using the Worker Prompt Template.
 6. If no PR follow-up is claimable, inspect exact-label `Ready for dev` issues without `Human input wanted` or `Blocked`, reading body and comments before choosing. Use `Human input wanted` for unclear scope, conflicting comments, splitting needs, or product judgment; use `Blocked` for unresolved dependencies or external conditions.
 7. For a selected issue, acquire `issue` claim and delegate implementation in a task-scoped worktree. The worker must verify the claim, verify automation identity, assign the issue to `@andrzejkoduje` if this is the first implementation start and it is not already assigned to `andrzejkoduje`, and use Shipit. Before product-code changes, the worker must mark the issue in progress using the repo's current tracking mechanism and record relevant scope decisions and uncertainty in transient Shipit state or task notes. Then implement, validate, commit, push, and open/update a PR.
