@@ -498,7 +498,14 @@ const renderFarCoalescingControls = (prediction) => {
 
 const applyFarCoalescingOverride = () => {
     const enabled = elements.farCoalescingOverrideEnabled.checked
-    const value = Number(elements.farCoalescingOverrideSeconds.value)
+    const rawValue = elements.farCoalescingOverrideSeconds.value.trim()
+
+    if (enabled && rawValue === '') {
+        appendCommandLog('Set far cooldown override', 'enter a non-negative seconds value', false)
+        return
+    }
+
+    const value = Number(rawValue)
 
     if (enabled && (!Number.isFinite(value) || value < 0)) {
         appendCommandLog('Set far cooldown override', 'enter a non-negative seconds value', false)
