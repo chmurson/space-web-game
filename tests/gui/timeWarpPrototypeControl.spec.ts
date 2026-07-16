@@ -110,6 +110,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
+        setVirtualTurn: () => {},
       },
       onCameraModeSelected: () => true,
       onCameraPanGesture: () => false,

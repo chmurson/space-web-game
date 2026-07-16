@@ -2269,6 +2269,16 @@ button.app-dialog-setting {
   z-index: var(--z-in-game-elements);
 }
 
+.rcs-actual-turn-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: var(--z-in-game-elements);
+}
+
 .heading-target-line {
   stroke: rgba(125, 211, 252, 0.3);
   stroke-width: 1;
@@ -2292,6 +2302,15 @@ button.app-dialog-setting {
 
 .heading-target-turn-slice {
   fill: rgba(56, 189, 248, 0.18);
+  stroke: none;
+}
+
+.rcs-actual-turn-slices {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.42));
+}
+
+.rcs-actual-turn-slice {
+  fill: rgba(56, 189, 248, 0.28);
   stroke: none;
 }
 
@@ -2532,6 +2551,7 @@ button.app-dialog-setting {
 
   .heading-target-overlay-planning .heading-target-line,
   .heading-target-overlay-planning .heading-target-turn-slice,
+  .rcs-actual-turn-slice,
   .heading-target-dot-planning {
     animation: none;
   }
@@ -2787,6 +2807,7 @@ button.app-dialog-setting {
 #app.app-main-menu .spacecraft-icon-thrust,
 #app.app-main-menu .heading-target-dot,
 #app.app-main-menu .heading-target-overlay,
+#app.app-main-menu .rcs-actual-turn-overlay,
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,
 #app.app-main-menu .touch-controls,
@@ -2808,6 +2829,7 @@ button.app-dialog-setting {
 #app.app-crashed .spacecraft-icon-thrust,
 #app.app-crashed .heading-target-dot,
 #app.app-crashed .heading-target-overlay,
+#app.app-crashed .rcs-actual-turn-overlay,
 #app.app-crashed .offscreen-indicator,
 #app.app-crashed .body-label,
 #app.app-crashed .touch-controls,

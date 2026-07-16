@@ -8,6 +8,7 @@ import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import type { OrbitPointDisplaySettingOverrides } from '../userSettingsStorage'
+import type { RcsActualTurnFeedback } from './rcsActualTurnFeedback'
 
 export type AssistTargetSelectionMode = 'auto' | 'manual'
 
@@ -82,6 +83,7 @@ export type AppRuntimeScenarioSlice = {
 
 export type AppRuntimeUiSlice = {
   camera: CameraControlUiState
+  rcsActualTurnFeedback?: RcsActualTurnFeedback | null
   spacecraftLabelIntroUntil: number
   targetHeadingPlan?: TargetHeadingPlan | null
   targetHeadingScreenPosition?: {

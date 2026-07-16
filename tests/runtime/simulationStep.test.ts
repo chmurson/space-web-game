@@ -90,6 +90,7 @@ const simulateTargetHeadingTurn = (targetHeadingRadians: number) => {
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
+        setVirtualTurn: () => {},
       },
       maxControlWarp: 100,
       physicsEngine: {
@@ -163,6 +164,7 @@ describe('stepSimulationFrame', () => {
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
+        setVirtualTurn: () => {},
       },
       maxControlWarp: 100,
       maxTimeWarp: null,
@@ -212,6 +214,7 @@ describe('stepSimulationFrame', () => {
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
+        setVirtualTurn: () => {},
       },
       maxControlWarp: 100,
       maxTimeWarp: null,
@@ -264,6 +267,7 @@ describe('stepSimulationFrame', () => {
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
+        setVirtualTurn: () => {},
       },
       maxControlWarp: 100,
       physicsEngine: {
@@ -312,6 +316,7 @@ describe('stepSimulationFrame', () => {
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
+        setVirtualTurn: () => {},
       },
       maxControlWarp: 100,
       physicsEngine: {

@@ -37,6 +37,8 @@ export type OverlayUiRefs = {
   headingTargetOverlay: SVGSVGElement
   headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
+  rcsActualTurnOverlay: SVGSVGElement
+  rcsActualTurnSlices: SVGPathElement[]
   renderScenarioPromptSurface: ScenarioPromptSurfaceRenderer
   renderFpsIndicator(view: FpsIndicatorView | null): void
   scenarioPrompt: HTMLElement
@@ -237,6 +239,34 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   headingTargetOverlay.appendChild(headingTargetTurnSlice)
   options.app.appendChild(headingTargetOverlay)
 
+  const rcsActualTurnOverlay = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'svg',
+  )
+  rcsActualTurnOverlay.classList.add('rcs-actual-turn-overlay')
+  rcsActualTurnOverlay.setAttribute('aria-hidden', 'true')
+  rcsActualTurnOverlay.setAttribute(
+    'viewBox',
+    `0 0 ${window.innerWidth} ${window.innerHeight}`,
+  )
+  rcsActualTurnOverlay.style.display = 'none'
+
+  const rcsActualTurnSlicesGroup = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'g',
+  )
+  rcsActualTurnSlicesGroup.classList.add('rcs-actual-turn-slices')
+  rcsActualTurnOverlay.appendChild(rcsActualTurnSlicesGroup)
+
+  const rcsActualTurnSlices = Array.from({ length: 40 }, () => {
+    const slice = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    slice.classList.add('rcs-actual-turn-slice')
+    slice.style.display = 'none'
+    rcsActualTurnSlicesGroup.appendChild(slice)
+    return slice
+  })
+  options.app.appendChild(rcsActualTurnOverlay)
+
   const headingTargetDot = document.createElement('div')
   headingTargetDot.className = 'heading-target-dot'
   headingTargetDot.style.display = 'none'
@@ -292,6 +322,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     headingTargetOverlay,
     headingTargetTurnSlice,
     offscreenIndicators,
+    rcsActualTurnOverlay,
+    rcsActualTurnSlices,
     renderScenarioPromptSurface: scenarioPromptUi.renderSurface,
     renderFpsIndicator: hudTelemetry.renderFpsIndicator,
     scenarioPrompt: scenarioPromptUi.backdropElement,

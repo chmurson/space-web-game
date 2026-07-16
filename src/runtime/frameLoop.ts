@@ -18,6 +18,7 @@ import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import { createBrowserGcProbe } from './browserGcProbe'
 import type { GameQueries } from './gameQueries'
+import { updateRcsActualTurnFeedback } from './rcsActualTurnFeedback'
 import type { RuntimeActions } from './runtimeActions'
 import {
   advanceRuntimeScenario,
@@ -185,6 +186,9 @@ export const createFrameLoop = (options: {
       options.runtime.simulation.state.controls.main > 0 &&
       options.runtime.simulation.state.spacecraft.fuel > 0
 
+    const previousSpacecraftHeading =
+      options.runtime.simulation.state.spacecraft.heading
+
     if (!gameplayPaused) {
       const simulationStep = stepSimulationFrame({
         assistMode: options.runtime.simulation.assistMode,
@@ -207,6 +211,21 @@ export const createFrameLoop = (options: {
       })
       applySimulationFrameResult(options.runtime, simulationStep)
     }
+
+    options.runtime.ui.rcsActualTurnFeedback = updateRcsActualTurnFeedback({
+      currentHeading: options.runtime.simulation.state.spacecraft.heading,
+      dt: realDt,
+      feedback: options.runtime.ui.rcsActualTurnFeedback,
+      previousHeading: previousSpacecraftHeading,
+      rcsTurnActive:
+        !gameplayPaused &&
+        ((options.keyboardInput.hasManualTurn() &&
+          options.runtime.simulation.state.controls.turn !== 0) ||
+          (options.runtime.ui.rcsActualTurnFeedback?.phase === 'active' &&
+            Math.abs(
+              options.runtime.simulation.state.spacecraft.angularVelocity ?? 0,
+            ) > 0.001)),
+    })
 
     options.trajectoryPresentation.maybeRefreshPrediction(realDt)
     const getTrajectoryPredictionForHorizonHours = (horizonHours: number) => {
@@ -283,6 +302,7 @@ export const createFrameLoop = (options: {
       isThrusting,
       spacecraft: options.runtime.simulation.state.spacecraft,
       spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+      rcsActualTurnFeedback: options.runtime.ui.rcsActualTurnFeedback ?? null,
       trailTarget,
       trimTrailAroundTarget,
       ...getTargetHeadingVisuals(),
@@ -362,6 +382,7 @@ export const createFrameLoop = (options: {
           options.runtime.simulation.state.spacecraft.fuel > 0,
         spacecraft: options.runtime.simulation.state.spacecraft,
         spacecraftLabelIntroUntil: options.runtime.ui.spacecraftLabelIntroUntil,
+        rcsActualTurnFeedback: options.runtime.ui.rcsActualTurnFeedback ?? null,
         trailTarget,
         trimTrailAroundTarget: trailTargetMetrics.specificEnergy < 0,
         ...getTargetHeadingVisuals(),

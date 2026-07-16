@@ -64,7 +64,28 @@ describe('semiImplicitEuler', () => {
 
     expect(state.spacecraft.fuel).toBeCloseTo(0.8)
     expect(state.spacecraft.fuelUsed).toBeCloseTo(1.4)
-    expect(state.spacecraft.heading).toBeCloseTo(0.9)
+    expect(state.spacecraft.heading).toBeCloseTo(0.225)
+  })
+
+  it('ramps angular velocity toward the requested turn speed', () => {
+    const state = semiImplicitEuler.step(createState(), 0.1)
+
+    expect(state.spacecraft.angularVelocity).toBeCloseTo(0.09)
+    expect(state.spacecraft.heading).toBeCloseTo(0.009)
+  })
+
+  it('brakes immediately but lets angular velocity decay smoothly after release', () => {
+    const turning = semiImplicitEuler.step(createState(), 0.2)
+    const released = semiImplicitEuler.step(
+      { ...turning, controls: { ...turning.controls, turn: 0 } },
+      0.02,
+    )
+
+    expect(turning.spacecraft.angularVelocity).toBeCloseTo(0.18)
+    expect(released.spacecraft.angularVelocity).toBeCloseTo(0.144)
+    expect(released.spacecraft.heading).toBeGreaterThan(
+      turning.spacecraft.heading,
+    )
   })
 
   it('clamps finite fuel at zero and scales the final thrust frame', () => {
@@ -110,7 +131,7 @@ describe('semiImplicitEuler', () => {
 
     expect(state.spacecraft.fuel).toBe(1)
     expect(state.spacecraft.fuelUsed).toBe(0)
-    expect(state.spacecraft.heading).toBeCloseTo(0.9)
+    expect(state.spacecraft.heading).toBeCloseTo(0.225)
     expect(state.spacecraft.velocity.x).not.toBe(0)
   })
 
