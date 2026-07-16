@@ -287,6 +287,10 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
     'border-radius',
     '15px',
   )
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toHaveCSS(
+    'overflow',
+    'visible',
+  )
   await expect(page.locator('.touch-rcs-yaw-control-thumb')).toHaveCSS(
     'border-radius',
     '15px',
@@ -335,8 +339,34 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
     }
 
     dispatch('touchstart', centerX)
-    dispatch('touchmove', centerX + 58)
+    dispatch('touchmove', rect.right + rect.width)
   })
+  await expect(page.locator('.touch-rcs-yaw-control-track')).toHaveAttribute(
+    'data-rcs-yaw-turn',
+    '1.00',
+  )
+  await expect
+    .poll(() =>
+      page.locator('.touch-rcs-yaw-control-track').evaluate((track) => {
+        const thumb = track.querySelector<HTMLElement>(
+          '.touch-rcs-yaw-control-thumb',
+        )
+        if (!thumb) {
+          throw new Error('RCS yaw thumb is missing')
+        }
+
+        return Math.abs(
+          track.getBoundingClientRect().right -
+            thumb.getBoundingClientRect().right,
+        )
+      }),
+    )
+    .toBeLessThan(0.5)
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-rcs-yaw-control-far-edge',
+  )
   await expect(page.locator('.rcs-actual-turn-overlay')).toHaveCSS(
     'display',
     'block',
@@ -375,7 +405,7 @@ test('captures the mobile RCS yaw and thrust controls together', async ({
     const rect = track.getBoundingClientRect()
     const centerY = rect.top + rect.height / 2
     const touch = new Touch({
-      clientX: rect.left + rect.width / 2 + 58,
+      clientX: rect.right + rect.width,
       clientY: centerY,
       identifier: 223,
       target: track,

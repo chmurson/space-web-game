@@ -7,6 +7,7 @@
 - Added an analog virtual-turn path on `KeyboardInput` so touch RCS can feed `ControlInput.turn` without approximating with binary virtual keys.
 - PR #223 follow-up reversed the RCS drag mapping and added a separate actual-turn feedback arc around the spacecraft while RCS input is causing real rotation.
 - The latest PR follow-up halves the maximum yaw rate again and turns the feedback into a continuous, angle-faded trail that passes 180 degrees without changing direction.
+- A later visual follow-up keeps the RCS thumb's border and glow fully visible at maximum left/right travel instead of clipping them against the track edge.
 
 ## Why
 
@@ -32,6 +33,7 @@ Issue #222 requests temporary mobile rotational maneuvering that feels like a pr
 - PR #223’s turning-response follow-up stores angular velocity on the spacecraft. The RCS knob still changes its requested turn speed immediately, while physics ramps toward that speed and brakes smoothly to rest after release; the feedback arc remains active while that residual rotation is real.
 - The maximum requested RCS yaw rate is `0.225` rad/s, half of the prior `0.45` rad/s cap; acceleration and braking remain separately tuned at `0.9` and `1.8` rad/s².
 - RCS feedback headings are accumulated as unwrapped signed angles. Presentation renders adjacent solid slices instead of normalizing the total arc to the shortest angle, so the trail continues through 180 degrees. Slice opacity is derived from angular distance behind the spacecraft, and the oldest edge advances after one full revolution, making fade speed follow actual turn speed without a second timer.
+- The yaw track no longer clips its children. Its indicators, center mark, and energy fill are already geometrically contained, while the thumb's outer border and active glow need to paint through the track boundary when its border box reaches maximum travel. The analog range, thumb geometry, and thrust/RCS color language are unchanged.
 
 ## Validation
 
@@ -71,6 +73,15 @@ Continuous-trail follow-up validation:
 - The focused RCS screenshot case passed five consecutive runs. The final full-suite artifact at `tmp/playwright-results/mobileHudScreenshot-captur-2cb93-nd-thrust-controls-together-mobile-chromium/mobile-rcs-yaw-actual-turn-feedback.png` was inspected and showed a continuous greater-than-180-degree trail, angle-based tail fade, normal 1x HUD state, and unchanged RCS/thrust control styling.
 - Focused `npx biome check ...` passed with only the three pre-existing `src/style.css` `!important` warnings; `git diff --check` passed.
 - `coderabbit --base main --agent` was attempted, but the execution environment blocked uploading unpublished local diff content. The Ponytail and local self-review completed without additional findings; normal PR automation remains the external review path.
+
+Far-edge clipping follow-up validation:
+
+- `npx playwright test --config playwright.config.ts tests/gui/mobileHudScreenshot.spec.ts --grep "captures the mobile RCS yaw and thrust controls together"` (1 test passed).
+- `npm test` (548 unit tests, 16 automation-claim tests, and 3 automation-workflow tests passed).
+- `npm run build`.
+- `npm run test:gui` (61 browser tests passed).
+- Focused `npx biome check src/ui/touchControls/rcsYawControl.css tests/gui/mobileHudScreenshot.spec.ts` and `git diff --check` passed.
+- Inspected `tmp/playwright-results/mobileHudScreenshot-captur-2cb93-nd-thrust-controls-together-mobile-chromium/mobile-rcs-yaw-control-far-edge.png`; the maximum-right RCS thumb retained its complete cyan border and glow without changing the neighboring amber thrust control or HUD layout.
 
 ## Follow-Ups
 

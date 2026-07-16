@@ -63,7 +63,6 @@
   position: relative;
   width: 188px;
   height: 58px;
-  overflow: hidden;
   border: 1px solid var(--ui-glass-control-border);
   border-radius: var(--touch-control-radius);
   background:
