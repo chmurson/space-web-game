@@ -1014,7 +1014,20 @@ export const createTouchControls = (options: {
       }
 
       if (isRevealControlTarget) {
-        if (activeSession.kind !== 'none' || event.touches.length !== 1) {
+        // A rapid follow-up touch can arrive before the prior touchend.
+        const wasZoneGestureActive =
+          activeSession.kind === 'step-selector' ||
+          activeSession.kind === 'right-zone-pending' ||
+          activeSession.kind === 'right-zone-active'
+        if (wasZoneGestureActive) {
+          clearZoneGesture()
+        }
+        const isSingleReplacementTouch =
+          wasZoneGestureActive && event.changedTouches.length === 1
+        if (
+          activeSession.kind !== 'none' ||
+          (event.touches.length !== 1 && !isSingleReplacementTouch)
+        ) {
           return
         }
 
