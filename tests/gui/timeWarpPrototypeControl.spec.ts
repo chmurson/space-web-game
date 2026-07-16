@@ -506,30 +506,31 @@ test('scales a controlled horizontal fling with recent release velocity', async 
         await wait(params.holdAfterMoveMs)
       }
       control.finishGesture(session, true)
-      const track = control.element.querySelector<HTMLElement>(
-        '.touch-step-selector-horizontal-track',
-      )
-      if (!track) {
-        throw new Error('Expected horizontal selector track to render')
-      }
       const getCurrentLabel = () =>
         control.element.querySelector<HTMLElement>(
           '.touch-step-selector-value-current',
         )?.textContent ?? ''
-      const transitionDurationMs =
-        Number.parseFloat(getComputedStyle(track).transitionDuration) * 1_000
-      const immediateLabel = getCurrentLabel()
-      await wait(240)
-      const rollingLabel = getCurrentLabel()
+      const getState = () => ({
+        currentLabel: getCurrentLabel(),
+        isRolling: control.element.classList.contains(
+          'touch-step-selector-dragging',
+        ),
+        timeWarpIndex,
+      })
+      const immediateState = getState()
+      await wait(80)
+      const earlyState = getState()
+      await wait(160)
+      const rollingState = getState()
       await wait(500)
-      const settledLabel = getCurrentLabel()
+      const settledState = getState()
       control.element.remove()
       return {
-        immediateLabel,
-        rollingLabel,
-        settledLabel,
+        earlyState,
+        immediateState,
+        rollingState,
+        settledState,
         timeWarpIndex,
-        transitionDurationMs,
       }
     }
 
@@ -579,15 +580,23 @@ test('scales a controlled horizontal fling with recent release velocity', async 
   expect(result.pausedRelease.timeWarpIndex).toBe(2)
   expect(result.tinyRelease.timeWarpIndex).toBe(1)
   expect(result.cappedRelease.timeWarpIndex).toBe(11)
-  expect(result.gentleRelease.transitionDurationMs).toBe(280)
-  expect(result.mediumRelease.transitionDurationMs).toBe(490)
-  expect(result.strongRelease.transitionDurationMs).toBe(630)
-  expect(result.gentleRelease.immediateLabel).toBe('x10s')
-  expect(result.gentleRelease.rollingLabel).toBe('x10s')
-  expect(result.gentleRelease.settledLabel).toBe('x30s')
-  expect(result.strongRelease.immediateLabel).toBe('x10s')
-  expect(result.strongRelease.rollingLabel).toBe('x10s')
-  expect(result.strongRelease.settledLabel).toBe('x5m')
+  expect(result.gentleRelease.immediateState.timeWarpIndex).toBe(1)
+  expect(result.gentleRelease.earlyState.timeWarpIndex).toBe(2)
+  expect(result.mediumRelease.immediateState.timeWarpIndex).toBe(1)
+  expect(result.strongRelease.immediateState.timeWarpIndex).toBe(1)
+  expect(result.strongRelease.earlyState.timeWarpIndex).toBeGreaterThan(1)
+  expect(result.strongRelease.earlyState.timeWarpIndex).toBeLessThan(7)
+  expect(result.strongRelease.rollingState.timeWarpIndex).toBeGreaterThan(
+    result.strongRelease.earlyState.timeWarpIndex,
+  )
+  expect(result.strongRelease.rollingState.timeWarpIndex).toBeLessThan(7)
+  expect(result.strongRelease.immediateState.currentLabel).toBe('x10s')
+  expect(result.strongRelease.earlyState.currentLabel).toBe('x1m')
+  expect(result.strongRelease.rollingState.currentLabel).toBe('x4m')
+  expect(result.strongRelease.settledState.currentLabel).toBe('x5m')
+  expect(result.strongRelease.immediateState.isRolling).toBe(true)
+  expect(result.strongRelease.rollingState.isRolling).toBe(true)
+  expect(result.strongRelease.settledState.isRolling).toBe(false)
 })
 
 test('keeps the horizontal track anchored while midpoint commits settle smoothly', async ({
