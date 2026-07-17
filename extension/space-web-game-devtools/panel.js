@@ -419,6 +419,7 @@ const renderPredictionSampling = (snapshot) => {
         elements.predictionRefreshSummary.textContent = '—'
         elements.predictionNearCalculation.textContent = '—'
         elements.predictionFarCalculation.textContent = '—'
+        elements.predictionFarReuse.textContent = '—'
         elements.predictionFarCoalescing.textContent = '—'
         elements.predictionNearTravel.textContent = '—'
         elements.predictionIntegrationStats.textContent = '—'
