@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Space Web Game DevTools",
-    "version": "0.1.24",
+    "version": "0.1.26",
     "description": "Runtime state inspector and safe control panel for Space Web Game.",
     "devtools_page": "devtools.html"
 }

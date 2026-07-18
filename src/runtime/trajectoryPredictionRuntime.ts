@@ -3,6 +3,7 @@ import {
   createFarTrajectoryPredictionStateSnapshot,
   type FarTrajectoryPredictionRequestPayload,
   type FarTrajectoryPredictionResultPayload,
+  type FarTrajectoryPredictionReuseDiagnostics,
   type FarTrajectoryPredictionReuseFallbackReason,
 } from '../prediction/farTrajectoryPrediction'
 import {
@@ -126,6 +127,12 @@ export type TrajectoryPredictionNearTravelDiagnostics = {
   lastStepHorizonRatio: number | null
 }
 
+export type TrajectoryPredictionFarReuseDiagnostic =
+  FarTrajectoryPredictionReuseDiagnostics & {
+    elapsedSeconds: number
+    horizonSeconds: number
+  }
+
 export type TrajectoryPredictionDiagnostics = {
   absolutePointCount: number
   activeFar: boolean
@@ -146,10 +153,16 @@ export type TrajectoryPredictionDiagnostics = {
   farCoalescingSkippedCount: number
   farInputKeyShort: string | null
   farPointCount: number
+  farReuseExtendedPointCount: number
   farReuseExtendedSeconds: number
   farReuseFallbackReason: FarTrajectoryPredictionReuseFallbackReason | null
+  farReuseHistory: TrajectoryPredictionFarReuseDiagnostic[]
   farReuseMode: 'full' | 'trim-extend' | null
   farReuseRetainedPointCount: number
+  farReuseRetainedSeconds: number
+  farReuseTrimmedPointCount: number
+  farReuseTrimmedSeconds: number
+  farReuseValidation: 'full' | 'performed' | 'skipped' | null
   farVisible: TrajectoryPredictionFarVisibility
   geometryUpdateMs: number
   hasFarTier: boolean
@@ -270,10 +283,16 @@ export const emptyTrajectoryPredictionDiagnostics =
     farCoalescingSkippedCount: 0,
     farInputKeyShort: null,
     farPointCount: 0,
+    farReuseExtendedPointCount: 0,
     farReuseExtendedSeconds: 0,
     farReuseFallbackReason: null,
+    farReuseHistory: [],
     farReuseMode: null,
     farReuseRetainedPointCount: 0,
+    farReuseRetainedSeconds: 0,
+    farReuseTrimmedPointCount: 0,
+    farReuseTrimmedSeconds: 0,
+    farReuseValidation: null,
     farVisible: 'none',
     geometryUpdateMs: 0,
     hasFarTier: false,
@@ -315,6 +334,7 @@ export const emptyTrajectoryPredictionDiagnostics =
 const recentRefreshWindowMs = 1_000
 const calculationSampleWindowMs = 30_000
 const diagnosticEventLimit = 100
+const farReuseHistoryLimit = 100
 const baseNearPredictionHorizonSeconds = 10 * 60
 const nearPredictionMovementBudgetRatio = 0.01
 const nowMs = () => performance.now()
@@ -677,6 +697,7 @@ export const createTrajectoryPredictionRuntime = (
   let predictionInputHadActiveThrust = false
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
+  let farReuseHistory: TrajectoryPredictionFarReuseDiagnostic[] = []
   let previousDiagnosticEventTimeMs: number | null = null
   const farCalculationStats: CalculationTimingStats = {
     count: 0,
@@ -1104,12 +1125,26 @@ export const createTrajectoryPredictionRuntime = (
 
     predictionRefreshTimesMs.push(refreshStartMs)
     farPredictionTier = createFarTierFromWorkerResult(result)
+    farReuseHistory = [
+      ...farReuseHistory,
+      {
+        ...result.reuse,
+        elapsedSeconds: options.state.elapsed,
+        horizonSeconds: options.predictionConfig.horizonSeconds,
+      },
+    ].slice(-farReuseHistoryLimit)
     predictionDiagnostics = {
       ...predictionDiagnostics,
+      farReuseExtendedPointCount: result.reuse.extendedPointCount,
       farReuseExtendedSeconds: result.reuse.extendedSeconds,
       farReuseFallbackReason: result.reuse.fallbackReason,
+      farReuseHistory,
       farReuseMode: result.reuse.mode,
       farReuseRetainedPointCount: result.reuse.retainedPointCount,
+      farReuseRetainedSeconds: result.reuse.retainedSeconds,
+      farReuseTrimmedPointCount: result.reuse.trimmedPointCount,
+      farReuseTrimmedSeconds: result.reuse.trimmedSeconds,
+      farReuseValidation: result.reuse.validation,
     }
     const liveNearPredictionConfig = createPredictionConfigWithHorizon(
       options.predictionConfig,
@@ -1484,6 +1519,7 @@ export const createTrajectoryPredictionRuntime = (
         ...predictionDiagnostics,
         elapsedSinceRefreshSeconds: predictionRefreshElapsed,
         events: predictionDiagnosticEvents.map(cloneDiagnosticEvent),
+        farReuseHistory: farReuseHistory.map((entry) => ({ ...entry })),
         farCalculationAgeSeconds: getCalculationAgeSeconds(
           farCalculationStats,
           currentTimeMs,

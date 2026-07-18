@@ -57,7 +57,6 @@ export type FarTrajectoryPredictionResultPayload = {
 export type FarTrajectoryPredictionReuseFallbackReason =
   | 'cached-path-incomplete'
   | 'elapsed-outside-window'
-  | 'expired-metadata'
   | 'loop-trim-risk'
   | 'no-cache'
   | 'not-passive-coast'
@@ -66,15 +65,21 @@ export type FarTrajectoryPredictionReuseFallbackReason =
   | 'state-diverged'
 
 export type FarTrajectoryPredictionReuseDiagnostics = {
+  extendedPointCount: number
   extendedSeconds: number
   fallbackReason: FarTrajectoryPredictionReuseFallbackReason | null
   mode: 'full' | 'trim-extend'
   retainedPointCount: number
+  retainedSeconds: number
+  trimmedPointCount: number
+  trimmedSeconds: number
+  validation: 'full' | 'performed' | 'skipped'
 }
 
 const nowMs = () => performance.now()
 const maxReuseElapsedHorizonRatio = 0.25
-const maxConsecutiveCoastReuses = 4
+const validateEveryConsecutiveCoastReuses = 4
+const maxConsecutiveCoastReusesBeforeFullRecalculation = 16
 const statePositionToleranceMeters = 5_000
 const stateVelocityToleranceMetersPerSecond = 5
 const stateScalarTolerance = 0.001
@@ -238,16 +243,6 @@ const combineIntegrationDiagnostics = (
   }
 }
 
-const shiftSample = (
-  sample: CoastTrajectoryPredictionSample,
-  timeOffset: number,
-): CoastTrajectoryPredictionSample => ({
-  absolutePoint: { ...sample.absolutePoint },
-  distanceSq: sample.distanceSq,
-  point: { ...sample.point },
-  time: sample.time + timeOffset,
-})
-
 const shiftClosestApproach = (
   closestApproach: TrajectoryPredictionResult['closestApproach'],
   timeOffset: number,
@@ -255,6 +250,27 @@ const shiftClosestApproach = (
   closestApproach
     ? { ...closestApproach, time: closestApproach.time + timeOffset }
     : null
+
+const shiftSample = (
+  sample: CoastTrajectoryPredictionSample,
+  timeOffset: number,
+): CoastTrajectoryPredictionSample => {
+  const closestApproach = shiftClosestApproach(
+    sample.closestApproach,
+    timeOffset,
+  )
+
+  return {
+    absolutePoint: { ...sample.absolutePoint },
+    closestApproach:
+      closestApproach && closestApproach.time > timeToleranceSeconds
+        ? closestApproach
+        : null,
+    distanceSq: sample.distanceSq,
+    point: { ...sample.point },
+    time: sample.time + timeOffset,
+  }
+}
 
 const getCloserApproach = (
   first: TrajectoryPredictionResult['closestApproach'],
@@ -267,6 +283,35 @@ const getCloserApproach = (
     return first
   }
   return first.altitude <= second.altitude ? first : second
+}
+
+const getSamplesClosestApproach = (
+  samples: CoastTrajectoryPredictionSample[],
+) =>
+  samples.reduce<TrajectoryPredictionResult['closestApproach']>(
+    (closestApproach, sample) =>
+      getCloserApproach(closestApproach, sample.closestApproach),
+    null,
+  )
+
+const normalizeAngle = (angle: number) =>
+  Math.atan2(Math.sin(angle), Math.cos(angle))
+
+const getPredictionAngularTravel = (
+  state: SimulationState,
+  target: Body,
+  samples: CoastTrajectoryPredictionSample[],
+) => {
+  const initialRelativePoint = sub(state.spacecraft.position, target.position)
+  let previousAngle = Math.atan2(initialRelativePoint.y, initialRelativePoint.x)
+
+  return samples.reduce((angularTravel, sample) => {
+    const angle = Math.atan2(sample.point.y, sample.point.x)
+    const nextAngularTravel =
+      angularTravel + Math.abs(normalizeAngle(angle - previousAngle))
+    previousAngle = angle
+    return nextAngularTravel
+  }, 0)
 }
 
 const getReuseFallbackReason = (
@@ -284,10 +329,10 @@ const getReuseFallbackReason = (
   if (!isPassiveCoast(payload)) {
     return 'not-passive-coast'
   }
-  if (cache.allowLoopTrim || allowLoopTrim) {
+  if (cache.allowLoopTrim !== allowLoopTrim) {
     return 'loop-trim-risk'
   }
-  if (cache.reuseCount >= maxConsecutiveCoastReuses) {
+  if (cache.reuseCount >= maxConsecutiveCoastReusesBeforeFullRecalculation) {
     return 'reuse-limit'
   }
 
@@ -302,27 +347,17 @@ const getReuseFallbackReason = (
   }
   if (
     cache.computation.result.impact ||
-    Math.abs(
-      cache.computation.predictionTime -
-        payload.predictionConfig.horizonSeconds,
-    ) > timeToleranceSeconds ||
+    (!cache.allowLoopTrim &&
+      Math.abs(
+        cache.computation.predictionTime -
+          payload.predictionConfig.horizonSeconds,
+      ) > timeToleranceSeconds) ||
     cache.computation.samples.filter(
       (sample) => sample.time > elapsedSeconds + timeToleranceSeconds,
     ).length < 2
   ) {
     return 'cached-path-incomplete'
   }
-  if (
-    (cache.computation.result.closestApproach?.time ??
-      Number.POSITIVE_INFINITY) <=
-      elapsedSeconds + timeToleranceSeconds ||
-    cache.computation.result.eventMarkers.some(
-      (marker) => marker.time <= elapsedSeconds + timeToleranceSeconds,
-    )
-  ) {
-    return 'expired-metadata'
-  }
-
   return null
 }
 
@@ -350,94 +385,165 @@ const tryReuseCoastPrediction = (
   if (!validationTarget) {
     return 'state-diverged'
   }
-  const elapsedConfig = {
-    ...payload.predictionConfig,
-    horizonSeconds: elapsedSeconds,
-  }
-  const validation = computeCoastTrajectoryPrediction(
-    cache.initialState,
-    semiImplicitEuler,
-    validationTarget,
-    elapsedConfig,
-    false,
-  )
+  const shouldValidate =
+    cache.reuseCount % validateEveryConsecutiveCoastReuses === 0
+  const validation = shouldValidate
+    ? computeCoastTrajectoryPrediction(
+        cache.initialState,
+        semiImplicitEuler,
+        validationTarget,
+        {
+          ...payload.predictionConfig,
+          horizonSeconds: elapsedSeconds,
+        },
+        false,
+      )
+    : null
   if (
-    validation.result.impact ||
-    !isContinuousState(validation.finalState, state)
+    validation &&
+    (validation.result.impact ||
+      !isContinuousState(validation.finalState, state))
   ) {
     return 'state-diverged'
   }
 
+  let retainedSamples = cache.computation.samples
+    .filter((sample) => sample.time > elapsedSeconds + timeToleranceSeconds)
+    .map((sample) => shiftSample(sample, -elapsedSeconds))
+  let seam: CoastTrajectoryPredictionComputation | null = null
+  const firstRetainedSample = retainedSamples[0]
+  if (firstRetainedSample && !firstRetainedSample.closestApproach) {
+    const seamConfig = {
+      ...payload.predictionConfig,
+      horizonSeconds: firstRetainedSample.time,
+    }
+    seam = computeCoastTrajectoryPrediction(
+      state,
+      semiImplicitEuler,
+      target,
+      seamConfig,
+      false,
+    )
+    if (
+      seam.result.impact ||
+      !seam.result.absoluteEndPoint ||
+      !isCloseVector(
+        seam.result.absoluteEndPoint,
+        firstRetainedSample.absolutePoint,
+        statePositionToleranceMeters,
+      )
+    ) {
+      return 'state-diverged'
+    }
+    retainedSamples = [
+      {
+        ...firstRetainedSample,
+        closestApproach: seam.result.closestApproach,
+      },
+      ...retainedSamples.slice(1),
+    ]
+  }
+
+  const extensionOffsetSeconds =
+    cache.computation.predictionTime - elapsedSeconds
+  const extensionHorizonSeconds = Math.max(
+    0,
+    payload.predictionConfig.horizonSeconds - extensionOffsetSeconds,
+  )
+  const retainedAngularTravel = getPredictionAngularTravel(
+    state,
+    target,
+    retainedSamples,
+  )
+  const remainingLoopAngularTravel = Math.max(
+    0,
+    payload.predictionConfig.maxLoopRevolutions * Math.PI * 2 -
+      retainedAngularTravel,
+  )
+  const shouldExtend =
+    extensionHorizonSeconds > timeToleranceSeconds &&
+    (!allowLoopTrim || remainingLoopAngularTravel > 0)
   const extensionTarget = cache.computation.finalState.bodies.find(
     (body) => body.id === payload.targetId,
   )
-  if (!extensionTarget) {
+  if (shouldExtend && !extensionTarget) {
     return 'state-diverged'
   }
-  const extension = computeCoastTrajectoryPrediction(
-    cache.computation.finalState,
-    semiImplicitEuler,
-    extensionTarget,
-    elapsedConfig,
-    false,
-  )
-  const retainedSamples = cache.computation.samples
-    .filter((sample) => sample.time > elapsedSeconds + timeToleranceSeconds)
-    .map((sample) => shiftSample(sample, -elapsedSeconds))
-  const extensionOffsetSeconds =
-    cache.computation.predictionTime - elapsedSeconds
-  const extensionSamples = extension.samples.map((sample) =>
+  const extension =
+    shouldExtend && extensionTarget
+      ? computeCoastTrajectoryPrediction(
+          cache.computation.finalState,
+          semiImplicitEuler,
+          extensionTarget,
+          {
+            ...payload.predictionConfig,
+            horizonSeconds: extensionHorizonSeconds,
+            maxLoopRevolutions: allowLoopTrim
+              ? remainingLoopAngularTravel / (Math.PI * 2)
+              : payload.predictionConfig.maxLoopRevolutions,
+          },
+          allowLoopTrim,
+        )
+      : null
+  const extensionSamples = (extension?.samples ?? []).map((sample) =>
     shiftSample(sample, extensionOffsetSeconds),
   )
   const samples = [...retainedSamples, ...extensionSamples]
-  const shiftedPreviousClosestApproach = shiftClosestApproach(
-    cache.computation.result.closestApproach,
-    -elapsedSeconds,
-  )
-  const shiftedExtensionClosestApproach = shiftClosestApproach(
-    extension.result.closestApproach,
-    extensionOffsetSeconds,
-  )
-  const impact = extension.result.impact
+  const impact = extension?.result.impact
     ? {
         ...extension.result.impact,
         time: extension.result.impact.time + extensionOffsetSeconds,
       }
     : null
+  const calculations = [validation, seam, extension].filter(
+    (calculation): calculation is CoastTrajectoryPredictionComputation =>
+      calculation !== null,
+  )
+  let integration = calculations.shift()?.result.integration ?? {
+    averageStepSeconds: 0,
+    minStepSeconds: 0,
+    stepCount: 0,
+  }
+  for (const calculation of calculations) {
+    integration = combineIntegrationDiagnostics(
+      integration,
+      calculation.result.integration,
+    )
+  }
   const result: TrajectoryPredictionResult = {
     absoluteEndPoint: samples.at(-1)?.absolutePoint ?? null,
     absolutePoints: [
       { ...state.spacecraft.position },
       ...samples.map((sample) => sample.absolutePoint),
     ],
-    closestApproach: getCloserApproach(
-      shiftedPreviousClosestApproach,
-      shiftedExtensionClosestApproach,
-    ),
+    closestApproach: getSamplesClosestApproach(samples),
     eventMarkers: getCoastTrajectoryEventMarkers(samples, {
-      includeApoapsis: false,
+      includeApoapsis: allowLoopTrim && !impact,
       targetRadius: target.radius,
     }),
     impact,
-    integration: combineIntegrationDiagnostics(
-      validation.result.integration,
-      extension.result.integration,
-    ),
+    integration,
     relativePoints: samples.map((sample) => sample.point),
   }
 
   return {
     computation: {
-      finalState: extension.finalState,
-      predictionTime: extensionOffsetSeconds + extension.predictionTime,
+      finalState: extension?.finalState ?? cache.computation.finalState,
+      predictionTime: extensionOffsetSeconds + (extension?.predictionTime ?? 0),
       result,
       samples,
     },
     reuse: {
-      extendedSeconds: extension.predictionTime,
+      extendedPointCount: extensionSamples.length,
+      extendedSeconds: extension?.predictionTime ?? 0,
       fallbackReason: null,
       mode: 'trim-extend',
       retainedPointCount: retainedSamples.length,
+      retainedSeconds: extensionOffsetSeconds,
+      trimmedPointCount:
+        cache.computation.samples.length - retainedSamples.length,
+      trimmedSeconds: elapsedSeconds,
+      validation: shouldValidate ? 'performed' : 'skipped',
     },
     reuseCount: cache.reuseCount + 1,
   }
@@ -475,10 +581,15 @@ const calculateFarTrajectory = (
             allowLoopTrim,
           ),
           reuse: {
+            extendedPointCount: 0,
             extendedSeconds: 0,
             fallbackReason: reused,
             mode: 'full',
             retainedPointCount: 0,
+            retainedSeconds: 0,
+            trimmedPointCount: 0,
+            trimmedSeconds: 0,
+            validation: 'full',
           },
           reuseCount: 0,
         }

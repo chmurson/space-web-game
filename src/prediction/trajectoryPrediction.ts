@@ -62,6 +62,7 @@ export type TrajectoryPredictionResult = {
 
 export type CoastTrajectoryPredictionSample = {
   absolutePoint: Vec2
+  closestApproach: PredictedClosestApproach | null
   distanceSq: number
   point: Vec2
   time: number
@@ -274,6 +275,7 @@ export const computeCoastTrajectoryPrediction = (
   const maxLoopAngularTravel = predictionConfig.maxLoopRevolutions * Math.PI * 2
   let closestApproach: PredictedClosestApproach | null = null
   let impact: PredictedImpact | null = null
+  let sampleClosestApproach: PredictedClosestApproach | null = null
   let previousPredictionAngle = Math.atan2(
     state.spacecraft.position.y - target.position.y,
     state.spacecraft.position.x - target.position.x,
@@ -313,13 +315,20 @@ export const computeCoastTrajectoryPrediction = (
         const altitude =
           length(sub(predictedSpacecraft.position, predictedTarget.position)) -
           predictedTarget.radius
+        const approach = {
+          altitude,
+          bodyName: predictedTarget.name,
+          time: predictionTime,
+        }
 
         if (!closestApproach || altitude < closestApproach.altitude) {
-          closestApproach = {
-            altitude,
-            bodyName: predictedTarget.name,
-            time: predictionTime,
-          }
+          closestApproach = approach
+        }
+        if (
+          !sampleClosestApproach ||
+          altitude < sampleClosestApproach.altitude
+        ) {
+          sampleClosestApproach = approach
         }
       }
 
@@ -351,10 +360,12 @@ export const computeCoastTrajectoryPrediction = (
     relativePoints.push(relativePoint)
     samples.push({
       absolutePoint,
+      closestApproach: sampleClosestApproach,
       distanceSq: lengthSq(relativePoint),
       point: relativePoint,
       time: predictionTime,
     })
+    sampleClosestApproach = null
 
     if (allowLoopTrim && predictionAngularTravel >= maxLoopAngularTravel) {
       break

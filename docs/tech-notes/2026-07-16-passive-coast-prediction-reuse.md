@@ -1,5 +1,7 @@
 # Passive-Coast Far Prediction Reuse
 
+> Follow-up: `2026-07-17-bound-and-expired-far-prediction-reuse.md` broadens this initial conservative implementation to stable bound paths and elapsed metadata. The exclusions below describe the first shipped boundary, not the current final behavior.
+
 ## What Changed
 
 - Far-horizon worker prediction now keeps its last completed coast computation and can roll it forward during compatible passive coast.
@@ -52,5 +54,5 @@ Long passive-coast predictions repeatedly describe mostly the same future path. 
 
 ## Follow-Ups and Known Gaps
 
-- Reuse intentionally gives up on bound/loop-trimmed predictions and after expired metadata. Those paths can be broadened later only with per-segment integration metadata and cumulative angular-travel accounting.
+- Bound/loop-trimmed predictions and expired metadata were broadened in `2026-07-17-bound-and-expired-far-prediction-reuse.md` using per-segment closest-approach metadata and retained angular-travel accounting.
 - State continuity tolerances mirror the existing coarse prediction input tolerances. Requests outside those bounds fall back safely; device profiling can determine whether stricter tolerances are practical without suppressing useful reuse.

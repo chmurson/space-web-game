@@ -6,7 +6,7 @@ import {
   type FarTrajectoryPredictionRequestPayload,
   predictFarTrajectory,
 } from '@/prediction/farTrajectoryPrediction'
-import { EARTH_MASS, EARTH_RADIUS } from '@/simulation/constants'
+import { EARTH_MASS, EARTH_RADIUS, G } from '@/simulation/constants'
 import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
 import { idleControls } from '@/simulation/state'
 import type { Body, SimulationState } from '@/simulation/types'
@@ -45,6 +45,7 @@ const createRequest = (
     inputKey?: string
     jobId?: number
     maxIntegrationStepSeconds?: number
+    maxLoopRevolutions?: number
     semanticInputKey?: string
     stepSeconds?: number
   } = {},
@@ -57,7 +58,7 @@ const createRequest = (
     horizonSeconds: options.horizonSeconds ?? 100,
     maxIntegrationStepSeconds:
       options.maxIntegrationStepSeconds ?? options.stepSeconds ?? 10,
-    maxLoopRevolutions: 2.5,
+    maxLoopRevolutions: options.maxLoopRevolutions ?? 2.5,
     refreshInterval: 0.4,
     stepSeconds: options.stepSeconds ?? 10,
   },
@@ -84,16 +85,26 @@ describe('createFarTrajectoryPredictor', () => {
     const full = predictFarTrajectory(request)
 
     expect(initial.reuse).toEqual({
+      extendedPointCount: 0,
       extendedSeconds: 0,
       fallbackReason: 'no-cache',
       mode: 'full',
       retainedPointCount: 0,
+      retainedSeconds: 0,
+      trimmedPointCount: 0,
+      trimmedSeconds: 0,
+      validation: 'full',
     })
     expect(reused.reuse).toEqual({
+      extendedPointCount: 2,
       extendedSeconds: 20,
       fallbackReason: null,
       mode: 'trim-extend',
       retainedPointCount: 8,
+      retainedSeconds: 80,
+      trimmedPointCount: 2,
+      trimmedSeconds: 20,
+      validation: 'performed',
     })
     expect(reused.coastPrediction).toMatchObject({
       absoluteEndPoint: full.coastPrediction.absoluteEndPoint,
@@ -130,10 +141,15 @@ describe('createFarTrajectoryPredictor', () => {
     const full = predictFarTrajectory(request)
 
     expect(reused.reuse).toEqual({
+      extendedPointCount: 20,
       extendedSeconds: 2_000,
       fallbackReason: null,
       mode: 'trim-extend',
       retainedPointCount: 80,
+      retainedSeconds: 8_000,
+      trimmedPointCount: 20,
+      trimmedSeconds: 2_000,
+      validation: 'performed',
     })
     expect(reused.coastPrediction.absolutePoints).toEqual(
       full.coastPrediction.absolutePoints,
@@ -143,6 +159,42 @@ describe('createFarTrajectoryPredictor', () => {
     )
     expect(reused.coastPrediction.integration.stepCount).toBe(40)
     expect(full.coastPrediction.integration.stepCount).toBe(100)
+  })
+
+  it('skips validation on the reuse between scheduled validations', () => {
+    const predict = createFarTrajectoryPredictor()
+    const initialState = createState(1_000_000)
+    const config = {
+      horizonSeconds: 10_000,
+      stepSeconds: 100,
+    }
+
+    predict(createRequest(initialState, config))
+    const firstLiveState = advanceState(initialState, 2_000)
+    const firstReuse = predict(
+      createRequest(firstLiveState, {
+        ...config,
+        inputKey: 'input-2',
+        jobId: 2,
+      }),
+    )
+    const secondLiveState = advanceState(firstLiveState, 2_000)
+    const secondRequest = createRequest(secondLiveState, {
+      ...config,
+      inputKey: 'input-3',
+      jobId: 3,
+    })
+    const secondReuse = predict(secondRequest)
+    const full = predictFarTrajectory(secondRequest)
+
+    expect(firstReuse.reuse.validation).toBe('performed')
+    expect(secondReuse.reuse.validation).toBe('skipped')
+    expect(secondReuse.coastPrediction.absolutePoints).toEqual(
+      full.coastPrediction.absolutePoints,
+    )
+    expect(secondReuse.coastPrediction.integration.stepCount).toBeLessThan(
+      firstReuse.coastPrediction.integration.stepCount,
+    )
   })
 
   it('keeps a close Earth flyby near a full recompute baseline', () => {
@@ -214,10 +266,15 @@ describe('createFarTrajectoryPredictor', () => {
     const reused = predict(request)
 
     expect(reused.reuse).toEqual({
+      extendedPointCount: 3,
       extendedSeconds: 25,
       fallbackReason: null,
       mode: 'trim-extend',
       retainedPointCount: 8,
+      retainedSeconds: 75,
+      trimmedPointCount: 2,
+      trimmedSeconds: 25,
+      validation: 'performed',
     })
     expect(reused.coastPrediction.absoluteEndPoint).toEqual({
       x: -150,
@@ -289,10 +346,15 @@ describe('createFarTrajectoryPredictor', () => {
     const full = predictFarTrajectory(request)
 
     expect(result.reuse).toEqual({
+      extendedPointCount: 0,
       extendedSeconds: 0,
       fallbackReason: 'state-diverged',
       mode: 'full',
       retainedPointCount: 0,
+      retainedSeconds: 0,
+      trimmedPointCount: 0,
+      trimmedSeconds: 0,
+      validation: 'full',
     })
     expect(result.coastPrediction).toEqual(full.coastPrediction)
   })
@@ -324,21 +386,99 @@ describe('createFarTrajectoryPredictor', () => {
     expect(activeControls.reuse.fallbackReason).toBe('not-passive-coast')
   })
 
-  it('falls back for bound paths that may have stopped at the loop limit', () => {
+  it('reuses bound paths while preserving the loop-trimmed trajectory', () => {
     const predict = createFarTrajectoryPredictor()
+    const orbitingTarget = {
+      ...target,
+      mass: 1_000_000_000_000_000,
+    }
+    const orbitalRadius = 1_100
     const initialState = {
       ...createState(),
-      bodies: [{ ...target, mass: 1_000_000_000_000_000 }],
+      bodies: [orbitingTarget],
+      spacecraft: {
+        ...createState().spacecraft,
+        position: { x: orbitalRadius, y: 0 },
+        velocity: {
+          x: 0,
+          y: Math.sqrt((G * orbitingTarget.mass) / orbitalRadius),
+        },
+      },
     }
-    predict(createRequest(initialState))
-    const laterState = { ...initialState, elapsed: 20 }
+    const config = {
+      horizonSeconds: 5_000,
+      maxLoopRevolutions: 1,
+      stepSeconds: 10,
+    }
+    const initial = predict(createRequest(initialState, config))
+    let laterState = initialState
+    for (let second = 0; second < 20; second += 1) {
+      laterState = advanceState(laterState, 1)
+    }
+    const request = createRequest(laterState, {
+      ...config,
+      inputKey: 'input-2',
+      jobId: 2,
+    })
 
-    const result = predict(
-      createRequest(laterState, { inputKey: 'input-2', jobId: 2 }),
+    const reused = predict(request)
+    const full = predictFarTrajectory(request)
+    const reusedEnd = reused.coastPrediction.absoluteEndPoint
+    const fullEnd = full.coastPrediction.absoluteEndPoint
+
+    expect(initial.coastPrediction.relativePoints.length).toBeLessThan(
+      config.horizonSeconds / config.stepSeconds,
+    )
+    expect(reused.reuse.mode).toBe('trim-extend')
+    expect(reused.reuse.extendedSeconds).toBeGreaterThan(0)
+    expect(reused.coastPrediction.relativePoints).toHaveLength(
+      full.coastPrediction.relativePoints.length,
+    )
+    expect(reusedEnd).not.toBeNull()
+    expect(fullEnd).not.toBeNull()
+    if (!reusedEnd || !fullEnd) {
+      throw new Error('Expected bound predictions to include end points.')
+    }
+    expect(length(sub(reusedEnd, fullEnd))).toBeLessThan(10)
+    expect(
+      Math.abs(
+        (reused.coastPrediction.closestApproach?.altitude ?? 0) -
+          (full.coastPrediction.closestApproach?.altitude ?? 0),
+      ),
+    ).toBeLessThan(10)
+    expect(
+      reused.coastPrediction.eventMarkers.map((marker) => marker.kind),
+    ).toEqual(full.coastPrediction.eventMarkers.map((marker) => marker.kind))
+    expect(reused.coastPrediction.integration.stepCount).toBeLessThan(
+      full.coastPrediction.integration.stepCount,
     )
 
-    expect(result.reuse.fallbackReason).toBe('loop-trim-risk')
-    expect(result.reuse.mode).toBe('full')
+    let twiceLaterState = laterState
+    for (let second = 0; second < 20; second += 1) {
+      twiceLaterState = advanceState(twiceLaterState, 1)
+    }
+    const secondRequest = createRequest(twiceLaterState, {
+      ...config,
+      inputKey: 'input-3',
+      jobId: 3,
+    })
+    const reusedAgain = predict(secondRequest)
+    const fullAgain = predictFarTrajectory(secondRequest)
+    const reusedAgainEnd = reusedAgain.coastPrediction.absoluteEndPoint
+    const fullAgainEnd = fullAgain.coastPrediction.absoluteEndPoint
+
+    expect(reusedAgain.reuse.mode).toBe('trim-extend')
+    expect(reusedAgain.coastPrediction.relativePoints).toHaveLength(
+      fullAgain.coastPrediction.relativePoints.length,
+    )
+    expect(reusedAgainEnd).not.toBeNull()
+    expect(fullAgainEnd).not.toBeNull()
+    if (!reusedAgainEnd || !fullAgainEnd) {
+      throw new Error(
+        'Expected rolled bound predictions to include end points.',
+      )
+    }
+    expect(length(sub(reusedAgainEnd, fullAgainEnd))).toBeLessThan(10)
   })
 
   it('falls back after four consecutive reuse rolls', () => {
@@ -366,14 +506,19 @@ describe('createFarTrajectoryPredictor', () => {
     )
 
     expect(forcedFull.reuse).toEqual({
+      extendedPointCount: 0,
       extendedSeconds: 0,
       fallbackReason: 'reuse-limit',
       mode: 'full',
       retainedPointCount: 0,
+      retainedSeconds: 0,
+      trimmedPointCount: 0,
+      trimmedSeconds: 0,
+      validation: 'full',
     })
   })
 
-  it('falls back when elapsed closest-approach metadata is no longer valid', () => {
+  it('rebuilds closest-approach metadata after the cached approach expires', () => {
     const predict = createFarTrajectoryPredictor()
     const initialState = {
       ...createState(100),
@@ -382,14 +527,62 @@ describe('createFarTrajectoryPredictor', () => {
         velocity: { x: 10, y: 0 },
       },
     }
-    predict(createRequest(initialState))
-    const liveState = advanceState(initialState, 20)
+    const config = {
+      horizonSeconds: 1_000,
+      maxIntegrationStepSeconds: 10,
+      stepSeconds: 100,
+    }
+    predict(createRequest(initialState, config))
+    const liveState = advanceState(initialState, 25)
 
-    const result = predict(
-      createRequest(liveState, { inputKey: 'input-2', jobId: 2 }),
+    const request = createRequest(liveState, {
+      ...config,
+      inputKey: 'input-2',
+      jobId: 2,
+    })
+    const reused = predict(request)
+    const full = predictFarTrajectory(request)
+
+    expect(reused.reuse.mode).toBe('trim-extend')
+    expect(reused.coastPrediction.closestApproach).toEqual(
+      full.coastPrediction.closestApproach,
     )
+    expect(reused.coastPrediction.eventMarkers).toEqual(
+      full.coastPrediction.eventMarkers,
+    )
+    expect(reused.coastPrediction.integration.stepCount).toBeLessThan(
+      full.coastPrediction.integration.stepCount,
+    )
+  })
 
-    expect(result.reuse.fallbackReason).toBe('expired-metadata')
-    expect(result.reuse.mode).toBe('full')
+  it('drops elapsed event markers without discarding the reusable path', () => {
+    const predict = createFarTrajectoryPredictor()
+    const initialState = createState()
+    const config = {
+      horizonSeconds: 1_000,
+      stepSeconds: 10,
+    }
+    const initial = predict(createRequest(initialState, config))
+    const liveState = advanceState(initialState, 120)
+    const request = createRequest(liveState, {
+      ...config,
+      inputKey: 'input-2',
+      jobId: 2,
+    })
+
+    const reused = predict(request)
+    const full = predictFarTrajectory(request)
+
+    expect(initial.coastPrediction.eventMarkers).toContainEqual(
+      expect.objectContaining({ kind: 'periapsis', time: 110 }),
+    )
+    expect(reused.reuse.mode).toBe('trim-extend')
+    expect(reused.coastPrediction.closestApproach).toEqual(
+      full.coastPrediction.closestApproach,
+    )
+    expect(reused.coastPrediction.eventMarkers).toEqual([])
+    expect(reused.coastPrediction.eventMarkers).toEqual(
+      full.coastPrediction.eventMarkers,
+    )
   })
 })
