@@ -3173,6 +3173,13 @@ test('captures the mobile time warp touch control after reveal', async ({
   ).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
+  await page.addStyleTag({
+    content: `
+      .touch-step-selector-horizontal-track {
+        transition-duration: var(--touch-step-selector-horizontal-settle-duration) !important;
+      }
+    `,
+  })
 
   const prototypeBox = await timeWarpPrototypeControl.boundingBox()
   if (!prototypeBox) {
@@ -3197,9 +3204,16 @@ test('captures the mobile time warp touch control after reveal', async ({
     'mobile-time-warp-control-dragging',
   )
   await page.mouse.up()
+  await page.waitForTimeout(200)
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-time-warp-control-fling-rolling',
+    { animations: 'allow' },
+  )
   await expect(
     timeWarpPrototypeControl.locator('.touch-step-selector-value-current'),
-  ).toHaveText('x4s')
+  ).toHaveText('x4m')
   await attachMobileScreenshot(
     page,
     testInfo,

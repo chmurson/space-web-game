@@ -6,6 +6,7 @@ import {
 } from '@/devtools/devtoolsBridge'
 import type { UIUserAction } from '@/input/uiUserActions'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { createGameQueries } from '@/runtime/gameQueries'
 import type {
   TrajectoryPredictionDiagnosticEvent,
   TrajectoryPredictionDiagnostics,
@@ -186,7 +187,22 @@ const createRuntime = (): AppRuntimeState => ({
   },
 })
 
-const createBridgeHarness = (runtime = createRuntime()) => {
+const createQueries = (runtime: AppRuntimeState) =>
+  createGameQueries({
+    autoSelectNearestSurface: true,
+    autoSelectConfig: { switchRangeMultiplier: 2 },
+    autopilotRotationRate: 0.1,
+    getPredictedTrajectoryEnd: () => null,
+    getPredictedTrajectoryPoints: () => [],
+    maxPredictionLoopRevolutions: 2.5,
+    predictionSampling,
+    runtime,
+  })
+
+const createBridgeHarness = (
+  runtime = createRuntime(),
+  getAssistTarget = createQueries(runtime).getAssistTarget,
+) => {
   const dispatchedActions: UIUserAction[] = []
   let farCoalescingOverrideSeconds: number | null = null
   const setCameraMode = vi.fn((mode: CameraControlMode) => {
@@ -205,6 +221,7 @@ const createBridgeHarness = (runtime = createRuntime()) => {
       }
     },
     getAppMode: () => 'game',
+    getAssistTarget,
     getTrajectoryPredictionDiagnostics: () =>
       createTrajectoryPredictionDiagnostics(),
     runtime,
@@ -232,10 +249,13 @@ const createBridgeHarness = (runtime = createRuntime()) => {
 describe('createDevtoolsSnapshot', () => {
   it('creates a serializable runtime summary for the devtools panel', () => {
     const runtime = createRuntime()
+    runtime.simulation.assistTargetSelectionMode = 'manual'
     runtime.scenario.directives.hiddenUIElements.add('trajectory')
+    const queries = createQueries(runtime)
 
     const snapshot = createDevtoolsSnapshot({
       getAppMode: () => 'game',
+      getAssistTarget: queries.getAssistTarget,
       maxPredictionLoopRevolutions: 2.5,
       predictionSampling,
       runtime,
@@ -282,6 +302,7 @@ describe('createDevtoolsSnapshot', () => {
       id: 'moon',
       name: 'Moon',
     })
+    expect(snapshot.simulation.assistTargetIndex).toBe(1)
     expect(snapshot.simulation.timeWarp).toBe(30)
     expect(snapshot.simulation.predictionSampling).toMatchObject({
       currentMaxIntegrationStepSeconds: 8,
@@ -314,6 +335,59 @@ describe('createDevtoolsSnapshot', () => {
     })
     expect(snapshot.simulation.spacecraft.speed).toBe(10)
     expect(snapshot.simulation.bodies[0]?.speed).toBe(5)
+  })
+
+  it('uses the effective automatic target for target-dependent diagnostics', () => {
+    const runtime = createRuntime()
+    const earth = runtime.simulation.state.bodies[0]
+    if (!earth) {
+      throw new Error('Expected Earth test body')
+    }
+    earth.mass = 1e15
+
+    const snapshot = createBridgeHarness(runtime).bridge.getSnapshot()
+
+    expect(snapshot.simulation.assistTarget).toEqual({
+      id: 'earth',
+      name: 'Earth',
+    })
+    expect(snapshot.simulation.assistTargetIndex).toBe(1)
+    expect(snapshot.simulation.bodies[1]?.id).toBe('moon')
+    expect(
+      snapshot.simulation.predictionSampling.currentMaxIntegrationStepSeconds,
+    ).toBe(2)
+  })
+
+  it('uses a forced target that differs from automatic and raw selections', () => {
+    const runtime = createRuntime()
+    runtime.simulation.state.bodies.push({
+      color: '#c56a4a',
+      id: 'mars',
+      mass: 1e15,
+      name: 'Mars',
+      position: { x: 100, y: 100 },
+      radius: 50,
+      velocity: { x: 6, y: 8 },
+    })
+    const queries = createQueries(runtime)
+
+    expect(queries.getAssistTarget().id).toBe('earth')
+    runtime.scenario.directives.forcedAssistTargetId = 'mars'
+
+    const snapshot = createBridgeHarness(
+      runtime,
+      queries.getAssistTarget,
+    ).bridge.getSnapshot()
+
+    expect(snapshot.simulation.assistTarget).toEqual({
+      id: 'mars',
+      name: 'Mars',
+    })
+    expect(snapshot.simulation.assistTargetIndex).toBe(1)
+    expect(snapshot.simulation.bodies[1]?.id).toBe('moon')
+    expect(
+      snapshot.simulation.predictionSampling.currentMaxIntegrationStepSeconds,
+    ).toBe(2)
   })
 })
 

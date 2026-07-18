@@ -28,6 +28,7 @@ export const createPrototypeTimeWarpControl2 = (
     ariaLabel: 'Time Warp control 2',
     axis: 'horizontal',
     className: 'touch-step-selector-time-warp-prototype-2',
+    enableHorizontalMomentum: true,
     // ponytail: Temporary issue #226 comparison UI; remove with the prototype.
     controlId: 'time-warp-2',
   })

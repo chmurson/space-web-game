@@ -32,6 +32,7 @@ type WritableDebugFlag = Exclude<
 type DevtoolsBridgeOptions = {
   dispatchRuntimeAction(action: UIUserAction): void
   getAppMode(): AppMode
+  getAssistTarget(): Body
   getTrajectoryPredictionDiagnostics(): TrajectoryPredictionDiagnostics
   maxPredictionLoopRevolutions: number
   predictionSampling: TrajectoryPredictionSamplingConfig
@@ -209,6 +210,7 @@ export const createDevtoolsSnapshot = (
   options: Pick<
     DevtoolsBridgeOptions,
     | 'getAppMode'
+    | 'getAssistTarget'
     | 'getTrajectoryPredictionDiagnostics'
     | 'maxPredictionLoopRevolutions'
     | 'predictionSampling'
@@ -218,23 +220,20 @@ export const createDevtoolsSnapshot = (
 ): SpaceGameDevtoolsSnapshot => {
   const { runtime, timeWarps } = options
   const bodies = runtime.simulation.state.bodies.map(createBodySnapshot)
-  const assistTargetBody =
-    runtime.simulation.state.bodies[runtime.simulation.assistTargetIndex]
-  const assistTarget = bodies[runtime.simulation.assistTargetIndex]
+  const assistTarget = options.getAssistTarget()
   const predictionConfig = getTrajectoryPredictionConfig(
     runtime.simulation.coastPredictionHorizonHours * 60 * 60,
     options.predictionSampling,
     options.maxPredictionLoopRevolutions,
   )
-  const coastMaxIntegrationStepSeconds = assistTargetBody
-    ? getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
-        runtime.simulation.state,
-        assistTargetBody,
-        predictionConfig,
-        getCaptureMetricsForState(runtime.simulation.state, assistTargetBody)
-          .specificEnergy < 0,
-      )
-    : predictionConfig.maxIntegrationStepSeconds
+  const coastMaxIntegrationStepSeconds =
+    getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
+      runtime.simulation.state,
+      assistTarget,
+      predictionConfig,
+      getCaptureMetricsForState(runtime.simulation.state, assistTarget)
+        .specificEnergy < 0,
+    )
 
   return {
     appMode: options.getAppMode(),
@@ -278,9 +277,7 @@ export const createDevtoolsSnapshot = (
     },
     simulation: {
       assistMode: runtime.simulation.assistMode,
-      assistTarget: assistTarget
-        ? { id: assistTarget.id, name: assistTarget.name }
-        : null,
+      assistTarget: { id: assistTarget.id, name: assistTarget.name },
       assistTargetIndex: runtime.simulation.assistTargetIndex,
       bodies,
       coastPredictionHorizonHours:

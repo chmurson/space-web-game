@@ -1020,6 +1020,7 @@ export const createAppComponents = (options: {
   installDevtoolsBridge({
     dispatchRuntimeAction,
     getAppMode,
+    getAssistTarget: queries.getAssistTarget,
     getTrajectoryPredictionDiagnostics: () =>
       trajectoryPredictionRuntime.getDiagnostics(),
     maxPredictionLoopRevolutions:

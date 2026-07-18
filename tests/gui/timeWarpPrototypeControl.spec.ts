@@ -182,7 +182,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       throw new Error('Expected step selector styles to load')
     }
 
-    const dragPrototype = (
+    const dragPrototype = async (
       params: { beforeMouseup?: () => void; distanceX?: number } = {},
     ) => {
       const rect = prototypeControl.getBoundingClientRect()
@@ -210,6 +210,8 @@ test('routes the horizontal prototype time warp control to shared state', async 
         }),
       )
       params.beforeMouseup?.()
+      // Keep this routing fixture outside the fling's recent-motion window.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 80))
       window.dispatchEvent(
         new MouseEvent('mouseup', {
           bubbles: true,
@@ -323,10 +325,10 @@ test('routes the horizontal prototype time warp control to shared state', async 
     const rightDragAnimation = await inspectSwipeAnimation(22)
     timeWarpIndex = 0
     controls.syncUi()
-    dragPrototype()
+    await dragPrototype()
     const firstCommitTimeWarp = timeWarps[timeWarpIndex]
 
-    dragPrototype({
+    await dragPrototype({
       beforeMouseup: () => {
         interactionsEnabled = false
       },
@@ -335,10 +337,10 @@ test('routes the horizontal prototype time warp control to shared state', async 
     const disabledMouseupTimeWarp = timeWarps[timeWarpIndex]
     interactionsEnabled = true
 
-    dragPrototype()
+    await dragPrototype()
     const postDisabledRecoveryTimeWarp = timeWarps[timeWarpIndex]
 
-    dragPrototype({
+    await dragPrototype({
       beforeMouseup: () => {
         window.dispatchEvent(new Event('blur'))
       },
@@ -346,7 +348,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
     })
     const blurCancelTimeWarp = timeWarps[timeWarpIndex]
 
-    dragPrototype()
+    await dragPrototype()
     controls.syncUi()
 
     return {
@@ -418,6 +420,184 @@ test('routes the horizontal prototype time warp control to shared state', async 
   )
   expect(result.originalText).toContain('x1m')
   expect(result.prototypeText).toContain('x1m')
+})
+
+test('scales a controlled horizontal fling with recent release velocity', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const timeWarpControlModulePath =
+      '/src/ui/touchControls/createTimeWarpControl.ts'
+    const { createPrototypeTimeWarpControl2 } = (await import(
+      timeWarpControlModulePath
+    )) as TimeWarpControlModule
+    const timeWarps = [1, 10, 30, 60, 120, 180, 240, 300, 360, 420, 480, 540]
+    let timeWarpIndex = 1
+    const panel = document.createElement('div')
+    document.body.append(panel)
+    const createControl = () =>
+      createPrototypeTimeWarpControl2({
+        commitTimeWarp: (action) => {
+          timeWarpIndex = Math.max(
+            0,
+            Math.min(
+              timeWarps.length - 1,
+              timeWarpIndex + (action === 'increaseTimeWarp' ? 1 : -1),
+            ),
+          )
+        },
+        getCurrentTimeWarp: () => timeWarps[timeWarpIndex],
+        getTimeWarpPreview: (action) => getPreviews(action, 1)[0],
+        getTimeWarpPreviews: getPreviews,
+        onSessionChange: () => {},
+        panel,
+      })
+    const getPreviews = (action: TimeWarpAction, count: number) =>
+      Array.from({ length: count }, (_, offset) => {
+        const nextIndex =
+          timeWarpIndex +
+          (action === 'increaseTimeWarp' ? offset + 1 : -offset - 1)
+        const clampedIndex = Math.max(
+          0,
+          Math.min(timeWarps.length - 1, nextIndex),
+        )
+        return {
+          canCommit: nextIndex === clampedIndex,
+          reason: null,
+          value: timeWarps[clampedIndex],
+        }
+      })
+    const wait = (delayMs: number) =>
+      new Promise<void>((resolve) => window.setTimeout(resolve, delayMs))
+    const fling = async (params: {
+      distanceX: number
+      holdAfterMoveMs?: number
+      releaseVelocityPxPerSecond: number
+    }) => {
+      const control = createControl()
+      const origin = { clientX: 100, clientY: 100, identifier: 1 }
+      let session = control.beginGesture(origin)
+      session = control.updateGesture(
+        {
+          clientX: origin.clientX + params.distanceX,
+          clientY: origin.clientY,
+          identifier: origin.identifier,
+        },
+        session,
+      )
+      const latestSampleTime = performance.now()
+      session.horizontalMotionSamples = [
+        {
+          time:
+            latestSampleTime -
+            (Math.abs(params.distanceX) /
+              Math.abs(params.releaseVelocityPxPerSecond)) *
+              1_000,
+          x: origin.clientX,
+        },
+        {
+          time: latestSampleTime,
+          x: origin.clientX + params.distanceX,
+        },
+      ]
+      if (params.holdAfterMoveMs) {
+        await wait(params.holdAfterMoveMs)
+      }
+      control.finishGesture(session, true)
+      const getCurrentLabel = () =>
+        control.element.querySelector<HTMLElement>(
+          '.touch-step-selector-value-current',
+        )?.textContent ?? ''
+      const getState = () => ({
+        currentLabel: getCurrentLabel(),
+        isRolling: control.element.classList.contains(
+          'touch-step-selector-dragging',
+        ),
+        timeWarpIndex,
+      })
+      const immediateState = getState()
+      await wait(80)
+      const earlyState = getState()
+      await wait(160)
+      const rollingState = getState()
+      await wait(500)
+      const settledState = getState()
+      control.element.remove()
+      return {
+        earlyState,
+        immediateState,
+        rollingState,
+        settledState,
+        timeWarpIndex,
+      }
+    }
+
+    const gentleRelease = await fling({
+      distanceX: -20,
+      releaseVelocityPxPerSecond: 500,
+    })
+    timeWarpIndex = 1
+    const mediumRelease = await fling({
+      distanceX: -20,
+      releaseVelocityPxPerSecond: 900,
+    })
+    timeWarpIndex = 1
+    const strongRelease = await fling({
+      distanceX: -20,
+      releaseVelocityPxPerSecond: 1_200,
+    })
+    timeWarpIndex = 1
+    const pausedRelease = await fling({
+      distanceX: -46,
+      holdAfterMoveMs: 80,
+      releaseVelocityPxPerSecond: 1_200,
+    })
+    timeWarpIndex = 1
+    const tinyRelease = await fling({
+      distanceX: -9,
+      releaseVelocityPxPerSecond: 1_200,
+    })
+    timeWarpIndex = timeWarps.length - 2
+    const cappedRelease = await fling({
+      distanceX: -20,
+      releaseVelocityPxPerSecond: 1_200,
+    })
+    return {
+      cappedRelease,
+      gentleRelease,
+      mediumRelease,
+      pausedRelease,
+      strongRelease,
+      tinyRelease,
+    }
+  })
+
+  expect(result.gentleRelease.timeWarpIndex).toBe(2)
+  expect(result.mediumRelease.timeWarpIndex).toBe(5)
+  expect(result.strongRelease.timeWarpIndex).toBe(7)
+  expect(result.pausedRelease.timeWarpIndex).toBe(2)
+  expect(result.tinyRelease.timeWarpIndex).toBe(1)
+  expect(result.cappedRelease.timeWarpIndex).toBe(11)
+  expect(result.gentleRelease.immediateState.timeWarpIndex).toBe(1)
+  expect(result.gentleRelease.earlyState.timeWarpIndex).toBe(2)
+  expect(result.mediumRelease.immediateState.timeWarpIndex).toBe(1)
+  expect(result.strongRelease.immediateState.timeWarpIndex).toBe(1)
+  expect(result.strongRelease.earlyState.timeWarpIndex).toBeGreaterThan(1)
+  expect(result.strongRelease.earlyState.timeWarpIndex).toBeLessThan(7)
+  expect(result.strongRelease.rollingState.timeWarpIndex).toBeGreaterThan(
+    result.strongRelease.earlyState.timeWarpIndex,
+  )
+  expect(result.strongRelease.rollingState.timeWarpIndex).toBeLessThan(7)
+  expect(result.strongRelease.immediateState.currentLabel).toBe('x10s')
+  expect(result.strongRelease.earlyState.currentLabel).toBe('x1m')
+  expect(result.strongRelease.rollingState.currentLabel).toBe('x4m')
+  expect(result.strongRelease.settledState.currentLabel).toBe('x5m')
+  expect(result.strongRelease.immediateState.isRolling).toBe(true)
+  expect(result.strongRelease.rollingState.isRolling).toBe(true)
+  expect(result.strongRelease.settledState.isRolling).toBe(false)
 })
 
 test('keeps the horizontal track anchored while midpoint commits settle smoothly', async ({
@@ -715,7 +895,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
         },
         settleSession,
       )
-      await wait(70)
+      await wait(80)
       const selectedBeforeRelease = getLabel(selectedLabel)
       const beforeReleaseCenterX = getCenterX(selectedBeforeRelease)
       const beforeReleaseAppearance = getAppearance(selectedLabel)
