@@ -163,6 +163,7 @@ export type TrajectoryPredictionDiagnostics = {
   farReuseTrimmedPointCount: number
   farReuseTrimmedSeconds: number
   farReuseValidation: 'full' | 'performed' | 'skipped' | null
+  farReuseValidationSeconds: number
   farVisible: TrajectoryPredictionFarVisibility
   geometryUpdateMs: number
   hasFarTier: boolean
@@ -293,6 +294,7 @@ export const emptyTrajectoryPredictionDiagnostics =
     farReuseTrimmedPointCount: 0,
     farReuseTrimmedSeconds: 0,
     farReuseValidation: null,
+    farReuseValidationSeconds: 0,
     farVisible: 'none',
     geometryUpdateMs: 0,
     hasFarTier: false,
@@ -1145,6 +1147,7 @@ export const createTrajectoryPredictionRuntime = (
       farReuseTrimmedPointCount: result.reuse.trimmedPointCount,
       farReuseTrimmedSeconds: result.reuse.trimmedSeconds,
       farReuseValidation: result.reuse.validation,
+      farReuseValidationSeconds: result.reuse.validationSeconds,
     }
     const liveNearPredictionConfig = createPredictionConfigWithHorizon(
       options.predictionConfig,

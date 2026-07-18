@@ -70,6 +70,7 @@ const createTrajectoryPredictionDiagnostics = (
       trimmedPointCount: 2,
       trimmedSeconds: 120,
       validation: 'performed',
+      validationSeconds: 120,
     },
   ],
   farReuseMode: 'trim-extend',
@@ -78,6 +79,7 @@ const createTrajectoryPredictionDiagnostics = (
   farReuseTrimmedPointCount: 2,
   farReuseTrimmedSeconds: 120,
   farReuseValidation: 'performed',
+  farReuseValidationSeconds: 120,
   farVisible: 'current',
   geometryUpdateMs: 1.2,
   hasFarTier: true,
@@ -353,6 +355,7 @@ describe('createDevtoolsSnapshot', () => {
       farReuseTrimmedPointCount: 2,
       farReuseTrimmedSeconds: 120,
       farReuseValidation: 'performed',
+      farReuseValidationSeconds: 120,
       farVisible: 'current',
       pendingFar: false,
       nearCalculationTravel: {

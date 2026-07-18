@@ -211,6 +211,7 @@ const createPredictionRuntime = (
       farReuseTrimmedPointCount: 0,
       farReuseTrimmedSeconds: 0,
       farReuseValidation: null,
+      farReuseValidationSeconds: 0,
       farVisible,
       geometryUpdateMs: 0,
       hasFarTier: false,

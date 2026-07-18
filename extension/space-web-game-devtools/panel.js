@@ -165,7 +165,7 @@ const formatReuseDetails = (reuse) => {
             `trim ${formatNumber(reuse.trimmedPointCount, 0)} pts / ${formatSeconds(reuse.trimmedSeconds)}`,
             `kept ${formatNumber(reuse.retainedPointCount, 0)} pts / ${formatSeconds(reuse.retainedSeconds)}`,
             `extend ${formatNumber(reuse.extendedPointCount, 0)} pts / ${formatSeconds(reuse.extendedSeconds)}`,
-            `validation ${reuse.validation}`,
+            `validation ${reuse.validation}${reuse.validation === 'performed' ? ` / ${formatSeconds(reuse.validationSeconds)}` : ''}`,
             `old pts trim/kept ${oldPointShares}; time ${oldTimeShares}`,
             `new pts kept/extend ${newPointShares}; time ${newTimeShares}`,
         ].join(' · ')
@@ -186,6 +186,7 @@ const formatFarReuse = (prediction) =>
         trimmedPointCount: prediction.farReuseTrimmedPointCount,
         trimmedSeconds: prediction.farReuseTrimmedSeconds,
         validation: prediction.farReuseValidation,
+        validationSeconds: prediction.farReuseValidationSeconds,
     })
 let latestRawSnapshotJson = '{}'
 

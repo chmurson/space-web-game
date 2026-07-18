@@ -72,6 +72,7 @@ const createDebugPanelInput = (
     farReuseTrimmedPointCount: 0,
     farReuseTrimmedSeconds: 0,
     farReuseValidation: null,
+    farReuseValidationSeconds: 0,
     farVisible: 'none',
     geometryUpdateMs: 1.25,
     hasFarTier: false,

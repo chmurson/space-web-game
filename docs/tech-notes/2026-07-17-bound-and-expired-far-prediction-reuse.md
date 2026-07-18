@@ -7,7 +7,7 @@
 - Coast samples now retain the closest approach found inside each sampling interval. Rolling a path discards elapsed interval metadata and rebuilds a partially elapsed first interval from the live state when needed.
 - Elapsed closest-approach and event-marker metadata no longer force a full calculation. Closest approach and orbit event markers are rebuilt for the retained-plus-extended future window.
 - Reuse diagnostics now report trimmed, retained, and extended portions in both sample points and simulated seconds. The DevTools panel keeps the latest 100 far-prediction results in its in-memory snapshot history and displays the newest 24.
-- Passive-coast reuse validates the first reuse after a full calculation and then every second reuse; a named four-reuse cap forces a full calculation regardless.
+- Passive-coast reuse validates the first reuse after a full calculation and then every fourth reuse; skipped rolls preserve the last validated state so the next validation covers the full unchecked interval. A named sixteen-reuse cap forces a full calculation regardless.
 
 ## Why It Changed
 
@@ -28,17 +28,18 @@ The first passive-coast reuse implementation deliberately fell back for every bo
 - Each sample owns the closest approach found during its integration interval. This avoids approximating retained-middle closest approach from point density alone.
 - If elapsed time cuts through the first retained interval and its closest approach is no longer valid, the worker integrates only from the live state to that first retained sample. The seam must end close to the cached point or reuse falls back with `state-diverged`.
 - Expired orbit markers are dropped and markers are recomputed from the composed future samples. Cached paths that already contain an impact remain non-reusable.
-- Existing compatibility, state-continuity, elapsed-window, retained-point-count, and four-consecutive-roll limits remain unchanged.
+- Existing compatibility, state-continuity, elapsed-window, and retained-point-count gates remain unchanged.
 - `validateEveryConsecutiveCoastReuses` and `maxConsecutiveCoastReusesBeforeFullRecalculation` are intentionally adjacent constants in the far predictor so profiling can tune the performance/correctness trade-off without altering the reuse algorithm.
+- Validation duration is reported independently from the current trim duration because a scheduled validation can cover multiple reuse intervals.
 
 ## Validation
 
-- `npx --no-install vitest run --config vite.config.ts tests/prediction/farTrajectoryPrediction.test.ts tests/prediction/trajectoryPrediction.test.ts tests/runtime/trajectoryPredictionRuntime.test.ts tests/devtools/devtoolsBridge.test.ts tests/ui/hudText.test.ts tests/presentation/trajectoryPresentation.test.ts` (6 files / 100 tests)
+- `npx --no-install vitest run --config vite.config.ts tests/prediction/farTrajectoryPrediction.test.ts tests/prediction/trajectoryPrediction.test.ts tests/runtime/trajectoryPredictionRuntime.test.ts tests/devtools/devtoolsBridge.test.ts tests/ui/hudText.test.ts tests/presentation/trajectoryPresentation.test.ts` (6 files / 104 tests)
 - `npx --no-install tsc --noEmit`
 - `npx --no-install biome check src/prediction/farTrajectoryPrediction.ts src/prediction/trajectoryPrediction.ts tests/prediction/farTrajectoryPrediction.test.ts`
-- `npm test` (63 Vitest files / 560 tests, 16 automation-claim tests, and 3 automation-workflow tests)
+- `npm test` (63 Vitest files / 566 tests, 16 automation-claim tests, and 3 automation-workflow tests)
 - `npm run build`
-- `npm run test:gui` (61 Playwright tests)
+- `npm run test:gui` (63 Playwright tests)
 - Inspected `tmp/playwright-results/tutorialTrailDebugReplay-r-a4f42-ate-from-a-fixed-checkpoint-mobile-chromium/tutorial-trail-debug-replay.png`; the trajectory remained continuous and coherent through the Earth/Moon debug scene.
 - `git diff --check`
 

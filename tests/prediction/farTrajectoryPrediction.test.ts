@@ -94,6 +94,7 @@ describe('createFarTrajectoryPredictor', () => {
       trimmedPointCount: 0,
       trimmedSeconds: 0,
       validation: 'full',
+      validationSeconds: 0,
     })
     expect(reused.reuse).toEqual({
       extendedPointCount: 2,
@@ -105,6 +106,7 @@ describe('createFarTrajectoryPredictor', () => {
       trimmedPointCount: 2,
       trimmedSeconds: 20,
       validation: 'performed',
+      validationSeconds: 20,
     })
     expect(reused.coastPrediction).toMatchObject({
       absoluteEndPoint: full.coastPrediction.absoluteEndPoint,
@@ -150,6 +152,7 @@ describe('createFarTrajectoryPredictor', () => {
       trimmedPointCount: 20,
       trimmedSeconds: 2_000,
       validation: 'performed',
+      validationSeconds: 2_000,
     })
     expect(reused.coastPrediction.absolutePoints).toEqual(
       full.coastPrediction.absolutePoints,
@@ -188,13 +191,54 @@ describe('createFarTrajectoryPredictor', () => {
     const full = predictFarTrajectory(secondRequest)
 
     expect(firstReuse.reuse.validation).toBe('performed')
+    expect(firstReuse.reuse.validationSeconds).toBe(2_000)
     expect(secondReuse.reuse.validation).toBe('skipped')
+    expect(secondReuse.reuse.validationSeconds).toBe(0)
     expect(secondReuse.coastPrediction.absolutePoints).toEqual(
       full.coastPrediction.absolutePoints,
     )
     expect(secondReuse.coastPrediction.integration.stepCount).toBeLessThan(
       firstReuse.coastPrediction.integration.stepCount,
     )
+  })
+
+  it('validates across a skipped reuse from the last trusted state', () => {
+    const predict = createFarTrajectoryPredictor()
+    const initialState = createState()
+    predict(createRequest(initialState))
+
+    const firstLiveState = advanceState(initialState, 20)
+    predict(createRequest(firstLiveState, { inputKey: 'input-2', jobId: 2 }))
+
+    const secondLiveState = advanceState(firstLiveState, 20)
+    const divergedState = {
+      ...secondLiveState,
+      spacecraft: {
+        ...secondLiveState.spacecraft,
+        position: {
+          ...secondLiveState.spacecraft.position,
+          y: secondLiveState.spacecraft.position.y + 50_000,
+        },
+      },
+    }
+    const skipped = predict(
+      createRequest(divergedState, { inputKey: 'input-3', jobId: 3 }),
+    )
+    const thirdLiveState = advanceState(divergedState, 20)
+    predict(createRequest(thirdLiveState, { inputKey: 'input-4', jobId: 4 }))
+    const fourthLiveState = advanceState(thirdLiveState, 20)
+    predict(createRequest(fourthLiveState, { inputKey: 'input-5', jobId: 5 }))
+    const fifthLiveState = advanceState(fourthLiveState, 20)
+    const checked = predict(
+      createRequest(fifthLiveState, { inputKey: 'input-6', jobId: 6 }),
+    )
+
+    expect(skipped.reuse.validation).toBe('skipped')
+    expect(checked.reuse).toMatchObject({
+      fallbackReason: 'state-diverged',
+      mode: 'full',
+      validation: 'full',
+    })
   })
 
   it('keeps a close Earth flyby near a full recompute baseline', () => {
@@ -275,6 +319,7 @@ describe('createFarTrajectoryPredictor', () => {
       trimmedPointCount: 2,
       trimmedSeconds: 25,
       validation: 'performed',
+      validationSeconds: 25,
     })
     expect(reused.coastPrediction.absoluteEndPoint).toEqual({
       x: -150,
@@ -355,6 +400,7 @@ describe('createFarTrajectoryPredictor', () => {
       trimmedPointCount: 0,
       trimmedSeconds: 0,
       validation: 'full',
+      validationSeconds: 0,
     })
     expect(result.coastPrediction).toEqual(full.coastPrediction)
   })
@@ -481,28 +527,36 @@ describe('createFarTrajectoryPredictor', () => {
     expect(length(sub(reusedAgainEnd, fullAgainEnd))).toBeLessThan(10)
   })
 
-  it('falls back after four consecutive reuse rolls', () => {
+  it('falls back after sixteen consecutive reuse rolls', () => {
     const predict = createFarTrajectoryPredictor()
     let state = createState(1_000_000)
     const config = { horizonSeconds: 1_000, stepSeconds: 10 }
     predict(createRequest(state, config))
+    const validations: string[] = []
 
-    for (let jobId = 2; jobId <= 5; jobId += 1) {
+    for (let jobId = 2; jobId <= 17; jobId += 1) {
       state = advanceState(state, 20)
-      expect(
-        predict(
-          createRequest(state, {
-            ...config,
-            inputKey: `input-${jobId}`,
-            jobId,
-          }),
-        ).reuse.mode,
-      ).toBe('trim-extend')
+      const result = predict(
+        createRequest(state, {
+          ...config,
+          inputKey: `input-${jobId}`,
+          jobId,
+        }),
+      )
+      expect(result.reuse.mode).toBe('trim-extend')
+      validations.push(result.reuse.validation)
     }
+
+    expect(
+      validations.filter((validation) => validation === 'performed'),
+    ).toHaveLength(4)
+    expect(
+      validations.filter((validation) => validation === 'skipped'),
+    ).toHaveLength(12)
 
     state = advanceState(state, 20)
     const forcedFull = predict(
-      createRequest(state, { ...config, inputKey: 'input-6', jobId: 6 }),
+      createRequest(state, { ...config, inputKey: 'input-18', jobId: 18 }),
     )
 
     expect(forcedFull.reuse).toEqual({
@@ -515,6 +569,7 @@ describe('createFarTrajectoryPredictor', () => {
       trimmedPointCount: 0,
       trimmedSeconds: 0,
       validation: 'full',
+      validationSeconds: 0,
     })
   })
 

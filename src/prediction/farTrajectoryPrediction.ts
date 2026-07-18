@@ -74,6 +74,7 @@ export type FarTrajectoryPredictionReuseDiagnostics = {
   trimmedPointCount: number
   trimmedSeconds: number
   validation: 'full' | 'performed' | 'skipped'
+  validationSeconds: number
 }
 
 const nowMs = () => performance.now()
@@ -91,6 +92,7 @@ type FarTrajectoryPredictionCache = {
   initialState: SimulationState
   reuseCount: number
   semanticInputKey: string
+  validationState: SimulationState
 }
 
 type FarTrajectoryPredictionCalculation = {
@@ -379,7 +381,8 @@ const tryReuseCoastPrediction = (
   }
 
   const elapsedSeconds = state.elapsed - cache.initialState.elapsed
-  const validationTarget = cache.initialState.bodies.find(
+  const validationElapsedSeconds = state.elapsed - cache.validationState.elapsed
+  const validationTarget = cache.validationState.bodies.find(
     (body) => body.id === payload.targetId,
   )
   if (!validationTarget) {
@@ -389,12 +392,12 @@ const tryReuseCoastPrediction = (
     cache.reuseCount % validateEveryConsecutiveCoastReuses === 0
   const validation = shouldValidate
     ? computeCoastTrajectoryPrediction(
-        cache.initialState,
+        cache.validationState,
         semiImplicitEuler,
         validationTarget,
         {
           ...payload.predictionConfig,
-          horizonSeconds: elapsedSeconds,
+          horizonSeconds: validationElapsedSeconds,
         },
         false,
       )
@@ -544,6 +547,7 @@ const tryReuseCoastPrediction = (
         cache.computation.samples.length - retainedSamples.length,
       trimmedSeconds: elapsedSeconds,
       validation: shouldValidate ? 'performed' : 'skipped',
+      validationSeconds: shouldValidate ? validationElapsedSeconds : 0,
     },
     reuseCount: cache.reuseCount + 1,
   }
@@ -590,6 +594,7 @@ const calculateFarTrajectory = (
             trimmedPointCount: 0,
             trimmedSeconds: 0,
             validation: 'full',
+            validationSeconds: 0,
           },
           reuseCount: 0,
         }
@@ -618,6 +623,10 @@ const calculateFarTrajectory = (
       initialState: state,
       reuseCount: coastCalculation.reuseCount,
       semanticInputKey: payload.semanticInputKey,
+      validationState:
+        coastCalculation.reuse.validation === 'skipped'
+          ? (cache?.validationState ?? state)
+          : state,
     },
     result: {
       assistedPoints,
