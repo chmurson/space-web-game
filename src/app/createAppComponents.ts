@@ -136,6 +136,11 @@ const createRuntimeCoordinator = (options: {
       return
     }
 
+    if (action === 'saveDebugSnapshot') {
+      options.topMenu.openDebugSnapshotSave()
+      return
+    }
+
     const result = options.runtimeActions.handleUIUserAction(action)
 
     if (result.refreshTrajectoryPrediction) {
@@ -471,17 +476,7 @@ export const createAppComponents = (options: {
       focalPoint.x,
       focalPoint.y,
     )
-    runtimeActions.zoomCamera(factor)
-    const nextWorld = pickWorldPointFromScreenPoint(focalPoint.x, focalPoint.y)
-
-    if (!previousWorld || !nextWorld) {
-      return
-    }
-
-    runtimeActions.panCamera({
-      x: previousWorld.x - nextWorld.x,
-      y: previousWorld.y - nextWorld.y,
-    })
+    runtimeActions.zoomCamera(factor, previousWorld ?? undefined)
   }
   const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
   const runtimeActions = createRuntimeActions({
@@ -781,9 +776,11 @@ export const createAppComponents = (options: {
   const topMenu = createTopMenu({
     app: options.app,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
+    getDebugSnapshotSuggestedName: runtimeActions.getDebugSnapshotSuggestedName,
     getFpsIndicatorEnabled: () =>
       options.runtimeState.debug.fpsIndicatorEnabled,
     onAction: handleTopMenuAction,
+    onSaveDebugSnapshot: runtimeActions.saveDebugSnapshot,
   })
   const inGameControlsMenu = createInGameControlsMenu({
     app: options.app,
@@ -801,6 +798,7 @@ export const createAppComponents = (options: {
   })
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
+    getStarfieldLayerDebugInfo: gameScene.starfield.getLayerDebugInfo,
     getTrailRenderedSliceCount: () => gameScene.trailRenderedSliceCount,
     inGameControlsMenu,
     overlayUi,

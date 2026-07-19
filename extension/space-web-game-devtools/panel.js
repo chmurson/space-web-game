@@ -42,6 +42,7 @@ const elements = {
     rawJson: document.querySelector('#rawJson'),
     rawJsonFull: document.querySelector('#rawJsonFull'),
     rawSnapshotPanel: document.querySelector('#rawSnapshotPanel'),
+    recentDebugSnapshotList: document.querySelector('#recentDebugSnapshotList'),
     refreshButton: document.querySelector('#refreshButton'),
     scenarioCheckpoint: document.querySelector('#scenarioCheckpoint'),
     scenarioCompleted: document.querySelector('#scenarioCompleted'),
@@ -189,6 +190,7 @@ const formatFarReuse = (prediction) =>
         validationSeconds: prediction.farReuseValidationSeconds,
     })
 let latestRawSnapshotJson = '{}'
+let renderedRecentDebugSnapshotsJson = ''
 
 const escapeHtml = (value) =>
     value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -403,6 +405,65 @@ const renderDebugFlags = (snapshot) => {
     elements.debugSnapshotStatus.textContent = snapshot.debug.debugSnapshotStatus || 'No debug snapshot status'
 }
 
+const renderRecentDebugSnapshots = (snapshot) => {
+    const recentSnapshots = Array.isArray(snapshot.recentDebugSnapshots)
+        ? snapshot.recentDebugSnapshots
+        : []
+    const recentSnapshotsJson = JSON.stringify(recentSnapshots)
+    if (recentSnapshotsJson === renderedRecentDebugSnapshotsJson) {
+        return
+    }
+    renderedRecentDebugSnapshotsJson = recentSnapshotsJson
+
+    if (recentSnapshots.length === 0) {
+        const empty = document.createElement('p')
+        empty.className = 'muted debug-snapshot-empty'
+        empty.textContent = 'No saved debug snapshots'
+        elements.recentDebugSnapshotList.replaceChildren(empty)
+        return
+    }
+
+    const items = recentSnapshots.map((snapshotEntry) => {
+        const item = document.createElement('div')
+        item.className = 'debug-snapshot-item'
+
+        const details = document.createElement('div')
+        details.className = 'debug-snapshot-details'
+
+        const name = document.createElement('strong')
+        name.className = 'debug-snapshot-name'
+        name.textContent = snapshotEntry.name
+
+        const savedAt = document.createElement('span')
+        savedAt.className = 'debug-snapshot-saved-at'
+        savedAt.textContent = new Date(snapshotEntry.savedAt).toLocaleString()
+
+        const copyButton = document.createElement('button')
+        copyButton.type = 'button'
+        copyButton.textContent = 'Copy URL'
+        copyButton.dataset.copyDebugSnapshotUrl = snapshotEntry.url
+        copyButton.dataset.debugSnapshotName = snapshotEntry.name
+        copyButton.setAttribute('aria-label', `Copy URL for ${snapshotEntry.name}`)
+
+        const openButton = document.createElement('button')
+        openButton.type = 'button'
+        openButton.textContent = 'Open URL'
+        openButton.dataset.openDebugSnapshotUrl = snapshotEntry.url
+        openButton.dataset.debugSnapshotName = snapshotEntry.name
+        openButton.setAttribute('aria-label', `Open URL for ${snapshotEntry.name}`)
+
+        const actions = document.createElement('div')
+        actions.className = 'debug-snapshot-actions'
+        actions.append(copyButton, openButton)
+
+        details.append(name, savedAt)
+        item.append(details, actions)
+        return item
+    })
+
+    elements.recentDebugSnapshotList.replaceChildren(...items)
+}
+
 const renderBodies = (snapshot) => {
     const items = snapshot.simulation.bodies.map((body) => {
         const item = document.createElement('div')
@@ -604,6 +665,7 @@ const renderSnapshot = (snapshot) => {
 
     renderTimeWarpSelect(snapshot)
     renderDebugFlags(snapshot)
+    renderRecentDebugSnapshots(snapshot)
     renderBodies(snapshot)
     renderPredictionSampling(snapshot)
 
@@ -672,7 +734,43 @@ const copyRawSnapshot = async () => {
     }
 }
 
+const openDebugSnapshotUrl = async (button) => {
+    const url = button.dataset.openDebugSnapshotUrl
+    const urlLiteral = JSON.stringify(url).replaceAll('<', '\\u003c')
+
+    try {
+        await evalInInspectedPage(`window.location.assign(${urlLiteral})`)
+        appendCommandLog(
+            'Open debug snapshot URL',
+            `${button.dataset.debugSnapshotName} opened`,
+        )
+    } catch (error) {
+        appendCommandLog('Open debug snapshot URL', error.message, false)
+    }
+}
+
 document.addEventListener('click', (event) => {
+    const openSnapshotUrlButton = event.target.closest('[data-open-debug-snapshot-url]')
+    if (openSnapshotUrlButton) {
+        openDebugSnapshotUrl(openSnapshotUrlButton)
+        return
+    }
+
+    const copySnapshotUrlButton = event.target.closest('[data-copy-debug-snapshot-url]')
+    if (copySnapshotUrlButton) {
+        copyText(copySnapshotUrlButton.dataset.copyDebugSnapshotUrl)
+            .then(() => {
+                appendCommandLog(
+                    'Copy debug snapshot URL',
+                    `${copySnapshotUrlButton.dataset.debugSnapshotName} copied`,
+                )
+            })
+            .catch((error) => {
+                appendCommandLog('Copy debug snapshot URL', error.message, false)
+            })
+        return
+    }
+
     const uiActionButton = event.target.closest('[data-ui-action]')
     if (uiActionButton) {
         runCommand(uiActionButton.textContent.trim(), {

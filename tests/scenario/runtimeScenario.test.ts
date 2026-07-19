@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import {
+  getRecentDebugScenarioSnapshots,
+  readDebugScenarioSnapshot,
+  writeDebugScenarioSnapshot,
+} from '@/debugScenarioSnapshot'
 import { EARTH_VIEWPORT_SIZE } from '@/domain/viewportPresets'
 import {
   createRequestedRuntimeScenario,
@@ -16,6 +21,20 @@ const options: RuntimeScenarioOptions = {
   minCoastPredictionHorizonHours: 0.5,
   minViewportSize: EARTH_VIEWPORT_SIZE,
 }
+
+beforeEach(() => {
+  const values = new Map<string, string>()
+  vi.stubGlobal('window', {
+    localStorage: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    },
+  })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('createRuntimeScenarioState', () => {
   it('clamps horizon and viewport to configured bounds', () => {
@@ -145,6 +164,42 @@ describe('createRuntimeScenarioState', () => {
     expect(
       createRequestedRuntimeScenario('reach-moon').spacecraft.fuelCapacity,
     ).toBeGreaterThan(0)
+  })
+
+  it('loads the last or an exact recent debug snapshot from a scenario URL id', () => {
+    const createSnapshot = (savedAt: string, elapsed: number) => ({
+      version: 1 as const,
+      savedAt,
+      elapsed,
+      bodies: [],
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 0,
+        fuelUsed: 0,
+        dryMass: 1,
+        fuelMass: 0,
+        fuelCapacity: 0,
+      },
+    })
+    writeDebugScenarioSnapshot(
+      createSnapshot('2026-07-19T10:00:00.000Z', 1),
+      'First',
+    )
+    writeDebugScenarioSnapshot(
+      createSnapshot('2026-07-19T10:00:01.000Z', 2),
+      'Second',
+    )
+
+    expect(createRequestedRuntimeScenario('last-debug-snapshot').elapsed).toBe(
+      2,
+    )
+    expect(createRequestedRuntimeScenario('debug-snapshot').elapsed).toBe(2)
+
+    const firstSnapshotId = getRecentDebugScenarioSnapshots()[1].id
+    expect(createRequestedRuntimeScenario(firstSnapshotId).elapsed).toBe(1)
+    expect(readDebugScenarioSnapshot()?.elapsed).toBe(1)
   })
 
   it('preserves provided scenario session metadata', () => {

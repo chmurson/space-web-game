@@ -273,6 +273,51 @@ main {
     gap: 8px;
 }
 
+.debug-snapshot-list {
+    display: grid;
+    gap: 8px;
+}
+
+.debug-snapshot-item {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 8px;
+}
+
+.debug-snapshot-details {
+    display: grid;
+    min-width: 0;
+}
+
+.debug-snapshot-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.debug-snapshot-name {
+    overflow-wrap: anywhere;
+}
+
+.debug-snapshot-saved-at {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.debug-snapshot-empty,
+.debug-snapshot-note {
+    margin: 0;
+}
+
+.debug-snapshot-note {
+    margin-top: 8px;
+}
+
 .toggle-grid label {
     align-items: center;
     background: var(--bg-subtle);

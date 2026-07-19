@@ -2,6 +2,16 @@ import type { KeyboardInput } from './keyboardInput'
 import { getKeyboardShortcutAction } from './keyboardShortcuts'
 import type { UIUserAction } from './uiUserActions'
 
+const isEditableKeyboardTarget = (target: EventTarget | null) => {
+  const element = target as HTMLElement | null
+  return (
+    element?.isContentEditable === true ||
+    element?.tagName === 'INPUT' ||
+    element?.tagName === 'TEXTAREA' ||
+    element?.tagName === 'SELECT'
+  )
+}
+
 export const bindKeyboardShortcuts = (options: {
   autoDiscoverStrongestInfluence: boolean
   getDebugModeEnabled(): boolean
@@ -12,7 +22,14 @@ export const bindKeyboardShortcuts = (options: {
   windowTarget: Pick<Window, 'addEventListener'>
 }) => {
   options.windowTarget.addEventListener('keydown', (event) => {
-    if (!options.getInteractionsEnabled()) {
+    const editableElementFocused =
+      typeof document !== 'undefined' &&
+      isEditableKeyboardTarget(document.activeElement)
+    if (
+      !options.getInteractionsEnabled() ||
+      editableElementFocused ||
+      isEditableKeyboardTarget(event.target)
+    ) {
       options.keyboardInput.clear()
       return
     }
