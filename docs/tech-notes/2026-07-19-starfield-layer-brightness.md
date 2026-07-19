@@ -45,9 +45,9 @@ Pinch zoom already kept the touched world point stable for bodies, but it did so
 - `npx vitest run --config vite.config.ts tests/runtime/runtimeActions.test.ts tests/scene/starfield.test.ts` (`45` tests passed)
 - `npx playwright test --config playwright.config.ts tests/gui/turnPlanningInput.spec.ts` (`4` tests passed)
 - `npx vitest run --config vite.config.ts tests/scene/starfield.test.ts tests/presentation/hudPresentation.test.ts` (`28` tests passed)
-- `npx tsc --noEmit --pretty false`
+- `npx tsc --noEmit --pretty false` (passed)
 - `npm test` (`62` Vitest files / `556` tests plus `19` automation checks passed)
-- `npm run build`
+- `npm run build` (passed)
 - `npm run test:gui` (`64` Playwright tests passed)
 - The repository-wide `npx biome check src tests scripts` also reports `14` existing formatting/import-order errors and `3` `!important` warnings in unrelated files; none are in this change.
 - Inspected `tmp/playwright-results/desktopTargetSelector-open-af22a-metry-button-and-T-shortcut-mobile-chromium/desktop-target-selector-open.png`; the desktop starfield showed deterministic brightness/size variation without shader artifacts.
