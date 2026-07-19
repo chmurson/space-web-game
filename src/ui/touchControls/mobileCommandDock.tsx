@@ -5,32 +5,15 @@ import {
 import { addTapSafeButtonHandler } from '../tapSafeButtonHandler'
 import './mobileCommandDock.css'
 
-type MobileCommandDockDensity = 'compact' | 'spacious'
 type MobileCommandDockPanelTreatment = 'glass' | 'sheet'
-type MobileCommandDockEmphasis = 'subtle' | 'strong'
-type MobileCommandDockItems = 'flight' | 'full'
-type MobileCommandDockSafeAreaPadding = 'standard' | 'roomy'
 
-type MobileCommandDockVariants = {
-  density: MobileCommandDockDensity
-  emphasis: MobileCommandDockEmphasis
-  items: MobileCommandDockItems
-  panelTreatment: MobileCommandDockPanelTreatment
-  safeAreaPadding: MobileCommandDockSafeAreaPadding
+type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
+  open: boolean
 }
 
-type MobileCommandDockSurfaceProps = SurfaceRootRefProps &
-  MobileCommandDockVariants & {
-    open: boolean
-  }
+const flightPanelTreatment: MobileCommandDockPanelTreatment = 'glass'
 
-const densityOptions = ['compact', 'spacious'] as const
-const panelTreatmentOptions = ['glass', 'sheet'] as const
-const emphasisOptions = ['subtle', 'strong'] as const
-const itemOptions = ['flight', 'full'] as const
-const safeAreaPaddingOptions = ['standard', 'roomy'] as const
-
-const comparisonDockItems = [
+const unavailableDockItems = [
   {
     iconPath: 'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm3.5 5.5-2 5-5 2 2-5 5-2Z',
     label: 'Nav',
@@ -49,67 +32,15 @@ const comparisonDockItems = [
   },
 ] as const
 
-const readVariant = <Option extends string>(
-  urlParams: URLSearchParams,
-  name: string,
-  options: readonly Option[],
-  fallback: Option,
-): Option => {
-  const value = urlParams.get(name)
-  return value !== null && options.includes(value as Option)
-    ? (value as Option)
-    : fallback
-}
-
-const readMobileCommandDockVariants = (): MobileCommandDockVariants => {
-  const urlParams = new URLSearchParams(window.location.search)
-  return {
-    density: readVariant(
-      urlParams,
-      'mobileDockDensity',
-      densityOptions,
-      'compact',
-    ),
-    emphasis: readVariant(
-      urlParams,
-      'mobileDockEmphasis',
-      emphasisOptions,
-      'subtle',
-    ),
-    items: readVariant(urlParams, 'mobileDockItems', itemOptions, 'flight'),
-    panelTreatment: readVariant(
-      urlParams,
-      'mobileFlightPanel',
-      panelTreatmentOptions,
-      'glass',
-    ),
-    safeAreaPadding: readVariant(
-      urlParams,
-      'mobileDockSafeArea',
-      safeAreaPaddingOptions,
-      'standard',
-    ),
-  }
-}
-
 const MobileCommandDockSurface = ({
-  density,
-  emphasis,
-  items,
   open,
-  panelTreatment,
   rootRef,
-  safeAreaPadding,
 }: MobileCommandDockSurfaceProps) => (
   <section
     aria-label="Mobile command dock"
     class="mobile-command-dock"
-    data-density={density}
-    data-emphasis={emphasis}
-    data-items={items}
     data-open={String(open)}
-    data-panel-treatment={panelTreatment}
-    data-safe-area-padding={safeAreaPadding}
+    data-panel-treatment={flightPanelTreatment}
     ref={rootRef}
   >
     <section
@@ -148,26 +79,25 @@ const MobileCommandDockSurface = ({
         </svg>
         <span>Flight</span>
       </button>
-      {items === 'full' &&
-        comparisonDockItems.map((item) => (
-          <button
-            aria-label={`${item.label} comparison button; panel unavailable`}
-            class="mobile-command-dock-item"
-            disabled
-            key={item.label}
-            title="Comparison only — panel unavailable"
-            type="button"
+      {unavailableDockItems.map((item) => (
+        <button
+          aria-label={`${item.label} panel unavailable`}
+          class="mobile-command-dock-item"
+          disabled
+          key={item.label}
+          title="Panel unavailable"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="mobile-command-dock-item-icon"
+            viewBox="0 0 24 24"
           >
-            <svg
-              aria-hidden="true"
-              class="mobile-command-dock-item-icon"
-              viewBox="0 0 24 24"
-            >
-              <path d={item.iconPath} />
-            </svg>
-            <span>{item.label}</span>
-          </button>
-        ))}
+            <path d={item.iconPath} />
+          </svg>
+          <span>{item.label}</span>
+        </button>
+      ))}
     </nav>
   </section>
 )
@@ -176,7 +106,6 @@ export const createMobileCommandDock = (options: {
   app: HTMLElement
   container: HTMLElement
 }) => {
-  const variants = readMobileCommandDockVariants()
   let open = false
   const surface = createPreactUiSurface<
     Omit<MobileCommandDockSurfaceProps, keyof SurfaceRootRefProps>
@@ -188,17 +117,13 @@ export const createMobileCommandDock = (options: {
 
   const syncAppState = () => {
     options.app.dataset.mobileCommandDock = 'true'
-    options.app.dataset.mobileCommandDockDensity = variants.density
-    options.app.dataset.mobileCommandDockItems = variants.items
     options.app.dataset.mobileCommandDockOpen = String(open)
-    options.app.dataset.mobileCommandDockPanel = variants.panelTreatment
-    options.app.dataset.mobileCommandDockSafeArea = variants.safeAreaPadding
+    options.app.dataset.mobileCommandDockPanel = flightPanelTreatment
   }
 
   const renderState = () => {
     syncAppState()
     surface.render({
-      ...variants,
       open,
     })
   }

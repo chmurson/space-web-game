@@ -6,7 +6,6 @@
   #app .mobile-command-dock {
     --mobile-command-dock-edge-gap: 8px;
     --mobile-command-dock-item-height: 46px;
-    --mobile-command-dock-item-width: 76px;
     --mobile-command-dock-panel-padding: 12px;
     --mobile-command-dock-panel-width: 300px;
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -30,17 +29,6 @@
     pointer-events: none;
   }
 
-  #app .mobile-command-dock[data-density="spacious"] {
-    --mobile-command-dock-item-height: 58px;
-    --mobile-command-dock-item-width: 104px;
-    --mobile-command-dock-panel-padding: 16px;
-    --mobile-command-dock-panel-width: 340px;
-  }
-
-  #app .mobile-command-dock[data-safe-area-padding="roomy"] {
-    --mobile-command-dock-edge-gap: 18px;
-  }
-
   .mobile-command-dock-bar,
   .mobile-command-dock-panel {
     box-sizing: border-box;
@@ -52,7 +40,7 @@
 
   .mobile-command-dock-bar {
     display: flex;
-    width: max-content;
+    width: min(100%, 520px);
     justify-content: center;
     padding: 4px;
     border-color: var(--ui-glass-control-border);
@@ -64,18 +52,16 @@
     backdrop-filter: var(--ui-glass-control-blur);
   }
 
-  .mobile-command-dock[data-items="full"] .mobile-command-dock-bar {
-    width: min(100%, 520px);
-  }
-
   .mobile-command-dock-item {
     display: grid;
-    width: var(--mobile-command-dock-item-width);
+    width: auto;
     min-height: var(--mobile-command-dock-item-height);
+    min-width: 0;
+    flex: 1 1 0;
     place-content: center;
     place-items: center;
     gap: 3px;
-    padding: 5px 10px;
+    padding: 5px 4px;
     border: 1px solid transparent;
     border-radius: 11px;
     background: transparent;
@@ -95,30 +81,17 @@
     user-select: none;
   }
 
-  .mobile-command-dock[data-items="full"] .mobile-command-dock-item {
-    width: auto;
-    min-width: 0;
-    flex: 1 1 0;
-    padding-right: 4px;
-    padding-left: 4px;
-  }
-
-  .mobile-command-dock[data-items="full"] .mobile-command-dock-item:disabled {
+  .mobile-command-dock-item:disabled {
     color: rgba(203, 213, 225, 0.68);
     cursor: default;
     opacity: 1;
   }
 
-  .mobile-command-dock[data-items="full"] .mobile-command-dock-item span {
+  .mobile-command-dock-item span {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .mobile-command-dock[data-density="spacious"] .mobile-command-dock-item {
-    gap: 5px;
-    font-size: 12px;
   }
 
   .mobile-command-dock-item-icon {
@@ -131,36 +104,15 @@
     stroke-width: 1.8;
   }
 
-  .mobile-command-dock[data-density="spacious"] .mobile-command-dock-item-icon {
-    width: 20px;
-    height: 20px;
-  }
-
   .mobile-command-dock-item:focus-visible {
     outline: 2px solid rgba(125, 211, 252, 0.86);
     outline-offset: 3px;
   }
 
-  .mobile-command-dock[data-emphasis="subtle"]
-    .mobile-command-dock-item[aria-expanded="true"] {
+  .mobile-command-dock-item[aria-expanded="true"] {
     border-color: rgba(56, 189, 248, 0.55);
     background: rgba(14, 116, 144, 0.22);
     color: #bae6fd;
-  }
-
-  .mobile-command-dock[data-emphasis="strong"]
-    .mobile-command-dock-item[aria-expanded="true"] {
-    border-color: rgba(125, 211, 252, 0.76);
-    background: linear-gradient(
-      180deg,
-      rgba(14, 116, 144, 0.76),
-      rgba(8, 47, 73, 0.88)
-    );
-    box-shadow:
-      inset 0 1px 0 rgba(240, 249, 255, 0.18),
-      0 0 0 1px rgba(56, 189, 248, 0.14),
-      0 8px 22px rgba(14, 116, 144, 0.3);
-    color: #f0f9ff;
   }
 
   .mobile-command-dock-panel {
@@ -251,37 +203,19 @@
   #app[data-mobile-command-dock="true"] {
     --mobile-command-dock-hud-height: 66px;
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
-    --mobile-command-dock-safe-extra: 0px;
-  }
-
-  #app[data-mobile-command-dock-density="spacious"] {
-    --mobile-command-dock-hud-height: 78px;
-  }
-
-  #app[data-mobile-command-dock-safe-area="roomy"] {
-    --mobile-command-dock-safe-extra: 10px;
   }
 
   #app[data-mobile-command-dock-open="true"] {
     --mobile-command-dock-hud-height: 158px;
   }
 
-  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-density="spacious"] {
-    --mobile-command-dock-hud-height: 174px;
-  }
-
   #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="sheet"] {
     --mobile-command-dock-hud-height: 166px;
-  }
-
-  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-density="spacious"][data-mobile-command-dock-panel="sheet"] {
-    --mobile-command-dock-hud-height: 182px;
   }
 
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     bottom: calc(
       var(--mobile-command-dock-safe-bottom)
-        + var(--mobile-command-dock-safe-extra)
         + var(--mobile-command-dock-hud-height)
     );
   }
@@ -292,11 +226,9 @@
     bottom: calc(100% + 16px);
   }
 
-  #app[data-mobile-command-dock-items="full"] .in-game-controls-menu,
-  #app[data-mobile-command-dock-open="true"] .in-game-controls-menu {
+  #app[data-mobile-command-dock="true"] .in-game-controls-menu {
     bottom: calc(
       var(--bottom-safe-area-inset)
-        + var(--mobile-command-dock-safe-extra)
         + var(--mobile-command-dock-hud-height)
         + 8px
     );

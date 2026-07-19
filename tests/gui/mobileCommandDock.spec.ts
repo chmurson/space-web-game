@@ -37,17 +37,16 @@ const isolateMobileControlLayer = async (page: Page) => {
   })
 }
 
-const captureDockVariant = async (options: {
+const captureDockState = async (options: {
   fileName: string
   open: boolean
   page: Page
-  query: string
   safeBottom: number
   testInfo: TestInfo
   viewport: { height: number; width: number }
 }) => {
   await options.page.setViewportSize(options.viewport)
-  await options.page.goto(`/?scenario=earth-moon&${options.query}`)
+  await options.page.goto('/?scenario=earth-moon')
   await waitForGame(options.page)
   await isolateMobileControlLayer(options.page)
 
@@ -86,7 +85,7 @@ test('toggles the Flight panel and lets Escape close the active panel', async ({
   await page.goto('/?scenario=earth-moon')
   await waitForGame(page)
 
-  const flightButton = page.locator('.mobile-command-dock-item')
+  const flightButton = page.locator('#mobile-command-dock-flight-button')
   const flightPanel = page.locator('.mobile-command-dock-panel')
 
   await expect(flightButton).toHaveAttribute('aria-expanded', 'false')
@@ -107,7 +106,7 @@ test('toggles the Flight panel and lets Escape close the active panel', async ({
   await expect(flightButton).toBeFocused()
 })
 
-test('keeps dock touches out of camera input while the surrounding playfield remains interactive', async ({
+test('keeps dock touches out of camera and heading input while the playfield remains interactive', async ({
   page,
 }) => {
   await page.goto('/')
@@ -136,6 +135,7 @@ test('keeps dock touches out of camera input while the surrounding playfield rem
     }
     const cameraPans: number[] = []
     const plannedHeadings: number[] = []
+    let startTargetHeadingByDrag = false
     const controls = createTouchControls({
       app,
       automaticTargetingAvailable: true,
@@ -151,7 +151,7 @@ test('keeps dock touches out of camera input while the surrounding playfield rem
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
-      getMobileManeuverStartByDrag: () => false,
+      getMobileManeuverStartByDrag: () => startTargetHeadingByDrag,
       getSpacecraftVisible: () => true,
       getTargetControlRows: () => [],
       getTimeWarpPreview: () => ({
@@ -272,51 +272,67 @@ test('keeps dock touches out of camera input while the surrounding playfield rem
       y: 266,
     })
 
+    startTargetHeadingByDrag = true
+    dispatchTouch({
+      id: 33,
+      target: flightButton,
+      type: 'touchstart',
+      x: 195,
+      y: 806,
+    })
+    await new Promise((resolve) => window.setTimeout(resolve, 400))
+    const plannedHeadingCountAfterDockTouch = plannedHeadings.length
+    dispatchTouch({
+      id: 33,
+      target: flightButton,
+      type: 'touchend',
+      x: 195,
+      y: 806,
+    })
+
+    dispatchTouch({
+      id: 34,
+      target: controls.element,
+      type: 'touchstart',
+      x: 260,
+      y: 240,
+    })
+    await new Promise((resolve) => window.setTimeout(resolve, 400))
+    const plannedHeadingCountAfterPlayfieldTouch = plannedHeadings.length
+    dispatchTouch({
+      id: 34,
+      target: controls.element,
+      type: 'touchend',
+      x: 260,
+      y: 240,
+    })
+
     return {
       cameraPanCountAfterDockTouch,
       cameraPanCountAfterPlayfieldTouch: cameraPans.length,
       flightPanelOpen: flightButton.getAttribute('aria-expanded'),
-      plannedHeadingCount: plannedHeadings.length,
+      plannedHeadingCountAfterDockTouch,
+      plannedHeadingCountAfterPlayfieldTouch,
     }
   })
 
-  expect(result).toEqual({
-    cameraPanCountAfterDockTouch: 0,
-    cameraPanCountAfterPlayfieldTouch: 1,
-    flightPanelOpen: 'true',
-    plannedHeadingCount: 0,
-  })
+  expect(result.cameraPanCountAfterDockTouch).toBe(0)
+  expect(result.cameraPanCountAfterPlayfieldTouch).toBe(1)
+  expect(result.flightPanelOpen).toBe('true')
+  expect(result.plannedHeadingCountAfterDockTouch).toBe(0)
+  expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('applies every documented feature-flag axis locally to the dock', async ({
-  page,
-}) => {
-  await page.goto(
-    '/?scenario=earth-moon&mobileDockDensity=spacious&mobileFlightPanel=sheet&mobileDockEmphasis=strong&mobileDockItems=full&mobileDockSafeArea=roomy',
-  )
-  await waitForGame(page)
-
-  const dock = page.locator('.mobile-command-dock')
-  await expect(dock).toHaveAttribute('data-density', 'spacious')
-  await expect(dock).toHaveAttribute('data-panel-treatment', 'sheet')
-  await expect(dock).toHaveAttribute('data-emphasis', 'strong')
-  await expect(dock).toHaveAttribute('data-items', 'full')
-  await expect(dock).toHaveAttribute('data-safe-area-padding', 'roomy')
-})
-
-test('keeps the default Flight-only and exposes five comparison buttons by flag', async ({
+test('ships all dock items with only Flight enabled and its glass panel', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
   await waitForGame(page)
 
+  const dock = page.locator('.mobile-command-dock')
   const dockItems = page.locator('.mobile-command-dock-item')
-  await expect(dockItems).toHaveCount(1)
-  await expect(dockItems).toHaveText(['Flight'])
-
-  await page.goto('/?scenario=earth-moon&mobileDockItems=full')
-  await waitForGame(page)
-
+  await expect(dock).toHaveAttribute('data-panel-treatment', 'glass')
+  await expect(dock).toHaveAttribute('data-open', 'false')
   await expect(dockItems).toHaveCount(5)
   await expect(dockItems).toHaveText([
     'Flight',
@@ -328,10 +344,14 @@ test('keeps the default Flight-only and exposes five comparison buttons by flag'
   await expect(page.locator('.mobile-command-dock-item:disabled')).toHaveCount(
     4,
   )
+  await expect(
+    page.locator('.mobile-command-dock-item:not(:disabled)'),
+  ).toHaveCount(1)
 
   const flightButton = page.locator('#mobile-command-dock-flight-button')
   await flightButton.tap()
   await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(dock).toHaveAttribute('data-open', 'true')
   await expect(page.locator('.mobile-command-dock-panel')).toBeVisible()
 })
 
@@ -355,35 +375,47 @@ test('keeps the in-game controls popover clear of the collapsed dock', async ({
   ).toBeLessThanOrEqual(dockBounds?.y ?? 0)
 })
 
-test('captures collapsed and open Flight variants across portrait widths and safe areas', async ({
+test('captures the shipped dock across portrait widths and safe areas', async ({
   page,
 }, testInfo) => {
-  await captureDockVariant({
-    fileName: 'mobile-command-dock-compact-collapsed-320.png',
+  await captureDockState({
+    fileName: 'mobile-command-dock-collapsed-320.png',
     open: false,
     page,
-    query:
-      'mobileDockDensity=compact&mobileFlightPanel=glass&mobileDockEmphasis=subtle&mobileDockSafeArea=standard',
     safeBottom: 0,
     testInfo,
     viewport: { height: 720, width: 320 },
   })
-  await captureDockVariant({
-    fileName: 'mobile-command-dock-glass-open-safe-area-390.png',
+
+  const barBounds = await page.locator('.mobile-command-dock-bar').boundingBox()
+  const itemBounds = await page
+    .locator('.mobile-command-dock-item')
+    .evaluateAll((items) =>
+      items.map((item) => {
+        const bounds = item.getBoundingClientRect()
+        return { left: bounds.left, right: bounds.right }
+      }),
+    )
+  expect(barBounds).not.toBeNull()
+  expect(itemBounds).toHaveLength(5)
+  expect(itemBounds[0]?.left).toBeGreaterThanOrEqual(barBounds?.x ?? 0)
+  expect(itemBounds.at(-1)?.right).toBeLessThanOrEqual(
+    (barBounds?.x ?? 0) + (barBounds?.width ?? 0),
+  )
+
+  await captureDockState({
+    fileName: 'mobile-command-dock-flight-glass-open-safe-area-390.png',
     open: true,
     page,
-    query:
-      'mobileDockDensity=compact&mobileFlightPanel=glass&mobileDockEmphasis=strong&mobileDockSafeArea=standard',
     safeBottom: 24,
     testInfo,
     viewport: { height: 844, width: 390 },
   })
-  await captureDockVariant({
-    fileName: 'mobile-command-dock-sheet-open-roomy-safe-area-430.png',
+
+  await captureDockState({
+    fileName: 'mobile-command-dock-flight-glass-open-safe-area-430.png',
     open: true,
     page,
-    query:
-      'mobileDockDensity=spacious&mobileFlightPanel=sheet&mobileDockEmphasis=strong&mobileDockSafeArea=roomy',
     safeBottom: 34,
     testInfo,
     viewport: { height: 932, width: 430 },
@@ -409,60 +441,16 @@ test('captures collapsed and open Flight variants across portrait widths and saf
   )
 })
 
-test('captures compact and spacious five-item comparison states', async ({
-  page,
-}, testInfo) => {
-  await captureDockVariant({
-    fileName: 'mobile-command-dock-full-compact-collapsed-320.png',
-    open: false,
-    page,
-    query:
-      'mobileDockDensity=compact&mobileDockItems=full&mobileDockEmphasis=subtle&mobileDockSafeArea=standard',
-    safeBottom: 0,
-    testInfo,
-    viewport: { height: 720, width: 320 },
-  })
+test('does not change the fine-pointer desktop layout', async ({
+  baseURL,
+  browser,
+}) => {
+  if (!baseURL) {
+    throw new Error('Playwright base URL is not configured')
+  }
 
-  const compactBarBounds = await page
-    .locator('.mobile-command-dock-bar')
-    .boundingBox()
-  const compactItemBounds = await page
-    .locator('.mobile-command-dock-item')
-    .evaluateAll((items) =>
-      items.map((item) => {
-        const bounds = item.getBoundingClientRect()
-        return { left: bounds.left, right: bounds.right }
-      }),
-    )
-  expect(compactBarBounds).not.toBeNull()
-  expect(compactItemBounds).toHaveLength(5)
-  expect(compactItemBounds[0]?.left).toBeGreaterThanOrEqual(
-    compactBarBounds?.x ?? 0,
-  )
-  expect(compactItemBounds.at(-1)?.right).toBeLessThanOrEqual(
-    (compactBarBounds?.x ?? 0) + (compactBarBounds?.width ?? 0),
-  )
-
-  await captureDockVariant({
-    fileName: 'mobile-command-dock-full-spacious-selected-430.png',
-    open: true,
-    page,
-    query:
-      'mobileDockDensity=spacious&mobileDockItems=full&mobileFlightPanel=glass&mobileDockEmphasis=strong&mobileDockSafeArea=roomy',
-    safeBottom: 34,
-    testInfo,
-    viewport: { height: 932, width: 430 },
-  })
-
-  await expect(page.locator('.mobile-command-dock-item')).toHaveCount(5)
-  await expect(
-    page.locator('#mobile-command-dock-flight-button'),
-  ).toHaveAttribute('aria-expanded', 'true')
-})
-
-test('does not change the fine-pointer desktop layout', async ({ browser }) => {
   const context = await browser.newContext({
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL,
     hasTouch: false,
     isMobile: false,
     viewport: { height: 800, width: 1280 },
