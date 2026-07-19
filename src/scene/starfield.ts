@@ -20,9 +20,6 @@ type StarfieldLayerConfig = {
   extraStarsPerChunk: number
   fadeOutEndViewport?: number
   fadeOutStartViewport?: number
-  maxBrightness: number
-  minBrightness: number
-  opacity: number
   parallaxFactor: number
   seed: number
   starsPerChunk: number
@@ -36,7 +33,7 @@ type StarfieldLayerState = {
   group: THREE.Group
   material: THREE.PointsMaterial
   positionAttribute: THREE.BufferAttribute | null
-  sizeAttribute: THREE.BufferAttribute | null
+  sizeScaleAttribute: THREE.BufferAttribute | null
   visibleKey: string | null
 }
 
@@ -48,98 +45,70 @@ const minStarfieldBrightness = 0.24
 const maxStarfieldBrightness = 0.64
 
 const starfieldLayerConfigs: StarfieldLayerConfig[] = [
-  //layer 0
   {
     backgroundY: -0.2,
     chunkSize: 4,
     extraStarsPerChunk: 3,
     fadeOutEndViewport: 24,
     fadeOutStartViewport: 8,
-    maxBrightness: maxStarfieldBrightness,
-    minBrightness: minStarfieldBrightness,
-    opacity: baseStarfieldOpacity * 1,
     parallaxFactor: baseStarfieldParallaxFactor * 0.2,
     seed: 0x6d2b79f5,
     starsPerChunk: 4,
   },
-  //layer 1
   {
     backgroundY: -0.2,
     chunkSize: 6,
     extraStarsPerChunk: 2,
     fadeOutEndViewport: 100,
     fadeOutStartViewport: 16,
-    maxBrightness: maxStarfieldBrightness,
-    minBrightness: minStarfieldBrightness,
-    opacity: baseStarfieldOpacity * 1,
     parallaxFactor: baseStarfieldParallaxFactor * 0.2,
     seed: 0x27d4eb2d,
     starsPerChunk: 1,
   },
-  //layer 2
   {
     backgroundY: -0.3,
     chunkSize: 10,
     extraStarsPerChunk: 2,
     fadeOutEndViewport: 160,
     fadeOutStartViewport: 80,
-    maxBrightness: maxStarfieldBrightness,
-    minBrightness: minStarfieldBrightness,
-    opacity: baseStarfieldOpacity * 1,
     parallaxFactor: baseStarfieldParallaxFactor * 0.4,
     seed: 0x165667b1,
     starsPerChunk: 1,
   },
-  //layer 3
   {
     backgroundY: -0.4,
     chunkSize: 36,
     extraStarsPerChunk: 2,
     fadeOutEndViewport: 520,
     fadeOutStartViewport: 130,
-    maxBrightness: maxStarfieldBrightness,
-    minBrightness: minStarfieldBrightness,
-    opacity: baseStarfieldOpacity * 1,
     parallaxFactor: baseStarfieldParallaxFactor * 0.8,
     seed: 0xd3a2646c,
     starsPerChunk: 2,
   },
-  //layer 4
   {
     backgroundY: -0.6,
     chunkSize: 150,
     extraStarsPerChunk: 2,
     fadeOutEndViewport: 2_100,
     fadeOutStartViewport: 350,
-    maxBrightness: maxStarfieldBrightness,
-    minBrightness: minStarfieldBrightness,
-    opacity: baseStarfieldOpacity * 1,
     parallaxFactor: baseStarfieldParallaxFactor * 0.6,
     seed: 0x41c64e6d,
     starsPerChunk: 5,
   },
-  //layer 5
   {
     backgroundY: -0.8,
     chunkSize: 260,
     extraStarsPerChunk: 1,
     fadeOutEndViewport: 2_400,
     fadeOutStartViewport: 1_500,
-    maxBrightness: maxStarfieldBrightness,
-    minBrightness: minStarfieldBrightness,
-    opacity: baseStarfieldOpacity * 1,
     parallaxFactor: baseStarfieldParallaxFactor,
     seed: 0x9e3779b9,
     starsPerChunk: 3,
   },
-  //layer 6
   {
     backgroundY: -1,
     chunkSize: 420,
     extraStarsPerChunk: 1,
-    maxBrightness: maxStarfieldBrightness,
-    minBrightness: minStarfieldBrightness,
-    opacity: baseStarfieldOpacity * 1,
     parallaxFactor: baseStarfieldParallaxFactor * 0.6,
     seed: 0x85ebca6b,
     starsPerChunk: 2,
@@ -198,30 +167,28 @@ const getFadeOutMultiplier = (
 }
 
 const getLayerOpacity = (config: StarfieldLayerConfig, viewportSize: number) =>
-  config.opacity * getFadeOutMultiplier(config, viewportSize)
+  baseStarfieldOpacity * getFadeOutMultiplier(config, viewportSize)
 
-const setStarColor = (
+const setStarAppearance = (
   colors: Float32Array,
-  sizes: Float32Array,
+  sizeScales: Float32Array,
   config: StarfieldLayerConfig,
   chunkX: number,
   chunkZ: number,
   starIndex: number,
   offset: number,
 ) => {
+  const brightnessProgress = hash01(config.seed, chunkX, chunkZ, starIndex, 4)
   const brightness = THREE.MathUtils.lerp(
-    config.minBrightness,
-    config.maxBrightness,
-    hash01(config.seed, chunkX, chunkZ, starIndex, 4),
-  )
-  const brightnessProgress = THREE.MathUtils.inverseLerp(
     minStarfieldBrightness,
     maxStarfieldBrightness,
-    brightness,
+    brightnessProgress,
   )
-  sizes[offset / 3] =
-    baseStarSizePixels *
-    THREE.MathUtils.lerp(minimumStarSizeScale, 1, brightnessProgress)
+  sizeScales[offset / 3] = THREE.MathUtils.lerp(
+    minimumStarSizeScale,
+    1,
+    brightnessProgress,
+  )
   const temperature = hash01(config.seed, chunkX, chunkZ, starIndex, 5) * 2 - 1
   const warm = Math.max(temperature, 0)
   const cool = Math.max(-temperature, 0)
@@ -286,28 +253,32 @@ const getLayerCapacity = (config: StarfieldLayerConfig) => {
 }
 
 const ensureLayerAttributes = (layer: StarfieldLayerState) => {
-  if (layer.positionAttribute && layer.colorAttribute && layer.sizeAttribute) {
+  if (
+    layer.positionAttribute &&
+    layer.colorAttribute &&
+    layer.sizeScaleAttribute
+  ) {
     return
   }
 
   const capacity = getLayerCapacity(layer.config)
   const positions = new Float32Array(capacity * 3)
   const colors = new Float32Array(capacity * 3)
-  const sizes = new Float32Array(capacity)
+  const sizeScales = new Float32Array(capacity)
   const positionAttribute = new THREE.BufferAttribute(positions, 3)
   const colorAttribute = new THREE.BufferAttribute(colors, 3)
-  const sizeAttribute = new THREE.BufferAttribute(sizes, 1)
+  const sizeScaleAttribute = new THREE.BufferAttribute(sizeScales, 1)
   positionAttribute.setUsage(THREE.DynamicDrawUsage)
   colorAttribute.setUsage(THREE.DynamicDrawUsage)
-  sizeAttribute.setUsage(THREE.DynamicDrawUsage)
+  sizeScaleAttribute.setUsage(THREE.DynamicDrawUsage)
 
   layer.capacity = capacity
   layer.positionAttribute = positionAttribute
   layer.colorAttribute = colorAttribute
-  layer.sizeAttribute = sizeAttribute
+  layer.sizeScaleAttribute = sizeScaleAttribute
   layer.geometry.setAttribute('position', positionAttribute)
   layer.geometry.setAttribute('color', colorAttribute)
-  layer.geometry.setAttribute('starSize', sizeAttribute)
+  layer.geometry.setAttribute('starSizeScale', sizeScaleAttribute)
 }
 
 const buildLayerGeometry = (
@@ -355,17 +326,17 @@ const buildLayerGeometry = (
 
   const positionAttribute = layer.positionAttribute
   const colorAttribute = layer.colorAttribute
-  const sizeAttribute = layer.sizeAttribute
+  const sizeScaleAttribute = layer.sizeScaleAttribute
   const positions = positionAttribute?.array
   const colors = colorAttribute?.array
-  const sizes = sizeAttribute?.array
+  const sizeScales = sizeScaleAttribute?.array
   if (
     !positionAttribute ||
     !colorAttribute ||
-    !sizeAttribute ||
+    !sizeScaleAttribute ||
     !(positions instanceof Float32Array) ||
     !(colors instanceof Float32Array) ||
-    !(sizes instanceof Float32Array)
+    !(sizeScales instanceof Float32Array)
   ) {
     return
   }
@@ -396,7 +367,15 @@ const buildLayerGeometry = (
         positions[offset + 2] =
           (chunkZ + hash01(config.seed, chunkX, chunkZ, starIndex, 2)) *
           config.chunkSize
-        setStarColor(colors, sizes, config, chunkX, chunkZ, starIndex, offset)
+        setStarAppearance(
+          colors,
+          sizeScales,
+          config,
+          chunkX,
+          chunkZ,
+          starIndex,
+          offset,
+        )
         starCount += 1
       }
     }
@@ -405,7 +384,7 @@ const buildLayerGeometry = (
   layer.geometry.setDrawRange(0, starCount)
   positionAttribute.needsUpdate = true
   colorAttribute.needsUpdate = true
-  sizeAttribute.needsUpdate = true
+  sizeScaleAttribute.needsUpdate = true
   layer.visibleKey = visibleKey
 }
 
@@ -416,7 +395,7 @@ const createStarfieldLayer = (
   const material = new THREE.PointsMaterial({
     depthTest: true,
     depthWrite: false,
-    opacity: config.opacity,
+    opacity: baseStarfieldOpacity,
     size: baseStarSizePixels,
     sizeAttenuation: false,
     transparent: true,
@@ -425,8 +404,11 @@ const createStarfieldLayer = (
   material.toneMapped = false
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
-      .replace('uniform float size;', 'attribute float starSize;')
-      .replace('gl_PointSize = size;', 'gl_PointSize = starSize;')
+      .replace(
+        'uniform float size;',
+        'uniform float size;\nattribute float starSizeScale;',
+      )
+      .replace('gl_PointSize = size;', 'gl_PointSize = size * starSizeScale;')
   }
 
   const points = new THREE.Points(geometry, material)
@@ -445,7 +427,7 @@ const createStarfieldLayer = (
     group,
     material,
     positionAttribute: null,
-    sizeAttribute: null,
+    sizeScaleAttribute: null,
     visibleKey: null,
   }
 }

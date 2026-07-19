@@ -68,6 +68,16 @@ const getPositionValues = (starfield: Starfield, layerIndex = 0) =>
     getLayerPoints(starfield, layerIndex).geometry.attributes.position.array,
   )
 
+const getSizeScaleValues = (starfield: Starfield, layerIndex: number) => {
+  const points = getLayerPoints(starfield, layerIndex)
+  const sizeScaleAttribute = points.geometry.getAttribute('starSizeScale')
+
+  return Array.from(sizeScaleAttribute.array).slice(
+    0,
+    points.geometry.drawRange.count,
+  )
+}
+
 const getLayerOpacity = (starfield: Starfield, layerIndex: number) =>
   getLayerPoints(starfield, layerIndex).material.opacity
 
@@ -105,8 +115,20 @@ const createBodyShaderTestInput = () =>
     ].join('\n'),
   }) as Parameters<THREE.MeshStandardMaterial['onBeforeCompile']>[0]
 
+const createStarfieldShaderTestInput = () =>
+  ({
+    fragmentShader: 'void main() {}',
+    uniforms: {},
+    vertexShader: [
+      'uniform float size;',
+      'void main() {',
+      'gl_PointSize = size;',
+      '}',
+    ].join('\n'),
+  }) as Parameters<THREE.PointsMaterial['onBeforeCompile']>[0]
+
 describe('createStarfield', () => {
-  it('generates deterministic layer geometry for the same camera view', () => {
+  it('generates deterministic layer geometry and size scales', () => {
     const first = createStarfield()
     const second = createStarfield()
     const baseLayerIndex = 4
@@ -116,6 +138,27 @@ describe('createStarfield', () => {
 
     expect(getPositionValues(first, baseLayerIndex).slice(0, 60)).toEqual(
       getPositionValues(second, baseLayerIndex).slice(0, 60),
+    )
+    const firstSizeScales = getSizeScaleValues(first, baseLayerIndex)
+    expect(firstSizeScales).toEqual(getSizeScaleValues(second, baseLayerIndex))
+    expect(Math.min(...firstSizeScales)).toBeGreaterThanOrEqual(0.5)
+    expect(Math.max(...firstSizeScales)).toBeLessThanOrEqual(1)
+    expect(Math.max(...firstSizeScales)).toBeGreaterThan(
+      Math.min(...firstSizeScales),
+    )
+  })
+
+  it('preserves the DPR-aware point-size uniform in the star scale shader patch', () => {
+    const starfield = createStarfield()
+    const material = getLayerPoints(starfield, 0).material
+    const shader = createStarfieldShaderTestInput()
+
+    material.onBeforeCompile(shader, {} as THREE.WebGLRenderer)
+
+    expect(shader.vertexShader).toContain('uniform float size;')
+    expect(shader.vertexShader).toContain('attribute float starSizeScale;')
+    expect(shader.vertexShader).toContain(
+      'gl_PointSize = size * starSizeScale;',
     )
   })
 
@@ -230,10 +273,30 @@ describe('createStarfield', () => {
     updateStarfield(starfield, { viewportSize: 1_000 })
 
     expect(starfield.getLayerDebugInfo()).toEqual([
-      { layerIndex: 4, opacityPercent: 54.9 },
-      { layerIndex: 5, opacityPercent: 34.8 },
-      { layerIndex: 6, opacityPercent: 32 },
+      { layerIndex: 4, opacityPercent: 51.6 },
+      { layerIndex: 5, opacityPercent: 75 },
+      { layerIndex: 6, opacityPercent: 75 },
     ])
+  })
+
+  it('overlaps adjacent layer fade transitions', () => {
+    const starfield = createStarfield()
+    const overlapSamples = [
+      [20, 0, 1],
+      [90, 1, 2],
+      [145, 2, 3],
+      [400, 3, 4],
+      [1_800, 4, 5],
+    ] as const
+
+    for (const [viewportSize, ...layerIndices] of overlapSamples) {
+      updateStarfield(starfield, { viewportSize })
+
+      for (const layerIndex of layerIndices) {
+        expect(getLayerOpacity(starfield, layerIndex)).toBeGreaterThan(0)
+        expect(getLayerOpacity(starfield, layerIndex)).toBeLessThan(0.75)
+      }
+    }
   })
 
   it('reuses layer buffers while zooming out adjusts the drawn star count', () => {
@@ -244,12 +307,16 @@ describe('createStarfield', () => {
     const points = getLayerPoints(starfield, baseLayerIndex)
     const positionAttribute = points.geometry.getAttribute('position')
     const colorAttribute = points.geometry.getAttribute('color')
+    const sizeScaleAttribute = points.geometry.getAttribute('starSizeScale')
     const closeDrawCount = points.geometry.drawRange.count
 
     updateStarfield(starfield, { viewportSize: 1_800 })
 
     expect(points.geometry.getAttribute('position')).toBe(positionAttribute)
     expect(points.geometry.getAttribute('color')).toBe(colorAttribute)
+    expect(points.geometry.getAttribute('starSizeScale')).toBe(
+      sizeScaleAttribute,
+    )
     expect(points.geometry.drawRange.count).toBeGreaterThan(closeDrawCount)
     expect(points.geometry.drawRange.count).toBeLessThanOrEqual(
       positionAttribute.count,
