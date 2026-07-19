@@ -471,17 +471,7 @@ export const createAppComponents = (options: {
       focalPoint.x,
       focalPoint.y,
     )
-    runtimeActions.zoomCamera(factor)
-    const nextWorld = pickWorldPointFromScreenPoint(focalPoint.x, focalPoint.y)
-
-    if (!previousWorld || !nextWorld) {
-      return
-    }
-
-    runtimeActions.panCamera({
-      x: previousWorld.x - nextWorld.x,
-      y: previousWorld.y - nextWorld.y,
-    })
+    runtimeActions.zoomCamera(factor, previousWorld ?? undefined)
   }
   const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
   const runtimeActions = createRuntimeActions({
@@ -801,6 +791,7 @@ export const createAppComponents = (options: {
   })
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
+    getStarfieldLayerDebugInfo: gameScene.starfield.getLayerDebugInfo,
     getTrailRenderedSliceCount: () => gameScene.trailRenderedSliceCount,
     inGameControlsMenu,
     overlayUi,

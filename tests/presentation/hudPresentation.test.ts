@@ -932,6 +932,9 @@ describe('createHudPresentation', () => {
     const captureMetricsOverrides = { specificEnergy: -1 }
     const presentation = createHudPresentation({
       defaultViewport: 100,
+      getStarfieldLayerDebugInfo: () => [
+        { layerIndex: 3, opacityPercent: 27.4 },
+      ],
       getTrailRenderedSliceCount: () => 12,
       overlayUi,
       physicsEngineName: 'test',
@@ -963,6 +966,7 @@ describe('createHudPresentation', () => {
       .mock.calls.at(-1)
       ?.at(0) as
       | {
+          starfield?: Array<{ layerIndex?: number; opacityPercent?: number }>
           trail?: {
             captureSampleDistanceMeters?: number
             renderFrame?: string
@@ -1000,6 +1004,9 @@ describe('createHudPresentation', () => {
       'trail detail: L6/7 close | slices 12 | render 417 km | capture 250 km | trail frame: target-relative Moon',
     )
     expect(debugJson?.viewport).toEqual({ size: 25, zoom: 4 })
+    expect(debugJson?.starfield).toEqual([
+      { layerIndex: 3, opacityPercent: 27.4 },
+    ])
     expect(debugJson?.trail).toMatchObject({
       captureSampleDistanceMeters: 250_000,
       detailLabel: 'close',

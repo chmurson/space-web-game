@@ -9,6 +9,7 @@ import type {
 import { emptyTrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
+import type { Starfield } from '../scene/starfield'
 import { getBodyInfluences } from '../simulation/bodyInfluence'
 import type { Body } from '../simulation/types'
 import type { InGameControlsMenu } from '../ui/createInGameControlsMenu'
@@ -174,6 +175,7 @@ const createDebugStateCopyPayload = (options: {
 export const createHudPresentation = (options: {
   defaultViewport: number
   inGameControlsMenu?: InGameControlsMenu
+  getStarfieldLayerDebugInfo?: Starfield['getLayerDebugInfo']
   overlayUi: OverlayUiRefs
   physicsEngineName: string
   getTrailRenderedSliceCount?: () => number
@@ -715,6 +717,7 @@ export const createHudPresentation = (options: {
           debugModeEnabled: options.runtime.debug.debugModeEnabled,
           scenarioId,
           state,
+          starfield: options.getStarfieldLayerDebugInfo?.() ?? [],
           trail: {
             ...trailDebugState,
           },

@@ -247,6 +247,54 @@ test('mobile two-finger tap cancels active turn planning without committing', as
   await createTouchScreenshot(page, testInfo, 'mobile-turn-plan-canceled')
 })
 
+test('mobile pinch zoom uses an off-center world focal point', async ({
+  page,
+}, testInfo) => {
+  await startGame(page)
+
+  const initial = await page.evaluate(() => {
+    const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      mode: 'unlocked',
+      type: 'set-camera-mode',
+    })
+    if (!response?.ok) {
+      throw new Error(response?.error ?? 'Devtools bridge is missing')
+    }
+    return response.snapshot
+  })
+  await createTouchScreenshot(page, testInfo, 'mobile-pinch-before')
+
+  const firstStart = { id: 4, x: 260, y: 420 }
+  const secondStart = { id: 5, x: 340, y: 420 }
+  const firstMove = { id: 4, x: 220, y: 420 }
+  const secondMove = { id: 5, x: 380, y: 420 }
+  await dispatchTouch(
+    page,
+    'touchstart',
+    [firstStart, secondStart],
+    [firstStart, secondStart],
+  )
+  await dispatchTouch(
+    page,
+    'touchmove',
+    [firstMove, secondMove],
+    [firstMove, secondMove],
+  )
+  await dispatchTouch(page, 'touchend', [], [firstMove, secondMove])
+
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.viewportSize)
+    .toBeLessThan(initial.simulation.viewportSize)
+  const zoomed = await getSnapshot(page)
+  if (!zoomed) {
+    throw new Error('Devtools bridge is missing')
+  }
+
+  expect(zoomed.camera.mode).toBe('unlocked')
+  expect(zoomed.camera.panOffset).not.toEqual(initial.camera.panOffset)
+  await createTouchScreenshot(page, testInfo, 'mobile-pinch-after')
+})
+
 test('mobile default drag maneuver starts turning on release', async ({
   page,
 }, testInfo) => {

@@ -271,6 +271,75 @@ describe('createRuntimeActions', () => {
     }
   })
 
+  it('zooms an unlocked camera around a world focal point in one update', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    runtime.ui.camera = {
+      mode: 'unlocked',
+      panOffset: { x: 100, y: 200 },
+    }
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      runtimeActions.zoomCamera(0.5, { x: 300, y: 500 })
+
+      expect(runtime.simulation.viewportSize).toBe(300)
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 200, y: 350 })
+      expect(updateCameraViewSpy).toHaveBeenCalledTimes(1)
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: { x: 200, y: 350 },
+          preserveStarfieldWorldPosition: true,
+        }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('keeps ordinary zoom centered without preserving starfield position', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      runtimeActions.zoomCamera(0.5)
+
+      expect(runtime.simulation.viewportSize).toBe(300)
+      expect(updateCameraViewSpy).toHaveBeenCalledTimes(1)
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: runtime.simulation.state.spacecraft.position,
+          preserveStarfieldWorldPosition: false,
+        }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
   it('centers the target camera mode on the active assist target', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
