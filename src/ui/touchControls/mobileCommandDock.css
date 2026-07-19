@@ -1,0 +1,293 @@
+.mobile-command-dock {
+  display: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  #app .mobile-command-dock {
+    --mobile-command-dock-edge-gap: 8px;
+    --mobile-command-dock-item-height: 46px;
+    --mobile-command-dock-item-width: 76px;
+    --mobile-command-dock-panel-padding: 12px;
+    --mobile-command-dock-panel-width: 300px;
+    --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-command-dock-safe-left: env(safe-area-inset-left, 0px);
+    --mobile-command-dock-safe-right: env(safe-area-inset-right, 0px);
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: calc(var(--z-overlay-hud) + 2);
+    box-sizing: border-box;
+    display: grid;
+    justify-items: center;
+    padding-right: max(8px, var(--mobile-command-dock-safe-right));
+    padding-bottom: calc(
+      var(--mobile-command-dock-safe-bottom) +
+      var(--mobile-command-dock-edge-gap)
+    );
+    padding-left: max(8px, var(--mobile-command-dock-safe-left));
+    pointer-events: none;
+  }
+
+  #app .mobile-command-dock[data-density="spacious"] {
+    --mobile-command-dock-item-height: 58px;
+    --mobile-command-dock-item-width: 104px;
+    --mobile-command-dock-panel-padding: 16px;
+    --mobile-command-dock-panel-width: 340px;
+  }
+
+  #app .mobile-command-dock[data-safe-area-padding="roomy"] {
+    --mobile-command-dock-edge-gap: 18px;
+  }
+
+  .mobile-command-dock-bar,
+  .mobile-command-dock-panel {
+    box-sizing: border-box;
+    border: 1px solid var(--ui-glass-panel-border);
+    color: rgba(240, 249, 255, 0.96);
+    backdrop-filter: var(--ui-glass-panel-blur);
+    pointer-events: auto;
+  }
+
+  .mobile-command-dock-bar {
+    display: flex;
+    width: max-content;
+    justify-content: center;
+    padding: 4px;
+    border-color: var(--ui-glass-control-border);
+    border-radius: 15px;
+    background: var(--ui-glass-control-bg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 10px 24px rgba(2, 6, 23, 0.28);
+    backdrop-filter: var(--ui-glass-control-blur);
+  }
+
+  .mobile-command-dock-item {
+    display: grid;
+    width: var(--mobile-command-dock-item-width);
+    min-height: var(--mobile-command-dock-item-height);
+    place-content: center;
+    place-items: center;
+    gap: 3px;
+    padding: 5px 10px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    background: transparent;
+    color: rgba(226, 232, 240, 0.82);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    touch-action: manipulation;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      box-shadow 120ms ease,
+      color 120ms ease;
+    user-select: none;
+  }
+
+  .mobile-command-dock[data-density="spacious"] .mobile-command-dock-item {
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .mobile-command-dock-item-icon {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
+
+  .mobile-command-dock[data-density="spacious"] .mobile-command-dock-item-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-command-dock-item:focus-visible {
+    outline: 2px solid rgba(125, 211, 252, 0.86);
+    outline-offset: 3px;
+  }
+
+  .mobile-command-dock[data-emphasis="subtle"]
+    .mobile-command-dock-item[aria-expanded="true"] {
+    border-color: rgba(56, 189, 248, 0.55);
+    background: rgba(14, 116, 144, 0.22);
+    color: #bae6fd;
+  }
+
+  .mobile-command-dock[data-emphasis="strong"]
+    .mobile-command-dock-item[aria-expanded="true"] {
+    border-color: rgba(125, 211, 252, 0.76);
+    background: linear-gradient(
+      180deg,
+      rgba(14, 116, 144, 0.76),
+      rgba(8, 47, 73, 0.88)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(240, 249, 255, 0.18),
+      0 0 0 1px rgba(56, 189, 248, 0.14),
+      0 8px 22px rgba(14, 116, 144, 0.3);
+    color: #f0f9ff;
+  }
+
+  .mobile-command-dock-panel {
+    width: min(
+      var(--mobile-command-dock-panel-width),
+      calc(
+        100vw -
+        max(8px, var(--mobile-command-dock-safe-left)) -
+        max(8px, var(--mobile-command-dock-safe-right))
+      )
+    );
+    margin-bottom: 8px;
+    padding: var(--mobile-command-dock-panel-padding);
+    border-radius: 16px;
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+  }
+
+  .mobile-command-dock-panel[hidden] {
+    display: none;
+  }
+
+  .mobile-command-dock-panel-heading {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .mobile-command-dock-panel-heading strong {
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-command-dock-panel-kicker {
+    color: #7dd3fc;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .mobile-command-dock-panel-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 9px;
+    color: rgba(226, 232, 240, 0.8);
+    font-size: 11px;
+    font-weight: 650;
+  }
+
+  .mobile-command-dock-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.58);
+  }
+
+  .mobile-command-dock-panel p {
+    margin: 6px 0 0;
+    color: rgba(203, 213, 225, 0.72);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .mobile-command-dock[data-panel-treatment="sheet"][data-open="true"]
+    .mobile-command-dock-panel {
+    width: 100%;
+    margin-bottom: 0;
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .mobile-command-dock[data-panel-treatment="sheet"][data-open="true"]
+    .mobile-command-dock-bar {
+    width: 100%;
+    border-radius: 0 0 16px 16px;
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+  }
+
+  #app[data-mobile-command-dock="true"] {
+    --mobile-command-dock-hud-height: 66px;
+    --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-command-dock-safe-extra: 0px;
+  }
+
+  #app[data-mobile-command-dock-density="spacious"] {
+    --mobile-command-dock-hud-height: 78px;
+  }
+
+  #app[data-mobile-command-dock-safe-area="roomy"] {
+    --mobile-command-dock-safe-extra: 10px;
+  }
+
+  #app[data-mobile-command-dock-open="true"] {
+    --mobile-command-dock-hud-height: 158px;
+  }
+
+  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-density="spacious"] {
+    --mobile-command-dock-hud-height: 174px;
+  }
+
+  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="sheet"] {
+    --mobile-command-dock-hud-height: 166px;
+  }
+
+  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-density="spacious"][data-mobile-command-dock-panel="sheet"] {
+    --mobile-command-dock-hud-height: 182px;
+  }
+
+  #app[data-mobile-command-dock="true"] .bottom-pill-area {
+    bottom: calc(
+      var(--mobile-command-dock-safe-bottom) +
+      var(--mobile-command-dock-safe-extra) +
+      var(--mobile-command-dock-hud-height)
+    );
+  }
+
+  #app[data-mobile-command-dock="true"]
+    .in-game-controls-menu-open
+    .in-game-controls-menu-popover {
+    bottom: calc(100% + 16px);
+  }
+
+  #app[data-mobile-command-dock-open="true"] .in-game-controls-menu {
+    bottom: calc(
+      var(--bottom-safe-area-inset) +
+      var(--mobile-command-dock-safe-extra) +
+      var(--mobile-command-dock-hud-height) +
+      8px
+    );
+  }
+
+  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="sheet"]
+    .touch-edge-reveal-control {
+    bottom: calc(
+      env(safe-area-inset-bottom, 0px) +
+      var(--touch-edge-reveal-start) +
+      var(--touch-edge-reveal-stack-offset) +
+      var(--mobile-command-dock-hud-height)
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-command-dock-item {
+    transition: none;
+  }
+}

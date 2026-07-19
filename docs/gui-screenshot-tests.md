@@ -17,6 +17,28 @@ Add new paths under `tests/gui/` when another HUD/menu state needs browser
 screenshot coverage. Keep DOM assertions minimal: they should prove the path
 was reached, while the screenshot remains the main verification artifact.
 
+## Mobile command dock variants
+
+The Flight command-dock comparison is intentionally repeatable through URL
+feature flags. Each axis stays local to the dock component and can be combined
+with the others:
+
+- `mobileDockDensity=compact|spacious`
+- `mobileFlightPanel=glass|sheet`
+- `mobileDockEmphasis=subtle|strong`
+- `mobileDockSafeArea=standard|roomy`
+
+Omitted or invalid values fall back to `compact`, `glass`, `subtle`, and
+`standard`. These defaults are a comparison starting point, not the final
+selected mobile treatment.
+
+`tests/gui/mobileCommandDock.spec.ts` captures a collapsed 320px treatment, an
+open anchored-glass treatment at 390px with a simulated 24px bottom safe area,
+and an open spacious sheet treatment at 430px with a simulated 34px bottom safe
+area. The safe-area simulation overrides the dock's local
+`--mobile-command-dock-safe-bottom` test hook; production continues to use
+`env(safe-area-inset-bottom)`.
+
 If Playwright reports a missing browser locally, install the browser once:
 
 ```sh
