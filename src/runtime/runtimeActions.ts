@@ -7,7 +7,6 @@ import {
 import type { UIUserAction } from '../input/uiUserActions'
 import { updateCameraView } from '../render/sceneUpdates'
 import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import {
   type CameraControlMode,
   type GlobalScenarioDirectiveLimits,
@@ -23,6 +22,7 @@ import type { AppRuntimeState, TargetHeadingPlan } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { AssistTargetUiState } from './gameQueries'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
+import type { NavigationTimeWarpController } from './navigationTimeWarpController'
 import {
   clearTransientScenarioRuntimeState,
   dispatchRuntimeScenarioPromptAction,
@@ -78,6 +78,7 @@ export const createRuntimeActions = (options: {
   maxViewport: number
   minCoastPredictionHorizonHours: number
   minViewport: number
+  navigationTimeWarpController: NavigationTimeWarpController
   renderer: Pick<THREE.WebGLRenderer, 'setSize'>
   ripples: Ripple[]
   runtime: AppRuntimeState
@@ -122,28 +123,27 @@ export const createRuntimeActions = (options: {
   }
 
   const clearTransientScenarioState = () => {
+    options.navigationTimeWarpController.reset()
     clearTransientScenarioRuntimeState(options.runtime, () => {
       options.gameScene.trailPoints.length = 0
     })
     resetAssistTargetSelectionMode()
   }
 
+  const selectTimeWarpIndex = (timeWarpIndex: number) => {
+    options.runtime.simulation.timeWarpIndex =
+      options.navigationTimeWarpController.selectTimeWarpIndex({
+        maxTimeWarp: options.runtime.scenario.directives.maxTimeWarp,
+        timeWarpIndex,
+      })
+  }
   const setTimeWarp = (warp: number) => {
-    options.runtime.simulation.timeWarpIndex = options.timeWarps.reduce(
+    const timeWarpIndex = options.timeWarps.reduce(
       (targetIndex, timeWarp, index) =>
         timeWarp <= warp ? index : targetIndex,
       0,
     )
-  }
-  const capTimeWarpAt = (warp: number) => {
-    const maxIndex = options.timeWarps.indexOf(warp)
-    if (maxIndex < 0) {
-      return
-    }
-    options.runtime.simulation.timeWarpIndex = Math.min(
-      options.runtime.simulation.timeWarpIndex,
-      maxIndex,
-    )
+    selectTimeWarpIndex(timeWarpIndex)
   }
   const scenarioRuntimeController = createScenarioRuntimeController({
     clearTransientScenarioState,
@@ -285,6 +285,7 @@ export const createRuntimeActions = (options: {
 
   const clearTargetHeadingPlan = () => {
     options.runtime.ui.targetHeadingPlan = null
+    options.navigationTimeWarpController.endHeadingPlan(performance.now())
   }
 
   const zoomCamera = (factor: number, focalWorldPoint?: Vec2) => {
@@ -345,18 +346,12 @@ export const createRuntimeActions = (options: {
       ),
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === 'increaseTimeWarp') {
-        options.runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
-          options.runtime.simulation.timeWarpIndex + 1,
-          options.timeWarps,
-          options.runtime.scenario.directives.maxTimeWarp,
-        )
+        selectTimeWarpIndex(options.runtime.simulation.timeWarpIndex + 1)
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'decreaseTimeWarp') {
-        options.runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
+        selectTimeWarpIndex(
           Math.max(options.runtime.simulation.timeWarpIndex - 1, 0),
-          options.timeWarps,
-          options.runtime.scenario.directives.maxTimeWarp,
         )
         return { refreshTrajectoryPrediction: false }
       }
@@ -539,7 +534,11 @@ export const createRuntimeActions = (options: {
       )
     },
     planTargetHeading: (plan: TargetHeadingPlan) => {
-      capTimeWarpAt(60)
+      options.runtime.simulation.timeWarpIndex =
+        options.navigationTimeWarpController.beginHeadingPlan({
+          maxTimeWarp: options.runtime.scenario.directives.maxTimeWarp,
+          timeWarpIndex: options.runtime.simulation.timeWarpIndex,
+        })
       setTargetHeadingPlan(plan)
     },
     clearTargetHeadingPlan,

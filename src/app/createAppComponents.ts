@@ -26,6 +26,7 @@ import { createFrameLoop } from '../runtime/frameLoop'
 import { createGameQueries } from '../runtime/gameQueries'
 import { GameHighLevelActionsMediator } from '../runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { registerHighLevelActions } from '../runtime/highLevelActions/registerHighLevelActions'
+import { createNavigationTimeWarpController } from '../runtime/navigationTimeWarpController'
 import { createRuntimeActions } from '../runtime/runtimeActions'
 import { defaultMaxControlWarp } from '../runtime/simulationStep'
 import {
@@ -479,6 +480,10 @@ export const createAppComponents = (options: {
     runtimeActions.zoomCamera(factor, previousWorld ?? undefined)
   }
   const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
+  const navigationTimeWarpController = createNavigationTimeWarpController({
+    maxControlWarp: defaultMaxControlWarp,
+    timeWarps: options.config.controls.timeWarps,
+  })
   const runtimeActions = createRuntimeActions({
     app: options.app,
     autoSelectNearestSurface:
@@ -495,6 +500,7 @@ export const createAppComponents = (options: {
     minCoastPredictionHorizonHours:
       options.config.trajectory.minCoastPredictionHorizonHours,
     minViewport: options.config.camera.minViewport,
+    navigationTimeWarpController,
     renderer,
     ripples,
     runtime: options.runtimeState,
@@ -967,6 +973,7 @@ export const createAppComponents = (options: {
       getAppMode() === 'game' &&
       options.runtimeState.simulation.crashedBodyName === null,
     keyboardInput,
+    navigationTimeWarpController,
     pointerCameraInput,
     physicsEngine: options.config.physicsEngine,
     queries,

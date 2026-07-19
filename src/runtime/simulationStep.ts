@@ -17,6 +17,7 @@ import {
   sub,
 } from '../simulation/vector'
 import type { GameQueries } from './gameQueries'
+import type { NavigationTimeWarpController } from './navigationTimeWarpController'
 
 type SimulationStepQueries = Pick<
   GameQueries,
@@ -53,6 +54,9 @@ export type StepSimulationFrameOptions = SimulationStepQueries & {
   crashedBodyName: string | null
   keyboardInput: KeyboardInput
   maxControlWarp: number
+  maxTimeWarp?: number | null
+  navigationTimeWarpController?: NavigationTimeWarpController
+  nowMs?: number
   physicsEngine: PhysicsEngine
   realDt: number
   state: SimulationState
@@ -379,11 +383,7 @@ const capTimeWarpForActiveControls = (
   timeWarps: number[],
   maxControlWarp: number,
 ) => {
-  const usingControls =
-    controls.main !== 0 ||
-    controls.reverse !== 0 ||
-    controls.strafe !== 0 ||
-    controls.turn !== 0
+  const usingControls = hasActiveNavigationControls(controls)
   const maxControlWarpIndex = timeWarps.reduce(
     (safeIndex, timeWarp, index) =>
       timeWarp <= maxControlWarp ? index : safeIndex,
@@ -400,6 +400,12 @@ const capTimeWarpForActiveControls = (
 
   return timeWarpIndex
 }
+
+const hasActiveNavigationControls = (controls: SimulationState['controls']) =>
+  controls.main !== 0 ||
+  controls.reverse !== 0 ||
+  controls.strafe !== 0 ||
+  controls.turn !== 0
 
 export const resolveSimulationTimeWarp = (
   options: ResolveSimulationControlsOptions & {
@@ -495,7 +501,7 @@ export const stepSimulationFrame = (
     getCircularizePlan: options.getCircularizePlan,
     keyboardInput: options.keyboardInput,
     maxControlWarp: options.maxControlWarp,
-    maxTimeWarp: null,
+    maxTimeWarp: options.maxTimeWarp ?? null,
     shouldCaptureBurn: options.shouldCaptureBurn,
     state,
     targetHeading,
@@ -507,7 +513,16 @@ export const stepSimulationFrame = (
   assistMode = resolvedTimeWarp.simulationControls.assistMode
   targetHeading = resolvedTimeWarp.simulationControls.targetHeading
   targetHeadingTurn = resolvedTimeWarp.simulationControls.targetHeadingTurn
-  const timeWarpIndex = resolvedTimeWarp.timeWarpIndex
+  const timeWarpIndex = options.navigationTimeWarpController
+    ? options.navigationTimeWarpController.resolveFrame({
+        maxTimeWarp: options.maxTimeWarp ?? null,
+        nowMs: options.nowMs ?? performance.now(),
+        simulationNavigationActive: hasActiveNavigationControls(
+          resolvedTimeWarp.simulationControls.controls,
+        ),
+        timeWarpIndex: options.timeWarpIndex,
+      })
+    : resolvedTimeWarp.timeWarpIndex
   const timeWarp = options.timeWarps[timeWarpIndex] ?? 1
   const physicsStep = 1
   let remaining = Math.min(options.realDt * timeWarp, 3600)
