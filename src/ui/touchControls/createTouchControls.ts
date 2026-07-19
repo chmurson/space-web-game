@@ -24,6 +24,7 @@ import {
   type TouchControlRevealEdge,
   type TouchControlRevealPlacement,
 } from './edgeRevealControl'
+import { createMobileCommandDock } from './mobileCommandDock'
 import { createRcsYawControl, type RcsYawGestureSession } from './rcsYawControl'
 import type {
   StepSelectorGesturePoint,
@@ -280,6 +281,10 @@ export const createTouchControls = (options: {
     warpPrototype: timeWarpPrototypeDock,
   } = touchControlsShell.docks
 
+  const mobileCommandDock = createMobileCommandDock({
+    app: options.app,
+    container: panel,
+  })
   const tutorialHint = createTouchControlsTutorialHint({ container: panel })
 
   const tapTouches = new Map<number, TapState>()
@@ -1014,6 +1019,10 @@ export const createTouchControls = (options: {
       }
 
       const eventTarget = event.target
+      const isMobileCommandDockTarget = isEventTargetInside(
+        mobileCommandDock.element,
+        eventTarget,
+      )
       const isTimeWarpTarget =
         timeWarpRevealControl.isOpen() &&
         isEventTargetInside(timeWarpRevealControl.element, eventTarget)
@@ -1035,6 +1044,7 @@ export const createTouchControls = (options: {
         thrustRevealControl.isOpen() &&
         isEventTargetInside(thrustRevealControl.element, eventTarget)
       const isRevealControlTarget =
+        isMobileCommandDockTarget ||
         isTimeWarpTarget ||
         isTimeWarpPrototypeTarget ||
         isTrajectoryHorizonTarget ||
