@@ -26,16 +26,22 @@ with the others:
 - `mobileDockDensity=compact|spacious`
 - `mobileFlightPanel=glass|sheet`
 - `mobileDockEmphasis=subtle|strong`
+- `mobileDockItems=flight|full`
 - `mobileDockSafeArea=standard|roomy`
 
 Omitted or invalid values fall back to `compact`, `glass`, `subtle`, and
-`standard`. These defaults are a comparison starting point, not the final
+`standard`; the item set falls back to `flight`. `mobileDockItems=full` is a
+review-only state showing Flight, Nav, Mission, Ship, and Settings together.
+Only Flight is functional, and the normal/default game does not expose empty
+future tabs. These defaults are a comparison starting point, not the final
 selected mobile treatment.
 
 `tests/gui/mobileCommandDock.spec.ts` captures a collapsed 320px treatment, an
 open anchored-glass treatment at 390px with a simulated 24px bottom safe area,
 and an open spacious sheet treatment at 430px with a simulated 34px bottom safe
-area. The safe-area simulation overrides the dock's local
+area. It also captures the five-item review state at compact 320px and spacious
+430px widths, with Flight selected in the spacious capture. The safe-area
+simulation overrides the dock's local
 `--mobile-command-dock-safe-bottom` test hook; production continues to use
 `env(safe-area-inset-bottom)`.
 

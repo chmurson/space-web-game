@@ -8,11 +8,13 @@ import './mobileCommandDock.css'
 type MobileCommandDockDensity = 'compact' | 'spacious'
 type MobileCommandDockPanelTreatment = 'glass' | 'sheet'
 type MobileCommandDockEmphasis = 'subtle' | 'strong'
+type MobileCommandDockItems = 'flight' | 'full'
 type MobileCommandDockSafeAreaPadding = 'standard' | 'roomy'
 
 type MobileCommandDockVariants = {
   density: MobileCommandDockDensity
   emphasis: MobileCommandDockEmphasis
+  items: MobileCommandDockItems
   panelTreatment: MobileCommandDockPanelTreatment
   safeAreaPadding: MobileCommandDockSafeAreaPadding
 }
@@ -25,7 +27,27 @@ type MobileCommandDockSurfaceProps = SurfaceRootRefProps &
 const densityOptions = ['compact', 'spacious'] as const
 const panelTreatmentOptions = ['glass', 'sheet'] as const
 const emphasisOptions = ['subtle', 'strong'] as const
+const itemOptions = ['flight', 'full'] as const
 const safeAreaPaddingOptions = ['standard', 'roomy'] as const
+
+const comparisonDockItems = [
+  {
+    iconPath: 'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm3.5 5.5-2 5-5 2 2-5 5-2Z',
+    label: 'Nav',
+  },
+  {
+    iconPath: 'M6 21V4m0 1h10l-2.5 3L16 11H6',
+    label: 'Mission',
+  },
+  {
+    iconPath: 'm12 3-5 5v8l5 5 5-5V8l-5-5ZM7 12h10',
+    label: 'Ship',
+  },
+  {
+    iconPath: 'M4 7h10m4 0h2m-6-3v6M4 17h2m4 0h10M6 14v6',
+    label: 'Settings',
+  },
+] as const
 
 const readVariant = <Option extends string>(
   urlParams: URLSearchParams,
@@ -54,6 +76,7 @@ const readMobileCommandDockVariants = (): MobileCommandDockVariants => {
       emphasisOptions,
       'subtle',
     ),
+    items: readVariant(urlParams, 'mobileDockItems', itemOptions, 'flight'),
     panelTreatment: readVariant(
       urlParams,
       'mobileFlightPanel',
@@ -72,6 +95,7 @@ const readMobileCommandDockVariants = (): MobileCommandDockVariants => {
 const MobileCommandDockSurface = ({
   density,
   emphasis,
+  items,
   open,
   panelTreatment,
   rootRef,
@@ -82,6 +106,7 @@ const MobileCommandDockSurface = ({
     class="mobile-command-dock"
     data-density={density}
     data-emphasis={emphasis}
+    data-items={items}
     data-open={String(open)}
     data-panel-treatment={panelTreatment}
     data-safe-area-padding={safeAreaPadding}
@@ -105,7 +130,7 @@ const MobileCommandDockSurface = ({
       <p>Use RCS and Burn at the screen edges.</p>
     </section>
 
-    <nav aria-label="Flight commands" class="mobile-command-dock-bar">
+    <nav aria-label="Mobile commands" class="mobile-command-dock-bar">
       <button
         aria-controls="mobile-command-dock-flight-panel"
         aria-expanded={open}
@@ -123,6 +148,26 @@ const MobileCommandDockSurface = ({
         </svg>
         <span>Flight</span>
       </button>
+      {items === 'full' &&
+        comparisonDockItems.map((item) => (
+          <button
+            aria-label={`${item.label} comparison button; panel unavailable`}
+            class="mobile-command-dock-item"
+            disabled
+            key={item.label}
+            title="Comparison only — panel unavailable"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="mobile-command-dock-item-icon"
+              viewBox="0 0 24 24"
+            >
+              <path d={item.iconPath} />
+            </svg>
+            <span>{item.label}</span>
+          </button>
+        ))}
     </nav>
   </section>
 )
@@ -144,6 +189,7 @@ export const createMobileCommandDock = (options: {
   const syncAppState = () => {
     options.app.dataset.mobileCommandDock = 'true'
     options.app.dataset.mobileCommandDockDensity = variants.density
+    options.app.dataset.mobileCommandDockItems = variants.items
     options.app.dataset.mobileCommandDockOpen = String(open)
     options.app.dataset.mobileCommandDockPanel = variants.panelTreatment
     options.app.dataset.mobileCommandDockSafeArea = variants.safeAreaPadding
@@ -169,7 +215,7 @@ export const createMobileCommandDock = (options: {
   renderState()
 
   const flightButton = surface.element.querySelector<HTMLButtonElement>(
-    '.mobile-command-dock-item',
+    '#mobile-command-dock-flight-button',
   )
   if (!flightButton) {
     throw new Error('Mobile command dock rendered without Flight button')

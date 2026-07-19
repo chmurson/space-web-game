@@ -63,6 +63,10 @@
     backdrop-filter: var(--ui-glass-control-blur);
   }
 
+  .mobile-command-dock[data-items="full"] .mobile-command-dock-bar {
+    width: min(100%, 520px);
+  }
+
   .mobile-command-dock-item {
     display: grid;
     width: var(--mobile-command-dock-item-width);
@@ -88,6 +92,27 @@
       box-shadow 120ms ease,
       color 120ms ease;
     user-select: none;
+  }
+
+  .mobile-command-dock[data-items="full"] .mobile-command-dock-item {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .mobile-command-dock[data-items="full"] .mobile-command-dock-item:disabled {
+    color: rgba(203, 213, 225, 0.68);
+    cursor: default;
+    opacity: 1;
+  }
+
+  .mobile-command-dock[data-items="full"] .mobile-command-dock-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mobile-command-dock[data-density="spacious"] .mobile-command-dock-item {
@@ -266,6 +291,7 @@
     bottom: calc(100% + 16px);
   }
 
+  #app[data-mobile-command-dock-items="full"] .in-game-controls-menu,
   #app[data-mobile-command-dock-open="true"] .in-game-controls-menu {
     bottom: calc(
       var(--bottom-safe-area-inset) +

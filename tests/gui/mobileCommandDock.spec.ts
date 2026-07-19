@@ -69,7 +69,7 @@ const captureDockVariant = async (options: {
   }
 
   if (options.open) {
-    await options.page.locator('.mobile-command-dock-item').tap()
+    await options.page.locator('#mobile-command-dock-flight-button').tap()
     await expect(
       options.page.locator('.mobile-command-dock-panel'),
     ).toBeVisible()
@@ -292,7 +292,7 @@ test('applies every documented feature-flag axis locally to the dock', async ({
   page,
 }) => {
   await page.goto(
-    '/?scenario=earth-moon&mobileDockDensity=spacious&mobileFlightPanel=sheet&mobileDockEmphasis=strong&mobileDockSafeArea=roomy',
+    '/?scenario=earth-moon&mobileDockDensity=spacious&mobileFlightPanel=sheet&mobileDockEmphasis=strong&mobileDockItems=full&mobileDockSafeArea=roomy',
   )
   await waitForGame(page)
 
@@ -300,7 +300,39 @@ test('applies every documented feature-flag axis locally to the dock', async ({
   await expect(dock).toHaveAttribute('data-density', 'spacious')
   await expect(dock).toHaveAttribute('data-panel-treatment', 'sheet')
   await expect(dock).toHaveAttribute('data-emphasis', 'strong')
+  await expect(dock).toHaveAttribute('data-items', 'full')
   await expect(dock).toHaveAttribute('data-safe-area-padding', 'roomy')
+})
+
+test('keeps the default Flight-only and exposes five comparison buttons by flag', async ({
+  page,
+}) => {
+  await page.goto('/?scenario=earth-moon')
+  await waitForGame(page)
+
+  const dockItems = page.locator('.mobile-command-dock-item')
+  await expect(dockItems).toHaveCount(1)
+  await expect(dockItems).toHaveText(['Flight'])
+
+  await page.goto('/?scenario=earth-moon&mobileDockItems=full')
+  await waitForGame(page)
+
+  await expect(dockItems).toHaveCount(5)
+  await expect(dockItems).toHaveText([
+    'Flight',
+    'Nav',
+    'Mission',
+    'Ship',
+    'Settings',
+  ])
+  await expect(page.locator('.mobile-command-dock-item:disabled')).toHaveCount(
+    4,
+  )
+
+  const flightButton = page.locator('#mobile-command-dock-flight-button')
+  await flightButton.tap()
+  await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('.mobile-command-dock-panel')).toBeVisible()
 })
 
 test('keeps the in-game controls popover clear of the collapsed dock', async ({
@@ -375,6 +407,57 @@ test('captures collapsed and open Flight variants across portrait widths and saf
   expect((burnTabBounds?.y ?? 0) + (burnTabBounds?.height ?? 0)).toBeLessThan(
     flightPanelBounds?.y ?? 0,
   )
+})
+
+test('captures compact and spacious five-item comparison states', async ({
+  page,
+}, testInfo) => {
+  await captureDockVariant({
+    fileName: 'mobile-command-dock-full-compact-collapsed-320.png',
+    open: false,
+    page,
+    query:
+      'mobileDockDensity=compact&mobileDockItems=full&mobileDockEmphasis=subtle&mobileDockSafeArea=standard',
+    safeBottom: 0,
+    testInfo,
+    viewport: { height: 720, width: 320 },
+  })
+
+  const compactBarBounds = await page
+    .locator('.mobile-command-dock-bar')
+    .boundingBox()
+  const compactItemBounds = await page
+    .locator('.mobile-command-dock-item')
+    .evaluateAll((items) =>
+      items.map((item) => {
+        const bounds = item.getBoundingClientRect()
+        return { left: bounds.left, right: bounds.right }
+      }),
+    )
+  expect(compactBarBounds).not.toBeNull()
+  expect(compactItemBounds).toHaveLength(5)
+  expect(compactItemBounds[0]?.left).toBeGreaterThanOrEqual(
+    compactBarBounds?.x ?? 0,
+  )
+  expect(compactItemBounds.at(-1)?.right).toBeLessThanOrEqual(
+    (compactBarBounds?.x ?? 0) + (compactBarBounds?.width ?? 0),
+  )
+
+  await captureDockVariant({
+    fileName: 'mobile-command-dock-full-spacious-selected-430.png',
+    open: true,
+    page,
+    query:
+      'mobileDockDensity=spacious&mobileDockItems=full&mobileFlightPanel=glass&mobileDockEmphasis=strong&mobileDockSafeArea=roomy',
+    safeBottom: 34,
+    testInfo,
+    viewport: { height: 932, width: 430 },
+  })
+
+  await expect(page.locator('.mobile-command-dock-item')).toHaveCount(5)
+  await expect(
+    page.locator('#mobile-command-dock-flight-button'),
+  ).toHaveAttribute('aria-expanded', 'true')
 })
 
 test('does not change the fine-pointer desktop layout', async ({ browser }) => {

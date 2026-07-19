@@ -272,7 +272,7 @@ Keep shapes stable across hover, active, disabled, and focused states. Hover or 
 
 **Touch controls:** Preserve edge-reveal behavior, safe-area offsets, large hit areas, and tutorial focus affordances. Touch-control panels should use shared glass panel values with local accent colors for thrust, time warp, target, and trajectory semantics.
 
-**Mobile command dock:** The current Flight dock is a review surface rather than a finalized visual choice. It supports compact/spacious sizing, anchored-glass/edge-attached-sheet panels, subtle/strong open emphasis, and standard/roomy safe-area spacing through the documented GUI feature flags. Keep these variants local to the dock until review selects a treatment. RCS, Burn, and the other existing mobile controls remain on their current edge-reveal surfaces during this comparison.
+**Mobile command dock:** The current Flight dock is a review surface rather than a finalized visual choice. It supports compact/spacious sizing, anchored-glass/edge-attached-sheet panels, subtle/strong open emphasis, and standard/roomy safe-area spacing through the documented GUI feature flags. A review-only item-set flag can show Flight, Nav, Mission, Ship, and Settings together to evaluate realistic dock geometry; only Flight is functional, and the default game remains Flight-only so empty future tabs are not shipped. Keep these variants local to the dock until review selects a treatment. RCS, Burn, and the other existing mobile controls remain on their current edge-reveal surfaces during this comparison.
 
 **Target and offscreen indicators:** Keep labels small, wrapped on mobile, and attached to the playfield. Use cyan as the default navigational cue and avoid pointer-event capture.
 
