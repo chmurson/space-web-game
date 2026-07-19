@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { createNavigationTimeWarpController } from '@/runtime/navigationTimeWarpController'
 import {
   resolveSimulationTimeWarp,
   stepSimulationFrame,
@@ -178,6 +179,80 @@ describe('stepSimulationFrame', () => {
     expect(result.reason).toBe('active-controls')
     expect(result.timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
     expect(result.simulationControls.controls.main).toBe(1)
+  })
+
+  it('restores the selected warp after all simulation controls are idle for 320 ms', () => {
+    let mainThrust = 1
+    let state = createRuntimeState()
+    let timeWarpIndex = requestedTimeWarps.indexOf(1800)
+    const navigationTimeWarpController = createNavigationTimeWarpController({
+      maxControlWarp: 100,
+      timeWarps: requestedTimeWarps,
+    })
+    const stepAt = (nowMs: number) => {
+      const result = stepSimulationFrame({
+        assistMode: 'off',
+        autopilotRotationRate: 0.9,
+        crashedBodyName: null,
+        getAssistTarget: () => createRuntimeState().bodies[0],
+        getAutopilotTurn: () => 0,
+        getCaptureMetrics: () => ({
+          circularSpeed: 0,
+          distance: 0,
+          insideRange: false,
+          relativeSpeed: 0,
+          roughAssistRange: 0,
+          specificEnergy: 0,
+          surfaceDistance: 0,
+        }),
+        getCircularizePlan: () => ({
+          burnHeading: 0,
+          deltaV: 0,
+          desiredVelocityHeading: 0,
+          distance: 0,
+          radialSpeed: 0,
+          tangentialSpeed: 0,
+        }),
+        keyboardInput: {
+          clear: () => {},
+          getManualControls: () => ({
+            main: mainThrust,
+            reverse: 0,
+            strafe: 0,
+            turn: 0,
+          }),
+          hasManualTurn: () => false,
+          press: () => {},
+          release: () => {},
+          setVirtualKey: () => {},
+          setVirtualTurn: () => {},
+        },
+        maxControlWarp: 100,
+        navigationTimeWarpController,
+        nowMs,
+        physicsEngine: {
+          name: 'test',
+          step: (nextState) => nextState,
+        },
+        realDt: 0,
+        shouldCaptureBurn: () => false,
+        state,
+        targetHeading: null,
+        timeWarpIndex,
+        timeWarps: requestedTimeWarps,
+      })
+
+      state = result.state
+      timeWarpIndex = result.timeWarpIndex
+      return result
+    }
+
+    expect(stepAt(0).timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
+
+    mainThrust = 0
+    expect(stepAt(100).timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
+    expect(stepAt(419).timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
+    expect(stepAt(420).timeWarpIndex).toBe(requestedTimeWarps.indexOf(1800))
   })
 
   it('drops fuel-consuming controls when finite fuel is depleted', () => {

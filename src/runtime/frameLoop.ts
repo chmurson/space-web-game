@@ -18,6 +18,7 @@ import { type Ripple, updateRipples } from '../ui/overlayUpdates'
 import type { AppRuntimeState } from './appRuntimeState'
 import { createBrowserGcProbe } from './browserGcProbe'
 import type { GameQueries } from './gameQueries'
+import type { NavigationTimeWarpController } from './navigationTimeWarpController'
 import { updateRcsActualTurnFeedback } from './rcsActualTurnFeedback'
 import type { RuntimeActions } from './runtimeActions'
 import {
@@ -31,6 +32,7 @@ export const createFrameLoop = (options: {
   gameScene: GameSceneRefs
   hudPresentation: HudPresentation
   keyboardInput: KeyboardInput
+  navigationTimeWarpController: NavigationTimeWarpController
   pointerCameraInput?: Pick<PointerCameraInput, 'updateEdgeScroll'>
   physicsEngine: PhysicsEngine
   queries: GameQueries
@@ -200,6 +202,9 @@ export const createFrameLoop = (options: {
         getCircularizePlan: options.queries.getCircularizePlan,
         keyboardInput: options.keyboardInput,
         maxControlWarp: defaultMaxControlWarp,
+        maxTimeWarp: options.runtime.scenario.directives.maxTimeWarp,
+        navigationTimeWarpController: options.navigationTimeWarpController,
+        nowMs: time,
         physicsEngine: options.physicsEngine,
         realDt,
         shouldCaptureBurn: options.queries.shouldCaptureBurn,
