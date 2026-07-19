@@ -252,7 +252,6 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
         }),
         getTimeWarpPreviews: () => [],
         getTrajectoryHorizonPreviews: () => [],
-        initialBurnControlSide: 'right',
         initialTargetControlSide: 'left',
         initialTrajectoryControlSide: 'hidden',
         initialWarpControlSide: 'right',

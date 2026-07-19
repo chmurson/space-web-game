@@ -94,7 +94,6 @@ test('routes the horizontal prototype time warp control to shared state', async 
       getTimeWarpPreview: (action) => getTimeWarpPreviews(action, 1)[0],
       getTimeWarpPreviews,
       getTrajectoryHorizonPreviews: () => [],
-      initialBurnControlSide: 'right',
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',

@@ -115,9 +115,14 @@ const getAnchorElement = (
     return getTelemetryPillElement('thrust')
   }
   if (anchor === 'thrust-control') {
-    return getEdgeRevealControlAnchor(
-      '.touch-thrust-control',
-      '#touch-thrust-reveal',
+    const control = document.querySelector<HTMLElement>('.touch-thrust-control')
+    if (control && hasVisibleRect(control)) {
+      return control
+    }
+    return (
+      document.querySelector<HTMLElement>(
+        '#mobile-command-dock-flight-button',
+      ) ?? control
     )
   }
   return null

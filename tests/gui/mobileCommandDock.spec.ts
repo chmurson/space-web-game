@@ -37,6 +37,42 @@ const isolateMobileControlLayer = async (page: Page) => {
   })
 }
 
+const dispatchControlTouch = async (options: {
+  id: number
+  page: Page
+  selector: string
+  type: 'touchend' | 'touchmove' | 'touchstart'
+  x: number
+  y: number
+}) => {
+  await options.page.locator(options.selector).evaluate(
+    (target, touchOptions) => {
+      const touch = new Touch({
+        clientX: touchOptions.x,
+        clientY: touchOptions.y,
+        identifier: touchOptions.id,
+        target,
+      })
+      const activeTouches = touchOptions.type === 'touchend' ? [] : [touch]
+      target.dispatchEvent(
+        new TouchEvent(touchOptions.type, {
+          bubbles: true,
+          cancelable: true,
+          changedTouches: [touch],
+          targetTouches: activeTouches,
+          touches: activeTouches,
+        }),
+      )
+    },
+    {
+      id: options.id,
+      type: options.type,
+      x: options.x,
+      y: options.y,
+    },
+  )
+}
+
 const captureDockState = async (options: {
   fileName: string
   open: boolean
@@ -161,7 +197,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       }),
       getTimeWarpPreviews: () => [],
       getTrajectoryHorizonPreviews: () => [],
-      initialBurnControlSide: 'right',
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',
@@ -404,6 +439,15 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   )
 
   await captureDockState({
+    fileName: 'mobile-command-dock-flight-open-320.png',
+    open: true,
+    page,
+    safeBottom: 0,
+    testInfo,
+    viewport: { height: 720, width: 320 },
+  })
+
+  await captureDockState({
     fileName: 'mobile-command-dock-flight-glass-open-safe-area-390.png',
     open: true,
     page,
@@ -424,21 +468,120 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   const flightPanelBounds = await page
     .locator('.mobile-command-dock-panel')
     .boundingBox()
-  const rcsTabBounds = await page
-    .locator('#touch-rcs-yaw-reveal .touch-edge-reveal-tab')
+  const rcsControlBounds = await page
+    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control')
     .boundingBox()
-  const burnTabBounds = await page
-    .locator('#touch-thrust-reveal .touch-edge-reveal-tab')
+  const thrustControlBounds = await page
+    .locator('.mobile-command-dock-panel .touch-thrust-control')
     .boundingBox()
   expect(flightPanelBounds).not.toBeNull()
-  expect(rcsTabBounds).not.toBeNull()
-  expect(burnTabBounds).not.toBeNull()
-  expect((rcsTabBounds?.y ?? 0) + (rcsTabBounds?.height ?? 0)).toBeLessThan(
-    flightPanelBounds?.y ?? 0,
+  expect(rcsControlBounds).not.toBeNull()
+  expect(thrustControlBounds).not.toBeNull()
+  expect(rcsControlBounds?.x ?? 0).toBeGreaterThanOrEqual(
+    flightPanelBounds?.x ?? 0,
   )
-  expect((burnTabBounds?.y ?? 0) + (burnTabBounds?.height ?? 0)).toBeLessThan(
-    flightPanelBounds?.y ?? 0,
+  expect(
+    (rcsControlBounds?.x ?? 0) + (rcsControlBounds?.width ?? 0),
+  ).toBeLessThanOrEqual(thrustControlBounds?.x ?? 0)
+  expect(
+    (thrustControlBounds?.x ?? 0) + (thrustControlBounds?.width ?? 0),
+  ).toBeLessThanOrEqual(
+    (flightPanelBounds?.x ?? 0) + (flightPanelBounds?.width ?? 0),
   )
+  await expect(
+    page.locator('#touch-rcs-yaw-reveal, #touch-thrust-reveal'),
+  ).toHaveCount(0)
+})
+
+test('captures active RCS and Main Thrust inside Flight', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/?scenario=earth-moon')
+  await waitForGame(page)
+  await isolateMobileControlLayer(page)
+  await page.locator('#mobile-command-dock-flight-button').tap()
+
+  const rcsSelector = '.touch-rcs-yaw-control-track'
+  const rcsBounds = await page.locator(rcsSelector).boundingBox()
+  if (!rcsBounds) {
+    throw new Error('Missing docked RCS bounds')
+  }
+  const rcsStartX = rcsBounds.x + rcsBounds.width / 2
+  const rcsY = rcsBounds.y + rcsBounds.height / 2
+  await dispatchControlTouch({
+    id: 71,
+    page,
+    selector: rcsSelector,
+    type: 'touchstart',
+    x: rcsStartX,
+    y: rcsY,
+  })
+  await dispatchControlTouch({
+    id: 71,
+    page,
+    selector: rcsSelector,
+    type: 'touchmove',
+    x: rcsStartX + 46,
+    y: rcsY,
+  })
+  await expect(page.locator('.touch-rcs-yaw-control')).toHaveClass(
+    /touch-rcs-yaw-control-active/,
+  )
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-rcs-active-390.png'),
+  })
+  await dispatchControlTouch({
+    id: 71,
+    page,
+    selector: rcsSelector,
+    type: 'touchend',
+    x: rcsStartX + 46,
+    y: rcsY,
+  })
+
+  const thrustSelector = '.touch-thrust-control-thumb'
+  const thrustBounds = await page.locator(thrustSelector).boundingBox()
+  if (!thrustBounds) {
+    throw new Error('Missing docked Main Thrust bounds')
+  }
+  const thrustX = thrustBounds.x + thrustBounds.width / 2
+  const thrustStartY = thrustBounds.y + thrustBounds.height / 2
+  await dispatchControlTouch({
+    id: 72,
+    page,
+    selector: thrustSelector,
+    type: 'touchstart',
+    x: thrustX,
+    y: thrustStartY,
+  })
+  await dispatchControlTouch({
+    id: 72,
+    page,
+    selector: thrustSelector,
+    type: 'touchmove',
+    x: thrustX,
+    y: thrustStartY - 56,
+  })
+  await expect(page.locator('.touch-thrust-control')).toHaveClass(
+    /touch-thrust-control-on/,
+  )
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-main-thrust-active-390.png'),
+  })
+
+  await page.locator('#mobile-command-dock-flight-button').tap()
+  await expect(page.locator('.touch-thrust-control')).not.toHaveClass(
+    /touch-thrust-control-on/,
+  )
+  await dispatchControlTouch({
+    id: 72,
+    page,
+    selector: thrustSelector,
+    type: 'touchend',
+    x: thrustX,
+    y: thrustStartY - 56,
+  })
 })
 
 test('does not change the fine-pointer desktop layout', async ({

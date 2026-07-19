@@ -140,9 +140,12 @@ export const createRcsYawControl = (options: {
     element: HTMLDivElement
   } & RcsYawControlRefs = createRcsYawControlElement()
   let currentSnapshot = getNeutralRcsYawAnalogSnapshot()
+  let currentSession: RcsYawGestureSession = { kind: 'none' }
+  let isAvailable = true
   options.container.appendChild(element)
 
   const setSession = (session: RcsYawGestureSession) => {
+    currentSession = session
     options.onSessionChange(session)
   }
 
@@ -208,12 +211,27 @@ export const createRcsYawControl = (options: {
     applySnapshot(getNeutralRcsYawAnalogSnapshot())
   }
 
+  const clearGesture = (session: RcsYawGestureSession) => {
+    if (session.kind !== 'rcs-yaw-active') {
+      clearInput()
+      return session
+    }
+
+    clearInput()
+    const nextSession: RcsYawGestureSession = { kind: 'none' }
+    setSession(nextSession)
+    return nextSession
+  }
+
   closeButton.addEventListener('click', (event) => {
     event.stopPropagation()
     options.onCloseRequest()
   })
 
   track.addEventListener('keydown', (event) => {
+    if (!isAvailable) {
+      return
+    }
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
       return
     }
@@ -232,7 +250,7 @@ export const createRcsYawControl = (options: {
 
   return {
     beginGesture(touch: Touch, session: RcsYawGestureSession) {
-      if (session.kind !== 'none') {
+      if (!isAvailable || session.kind !== 'none') {
         return session
       }
 
@@ -244,17 +262,7 @@ export const createRcsYawControl = (options: {
       setSession(nextSession)
       return nextSession
     },
-    clearGesture(session: RcsYawGestureSession) {
-      if (session.kind !== 'rcs-yaw-active') {
-        clearInput()
-        return session
-      }
-
-      clearInput()
-      const nextSession: RcsYawGestureSession = { kind: 'none' }
-      setSession(nextSession)
-      return nextSession
-    },
+    clearGesture,
     clearInput,
     containsGestureTarget(target: EventTarget | null) {
       return (
@@ -265,6 +273,13 @@ export const createRcsYawControl = (options: {
     element,
     ownsTouch(session: RcsYawGestureSession, touchId: number) {
       return session.kind === 'rcs-yaw-active' && session.touchId === touchId
+    },
+    setAvailable(available: boolean) {
+      isAvailable = available
+      element.hidden = !available
+      if (!available) {
+        clearGesture(currentSession)
+      }
     },
     syncUi() {
       renderSnapshot(currentSnapshot)

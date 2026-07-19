@@ -119,19 +119,17 @@ describe('tutorialOnboardingProgress', () => {
     ).toBeUndefined()
   })
 
-  it('uses current mobile copy for opening and using the burn control', () => {
+  it('uses current mobile copy for the docked Flight controls', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-show-thrust-control', 'mobile'),
     ).toMatchObject({
       anchor: 'thrust-control',
       focusedTouchControl: 'burn',
-      title: 'Open Burn Control',
+      title: 'Flight Controls',
     })
     expect(
       getOnboardingDescription('intro-show-thrust-control', 'mobile'),
-    ).toBe(
-      'Swipe inward from the Burn tab on the screen edge to open the burn control.',
-    )
+    ).toBe('Use Main Thrust in the open Flight panel to control the burn.')
     expect(
       getTutorialOnboardingPromptContent('intro-thrust', 'mobile'),
     ).toMatchObject({

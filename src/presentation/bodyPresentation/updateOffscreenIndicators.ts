@@ -212,6 +212,8 @@ const offscreenIndicatorBlockerSelectors = [
   '.touch-edge-reveal-tab',
   '.touch-edge-reveal-control-open .touch-edge-reveal-content',
   '.touch-controls-tutorial-hint',
+  '.mobile-command-dock-bar',
+  '.mobile-command-dock-panel',
 ]
 
 const getVisibleOffscreenIndicatorBlockerRects = (
