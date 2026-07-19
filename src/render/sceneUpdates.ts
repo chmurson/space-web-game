@@ -23,6 +23,7 @@ export const updateCameraView = (options: {
   cameraElevation: number
   cameraTargetPosition: Vec2
   gameScene: GameSceneRefs
+  preserveStarfieldWorldPosition?: boolean
   viewportHeight: number
   viewportSize: number
   viewportWidth: number
@@ -88,6 +89,7 @@ export const updateCameraView = (options: {
   }
   options.gameScene.starfield.update({
     cameraTarget: options.gameScene.cameraTarget,
+    preserveWorldPosition: options.preserveStarfieldWorldPosition,
     viewportHeight: options.viewportHeight,
     viewportSize: options.viewportSize,
     viewportWidth: options.viewportWidth,

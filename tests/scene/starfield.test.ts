@@ -84,6 +84,7 @@ const getLayerOpacity = (starfield: Starfield, layerIndex: number) =>
 const updateStarfield = (
   starfield: Starfield,
   options: {
+    preserveWorldPosition?: boolean
     target?: THREE.Vector3
     viewportHeight?: number
     viewportSize?: number
@@ -92,6 +93,7 @@ const updateStarfield = (
 ) => {
   starfield.update({
     cameraTarget: options.target ?? new THREE.Vector3(0, 0, 0),
+    preserveWorldPosition: options.preserveWorldPosition,
     viewportHeight: options.viewportHeight ?? 600,
     viewportSize: options.viewportSize ?? 100,
     viewportWidth: options.viewportWidth ?? 800,
@@ -174,6 +176,43 @@ describe('createStarfield', () => {
     expect(farLayer.position.x).toBeLessThan(target.x)
     expect(farLayer.position.z).toBeLessThan(0)
     expect(farLayer.position.z).toBeGreaterThan(target.z)
+  })
+
+  it('preserves layer positions for focal zoom before resuming camera parallax', () => {
+    const starfield = createStarfield()
+    const baseLayerIndex = 4
+
+    updateStarfield(starfield, {
+      target: new THREE.Vector3(100, 0, -50),
+    })
+    const layer = getLayerGroup(starfield, baseLayerIndex)
+    const initialPosition = layer.position.clone()
+
+    updateStarfield(starfield, {
+      preserveWorldPosition: true,
+      target: new THREE.Vector3(120, 0, -60),
+      viewportSize: 80,
+    })
+
+    expect(layer.position).toEqual(initialPosition)
+
+    updateStarfield(starfield, {
+      preserveWorldPosition: true,
+      target: new THREE.Vector3(130, 0, -65),
+      viewportSize: 70,
+    })
+
+    expect(layer.position).toEqual(initialPosition)
+
+    updateStarfield(starfield, {
+      target: new THREE.Vector3(140, 0, -70),
+      viewportSize: 80,
+    })
+
+    expect(layer.position.x).toBeGreaterThan(initialPosition.x)
+    expect(layer.position.x - initialPosition.x).toBeLessThan(10)
+    expect(layer.position.z).toBeLessThan(initialPosition.z)
+    expect(layer.position.z - initialPosition.z).toBeGreaterThan(-5)
   })
 
   it('expands visible star coverage for wider zoom levels', () => {

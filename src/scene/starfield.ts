@@ -8,6 +8,7 @@ export type Starfield = {
   group: THREE.Group
   update(options: {
     cameraTarget: THREE.Vector3
+    preserveWorldPosition?: boolean
     viewportHeight: number
     viewportSize: number
     viewportWidth: number
@@ -438,6 +439,11 @@ export const createStarfield = (): Starfield => {
   group.renderOrder = -100
 
   const layers = starfieldLayerConfigs.map(createStarfieldLayer)
+  let hasCameraTarget = false
+  let parallaxTargetX = 0
+  let parallaxTargetZ = 0
+  let previousTargetX = 0
+  let previousTargetZ = 0
   group.add(...layers.map((layer) => layer.group))
 
   return {
@@ -456,14 +462,26 @@ export const createStarfield = (): Starfield => {
     update: (options) => {
       const targetX = options.cameraTarget.x
       const targetZ = options.cameraTarget.z
+      if (!hasCameraTarget) {
+        hasCameraTarget = true
+        parallaxTargetX = targetX
+        parallaxTargetZ = targetZ
+      } else if (!options.preserveWorldPosition) {
+        parallaxTargetX += targetX - previousTargetX
+        parallaxTargetZ += targetZ - previousTargetZ
+      }
+      previousTargetX = targetX
+      previousTargetZ = targetZ
 
       for (const layer of layers) {
         const { config } = layer
         const rawOpacity = getLayerOpacity(config, options.viewportSize)
         const opacity =
           rawOpacity <= minimumVisibleLayerOpacity ? 0 : rawOpacity
-        const centerX = targetX * config.parallaxFactor
-        const centerZ = targetZ * config.parallaxFactor
+        const groupX = parallaxTargetX * (1 - config.parallaxFactor)
+        const groupZ = parallaxTargetZ * (1 - config.parallaxFactor)
+        const centerX = targetX - groupX
+        const centerZ = targetZ - groupZ
 
         layer.material.opacity = opacity
         layer.group.visible = opacity > 0
@@ -472,11 +490,7 @@ export const createStarfield = (): Starfield => {
           continue
         }
 
-        layer.group.position.set(
-          targetX * (1 - config.parallaxFactor),
-          config.backgroundY,
-          targetZ * (1 - config.parallaxFactor),
-        )
+        layer.group.position.set(groupX, config.backgroundY, groupZ)
         buildLayerGeometry(layer, {
           centerX,
           centerZ,

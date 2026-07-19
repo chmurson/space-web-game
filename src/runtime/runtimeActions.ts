@@ -193,12 +193,13 @@ export const createRuntimeActions = (options: {
         ? getTargetCameraTargetPosition()
         : getFollowCameraTargetPosition()
 
-  const updateCamera = () =>
+  const updateCamera = (preserveStarfieldWorldPosition = false) =>
     updateCameraView({
       cameraDistance: options.cameraDistance,
       cameraElevation: options.cameraElevation,
       cameraTargetPosition: getCameraTargetPosition(),
       gameScene: options.gameScene,
+      preserveStarfieldWorldPosition,
       viewportHeight: window.innerHeight,
       viewportSize: options.runtime.simulation.viewportSize,
       viewportWidth: window.innerWidth,
@@ -278,15 +279,30 @@ export const createRuntimeActions = (options: {
     options.runtime.ui.targetHeadingPlan = null
   }
 
-  const zoomCamera = (factor: number) => {
-    options.runtime.simulation.viewportSize = THREE.MathUtils.clamp(
-      options.runtime.simulation.viewportSize * factor,
+  const zoomCamera = (factor: number, focalWorldPoint?: Vec2) => {
+    const previousViewportSize = options.runtime.simulation.viewportSize
+    const nextViewportSize = THREE.MathUtils.clamp(
+      previousViewportSize * factor,
       options.runtime.scenario.directives.minViewportSize ??
         options.minViewport,
       options.runtime.scenario.directives.maxViewportSize ??
         options.maxViewport,
     )
-    updateCamera()
+    const preserveStarfieldWorldPosition =
+      focalWorldPoint !== undefined &&
+      options.runtime.ui.camera.mode === 'unlocked'
+
+    if (preserveStarfieldWorldPosition) {
+      const cameraTarget = getCameraTargetPosition()
+      const focalShift = 1 - nextViewportSize / previousViewportSize
+      options.runtime.ui.camera.panOffset = {
+        x: cameraTarget.x + (focalWorldPoint.x - cameraTarget.x) * focalShift,
+        y: cameraTarget.y + (focalWorldPoint.y - cameraTarget.y) * focalShift,
+      }
+    }
+
+    options.runtime.simulation.viewportSize = nextViewportSize
+    updateCamera(preserveStarfieldWorldPosition)
   }
 
   const recoverScenarioAfterCrash = () => {
@@ -557,7 +573,7 @@ export const createRuntimeActions = (options: {
     startReachMoon: scenarioRuntimeController.startReachMoon,
     startTutorial: scenarioRuntimeController.startTutorial,
     unlockCameraAtFollowTarget,
-    updateCamera,
+    updateCamera: () => updateCamera(),
     zoomCamera,
   }
 }
