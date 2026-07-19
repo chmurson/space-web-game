@@ -12,6 +12,7 @@
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
     --mobile-command-dock-safe-left: env(safe-area-inset-left, 0px);
     --mobile-command-dock-safe-right: env(safe-area-inset-right, 0px);
+
     position: fixed;
     right: 0;
     bottom: 0;
@@ -22,8 +23,8 @@
     justify-items: center;
     padding-right: max(8px, var(--mobile-command-dock-safe-right));
     padding-bottom: calc(
-      var(--mobile-command-dock-safe-bottom) +
-      var(--mobile-command-dock-edge-gap)
+      var(--mobile-command-dock-safe-bottom)
+        + var(--mobile-command-dock-edge-gap)
     );
     padding-left: max(8px, var(--mobile-command-dock-safe-left));
     pointer-events: none;
@@ -124,7 +125,7 @@
     width: 17px;
     height: 17px;
     fill: none;
-    stroke: currentColor;
+    stroke: currentcolor;
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 1.8;
@@ -166,9 +167,9 @@
     width: min(
       var(--mobile-command-dock-panel-width),
       calc(
-        100vw -
-        max(8px, var(--mobile-command-dock-safe-left)) -
-        max(8px, var(--mobile-command-dock-safe-right))
+        100vw
+          - max(8px, var(--mobile-command-dock-safe-left))
+          - max(8px, var(--mobile-command-dock-safe-right))
       )
     );
     margin-bottom: 8px;
@@ -279,9 +280,9 @@
 
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     bottom: calc(
-      var(--mobile-command-dock-safe-bottom) +
-      var(--mobile-command-dock-safe-extra) +
-      var(--mobile-command-dock-hud-height)
+      var(--mobile-command-dock-safe-bottom)
+        + var(--mobile-command-dock-safe-extra)
+        + var(--mobile-command-dock-hud-height)
     );
   }
 
@@ -294,20 +295,19 @@
   #app[data-mobile-command-dock-items="full"] .in-game-controls-menu,
   #app[data-mobile-command-dock-open="true"] .in-game-controls-menu {
     bottom: calc(
-      var(--bottom-safe-area-inset) +
-      var(--mobile-command-dock-safe-extra) +
-      var(--mobile-command-dock-hud-height) +
-      8px
+      var(--bottom-safe-area-inset)
+        + var(--mobile-command-dock-safe-extra)
+        + var(--mobile-command-dock-hud-height)
+        + 8px
     );
   }
 
-  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="sheet"]
-    .touch-edge-reveal-control {
+  #app[data-mobile-command-dock-open="true"] .touch-edge-reveal-control {
     bottom: calc(
-      env(safe-area-inset-bottom, 0px) +
-      var(--touch-edge-reveal-start) +
-      var(--touch-edge-reveal-stack-offset) +
-      var(--mobile-command-dock-hud-height)
+      env(safe-area-inset-bottom, 0px)
+        + var(--touch-edge-reveal-start)
+        + var(--touch-edge-reveal-stack-offset)
+        + var(--mobile-command-dock-hud-height)
     );
   }
 }
