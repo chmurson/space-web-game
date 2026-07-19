@@ -7,11 +7,11 @@ Shipit state: `.codex/shipit-workflows/issue-270-restore-time-warp.md`
 Navigation now temporarily caps the effective time warp without discarding the
 player's selected value. The first thrust, reverse, strafe, turn, or heading-plan
 input preserves any selected warp above the existing control ceiling. Once every
-navigation source is inactive for 500 ms, the preserved selection becomes
+navigation source is inactive for 320 ms, the preserved selection becomes
 effective again.
 
 Repeated and overlapping controls share the same pending selection. Re-engaging
-navigation during the release delay cancels that delay and starts a fresh 500 ms
+navigation during the release delay cancels that delay and starts a fresh 320 ms
 idle window when navigation stops again.
 
 ## Why
@@ -64,4 +64,4 @@ safe value is 60x.
 - No UI or layout changed, so GUI screenshot validation is not required.
 - The release delay begins on the first animation frame that observes all
   simulation controls inactive; this can add at most one normal frame interval
-  to the requested 500 ms.
+  to the requested 320 ms.

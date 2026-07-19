@@ -31,9 +31,11 @@ const resolveFrame = (
   })
 
 describe('createNavigationTimeWarpController', () => {
-  it('caps active navigation and restores the original selection after 500 ms idle', () => {
+  it('caps active navigation and restores the original selection after 320 ms idle', () => {
     const controller = createController()
     const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
+
+    expect(navigationTimeWarpRestoreDelayMs).toBe(320)
 
     const cappedTimeWarpIndex = resolveFrame(controller, {
       navigationActive: true,
@@ -97,14 +99,14 @@ describe('createNavigationTimeWarpController', () => {
     expect(
       resolveFrame(controller, {
         navigationActive: false,
-        nowMs: 1099,
+        nowMs: 919,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(maxControlTimeWarpIndex)
     expect(
       resolveFrame(controller, {
         navigationActive: false,
-        nowMs: 1100,
+        nowMs: 920,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(originalTimeWarpIndex)
@@ -145,7 +147,7 @@ describe('createNavigationTimeWarpController', () => {
     expect(
       resolveFrame(controller, {
         navigationActive: false,
-        nowMs: 900,
+        nowMs: 720,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(originalTimeWarpIndex)
@@ -176,7 +178,7 @@ describe('createNavigationTimeWarpController', () => {
     expect(
       resolveFrame(controller, {
         navigationActive: false,
-        nowMs: 600,
+        nowMs: 420,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(replacementTimeWarpIndex)
@@ -229,7 +231,7 @@ describe('createNavigationTimeWarpController', () => {
     expect(
       controller.resolveFrame({
         maxTimeWarp: 120,
-        nowMs: 600,
+        nowMs: 420,
         simulationNavigationActive: false,
         timeWarpIndex: cappedTimeWarpIndex,
       }),

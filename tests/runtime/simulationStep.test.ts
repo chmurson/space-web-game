@@ -181,7 +181,7 @@ describe('stepSimulationFrame', () => {
     expect(result.simulationControls.controls.main).toBe(1)
   })
 
-  it('restores the selected warp after all simulation controls are idle for 500 ms', () => {
+  it('restores the selected warp after all simulation controls are idle for 320 ms', () => {
     let mainThrust = 1
     let state = createRuntimeState()
     let timeWarpIndex = requestedTimeWarps.indexOf(1800)
@@ -251,8 +251,8 @@ describe('stepSimulationFrame', () => {
 
     mainThrust = 0
     expect(stepAt(100).timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
-    expect(stepAt(599).timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
-    expect(stepAt(600).timeWarpIndex).toBe(requestedTimeWarps.indexOf(1800))
+    expect(stepAt(419).timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
+    expect(stepAt(420).timeWarpIndex).toBe(requestedTimeWarps.indexOf(1800))
   })
 
   it('drops fuel-consuming controls when finite fuel is depleted', () => {

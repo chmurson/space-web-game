@@ -583,7 +583,7 @@ describe('createRuntimeActions', () => {
     expect(
       navigationTimeWarpController.resolveFrame({
         maxTimeWarp: null,
-        nowMs: 600,
+        nowMs: 420,
         simulationNavigationActive: false,
         timeWarpIndex: runtime.simulation.timeWarpIndex,
       }),

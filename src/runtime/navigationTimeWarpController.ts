@@ -1,6 +1,6 @@
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 
-export const navigationTimeWarpRestoreDelayMs = 500
+export const navigationTimeWarpRestoreDelayMs = 320
 
 type TimeWarpSelectionOptions = {
   maxTimeWarp: number | null
