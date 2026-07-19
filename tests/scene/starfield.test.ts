@@ -109,7 +109,7 @@ describe('createStarfield', () => {
   it('generates deterministic layer geometry for the same camera view', () => {
     const first = createStarfield()
     const second = createStarfield()
-    const baseLayerIndex = 3
+    const baseLayerIndex = 4
 
     updateStarfield(first)
     updateStarfield(second)
@@ -122,7 +122,7 @@ describe('createStarfield', () => {
   it('moves layer groups with partial camera parallax', () => {
     const starfield = createStarfield()
     const target = new THREE.Vector3(100, 0, -50)
-    const baseLayerIndex = 3
+    const baseLayerIndex = 4
 
     updateStarfield(starfield, { target })
 
@@ -135,7 +135,7 @@ describe('createStarfield', () => {
 
   it('expands visible star coverage for wider zoom levels', () => {
     const starfield = createStarfield()
-    const baseLayerIndex = 3
+    const baseLayerIndex = 4
 
     updateStarfield(starfield, { viewportSize: 100 })
     const closeStarCount = getLayerPoints(starfield, baseLayerIndex).geometry
@@ -171,7 +171,7 @@ describe('createStarfield', () => {
 
     updateStarfield(starfield, {
       viewportHeight: 844,
-      viewportSize: 100,
+      viewportSize: 105,
       viewportWidth: 390,
     })
 
@@ -213,20 +213,32 @@ describe('createStarfield', () => {
     updateStarfield(starfield, { viewportSize: 4 })
 
     expect(getLayerGroup(starfield, 0).visible).toBe(true)
-    expect(getLayerGroup(starfield, 5).visible).toBe(true)
+    expect(getLayerGroup(starfield, 6).visible).toBe(true)
 
     updateStarfield(starfield, { viewportSize: 2_500 })
 
     expect(getLayerGroup(starfield, 0).visible).toBe(false)
-    expect(getLayerGroup(starfield, 3).visible).toBe(false)
     expect(getLayerGroup(starfield, 4).visible).toBe(false)
-    expect(getLayerGroup(starfield, 5).visible).toBe(true)
-    expect(getLayerPoints(starfield, 5).material.opacity).toBeGreaterThan(0)
+    expect(getLayerGroup(starfield, 5).visible).toBe(false)
+    expect(getLayerGroup(starfield, 6).visible).toBe(true)
+    expect(getLayerPoints(starfield, 6).material.opacity).toBeGreaterThan(0)
+  })
+
+  it('reports visible layer opacity percentages for debugging', () => {
+    const starfield = createStarfield()
+
+    updateStarfield(starfield, { viewportSize: 1_000 })
+
+    expect(starfield.getLayerDebugInfo()).toEqual([
+      { layerIndex: 4, opacityPercent: 54.9 },
+      { layerIndex: 5, opacityPercent: 34.8 },
+      { layerIndex: 6, opacityPercent: 32 },
+    ])
   })
 
   it('reuses layer buffers while zooming out adjusts the drawn star count', () => {
     const starfield = createStarfield()
-    const baseLayerIndex = 3
+    const baseLayerIndex = 4
 
     updateStarfield(starfield, { viewportSize: 100 })
     const points = getLayerPoints(starfield, baseLayerIndex)
@@ -246,7 +258,7 @@ describe('createStarfield', () => {
 
   it('keeps star geometry within capacity on ultrawide viewports', () => {
     const starfield = createStarfield()
-    const baseLayerIndex = 3
+    const baseLayerIndex = 4
 
     updateStarfield(starfield, {
       viewportHeight: 600,

@@ -801,6 +801,7 @@ export const createAppComponents = (options: {
   })
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
+    getStarfieldLayerDebugInfo: gameScene.starfield.getLayerDebugInfo,
     getTrailRenderedSliceCount: () => gameScene.trailRenderedSliceCount,
     inGameControlsMenu,
     overlayUi,
