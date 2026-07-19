@@ -288,7 +288,7 @@ test('replays tutorial transfer trail debug state from a fixed checkpoint', asyn
   page,
 }, testInfo) => {
   await seedTutorialEscapeCheckpoint(page)
-  await page.goto('/?scenario=debug-snapshot&devtools=1')
+  await page.goto('/?scenario=last-debug-snapshot&devtools=1')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await waitForDevtoolsBridge(page)
 

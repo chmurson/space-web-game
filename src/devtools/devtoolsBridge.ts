@@ -1,5 +1,9 @@
 import type { AppMode } from '../app/createAppConfigContext'
 import { getCaptureMetricsForState } from '../assist/orbitalAssist'
+import {
+  type DebugScenarioSnapshotLink,
+  getRecentDebugScenarioSnapshotLinks,
+} from '../debugScenarioSnapshot'
 import { isUIUserAction, type UIUserAction } from '../input/uiUserActions'
 import {
   getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
@@ -78,6 +82,7 @@ export type SpaceGameDevtoolsSnapshot = {
   }
   debug: AppRuntimeDebugSlice
   protocolVersion: 1
+  recentDebugSnapshots: DebugScenarioSnapshotLink[]
   scenario: {
     completed: boolean
     description: string
@@ -251,6 +256,10 @@ export const createDevtoolsSnapshot = (
     },
     debug: { ...runtime.debug },
     protocolVersion: 1,
+    recentDebugSnapshots:
+      typeof window === 'undefined'
+        ? []
+        : getRecentDebugScenarioSnapshotLinks(window.location.href),
     scenario: {
       completed: runtime.scenario.session.completed,
       description: runtime.scenario.metadata.description,

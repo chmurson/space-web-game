@@ -252,7 +252,7 @@ describe('createInitialAppRuntimeState', () => {
           autoSelectNearestSurface: true,
           switchRangeMultiplier: 1,
         },
-        requestedScenarioId: 'debug-snapshot',
+        requestedScenarioId: 'last-debug-snapshot',
       }),
     )
 

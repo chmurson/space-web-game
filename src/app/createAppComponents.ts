@@ -136,6 +136,11 @@ const createRuntimeCoordinator = (options: {
       return
     }
 
+    if (action === 'saveDebugSnapshot') {
+      options.topMenu.openDebugSnapshotSave()
+      return
+    }
+
     const result = options.runtimeActions.handleUIUserAction(action)
 
     if (result.refreshTrajectoryPrediction) {
@@ -771,9 +776,11 @@ export const createAppComponents = (options: {
   const topMenu = createTopMenu({
     app: options.app,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
+    getDebugSnapshotSuggestedName: runtimeActions.getDebugSnapshotSuggestedName,
     getFpsIndicatorEnabled: () =>
       options.runtimeState.debug.fpsIndicatorEnabled,
     onAction: handleTopMenuAction,
+    onSaveDebugSnapshot: runtimeActions.saveDebugSnapshot,
   })
   const inGameControlsMenu = createInGameControlsMenu({
     app: options.app,
