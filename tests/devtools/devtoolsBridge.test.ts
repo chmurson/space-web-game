@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { writeDebugScenarioSnapshot } from '@/debugScenarioSnapshot'
 import {
   createDevtoolsBridge,
   createDevtoolsSnapshot,
@@ -24,6 +25,10 @@ const predictionSampling = {
   stepOptionsSeconds: [30, 60],
   targetMaxSteps: 1200,
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 const createTrajectoryPredictionDiagnostics = (
   events: TrajectoryPredictionDiagnosticEvent[] = [],
@@ -327,6 +332,44 @@ describe('createDevtoolsSnapshot', () => {
     })
     expect(snapshot.simulation.spacecraft.speed).toBe(10)
     expect(snapshot.simulation.bodies[0]?.speed).toBe(5)
+    expect(snapshot.recentDebugSnapshots).toEqual([])
+  })
+
+  it('includes recent debug snapshot link metadata without saved state', () => {
+    const values = new Map<string, string>()
+    vi.stubGlobal('window', {
+      location: {
+        href: 'https://space.example/game?devtools=1',
+      },
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+      },
+    })
+    const runtime = createRuntime()
+    writeDebugScenarioSnapshot(
+      {
+        version: 1,
+        savedAt: '2026-07-19T10:00:00.000Z',
+        elapsed: runtime.simulation.state.elapsed,
+        bodies: runtime.simulation.state.bodies,
+        spacecraft: runtime.simulation.state.spacecraft,
+      },
+      'Lunar approach',
+    )
+
+    const [recentSnapshot] =
+      createBridgeHarness(runtime).bridge.getSnapshot().recentDebugSnapshots
+    const url = new URL(recentSnapshot.url)
+
+    expect(recentSnapshot).toMatchObject({
+      id: 'debug-snapshot-2026-07-19T10:00:00.000Z',
+      name: 'Lunar approach',
+      savedAt: '2026-07-19T10:00:00.000Z',
+    })
+    expect(recentSnapshot).not.toHaveProperty('snapshot')
+    expect(url.searchParams.get('devtools')).toBe('1')
+    expect(url.searchParams.get('scenario')).toBe(recentSnapshot.id)
   })
 
   it('uses the effective automatic target for target-dependent diagnostics', () => {

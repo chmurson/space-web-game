@@ -246,6 +246,69 @@ test('captures the mobile Reach the Moon menu transition', async ({
   await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
 })
 
+test('keeps named debug snapshots available after a page refresh', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+  await page.evaluate(async () => {
+    const debugSnapshotModulePath = '/src/debugScenarioSnapshot.ts'
+    const { writeDebugScenarioSnapshot } = await import(debugSnapshotModulePath)
+
+    localStorage.clear()
+    writeDebugScenarioSnapshot(
+      {
+        version: 1,
+        savedAt: '2026-07-19T09:00:00.000Z',
+        elapsed: 42,
+        bodies: [],
+        spacecraft: {},
+      },
+      'Moon approach',
+    )
+  })
+
+  await page.reload()
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  await page.getByRole('button', { name: 'Load any game' }).click()
+
+  await expect(
+    page.locator('.main-menu-recent-snapshot select option'),
+  ).toContainText(['Moon approach'])
+})
+
+test('blocks gameplay shortcuts while editing a debug snapshot name', async ({
+  page,
+}) => {
+  await startReachMoonMission(page)
+  await page.waitForFunction(
+    () => window.__SPACE_WEB_GAME_DEVTOOLS__ !== undefined,
+  )
+  const before = await page.evaluate(() =>
+    window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot(),
+  )
+
+  await page.getByLabel('Open menu').click()
+  await page.getByRole('menuitem', { name: 'Save debug snapshot' }).click()
+  const nameInput = page.getByRole('textbox', { name: 'Name' })
+  await nameInput.fill('')
+  await nameInput.pressSequentially('crqwe12')
+  await expect(nameInput).toHaveValue('crqwe12')
+
+  const after = await page.evaluate(() =>
+    window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot(),
+  )
+  expect(after?.camera.mode).toBe(before?.camera.mode)
+  expect(after?.simulation.controls).toEqual({
+    main: 0,
+    reverse: 0,
+    strafe: 0,
+    turn: 0,
+  })
+})
+
 test('captures the mobile RCS yaw and thrust controls together', async ({
   page,
 }, testInfo) => {
@@ -1412,6 +1475,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const telemetry = document.createElement('div')
     const outsideButton = document.createElement('button')
     const events: string[] = []
+    const savedSnapshotNames: string[] = []
     let debugModeEnabled = false
     let fpsIndicatorEnabled = false
 
@@ -1427,6 +1491,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const menu = createTopMenu({
       app,
       getDebugModeEnabled: () => debugModeEnabled,
+      getDebugSnapshotSuggestedName: () => 'Snapshot at 42s',
       getFpsIndicatorEnabled: () => fpsIndicatorEnabled,
       onAction: (action: string) => {
         events.push(action)
@@ -1436,6 +1501,9 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
         if (action === 'toggleFpsIndicator') {
           fpsIndicatorEnabled = !fpsIndicatorEnabled
         }
+      },
+      onSaveDebugSnapshot: (name: string) => {
+        savedSnapshotNames.push(name)
       },
     })
     const getButton = () =>
@@ -1448,8 +1516,12 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       ) as HTMLButtonElement | null
     const getRecentSelect = () =>
       menu.element.querySelector(
-        '.menu-recent-snapshot-select',
+        'select.menu-recent-snapshot-select',
       ) as HTMLSelectElement | null
+    const getSnapshotNameInput = () =>
+      menu.element.querySelector(
+        '.menu-debug-snapshot-name',
+      ) as HTMLInputElement | null
     const getActiveAction = () =>
       document.activeElement instanceof HTMLElement
         ? document.activeElement.dataset.menuAction
@@ -1527,6 +1599,24 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       getActionButton('toggleFpsIndicator')?.getAttribute('aria-checked')
 
     menu.close()
+    openMenu()
+    getActionButton('saveDebugSnapshot')?.click()
+    const suggestedSnapshotName = getSnapshotNameInput()?.value
+    const focusAfterSnapshotSaveOpen =
+      document.activeElement === getSnapshotNameInput()
+    getActionButton('backFromDebugSnapshotSave')?.click()
+    const focusAfterSnapshotSaveBack = getActiveAction()
+
+    menu.openDebugSnapshotSave()
+    const snapshotNameInput = getSnapshotNameInput()
+    if (snapshotNameInput) {
+      snapshotNameInput.value = 'Moon approach'
+      snapshotNameInput.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    getActionButton('saveNamedDebugSnapshot')?.click()
+    const closedAfterNamedSnapshotSave = getDropdown()?.hidden
+
+    menu.close()
     writeDebugScenarioSnapshot({
       version: 1,
       savedAt: new Date(0).toISOString(),
@@ -1597,6 +1687,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       activeAfterWrap,
       closedAfterEscape,
       closedAfterExit,
+      closedAfterNamedSnapshotSave,
       closedAfterOutsidePointer,
       closedAfterRestart,
       closedAfterTab,
@@ -1609,6 +1700,8 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       exitLabelAfterFirstClick,
       focusAfterEscape,
       focusAfterRestart,
+      focusAfterSnapshotSaveBack,
+      focusAfterSnapshotSaveOpen,
       fpsCheckedAfterToggle,
       fpsLabelAfterToggle,
       focusAfterDebugSnapshotBack,
@@ -1621,7 +1714,9 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       openAfterClick,
       recentOptions,
       restartLabelAfterFirstClick,
+      savedSnapshotNames,
       selectedRecentLoadedElapsed,
+      suggestedSnapshotName,
     }
   })
 
@@ -1655,6 +1750,8 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     exitLabelAfterFirstClick: 'Confirm exit',
     focusAfterEscape: true,
     focusAfterRestart: true,
+    focusAfterSnapshotSaveBack: 'saveDebugSnapshot',
+    focusAfterSnapshotSaveOpen: true,
     fpsCheckedAfterToggle: 'true',
     fpsLabelAfterToggle: 'Hide FPS meter',
     focusAfterDebugSnapshotBack: 'openDebugSnapshotLoad',
@@ -1664,13 +1761,16 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     loadLastDebugLabel: 'Load last debug snapshot',
     loadDisabledWithSnapshot: false,
     loadDisabledWithoutSnapshot: true,
+    closedAfterNamedSnapshotSave: true,
     openAfterClick: true,
     recentOptions: [
       expect.stringContaining('Snapshot at 2s - '),
       expect.stringContaining('Snapshot at 1s - '),
     ],
     restartLabelAfterFirstClick: 'Confirm restart',
+    savedSnapshotNames: ['Moon approach'],
     selectedRecentLoadedElapsed: 1,
+    suggestedSnapshotName: 'Snapshot at 42s',
   })
 })
 
@@ -2905,6 +3005,12 @@ test('captures the mobile top menu open over gameplay HUD', async ({
   ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-open')
+
+  await page.getByRole('menuitem', { name: 'Save debug snapshot' }).click()
+  await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue(
+    /Reach the Moon|reach-moon/,
+  )
+  await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-snapshot-save')
 })
 
 test('captures the mobile in-game controls menu open over gameplay HUD', async ({

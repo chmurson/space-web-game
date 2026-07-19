@@ -15,6 +15,7 @@ export type TopMenu = {
   close: () => void
   element: HTMLElement
   isOpen: () => boolean
+  openDebugSnapshotSave: () => void
   syncState: () => void
 }
 
@@ -33,8 +34,10 @@ const isConfirmableAction = (
 export const createTopMenu = (options: {
   app: HTMLElement
   getDebugModeEnabled: () => boolean
+  getDebugSnapshotSuggestedName: () => string
   getFpsIndicatorEnabled: () => boolean
   onAction: (action: TopMenuAction) => void
+  onSaveDebugSnapshot: (name: string) => void
 }): TopMenu => {
   const menuId = 'top-menu-dropdown'
   const topBar = options.app.querySelector<HTMLElement>('.top-bar')
@@ -51,6 +54,7 @@ export const createTopMenu = (options: {
   let open = false
   let activeSection: TopMenuSurfaceProps['activeSection'] = 'main'
   let debugModeEnabled = options.getDebugModeEnabled()
+  let debugSnapshotName = ''
   let fpsIndicatorEnabled = options.getFpsIndicatorEnabled()
   let loadSnapshotAvailable = readDebugScenarioSnapshot() !== null
   let recentSnapshots: DebugScenarioSnapshotEntry[] =
@@ -66,11 +70,14 @@ export const createTopMenu = (options: {
 
   const getMenuItems = () =>
     Array.from(
-      surface.element.querySelectorAll<HTMLButtonElement | HTMLSelectElement>(
+      surface.element.querySelectorAll<
+        HTMLButtonElement | HTMLInputElement | HTMLSelectElement
+      >(
         [
           'button[role="menuitem"]',
           'button[role="menuitemcheckbox"]',
           'button[role="menuitemradio"]',
+          'input.menu-debug-snapshot-name',
           'select.menu-recent-snapshot-select',
         ].join(', '),
       ),
@@ -128,6 +135,7 @@ export const createTopMenu = (options: {
     surface.render({
       activeSection,
       debugModeEnabled,
+      debugSnapshotName,
       fpsIndicatorEnabled,
       loadSnapshotAvailable,
       menuId,
@@ -146,7 +154,7 @@ export const createTopMenu = (options: {
         }
 
         options.onAction(action)
-        if (action === 'saveDebugSnapshot' || action === 'loadDebugSnapshot') {
+        if (action === 'loadDebugSnapshot') {
           syncSnapshotAvailability()
         }
         syncToggleState()
@@ -155,6 +163,23 @@ export const createTopMenu = (options: {
       },
       onMenuButtonClick: () => {
         setOpen(!open, open ? 'button' : 'first-item')
+      },
+      onDebugSnapshotNameChange: (name) => {
+        debugSnapshotName = name
+      },
+      onDebugSnapshotSave: () => {
+        options.onSaveDebugSnapshot(debugSnapshotName)
+        syncSnapshotAvailability()
+        pendingConfirmationAction = null
+        setOpen(false, 'button')
+      },
+      onDebugSnapshotSaveBack: () => {
+        activeSection = 'main'
+        renderMenu()
+        focusAction('saveDebugSnapshot')
+      },
+      onDebugSnapshotSaveMenu: () => {
+        openDebugSnapshotSave()
       },
       onRecentSnapshotBack: () => {
         activeSection = 'main'
@@ -210,6 +235,7 @@ export const createTopMenu = (options: {
 
     if (!nextOpen) {
       activeSection = 'main'
+      debugSnapshotName = ''
       pendingConfirmationAction = null
     }
     renderMenu()
@@ -222,11 +248,26 @@ export const createTopMenu = (options: {
     }
   }
 
+  const openDebugSnapshotSave = () => {
+    debugSnapshotName = options.getDebugSnapshotSuggestedName()
+    activeSection = 'debug-snapshot-save'
+    setOpen(true, 'first-item')
+  }
+
   const handleDropdownKeyDown = (event: KeyboardEvent) => {
     const menuItems = getMenuItems()
     const currentIndex = menuItems.indexOf(
-      document.activeElement as HTMLButtonElement | HTMLSelectElement,
+      document.activeElement as
+        | HTMLButtonElement
+        | HTMLInputElement
+        | HTMLSelectElement,
     )
+    if (
+      event.target instanceof HTMLInputElement &&
+      (event.key === 'Home' || event.key === 'End')
+    ) {
+      return
+    }
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       focusItem((currentIndex + 1 + menuItems.length) % menuItems.length)
@@ -290,6 +331,7 @@ export const createTopMenu = (options: {
     close: () => setOpen(false),
     element: root,
     isOpen: () => open,
+    openDebugSnapshotSave,
     syncState,
   }
 }

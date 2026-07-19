@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeyboardShortcuts } from '@/input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '@/input/keyboardInput'
@@ -16,13 +16,19 @@ const createKeyboardTarget = () => {
     dispatch: (
       type: string,
       code: string,
-      init: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'repeat' | 'shiftKey' | 'timeStamp'>> = {},
+      init: Partial<
+        Pick<
+          KeyboardEvent,
+          'ctrlKey' | 'repeat' | 'shiftKey' | 'target' | 'timeStamp'
+        >
+      > = {},
     ) => {
       const event = {
         code,
         ctrlKey: init.ctrlKey ?? false,
         repeat: init.repeat ?? false,
         shiftKey: init.shiftKey ?? false,
+        target: init.target ?? null,
         timeStamp: init.timeStamp ?? 0,
       } as KeyboardEvent
 
@@ -36,6 +42,10 @@ const createKeyboardTarget = () => {
     },
   }
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('bindKeyboardShortcuts', () => {
   it('clears held and latched controls when gameplay interactions become disabled', () => {
@@ -157,5 +167,43 @@ describe('bindKeyboardShortcuts', () => {
     keyboardTarget.dispatch('keydown', 'KeyT')
 
     expect(handleAction).toHaveBeenCalledWith('cycleAssistTarget')
+  })
+
+  it('ignores gameplay input while an editable element owns the keyboard', () => {
+    const keyboardInput = createKeyboardInput()
+    const keyboardTarget = createKeyboardTarget()
+    const handleAction = vi.fn()
+    const handleTargetSelectorShortcut = vi.fn(() => true)
+
+    bindKeyboardShortcuts({
+      autoDiscoverStrongestInfluence: true,
+      getDebugModeEnabled: () => true,
+      getInteractionsEnabled: () => true,
+      handleAction,
+      handleTargetSelectorShortcut,
+      keyboardInput,
+      windowTarget: keyboardTarget,
+    })
+
+    for (const [code, target] of [
+      ['KeyR', { tagName: 'INPUT' }],
+      ['Digit1', { tagName: 'TEXTAREA' }],
+      ['Digit2', { tagName: 'SELECT' }],
+      ['KeyC', { isContentEditable: true, tagName: 'DIV' }],
+    ]) {
+      keyboardTarget.dispatch('keydown', code as string, {
+        target: target as unknown as EventTarget,
+      })
+    }
+
+    vi.stubGlobal('document', {
+      activeElement: { tagName: 'INPUT' },
+    })
+    keyboardTarget.dispatch('keydown', 'KeyT')
+    keyboardTarget.dispatch('keydown', 'KeyW')
+
+    expect(handleAction).not.toHaveBeenCalled()
+    expect(handleTargetSelectorShortcut).not.toHaveBeenCalled()
+    expect(keyboardInput.getManualControls().main).toBe(0)
   })
 })

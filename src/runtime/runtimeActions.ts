@@ -1,10 +1,12 @@
 import * as THREE from 'three'
+import {
+  createDebugScenarioSnapshotEntryName,
+  createSnapshotFromState,
+  writeDebugScenarioSnapshot,
+} from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
 import { updateCameraView } from '../render/sceneUpdates'
-import {
-  type RuntimeScenarioOptions,
-  saveRuntimeDebugSnapshot,
-} from '../scenario/runtimeScenario'
+import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import {
   type CameraControlMode,
@@ -151,21 +153,27 @@ export const createRuntimeActions = (options: {
     setTimeWarp,
   })
 
-  const saveDebugScenarioSnapshot = () => {
-    options.runtime.debug.debugSnapshotStatus = saveRuntimeDebugSnapshot(
-      options.runtime.simulation.state,
-      {
-        assistTargetIndex: options.runtime.simulation.assistTargetIndex,
-        assistTargetSelectionMode:
-          options.runtime.simulation.assistTargetSelectionMode,
-        coastPredictionHorizonHours:
-          options.runtime.simulation.coastPredictionHorizonHours,
-        scenarioSession: options.runtime.scenario.session,
-        viewportSize: options.runtime.simulation.viewportSize,
-      },
-    )
-      ? 'snapshot saved; use [7] load or ?scenario=debug-snapshot'
-      : 'snapshot save failed'
+  const createCurrentDebugScenarioSnapshot = () =>
+    createSnapshotFromState(options.runtime.simulation.state, {
+      assistTargetIndex: options.runtime.simulation.assistTargetIndex,
+      assistTargetSelectionMode:
+        options.runtime.simulation.assistTargetSelectionMode,
+      coastPredictionHorizonHours:
+        options.runtime.simulation.coastPredictionHorizonHours,
+      scenarioSession: options.runtime.scenario.session,
+      viewportSize: options.runtime.simulation.viewportSize,
+    })
+
+  const saveDebugScenarioSnapshot = (name?: string) => {
+    try {
+      writeDebugScenarioSnapshot(createCurrentDebugScenarioSnapshot(), name)
+      options.runtime.debug.debugSnapshotStatus =
+        'snapshot saved; use [7] load or ?scenario=last-debug-snapshot'
+      return true
+    } catch {
+      options.runtime.debug.debugSnapshotStatus = 'snapshot save failed'
+      return false
+    }
   }
 
   const getFollowCameraTargetPosition = () =>
@@ -315,6 +323,10 @@ export const createRuntimeActions = (options: {
   return {
     dispatchScenarioPromptAction,
     enterMainMenuBackground: scenarioRuntimeController.enterMainMenuBackground,
+    getDebugSnapshotSuggestedName: () =>
+      createDebugScenarioSnapshotEntryName(
+        createCurrentDebugScenarioSnapshot(),
+      ),
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
       if (action === 'increaseTimeWarp') {
         options.runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
@@ -441,6 +453,7 @@ export const createRuntimeActions = (options: {
 
       return { refreshTrajectoryPrediction: false }
     },
+    saveDebugSnapshot: saveDebugScenarioSnapshot,
     loadDebugSnapshot: () => {
       const previousStatus = options.runtime.debug.debugSnapshotStatus
       scenarioRuntimeController.loadDebugSnapshot()

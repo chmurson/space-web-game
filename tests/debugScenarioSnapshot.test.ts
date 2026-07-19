@@ -5,6 +5,7 @@ import {
   createDebugScenarioSnapshotEntryName,
   createScenarioFromSnapshot,
   createSnapshotFromState,
+  getRecentDebugScenarioSnapshotLinks,
   getRecentDebugScenarioSnapshots,
   loadRecentDebugScenarioSnapshot,
   readDebugScenarioSnapshot,
@@ -205,6 +206,23 @@ describe('recent debug scenario snapshots', () => {
     )
   })
 
+  it('uses a custom trimmed name and falls back to the generated suggestion', () => {
+    writeDebugScenarioSnapshot(snapshotBase, '  Lunar approach  ')
+
+    expect(getRecentDebugScenarioSnapshots()[0]?.name).toBe('Lunar approach')
+
+    writeDebugScenarioSnapshot(
+      {
+        ...snapshotBase,
+        savedAt: '2026-04-10T10:00:01.000Z',
+        elapsed: 43,
+      },
+      '   ',
+    )
+
+    expect(getRecentDebugScenarioSnapshots()[0]?.name).toBe('Snapshot at 43s')
+  })
+
   it('loads a selected recent snapshot through the active snapshot slot', () => {
     writeDebugScenarioSnapshot({
       ...snapshotBase,
@@ -223,7 +241,26 @@ describe('recent debug scenario snapshots', () => {
     expect(loadRecentDebugScenarioSnapshot('missing')).toBe(false)
   })
 
-  it('keeps recent snapshots in memory without duplicating them in local storage', () => {
+  it('creates exact-entry URLs without copying snapshot payloads', () => {
+    writeDebugScenarioSnapshot(snapshotBase, 'Lunar approach')
+
+    const [link] = getRecentDebugScenarioSnapshotLinks(
+      'https://space.example/game?devtools=1&scenario=last-debug-snapshot#trail',
+    )
+    const url = new URL(link.url)
+
+    expect(link).toMatchObject({
+      id: 'debug-snapshot-2026-04-10T10:00:00.000Z',
+      name: 'Lunar approach',
+      savedAt: snapshotBase.savedAt,
+    })
+    expect(link).not.toHaveProperty('snapshot')
+    expect(url.searchParams.get('devtools')).toBe('1')
+    expect(url.searchParams.get('scenario')).toBe(link.id)
+    expect(url.hash).toBe('#trail')
+  })
+
+  it('persists recent snapshots and falls back to the active legacy slot', () => {
     const savedValues: Record<string, string> = {}
     const originalSetItem = window.localStorage.setItem.bind(
       window.localStorage,
@@ -253,11 +290,20 @@ describe('recent debug scenario snapshots', () => {
     ])
     expect(loadRecentDebugScenarioSnapshot(recentSnapshots[1].id)).toBe(true)
     expect(readDebugScenarioSnapshot()?.elapsed).toBe(1)
-    expect(Object.keys(savedValues)).toEqual([
+    expect(Object.keys(savedValues).sort()).toEqual([
       'space-web-game.debugScenarioSnapshot.v1',
+      'space-web-game.recentDebugScenarioSnapshots.v1',
     ])
+    expect(
+      JSON.parse(savedValues['space-web-game.recentDebugScenarioSnapshots.v1']),
+    ).toHaveLength(2)
 
     clearRecentDebugScenarioSnapshotsForTests()
-    expect(getRecentDebugScenarioSnapshots()).toEqual([])
+    expect(getRecentDebugScenarioSnapshots()).toMatchObject([
+      {
+        name: 'Snapshot at 1s',
+        snapshot: { elapsed: 1 },
+      },
+    ])
   })
 })

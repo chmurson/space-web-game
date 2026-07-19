@@ -1,10 +1,9 @@
 import {
   createScenarioFromSnapshot,
-  createSnapshotFromState,
   type DebugScenarioSnapshot,
+  loadRecentDebugScenarioSnapshot,
   type RuntimeScenario,
   readDebugScenarioSnapshot,
-  writeDebugScenarioSnapshot,
 } from '../debugScenarioSnapshot'
 import type { AssistTargetSelectionMode } from '../runtime/appRuntimeState'
 import { idleControls } from '../simulation/state'
@@ -61,7 +60,17 @@ export const createRequestedRuntimeScenario = (
     return definition.createScenario()
   }
 
-  if (requestedScenario === 'debug-snapshot') {
+  if (
+    requestedScenario === 'last-debug-snapshot' ||
+    requestedScenario === 'debug-snapshot'
+  ) {
+    const snapshot = readDebugScenarioSnapshot()
+    if (snapshot) {
+      return createScenarioFromSnapshot(snapshot)
+    }
+  }
+
+  if (loadRecentDebugScenarioSnapshot(requestedScenario)) {
     const snapshot = readDebugScenarioSnapshot()
     if (snapshot) {
       return createScenarioFromSnapshot(snapshot)
@@ -114,24 +123,6 @@ export const createRuntimeScenarioState = (
     options.maxViewportSize,
   ),
 })
-
-export const saveRuntimeDebugSnapshot = (
-  state: SimulationState,
-  options: {
-    coastPredictionHorizonHours: number
-    assistTargetIndex?: number
-    assistTargetSelectionMode?: AssistTargetSelectionMode
-    scenarioSession: RuntimeScenarioState['scenarioSession']
-    viewportSize: number
-  },
-) => {
-  try {
-    writeDebugScenarioSnapshot(createSnapshotFromState(state, options))
-    return true
-  } catch {
-    return false
-  }
-}
 
 export const loadDebugRuntimeScenario = (
   options: RuntimeScenarioOptions,

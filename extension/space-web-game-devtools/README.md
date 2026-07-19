@@ -23,6 +23,13 @@ mode. Deployed builds keep the bridge disabled unless either:
 The panel talks to the bridge with `chrome.devtools.inspectedWindow.eval`, so no
 content script is needed for the MVP.
 
+## Recent debug snapshots
+
+The panel lists recent browser-local debug snapshots and can copy an exact URL
+or open it in the inspected game tab. The URL works in the same browser profile
+where the snapshot is stored. Use `?scenario=last-debug-snapshot` to load the
+active snapshot without selecting a specific recent entry.
+
 ## Raw snapshot view
 
 The raw snapshot starts collapsed, matching the original panel layout. Open

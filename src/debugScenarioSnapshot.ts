@@ -15,6 +15,8 @@ import type {
 import type { OrbitPointDisplaySettingOverrides } from './userSettingsStorage'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
+const recentDebugSnapshotsStorageKey =
+  'space-web-game.recentDebugScenarioSnapshots.v1'
 const maxRecentDebugScenarioSnapshots = 10
 
 type DebugScenarioSnapshotV1 = {
@@ -50,6 +52,13 @@ export type DebugScenarioSnapshotEntry = {
   name: string
   savedAt: string
   snapshot: DebugScenarioSnapshot
+}
+
+export type DebugScenarioSnapshotLink = Pick<
+  DebugScenarioSnapshotEntry,
+  'id' | 'name' | 'savedAt'
+> & {
+  url: string
 }
 
 export type RuntimeScenario = Scenario & {
@@ -96,9 +105,6 @@ const getSnapshotAssistTargetSelectionMode = (
 const cloneDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
 ): DebugScenarioSnapshot => JSON.parse(JSON.stringify(snapshot))
-
-const recentDebugScenarioSnapshots: DebugScenarioSnapshotEntry[] = []
-let recentDebugScenarioSnapshotId = 0
 
 const formatElapsedLabel = (elapsed: number) => {
   if (!Number.isFinite(elapsed)) {
@@ -152,18 +158,6 @@ export const createDebugScenarioSnapshotEntryName = (
   return `Snapshot ${new Date(snapshot.savedAt).toLocaleTimeString()}`
 }
 
-const addRecentDebugScenarioSnapshot = (snapshot: DebugScenarioSnapshot) => {
-  const entry = {
-    id: `debug-snapshot-${++recentDebugScenarioSnapshotId}`,
-    name: createDebugScenarioSnapshotEntryName(snapshot),
-    savedAt: snapshot.savedAt,
-    snapshot: cloneDebugScenarioSnapshot(snapshot),
-  }
-
-  recentDebugScenarioSnapshots.unshift(entry)
-  recentDebugScenarioSnapshots.splice(maxRecentDebugScenarioSnapshots)
-}
-
 const isDebugScenarioSnapshot = (
   snapshot: unknown,
 ): snapshot is DebugScenarioSnapshot =>
@@ -174,6 +168,93 @@ const isDebugScenarioSnapshot = (
     (snapshot as DebugScenarioSnapshot).version === 2) &&
   Array.isArray((snapshot as DebugScenarioSnapshot).bodies) &&
   !!(snapshot as DebugScenarioSnapshot).spacecraft
+
+const isDebugScenarioSnapshotEntry = (
+  entry: unknown,
+): entry is DebugScenarioSnapshotEntry => {
+  if (!entry || typeof entry !== 'object') {
+    return false
+  }
+
+  const candidate = entry as Partial<DebugScenarioSnapshotEntry>
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.savedAt === 'string' &&
+    isDebugScenarioSnapshot(candidate.snapshot)
+  )
+}
+
+const readStoredRecentDebugScenarioSnapshots = () => {
+  try {
+    const rawEntries = window.localStorage.getItem(
+      recentDebugSnapshotsStorageKey,
+    )
+    if (!rawEntries) {
+      return []
+    }
+
+    const entries = JSON.parse(rawEntries)
+    return Array.isArray(entries)
+      ? entries
+          .filter(isDebugScenarioSnapshotEntry)
+          .slice(0, maxRecentDebugScenarioSnapshots)
+      : []
+  } catch {
+    return []
+  }
+}
+
+const createDebugScenarioSnapshotEntry = (
+  snapshot: DebugScenarioSnapshot,
+  name: string | undefined,
+  existingEntries: DebugScenarioSnapshotEntry[],
+): DebugScenarioSnapshotEntry => {
+  const baseId = `debug-snapshot-${snapshot.savedAt}`
+  let id = baseId
+  let suffix = 2
+
+  while (existingEntries.some((entry) => entry.id === id)) {
+    id = `${baseId}-${suffix}`
+    suffix += 1
+  }
+
+  return {
+    id,
+    name: name?.trim() || createDebugScenarioSnapshotEntryName(snapshot),
+    savedAt: snapshot.savedAt,
+    snapshot: cloneDebugScenarioSnapshot(snapshot),
+  }
+}
+
+const readRecentDebugScenarioSnapshots = () => {
+  const storedEntries = readStoredRecentDebugScenarioSnapshots()
+  if (storedEntries.length > 0) {
+    return storedEntries
+  }
+
+  const activeSnapshot = readDebugScenarioSnapshot()
+  return activeSnapshot
+    ? [createDebugScenarioSnapshotEntry(activeSnapshot, undefined, [])]
+    : []
+}
+
+const addRecentDebugScenarioSnapshot = (
+  snapshot: DebugScenarioSnapshot,
+  name?: string,
+) => {
+  const recentEntries = readRecentDebugScenarioSnapshots()
+  const entry = createDebugScenarioSnapshotEntry(snapshot, name, recentEntries)
+  const nextEntries = [entry, ...recentEntries].slice(
+    0,
+    maxRecentDebugScenarioSnapshots,
+  )
+
+  window.localStorage.setItem(
+    recentDebugSnapshotsStorageKey,
+    JSON.stringify(nextEntries),
+  )
+}
 
 export const createScenarioFromSnapshot = (
   snapshot: DebugScenarioSnapshot,
@@ -229,20 +310,32 @@ export const readDebugScenarioSnapshot = (): DebugScenarioSnapshot | null => {
   }
 }
 
-export const writeDebugScenarioSnapshot = (snapshot: DebugScenarioSnapshot) => {
+export const writeDebugScenarioSnapshot = (
+  snapshot: DebugScenarioSnapshot,
+  name?: string,
+) => {
+  addRecentDebugScenarioSnapshot(snapshot, name)
   window.localStorage.setItem(debugSnapshotStorageKey, JSON.stringify(snapshot))
-  addRecentDebugScenarioSnapshot(snapshot)
 }
 
 export const getRecentDebugScenarioSnapshots = () => {
-  return recentDebugScenarioSnapshots.map((entry) => ({
+  return readRecentDebugScenarioSnapshots().map((entry) => ({
     ...entry,
     snapshot: cloneDebugScenarioSnapshot(entry.snapshot),
   }))
 }
 
+export const getRecentDebugScenarioSnapshotLinks = (
+  baseUrl: string,
+): DebugScenarioSnapshotLink[] =>
+  readRecentDebugScenarioSnapshots().map(({ id, name, savedAt }) => {
+    const url = new URL(baseUrl)
+    url.searchParams.set('scenario', id)
+    return { id, name, savedAt, url: url.href }
+  })
+
 export const loadRecentDebugScenarioSnapshot = (id: string) => {
-  const entry = recentDebugScenarioSnapshots.find(
+  const entry = readRecentDebugScenarioSnapshots().find(
     (recentEntry) => recentEntry.id === id,
   )
   if (!entry) {
@@ -257,8 +350,7 @@ export const loadRecentDebugScenarioSnapshot = (id: string) => {
 }
 
 export const clearRecentDebugScenarioSnapshotsForTests = () => {
-  recentDebugScenarioSnapshots.splice(0)
-  recentDebugScenarioSnapshotId = 0
+  window.localStorage.removeItem(recentDebugSnapshotsStorageKey)
 }
 
 export const clearDebugScenarioSnapshot = () => {
