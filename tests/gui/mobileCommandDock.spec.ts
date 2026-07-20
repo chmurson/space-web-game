@@ -172,7 +172,7 @@ test('switches camera mode from touch buttons in Nav', async ({ page }) => {
   await expect(target).toHaveAttribute('aria-pressed', 'false')
 })
 
-test('centers a locked target in the viewport above the open Nav panel', async ({
+test('preserves locked target framing above Nav when entering free roam', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
@@ -227,9 +227,37 @@ test('centers a locked target in the viewport above the open Nav panel', async (
     })
     .toBeLessThan(3)
 
+  const openTargetBounds = await targetLabel.boundingBox()
+  if (!openTargetBounds) {
+    throw new Error('Open target camera framing is missing')
+  }
+  const openTargetCenterY = openTargetBounds.y + openTargetBounds.height * 0.5
+
   await page.screenshot({
     path: testInfo.outputPath(
       'mobile-command-dock-locked-target-centered-390.png',
+    ),
+  })
+
+  await page.locator('[data-camera-mode-option="unlocked"]').tap()
+  await expect(
+    page.locator('[data-camera-mode-option="unlocked"]'),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect
+    .poll(async () => {
+      const unlockedTargetBounds = await targetLabel.boundingBox()
+      if (!unlockedTargetBounds) {
+        throw new Error('Unlocked target camera framing is missing')
+      }
+      const unlockedTargetCenterY =
+        unlockedTargetBounds.y + unlockedTargetBounds.height * 0.5
+      return Math.abs(openTargetCenterY - unlockedTargetCenterY)
+    })
+    .toBeLessThan(3)
+
+  await page.screenshot({
+    path: testInfo.outputPath(
+      'mobile-command-dock-free-roam-transition-390.png',
     ),
   })
 })

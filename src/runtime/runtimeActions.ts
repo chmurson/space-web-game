@@ -218,6 +218,39 @@ export const createRuntimeActions = (options: {
       viewportWidth: window.innerWidth,
     })
 
+  const getFreeRoamTransitionTargetPosition = () => {
+    const followTarget = getCameraTargetPosition()
+    const viewportHeight = window.innerHeight
+    if (viewportHeight <= 0) {
+      return { ...followTarget }
+    }
+
+    const targetNdcY = THREE.MathUtils.clamp(
+      (options.getFollowCameraViewportBottomInset?.() ?? 0) / viewportHeight,
+      0,
+      1,
+    )
+    const verticalDirection = Math.sin(options.cameraElevation)
+    if (targetNdcY === 0 || Math.abs(verticalDirection) < 1e-6) {
+      return { ...followTarget }
+    }
+
+    const cameraDirectionLength = Math.hypot(
+      Math.SQRT2 * Math.cos(options.cameraElevation),
+      verticalDirection,
+    )
+    const screenUpOffset =
+      (options.runtime.simulation.viewportSize *
+        0.5 *
+        targetNdcY *
+        cameraDirectionLength) /
+      (Math.SQRT2 * verticalDirection * RENDER_SCALE)
+    return {
+      x: followTarget.x + screenUpOffset,
+      y: followTarget.y + screenUpOffset,
+    }
+  }
+
   const setCameraMode = (mode: CameraControlMode) => {
     if (options.runtime.scenario.directives.cameraModeChangesLocked) {
       return false
@@ -228,9 +261,8 @@ export const createRuntimeActions = (options: {
     }
 
     if (mode === 'unlocked') {
-      options.runtime.ui.camera.panOffset = {
-        ...getCameraTargetPosition(),
-      }
+      options.runtime.ui.camera.panOffset =
+        getFreeRoamTransitionTargetPosition()
     }
     options.runtime.ui.camera.mode = mode
     updateCamera()

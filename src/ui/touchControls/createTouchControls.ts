@@ -1,5 +1,4 @@
 import type { AssistMode } from '../../assist/orbitalAssist'
-import { getIntentionalSwipeThresholdPoint } from '../../input/intentionalSwipeThreshold'
 import type { KeyboardInput } from '../../input/keyboardInput'
 import type { TouchThrustControlUiState } from '../../runtime/appRuntimeState'
 import type { AssistTargetUiState } from '../../runtime/gameQueries'
@@ -1214,22 +1213,8 @@ export const createTouchControls = (options: {
               return
             }
 
-            const thresholdPoint = getIntentionalSwipeThresholdPoint({
-              currentX: touch.clientX,
-              currentY: touch.clientY,
-              startX: activeSession.startX,
-              startY: activeSession.startY,
-              thresholdX: unlockThresholdX,
-              thresholdY: unlockThresholdY,
-            })
-
-            if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
+            if (options.onCameraModeSelected('unlocked')) {
               options.onCameraUnlockedBySwipe?.()
-              activeSession.hasPanned =
-                options.onCameraPanGesture(thresholdPoint, {
-                  x: touch.clientX,
-                  y: touch.clientY,
-                }) || activeSession.hasPanned
             }
             activeSession.previousX = touch.clientX
             activeSession.previousY = touch.clientY

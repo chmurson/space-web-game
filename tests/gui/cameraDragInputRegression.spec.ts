@@ -6,6 +6,143 @@ type ThreeModule = typeof import('three')
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
 
+test('starts mobile panning after the touch move that unlocks free roam', async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const touchControlsModulePath =
+      '/src/ui/touchControls/createTouchControls.ts'
+    const { createTouchControls } = (await import(
+      touchControlsModulePath
+    )) as TouchControlsModule
+    const body = {
+      color: '#38BDF8',
+      id: 'earth',
+      mass: 1,
+      name: 'Earth',
+      position: { x: 0, y: 0 },
+      radius: 1,
+      velocity: { x: 0, y: 0 },
+    }
+    let cameraMode: 'centered' | 'target' | 'unlocked' = 'centered'
+    const cameraPans: {
+      next: { x: number; y: number }
+      previous: { x: number; y: number }
+    }[] = []
+    const modeSelections: string[] = []
+    let unlockNotices = 0
+    const controls = createTouchControls({
+      app: document.body,
+      automaticTargetingAvailable: true,
+      commitTimeWarp: () => {},
+      commitTrajectoryHorizon: () => {},
+      getAssistTargetUiState: () => ({
+        activeTarget: body,
+        mode: 'auto',
+        recommendedTarget: null,
+      }),
+      getCameraMode: () => cameraMode,
+      getCameraModeChangesLocked: () => false,
+      getCurrentTimeWarp: () => 1,
+      getCurrentTrajectoryHorizonHours: () => 1,
+      getInteractionsEnabled: () => true,
+      getMobileManeuverStartByDrag: () => false,
+      getSpacecraftVisible: () => true,
+      getTargetControlRows: () => [],
+      getTimeWarpPreview: () => ({
+        canCommit: true,
+        reason: null,
+        value: 1,
+      }),
+      getTimeWarpPreviews: () => [],
+      getTrajectoryHorizonPreviews: () => [],
+      initialTargetControlSide: 'left',
+      initialTrajectoryControlSide: 'hidden',
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({
+          main: 0,
+          reverse: 0,
+          strafe: 0,
+          turn: 0,
+        }),
+        hasManualTurn: () => false,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+        setVirtualTurn: () => {},
+      },
+      onCameraModeSelected: (mode) => {
+        modeSelections.push(mode)
+        cameraMode = mode
+        return true
+      },
+      onCameraPanGesture: (previous, next) => {
+        cameraPans.push({ next, previous })
+        return true
+      },
+      onCameraUnlockedBySwipe: () => {
+        unlockNotices += 1
+      },
+      onReturnToAutomaticTarget: () => true,
+      onSelectTargetIndex: () => true,
+      onTargetHeadingPlan: () => {},
+      onTargetHeadingPlanCanceled: () => {},
+      onTargetHeadingPlanCommitted: () => true,
+      onThrustControlUiStateChange: () => {},
+      onZoom: () => {},
+    })
+    document.body.append(controls.element)
+
+    const dispatchTouch = (
+      type: 'touchmove' | 'touchstart',
+      point: { x: number; y: number },
+    ) => {
+      const touch = new Touch({
+        clientX: point.x,
+        clientY: point.y,
+        identifier: 31,
+        target: controls.element,
+      })
+      controls.element.dispatchEvent(
+        new TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          changedTouches: [touch],
+          targetTouches: [touch],
+          touches: [touch],
+        }),
+      )
+    }
+
+    dispatchTouch('touchstart', { x: 20, y: 100 })
+    dispatchTouch('touchmove', { x: 230, y: 100 })
+    const panCountOnUnlockMove = cameraPans.length
+    dispatchTouch('touchmove', { x: 250, y: 100 })
+
+    controls.element.remove()
+    return {
+      cameraPans,
+      modeSelections,
+      panCountOnUnlockMove,
+      unlockNotices,
+    }
+  })
+
+  expect(result.modeSelections).toEqual(['unlocked'])
+  expect(result.unlockNotices).toBe(1)
+  expect(result.panCountOnUnlockMove).toBe(0)
+  expect(result.cameraPans).toEqual([
+    {
+      next: { x: 250, y: 100 },
+      previous: { x: 230, y: 100 },
+    },
+  ])
+})
+
 test('keeps desktop edge-scroll panning independent of heading planning visibility', async ({
   page,
 }) => {

@@ -428,6 +428,52 @@ describe('createRuntimeActions', () => {
     }
   })
 
+  it('preserves clipped follow-camera framing when entering free roam', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      const viewportHeight = 844
+      const viewportBottomInset = 260
+      setWindowSize(390, viewportHeight)
+      const runtimeActions = createTestRuntimeActions(runtime, {
+        getFollowCameraViewportBottomInset: () => viewportBottomInset,
+      })
+
+      expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
+
+      const expectedOffset =
+        (runtime.simulation.viewportSize *
+          0.5 *
+          (viewportBottomInset / viewportHeight) *
+          Math.hypot(Math.SQRT2 * Math.cos(1), Math.sin(1))) /
+        (Math.SQRT2 * Math.sin(1) * RENDER_SCALE)
+      expect(runtime.ui.camera.panOffset.x).toBeCloseTo(
+        runtime.simulation.state.spacecraft.position.x + expectedOffset,
+      )
+      expect(runtime.ui.camera.panOffset.y).toBeCloseTo(
+        runtime.simulation.state.spacecraft.position.y + expectedOffset,
+      )
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: runtime.ui.camera.panOffset,
+          viewportBottomInset: 0,
+        }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
   it('cycles camera modes through free roam, spacecraft, and target', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
