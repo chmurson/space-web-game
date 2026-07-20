@@ -536,7 +536,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
     )
   expect(trackMaterials).toHaveLength(2)
   expect(trackMaterials[0]).toEqual(trackMaterials[1])
-  expect(trackMaterials[0]?.backgroundColor).toBe('rgba(8, 13, 24, 0.56)')
+  expect(trackMaterials[0]?.backgroundColor).toBe('rgba(8, 13, 24, 0.46)')
   await expect(
     page.locator('#touch-rcs-yaw-reveal, #touch-thrust-reveal'),
   ).toHaveCount(0)

@@ -69,8 +69,9 @@ controls, scenario rules, or tutorial progression.
   sit on equal 12 px panel insets rather than reading as a centered cluster.
 - Balanced the perpendicular controls at a 164 px RCS width and 116 px docked
   Thrust height, preserving their existing 48 px thumbs and usable travel.
-- Scoped a common shared-token glass material to both docked tracks. RCS keeps
-  its cyan feedback and Thrust keeps its amber thumb and active feedback.
+- Scoped one common glass material to both docked tracks, using shared
+  border/blur tokens and a lighter 0.46-alpha dark base. RCS keeps its cyan
+  feedback and Thrust keeps its amber thumb and active feedback.
 - Fixed Main Thrust at the dock integration boundary. The reusable thrust root
   intentionally disables pointer hit-testing when used as a free-floating
   overlay; the dock now re-enables it for the docked instance.
