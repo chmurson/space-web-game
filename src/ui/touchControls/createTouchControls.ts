@@ -608,6 +608,12 @@ export const createTouchControls = (options: {
     } else {
       rcsYawControl.clearInput()
     }
+    if (
+      activeSession.kind === 'right-zone-pending' ||
+      activeSession.kind === 'right-zone-active'
+    ) {
+      clearRightZoneGesture()
+    }
     thrustControl.clearInput()
   }
 

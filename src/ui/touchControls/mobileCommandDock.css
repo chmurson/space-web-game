@@ -22,8 +22,8 @@
     justify-items: center;
     padding-right: max(8px, var(--mobile-command-dock-safe-right));
     padding-bottom: calc(
-      var(--mobile-command-dock-safe-bottom) +
-      var(--mobile-command-dock-edge-gap)
+      var(--mobile-command-dock-safe-bottom)
+      + var(--mobile-command-dock-edge-gap)
     );
     padding-left: max(8px, var(--mobile-command-dock-safe-left));
     pointer-events: none;
@@ -119,9 +119,9 @@
     width: min(
       var(--mobile-command-dock-panel-width),
       calc(
-        100vw -
-        max(8px, var(--mobile-command-dock-safe-left)) -
-        max(8px, var(--mobile-command-dock-safe-right))
+        100vw
+        - max(8px, var(--mobile-command-dock-safe-left))
+        - max(8px, var(--mobile-command-dock-safe-right))
       )
     );
     margin-bottom: 8px;
@@ -259,8 +259,8 @@
 
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     bottom: calc(
-      var(--mobile-command-dock-safe-bottom) +
-      var(--mobile-command-dock-hud-height)
+      var(--mobile-command-dock-safe-bottom)
+      + var(--mobile-command-dock-hud-height)
     );
   }
 
@@ -272,18 +272,18 @@
 
   #app[data-mobile-command-dock="true"] .in-game-controls-menu {
     bottom: calc(
-      var(--bottom-safe-area-inset) +
-      var(--mobile-command-dock-hud-height) +
-      8px
+      var(--bottom-safe-area-inset)
+      + var(--mobile-command-dock-hud-height)
+      + 8px
     );
   }
 
   #app[data-mobile-command-dock-open="true"] .touch-edge-reveal-control {
     bottom: calc(
-      env(safe-area-inset-bottom, 0px) +
-      var(--touch-edge-reveal-start) +
-      var(--touch-edge-reveal-stack-offset) +
-      var(--mobile-command-dock-hud-height)
+      env(safe-area-inset-bottom, 0px)
+      + var(--touch-edge-reveal-start)
+      + var(--touch-edge-reveal-stack-offset)
+      + var(--mobile-command-dock-hud-height)
     );
   }
 }

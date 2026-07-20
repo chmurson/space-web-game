@@ -312,6 +312,49 @@ test('hands interrupted control gestures to the newest touch', async ({
     const thrustAfterPanelClose = timeWarpToThrust.getThrustEngaged()
     timeWarpToThrust.remove()
 
+    const closedThrustGesture = createHarness()
+    const closedThrustTouch = {
+      id: 7,
+      target: closedThrustGesture.thrustControl,
+      ...closedThrustGesture.thrustStart,
+    }
+    const closedThrustMove = {
+      ...closedThrustTouch,
+      y: closedThrustTouch.y - 80,
+    }
+    const lateClosedThrustMove = {
+      ...closedThrustTouch,
+      y: closedThrustTouch.y - 100,
+    }
+    closedThrustGesture.dispatchTouch(
+      closedThrustGesture.thrustControl,
+      'touchstart',
+      [closedThrustTouch],
+      [closedThrustTouch],
+    )
+    closedThrustGesture.dispatchTouch(
+      closedThrustGesture.thrustControl,
+      'touchmove',
+      [closedThrustMove],
+      [closedThrustMove],
+    )
+    const thrustBeforeActivePanelClose = closedThrustGesture.getThrustEngaged()
+    closedThrustGesture.closeFlightPanel()
+    const thrustAfterActivePanelClose = closedThrustGesture.getThrustEngaged()
+    const thrustEngagementCountAfterActivePanelClose =
+      closedThrustGesture.getThrustEngagementCount()
+    closedThrustGesture.dispatchTouch(
+      closedThrustGesture.thrustControl,
+      'touchmove',
+      [lateClosedThrustMove],
+      [lateClosedThrustMove],
+    )
+    const thrustAfterLateClosedMove = closedThrustGesture.getThrustEngaged()
+    const lateClosedMoveReengagedThrust =
+      closedThrustGesture.getThrustEngagementCount() >
+      thrustEngagementCountAfterActivePanelClose
+    closedThrustGesture.remove()
+
     const thrustToTimeWarp = createHarness()
     const oldThrustTouch = {
       id: 5,
@@ -360,7 +403,11 @@ test('hands interrupted control gestures to the newest touch', async ({
     return {
       postThrustTimeWarpValue,
       successiveTimeWarpValue,
+      lateClosedMoveReengagedThrust,
+      thrustAfterActivePanelClose,
+      thrustAfterLateClosedMove,
       thrustAfterPanelClose,
+      thrustBeforeActivePanelClose,
       thrustEngaged,
       thrustLatchedAfterRelease,
     }
@@ -369,7 +416,11 @@ test('hands interrupted control gestures to the newest touch', async ({
   expect(result).toEqual({
     postThrustTimeWarpValue: 30,
     successiveTimeWarpValue: 30,
+    lateClosedMoveReengagedThrust: false,
+    thrustAfterActivePanelClose: false,
+    thrustAfterLateClosedMove: false,
     thrustAfterPanelClose: false,
+    thrustBeforeActivePanelClose: true,
     thrustEngaged: true,
     thrustLatchedAfterRelease: true,
   })

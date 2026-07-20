@@ -210,7 +210,7 @@ describe('tutorialOnboardingProgress', () => {
 
   it('explains that the high-warp burn needs the x30s time warp notch', () => {
     expect(getOnboardingDescription('intro-timewarp-thrust', 'mobile')).toBe(
-      'Keep time warp at x30s, then open Burn and hold the handle up for a few seconds to move away from Earth.',
+      'Keep time warp at x30s, then use Main Thrust in the open Flight panel and hold its handle up for a few seconds to move away from Earth.',
     )
     expect(getOnboardingDescription('intro-timewarp-thrust', 'desktop')).toBe(
       'Keep time warp at x30s, then hold W or Up Arrow for a few seconds to move away from Earth.',
