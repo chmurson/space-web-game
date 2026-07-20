@@ -32,7 +32,7 @@ export const getTimeWarpControlStatus = (options: {
   if (!reason) {
     return {
       reason: null,
-      text: 'Drag left for faster · right for slower',
+      text: '',
       tone: 'available',
     }
   }

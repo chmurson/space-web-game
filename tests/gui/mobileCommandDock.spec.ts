@@ -205,7 +205,7 @@ test('preserves camera state and explains when camera changes are locked', async
     })
     dock.setTimeWarpState({
       reason: null,
-      status: 'Drag left for faster · right for slower',
+      status: '',
       tone: 'available',
     })
     dock.setOpenPanel('nav')
@@ -286,7 +286,7 @@ test('preserves camera state and explains when camera changes are locked', async
     openPanel: 'nav',
     targetPressedAfterTarget: 'true',
     timeWarpAvailableAfterRestore: 'true',
-    timeWarpStatus: 'Drag left for faster · right for slower',
+    timeWarpStatus: '',
     tutorialFocus: 'warp',
     tutorialFocusWhileAlreadyOpen: 'warp',
   })
@@ -920,7 +920,7 @@ test('captures normal, capped, and blocked Time Warp feedback in Nav', async ({
   await page.mouse.move(centerX - 56, centerY, { steps: 4 })
   await page.waitForTimeout(80)
   await page.mouse.up()
-  await expect(status).toHaveText('Drag left for faster · right for slower')
+  await expect(status).toBeEmpty()
   await page.screenshot({
     path: testInfo.outputPath('mobile-command-dock-nav-warp-normal-390.png'),
   })

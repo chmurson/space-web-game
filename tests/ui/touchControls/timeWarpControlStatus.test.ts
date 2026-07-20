@@ -15,7 +15,7 @@ const blockedPreview = (reason: TimeWarpFeedbackReason) => ({
 })
 
 describe('getTimeWarpControlStatus', () => {
-  it('describes the retained horizontal gesture when both directions are available', () => {
+  it('omits helper copy when both directions are available', () => {
     expect(
       getTimeWarpControlStatus({
         decreasePreview: availablePreview,
@@ -23,7 +23,7 @@ describe('getTimeWarpControlStatus', () => {
       }),
     ).toEqual({
       reason: null,
-      text: 'Drag left for faster · right for slower',
+      text: '',
       tone: 'available',
     })
   })
@@ -38,7 +38,7 @@ describe('getTimeWarpControlStatus', () => {
   ] satisfies [
     TimeWarpFeedbackReason,
     string,
-  ][])('maps %s to concise visible feedback', (reason, text) => {
+  ][])('maps %s to concise assistive feedback', (reason, text) => {
     expect(
       getTimeWarpControlStatus({
         decreasePreview: availablePreview,
