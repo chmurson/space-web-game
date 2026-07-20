@@ -223,7 +223,29 @@ export const InGameControlsMenuSurface = ({
           <div class="in-game-controls-menu-keyboard-row">
             <span class="in-game-controls-menu-keyboard-name">Turn</span>
             <span class="in-game-controls-menu-keyboard-keys">
-              <span>click, move, click</span>
+              <kbd>A</kbd>
+              <span> / </span>
+              <kbd>D</kbd>
+              <span> / </span>
+              <kbd>←</kbd>
+              <span> / </span>
+              <kbd>→</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">
+              Precise turn
+            </span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>Shift</kbd>
+              <span> + </span>
+              <kbd>A</kbd>
+              <span> / </span>
+              <kbd>D</kbd>
+              <span> / </span>
+              <kbd>←</kbd>
+              <span> / </span>
+              <kbd>→</kbd>
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">

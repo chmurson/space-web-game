@@ -150,7 +150,7 @@ const createHarness = (
 }
 
 describe('bindPointerCameraInput target heading planning', () => {
-  it('plans on first primary click, updates on mouse move, and commits on second primary click', () => {
+  it('does not start target-heading planning from a mouse click', () => {
     const harness = createHarness()
 
     harness.canvas.dispatchEvent(
@@ -159,11 +159,35 @@ describe('bindPointerCameraInput target heading planning', () => {
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerup', { clientX: 100, clientY: 100 }),
     )
+    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlanCanceled).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it('plans, updates, and commits with non-mouse pointers', () => {
+    const harness = createHarness()
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
+    )
     harness.canvas.dispatchEvent(
       createPointerEvent('pointermove', {
         clientX: 120,
         clientY: 100,
         pointerId: 2,
+        pointerType: 'touch',
       }),
     )
     harness.canvas.dispatchEvent(
@@ -171,6 +195,7 @@ describe('bindPointerCameraInput target heading planning', () => {
         clientX: 120,
         clientY: 100,
         pointerId: 3,
+        pointerType: 'touch',
       }),
     )
     harness.canvas.dispatchEvent(
@@ -178,6 +203,7 @@ describe('bindPointerCameraInput target heading planning', () => {
         clientX: 120,
         clientY: 100,
         pointerId: 3,
+        pointerType: 'touch',
       }),
     )
 
@@ -187,20 +213,29 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
-  it('updates preview but does not commit when the second gesture drags past tolerance', () => {
+  it('updates touch preview but does not commit after a drag past tolerance', () => {
     const harness = createHarness()
 
     harness.canvas.dispatchEvent(
-      createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),
+      createPointerEvent('pointerdown', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
     )
     harness.canvas.dispatchEvent(
-      createPointerEvent('pointerup', { clientX: 100, clientY: 100 }),
+      createPointerEvent('pointerup', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
     )
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerdown', {
         clientX: 100,
         clientY: 100,
         pointerId: 2,
+        pointerType: 'touch',
       }),
     )
     harness.canvas.dispatchEvent(
@@ -208,6 +243,7 @@ describe('bindPointerCameraInput target heading planning', () => {
         clientX: 140,
         clientY: 100,
         pointerId: 2,
+        pointerType: 'touch',
       }),
     )
     harness.canvas.dispatchEvent(
@@ -215,6 +251,7 @@ describe('bindPointerCameraInput target heading planning', () => {
         clientX: 140,
         clientY: 100,
         pointerId: 2,
+        pointerType: 'touch',
       }),
     )
 
@@ -234,10 +271,18 @@ describe('bindPointerCameraInput target heading planning', () => {
     const harness = createHarness()
 
     harness.canvas.dispatchEvent(
-      createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),
+      createPointerEvent('pointerdown', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
     )
     harness.canvas.dispatchEvent(
-      createPointerEvent('pointerup', { clientX: 100, clientY: 100 }),
+      createPointerEvent('pointerup', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
     )
     const rightClick = createPointerEvent('pointerdown', {
       button: 2,
