@@ -67,8 +67,6 @@ export const createUiSettingsDialog = (options: {
   getTouchTargetControlSide: () => TouchControlSide
   getTouchTrajectoryControlAvailable?: () => boolean
   getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
-  getTouchWarpControlAvailable?: () => boolean
-  getTouchWarpControlSide: () => TouchControlSide
   onDesktopEdgePanEnabledChange(enabled: boolean): void
   onDesktopEdgePanSpeedChange(speed: DesktopEdgePanSpeed): void
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
@@ -76,7 +74,6 @@ export const createUiSettingsDialog = (options: {
   onOpenChange?: (open: boolean) => void
   onTouchTargetControlSideChange(side: TouchControlSide): void
   onTouchTrajectoryControlSideChange(side: TouchTrajectoryControlState): void
-  onTouchWarpControlSideChange(side: TouchControlSide): void
 }): UiSettingsDialog => {
   const dialogId = `app-dialog-${++nextUiSettingsDialogId}`
   const touchControlsVisibleMedia = window.matchMedia(touchControlsVisibleQuery)
@@ -132,9 +129,6 @@ export const createUiSettingsDialog = (options: {
       touchTrajectoryControlAvailable:
         options.getTouchTrajectoryControlAvailable?.() ?? true,
       touchTrajectoryControlSide: options.getTouchTrajectoryControlSide(),
-      touchWarpControlAvailable:
-        options.getTouchWarpControlAvailable?.() ?? true,
-      touchWarpControlSide: options.getTouchWarpControlSide(),
       onBackToMainSettings: () => {
         activePane = 'main'
         syncState()
@@ -170,10 +164,6 @@ export const createUiSettingsDialog = (options: {
       },
       onTouchTrajectoryControlSideChange: (side) => {
         options.onTouchTrajectoryControlSideChange(side)
-        syncState()
-      },
-      onTouchWarpControlSideChange: (side) => {
-        options.onTouchWarpControlSideChange(side)
         syncState()
       },
     })

@@ -171,7 +171,7 @@ describe('tutorialOnboardingProgress', () => {
       title: 'Set Time Warp',
     })
     expect(getOnboardingDescription('intro-timewarp', 'mobile')).toBe(
-      'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches x30s.',
+      'Open Nav, then drag Time Warp left for faster rates until the time pill reaches x30s.',
     )
     expect(
       getTutorialOnboardingPromptContent('intro-timewarp', 'desktop'),

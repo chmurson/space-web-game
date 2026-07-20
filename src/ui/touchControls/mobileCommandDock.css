@@ -21,8 +21,8 @@
     justify-items: center;
     padding-right: max(8px, var(--mobile-command-dock-safe-right));
     padding-bottom: calc(
-      var(--mobile-command-dock-safe-bottom)
-      + var(--mobile-command-dock-edge-gap)
+      var(--mobile-command-dock-safe-bottom) +
+      var(--mobile-command-dock-edge-gap)
     );
     padding-left: max(8px, var(--mobile-command-dock-safe-left));
     pointer-events: none;
@@ -126,6 +126,157 @@
     min-width: 0;
   }
 
+  .mobile-command-dock-nav-panel {
+    display: grid;
+    gap: 12px;
+    padding: var(--mobile-command-dock-panel-padding);
+    border: 1px solid var(--ui-glass-panel-border);
+    border-radius: var(--touch-control-radius);
+    background: var(--ui-glass-panel-bg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      var(--ui-glass-panel-shadow);
+    backdrop-filter: var(--ui-glass-panel-blur);
+    pointer-events: auto;
+  }
+
+  .mobile-command-dock-nav-panel[hidden] {
+    display: none;
+  }
+
+  .mobile-command-dock-nav-time-warp,
+  .mobile-command-dock-nav-camera {
+    display: grid;
+    min-width: 0;
+    gap: 7px;
+  }
+
+  .mobile-command-dock-nav-time-warp[hidden] {
+    display: none;
+  }
+
+  .mobile-command-dock-nav-heading {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    color: rgba(226, 232, 240, 0.74);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .mobile-command-dock-nav-heading output {
+    overflow: hidden;
+    color: #f8fafc;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    text-transform: none;
+    white-space: nowrap;
+  }
+
+  .mobile-command-dock-time-warp-host,
+  .mobile-command-dock-time-warp-control {
+    min-width: 0;
+  }
+
+  .mobile-command-dock-time-warp-control .touch-step-selector {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    z-index: auto;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 72px;
+    padding: 10px 14px;
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        rgb(var(--touch-step-selector-accent-rgb) / 0.09),
+        transparent 38%
+      ),
+      var(--ui-glass-control-bg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 10px 22px rgba(2, 6, 23, 0.24);
+  }
+
+  .mobile-command-dock-time-warp-status {
+    min-height: 14px;
+    margin: 0;
+    color: rgba(203, 213, 225, 0.7);
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  .mobile-command-dock-time-warp-status[data-tone="capped"] {
+    color: #fde68a;
+  }
+
+  .mobile-command-dock-nav-camera {
+    padding-top: 10px;
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  .mobile-command-dock-camera-options {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    padding: 0;
+    border: 0;
+    margin: 0;
+  }
+
+  .mobile-command-dock-camera-legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .mobile-command-dock-camera-option {
+    min-width: 0;
+    min-height: 42px;
+    padding: 7px 5px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 10px;
+    background: var(--ui-glass-row-bg);
+    color: rgba(226, 232, 240, 0.76);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.1;
+    touch-action: manipulation;
+  }
+
+  .mobile-command-dock-camera-option-selected {
+    border-color: rgba(56, 189, 248, 0.54);
+    background: rgba(14, 116, 144, 0.22);
+    color: #bae6fd;
+  }
+
+  .mobile-command-dock-camera-option:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .mobile-command-dock-camera-option:focus-visible {
+    outline: 2px solid rgba(125, 211, 252, 0.86);
+    outline-offset: 2px;
+  }
+
   .mobile-command-dock-flight-controls {
     display: grid;
     grid-template-columns: auto auto;
@@ -176,11 +327,11 @@
     touch-action: none;
   }
 
-  .mobile-command-dock[data-tutorial-focused="true"] {
+  .mobile-command-dock:not([data-tutorial-focused="none"]) {
     z-index: calc(var(--z-overlay-hud) + 3);
   }
 
-  .mobile-command-dock[data-tutorial-focused="true"]
+  .mobile-command-dock[data-tutorial-focused="burn"]
     .touch-thrust-control-track {
     border-color: rgba(251, 191, 36, 0.72);
     box-shadow:
@@ -189,19 +340,31 @@
       0 0 24px rgba(251, 191, 36, 0.24);
   }
 
+  .mobile-command-dock[data-tutorial-focused="warp"]
+    .mobile-command-dock-nav-time-warp {
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.3),
+      0 0 24px rgba(251, 191, 36, 0.2);
+  }
+
   #app[data-mobile-command-dock="true"] {
     --mobile-command-dock-hud-height: 66px;
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  #app[data-mobile-command-dock-open="true"] {
+  #app[data-mobile-command-dock-panel="flight"] {
     --mobile-command-dock-hud-height: 224px;
+  }
+
+  #app[data-mobile-command-dock-panel="nav"] {
+    --mobile-command-dock-hud-height: 298px;
   }
 
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     bottom: calc(
-      var(--mobile-command-dock-safe-bottom)
-      + var(--mobile-command-dock-hud-height)
+      var(--mobile-command-dock-safe-bottom) +
+      var(--mobile-command-dock-hud-height)
     );
   }
 
@@ -213,18 +376,18 @@
 
   #app[data-mobile-command-dock="true"] .in-game-controls-menu {
     bottom: calc(
-      var(--bottom-safe-area-inset)
-      + var(--mobile-command-dock-hud-height)
-      + 8px
+      var(--bottom-safe-area-inset) +
+      var(--mobile-command-dock-hud-height) +
+      8px
     );
   }
 
   #app[data-mobile-command-dock-open="true"] .touch-edge-reveal-control {
     bottom: calc(
-      env(safe-area-inset-bottom, 0px)
-      + var(--touch-edge-reveal-start)
-      + var(--touch-edge-reveal-stack-offset)
-      + var(--mobile-command-dock-hud-height)
+      env(safe-area-inset-bottom, 0px) +
+      var(--touch-edge-reveal-start) +
+      var(--touch-edge-reveal-stack-offset) +
+      var(--mobile-command-dock-hud-height)
     );
   }
 }

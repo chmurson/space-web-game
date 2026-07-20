@@ -45,7 +45,6 @@ type SpacecraftControlSettingsVisibility = {
   mobileManeuverStart: boolean
   targetSide: boolean
   trajectorySide: boolean
-  warpSide: boolean
 }
 
 const desktopSpacecraftControlsSummary = 'Keyboard and mouse active'
@@ -54,17 +53,14 @@ const getVisibleSpacecraftControlSettings = ({
   touchControlsVisible,
   touchTargetControlAvailable,
   touchTrajectoryControlAvailable,
-  touchWarpControlAvailable,
 }: {
   touchControlsVisible: boolean
   touchTargetControlAvailable: boolean
   touchTrajectoryControlAvailable: boolean
-  touchWarpControlAvailable: boolean
 }): SpacecraftControlSettingsVisibility => ({
   mobileManeuverStart: touchControlsVisible,
   targetSide: touchControlsVisible && touchTargetControlAvailable,
   trajectorySide: touchControlsVisible && touchTrajectoryControlAvailable,
-  warpSide: touchControlsVisible && touchWarpControlAvailable,
 })
 
 const getSpacecraftControlsSummary = ({
@@ -74,8 +70,6 @@ const getSpacecraftControlsSummary = ({
   touchTargetControlSide,
   touchTrajectoryControlAvailable,
   touchTrajectoryControlSide,
-  touchWarpControlAvailable,
-  touchWarpControlSide,
 }: {
   mobileManeuverStartByDrag: boolean
   touchControlsVisible: boolean
@@ -83,20 +77,14 @@ const getSpacecraftControlsSummary = ({
   touchTargetControlSide: TouchControlSide
   touchTrajectoryControlAvailable: boolean
   touchTrajectoryControlSide: TouchTrajectoryControlState
-  touchWarpControlAvailable: boolean
-  touchWarpControlSide: TouchControlSide
 }) => {
   const visibleSettings = getVisibleSpacecraftControlSettings({
     touchControlsVisible,
     touchTargetControlAvailable,
     touchTrajectoryControlAvailable,
-    touchWarpControlAvailable,
   })
   const summaryParts: string[] = []
 
-  if (visibleSettings.warpSide) {
-    summaryParts.push(`warp ${touchWarpControlSide}`)
-  }
   if (visibleSettings.targetSide) {
     summaryParts.push(`target ${touchTargetControlSide}`)
   }
@@ -114,7 +102,7 @@ const getSpacecraftControlsSummary = ({
 
 const hasVisibleControlSideSettings = (
   settings: SpacecraftControlSettingsVisibility,
-) => settings.warpSide || settings.targetSide || settings.trajectorySide
+) => settings.targetSide || settings.trajectorySide
 
 const UiSettingsSegmentedControl = <TValue extends string>({
   ariaLabel,
@@ -255,8 +243,6 @@ export type UiSettingsDialogSurfaceProps = {
   touchTargetControlSide: TouchControlSide
   touchTrajectoryControlAvailable: boolean
   touchTrajectoryControlSide: TouchTrajectoryControlState
-  touchWarpControlAvailable: boolean
-  touchWarpControlSide: TouchControlSide
   onBackToMainSettings(): void
   onDecreaseDesktopEdgePanSpeed(): void
   onDesktopEdgePanEnabledChange(enabled: boolean): void
@@ -267,7 +253,6 @@ export type UiSettingsDialogSurfaceProps = {
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onTouchTargetControlSideChange(side: TouchControlSide): void
   onTouchTrajectoryControlSideChange(side: TouchTrajectoryControlState): void
-  onTouchWarpControlSideChange(side: TouchControlSide): void
 }
 
 export const UiSettingsDialogSurface = ({
@@ -288,8 +273,6 @@ export const UiSettingsDialogSurface = ({
   touchTargetControlSide,
   touchTrajectoryControlAvailable,
   touchTrajectoryControlSide,
-  touchWarpControlAvailable,
-  touchWarpControlSide,
   onBackToMainSettings,
   onDecreaseDesktopEdgePanSpeed,
   onDesktopEdgePanEnabledChange,
@@ -300,7 +283,6 @@ export const UiSettingsDialogSurface = ({
   onOrbitPointDisplayChange,
   onTouchTargetControlSideChange,
   onTouchTrajectoryControlSideChange,
-  onTouchWarpControlSideChange,
 }: UiSettingsDialogSurfaceProps) => {
   const titleId =
     activePane === 'orbitPointDisplay'
@@ -319,7 +301,6 @@ export const UiSettingsDialogSurface = ({
     touchControlsVisible,
     touchTargetControlAvailable,
     touchTrajectoryControlAvailable,
-    touchWarpControlAvailable,
   })
   const spacecraftControlSideSettingsVisible = hasVisibleControlSideSettings(
     visibleSpacecraftControlSettings,
@@ -359,8 +340,6 @@ export const UiSettingsDialogSurface = ({
               touchTargetControlSide,
               touchTrajectoryControlAvailable,
               touchTrajectoryControlSide,
-              touchWarpControlAvailable,
-              touchWarpControlSide,
             })}
           />
           <UiSettingsNavigationRow
@@ -410,16 +389,6 @@ export const UiSettingsDialogSurface = ({
             aria-label="Control sides"
           >
             <span class="app-dialog-setting-group-label">Control sides</span>
-            {visibleSpacecraftControlSettings.warpSide ? (
-              <UiSettingsRow label="Warp side">
-                <UiSettingsSegmentedControl
-                  ariaLabel="Warp control side"
-                  onChange={onTouchWarpControlSideChange}
-                  options={sideOptions}
-                  value={touchWarpControlSide}
-                />
-              </UiSettingsRow>
-            ) : null}
             {visibleSpacecraftControlSettings.targetSide ? (
               <UiSettingsRow label="Target side">
                 <UiSettingsSegmentedControl

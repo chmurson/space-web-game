@@ -197,9 +197,11 @@ const tutorialOnboardingPromptDefinitions: Record<
     description: ({ inputMode }) =>
       inputMode === 'mobile'
         ? [
-            'Swipe inward from the ',
-            { text: 'Warp tab', tone: 'concept' },
-            ' on the screen edge, then drag the selector upward until the ',
+            'Open ',
+            { text: 'Nav', tone: 'concept' },
+            ', then drag ',
+            { text: 'Time Warp', tone: 'concept' },
+            ' left for faster rates until the ',
             { text: 'time pill', tone: 'concept' },
             ' reaches ',
             { text: 'x30s', tone: 'number' },

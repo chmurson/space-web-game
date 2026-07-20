@@ -72,24 +72,6 @@ const getHudFocusElement = (target: HudFocusKey): HTMLElement | null => {
   return getTelemetryPillElement('thrust')
 }
 
-const getEdgeRevealControlAnchor = (
-  controlSelector: string,
-  revealSelector: string,
-): HTMLElement | null => {
-  const control = document.querySelector<HTMLElement>(controlSelector)
-  const revealControl =
-    control?.closest<HTMLElement>('.touch-edge-reveal-control') ??
-    document.querySelector<HTMLElement>(revealSelector)
-  const revealOpen =
-    revealControl?.classList.contains('touch-edge-reveal-control-open') ?? true
-
-  if (control && revealOpen && hasVisibleRect(control)) {
-    return control
-  }
-
-  return revealControl ?? control
-}
-
 const getAnchorElement = (
   refs: ScenarioPromptUiRefs,
   anchor: AnchorKey,
@@ -106,9 +88,15 @@ const getAnchorElement = (
     return getTelemetryPillElement('time')
   }
   if (anchor === 'time-warp-control') {
-    return getEdgeRevealControlAnchor(
-      '.touch-step-selector-time-warp',
-      '#touch-time-warp-reveal',
+    const control = document.querySelector<HTMLElement>(
+      '.mobile-command-dock-time-warp-control .touch-step-selector-time-warp',
+    )
+    if (control && hasVisibleRect(control)) {
+      return control
+    }
+    return (
+      document.querySelector<HTMLElement>('#mobile-command-dock-nav-button') ??
+      control
     )
   }
   if (anchor === 'thrust-pill') {
