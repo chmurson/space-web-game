@@ -20,7 +20,9 @@ export type KeyboardInput = {
 
 const mainThrustKeys = ['KeyW', 'ArrowUp']
 const reverseThrustKeys = ['KeyS', 'ArrowDown']
+const preciseTurnModifierKeys = ['ShiftLeft', 'ShiftRight']
 const mainThrustLatchDoubleTapMs = 300
+const preciseTurnPower = 0.25
 
 const hasAny = (pressedKeys: Set<string>, codes: string[]) =>
   codes.some((code) => pressedKeys.has(code))
@@ -56,6 +58,17 @@ export const createKeyboardInput = (): KeyboardInput => {
     lastMainThrustTap = null
   }
 
+  const getKeyboardTurn = () => {
+    const power = hasAny(pressedKeys, preciseTurnModifierKeys)
+      ? preciseTurnPower
+      : 1
+
+    return (
+      (pressedKeys.has('ArrowLeft') ? -power : 0) +
+      (pressedKeys.has('ArrowRight') ? power : 0)
+    )
+  }
+
   return {
     clear: () => {
       pressedKeys.clear()
@@ -83,12 +96,14 @@ export const createKeyboardInput = (): KeyboardInput => {
         (pressedKeys.has('KeyE') || virtualControls.strafeRight ? 1 : 0),
       turn: clampVirtualTurn(
         virtualTurn +
+          getKeyboardTurn() +
           (virtualControls.turnLeft ? 1 : 0) +
           (virtualControls.turnRight ? -1 : 0),
       ),
     }),
     hasManualTurn: () =>
       virtualTurn !== 0 ||
+      getKeyboardTurn() !== 0 ||
       virtualControls.turnLeft ||
       virtualControls.turnRight,
     press: (code, options) => {

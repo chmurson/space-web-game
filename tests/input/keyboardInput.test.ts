@@ -73,13 +73,45 @@ describe('createKeyboardInput', () => {
     expect(keyboardInput.getManualControls().main).toBe(0)
   })
 
-  it('does not expose manual turn from left and right keyboard keys', () => {
+  it('turns at full power with left and right arrow keys', () => {
     const keyboardInput = createKeyboardInput()
 
     keyboardInput.press('KeyA')
     expect(keyboardInput.getManualControls().turn).toBe(0)
 
+    keyboardInput.press('ArrowLeft')
+    expect(keyboardInput.getManualControls().turn).toBe(-1)
+    expect(keyboardInput.hasManualTurn()).toBe(true)
+
     keyboardInput.press('ArrowRight')
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+
+    keyboardInput.release('ArrowLeft')
+    expect(keyboardInput.getManualControls().turn).toBe(1)
+    expect(keyboardInput.hasManualTurn()).toBe(true)
+
+    keyboardInput.release('ArrowRight')
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+  })
+
+  it('uses quarter power while either Shift key is held', () => {
+    const keyboardInput = createKeyboardInput()
+
+    keyboardInput.press('ArrowLeft')
+    keyboardInput.press('ShiftLeft')
+    expect(keyboardInput.getManualControls().turn).toBe(-0.25)
+
+    keyboardInput.release('ShiftLeft')
+    expect(keyboardInput.getManualControls().turn).toBe(-1)
+
+    keyboardInput.release('ArrowLeft')
+    keyboardInput.press('ShiftRight')
+    keyboardInput.press('ArrowRight')
+    expect(keyboardInput.getManualControls().turn).toBe(0.25)
+
+    keyboardInput.clear()
     expect(keyboardInput.getManualControls().turn).toBe(0)
     expect(keyboardInput.hasManualTurn()).toBe(false)
   })

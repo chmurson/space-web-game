@@ -662,11 +662,7 @@ export const bindPointerCameraInput = (
       const completedPan =
         activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned
       clearActiveCameraPan(event)
-      if (
-        !completedPan &&
-        event.isPrimary &&
-        (event.pointerType !== 'mouse' || event.button === 0)
-      ) {
+      if (!completedPan && event.isPrimary && event.pointerType !== 'mouse') {
         if (!getTargetHeadingSelectionEnabled()) {
           cancelTargetHeadingPlan()
           return
