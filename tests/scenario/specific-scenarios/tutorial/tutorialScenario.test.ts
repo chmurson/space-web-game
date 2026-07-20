@@ -671,7 +671,7 @@ describe('tutorialScenario', () => {
       anchor: 'thrust-control',
       focusedTouchControl: 'burn',
       kind: 'coach',
-      title: 'Open Burn Control',
+      title: 'Flight Controls',
     })
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       kind: 'coach',

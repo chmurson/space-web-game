@@ -510,8 +510,6 @@ export const createAppComponents = (options: {
     updateUserSettings,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
-  let touchBurnControlSide: TouchControlSide =
-    options.config.userSettings.touchBurnControlSide
   let touchTargetControlSide: TouchControlSide =
     options.config.userSettings.touchTargetControlSide
   let touchTrajectoryControlSide: TouchTrajectoryControlState =
@@ -519,7 +517,6 @@ export const createAppComponents = (options: {
   let touchWarpControlSide: TouchControlSide =
     options.config.userSettings.touchWarpControlSide
   let touchControlAvailability: TouchControlAvailability = {
-    burn: true,
     target: true,
     trajectory: true,
     warp: true,
@@ -527,7 +524,6 @@ export const createAppComponents = (options: {
   const isSameTouchControlAvailability = (
     nextVisibility: TouchControlAvailability,
   ) =>
-    touchControlAvailability.burn === nextVisibility.burn &&
     touchControlAvailability.target === nextVisibility.target &&
     touchControlAvailability.trajectory === nextVisibility.trajectory &&
     touchControlAvailability.warp === nextVisibility.warp
@@ -635,7 +631,6 @@ export const createAppComponents = (options: {
         timeWarps: options.config.controls.timeWarps,
       })
     },
-    initialBurnControlSide: touchBurnControlSide,
     initialTargetControlSide: touchTargetControlSide,
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     initialWarpControlSide: touchWarpControlSide,
@@ -726,8 +721,6 @@ export const createAppComponents = (options: {
     getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
-    getTouchBurnControlAvailable: () => touchControlAvailability.burn,
-    getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTargetControlAvailable: () => touchControlAvailability.target,
     getTouchTargetControlSide: () => touchTargetControlSide,
     getTouchTrajectoryControlAvailable: () =>
@@ -756,11 +749,6 @@ export const createAppComponents = (options: {
     onMobileManeuverStartByDragChange: (startByDrag) => {
       mobileManeuverStartByDrag = startByDrag
       updateUserSettings({ mobileManeuverStartByDrag: startByDrag })
-    },
-    onTouchBurnControlSideChange: (side) => {
-      touchBurnControlSide = side
-      touchControls.setBurnControlSide(side)
-      updateUserSettings({ touchBurnControlSide: side })
     },
     onTouchTargetControlSideChange: (side) => {
       touchTargetControlSide = side

@@ -37,6 +37,7 @@ const createSnapshot = (
 })
 
 export type TouchInteractionModel = {
+  clearThrust(): TouchInteractionSnapshot
   getSnapshot(): TouchInteractionSnapshot
   hideThrust(): TouchInteractionSnapshot
   reuseLatchedThrust(startLatched: boolean): TouchInteractionSnapshot
@@ -68,6 +69,13 @@ export const createTouchInteractionModel = (): TouchInteractionModel => {
   }
 
   return {
+    clearThrust() {
+      thrust.engaged = false
+      thrust.latched = false
+      thrust.offset = 0
+      thrust.visible = false
+      return getSnapshot()
+    },
     getSnapshot() {
       return getSnapshot()
     },

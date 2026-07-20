@@ -37,6 +37,42 @@ const isolateMobileControlLayer = async (page: Page) => {
   })
 }
 
+const dispatchControlTouch = async (options: {
+  id: number
+  page: Page
+  selector: string
+  type: 'touchend' | 'touchmove' | 'touchstart'
+  x: number
+  y: number
+}) => {
+  await options.page.locator(options.selector).evaluate(
+    (target, touchOptions) => {
+      const touch = new Touch({
+        clientX: touchOptions.x,
+        clientY: touchOptions.y,
+        identifier: touchOptions.id,
+        target,
+      })
+      const activeTouches = touchOptions.type === 'touchend' ? [] : [touch]
+      target.dispatchEvent(
+        new TouchEvent(touchOptions.type, {
+          bubbles: true,
+          cancelable: true,
+          changedTouches: [touch],
+          targetTouches: activeTouches,
+          touches: activeTouches,
+        }),
+      )
+    },
+    {
+      id: options.id,
+      type: options.type,
+      x: options.x,
+      y: options.y,
+    },
+  )
+}
+
 const captureDockState = async (options: {
   fileName: string
   open: boolean
@@ -161,7 +197,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       }),
       getTimeWarpPreviews: () => [],
       getTrajectoryHorizonPreviews: () => [],
-      initialBurnControlSide: 'right',
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',
@@ -323,7 +358,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
   expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships all dock items with only Flight enabled and its glass panel', async ({
+test('ships all dock items with only Flight enabled and one label-free floating panel', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -331,7 +366,6 @@ test('ships all dock items with only Flight enabled and its glass panel', async 
 
   const dock = page.locator('.mobile-command-dock')
   const dockItems = page.locator('.mobile-command-dock-item')
-  await expect(dock).toHaveAttribute('data-panel-treatment', 'glass')
   await expect(dock).toHaveAttribute('data-open', 'false')
   await expect(dockItems).toHaveCount(5)
   await expect(dockItems).toHaveText([
@@ -352,7 +386,15 @@ test('ships all dock items with only Flight enabled and its glass panel', async 
   await flightButton.tap()
   await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
   await expect(dock).toHaveAttribute('data-open', 'true')
-  await expect(page.locator('.mobile-command-dock-panel')).toBeVisible()
+  const flightPanel = page.locator('.mobile-command-dock-panel')
+  await expect(flightPanel).toBeVisible()
+  await expect(flightPanel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(flightPanel).toHaveCSS('box-shadow', 'none')
+  await expect(
+    flightPanel.locator(
+      '.mobile-command-dock-panel-heading, .mobile-command-dock-flight-control-label, .touch-rcs-yaw-control-header, .touch-rcs-yaw-control-close',
+    ),
+  ).toHaveCount(0)
 })
 
 test('keeps the in-game controls popover clear of the collapsed dock', async ({
@@ -404,7 +446,16 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   )
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-glass-open-safe-area-390.png',
+    fileName: 'mobile-command-dock-flight-open-320.png',
+    open: true,
+    page,
+    safeBottom: 0,
+    testInfo,
+    viewport: { height: 720, width: 320 },
+  })
+
+  await captureDockState({
+    fileName: 'mobile-command-dock-flight-open-safe-area-390.png',
     open: true,
     page,
     safeBottom: 24,
@@ -413,7 +464,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   })
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-glass-open-safe-area-430.png',
+    fileName: 'mobile-command-dock-flight-open-safe-area-430.png',
     open: true,
     page,
     safeBottom: 34,
@@ -424,20 +475,167 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   const flightPanelBounds = await page
     .locator('.mobile-command-dock-panel')
     .boundingBox()
-  const rcsTabBounds = await page
-    .locator('#touch-rcs-yaw-reveal .touch-edge-reveal-tab')
+  const rcsControlBounds = await page
+    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control')
     .boundingBox()
-  const burnTabBounds = await page
-    .locator('#touch-thrust-reveal .touch-edge-reveal-tab')
+  const thrustControlBounds = await page
+    .locator('.mobile-command-dock-panel .touch-thrust-control')
+    .boundingBox()
+  const rcsTrackBounds = await page
+    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control-track')
+    .boundingBox()
+  const thrustTrackBounds = await page
+    .locator('.mobile-command-dock-panel .touch-thrust-control-track')
     .boundingBox()
   expect(flightPanelBounds).not.toBeNull()
-  expect(rcsTabBounds).not.toBeNull()
-  expect(burnTabBounds).not.toBeNull()
-  expect((rcsTabBounds?.y ?? 0) + (rcsTabBounds?.height ?? 0)).toBeLessThan(
-    flightPanelBounds?.y ?? 0,
+  expect(rcsControlBounds).not.toBeNull()
+  expect(thrustControlBounds).not.toBeNull()
+  expect(rcsTrackBounds).not.toBeNull()
+  expect(thrustTrackBounds).not.toBeNull()
+  const leftInset = (rcsControlBounds?.x ?? 0) - (flightPanelBounds?.x ?? 0)
+  const rightInset =
+    (flightPanelBounds?.x ?? 0) +
+    (flightPanelBounds?.width ?? 0) -
+    ((thrustControlBounds?.x ?? 0) + (thrustControlBounds?.width ?? 0))
+  expect(leftInset).toBeGreaterThanOrEqual(8)
+  expect(leftInset).toBeLessThanOrEqual(16)
+  expect(Math.abs(leftInset - rightInset)).toBeLessThanOrEqual(1)
+  expect(rcsTrackBounds?.width ?? 0).toBeGreaterThanOrEqual(160)
+  expect(rcsTrackBounds?.width ?? 0).toBeLessThanOrEqual(168)
+  expect(thrustTrackBounds?.height ?? 0).toBeGreaterThanOrEqual(114)
+  expect(thrustTrackBounds?.height ?? 0).toBeLessThanOrEqual(120)
+  expect(
+    Math.abs((rcsTrackBounds?.width ?? 0) - (thrustTrackBounds?.height ?? 0)),
+  ).toBeLessThanOrEqual(52)
+  expect(rcsControlBounds?.x ?? 0).toBeGreaterThanOrEqual(
+    flightPanelBounds?.x ?? 0,
   )
-  expect((burnTabBounds?.y ?? 0) + (burnTabBounds?.height ?? 0)).toBeLessThan(
-    flightPanelBounds?.y ?? 0,
+  expect(
+    (rcsControlBounds?.x ?? 0) + (rcsControlBounds?.width ?? 0),
+  ).toBeLessThanOrEqual(thrustControlBounds?.x ?? 0)
+  expect(
+    (thrustControlBounds?.x ?? 0) + (thrustControlBounds?.width ?? 0),
+  ).toBeLessThanOrEqual(
+    (flightPanelBounds?.x ?? 0) + (flightPanelBounds?.width ?? 0),
+  )
+  const trackMaterials = await page
+    .locator(
+      '.mobile-command-dock-panel .touch-rcs-yaw-control-track, .mobile-command-dock-panel .touch-thrust-control-track',
+    )
+    .evaluateAll((tracks) =>
+      tracks.map((track) => {
+        const style = getComputedStyle(track)
+        return {
+          backdropFilter: style.backdropFilter,
+          backgroundColor: style.backgroundColor,
+          backgroundImage: style.backgroundImage,
+          borderColor: style.borderColor,
+          boxShadow: style.boxShadow,
+        }
+      }),
+    )
+  expect(trackMaterials).toHaveLength(2)
+  expect(trackMaterials[0]).toEqual(trackMaterials[1])
+  expect(trackMaterials[0]?.backgroundColor).toBe('rgba(8, 13, 24, 0.46)')
+  await expect(
+    page.locator('#touch-rcs-yaw-reveal, #touch-thrust-reveal'),
+  ).toHaveCount(0)
+})
+
+test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/?scenario=earth-moon')
+  await waitForGame(page)
+  await isolateMobileControlLayer(page)
+  await page.locator('#mobile-command-dock-flight-button').tap()
+
+  const rcsSelector = '.touch-rcs-yaw-control-track'
+  const rcsBounds = await page.locator(rcsSelector).boundingBox()
+  if (!rcsBounds) {
+    throw new Error('Missing docked RCS bounds')
+  }
+  const rcsStartX = rcsBounds.x + rcsBounds.width / 2
+  const rcsY = rcsBounds.y + rcsBounds.height / 2
+  await dispatchControlTouch({
+    id: 71,
+    page,
+    selector: rcsSelector,
+    type: 'touchstart',
+    x: rcsStartX,
+    y: rcsY,
+  })
+  await dispatchControlTouch({
+    id: 71,
+    page,
+    selector: rcsSelector,
+    type: 'touchmove',
+    x: rcsStartX + 46,
+    y: rcsY,
+  })
+  await expect(page.locator('.touch-rcs-yaw-control')).toHaveClass(
+    /touch-rcs-yaw-control-active/,
+  )
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-rcs-active-390.png'),
+  })
+  await dispatchControlTouch({
+    id: 71,
+    page,
+    selector: rcsSelector,
+    type: 'touchend',
+    x: rcsStartX + 46,
+    y: rcsY,
+  })
+
+  const thrustSelector = '.touch-thrust-control-thumb'
+  const thrustBounds = await page.locator(thrustSelector).boundingBox()
+  if (!thrustBounds) {
+    throw new Error('Missing docked Main Thrust bounds')
+  }
+  const thrustX = thrustBounds.x + thrustBounds.width / 2
+  const thrustStartY = thrustBounds.y + thrustBounds.height / 2
+  const thrustReceivesHitTesting = await page.evaluate(
+    ({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest('.touch-thrust-control') !==
+      null,
+    { x: thrustX, y: thrustStartY },
+  )
+  expect(thrustReceivesHitTesting).toBe(true)
+
+  const cdpSession = await page.context().newCDPSession(page)
+  await cdpSession.send('Input.dispatchTouchEvent', {
+    touchPoints: [{ id: 72, x: thrustX, y: thrustStartY }],
+    type: 'touchStart',
+  })
+  for (const step of [1, 2, 3, 4]) {
+    await cdpSession.send('Input.dispatchTouchEvent', {
+      touchPoints: [
+        {
+          id: 72,
+          x: thrustX,
+          y: thrustStartY - (56 * step) / 4,
+        },
+      ],
+      type: 'touchMove',
+    })
+  }
+  await expect(page.locator('.touch-thrust-control')).toHaveClass(
+    /touch-thrust-control-on/,
+  )
+  await cdpSession.send('Input.dispatchTouchEvent', {
+    touchPoints: [],
+    type: 'touchEnd',
+  })
+  await cdpSession.detach()
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-main-thrust-active-390.png'),
+  })
+
+  await page.locator('#mobile-command-dock-flight-button').tap()
+  await expect(page.locator('.touch-thrust-control')).not.toHaveClass(
+    /touch-thrust-control-on/,
   )
 })
 

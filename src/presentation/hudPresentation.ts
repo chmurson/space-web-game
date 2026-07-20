@@ -42,7 +42,6 @@ type TargetSelectorControls = {
 }
 
 export type TouchControlAvailability = {
-  burn: boolean
   target: boolean
   trajectory: boolean
   warp: boolean
@@ -491,12 +490,11 @@ export const createHudPresentation = (options: {
       )
       syncTransientNotice()
       options.onTouchControlAvailabilityChange?.({
-        burn: showThrustControl,
         target: showTargetControl,
         trajectory: showTrajectoryControl,
         warp: showTimePill,
       })
-      options.touchControls?.setBurnControlVisible(showThrustControl)
+      options.touchControls?.setFlightControlsVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
       options.touchControls?.setTargetControlVisible(showTargetControl)
       options.desktopTargetSelector?.setTargetControlVisible(showTargetControl)

@@ -43,8 +43,7 @@ import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/creat
 export type TouchControls = {
   element: HTMLElement
   openTargetControl(): void
-  setBurnControlVisible(visible: boolean): void
-  setBurnControlSide(side: TouchControlRevealEdge): void
+  setFlightControlsVisible(visible: boolean): void
   setTargetControlSide(side: TouchControlRevealEdge): void
   setTargetControlVisible(visible: boolean): void
   setTrajectoryControlSide(side: TouchControlRevealState): void
@@ -85,14 +84,6 @@ const touchControlRevealLayout = {
       priority: 20,
     },
     trajectory: {
-      priority: 10,
-    },
-    rcsYaw: {
-      edge: 'left',
-      priority: 10,
-    },
-    thrust: {
-      edge: 'right',
       priority: 10,
     },
   },
@@ -251,7 +242,6 @@ export const createTouchControls = (options: {
     reason: TimeWarpFeedbackReason | null
     value: number
   }[]
-  initialBurnControlSide: TouchControlRevealEdge
   initialTargetControlSide: TouchControlRevealEdge
   initialTrajectoryControlSide: TouchControlRevealState
   initialWarpControlSide: TouchControlRevealEdge
@@ -273,17 +263,17 @@ export const createTouchControls = (options: {
   const touchControlsShell = createTouchControlsShell()
   const panel = touchControlsShell.element
   const {
-    burn: thrustDock,
-    rcsYaw: rcsYawDock,
     target: targetDock,
     trajectory: trajectoryHorizonDock,
     warp: timeWarpDock,
     warpPrototype: timeWarpPrototypeDock,
   } = touchControlsShell.docks
 
+  let handleFlightPanelOpenChange = (_open: boolean) => {}
   const mobileCommandDock = createMobileCommandDock({
     app: options.app,
     container: panel,
+    onOpenChange: (open) => handleFlightPanelOpenChange(open),
   })
   const tutorialHint = createTouchControlsTutorialHint({ container: panel })
 
@@ -380,16 +370,18 @@ export const createTouchControls = (options: {
   })
   targetDock.appendChild(targetControl.element)
 
-  let burnControlRevealed = false
   const thrustControl = createThrustControl({
-    container: thrustDock,
+    container: mobileCommandDock.thrustContainer,
     onSessionChange: (session) => {
       activeSession = session
     },
     onUiStateChange: (state) => {
+      const panelOpen = mobileCommandDock.isOpen()
       options.onThrustControlUiStateChange({
         ...state,
-        revealed: state.revealed && burnControlRevealed,
+        interactive: state.interactive && panelOpen,
+        revealed: state.revealed && panelOpen,
+        visible: state.visible && panelOpen,
       })
     },
     panel,
@@ -397,10 +389,8 @@ export const createTouchControls = (options: {
     tapMoveTolerancePx,
     vibrate,
   })
-  let closeRcsYawControl = () => {}
   const rcsYawControl = createRcsYawControl({
-    container: rcsYawDock,
-    onCloseRequest: () => closeRcsYawControl(),
+    container: mobileCommandDock.rcsYawContainer,
     onSessionChange: (session) => {
       activeSession = session
     },
@@ -423,15 +413,6 @@ export const createTouchControls = (options: {
     edge: options.initialTargetControlSide,
     priority: touchControlRevealLayout.controls.target.priority,
   }
-  const rcsYawRevealPlacement: TouchControlRevealPlacement = {
-    edge: touchControlRevealLayout.controls.rcsYaw.edge,
-    priority: touchControlRevealLayout.controls.rcsYaw.priority,
-  }
-  const thrustRevealPlacement: TouchControlRevealPlacement = {
-    edge: options.initialBurnControlSide,
-    priority: touchControlRevealLayout.controls.thrust.priority,
-  }
-
   const timeWarpRevealControl = createEdgeRevealControl({
     content: timeWarpDock,
     icon: 'Warp',
@@ -462,48 +443,20 @@ export const createTouchControls = (options: {
     placement: targetRevealPlacement,
   })
   closeTargetControl = targetRevealControl.close
-  const rcsYawRevealControl = createEdgeRevealControl({
-    className: 'touch-rcs-yaw-reveal',
-    content: rcsYawDock,
-    icon: 'RCS',
-    id: 'touch-rcs-yaw-reveal',
-    label: 'Reveal RCS yaw control',
-    onOpenChange: (open) => {
-      if (!open) {
-        clearRcsYawInput()
-      }
-    },
-    placement: rcsYawRevealPlacement,
-  })
-  closeRcsYawControl = rcsYawRevealControl.close
   const targetRevealTab =
     targetRevealControl.element.querySelector<HTMLButtonElement>(
       '.touch-edge-reveal-tab',
     )
-  const thrustRevealControl = createEdgeRevealControl({
-    content: thrustDock,
-    icon: 'Burn',
-    id: 'touch-thrust-reveal',
-    label: 'Reveal thrust control',
-    onOpenChange: (open) => {
-      burnControlRevealed = open
-      thrustControl.syncUi()
-    },
-    placement: thrustRevealPlacement,
-  })
   const revealControls = [
     timeWarpRevealControl,
     timeWarpPrototypeRevealControl,
     trajectoryHorizonRevealControl,
     targetRevealControl,
-    rcsYawRevealControl,
-    thrustRevealControl,
   ]
   const tutorialFocusTargets: Record<
-    ScenarioTouchControlFocusTarget,
+    Exclude<ScenarioTouchControlFocusTarget, 'burn'>,
     EdgeRevealControl
   > = {
-    burn: thrustRevealControl,
     trajectory: trajectoryHorizonRevealControl,
     warp: timeWarpRevealControl,
   }
@@ -517,9 +470,14 @@ export const createTouchControls = (options: {
       delete panel.dataset.tutorialFocusedControl
     }
 
+    mobileCommandDock.setTutorialFocused(target === 'burn')
+
     for (const [controlTarget, revealControl] of Object.entries(
       tutorialFocusTargets,
-    ) as [ScenarioTouchControlFocusTarget, EdgeRevealControl][]) {
+    ) as [
+      Exclude<ScenarioTouchControlFocusTarget, 'burn'>,
+      EdgeRevealControl,
+    ][]) {
       revealControl.element.classList.toggle(
         'touch-edge-reveal-control-tutorial-focused',
         target === controlTarget,
@@ -532,8 +490,6 @@ export const createTouchControls = (options: {
     timeWarpPrototypeRevealControl.element,
     trajectoryHorizonRevealControl.element,
     targetRevealControl.element,
-    rcsYawRevealControl.element,
-    thrustRevealControl.element,
   )
 
   syncTargetRecommendationCue = () => {
@@ -633,38 +589,47 @@ export const createTouchControls = (options: {
     syncRevealControlLayout(revealControls)
   }
 
-  const setBurnControlVisible = (visible: boolean) => {
-    if (
-      !visible &&
-      (activeSession.kind === 'right-zone-pending' ||
-        activeSession.kind === 'right-zone-active')
-    ) {
-      clearRightZoneGesture()
-    }
-    thrustRevealControl.setAvailable(visible)
-    thrustControl.setAvailable(visible)
-    syncRevealControlLayout(revealControls)
-  }
-
   const clearRcsYawGesture = () => {
     activeSession = rcsYawControl.clearGesture(
       activeSession as RcsYawGestureSession,
     )
   }
 
-  const clearRcsYawInput = () => {
-    if (activeSession.kind === 'rcs-yaw-active') {
-      clearRcsYawGesture()
-      return
-    }
-
-    rcsYawControl.clearInput()
-  }
-
   const clearRightZoneGesture = () => {
     activeSession = thrustControl.clearGesture(
       activeSession as ThrustGestureSession,
     )
+  }
+
+  const clearFlightInputs = () => {
+    if (activeSession.kind === 'rcs-yaw-active') {
+      clearRcsYawGesture()
+    } else {
+      rcsYawControl.clearInput()
+    }
+    if (
+      activeSession.kind === 'right-zone-pending' ||
+      activeSession.kind === 'right-zone-active'
+    ) {
+      clearRightZoneGesture()
+    }
+    thrustControl.clearInput()
+  }
+
+  handleFlightPanelOpenChange = (open) => {
+    if (!open) {
+      clearFlightInputs()
+    }
+    thrustControl.syncUi()
+  }
+
+  const setFlightControlsVisible = (visible: boolean) => {
+    rcsYawControl.setAvailable(visible)
+    thrustControl.setAvailable(visible)
+    mobileCommandDock.setControlAvailability({
+      rcsYaw: visible,
+      thrust: visible,
+    })
   }
 
   const clearZoneGesture = () => {
@@ -690,6 +655,7 @@ export const createTouchControls = (options: {
     clearPendingTapState()
     cancelTargetHeadingPlan()
     clearZoneGesture()
+    clearFlightInputs()
     clearActiveSession()
     options.keyboardInput.clear()
   }
@@ -751,7 +717,7 @@ export const createTouchControls = (options: {
   }
 
   const beginDockedThrustSession = (touch: Touch) => {
-    if (!thrustRevealControl.isOpen()) {
+    if (!mobileCommandDock.isOpen()) {
       return
     }
 
@@ -762,7 +728,7 @@ export const createTouchControls = (options: {
   }
 
   const beginRcsYawSession = (touch: Touch) => {
-    if (!rcsYawRevealControl.isOpen()) {
+    if (!mobileCommandDock.isOpen()) {
       return
     }
 
@@ -1035,21 +1001,19 @@ export const createTouchControls = (options: {
       const isTargetControlTarget =
         targetRevealControl.isOpen() &&
         isEventTargetInside(targetRevealControl.element, eventTarget)
-      const isRcsYawRevealTarget =
-        rcsYawRevealControl.isOpen() &&
-        isEventTargetInside(rcsYawRevealControl.element, eventTarget)
       const isRcsYawGestureTarget =
-        isRcsYawRevealTarget && rcsYawControl.containsGestureTarget(eventTarget)
+        mobileCommandDock.isOpen() &&
+        rcsYawControl.containsGestureTarget(eventTarget)
       const isThrustTarget =
-        thrustRevealControl.isOpen() &&
-        isEventTargetInside(thrustRevealControl.element, eventTarget)
+        mobileCommandDock.isOpen() &&
+        isEventTargetInside(thrustControl.element, eventTarget)
       const isRevealControlTarget =
         isMobileCommandDockTarget ||
         isTimeWarpTarget ||
         isTimeWarpPrototypeTarget ||
         isTrajectoryHorizonTarget ||
         isTargetControlTarget ||
-        isRcsYawRevealTarget ||
+        isRcsYawGestureTarget ||
         isThrustTarget
       let startedDoubleTapZoom = false
 
@@ -1621,11 +1585,10 @@ export const createTouchControls = (options: {
   })
 
   window.addEventListener('blur', () => {
-    if (!isMouseStepSelectorSession()) {
-      return
+    if (isMouseStepSelectorSession()) {
+      finishStepSelectorGesture(false)
     }
-
-    finishStepSelectorGesture(false)
+    clearGameplayTouchInput()
   })
 
   options.app.appendChild(panel)
@@ -1655,11 +1618,7 @@ export const createTouchControls = (options: {
       syncTargetRecommendationCue()
       targetControl.syncUi()
     },
-    setBurnControlVisible,
-    setBurnControlSide: (side) => {
-      thrustRevealControl.setEdge(side)
-      syncRevealControlLayout(revealControls)
-    },
+    setFlightControlsVisible,
     setTargetControlSide: (side) => {
       targetRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)

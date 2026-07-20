@@ -42,6 +42,7 @@ test('hands interrupted control gestures to the newest touch', async ({
       document.body.append(app)
       let timeWarpIndex = 1
       let thrustEngagementCount = 0
+      let thrustEngaged = false
 
       const getTimeWarpPreviews = (
         action: TimeWarpAction,
@@ -93,7 +94,6 @@ test('hands interrupted control gestures to the newest touch', async ({
         getTimeWarpPreview: (action) => getTimeWarpPreviews(action, 1)[0],
         getTimeWarpPreviews,
         getTrajectoryHorizonPreviews: () => [],
-        initialBurnControlSide: 'right',
         initialTargetControlSide: 'left',
         initialTrajectoryControlSide: 'hidden',
         initialWarpControlSide: 'right',
@@ -109,8 +109,11 @@ test('hands interrupted control gestures to the newest touch', async ({
           press: () => {},
           release: () => {},
           setVirtualKey: (key, engaged) => {
-            if (key === 'main' && engaged) {
-              thrustEngagementCount += 1
+            if (key === 'main') {
+              thrustEngaged = engaged
+              if (engaged) {
+                thrustEngagementCount += 1
+              }
             }
           },
           setVirtualTurn: () => {},
@@ -130,35 +133,29 @@ test('hands interrupted control gestures to the newest touch', async ({
       const prototypeReveal = controls.element.querySelector<HTMLElement>(
         '#touch-time-warp-prototype-reveal',
       )
-      const thrustReveal = controls.element.querySelector<HTMLElement>(
-        '#touch-thrust-reveal',
+      const flightButton = controls.element.querySelector<HTMLButtonElement>(
+        '#mobile-command-dock-flight-button',
       )
       const prototypeRevealButton =
         prototypeReveal?.querySelector<HTMLButtonElement>(
           '.touch-edge-reveal-tab',
         )
-      const thrustRevealButton = thrustReveal?.querySelector<HTMLButtonElement>(
-        '.touch-edge-reveal-tab',
-      )
-      if (
-        !prototypeReveal ||
-        !thrustReveal ||
-        !prototypeRevealButton ||
-        !thrustRevealButton
-      ) {
-        throw new Error('Expected Time Warp and thrust reveal controls')
+      if (!prototypeReveal || !prototypeRevealButton || !flightButton) {
+        throw new Error('Expected Time Warp reveal and Flight dock controls')
       }
       prototypeRevealButton.click()
-      thrustRevealButton.click()
+      flightButton.click()
 
       const timeWarpControl = prototypeReveal.querySelector<HTMLElement>(
         '[aria-label="Time Warp control 2"]',
       )
-      const thrustControl = thrustReveal.querySelector<HTMLElement>(
+      const thrustControl = controls.element.querySelector<HTMLElement>(
         '.touch-thrust-control',
       )
       if (!timeWarpControl || !thrustControl) {
-        throw new Error('Expected revealed Time Warp and thrust controls')
+        throw new Error(
+          'Expected revealed Time Warp and docked thrust controls',
+        )
       }
 
       const createTouch = (point: TouchPoint) =>
@@ -195,8 +192,10 @@ test('hands interrupted control gestures to the newest touch', async ({
       }
 
       return {
+        closeFlightPanel: () => flightButton.click(),
         dispatchTouch,
         getThrustEngagementCount: () => thrustEngagementCount,
+        getThrustEngaged: () => thrustEngaged,
         getTimeWarp: () => timeWarps[timeWarpIndex],
         remove: () => app.remove(),
         thrustControl,
@@ -308,7 +307,53 @@ test('hands interrupted control gestures to the newest touch', async ({
       [],
     )
     const thrustEngaged = timeWarpToThrust.getThrustEngagementCount() > 0
+    const thrustLatchedAfterRelease = timeWarpToThrust.getThrustEngaged()
+    timeWarpToThrust.closeFlightPanel()
+    const thrustAfterPanelClose = timeWarpToThrust.getThrustEngaged()
     timeWarpToThrust.remove()
+
+    const closedThrustGesture = createHarness()
+    const closedThrustTouch = {
+      id: 7,
+      target: closedThrustGesture.thrustControl,
+      ...closedThrustGesture.thrustStart,
+    }
+    const closedThrustMove = {
+      ...closedThrustTouch,
+      y: closedThrustTouch.y - 80,
+    }
+    const lateClosedThrustMove = {
+      ...closedThrustTouch,
+      y: closedThrustTouch.y - 100,
+    }
+    closedThrustGesture.dispatchTouch(
+      closedThrustGesture.thrustControl,
+      'touchstart',
+      [closedThrustTouch],
+      [closedThrustTouch],
+    )
+    closedThrustGesture.dispatchTouch(
+      closedThrustGesture.thrustControl,
+      'touchmove',
+      [closedThrustMove],
+      [closedThrustMove],
+    )
+    const thrustBeforeActivePanelClose = closedThrustGesture.getThrustEngaged()
+    closedThrustGesture.closeFlightPanel()
+    const thrustAfterActivePanelClose = closedThrustGesture.getThrustEngaged()
+    const thrustEngagementCountAfterActivePanelClose =
+      closedThrustGesture.getThrustEngagementCount()
+    closedThrustGesture.dispatchTouch(
+      closedThrustGesture.thrustControl,
+      'touchmove',
+      [lateClosedThrustMove],
+      [lateClosedThrustMove],
+    )
+    const thrustAfterLateClosedMove = closedThrustGesture.getThrustEngaged()
+    const lateClosedMoveReengagedThrust =
+      closedThrustGesture.getThrustEngagementCount() >
+      thrustEngagementCountAfterActivePanelClose
+    closedThrustGesture.remove()
 
     const thrustToTimeWarp = createHarness()
     const oldThrustTouch = {
@@ -358,13 +403,25 @@ test('hands interrupted control gestures to the newest touch', async ({
     return {
       postThrustTimeWarpValue,
       successiveTimeWarpValue,
+      lateClosedMoveReengagedThrust,
+      thrustAfterActivePanelClose,
+      thrustAfterLateClosedMove,
+      thrustAfterPanelClose,
+      thrustBeforeActivePanelClose,
       thrustEngaged,
+      thrustLatchedAfterRelease,
     }
   })
 
   expect(result).toEqual({
     postThrustTimeWarpValue: 30,
     successiveTimeWarpValue: 30,
+    lateClosedMoveReengagedThrust: false,
+    thrustAfterActivePanelClose: false,
+    thrustAfterLateClosedMove: false,
+    thrustAfterPanelClose: false,
+    thrustBeforeActivePanelClose: true,
     thrustEngaged: true,
+    thrustLatchedAfterRelease: true,
   })
 })

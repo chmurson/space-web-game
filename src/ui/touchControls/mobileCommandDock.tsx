@@ -5,13 +5,14 @@ import {
 import { addTapSafeButtonHandler } from '../tapSafeButtonHandler'
 import './mobileCommandDock.css'
 
-type MobileCommandDockPanelTreatment = 'glass' | 'sheet'
-
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
+  controlsAvailable: {
+    rcsYaw: boolean
+    thrust: boolean
+  }
   open: boolean
+  tutorialFocused: boolean
 }
-
-const flightPanelTreatment: MobileCommandDockPanelTreatment = 'glass'
 
 const unavailableDockItems = [
   {
@@ -32,60 +33,48 @@ const unavailableDockItems = [
   },
 ] as const
 
+const getFlightButtonLabel = (available: boolean, open: boolean) => {
+  if (!available) {
+    return 'Flight panel unavailable'
+  }
+
+  return open ? 'Close Flight panel' : 'Open Flight panel'
+}
+
 const MobileCommandDockSurface = ({
+  controlsAvailable,
   open,
   rootRef,
-}: MobileCommandDockSurfaceProps) => (
-  <section
-    aria-label="Mobile command dock"
-    class="mobile-command-dock"
-    data-open={String(open)}
-    data-panel-treatment={flightPanelTreatment}
-    ref={rootRef}
-  >
-    <section
-      aria-hidden={!open}
-      aria-labelledby="mobile-command-dock-flight-button"
-      class="mobile-command-dock-panel"
-      hidden={!open}
-      id="mobile-command-dock-flight-panel"
-    >
-      <div class="mobile-command-dock-panel-heading">
-        <span class="mobile-command-dock-panel-kicker">Flight</span>
-        <strong>Manual controls</strong>
-      </div>
-      <div class="mobile-command-dock-panel-status">
-        <span aria-hidden="true" class="mobile-command-dock-status-dot" />
-        <span>Edge controls active</span>
-      </div>
-      <p>Use RCS and Burn at the screen edges.</p>
-    </section>
+  tutorialFocused,
+}: MobileCommandDockSurfaceProps) => {
+  const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
 
-    <nav aria-label="Mobile commands" class="mobile-command-dock-bar">
-      <button
-        aria-controls="mobile-command-dock-flight-panel"
-        aria-expanded={open}
-        aria-label={open ? 'Close Flight panel' : 'Open Flight panel'}
-        class="mobile-command-dock-item"
-        id="mobile-command-dock-flight-button"
-        type="button"
+  return (
+    <section
+      aria-label="Mobile command dock"
+      class="mobile-command-dock"
+      data-open={String(open)}
+      data-tutorial-focused={String(tutorialFocused)}
+      ref={rootRef}
+    >
+      <section
+        aria-hidden={!open}
+        aria-labelledby="mobile-command-dock-flight-button"
+        class="mobile-command-dock-panel"
+        hidden={!open}
+        id="mobile-command-dock-flight-panel"
       >
-        <svg
-          aria-hidden="true"
-          class="mobile-command-dock-item-icon"
-          viewBox="0 0 24 24"
-        >
-          <path d="M12 20V4M6.5 9.5 12 4l5.5 5.5" />
-        </svg>
-        <span>Flight</span>
-      </button>
-      {unavailableDockItems.map((item) => (
+        <div class="mobile-command-dock-panel-controls-host" />
+      </section>
+
+      <nav aria-label="Mobile commands" class="mobile-command-dock-bar">
         <button
-          aria-label={`${item.label} panel unavailable`}
+          aria-controls="mobile-command-dock-flight-panel"
+          aria-expanded={open}
+          aria-label={getFlightButtonLabel(flightAvailable, open)}
           class="mobile-command-dock-item"
-          disabled
-          key={item.label}
-          title="Panel unavailable"
+          disabled={!flightAvailable}
+          id="mobile-command-dock-flight-button"
           type="button"
         >
           <svg
@@ -93,20 +82,63 @@ const MobileCommandDockSurface = ({
             class="mobile-command-dock-item-icon"
             viewBox="0 0 24 24"
           >
-            <path d={item.iconPath} />
+            <path d="M12 20V4M6.5 9.5 12 4l5.5 5.5" />
           </svg>
-          <span>{item.label}</span>
+          <span>Flight</span>
         </button>
-      ))}
-    </nav>
-  </section>
-)
+        {unavailableDockItems.map((item) => (
+          <button
+            aria-label={`${item.label} panel unavailable`}
+            class="mobile-command-dock-item"
+            disabled
+            key={item.label}
+            title="Panel unavailable"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="mobile-command-dock-item-icon"
+              viewBox="0 0 24 24"
+            >
+              <path d={item.iconPath} />
+            </svg>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+    </section>
+  )
+}
 
 export const createMobileCommandDock = (options: {
   app: HTMLElement
   container: HTMLElement
+  onOpenChange?(open: boolean): void
 }) => {
+  const flightControlsElement = document.createElement('div')
+  flightControlsElement.className = 'mobile-command-dock-flight-controls'
+  const rcsYawGroup = document.createElement('section')
+  rcsYawGroup.className =
+    'mobile-command-dock-flight-control mobile-command-dock-rcs-yaw'
+  rcsYawGroup.setAttribute('aria-label', 'RCS yaw control')
+  const rcsYawContainer = document.createElement('div')
+  rcsYawContainer.className = 'mobile-command-dock-rcs-yaw-host'
+  rcsYawGroup.appendChild(rcsYawContainer)
+  const thrustGroup = document.createElement('section')
+  thrustGroup.className =
+    'mobile-command-dock-flight-control mobile-command-dock-main-thrust'
+  thrustGroup.setAttribute('aria-label', 'Main Thrust control')
+  const thrustContainer = document.createElement('div')
+  thrustContainer.className = 'mobile-command-dock-main-thrust-host'
+  thrustGroup.appendChild(thrustContainer)
+  flightControlsElement.append(rcsYawGroup, thrustGroup)
+
+  let controlsAvailable = {
+    rcsYaw: true,
+    thrust: true,
+  }
   let open = false
+  let tutorialFocused = false
   const surface = createPreactUiSurface<
     Omit<MobileCommandDockSurfaceProps, keyof SurfaceRootRefProps>
   >({
@@ -118,23 +150,42 @@ export const createMobileCommandDock = (options: {
   const syncAppState = () => {
     options.app.dataset.mobileCommandDock = 'true'
     options.app.dataset.mobileCommandDockOpen = String(open)
-    options.app.dataset.mobileCommandDockPanel = flightPanelTreatment
+  }
+
+  const syncFlightControls = () => {
+    const controlsHost = surface.element.querySelector<HTMLElement>(
+      '.mobile-command-dock-panel-controls-host',
+    )
+    if (!controlsHost) {
+      throw new Error('Mobile command dock rendered without controls host')
+    }
+    if (flightControlsElement.parentElement !== controlsHost) {
+      controlsHost.appendChild(flightControlsElement)
+    }
+    rcsYawGroup.hidden = !controlsAvailable.rcsYaw
+    thrustGroup.hidden = !controlsAvailable.thrust
   }
 
   const renderState = () => {
     syncAppState()
     surface.render({
+      controlsAvailable,
       open,
+      tutorialFocused,
     })
+    syncFlightControls()
   }
 
   const setOpen = (nextOpen: boolean) => {
-    if (open === nextOpen) {
+    const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
+    const allowedOpen = nextOpen && flightAvailable
+    if (open === allowedOpen) {
       return
     }
 
-    open = nextOpen
+    open = allowedOpen
     renderState()
+    options.onOpenChange?.(open)
   }
 
   renderState()
@@ -161,5 +212,40 @@ export const createMobileCommandDock = (options: {
 
   return {
     element: surface.element,
+    isOpen: () => open,
+    rcsYawContainer,
+    setControlAvailability(nextAvailability: {
+      rcsYaw: boolean
+      thrust: boolean
+    }) {
+      controlsAvailable = { ...nextAvailability }
+      if (!controlsAvailable.rcsYaw && !controlsAvailable.thrust && open) {
+        setOpen(false)
+        return
+      }
+      if (
+        tutorialFocused &&
+        (controlsAvailable.rcsYaw || controlsAvailable.thrust) &&
+        !open
+      ) {
+        setOpen(true)
+        return
+      }
+      renderState()
+    },
+    setOpen,
+    setTutorialFocused(focused: boolean) {
+      tutorialFocused = focused
+      if (
+        focused &&
+        (controlsAvailable.rcsYaw || controlsAvailable.thrust) &&
+        !open
+      ) {
+        setOpen(true)
+        return
+      }
+      renderState()
+    },
+    thrustContainer,
   }
 }

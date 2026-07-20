@@ -17,14 +17,6 @@ const touchControlDockDefinitions = [
     className: 'touch-edge-reveal-dock touch-target-reveal-dock',
     id: 'target',
   },
-  {
-    className: 'touch-edge-reveal-dock touch-rcs-yaw-reveal-dock',
-    id: 'rcsYaw',
-  },
-  {
-    className: 'touch-edge-reveal-dock touch-thrust-reveal-dock',
-    id: 'burn',
-  },
 ] as const
 
 export type TouchControlDockId =
@@ -85,8 +77,6 @@ export const createTouchControlsShell = (): TouchControlsShell => {
         warpPrototype: createDockRef('warpPrototype'),
         trajectory: createDockRef('trajectory'),
         target: createDockRef('target'),
-        rcsYaw: createDockRef('rcsYaw'),
-        burn: createDockRef('burn'),
       }}
       rootRef={(root) => {
         element = root
@@ -112,14 +102,6 @@ export const createTouchControlsShell = (): TouchControlsShell => {
       target: getRequiredElement<HTMLDivElement>(
         docks.target,
         'Touch controls shell rendered without target dock',
-      ),
-      rcsYaw: getRequiredElement<HTMLDivElement>(
-        docks.rcsYaw,
-        'Touch controls shell rendered without RCS yaw dock',
-      ),
-      burn: getRequiredElement<HTMLDivElement>(
-        docks.burn,
-        'Touch controls shell rendered without burn dock',
       ),
     },
     element: getRequiredElement<HTMLElement>(

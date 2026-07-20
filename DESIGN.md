@@ -223,7 +223,7 @@ The playable canvas owns the full viewport. DOM UI layers sit above it with fixe
 - Keep the top bar fixed to the top safe area. It contains the top menu and telemetry strip.
 - Keep bottom notices and replay pills centered in `.bottom-pill-area`, above the bottom safe area and touch controls.
 - Keep the in-game controls menu near the lower left by default, using the bottom and left safe-area variables in `src/ui/overlayUI/overlayUIStyles.css`.
-- Touch controls use edge-reveal tabs from both sides and must preserve the center playfield.
+- Mobile navigation controls use edge-reveal tabs from both sides and must preserve the center playfield; manual flight controls live in the bottom dock's Flight panel.
 - The mobile command dock sits above the bottom safe area and reserves space for bottom HUD notices. Its open Flight panel stays non-modal, with pointer handling limited to the dock and panel while the surrounding touch playfield remains interactive.
 - Modal prompts can center on desktop and dock toward the bottom on mobile.
 - Coach prompts can float near their anchor; when coaching playfield controls on mobile, dock near the bottom above controls.
@@ -272,7 +272,7 @@ Keep shapes stable across hover, active, disabled, and focused states. Hover or 
 
 **Touch controls:** Preserve edge-reveal behavior, safe-area offsets, large hit areas, and tutorial focus affordances. Touch-control panels should use shared glass panel values with local accent colors for thrust, time warp, target, and trajectory semantics.
 
-**Mobile command dock:** Mobile touch gameplay uses the compact five-item dock with standard safe-area spacing and subtle selected-state emphasis. Flight is the only enabled item and opens a non-modal glass panel; Nav, Mission, Ship, and Settings remain visible but disabled until their panels have real content. Keep the component-local sheet treatment available for a future enabled panel, potentially Nav, without exposing it as a Flight setting or adding placeholder routing. RCS, Burn, and the other existing mobile controls remain on their current edge-reveal surfaces until their owning follow-up work moves them.
+**Mobile command dock:** Mobile touch gameplay uses the compact five-item dock with standard safe-area spacing and subtle selected-state emphasis. Flight is the only enabled item and opens a non-modal, label-free floating layout containing analog RCS yaw and Main Thrust; Nav, Mission, Ship, and Settings remain visible but disabled until their panels have real content. The panel itself stays visually empty so only the two translucent control tracks float above the dock. RCS anchors toward the left safe-area edge and Main Thrust toward the right, with shorter horizontal RCS and taller vertical Thrust proportions to keep their visual weight balanced. Docked RCS shows only its direct slider track and thumb rather than nesting its former standalone card. Flight becomes unavailable when its scenario hides manual flight controls, and closing or losing access to the panel clears active RCS and thrust input. Tutorial burn focus opens Flight and highlights Main Thrust. Time Warp, Target, and Trajectory retain their edge-reveal surfaces.
 
 **Target and offscreen indicators:** Keep labels small, wrapped on mobile, and attached to the playfield. Use cyan as the default navigational cue and avoid pointer-event capture.
 

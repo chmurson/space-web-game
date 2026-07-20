@@ -88,9 +88,6 @@ export const createAppConfigContext = (): AppConfigContext => {
   const storedUserSettings = readUserSettings()
   const userSettings: UserSettings = {
     ...storedUserSettings,
-    touchBurnControlSide:
-      parseTouchControlSideOverride(urlParams.get('touchBurnSide')) ??
-      storedUserSettings.touchBurnControlSide,
     touchTargetControlSide:
       parseTouchControlSideOverride(urlParams.get('touchTargetSide')) ??
       storedUserSettings.touchTargetControlSide,
