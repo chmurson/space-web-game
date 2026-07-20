@@ -61,7 +61,8 @@ controls, scenario rules, or tutorial progression.
   do not mount empty panels or routes.
 - Finalized one responsive floating layout and deleted the temporary `fade` and
   `glass` comparison branches, URL parser, configuration field, and treatment
-  datasets.
+  datasets. The `?mobileFlightPanel=fade` and `?mobileFlightPanel=glass` review
+  options are no longer recognized or available.
 - Kept lightweight panel hit areas on the controls themselves so transparent
   space remains part of the playable surface.
 - Expanded the transparent layout to the dock's safe-area-aware width and used
