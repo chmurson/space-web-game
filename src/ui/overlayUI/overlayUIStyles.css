@@ -180,7 +180,7 @@
   bottom: calc(100% + 8px);
   left: 0;
   display: grid;
-  width: min(252px, calc(100vw - 24px));
+  width: min(276px, calc(100vw - 24px));
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--ui-glass-panel-border);

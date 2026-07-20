@@ -4,10 +4,10 @@ Shipit state: `.codex/shipit-workflows/agent/desktop-keyboard-turning.md`
 
 ## What changed
 
-- Left and Right Arrow now feed direct RCS-style yaw into the existing manual `ControlInput.turn` path at full power.
-- Holding either Shift key reduces arrow-key yaw to 25% for precise corrections.
+- `A`/`D` and Left/Right Arrow now feed interchangeable direct RCS-style yaw into the existing manual `ControlInput.turn` path at full power.
+- Holding either Shift key reduces either key pair's yaw to 25% for precise corrections.
 - Mouse clicks on the game canvas no longer start, update, or commit target-heading turn plans. Non-mouse pointer planning remains available so mobile behavior is unchanged.
-- The desktop Keyboard shortcuts panel now lists both full-power and precise arrow-key turning instead of the former mouse-planning gesture.
+- The desktop Keyboard shortcuts panel now lists both `A`/`D` and arrow-key turning, with a concise `Precise turn` label instead of exposing its power percentage.
 
 ## Why
 
@@ -15,9 +15,10 @@ Desktop steering previously depended on a click-move-click target-heading plan, 
 
 ## Key files and ownership
 
-- `src/input/keyboardInput.ts` owns held keyboard control state and maps arrow/Shift combinations into the existing numeric turn channel.
+- `src/input/keyboardInput.ts` owns held keyboard control state and maps `A`/`D`, arrow, and Shift combinations into the existing numeric turn channel.
 - `src/input/pointerCameraInput.ts` owns desktop mouse gestures and now excludes mouse pointer releases from target-heading planning while preserving camera gestures and non-mouse planning.
 - `src/ui/components/InGameControlsMenuSurface.tsx` owns the visible desktop shortcut reference.
+- `src/ui/overlayUI/overlayUIStyles.css` gives the desktop controls popover enough width to keep the expanded turn bindings and `Precise turn` label readable without truncation.
 - `tests/input/keyboardInput.test.ts` and `tests/input/pointerCameraInput.test.ts` cover the deterministic input behavior.
 - `tests/gui/turnPlanningInput.spec.ts` covers the browser wiring, while `tests/gui/mobileHudScreenshot.spec.ts` covers the visible shortcut panel.
 
@@ -25,8 +26,8 @@ Desktop steering previously depended on a click-move-click target-heading plan, 
 
 - Reused the analog `ControlInput.turn` path added for mobile RCS instead of adding a second desktop steering system.
 - Matched the mobile RCS sign convention: Left Arrow is negative yaw and Right Arrow is positive yaw.
-- Derived precision from the held `ShiftLeft`/`ShiftRight` key state, so changing Shift while an arrow remains held changes power immediately.
-- Opposing arrow inputs cancel to neutral.
+- Derived precision from the held `ShiftLeft`/`ShiftRight` key state, so changing Shift while any turn key remains held changes power immediately.
+- Opposing turn inputs cancel to neutral.
 - Kept touch and pen target-heading planning intact; only `pointerType: 'mouse'` is excluded.
 
 ## Validation

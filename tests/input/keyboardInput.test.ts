@@ -73,42 +73,44 @@ describe('createKeyboardInput', () => {
     expect(keyboardInput.getManualControls().main).toBe(0)
   })
 
-  it('turns at full power with left and right arrow keys', () => {
+  it('turns at full power with interchangeable A/D and arrow keys', () => {
     const keyboardInput = createKeyboardInput()
 
-    keyboardInput.press('KeyA')
-    expect(keyboardInput.getManualControls().turn).toBe(0)
+    for (const [left, right] of [
+      ['KeyA', 'KeyD'],
+      ['ArrowLeft', 'ArrowRight'],
+    ]) {
+      keyboardInput.press(left)
+      expect(keyboardInput.getManualControls().turn).toBe(-1)
+      expect(keyboardInput.hasManualTurn()).toBe(true)
 
-    keyboardInput.press('ArrowLeft')
-    expect(keyboardInput.getManualControls().turn).toBe(-1)
-    expect(keyboardInput.hasManualTurn()).toBe(true)
+      keyboardInput.press(right)
+      expect(keyboardInput.getManualControls().turn).toBe(0)
+      expect(keyboardInput.hasManualTurn()).toBe(false)
 
-    keyboardInput.press('ArrowRight')
-    expect(keyboardInput.getManualControls().turn).toBe(0)
-    expect(keyboardInput.hasManualTurn()).toBe(false)
+      keyboardInput.release(left)
+      expect(keyboardInput.getManualControls().turn).toBe(1)
+      expect(keyboardInput.hasManualTurn()).toBe(true)
 
-    keyboardInput.release('ArrowLeft')
-    expect(keyboardInput.getManualControls().turn).toBe(1)
-    expect(keyboardInput.hasManualTurn()).toBe(true)
-
-    keyboardInput.release('ArrowRight')
-    expect(keyboardInput.getManualControls().turn).toBe(0)
-    expect(keyboardInput.hasManualTurn()).toBe(false)
+      keyboardInput.release(right)
+      expect(keyboardInput.getManualControls().turn).toBe(0)
+      expect(keyboardInput.hasManualTurn()).toBe(false)
+    }
   })
 
   it('uses quarter power while either Shift key is held', () => {
     const keyboardInput = createKeyboardInput()
 
-    keyboardInput.press('ArrowLeft')
+    keyboardInput.press('KeyA')
     keyboardInput.press('ShiftLeft')
     expect(keyboardInput.getManualControls().turn).toBe(-0.25)
 
     keyboardInput.release('ShiftLeft')
     expect(keyboardInput.getManualControls().turn).toBe(-1)
 
-    keyboardInput.release('ArrowLeft')
+    keyboardInput.release('KeyA')
     keyboardInput.press('ShiftRight')
-    keyboardInput.press('ArrowRight')
+    keyboardInput.press('KeyD')
     expect(keyboardInput.getManualControls().turn).toBe(0.25)
 
     keyboardInput.clear()

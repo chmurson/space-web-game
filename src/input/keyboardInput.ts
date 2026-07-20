@@ -20,6 +20,8 @@ export type KeyboardInput = {
 
 const mainThrustKeys = ['KeyW', 'ArrowUp']
 const reverseThrustKeys = ['KeyS', 'ArrowDown']
+const turnLeftKeys = ['KeyA', 'ArrowLeft']
+const turnRightKeys = ['KeyD', 'ArrowRight']
 const preciseTurnModifierKeys = ['ShiftLeft', 'ShiftRight']
 const mainThrustLatchDoubleTapMs = 300
 const preciseTurnPower = 0.25
@@ -64,8 +66,8 @@ export const createKeyboardInput = (): KeyboardInput => {
       : 1
 
     return (
-      (pressedKeys.has('ArrowLeft') ? -power : 0) +
-      (pressedKeys.has('ArrowRight') ? power : 0)
+      (hasAny(pressedKeys, turnLeftKeys) ? -power : 0) +
+      (hasAny(pressedKeys, turnRightKeys) ? power : 0)
     )
   }
 

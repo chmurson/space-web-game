@@ -2065,8 +2065,8 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Normal burn hold W / ↑',
       'Burn latch double W / ↑',
       'Cancel burn W / ↑ / S / ↓',
-      'Turn ← / →',
-      'Precise turn (25%) Shift + ← / →',
+      'Turn A / D / ← / →',
+      'Precise turn Shift + A / D / ← / →',
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
       'Target selector T',
@@ -3140,7 +3140,7 @@ test('captures wide in-game controls keyboard hints', async ({
   ).toBeVisible()
   await expect(page.getByText('Normal burn')).toBeVisible()
   await expect(page.getByText('Turn', { exact: true })).toBeVisible()
-  await expect(page.getByText('Precise turn (25%)')).toBeVisible()
+  await expect(page.getByText('Precise turn', { exact: true })).toBeVisible()
   await expect(page.getByText('Time warp')).toBeVisible()
   await expect(page.getByText('Burn latch')).toBeVisible()
   await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
