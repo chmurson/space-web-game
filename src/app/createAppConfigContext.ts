@@ -5,7 +5,6 @@ import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { defaultPhysicsEngine, physicsEngines } from '../simulation/physics'
 import type { PhysicsEngine } from '../simulation/types'
-import type { MobileFlightPanelTreatment } from '../ui/touchControls/mobileCommandDock'
 import {
   readUserSettings,
   type TouchControlSide,
@@ -21,7 +20,6 @@ export type AppConfigContext = {
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
   featureFlags: {
-    mobileFlightPanelTreatment: MobileFlightPanelTreatment
     noHorizonLimit: boolean
   }
   userSettings: UserSettings
@@ -77,25 +75,12 @@ const parseTouchTrajectoryControlStateOverride = (
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSideOverride(value)
 
-const parseMobileFlightPanelTreatment = (
-  value: string | null,
-): MobileFlightPanelTreatment => {
-  if (value === 'fade' || value === 'floating' || value === 'glass') {
-    return value
-  }
-
-  return 'floating'
-}
-
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
-    mobileFlightPanelTreatment: parseMobileFlightPanelTreatment(
-      urlParams.get('mobileFlightPanel'),
-    ),
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
   }
   const requestedScenarioParam = urlParams.get('scenario')

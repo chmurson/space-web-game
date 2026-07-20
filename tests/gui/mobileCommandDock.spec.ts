@@ -3,8 +3,6 @@ import { expect, type Page, type TestInfo, test } from '@playwright/test'
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
 
-type FlightPanelTreatment = 'fade' | 'floating' | 'glass'
-
 const waitForGame = async (page: Page) => {
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await expect(page.locator('.mobile-command-dock')).toBeVisible()
@@ -81,14 +79,10 @@ const captureDockState = async (options: {
   page: Page
   safeBottom: number
   testInfo: TestInfo
-  treatment?: FlightPanelTreatment
   viewport: { height: number; width: number }
 }) => {
   await options.page.setViewportSize(options.viewport)
-  const treatmentParam = options.treatment
-    ? `&mobileFlightPanel=${options.treatment}`
-    : ''
-  await options.page.goto(`/?scenario=earth-moon${treatmentParam}`)
+  await options.page.goto('/?scenario=earth-moon')
   await waitForGame(options.page)
   await isolateMobileControlLayer(options.page)
 
@@ -206,7 +200,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',
-      mobileFlightPanelTreatment: 'floating',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({
@@ -365,7 +358,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
   expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships all dock items with only Flight enabled and a label-free floating panel', async ({
+test('ships all dock items with only Flight enabled and one label-free floating panel', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -373,7 +366,6 @@ test('ships all dock items with only Flight enabled and a label-free floating pa
 
   const dock = page.locator('.mobile-command-dock')
   const dockItems = page.locator('.mobile-command-dock-item')
-  await expect(dock).toHaveAttribute('data-panel-treatment', 'floating')
   await expect(dock).toHaveAttribute('data-open', 'false')
   await expect(dockItems).toHaveCount(5)
   await expect(dockItems).toHaveText([
@@ -454,7 +446,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   )
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-floating-open-320.png',
+    fileName: 'mobile-command-dock-flight-open-320.png',
     open: true,
     page,
     safeBottom: 0,
@@ -463,7 +455,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   })
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-floating-open-safe-area-390.png',
+    fileName: 'mobile-command-dock-flight-open-safe-area-390.png',
     open: true,
     page,
     safeBottom: 24,
@@ -472,32 +464,12 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   })
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-floating-open-safe-area-430.png',
+    fileName: 'mobile-command-dock-flight-open-safe-area-430.png',
     open: true,
     page,
     safeBottom: 34,
     testInfo,
     viewport: { height: 932, width: 430 },
-  })
-
-  await captureDockState({
-    fileName: 'mobile-command-dock-flight-fade-open-safe-area-390.png',
-    open: true,
-    page,
-    safeBottom: 24,
-    testInfo,
-    treatment: 'fade',
-    viewport: { height: 844, width: 390 },
-  })
-
-  await captureDockState({
-    fileName: 'mobile-command-dock-flight-glass-comparison-390.png',
-    open: true,
-    page,
-    safeBottom: 24,
-    testInfo,
-    treatment: 'glass',
-    viewport: { height: 844, width: 390 },
   })
 
   const flightPanelBounds = await page
@@ -509,9 +481,32 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   const thrustControlBounds = await page
     .locator('.mobile-command-dock-panel .touch-thrust-control')
     .boundingBox()
+  const rcsTrackBounds = await page
+    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control-track')
+    .boundingBox()
+  const thrustTrackBounds = await page
+    .locator('.mobile-command-dock-panel .touch-thrust-control-track')
+    .boundingBox()
   expect(flightPanelBounds).not.toBeNull()
   expect(rcsControlBounds).not.toBeNull()
   expect(thrustControlBounds).not.toBeNull()
+  expect(rcsTrackBounds).not.toBeNull()
+  expect(thrustTrackBounds).not.toBeNull()
+  const leftInset = (rcsControlBounds?.x ?? 0) - (flightPanelBounds?.x ?? 0)
+  const rightInset =
+    (flightPanelBounds?.x ?? 0) +
+    (flightPanelBounds?.width ?? 0) -
+    ((thrustControlBounds?.x ?? 0) + (thrustControlBounds?.width ?? 0))
+  expect(leftInset).toBeGreaterThanOrEqual(8)
+  expect(leftInset).toBeLessThanOrEqual(16)
+  expect(Math.abs(leftInset - rightInset)).toBeLessThanOrEqual(1)
+  expect(rcsTrackBounds?.width ?? 0).toBeGreaterThanOrEqual(160)
+  expect(rcsTrackBounds?.width ?? 0).toBeLessThanOrEqual(168)
+  expect(thrustTrackBounds?.height ?? 0).toBeGreaterThanOrEqual(114)
+  expect(thrustTrackBounds?.height ?? 0).toBeLessThanOrEqual(120)
+  expect(
+    Math.abs((rcsTrackBounds?.width ?? 0) - (thrustTrackBounds?.height ?? 0)),
+  ).toBeLessThanOrEqual(52)
   expect(rcsControlBounds?.x ?? 0).toBeGreaterThanOrEqual(
     flightPanelBounds?.x ?? 0,
   )
@@ -523,6 +518,25 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   ).toBeLessThanOrEqual(
     (flightPanelBounds?.x ?? 0) + (flightPanelBounds?.width ?? 0),
   )
+  const trackMaterials = await page
+    .locator(
+      '.mobile-command-dock-panel .touch-rcs-yaw-control-track, .mobile-command-dock-panel .touch-thrust-control-track',
+    )
+    .evaluateAll((tracks) =>
+      tracks.map((track) => {
+        const style = getComputedStyle(track)
+        return {
+          backdropFilter: style.backdropFilter,
+          backgroundColor: style.backgroundColor,
+          backgroundImage: style.backgroundImage,
+          borderColor: style.borderColor,
+          boxShadow: style.boxShadow,
+        }
+      }),
+    )
+  expect(trackMaterials).toHaveLength(2)
+  expect(trackMaterials[0]).toEqual(trackMaterials[1])
+  expect(trackMaterials[0]?.backgroundColor).toBe('rgba(8, 13, 24, 0.56)')
   await expect(
     page.locator('#touch-rcs-yaw-reveal, #touch-thrust-reveal'),
   ).toHaveCount(0)

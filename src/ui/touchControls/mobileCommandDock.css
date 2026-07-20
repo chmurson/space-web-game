@@ -7,7 +7,6 @@
     --mobile-command-dock-edge-gap: 8px;
     --mobile-command-dock-item-height: 46px;
     --mobile-command-dock-panel-padding: 12px;
-    --mobile-command-dock-panel-width: 340px;
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
     --mobile-command-dock-safe-left: env(safe-area-inset-left, 0px);
     --mobile-command-dock-safe-right: env(safe-area-inset-right, 0px);
@@ -29,12 +28,10 @@
     pointer-events: none;
   }
 
-  .mobile-command-dock-bar,
-  .mobile-command-dock-panel {
+  .mobile-command-dock-bar {
     box-sizing: border-box;
     border: 1px solid var(--ui-glass-panel-border);
     color: rgba(240, 249, 255, 0.96);
-    backdrop-filter: var(--ui-glass-panel-blur);
     pointer-events: auto;
   }
 
@@ -116,46 +113,13 @@
   }
 
   .mobile-command-dock-panel {
-    width: min(
-      var(--mobile-command-dock-panel-width),
-      calc(
-        100vw
-        - max(8px, var(--mobile-command-dock-safe-left))
-        - max(8px, var(--mobile-command-dock-safe-right))
-      )
-    );
+    box-sizing: border-box;
+    width: min(100%, 520px);
     margin-bottom: 8px;
     padding: var(--mobile-command-dock-panel-padding);
-    border-radius: 16px;
-    background: var(--ui-glass-panel-bg);
-    box-shadow: var(--ui-glass-panel-shadow);
-  }
-
-  .mobile-command-dock[data-panel-treatment="floating"]
-    .mobile-command-dock-panel,
-  .mobile-command-dock[data-panel-treatment="fade"] .mobile-command-dock-panel {
-    border-color: transparent;
-    backdrop-filter: none;
-    box-shadow: none;
-    pointer-events: none;
-  }
-
-  .mobile-command-dock[data-panel-treatment="floating"]
-    .mobile-command-dock-panel {
     background: transparent;
-  }
-
-  .mobile-command-dock[data-panel-treatment="fade"] .mobile-command-dock-panel {
-    margin-bottom: 0;
-    padding-top: 24px;
-    background: linear-gradient(
-      0deg,
-      rgba(8, 13, 24, 0.72) 0%,
-      rgba(8, 13, 24, 0.46) 34%,
-      rgba(8, 13, 24, 0.14) 60%,
-      transparent 82%,
-      transparent 100%
-    );
+    color: rgba(240, 249, 255, 0.96);
+    pointer-events: none;
   }
 
   .mobile-command-dock-panel[hidden] {
@@ -168,9 +132,10 @@
 
   .mobile-command-dock-flight-controls {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto auto;
     align-items: end;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 24px;
   }
 
   .mobile-command-dock-flight-control {
@@ -179,12 +144,13 @@
 
   .mobile-command-dock-main-thrust {
     display: grid;
+    justify-self: end;
     justify-items: center;
   }
 
   .mobile-command-dock-panel .touch-rcs-yaw-control {
     box-sizing: border-box;
-    width: 100%;
+    width: 164px;
     min-width: 0;
     pointer-events: auto;
   }
@@ -194,8 +160,19 @@
     width: 100%;
   }
 
+  .mobile-command-dock-panel .touch-rcs-yaw-control-track,
   .mobile-command-dock-panel .touch-thrust-control-track {
-    height: 104px;
+    background:
+      linear-gradient(180deg, rgba(56, 189, 248, 0.1), transparent),
+      var(--ui-glass-control-bg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 12px 24px rgba(2, 6, 23, 0.2);
+    backdrop-filter: var(--ui-glass-control-blur);
+  }
+
+  .mobile-command-dock-panel .touch-thrust-control-track {
+    height: 116px;
   }
 
   .mobile-command-dock-panel .touch-thrust-control {
@@ -208,23 +185,6 @@
   }
 
   .mobile-command-dock[data-tutorial-focused="true"]
-    .mobile-command-dock-panel {
-    border-color: rgba(251, 191, 36, 0.54);
-    box-shadow:
-      var(--ui-glass-panel-shadow),
-      0 0 0 1px rgba(251, 191, 36, 0.16),
-      0 0 28px rgba(251, 191, 36, 0.2);
-  }
-
-  .mobile-command-dock[data-tutorial-focused="true"][data-panel-treatment="floating"]
-    .mobile-command-dock-panel,
-  .mobile-command-dock[data-tutorial-focused="true"][data-panel-treatment="fade"]
-    .mobile-command-dock-panel {
-    border-color: transparent;
-    box-shadow: none;
-  }
-
-  .mobile-command-dock[data-tutorial-focused="true"]
     .touch-thrust-control-track {
     border-color: rgba(251, 191, 36, 0.72);
     box-shadow:
@@ -233,37 +193,13 @@
       0 0 24px rgba(251, 191, 36, 0.24);
   }
 
-  .mobile-command-dock[data-panel-treatment="sheet"][data-open="true"]
-    .mobile-command-dock-panel {
-    width: 100%;
-    margin-bottom: 0;
-    border-bottom: 0;
-    border-radius: 16px 16px 0 0;
-  }
-
-  .mobile-command-dock[data-panel-treatment="sheet"][data-open="true"]
-    .mobile-command-dock-bar {
-    width: 100%;
-    border-radius: 0 0 16px 16px;
-    background: var(--ui-glass-panel-bg);
-    box-shadow: var(--ui-glass-panel-shadow);
-  }
-
   #app[data-mobile-command-dock="true"] {
     --mobile-command-dock-hud-height: 66px;
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   #app[data-mobile-command-dock-open="true"] {
-    --mobile-command-dock-hud-height: 210px;
-  }
-
-  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="fade"] {
-    --mobile-command-dock-hud-height: 202px;
-  }
-
-  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="sheet"] {
-    --mobile-command-dock-hud-height: 166px;
+    --mobile-command-dock-hud-height: 224px;
   }
 
   #app[data-mobile-command-dock="true"] .bottom-pill-area {

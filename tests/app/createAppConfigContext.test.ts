@@ -41,9 +41,6 @@ describe('createAppConfigContext', () => {
   it('uses configured default touch control settings without stored settings', () => {
     expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
     expect(
-      createAppConfigContext().featureFlags.mobileFlightPanelTreatment,
-    ).toBe('floating')
-    expect(
       createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
     ).toBe(48)
     expect(createAppConfigContext().userSettings).toMatchObject({
@@ -54,34 +51,6 @@ describe('createAppConfigContext', () => {
       touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
-  })
-
-  it('selects exact mobile Flight panel review variants', () => {
-    for (const treatment of ['fade', 'floating', 'glass'] as const) {
-      Object.defineProperty(globalThis, 'window', {
-        configurable: true,
-        value: createWindowWithSearch(`?mobileFlightPanel=${treatment}`),
-      })
-
-      expect(
-        createAppConfigContext().featureFlags.mobileFlightPanelTreatment,
-      ).toBe(treatment)
-    }
-
-    for (const search of [
-      '?mobileFlightPanel=sheet',
-      '?mobileFlightPanel=FLOATING',
-      '?mobileFlightPanel',
-    ]) {
-      Object.defineProperty(globalThis, 'window', {
-        configurable: true,
-        value: createWindowWithSearch(search),
-      })
-
-      expect(
-        createAppConfigContext().featureFlags.mobileFlightPanelTreatment,
-      ).toBe('floating')
-    }
   })
 
   it('uses persisted touch control sides by default', () => {

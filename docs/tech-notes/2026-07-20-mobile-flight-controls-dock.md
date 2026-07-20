@@ -19,13 +19,15 @@ Shipit state: `.codex/shipit-workflows/agent/issue-238-mobile-flight-controls.md
 - Added the dock bar and open panel to offscreen-indicator collision avoidance.
 - Removed the Burn-side setting from runtime configuration and settings UI
   while retaining its legacy storage field without migration.
-- Replaced the visually heavy nested Flight card with a label-free `floating`
-  treatment by default, plus `fade` and `glass` review variants selected with
-  the `mobileFlightPanel` URL flag.
+- Replaced the visually heavy nested Flight card with one label-free floating
+  layout and removed the temporary surface-treatment feature flag.
 - Removed the docked RCS outer card, header, and close button so only its direct
   slider track and thumb remain. Flight still closes from the dock item.
 - Restored real touch hit-testing for docked Main Thrust at the dock boundary.
-  Its existing visuals, gesture model, and runtime callbacks remain unchanged.
+  Its gesture model and runtime callbacks remain unchanged.
+- Anchored RCS toward the left safe-area edge and Main Thrust toward the right.
+  The docked RCS track is shorter, the Thrust track is slightly taller, and both
+  use the same translucent control material.
 
 ## Why
 
@@ -37,10 +39,7 @@ controls, scenario rules, or tutorial progression.
 ## Ownership boundaries
 
 - `src/ui/touchControls/mobileCommandDock.tsx` owns Flight panel state,
-  treatment, availability, tutorial focus, and stable mount points for both
-  controls.
-- `src/app/createAppConfigContext.ts` parses the review-only panel treatment and
-  defaults invalid or absent values to the shipped `floating` treatment.
+  availability, tutorial focus, and stable mount points for both controls.
 - `src/ui/touchControls/createTouchControls.ts` wires the existing controls to
   those mount points, filters dock touches from playfield gestures, and clears
   flight input at lifecycle boundaries.
@@ -60,12 +59,18 @@ controls, scenario rules, or tutorial progression.
   flight-input implementation or panel-specific control API was introduced.
 - Kept the five-item shell selected in issue #264. Disabled future items still
   do not mount empty panels or routes.
-- Kept one responsive two-column control layout while exposing three concrete
-  surface treatments: `floating` ships by default, `fade` explores a
-  dock-connected gradient, and `glass` remains a comparison baseline. This is
-  an enumerated review flag rather than a generic panel or layout registry.
+- Finalized one responsive floating layout and deleted the temporary `fade` and
+  `glass` comparison branches, URL parser, configuration field, and treatment
+  datasets.
 - Kept lightweight panel hit areas on the controls themselves so transparent
   space remains part of the playable surface.
+- Expanded the transparent layout to the dock's safe-area-aware width and used
+  `space-between` placement. At supported portrait widths the control frames
+  sit on equal 12 px panel insets rather than reading as a centered cluster.
+- Balanced the perpendicular controls at a 164 px RCS width and 116 px docked
+  Thrust height, preserving their existing 48 px thumbs and usable travel.
+- Scoped a common shared-token glass material to both docked tracks. RCS keeps
+  its cyan feedback and Thrust keeps its amber thumb and active feedback.
 - Fixed Main Thrust at the dock integration boundary. The reusable thrust root
   intentionally disables pointer hit-testing when used as a free-floating
   overlay; the dock now re-enables it for the docked instance.
@@ -82,24 +87,23 @@ controls, scenario rules, or tutorial progression.
   the PR's existing style review, and `git diff --check` passed.
 - `npm run build` passed, including config validation, TypeScript compilation,
   and the release Vite build. The existing large-chunk advisory remained.
-- `npm test` passed: 63 Vitest files / 573 tests, 16 automation-claim tests,
+- `npm test` passed: 63 Vitest files / 572 tests, 16 automation-claim tests,
   and 3 automation-workflow tests.
 - `npm run test:gui` passed all 73 Playwright checks, including focused Flight
-  panel input, reset, tutorial, safe-area, playfield-isolation, and desktop
-  regression coverage.
+  panel input, matched track materials, equal edge insets, balanced dimensions,
+  reset, tutorial, safe-area, playfield-isolation, and desktop regression
+  coverage.
 - A direct in-app browser smoke could not start because this worker exposed no
   browser backend. A Chromium DevTools Protocol touch drag now exercises real
   browser hit-testing for docked Main Thrust rather than dispatching directly to
   the control node; the focused Playwright cases also cover taps, cancellation,
   close resets, and playfield isolation.
 - Visually inspected the generated 320 px, 390 px, and 430 px portrait
-  screenshots. Floating, fade, and glass treatments fit without overlap; active
-  RCS and Main Thrust remain legible:
-  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-floating-open-320.png`
-  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-floating-open-safe-area-390.png`
-  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-floating-open-safe-area-430.png`
-  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-fade-open-safe-area-390.png`
-  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-glass-comparison-390.png`
+  screenshots. The final floating layout fits without overlap; active RCS and
+  Main Thrust remain legible:
+  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-open-320.png`
+  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-open-safe-area-390.png`
+  - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-flight-open-safe-area-430.png`
   - `tmp/playwright-results/mobileCommandDock-captures-01ddc-d-Main-Thrust-inside-Flight-mobile-chromium/mobile-command-dock-rcs-active-390.png`
   - `tmp/playwright-results/mobileCommandDock-captures-01ddc-d-Main-Thrust-inside-Flight-mobile-chromium/mobile-command-dock-main-thrust-active-390.png`
 

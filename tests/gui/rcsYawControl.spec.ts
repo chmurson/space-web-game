@@ -58,7 +58,6 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',
-      mobileFlightPanelTreatment: 'floating',
       keyboardInput: {
         clear: () => {
           virtualTurns.push(0)

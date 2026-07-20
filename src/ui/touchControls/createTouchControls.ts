@@ -24,10 +24,7 @@ import {
   type TouchControlRevealEdge,
   type TouchControlRevealPlacement,
 } from './edgeRevealControl'
-import {
-  createMobileCommandDock,
-  type MobileFlightPanelTreatment,
-} from './mobileCommandDock'
+import { createMobileCommandDock } from './mobileCommandDock'
 import { createRcsYawControl, type RcsYawGestureSession } from './rcsYawControl'
 import type {
   StepSelectorGesturePoint,
@@ -248,7 +245,6 @@ export const createTouchControls = (options: {
   initialTargetControlSide: TouchControlRevealEdge
   initialTrajectoryControlSide: TouchControlRevealState
   initialWarpControlSide: TouchControlRevealEdge
-  mobileFlightPanelTreatment: MobileFlightPanelTreatment
   keyboardInput: KeyboardInput
   getCameraMode(): CameraControlMode
   getCameraModeChangesLocked(): boolean
@@ -278,7 +274,6 @@ export const createTouchControls = (options: {
     app: options.app,
     container: panel,
     onOpenChange: (open) => handleFlightPanelOpenChange(open),
-    panelTreatment: options.mobileFlightPanelTreatment,
   })
   const tutorialHint = createTouchControlsTutorialHint({ container: panel })
 

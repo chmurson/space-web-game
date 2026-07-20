@@ -5,15 +5,12 @@ import {
 import { addTapSafeButtonHandler } from '../tapSafeButtonHandler'
 import './mobileCommandDock.css'
 
-export type MobileFlightPanelTreatment = 'fade' | 'floating' | 'glass'
-
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
   controlsAvailable: {
     rcsYaw: boolean
     thrust: boolean
   }
   open: boolean
-  panelTreatment: MobileFlightPanelTreatment
   tutorialFocused: boolean
 }
 
@@ -47,7 +44,6 @@ const getFlightButtonLabel = (available: boolean, open: boolean) => {
 const MobileCommandDockSurface = ({
   controlsAvailable,
   open,
-  panelTreatment,
   rootRef,
   tutorialFocused,
 }: MobileCommandDockSurfaceProps) => {
@@ -58,7 +54,6 @@ const MobileCommandDockSurface = ({
       aria-label="Mobile command dock"
       class="mobile-command-dock"
       data-open={String(open)}
-      data-panel-treatment={panelTreatment}
       data-tutorial-focused={String(tutorialFocused)}
       ref={rootRef}
     >
@@ -119,7 +114,6 @@ export const createMobileCommandDock = (options: {
   app: HTMLElement
   container: HTMLElement
   onOpenChange?(open: boolean): void
-  panelTreatment: MobileFlightPanelTreatment
 }) => {
   const flightControlsElement = document.createElement('div')
   flightControlsElement.className = 'mobile-command-dock-flight-controls'
@@ -156,7 +150,6 @@ export const createMobileCommandDock = (options: {
   const syncAppState = () => {
     options.app.dataset.mobileCommandDock = 'true'
     options.app.dataset.mobileCommandDockOpen = String(open)
-    options.app.dataset.mobileCommandDockPanel = options.panelTreatment
   }
 
   const syncFlightControls = () => {
@@ -178,7 +171,6 @@ export const createMobileCommandDock = (options: {
     surface.render({
       controlsAvailable,
       open,
-      panelTreatment: options.panelTreatment,
       tutorialFocused,
     })
     syncFlightControls()
