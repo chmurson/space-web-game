@@ -337,9 +337,12 @@ test('captures the mobile RCS yaw and thrust controls in Flight', async ({
   await expect(page.locator('.touch-rcs-yaw-control-track')).toBeVisible()
   await expect(page.locator('.touch-thrust-control-track')).toBeVisible()
   await expect(page.locator('.touch-rcs-yaw-control')).toHaveCSS(
-    'border-radius',
-    '15px',
+    'border-top-width',
+    '0px',
   )
+  await expect(
+    page.locator('.touch-rcs-yaw-control-header, .touch-rcs-yaw-control-close'),
+  ).toHaveCount(0)
   await expect(page.locator('.touch-rcs-yaw-control-track')).toHaveCSS(
     'border-radius',
     '15px',

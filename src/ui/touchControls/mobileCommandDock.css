@@ -131,36 +131,39 @@
     box-shadow: var(--ui-glass-panel-shadow);
   }
 
+  .mobile-command-dock[data-panel-treatment="floating"]
+    .mobile-command-dock-panel,
+  .mobile-command-dock[data-panel-treatment="fade"] .mobile-command-dock-panel {
+    border-color: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .mobile-command-dock[data-panel-treatment="floating"]
+    .mobile-command-dock-panel {
+    background: transparent;
+  }
+
+  .mobile-command-dock[data-panel-treatment="fade"] .mobile-command-dock-panel {
+    margin-bottom: 0;
+    padding-top: 24px;
+    background: linear-gradient(
+      0deg,
+      rgba(8, 13, 24, 0.72) 0%,
+      rgba(8, 13, 24, 0.46) 34%,
+      rgba(8, 13, 24, 0.14) 60%,
+      transparent 82%,
+      transparent 100%
+    );
+  }
+
   .mobile-command-dock-panel[hidden] {
     display: none;
   }
 
-  .mobile-command-dock-panel-heading {
-    display: flex;
-    min-width: 0;
-    align-items: baseline;
-    gap: 8px;
-  }
-
-  .mobile-command-dock-panel-heading strong {
-    overflow: hidden;
-    font-size: 14px;
-    line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mobile-command-dock-panel-kicker {
-    color: #7dd3fc;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
-
   .mobile-command-dock-panel-controls-host {
-    margin-top: 10px;
+    min-width: 0;
   }
 
   .mobile-command-dock-flight-controls {
@@ -177,24 +180,13 @@
   .mobile-command-dock-main-thrust {
     display: grid;
     justify-items: center;
-    gap: 7px;
-  }
-
-  .mobile-command-dock-flight-control-label {
-    color: rgba(251, 191, 36, 0.88);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    line-height: 1;
-    text-transform: uppercase;
   }
 
   .mobile-command-dock-panel .touch-rcs-yaw-control {
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    padding: 8px;
-    box-shadow: none;
+    pointer-events: auto;
   }
 
   .mobile-command-dock-panel .touch-rcs-yaw-control-track {
@@ -204,6 +196,11 @@
 
   .mobile-command-dock-panel .touch-thrust-control-track {
     height: 104px;
+  }
+
+  .mobile-command-dock-panel .touch-thrust-control {
+    pointer-events: auto;
+    touch-action: none;
   }
 
   .mobile-command-dock[data-tutorial-focused="true"] {
@@ -217,6 +214,14 @@
       var(--ui-glass-panel-shadow),
       0 0 0 1px rgba(251, 191, 36, 0.16),
       0 0 28px rgba(251, 191, 36, 0.2);
+  }
+
+  .mobile-command-dock[data-tutorial-focused="true"][data-panel-treatment="floating"]
+    .mobile-command-dock-panel,
+  .mobile-command-dock[data-tutorial-focused="true"][data-panel-treatment="fade"]
+    .mobile-command-dock-panel {
+    border-color: transparent;
+    box-shadow: none;
   }
 
   .mobile-command-dock[data-tutorial-focused="true"]
@@ -250,7 +255,11 @@
   }
 
   #app[data-mobile-command-dock-open="true"] {
-    --mobile-command-dock-hud-height: 274px;
+    --mobile-command-dock-hud-height: 210px;
+  }
+
+  #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="fade"] {
+    --mobile-command-dock-hud-height: 202px;
   }
 
   #app[data-mobile-command-dock-open="true"][data-mobile-command-dock-panel="sheet"] {

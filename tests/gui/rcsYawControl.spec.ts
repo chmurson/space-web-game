@@ -58,6 +58,7 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',
+      mobileFlightPanelTreatment: 'floating',
       keyboardInput: {
         clear: () => {
           virtualTurns.push(0)
@@ -98,19 +99,10 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
     const track = flightPanel?.querySelector<HTMLElement>(
       '.touch-rcs-yaw-control-track',
     )
-    const closeButton = flightPanel?.querySelector<HTMLButtonElement>(
-      '.touch-rcs-yaw-control-close',
-    )
     const rcsControl = flightPanel?.querySelector<HTMLElement>(
       '.touch-rcs-yaw-control',
     )
-    if (
-      !flightButton ||
-      !flightPanel ||
-      !track ||
-      !closeButton ||
-      !rcsControl
-    ) {
+    if (!flightButton || !flightPanel || !track || !rcsControl) {
       throw new Error('RCS yaw control failed to render')
     }
 
@@ -148,12 +140,12 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
     }
 
     dispatchTouch('touchstart', centerX, centerY)
-    dispatchTouch('touchmove', centerX + 48, centerY)
+    dispatchTouch('touchmove', centerX + 64, centerY)
     const turnAfterRightDrag = virtualTurns.at(-1) ?? 0
     const rightThumbOffset = rcsControl.style.getPropertyValue(
       '--rcs-yaw-thumb-offset',
     )
-    dispatchTouch('touchend', centerX + 48, centerY)
+    dispatchTouch('touchend', centerX + 64, centerY)
     const turnAfterRelease = virtualTurns.at(-1) ?? 0
     const releaseThumbOffset = rcsControl.style.getPropertyValue(
       '--rcs-yaw-thumb-offset',
@@ -182,14 +174,14 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
     const turnAfterKeyboardRelease = virtualTurns.at(-1) ?? 0
 
     dispatchTouch('touchstart', centerX, centerY)
-    dispatchTouch('touchmove', centerX + 48, centerY)
-    dispatchTouch('touchcancel', centerX + 48, centerY)
+    dispatchTouch('touchmove', centerX + 64, centerY)
+    dispatchTouch('touchcancel', centerX + 64, centerY)
     const turnAfterTouchCancel = virtualTurns.at(-1) ?? 0
 
     dispatchTouch('touchstart', centerX, centerY)
-    dispatchTouch('touchmove', centerX - 48, centerY)
+    dispatchTouch('touchmove', centerX - 64, centerY)
     const turnAfterLeftDrag = virtualTurns.at(-1) ?? 0
-    closeButton.click()
+    flightButton.click()
     const turnAfterClose = virtualTurns.at(-1) ?? 0
     const ariaExpandedAfterClose = flightButton.getAttribute('aria-expanded')
     const panelHiddenAfterClose = flightPanel.hidden
@@ -199,7 +191,7 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
 
     flightButton.click()
     dispatchTouch('touchstart', centerX, centerY)
-    dispatchTouch('touchmove', centerX + 48, centerY)
+    dispatchTouch('touchmove', centerX + 64, centerY)
     controls.setFlightControlsVisible(false)
     const turnAfterUnavailable = virtualTurns.at(-1) ?? 0
     const flightDisabledWhenUnavailable = flightButton.disabled
@@ -208,7 +200,7 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
     controls.setFlightControlsVisible(true)
     flightButton.click()
     dispatchTouch('touchstart', centerX, centerY)
-    dispatchTouch('touchmove', centerX - 48, centerY)
+    dispatchTouch('touchmove', centerX - 64, centerY)
     window.dispatchEvent(new Event('blur'))
     const turnAfterBlur = virtualTurns.at(-1) ?? 0
 
@@ -218,6 +210,9 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
       ariaExpandedAfterClose,
       closeThumbOffset,
       flightDisabledWhenUnavailable,
+      internalFrameCount: controls.element.querySelectorAll(
+        '.touch-rcs-yaw-control-header, .touch-rcs-yaw-control-close',
+      ).length,
       legacyRevealCount: controls.element.querySelectorAll(
         '#touch-rcs-yaw-reveal, #touch-thrust-reveal',
       ).length,
@@ -254,6 +249,7 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
   expect(result.legacyRevealCount).toBe(0)
   expect(result.turnAfterUnavailable).toBe(0)
   expect(result.flightDisabledWhenUnavailable).toBe(true)
+  expect(result.internalFrameCount).toBe(0)
   expect(result.panelHiddenWhenUnavailable).toBe(true)
   expect(result.turnAfterBlur).toBe(0)
 })

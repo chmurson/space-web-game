@@ -5,7 +5,7 @@ import {
 import { addTapSafeButtonHandler } from '../tapSafeButtonHandler'
 import './mobileCommandDock.css'
 
-type MobileCommandDockPanelTreatment = 'glass' | 'sheet'
+export type MobileFlightPanelTreatment = 'fade' | 'floating' | 'glass'
 
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
   controlsAvailable: {
@@ -13,10 +13,9 @@ type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
     thrust: boolean
   }
   open: boolean
+  panelTreatment: MobileFlightPanelTreatment
   tutorialFocused: boolean
 }
-
-const flightPanelTreatment: MobileCommandDockPanelTreatment = 'glass'
 
 const unavailableDockItems = [
   {
@@ -48,6 +47,7 @@ const getFlightButtonLabel = (available: boolean, open: boolean) => {
 const MobileCommandDockSurface = ({
   controlsAvailable,
   open,
+  panelTreatment,
   rootRef,
   tutorialFocused,
 }: MobileCommandDockSurfaceProps) => {
@@ -58,7 +58,7 @@ const MobileCommandDockSurface = ({
       aria-label="Mobile command dock"
       class="mobile-command-dock"
       data-open={String(open)}
-      data-panel-treatment={flightPanelTreatment}
+      data-panel-treatment={panelTreatment}
       data-tutorial-focused={String(tutorialFocused)}
       ref={rootRef}
     >
@@ -69,10 +69,6 @@ const MobileCommandDockSurface = ({
         hidden={!open}
         id="mobile-command-dock-flight-panel"
       >
-        <div class="mobile-command-dock-panel-heading">
-          <span class="mobile-command-dock-panel-kicker">Flight</span>
-          <strong>Manual controls</strong>
-        </div>
         <div class="mobile-command-dock-panel-controls-host" />
       </section>
 
@@ -123,6 +119,7 @@ export const createMobileCommandDock = (options: {
   app: HTMLElement
   container: HTMLElement
   onOpenChange?(open: boolean): void
+  panelTreatment: MobileFlightPanelTreatment
 }) => {
   const flightControlsElement = document.createElement('div')
   flightControlsElement.className = 'mobile-command-dock-flight-controls'
@@ -137,12 +134,9 @@ export const createMobileCommandDock = (options: {
   thrustGroup.className =
     'mobile-command-dock-flight-control mobile-command-dock-main-thrust'
   thrustGroup.setAttribute('aria-label', 'Main Thrust control')
-  const thrustLabel = document.createElement('span')
-  thrustLabel.className = 'mobile-command-dock-flight-control-label'
-  thrustLabel.textContent = 'Main Thrust'
   const thrustContainer = document.createElement('div')
   thrustContainer.className = 'mobile-command-dock-main-thrust-host'
-  thrustGroup.append(thrustLabel, thrustContainer)
+  thrustGroup.appendChild(thrustContainer)
   flightControlsElement.append(rcsYawGroup, thrustGroup)
 
   let controlsAvailable = {
@@ -162,7 +156,7 @@ export const createMobileCommandDock = (options: {
   const syncAppState = () => {
     options.app.dataset.mobileCommandDock = 'true'
     options.app.dataset.mobileCommandDockOpen = String(open)
-    options.app.dataset.mobileCommandDockPanel = flightPanelTreatment
+    options.app.dataset.mobileCommandDockPanel = options.panelTreatment
   }
 
   const syncFlightControls = () => {
@@ -184,6 +178,7 @@ export const createMobileCommandDock = (options: {
     surface.render({
       controlsAvailable,
       open,
+      panelTreatment: options.panelTreatment,
       tutorialFocused,
     })
     syncFlightControls()

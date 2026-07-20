@@ -255,6 +255,7 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
         initialTargetControlSide: 'left',
         initialTrajectoryControlSide: 'hidden',
         initialWarpControlSide: 'right',
+        mobileFlightPanelTreatment: 'floating',
         keyboardInput: {
           clear: () => {},
           getManualControls: () => ({

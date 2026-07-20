@@ -97,6 +97,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',
+      mobileFlightPanelTreatment: 'floating',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({

@@ -97,6 +97,7 @@ test('hands interrupted control gestures to the newest touch', async ({
         initialTargetControlSide: 'left',
         initialTrajectoryControlSide: 'hidden',
         initialWarpControlSide: 'right',
+        mobileFlightPanelTreatment: 'floating',
         keyboardInput: {
           clear: () => {},
           getManualControls: () => ({

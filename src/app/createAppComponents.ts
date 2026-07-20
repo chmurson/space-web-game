@@ -634,6 +634,8 @@ export const createAppComponents = (options: {
     initialTargetControlSide: touchTargetControlSide,
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     initialWarpControlSide: touchWarpControlSide,
+    mobileFlightPanelTreatment:
+      options.config.featureFlags.mobileFlightPanelTreatment,
     keyboardInput,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,

@@ -3,6 +3,8 @@ import { expect, type Page, type TestInfo, test } from '@playwright/test'
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
 
+type FlightPanelTreatment = 'fade' | 'floating' | 'glass'
+
 const waitForGame = async (page: Page) => {
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await expect(page.locator('.mobile-command-dock')).toBeVisible()
@@ -79,10 +81,14 @@ const captureDockState = async (options: {
   page: Page
   safeBottom: number
   testInfo: TestInfo
+  treatment?: FlightPanelTreatment
   viewport: { height: number; width: number }
 }) => {
   await options.page.setViewportSize(options.viewport)
-  await options.page.goto('/?scenario=earth-moon')
+  const treatmentParam = options.treatment
+    ? `&mobileFlightPanel=${options.treatment}`
+    : ''
+  await options.page.goto(`/?scenario=earth-moon${treatmentParam}`)
   await waitForGame(options.page)
   await isolateMobileControlLayer(options.page)
 
@@ -200,6 +206,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
       initialWarpControlSide: 'right',
+      mobileFlightPanelTreatment: 'floating',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({
@@ -358,7 +365,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
   expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships all dock items with only Flight enabled and its glass panel', async ({
+test('ships all dock items with only Flight enabled and a label-free floating panel', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -366,7 +373,7 @@ test('ships all dock items with only Flight enabled and its glass panel', async 
 
   const dock = page.locator('.mobile-command-dock')
   const dockItems = page.locator('.mobile-command-dock-item')
-  await expect(dock).toHaveAttribute('data-panel-treatment', 'glass')
+  await expect(dock).toHaveAttribute('data-panel-treatment', 'floating')
   await expect(dock).toHaveAttribute('data-open', 'false')
   await expect(dockItems).toHaveCount(5)
   await expect(dockItems).toHaveText([
@@ -387,7 +394,15 @@ test('ships all dock items with only Flight enabled and its glass panel', async 
   await flightButton.tap()
   await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
   await expect(dock).toHaveAttribute('data-open', 'true')
-  await expect(page.locator('.mobile-command-dock-panel')).toBeVisible()
+  const flightPanel = page.locator('.mobile-command-dock-panel')
+  await expect(flightPanel).toBeVisible()
+  await expect(flightPanel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(flightPanel).toHaveCSS('box-shadow', 'none')
+  await expect(
+    flightPanel.locator(
+      '.mobile-command-dock-panel-heading, .mobile-command-dock-flight-control-label, .touch-rcs-yaw-control-header, .touch-rcs-yaw-control-close',
+    ),
+  ).toHaveCount(0)
 })
 
 test('keeps the in-game controls popover clear of the collapsed dock', async ({
@@ -439,7 +454,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   )
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-open-320.png',
+    fileName: 'mobile-command-dock-flight-floating-open-320.png',
     open: true,
     page,
     safeBottom: 0,
@@ -448,7 +463,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   })
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-glass-open-safe-area-390.png',
+    fileName: 'mobile-command-dock-flight-floating-open-safe-area-390.png',
     open: true,
     page,
     safeBottom: 24,
@@ -457,12 +472,32 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   })
 
   await captureDockState({
-    fileName: 'mobile-command-dock-flight-glass-open-safe-area-430.png',
+    fileName: 'mobile-command-dock-flight-floating-open-safe-area-430.png',
     open: true,
     page,
     safeBottom: 34,
     testInfo,
     viewport: { height: 932, width: 430 },
+  })
+
+  await captureDockState({
+    fileName: 'mobile-command-dock-flight-fade-open-safe-area-390.png',
+    open: true,
+    page,
+    safeBottom: 24,
+    testInfo,
+    treatment: 'fade',
+    viewport: { height: 844, width: 390 },
+  })
+
+  await captureDockState({
+    fileName: 'mobile-command-dock-flight-glass-comparison-390.png',
+    open: true,
+    page,
+    safeBottom: 24,
+    testInfo,
+    treatment: 'glass',
+    viewport: { height: 844, width: 390 },
   })
 
   const flightPanelBounds = await page
@@ -493,7 +528,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   ).toHaveCount(0)
 })
 
-test('captures active RCS and Main Thrust inside Flight', async ({
+test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
@@ -547,25 +582,39 @@ test('captures active RCS and Main Thrust inside Flight', async ({
   }
   const thrustX = thrustBounds.x + thrustBounds.width / 2
   const thrustStartY = thrustBounds.y + thrustBounds.height / 2
-  await dispatchControlTouch({
-    id: 72,
-    page,
-    selector: thrustSelector,
-    type: 'touchstart',
-    x: thrustX,
-    y: thrustStartY,
+  const thrustReceivesHitTesting = await page.evaluate(
+    ({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest('.touch-thrust-control') !==
+      null,
+    { x: thrustX, y: thrustStartY },
+  )
+  expect(thrustReceivesHitTesting).toBe(true)
+
+  const cdpSession = await page.context().newCDPSession(page)
+  await cdpSession.send('Input.dispatchTouchEvent', {
+    touchPoints: [{ id: 72, x: thrustX, y: thrustStartY }],
+    type: 'touchStart',
   })
-  await dispatchControlTouch({
-    id: 72,
-    page,
-    selector: thrustSelector,
-    type: 'touchmove',
-    x: thrustX,
-    y: thrustStartY - 56,
-  })
+  for (const step of [1, 2, 3, 4]) {
+    await cdpSession.send('Input.dispatchTouchEvent', {
+      touchPoints: [
+        {
+          id: 72,
+          x: thrustX,
+          y: thrustStartY - (56 * step) / 4,
+        },
+      ],
+      type: 'touchMove',
+    })
+  }
   await expect(page.locator('.touch-thrust-control')).toHaveClass(
     /touch-thrust-control-on/,
   )
+  await cdpSession.send('Input.dispatchTouchEvent', {
+    touchPoints: [],
+    type: 'touchEnd',
+  })
+  await cdpSession.detach()
   await page.screenshot({
     path: testInfo.outputPath('mobile-command-dock-main-thrust-active-390.png'),
   })
@@ -574,14 +623,6 @@ test('captures active RCS and Main Thrust inside Flight', async ({
   await expect(page.locator('.touch-thrust-control')).not.toHaveClass(
     /touch-thrust-control-on/,
   )
-  await dispatchControlTouch({
-    id: 72,
-    page,
-    selector: thrustSelector,
-    type: 'touchend',
-    x: thrustX,
-    y: thrustStartY - 56,
-  })
 })
 
 test('does not change the fine-pointer desktop layout', async ({

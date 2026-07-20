@@ -15,7 +15,6 @@ export type RcsYawGestureSession =
     }
 
 type RcsYawControlRefs = {
-  closeButton: HTMLButtonElement
   thumb: HTMLDivElement
   track: HTMLDivElement
 }
@@ -25,52 +24,40 @@ const fallbackTrackWidthPx = 188
 const fallbackThumbWidthPx = 48
 
 const RcsYawControlMarkup = () => (
-  <>
-    <div class="touch-rcs-yaw-control-header">
-      <span class="touch-rcs-yaw-control-title">RCS</span>
-      <button
-        aria-label="Hide RCS yaw control"
-        class="touch-rcs-yaw-control-close"
-        type="button"
-      >
-        X
-      </button>
-    </div>
-    <div
-      aria-label="RCS yaw"
-      aria-valuemax={1}
-      aria-valuemin={-1}
-      aria-valuenow={0}
-      aria-valuetext="Neutral"
-      class="touch-rcs-yaw-control-track"
-      role="slider"
-      tabIndex={0}
-      {...{ [rcsYawGestureTargetAttribute]: 'rcs-yaw' }}
+  <div
+    aria-label="RCS yaw"
+    aria-valuemax={1}
+    aria-valuemin={-1}
+    aria-valuenow={0}
+    aria-valuetext="Neutral"
+    class="touch-rcs-yaw-control-track"
+    role="slider"
+    tabIndex={0}
+    {...{ [rcsYawGestureTargetAttribute]: 'rcs-yaw' }}
+  >
+    <span
+      aria-hidden="true"
+      class="touch-rcs-yaw-control-indicator touch-rcs-yaw-control-indicator-left"
     >
-      <span
-        aria-hidden="true"
-        class="touch-rcs-yaw-control-indicator touch-rcs-yaw-control-indicator-left"
-      >
-        &lt;
-      </span>
-      <span
-        aria-hidden="true"
-        class="touch-rcs-yaw-control-indicator touch-rcs-yaw-control-indicator-right"
-      >
-        &gt;
-      </span>
-      <span aria-hidden="true" class="touch-rcs-yaw-control-center-mark" />
-      <span
-        aria-hidden="true"
-        class="touch-rcs-yaw-control-energy touch-rcs-yaw-control-energy-left"
-      />
-      <span
-        aria-hidden="true"
-        class="touch-rcs-yaw-control-energy touch-rcs-yaw-control-energy-right"
-      />
-      <div class="touch-rcs-yaw-control-thumb" />
-    </div>
-  </>
+      &lt;
+    </span>
+    <span
+      aria-hidden="true"
+      class="touch-rcs-yaw-control-indicator touch-rcs-yaw-control-indicator-right"
+    >
+      &gt;
+    </span>
+    <span aria-hidden="true" class="touch-rcs-yaw-control-center-mark" />
+    <span
+      aria-hidden="true"
+      class="touch-rcs-yaw-control-energy touch-rcs-yaw-control-energy-left"
+    />
+    <span
+      aria-hidden="true"
+      class="touch-rcs-yaw-control-energy touch-rcs-yaw-control-energy-right"
+    />
+    <div class="touch-rcs-yaw-control-thumb" />
+  </div>
 )
 
 const getRequiredElement = <ElementType extends Element>(
@@ -92,11 +79,6 @@ const createRcsYawControlElement = () => {
   render(<RcsYawControlMarkup />, element)
 
   return {
-    closeButton: getRequiredElement<HTMLButtonElement>(
-      element,
-      '.touch-rcs-yaw-control-close',
-      'RCS yaw control rendered without close button',
-    ),
     element,
     thumb: getRequiredElement<HTMLDivElement>(
       element,
@@ -127,12 +109,10 @@ const formatTurnText = (turn: number) => {
 
 export const createRcsYawControl = (options: {
   container: HTMLElement
-  onCloseRequest(): void
   onSessionChange(session: RcsYawGestureSession): void
   setTurn(turn: number): void
 }) => {
   const {
-    closeButton,
     element,
     thumb: _thumb,
     track,
@@ -222,11 +202,6 @@ export const createRcsYawControl = (options: {
     setSession(nextSession)
     return nextSession
   }
-
-  closeButton.addEventListener('click', (event) => {
-    event.stopPropagation()
-    options.onCloseRequest()
-  })
 
   track.addEventListener('keydown', (event) => {
     if (!isAvailable) {

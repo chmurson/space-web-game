@@ -30,6 +30,7 @@ const createConfig = (
   physicsEngine: { name: 'test-engine', step: (() => undefined) as never },
   requestedScenarioId: 'tutorial',
   featureFlags: {
+    mobileFlightPanelTreatment: 'floating',
     noHorizonLimit: false,
   },
   userSettings: {
