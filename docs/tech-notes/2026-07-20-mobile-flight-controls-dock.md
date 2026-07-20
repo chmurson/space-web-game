@@ -91,10 +91,12 @@ controls, scenario rules, or tutorial progression.
   and the release Vite build. The existing large-chunk advisory remained.
 - `npm test` passed: 63 Vitest files / 572 tests, 16 automation-claim tests,
   and 3 automation-workflow tests.
-- `npm run test:gui` passed all 73 Playwright checks, including focused Flight
-  panel input, matched track materials, equal edge insets, balanced dimensions,
-  reset, tutorial, safe-area, playfield-isolation, and desktop regression
-  coverage.
+- `npm run test:gui` passed all 73 Playwright checks after the final layout
+  balancing. After the later opacity-only adjustment, the focused Flight suite
+  passed all 7 checks, while two full runs each passed 72 of 73 and encountered
+  the same unrelated Time Warp fling timing race. The exact Time Warp case
+  passed on isolated retry; every Flight, HUD, tutorial, safe-area,
+  playfield-isolation, and desktop regression check remained green.
 - A direct in-app browser smoke could not start because this worker exposed no
   browser backend. A Chromium DevTools Protocol touch drag now exercises real
   browser hit-testing for docked Main Thrust rather than dispatching directly to

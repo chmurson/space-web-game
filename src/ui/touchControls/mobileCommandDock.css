@@ -30,23 +30,19 @@
 
   .mobile-command-dock-bar {
     box-sizing: border-box;
-    border: 1px solid var(--ui-glass-panel-border);
-    color: rgba(240, 249, 255, 0.96);
-    pointer-events: auto;
-  }
-
-  .mobile-command-dock-bar {
     display: flex;
     width: min(100%, 520px);
     justify-content: center;
     padding: 4px;
-    border-color: var(--ui-glass-control-border);
+    border: 1px solid var(--ui-glass-control-border);
     border-radius: 15px;
     background: var(--ui-glass-control-bg);
+    color: rgba(240, 249, 255, 0.96);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       0 10px 24px rgba(2, 6, 23, 0.28);
     backdrop-filter: var(--ui-glass-control-blur);
+    pointer-events: auto;
   }
 
   .mobile-command-dock-item {
