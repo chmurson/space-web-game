@@ -231,6 +231,7 @@ export const createMobileCommandDock = (options: {
   getCameraMode(): CameraControlMode
   getCameraModeChangesLocked(): boolean
   onCameraModeSelected(mode: CameraControlMode): boolean
+  onViewportBottomInsetChange?(bottomInset: number): void
   onOpenPanelChange?(
     nextPanel: MobileCommandDockPanel | null,
     previousPanel: MobileCommandDockPanel | null,
@@ -268,6 +269,7 @@ export const createMobileCommandDock = (options: {
   let tutorialFocused: MobileCommandDockTutorialFocus = null
   let cameraMode = options.getCameraMode()
   let cameraModeChangesLocked = options.getCameraModeChangesLocked()
+  let viewportBottomInset = -1
   const surface = createPreactUiSurface<
     Omit<MobileCommandDockSurfaceProps, keyof SurfaceRootRefProps>
   >({
@@ -302,6 +304,17 @@ export const createMobileCommandDock = (options: {
     thrustGroup.hidden = !controlsAvailable.thrust
   }
 
+  const syncViewportBottomInset = () => {
+    const nextViewportBottomInset =
+      surface.element.getBoundingClientRect().height
+    if (viewportBottomInset === nextViewportBottomInset) {
+      return
+    }
+
+    viewportBottomInset = nextViewportBottomInset
+    options.onViewportBottomInsetChange?.(viewportBottomInset)
+  }
+
   const renderState = () => {
     syncAppState()
     surface.render({
@@ -315,6 +328,7 @@ export const createMobileCommandDock = (options: {
       tutorialFocused,
     })
     syncControlHosts()
+    syncViewportBottomInset()
   }
 
   const syncCameraState = () => {
@@ -348,6 +362,10 @@ export const createMobileCommandDock = (options: {
   }
 
   renderState()
+  if (typeof ResizeObserver !== 'undefined') {
+    const resizeObserver = new ResizeObserver(syncViewportBottomInset)
+    resizeObserver.observe(surface.element)
+  }
 
   const flightButton = surface.element.querySelector<HTMLButtonElement>(
     '#mobile-command-dock-flight-button',

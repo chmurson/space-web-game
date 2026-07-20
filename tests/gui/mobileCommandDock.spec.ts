@@ -172,6 +172,68 @@ test('switches camera mode from touch buttons in Nav', async ({ page }) => {
   await expect(target).toHaveAttribute('aria-pressed', 'false')
 })
 
+test('centers a locked target in the viewport above the open Nav panel', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/?scenario=earth-moon&devtools=1')
+  await waitForGame(page)
+  await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
+  await page.evaluate(() => {
+    const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      mode: 'target',
+      type: 'set-camera-mode',
+    })
+    if (!response?.ok) {
+      throw new Error(response?.error ?? 'Devtools bridge is missing')
+    }
+  })
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('.body-label')).some(
+      (label) => getComputedStyle(label).display !== 'none',
+    ),
+  )
+
+  const dock = page.locator('.mobile-command-dock')
+  const targetLabel = page.locator('.body-label').filter({ hasText: 'Earth' })
+  await expect(targetLabel).toBeVisible()
+  const collapsedDockBounds = await dock.boundingBox()
+  const collapsedTargetBounds = await targetLabel.boundingBox()
+  if (!collapsedDockBounds || !collapsedTargetBounds) {
+    throw new Error('Collapsed camera framing elements are missing')
+  }
+  const collapsedTargetCenterY =
+    collapsedTargetBounds.y + collapsedTargetBounds.height * 0.5
+
+  await page.locator('#mobile-command-dock-nav-button').tap()
+  await expect(page.locator('#mobile-command-dock-nav-panel')).toBeVisible()
+  await expect(
+    page.locator('[data-camera-mode-option="target"]'),
+  ).toHaveAttribute('aria-pressed', 'true')
+
+  await expect
+    .poll(async () => {
+      const openDockBounds = await dock.boundingBox()
+      const openTargetBounds = await targetLabel.boundingBox()
+      if (!openDockBounds || !openTargetBounds) {
+        throw new Error('Open camera framing elements are missing')
+      }
+      const openTargetCenterY =
+        openTargetBounds.y + openTargetBounds.height * 0.5
+      const expectedShift =
+        (openDockBounds.height - collapsedDockBounds.height) * 0.5
+      const actualShift = collapsedTargetCenterY - openTargetCenterY
+      return Math.abs(expectedShift - actualShift)
+    })
+    .toBeLessThan(3)
+
+  await page.screenshot({
+    path: testInfo.outputPath(
+      'mobile-command-dock-locked-target-centered-390.png',
+    ),
+  })
+})
+
 test('preserves camera state and explains when camera changes are locked', async ({
   page,
 }) => {

@@ -245,6 +245,7 @@ export const createTouchControls = (options: {
   getCameraModeChangesLocked(): boolean
   onCameraUnlockedBySwipe?(): void
   onCameraModeSelected(mode: CameraControlMode): boolean
+  onFollowCameraViewportBottomInsetChange?(bottomInset: number): void
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
   onSelectTargetIndex(index: number): boolean
@@ -270,6 +271,8 @@ export const createTouchControls = (options: {
     getCameraMode: options.getCameraMode,
     getCameraModeChangesLocked: options.getCameraModeChangesLocked,
     onCameraModeSelected: options.onCameraModeSelected,
+    onViewportBottomInsetChange:
+      options.onFollowCameraViewportBottomInsetChange,
     onOpenPanelChange: (nextPanel, previousPanel) =>
       handleDockPanelChange(nextPanel, previousPanel),
   })

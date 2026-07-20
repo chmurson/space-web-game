@@ -20,8 +20,10 @@ Shipit state: `.codex/shipit-workflows/agent/issue-239-mobile-nav.md`
   mode state, action mapping, lock behavior, and disabled labels. Camera
   buttons now use the dock's tap-safe pointer handler, so prevented synthetic
   clicks no longer make them inert on touch devices. Selected/disabled button
-  states replace the duplicate secondary mode copy. Fine-pointer desktop keeps
-  camera mode in the controls menu.
+  states replace the duplicate secondary mode copy. Spacecraft and Target
+  follow modes now center their tracked object within the viewport remaining
+  above the dock and its open panel. Fine-pointer desktop and Free roam camera
+  framing remain unchanged.
 - Removed the Warp-side row and runtime consumption while leaving its legacy
   persisted configuration field harmlessly ignored for issue #244.
 - Updated tutorial focus and copy to open Nav and direct the player to drag
@@ -40,8 +42,8 @@ migration boundary.
 
 - `src/ui/touchControls/mobileCommandDock.tsx` owns Flight/Nav panel state,
   camera-mode presentation and tap handling, accessibility-only Time Warp
-  status presentation, availability, tutorial focus, and stable control mount
-  points.
+  status presentation, availability, tutorial focus, stable control mount
+  points, and reporting the dock's measured viewport obstruction.
 - `src/ui/touchControls/createTouchControls.ts` mounts the retained Time Warp
   selector in Nav, routes dock gestures, cancels outgoing owned input, and
   leaves Target/Trajectory reveal controls intact.
@@ -55,6 +57,9 @@ migration boundary.
   visible only in the fine-pointer desktop version of the old controls menu.
 - App composition and HUD presentation now expose scenario availability for
   Target and Trajectory only; Warp side is no longer consumed.
+- App composition caches the measured dock obstruction; runtime camera actions
+  apply it only to follow modes, and `src/render/sceneUpdates.ts` shifts the
+  orthographic projection without changing zoom or simulation coordinates.
 
 ## Decisions
 
@@ -63,6 +68,9 @@ migration boundary.
 - Reused the selected selector and all existing runtime actions, previews,
   formatters, and camera-mode mappings rather than duplicating policy or state
   in the panel.
+- Used one `ResizeObserver` at the dock boundary so panel/safe-area changes are
+  measured only when layout changes, rather than reading DOM geometry from the
+  per-frame camera update.
 - Kept Nav available when Time Warp is unavailable because camera mode remains
   useful. Time Warp hides and cancels its active gesture independently.
 - Used shared glass surface tokens for the Nav panel and controls. The selector
@@ -84,19 +92,22 @@ migration boundary.
   operator-at-line-start form with narrow Biome format suppressions.
 - `npm run build` passed, including config validation, TypeScript compilation,
   and the release Vite build; the existing large-chunk advisory remained.
-- `npm test` passed: 61 Vitest files / 571 tests, 16 automation-claim tests,
-  and 3 automation-workflow tests. This includes every Time Warp status reason
-  mapping and the updated tutorial copy.
-- `npm run test:gui` passed all 77 Playwright checks. The suite now exercises
+- `npm test` passed: 62 Vitest files / 574 tests, 16 automation-claim tests,
+  and 3 automation-workflow tests. This includes projection math and follow-mode
+  viewport-inset coverage alongside every Time Warp status reason mapping and
+  the updated tutorial copy.
+- `npm run test:gui` passed all 78 Playwright checks. The suite now exercises
   real mobile touch taps across multiple camera options in addition to
   Flight/Nav switching and cleanup, camera state and locks, no-op panel state
   rendering, Nav touch isolation, the retained Time Warp interaction and
-  constraints, desktop isolation, and the remaining Target/Trajectory reveals.
+  constraints, desktop isolation, the remaining Target/Trajectory reveals, and
+  locked-target recentering as the Nav panel opens.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
   normal, capped, blocked, and dragging Time Warp states. The compact panel
   fits without overlap, duplicate secondary/helper copy is absent, camera
   selection remains obvious, text stays legible, and safe-area spacing is
   balanced:
+  - `tmp/playwright-results/mobileCommandDock-centers--cc5bb-rt-above-the-open-Nav-panel-mobile-chromium/mobile-command-dock-locked-target-centered-390.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-320.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-390.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-430.png`

@@ -74,6 +74,7 @@ export const createRuntimeActions = (options: {
   createRipple: RippleCreator
   gameScene: GameSceneRefs
   getAssistTargetUiState: () => AssistTargetUiState
+  getFollowCameraViewportBottomInset?: () => number
   maxCoastPredictionHorizonHours: number
   maxViewport: number
   minCoastPredictionHorizonHours: number
@@ -208,6 +209,10 @@ export const createRuntimeActions = (options: {
       cameraTargetPosition: getCameraTargetPosition(),
       gameScene: options.gameScene,
       preserveStarfieldWorldPosition,
+      viewportBottomInset:
+        options.runtime.ui.camera.mode === 'unlocked'
+          ? 0
+          : (options.getFollowCameraViewportBottomInset?.() ?? 0),
       viewportHeight: window.innerHeight,
       viewportSize: options.runtime.simulation.viewportSize,
       viewportWidth: window.innerWidth,

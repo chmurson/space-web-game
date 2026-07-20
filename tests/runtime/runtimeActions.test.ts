@@ -119,6 +119,7 @@ const createTestRuntimeActions = (
   options: {
     autoSelectNearestSurface?: boolean
     createRipple?: Parameters<typeof createRuntimeActions>[0]['createRipple']
+    getFollowCameraViewportBottomInset?: () => number
     navigationTimeWarpController?: NavigationTimeWarpController
   } = {},
 ) =>
@@ -139,6 +140,8 @@ const createTestRuntimeActions = (
           : 'manual',
       recommendedTarget: null,
     }),
+    getFollowCameraViewportBottomInset:
+      options.getFollowCameraViewportBottomInset,
     maxCoastPredictionHorizonHours: 48,
     maxViewport: EARTH_MOON_VIEWPORT_SIZE,
     minCoastPredictionHorizonHours: 0.5,
@@ -377,6 +380,44 @@ describe('createRuntimeActions', () => {
 
       expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
       expect(runtime.ui.camera.panOffset).toEqual({ x: 150, y: 160 })
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('applies the mobile viewport inset only to follow camera modes', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(390, 844)
+      const runtimeActions = createTestRuntimeActions(runtime, {
+        getFollowCameraViewportBottomInset: () => 260,
+      })
+
+      runtimeActions.updateCamera()
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ viewportBottomInset: 260 }),
+      )
+
+      runtimeActions.setCameraMode('target')
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ viewportBottomInset: 260 }),
+      )
+
+      runtimeActions.setCameraMode('unlocked')
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ viewportBottomInset: 0 }),
+      )
     } finally {
       if (originalWindow === undefined) {
         delete globals.window

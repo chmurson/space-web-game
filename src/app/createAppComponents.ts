@@ -484,6 +484,7 @@ export const createAppComponents = (options: {
     maxControlWarp: defaultMaxControlWarp,
     timeWarps: options.config.controls.timeWarps,
   })
+  let followCameraViewportBottomInset = 0
   const runtimeActions = createRuntimeActions({
     app: options.app,
     autoSelectNearestSurface:
@@ -494,6 +495,7 @@ export const createAppComponents = (options: {
     createRipple,
     gameScene,
     getAssistTargetUiState: queries.getAssistTargetUiState,
+    getFollowCameraViewportBottomInset: () => followCameraViewportBottomInset,
     maxCoastPredictionHorizonHours:
       options.config.trajectory.maxCoastPredictionHorizonHours,
     maxViewport: options.config.camera.maxViewport,
@@ -634,6 +636,9 @@ export const createAppComponents = (options: {
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     onCameraUnlockedBySwipe: cameraNotice.showUnlockedForFreeRoam,
     onCameraModeSelected: runtimeActions.setCameraMode,
+    onFollowCameraViewportBottomInsetChange: (bottomInset) => {
+      followCameraViewportBottomInset = bottomInset
+    },
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
       runtimeActions.returnToAutomaticAssistTargetSelection,
