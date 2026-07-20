@@ -1,10 +1,6 @@
 import type { TimeWarpFeedbackReason } from '../../runtime/timeWarpFeedbackPolicy'
 import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
-import {
-  cameraModeOptions,
-  getCameraModeAction,
-  getCameraModeDescription,
-} from '../cameraModeActions'
+import { cameraModeOptions, getCameraModeAction } from '../cameraModeActions'
 import {
   createPreactUiSurface,
   type SurfaceRootRefProps,
@@ -24,8 +20,6 @@ type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
     timeWarp: boolean
   }
   openPanel: MobileCommandDockPanel | null
-  onCameraModeSelect(mode: CameraControlMode): void
-  timeWarpCurrentLabel: string
   timeWarpReason: TimeWarpFeedbackReason | null
   timeWarpStatus: string
   timeWarpStatusTone: 'available' | 'capped'
@@ -69,16 +63,13 @@ const MobileCommandDockSurface = ({
   cameraModeChangesLocked,
   controlsAvailable,
   openPanel,
-  onCameraModeSelect,
   rootRef,
-  timeWarpCurrentLabel,
   timeWarpReason,
   timeWarpStatus,
   timeWarpStatusTone,
   tutorialFocused,
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
-  const cameraModeDescription = getCameraModeDescription(cameraMode)
 
   return (
     <section
@@ -114,14 +105,11 @@ const MobileCommandDockSurface = ({
         >
           <div class="mobile-command-dock-nav-heading">
             <span>Time Warp</span>
-            <output aria-live="polite" data-mobile-time-warp-current="">
-              {timeWarpCurrentLabel}
-            </output>
           </div>
           <div class="mobile-command-dock-time-warp-host" />
           <p
             aria-live="polite"
-            class="mobile-command-dock-time-warp-status"
+            class="mobile-command-dock-time-warp-status mobile-command-dock-visually-hidden"
             data-tone={timeWarpStatusTone}
           >
             {timeWarpStatus}
@@ -131,9 +119,6 @@ const MobileCommandDockSurface = ({
         <div class="mobile-command-dock-nav-camera">
           <div class="mobile-command-dock-nav-heading">
             <span id="mobile-command-dock-camera-label">Camera mode</span>
-            <output aria-live="polite" data-mobile-camera-status="">
-              {cameraModeDescription}
-            </output>
           </div>
           <fieldset
             aria-labelledby="mobile-command-dock-camera-label"
@@ -162,7 +147,6 @@ const MobileCommandDockSurface = ({
                   data-in-game-action={getCameraModeAction(option.mode)}
                   disabled={cameraModeChangesLocked}
                   key={option.mode}
-                  onClick={() => onCameraModeSelect(option.mode)}
                   type="button"
                 >
                   {option.label}
@@ -278,7 +262,6 @@ export const createMobileCommandDock = (options: {
     timeWarp: true,
   }
   let openPanel: MobileCommandDockPanel | null = null
-  let timeWarpCurrentLabel = ''
   let timeWarpReason: TimeWarpFeedbackReason | null = null
   let timeWarpStatus = ''
   let timeWarpStatusTone: 'available' | 'capped' = 'available'
@@ -326,11 +309,6 @@ export const createMobileCommandDock = (options: {
       cameraModeChangesLocked,
       controlsAvailable,
       openPanel,
-      onCameraModeSelect: (mode) => {
-        options.onCameraModeSelected(mode)
-        syncCameraState()
-      },
-      timeWarpCurrentLabel,
       timeWarpReason,
       timeWarpStatus,
       timeWarpStatusTone,
@@ -360,13 +338,12 @@ export const createMobileCommandDock = (options: {
   const setOpenPanel = (nextPanel: MobileCommandDockPanel | null) => {
     const allowedPanel =
       nextPanel === 'flight' && !isFlightAvailable() ? null : nextPanel
-    if (openPanel === allowedPanel) {
-      return
+    if (openPanel !== allowedPanel) {
+      const previousPanel = openPanel
+      openPanel = allowedPanel
+      options.onOpenPanelChange?.(openPanel, previousPanel)
     }
 
-    const previousPanel = openPanel
-    openPanel = allowedPanel
-    options.onOpenPanelChange?.(openPanel, previousPanel)
     renderState()
   }
 
@@ -380,6 +357,21 @@ export const createMobileCommandDock = (options: {
   )
   if (!flightButton || !navButton) {
     throw new Error('Mobile command dock rendered without panel buttons')
+  }
+
+  for (const option of cameraModeOptions) {
+    const cameraModeButton = surface.element.querySelector<HTMLButtonElement>(
+      `[data-camera-mode-option="${option.mode}"]`,
+    )
+    if (!cameraModeButton) {
+      throw new Error(
+        'Mobile command dock rendered without camera mode buttons',
+      )
+    }
+    addTapSafeButtonHandler(cameraModeButton, () => {
+      options.onCameraModeSelected(option.mode)
+      syncCameraState()
+    })
   }
 
   addTapSafeButtonHandler(flightButton, () => {
@@ -434,13 +426,11 @@ export const createMobileCommandDock = (options: {
     },
     setOpenPanel,
     setTimeWarpState(nextState: {
-      currentLabel: string
       reason: TimeWarpFeedbackReason | null
       status: string
       tone: 'available' | 'capped'
     }) {
       if (
-        timeWarpCurrentLabel === nextState.currentLabel &&
         timeWarpReason === nextState.reason &&
         timeWarpStatus === nextState.status &&
         timeWarpStatusTone === nextState.tone
@@ -448,7 +438,6 @@ export const createMobileCommandDock = (options: {
         return
       }
 
-      timeWarpCurrentLabel = nextState.currentLabel
       timeWarpReason = nextState.reason
       timeWarpStatus = nextState.status
       timeWarpStatusTone = nextState.tone

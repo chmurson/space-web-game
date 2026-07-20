@@ -2,6 +2,8 @@
 
 Issue: [#239](https://github.com/chmurson/space-web-game/issues/239)
 
+Review follow-up: [PR #278](https://github.com/chmurson/space-web-game/pull/278)
+
 Shipit state: `.codex/shipit-workflows/agent/issue-239-mobile-nav.md`
 
 ## What changed
@@ -11,12 +13,15 @@ Shipit state: `.codex/shipit-workflows/agent/issue-239-mobile-nav.md`
 - Promoted the selected horizontal Time Warp interaction to the sole mobile
   Time Warp control, mounted it first in Nav, and removed the original swipe
   control, comparison entry, prototype naming, and both Warp edge reveals.
-- Added current-rate and concise policy-owned cap/block feedback next to Time
-  Warp for global, scenario, active-control, thrust, turning, and min/max
-  constraints.
+- Compactified the Time Warp selector from 72px to 54px and removed duplicate
+  heading-rate and visible helper/status copy. Policy-owned cap/block feedback
+  remains in a visually hidden live region for assistive technology.
 - Moved the mobile camera-mode command into Nav while retaining the existing
-  mode state, action mapping, lock behavior, disabled labels, and feedback.
-  Fine-pointer desktop keeps camera mode in the controls menu.
+  mode state, action mapping, lock behavior, and disabled labels. Camera
+  buttons now use the dock's tap-safe pointer handler, so prevented synthetic
+  clicks no longer make them inert on touch devices. Selected/disabled button
+  states replace the duplicate secondary mode copy. Fine-pointer desktop keeps
+  camera mode in the controls menu.
 - Removed the Warp-side row and runtime consumption while leaving its legacy
   persisted configuration field harmlessly ignored for issue #244.
 - Updated tutorial focus and copy to open Nav and direct the player to drag
@@ -34,8 +39,9 @@ migration boundary.
 ## Ownership boundaries
 
 - `src/ui/touchControls/mobileCommandDock.tsx` owns Flight/Nav panel state,
-  camera-mode presentation, Time Warp status presentation, availability,
-  tutorial focus, and stable control mount points.
+  camera-mode presentation and tap handling, accessibility-only Time Warp
+  status presentation, availability, tutorial focus, and stable control mount
+  points.
 - `src/ui/touchControls/createTouchControls.ts` mounts the retained Time Warp
   selector in Nav, routes dock gestures, cancels outgoing owned input, and
   leaves Target/Trajectory reveal controls intact.
@@ -59,8 +65,12 @@ migration boundary.
   in the panel.
 - Kept Nav available when Time Warp is unavailable because camera mode remains
   useful. Time Warp hides and cancels its active gesture independently.
-- Used shared glass surface tokens for the Nav panel and controls, with amber
-  reserved for a capped/blocked status.
+- Used shared glass surface tokens for the Nav panel and controls. The selector
+  owns visible rate/constraint state; duplicate panel copy is intentionally
+  omitted.
+- Made `setOpenPanel()` render after no-op requests so availability and
+  tutorial-focus state mutations are never stranded behind an already-open
+  panel.
 - Deleted the now-unreachable swipe-feedback implementation and tests instead
   of retaining a second dormant interaction.
 - Preserved the legacy Warp-side config/query/storage shape for #244 and the
@@ -68,22 +78,25 @@ migration boundary.
 
 ## Validation performed
 
-- Targeted Biome checks passed for all changed source and test files. The only
-  reported warnings are three existing `!important` declarations in global
-  CSS that this issue does not change.
+- Targeted Biome checks passed for the follow-up source, CSS, test, and design
+  files. The repository does not install Stylelint locally, so its exact CLI
+  could not run; all four reported `calc()` expressions now use the requested
+  operator-at-line-start form with narrow Biome format suppressions.
 - `npm run build` passed, including config validation, TypeScript compilation,
   and the release Vite build; the existing large-chunk advisory remained.
 - `npm test` passed: 61 Vitest files / 571 tests, 16 automation-claim tests,
   and 3 automation-workflow tests. This includes every Time Warp status reason
   mapping and the updated tutorial copy.
-- `npm run test:gui` passed all 76 Playwright checks. The suite covers
-  Flight/Nav switching and cleanup, camera state and locks, Nav touch
-  isolation, the retained Time Warp interaction and constraints, desktop
-  isolation, and the remaining Target/Trajectory reveals.
+- `npm run test:gui` passed all 77 Playwright checks. The suite now exercises
+  real mobile touch taps across multiple camera options in addition to
+  Flight/Nav switching and cleanup, camera state and locks, no-op panel state
+  rendering, Nav touch isolation, the retained Time Warp interaction and
+  constraints, desktop isolation, and the remaining Target/Trajectory reveals.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
-  normal, capped, blocked, and dragging Time Warp states. The panel fits
-  without overlap, text remains legible, safe-area spacing is balanced, and
-  the retained Target/Trajectory reveals remain clear of the collapsed dock:
+  normal, capped, blocked, and dragging Time Warp states. The compact panel
+  fits without overlap, duplicate secondary/helper copy is absent, camera
+  selection remains obvious, text stays legible, and safe-area spacing is
+  balanced:
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-320.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-390.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-430.png`

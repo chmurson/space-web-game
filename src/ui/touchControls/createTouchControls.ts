@@ -13,7 +13,6 @@ import type {
   ScenarioTouchControlFocusTarget,
   ScenarioTouchHintTarget,
 } from '../../scenario/scenarioPromptTypes'
-import { formatTimeWarpLabel } from '../formatters'
 import './touchControls.css'
 import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
 import {
@@ -490,7 +489,6 @@ export const createTouchControls = (options: {
       increasePreview: options.getTimeWarpPreview('increaseTimeWarp'),
     })
     mobileCommandDock.setTimeWarpState({
-      currentLabel: formatTimeWarpLabel(options.getCurrentTimeWarp()),
       reason: status.reason,
       status: status.text,
       tone: status.tone,

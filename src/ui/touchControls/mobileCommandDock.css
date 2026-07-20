@@ -20,9 +20,10 @@
     display: grid;
     justify-items: center;
     padding-right: max(8px, var(--mobile-command-dock-safe-right));
+    /* biome-ignore format: Stylelint requires operators to start continuation lines. */
     padding-bottom: calc(
-      var(--mobile-command-dock-safe-bottom) +
-      var(--mobile-command-dock-edge-gap)
+      var(--mobile-command-dock-safe-bottom)
+      + var(--mobile-command-dock-edge-gap)
     );
     padding-left: max(8px, var(--mobile-command-dock-safe-left));
     pointer-events: none;
@@ -169,17 +170,6 @@
     text-transform: uppercase;
   }
 
-  .mobile-command-dock-nav-heading output {
-    overflow: hidden;
-    color: #f8fafc;
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0;
-    text-overflow: ellipsis;
-    text-transform: none;
-    white-space: nowrap;
-  }
-
   .mobile-command-dock-time-warp-host,
   .mobile-command-dock-time-warp-control {
     min-width: 0;
@@ -192,8 +182,8 @@
     z-index: auto;
     box-sizing: border-box;
     width: 100%;
-    min-height: 72px;
-    padding: 10px 14px;
+    min-height: 54px;
+    padding: 5px 14px;
     background:
       radial-gradient(
         circle at 50% 50%,
@@ -204,20 +194,6 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       0 10px 22px rgba(2, 6, 23, 0.24);
-  }
-
-  .mobile-command-dock-time-warp-status {
-    min-height: 14px;
-    margin: 0;
-    color: rgba(203, 213, 225, 0.7);
-    font-size: 11px;
-    font-weight: 650;
-    line-height: 1.25;
-    text-align: center;
-  }
-
-  .mobile-command-dock-time-warp-status[data-tone="capped"] {
-    color: #fde68a;
   }
 
   .mobile-command-dock-nav-camera {
@@ -235,12 +211,12 @@
     margin: 0;
   }
 
-  .mobile-command-dock-camera-legend {
+  .mobile-command-dock-camera-legend,
+  .mobile-command-dock-visually-hidden {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
-    clip: rect(0 0 0 0);
     clip-path: inset(50%);
     white-space: nowrap;
   }
@@ -358,13 +334,14 @@
   }
 
   #app[data-mobile-command-dock-panel="nav"] {
-    --mobile-command-dock-hud-height: 298px;
+    --mobile-command-dock-hud-height: 260px;
   }
 
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
+    /* biome-ignore format: Stylelint requires operators to start continuation lines. */
     bottom: calc(
-      var(--mobile-command-dock-safe-bottom) +
-      var(--mobile-command-dock-hud-height)
+      var(--mobile-command-dock-safe-bottom)
+      + var(--mobile-command-dock-hud-height)
     );
   }
 
@@ -375,19 +352,21 @@
   }
 
   #app[data-mobile-command-dock="true"] .in-game-controls-menu {
+    /* biome-ignore format: Stylelint requires operators to start continuation lines. */
     bottom: calc(
-      var(--bottom-safe-area-inset) +
-      var(--mobile-command-dock-hud-height) +
-      8px
+      var(--bottom-safe-area-inset)
+      + var(--mobile-command-dock-hud-height)
+      + 8px
     );
   }
 
   #app[data-mobile-command-dock-open="true"] .touch-edge-reveal-control {
+    /* biome-ignore format: Stylelint requires operators to start continuation lines. */
     bottom: calc(
-      env(safe-area-inset-bottom, 0px) +
-      var(--touch-edge-reveal-start) +
-      var(--touch-edge-reveal-stack-offset) +
-      var(--mobile-command-dock-hud-height)
+      env(safe-area-inset-bottom, 0px)
+      + var(--touch-edge-reveal-start)
+      + var(--touch-edge-reveal-stack-offset)
+      + var(--mobile-command-dock-hud-height)
     );
   }
 }

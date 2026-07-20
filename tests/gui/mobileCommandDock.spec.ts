@@ -154,6 +154,24 @@ test('keeps one panel open, collapses the active panel, and closes with Escape',
   await expect(navButton).toBeFocused()
 })
 
+test('switches camera mode from touch buttons in Nav', async ({ page }) => {
+  await page.goto('/?scenario=earth-moon')
+  await waitForGame(page)
+  await page.locator('#mobile-command-dock-nav-button').tap()
+
+  const spacecraft = page.locator('[data-camera-mode-option="centered"]')
+  const target = page.locator('[data-camera-mode-option="target"]')
+  const freeRoam = page.locator('[data-camera-mode-option="unlocked"]')
+
+  await expect(spacecraft).toHaveAttribute('aria-pressed', 'true')
+  await target.tap()
+  await expect(target).toHaveAttribute('aria-pressed', 'true')
+  await expect(spacecraft).toHaveAttribute('aria-pressed', 'false')
+  await freeRoam.tap()
+  await expect(freeRoam).toHaveAttribute('aria-pressed', 'true')
+  await expect(target).toHaveAttribute('aria-pressed', 'false')
+})
+
 test('preserves camera state and explains when camera changes are locked', async ({
   page,
 }) => {
@@ -186,21 +204,32 @@ test('preserves camera state and explains when camera changes are locked', async
       },
     })
     dock.setTimeWarpState({
-      currentLabel: 'x10s',
       reason: null,
       status: 'Drag left for faster · right for slower',
       tone: 'available',
     })
     dock.setOpenPanel('nav')
+    dock.setTutorialFocused('warp')
+    const tutorialFocusWhileAlreadyOpen = dock.element.dataset.tutorialFocused
+    dock.setControlAvailability({
+      rcsYaw: true,
+      thrust: true,
+      timeWarp: false,
+    })
+    dock.setControlAvailability({
+      rcsYaw: true,
+      thrust: true,
+      timeWarp: true,
+    })
+    const timeWarpAvailableAfterRestore = dock.element
+      .querySelector('.mobile-command-dock-nav-time-warp')
+      ?.getAttribute('data-available')
 
     const getCameraOption = (mode: string) =>
       dock.element.querySelector<HTMLButtonElement>(
         `[data-camera-mode-option="${mode}"]`,
       )
     getCameraOption('target')?.click()
-    const statusAfterTarget = dock.element.querySelector(
-      '[data-mobile-camera-status]',
-    )?.textContent
     const targetPressedAfterTarget =
       getCameraOption('target')?.getAttribute('aria-pressed')
 
@@ -220,20 +249,25 @@ test('preserves camera state and explains when camera changes are locked', async
 
     return {
       actions,
+      cameraStatusCount: dock.element.querySelectorAll(
+        '[data-mobile-camera-status]',
+      ).length,
       cameraMode,
       lockedLabels,
       openPanel: app.dataset.mobileCommandDockPanel,
-      statusAfterTarget,
       targetPressedAfterTarget,
+      timeWarpAvailableAfterRestore,
       timeWarpStatus: dock.element.querySelector(
         '.mobile-command-dock-time-warp-status',
       )?.textContent,
       tutorialFocus: dock.element.dataset.tutorialFocused,
+      tutorialFocusWhileAlreadyOpen,
     }
   })
 
   expect(result).toEqual({
     actions: ['target'],
+    cameraStatusCount: 0,
     cameraMode: 'target',
     lockedLabels: [
       {
@@ -250,10 +284,11 @@ test('preserves camera state and explains when camera changes are locked', async
       },
     ],
     openPanel: 'nav',
-    statusAfterTarget: 'Target',
     targetPressedAfterTarget: 'true',
+    timeWarpAvailableAfterRestore: 'true',
     timeWarpStatus: 'Drag left for faster · right for slower',
     tutorialFocus: 'warp',
+    tutorialFocusWhileAlreadyOpen: 'warp',
   })
 })
 
@@ -864,6 +899,12 @@ test('captures normal, capped, and blocked Time Warp feedback in Nav', async ({
   const status = page.locator('.mobile-command-dock-time-warp-status')
   const timeWarp = page.getByLabel('Time Warp', { exact: true })
   await expect(status).toHaveText('Minimum rate reached')
+  await expect(status).toHaveClass(/mobile-command-dock-visually-hidden/)
+  await expect(
+    page.locator(
+      '[data-mobile-time-warp-current], [data-mobile-camera-status]',
+    ),
+  ).toHaveCount(0)
   await page.screenshot({
     path: testInfo.outputPath('mobile-command-dock-nav-warp-capped-390.png'),
   })
@@ -884,7 +925,9 @@ test('captures normal, capped, and blocked Time Warp feedback in Nav', async ({
     path: testInfo.outputPath('mobile-command-dock-nav-warp-normal-390.png'),
   })
 
-  const currentTimeWarp = page.locator('[data-mobile-time-warp-current]')
+  const currentTimeWarp = page.locator(
+    '.touch-step-selector-horizontal-step.touch-step-selector-current .touch-step-selector-value',
+  )
   for (let step = 0; step < 8; step += 1) {
     if ((await currentTimeWarp.textContent()) === 'x1m') {
       break
