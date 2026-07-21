@@ -26,9 +26,6 @@ export const getKeyboardShortcutAction = (
   if (event.code === 'BracketLeft') {
     return 'decreaseTimeWarp'
   }
-  if (event.code === 'KeyR') {
-    return 'resetScenario'
-  }
   if (
     !event.repeat &&
     !context.autoDiscoverStrongestInfluence &&
@@ -37,7 +34,7 @@ export const getKeyboardShortcutAction = (
     return 'cycleAssistTarget'
   }
   if (!event.repeat && event.shiftKey && event.code === 'KeyC') {
-    return 'cycleAssistMode'
+    return 'recenterCamera'
   }
   if (!event.repeat && event.code === 'KeyC') {
     return 'toggleCameraFollow'

@@ -23,6 +23,7 @@ type InGameControlsMenuRenderProps = Omit<
 export const createInGameControlsMenu = (options: {
   app: HTMLElement
   getCameraControlsLocked: () => boolean
+  getCameraControlsVisible: () => boolean
   getCameraFollow: () => CameraFollowSubject
   getCoastPredictionHorizonHours: () => number
   getMaxCoastPredictionHorizonHours: () => number
@@ -38,6 +39,7 @@ export const createInGameControlsMenu = (options: {
   })
 
   let cameraControlsLocked = options.getCameraControlsLocked()
+  let cameraControlsVisible = options.getCameraControlsVisible()
   let cameraFollow = options.getCameraFollow()
   let coastHorizonLabel = ''
   let decreaseCoastHorizonDisabled = false
@@ -46,6 +48,7 @@ export const createInGameControlsMenu = (options: {
 
   const syncRenderState = () => {
     const nextCameraControlsLocked = options.getCameraControlsLocked()
+    const nextCameraControlsVisible = options.getCameraControlsVisible()
     const nextCameraFollow = options.getCameraFollow()
     const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours()
     const nextCoastHorizonLabel = formatTrajectoryHorizonDuration(
@@ -57,12 +60,14 @@ export const createInGameControlsMenu = (options: {
       coastPredictionHorizonHours >= options.getMaxCoastPredictionHorizonHours()
     const changed =
       nextCameraControlsLocked !== cameraControlsLocked ||
+      nextCameraControlsVisible !== cameraControlsVisible ||
       nextCameraFollow !== cameraFollow ||
       nextCoastHorizonLabel !== coastHorizonLabel ||
       nextDecreaseCoastHorizonDisabled !== decreaseCoastHorizonDisabled ||
       nextIncreaseCoastHorizonDisabled !== increaseCoastHorizonDisabled
 
     cameraControlsLocked = nextCameraControlsLocked
+    cameraControlsVisible = nextCameraControlsVisible
     cameraFollow = nextCameraFollow
     coastHorizonLabel = nextCoastHorizonLabel
     decreaseCoastHorizonDisabled = nextDecreaseCoastHorizonDisabled
@@ -74,6 +79,7 @@ export const createInGameControlsMenu = (options: {
   const renderMenu = () => {
     surface.render({
       cameraControlsLocked,
+      cameraControlsVisible,
       cameraFollow,
       coastHorizonLabel,
       decreaseCoastHorizonDisabled,

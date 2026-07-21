@@ -7,6 +7,7 @@ import type {
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type { TrajectoryHorizonAction } from '../../runtime/trajectoryHorizonControlPolicy'
+import type { CameraFollowSubject } from '../../scenario/scenarioDirectiveTypes'
 import type {
   ScenarioTouchControlFocusTarget,
   ScenarioTouchHintTarget,
@@ -239,6 +240,9 @@ export const createTouchControls = (options: {
   initialTrajectoryControlSide: TouchControlRevealState
   keyboardInput: KeyboardInput
   getCameraControlsLocked(): boolean
+  getCameraFollow(): CameraFollowSubject
+  onCameraFollowSelect(follow: CameraFollowSubject): void
+  onCameraRecenter(): void
   onFollowCameraViewportBottomInsetChange?(bottomInset: number): void
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
@@ -262,6 +266,10 @@ export const createTouchControls = (options: {
   const mobileCommandDock = createMobileCommandDock({
     app: options.app,
     container: panel,
+    getCameraControlsLocked: options.getCameraControlsLocked,
+    getCameraFollow: options.getCameraFollow,
+    onCameraFollowSelect: options.onCameraFollowSelect,
+    onCameraRecenter: options.onCameraRecenter,
     onViewportBottomInsetChange:
       options.onFollowCameraViewportBottomInsetChange,
     onOpenPanelChange: (nextPanel, previousPanel) =>
@@ -1493,6 +1501,7 @@ export const createTouchControls = (options: {
   options.app.appendChild(panel)
   thrustControl.syncUi()
   timeWarpControl.syncUi()
+  mobileCommandDock.syncState()
   syncTimeWarpDockState()
   syncTargetRecommendationCue()
   targetControl.syncUi()
@@ -1503,6 +1512,7 @@ export const createTouchControls = (options: {
   window.addEventListener('resize', () => {
     thrustControl.syncUi()
     timeWarpControl.syncUi()
+    mobileCommandDock.syncState()
     syncTimeWarpDockState()
     syncTargetRecommendationCue()
     targetControl.syncUi()
@@ -1543,6 +1553,7 @@ export const createTouchControls = (options: {
         clearGameplayTouchInput()
       }
       timeWarpControl.syncUi()
+      mobileCommandDock.syncState()
       syncTimeWarpDockState()
       syncTargetRecommendationCue()
       targetControl.syncUi()

@@ -395,6 +395,7 @@ export const createAppComponents = (options: {
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
+  let cameraKeyboardNoticeSequence = 0
   const getTargetControlRows = () =>
     options.runtimeState.simulation.state.bodies.map((body, index) => ({
       body,
@@ -482,6 +483,9 @@ export const createAppComponents = (options: {
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     keyboardInput,
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
+    getCameraFollow: runtimeActions.getCameraFollow,
+    onCameraFollowSelect: runtimeActions.setCameraFollow,
+    onCameraRecenter: runtimeActions.recenterCamera,
     onFollowCameraViewportBottomInsetChange: (bottomInset) => {
       followCameraViewportBottomInset = bottomInset
       runtimeActions.updateCamera()
@@ -619,6 +623,7 @@ export const createAppComponents = (options: {
   const inGameControlsMenu = createInGameControlsMenu({
     app: options.app,
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
+    getCameraControlsVisible: () => desktopFinePointerMedia.matches,
     getCameraFollow: runtimeActions.getCameraFollow,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
@@ -864,13 +869,39 @@ export const createAppComponents = (options: {
     timeWarps: options.config.controls.timeWarps,
   })
 
+  const handleKeyboardAction = (action: UIUserAction) => {
+    const cameraShortcut =
+      action === 'toggleCameraFollow' || action === 'recenterCamera'
+    const cameraControlsLocked = runtimeActions.getCameraControlsLocked()
+    dispatchRuntimeAction(action)
+
+    if (
+      !cameraShortcut ||
+      cameraControlsLocked ||
+      !desktopFinePointerMedia.matches
+    ) {
+      return
+    }
+
+    const centeredTargetName =
+      runtimeActions.getCameraFollow() === 'target'
+        ? queries.getAssistTargetUiState().activeTarget.name
+        : 'Spacecraft'
+    cameraKeyboardNoticeSequence += 1
+    options.runtimeState.ui.transientNotice = {
+      body: centeredTargetName,
+      id: `camera-centered-${cameraKeyboardNoticeSequence}`,
+      title: 'Camera centered',
+    }
+  }
+
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence:
       options.config.assistTarget.autoSelectNearestSurface,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
     getInteractionsEnabled: getGameInteractionsEnabled,
     handleTargetSelectorShortcut: desktopTargetSelector.toggleFromShortcut,
-    handleAction: dispatchRuntimeAction,
+    handleAction: handleKeyboardAction,
     keyboardInput,
     windowTarget: window,
   })

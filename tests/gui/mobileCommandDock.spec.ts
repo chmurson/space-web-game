@@ -154,16 +154,19 @@ test('keeps one panel open, collapses the active panel, and closes with Escape',
   await expect(navButton).toBeFocused()
 })
 
-test('switches camera Follow and recenters from the mobile Controls popover', async ({
+test('switches camera Follow and recenters from the mobile Nav panel', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
   await waitForGame(page)
-  await page.getByLabel('Open in-game controls').tap()
+  await page.locator('#mobile-command-dock-nav-button').tap()
 
-  const spacecraft = page.locator('[data-camera-follow-option="spacecraft"]')
-  const target = page.locator('[data-camera-follow-option="target"]')
-  const recenter = page.locator('[data-in-game-action="recenterCamera"]')
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const spacecraft = navPanel.locator(
+    '[data-camera-follow-option="spacecraft"]',
+  )
+  const target = navPanel.locator('[data-camera-follow-option="target"]')
+  const recenter = navPanel.locator('[data-mobile-camera-action="recenter"]')
 
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'true')
   await expect(recenter).toBeEnabled()
@@ -171,6 +174,9 @@ test('switches camera Follow and recenters from the mobile Controls popover', as
   await target.tap()
   await expect(target).toHaveAttribute('aria-pressed', 'true')
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'false')
+  await expect(navPanel.locator('[data-mobile-camera-status]')).toHaveText(
+    'Target',
+  )
   await recenter.tap()
   await expect(target).toHaveAttribute('aria-pressed', 'true')
 })
@@ -277,7 +283,7 @@ test('recenters target framing above Nav using the current playable viewport', a
   })
 })
 
-test('keeps Nav focused on time warp without duplicate camera controls', async ({
+test('keeps Time Warp and camera controls together in Nav', async ({
   page,
 }) => {
   await page.goto('/')
@@ -289,11 +295,21 @@ test('keeps Nav focused on time warp without duplicate camera controls', async (
     )) as MobileCommandDockModule
     const app = document.createElement('div')
     const container = document.createElement('div')
+    const cameraActions: string[] = []
+    let cameraControlsLocked = false
+    let cameraFollow: 'spacecraft' | 'target' = 'spacecraft'
     document.body.append(app, container)
 
     const dock = createMobileCommandDock({
       app,
       container,
+      getCameraControlsLocked: () => cameraControlsLocked,
+      getCameraFollow: () => cameraFollow,
+      onCameraFollowSelect: (follow) => {
+        cameraFollow = follow
+        cameraActions.push(`follow:${follow}`)
+      },
+      onCameraRecenter: () => cameraActions.push('recenter'),
     })
     dock.setTimeWarpState({
       reason: null,
@@ -319,11 +335,30 @@ test('keeps Nav focused on time warp without duplicate camera controls', async (
 
     dock.setOpenPanel(null)
     dock.setTutorialFocused('warp')
+    const targetButton = dock.element.querySelector<HTMLButtonElement>(
+      '[data-camera-follow-option="target"]',
+    )
+    const recenterButton = dock.element.querySelector<HTMLButtonElement>(
+      '[data-mobile-camera-action="recenter"]',
+    )
+    targetButton?.click()
+    recenterButton?.click()
+    cameraControlsLocked = true
+    dock.syncState()
 
     return {
+      cameraActions,
       cameraControlCount: dock.element.querySelectorAll(
-        '[data-camera-follow-option], [data-camera-view-option]',
+        '[data-camera-follow-option]',
       ).length,
+      cameraFollow: dock.element.dataset.cameraFollow,
+      cameraStatus: dock.element.querySelector('[data-mobile-camera-status]')
+        ?.textContent,
+      recenterDisabled: (
+        dock.element.querySelector(
+          '[data-mobile-camera-action="recenter"]',
+        ) as HTMLButtonElement | null
+      )?.disabled,
       openPanel: app.dataset.mobileCommandDockPanel,
       timeWarpAvailableAfterRestore,
       timeWarpStatus: dock.element.querySelector(
@@ -335,7 +370,11 @@ test('keeps Nav focused on time warp without duplicate camera controls', async (
   })
 
   expect(result).toEqual({
-    cameraControlCount: 0,
+    cameraActions: ['follow:target', 'recenter'],
+    cameraControlCount: 2,
+    cameraFollow: 'target',
+    cameraStatus: 'Target',
+    recenterDisabled: true,
     openPanel: 'nav',
     timeWarpAvailableAfterRestore: 'true',
     timeWarpStatus: '',
@@ -385,6 +424,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
         recommendedTarget: null,
       }),
       getCameraControlsLocked: () => false,
+      getCameraFollow: () => 'spacecraft',
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
@@ -418,6 +458,8 @@ test('keeps dock touches out of camera and heading input while the playfield rem
         cameraPans.push(1)
         return true
       },
+      onCameraFollowSelect: () => {},
+      onCameraRecenter: () => {},
       onReturnToAutomaticTarget: () => true,
       onSelectTargetIndex: () => true,
       onTargetHeadingPlan: () => {
@@ -635,7 +677,11 @@ test('ships Flight and Nav as the two available dock panels', async ({
   await expect(flightPanel).toBeHidden()
   await expect(navPanel).toBeVisible()
   await expect(navPanel.getByLabel('Time Warp', { exact: true })).toBeVisible()
-  await expect(navPanel.locator('[data-camera-follow-option]')).toHaveCount(0)
+  await expect(navPanel.getByRole('group', { name: 'Follow' })).toBeVisible()
+  await expect(navPanel.locator('[data-camera-follow-option]')).toHaveCount(2)
+  await expect(
+    navPanel.getByRole('button', { name: 'Recenter followed subject' }),
+  ).toBeVisible()
   await expect(navPanel.locator('[data-camera-view-option]')).toHaveCount(0)
   await expect(navPanel).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(
@@ -824,7 +870,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   ).toBeLessThanOrEqual(
     (navPanelBounds?.y ?? 0) + (navPanelBounds?.height ?? 0),
   )
-  await expect(page.locator('.mobile-command-dock-nav-camera')).toHaveCount(0)
+  await expect(page.locator('.mobile-command-dock-nav-camera')).toBeVisible()
 })
 
 test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
@@ -937,11 +983,7 @@ test('captures normal, capped, and blocked Time Warp feedback in Nav', async ({
   const timeWarp = page.getByLabel('Time Warp', { exact: true })
   await expect(status).toHaveText('Minimum rate reached')
   await expect(status).toHaveClass(/mobile-command-dock-visually-hidden/)
-  await expect(
-    page.locator(
-      '[data-mobile-time-warp-current], [data-mobile-camera-status]',
-    ),
-  ).toHaveCount(0)
+  await expect(page.locator('[data-mobile-time-warp-current]')).toHaveCount(0)
   await page.screenshot({
     path: testInfo.outputPath('mobile-command-dock-nav-warp-capped-390.png'),
   })

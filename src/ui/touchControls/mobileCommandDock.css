@@ -155,6 +155,12 @@
     display: none;
   }
 
+  .mobile-command-dock-nav-camera {
+    display: grid;
+    min-width: 0;
+    gap: 7px;
+  }
+
   .mobile-command-dock-nav-heading {
     display: flex;
     min-width: 0;
@@ -172,6 +178,66 @@
   .mobile-command-dock-time-warp-host,
   .mobile-command-dock-time-warp-control {
     min-width: 0;
+  }
+
+  .mobile-command-dock-camera-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mobile-command-dock-camera-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+    margin: 0;
+    padding: 3px;
+    border: 1px solid var(--ui-glass-control-border);
+    border-radius: 12px;
+    background: var(--ui-glass-control-bg);
+  }
+
+  .mobile-command-dock-camera-option,
+  .mobile-command-dock-camera-recenter {
+    min-height: 42px;
+    padding: 7px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: rgba(226, 232, 240, 0.82);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    touch-action: manipulation;
+  }
+
+  .mobile-command-dock-camera-option-selected {
+    border-color: rgba(56, 189, 248, 0.48);
+    background: rgba(14, 116, 144, 0.24);
+    color: #bae6fd;
+  }
+
+  .mobile-command-dock-camera-recenter {
+    align-self: center;
+    min-height: 38px;
+    padding-inline: 12px;
+    border-color: var(--ui-glass-control-border);
+    background: var(--ui-glass-control-bg);
+    color: rgba(240, 249, 255, 0.92);
+  }
+
+  .mobile-command-dock-camera-option:disabled,
+  .mobile-command-dock-camera-recenter:disabled {
+    opacity: 0.58;
+  }
+
+  .mobile-command-dock-camera-option:focus-visible,
+  .mobile-command-dock-camera-recenter:focus-visible {
+    outline: 2px solid rgba(125, 211, 252, 0.86);
+    outline-offset: 2px;
   }
 
   .mobile-command-dock-time-warp-control .touch-step-selector {

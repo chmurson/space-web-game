@@ -7,6 +7,12 @@
   move away from that subject without changing what is followed.
 - Added an explicit `Recenter` action to the shared in-game Controls popover.
   Recenter and every Follow change clear the pan offset.
+- Added the same Follow/Recenter actions to the mobile Nav dock. The desktop
+  Controls popover now uses a full-width Follow group and compact Recenter,
+  while mobile keeps those controls in Nav instead of duplicating them.
+- Updated desktop keyboard behavior so `C` changes Follow, `Shift+C` recenters,
+  and both actions announce the centered spacecraft or active body. Removed the
+  `R` scenario-restart shortcut and its remaining player-facing guidance.
 - Removed player-facing View state, the `L` shortcut, camera-state notices,
   edge-dwell unlock progress, and swipe-unlock thresholds.
 - Kept scenario-only camera locking private. It blocks Follow, Recenter,
@@ -61,13 +67,16 @@ framing.
 - `npm run build` passed, including config validation, TypeScript, and the
   release Vite bundle.
 - `npm test` passed: 578 Vitest tests and 19 automation claim/workflow tests.
-- `npm run test:gui` passed all 76 Playwright tests, including direct first-move
-  touch pan, immediate edge pan, no player camera notices, Follow/Recenter UI,
-  and dock-aware target framing.
-- Inspected the generated mobile and wide Controls screenshots plus the before
-  and after dock-aware Recenter screenshots. Follow and Recenter are readable,
-  the View/L UI is absent, and the followed target remains centered in the
-  playable area above the open mobile Nav panel.
+- The full Playwright suite passed all 77 tests through an equivalent local
+  config on port 4275 because an unrelated SSH forward occupied the standard
+  port 4173. Coverage includes direct first-move touch pan, immediate edge pan,
+  mobile Nav camera controls, desktop camera notices, Follow/Recenter UI, and
+  dock-aware target framing.
+- Biome passed on all changed source and test files, and `git diff --check`
+  passed.
+- Inspected the generated mobile Nav, wide desktop Controls, and desktop camera
+  notice screenshots. The mobile controls fit without clipping, Follow fills
+  the desktop menu width, Recenter is compact, and the notice names Spacecraft.
 
 ## Follow-ups and known gaps
 

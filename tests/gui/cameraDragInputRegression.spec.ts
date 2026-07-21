@@ -40,6 +40,7 @@ test('starts mobile panning on the first touch movement', async ({ page }) => {
         recommendedTarget: null,
       }),
       getCameraControlsLocked: () => false,
+      getCameraFollow: () => 'spacecraft',
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
@@ -73,6 +74,8 @@ test('starts mobile panning on the first touch movement', async ({ page }) => {
         cameraPans.push({ next, previous })
         return true
       },
+      onCameraFollowSelect: () => {},
+      onCameraRecenter: () => {},
       onReturnToAutomaticTarget: () => true,
       onSelectTargetIndex: () => true,
       onTargetHeadingPlan: () => {},
@@ -359,6 +362,7 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
           recommendedTarget: null,
         }),
         getCameraControlsLocked: () => false,
+        getCameraFollow: () => 'spacecraft',
         getCurrentTimeWarp: () => 1,
         getCurrentTrajectoryHorizonHours: () => 1,
         getInteractionsEnabled: () => true,
@@ -392,6 +396,8 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
           cameraPans.push({ next, previous })
           return true
         },
+        onCameraFollowSelect: () => {},
+        onCameraRecenter: () => {},
         onReturnToAutomaticTarget: () => true,
         onSelectTargetIndex: () => true,
         onTargetHeadingPlan: (x, y) => {

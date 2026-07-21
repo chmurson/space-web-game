@@ -187,13 +187,14 @@
 
 .in-game-controls-menu-camera-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(104px, 1fr);
   gap: 8px;
 }
 
 .in-game-controls-menu-camera-recenter {
-  min-height: 100%;
+  min-height: 32px;
+  justify-self: end;
   justify-content: center;
+  padding: 7px 12px;
   font-weight: 700;
   text-align: center;
 }
@@ -202,8 +203,11 @@
   opacity: 0.58;
 }
 
-.in-game-controls-menu-camera-control {
+.in-game-controls-menu .in-game-controls-menu-camera-control {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  width: 100%;
   gap: 8px;
 }
 
@@ -214,8 +218,8 @@
   min-width: 0;
 }
 
-.in-game-controls-menu-camera-control .menu-stepper-controls,
 .in-game-controls-menu-camera-options {
+  box-sizing: border-box;
   width: 100%;
 }
 

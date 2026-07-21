@@ -101,7 +101,7 @@ describe('bindKeyboardShortcuts', () => {
     expect(keyboardInput.getManualControls().main).toBe(0)
   })
 
-  it('clears latched thrust when the reset shortcut runs', () => {
+  it('does not reserve R or clear latched thrust', () => {
     const keyboardInput = createKeyboardInput()
     const keyboardTarget = createKeyboardTarget()
     const handleAction = vi.fn()
@@ -123,8 +123,8 @@ describe('bindKeyboardShortcuts', () => {
 
     keyboardTarget.dispatch('keydown', 'KeyR', { timeStamp: 500 })
 
-    expect(handleAction).toHaveBeenCalledWith('resetScenario')
-    expect(keyboardInput.getManualControls().main).toBe(0)
+    expect(handleAction).not.toHaveBeenCalled()
+    expect(keyboardInput.getManualControls().main).toBe(1)
   })
 
   it('lets the desktop target selector consume plain T before runtime actions', () => {

@@ -7,6 +7,7 @@ import {
 
 export type InGameControlsMenuSurfaceProps = {
   cameraControlsLocked: boolean
+  cameraControlsVisible: boolean
   cameraFollow: CameraFollowSubject
   coastHorizonLabel: string
   decreaseCoastHorizonDisabled: boolean
@@ -24,6 +25,7 @@ export type InGameControlsMenuSurfaceProps = {
 
 export const InGameControlsMenuSurface = ({
   cameraControlsLocked,
+  cameraControlsVisible,
   cameraFollow,
   coastHorizonLabel,
   decreaseCoastHorizonDisabled,
@@ -71,21 +73,21 @@ export const InGameControlsMenuSurface = ({
         aria-label="In-game controls"
       >
         <div class="in-game-controls-menu-heading">Controls</div>
-        <div class="in-game-controls-menu-camera-grid">
-          <div class="menu-stepper in-game-controls-menu-camera-control">
-            <div class="menu-stepper-copy">
-              <span class="menu-stepper-name" id={cameraFollowLabelId}>
-                Follow
-              </span>
-              <span
-                aria-live="polite"
-                class="menu-stepper-value"
-                data-in-game-camera-follow-status=""
-              >
-                {cameraFollowDescription}
-              </span>
-            </div>
-            <div class="menu-stepper-controls">
+        {cameraControlsVisible ? (
+          <div class="in-game-controls-menu-camera-grid">
+            <div class="menu-stepper in-game-controls-menu-camera-control">
+              <div class="menu-stepper-copy">
+                <span class="menu-stepper-name" id={cameraFollowLabelId}>
+                  Follow
+                </span>
+                <span
+                  aria-live="polite"
+                  class="menu-stepper-value"
+                  data-in-game-camera-follow-status=""
+                >
+                  {cameraFollowDescription}
+                </span>
+              </div>
               <fieldset
                 aria-labelledby={cameraFollowLabelId}
                 class="segmented-control in-game-controls-menu-camera-options"
@@ -122,23 +124,23 @@ export const InGameControlsMenuSurface = ({
                 })}
               </fieldset>
             </div>
-          </div>
 
-          <button
-            aria-label={
-              cameraControlsLocked
-                ? 'Camera controls unavailable: Recenter followed subject'
-                : 'Recenter followed subject'
-            }
-            class="in-game-controls-menu-action in-game-controls-menu-camera-recenter"
-            data-in-game-action="recenterCamera"
-            disabled={cameraControlsLocked}
-            onClick={onCameraRecenter}
-            type="button"
-          >
-            Recenter
-          </button>
-        </div>
+            <button
+              aria-label={
+                cameraControlsLocked
+                  ? 'Camera controls unavailable: Recenter followed subject'
+                  : 'Recenter followed subject'
+              }
+              class="in-game-controls-menu-action in-game-controls-menu-camera-recenter"
+              data-in-game-action="recenterCamera"
+              disabled={cameraControlsLocked}
+              onClick={onCameraRecenter}
+              type="button"
+            >
+              Recenter
+            </button>
+          </div>
+        ) : null}
 
         <button
           class="in-game-controls-menu-action"
@@ -288,6 +290,14 @@ export const InGameControlsMenuSurface = ({
           <div class="in-game-controls-menu-keyboard-row">
             <span class="in-game-controls-menu-keyboard-name">Follow</span>
             <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>C</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">Recenter</span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>Shift</kbd>
+              <span> + </span>
               <kbd>C</kbd>
             </span>
           </div>

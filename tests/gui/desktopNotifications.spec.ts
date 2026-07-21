@@ -41,12 +41,32 @@ const attachScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('does not show player-facing camera notices for Follow, L, or drag', async ({
+test('names the centered target for desktop keyboard camera actions', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  const notice = page.locator('.hud-notice-transient')
+  await page.keyboard.press('KeyC')
+  await expect(notice).toBeVisible()
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera centered',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Earth')
+
+  await page.keyboard.press('KeyC')
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
+
+  await page.keyboard.press('Shift+KeyC')
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
+  await attachScreenshot(page, testInfo, 'desktop-camera-centered-notice')
+})
+
+test('does not show camera notices for unassigned L or pointer drag', async ({
   page,
 }) => {
   await startReachMoonMission(page)
 
-  await page.keyboard.press('KeyC')
   await page.keyboard.press('KeyL')
 
   const canvas = page.locator('canvas')

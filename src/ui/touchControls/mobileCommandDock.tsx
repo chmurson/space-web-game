@@ -1,4 +1,9 @@
 import type { TimeWarpFeedbackReason } from '../../runtime/timeWarpFeedbackPolicy'
+import type { CameraFollowSubject } from '../../scenario/scenarioDirectiveTypes'
+import {
+  cameraFollowOptions,
+  getCameraFollowDescription,
+} from '../cameraControlActions'
 import {
   createPreactUiSurface,
   type SurfaceRootRefProps,
@@ -10,6 +15,8 @@ export type MobileCommandDockPanel = 'flight' | 'nav'
 type MobileCommandDockTutorialFocus = 'burn' | 'warp' | null
 
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
+  cameraControlsLocked: boolean
+  cameraFollow: CameraFollowSubject
   controlsAvailable: {
     rcsYaw: boolean
     thrust: boolean
@@ -55,6 +62,8 @@ const getPanelButtonLabel = (options: {
 }
 
 const MobileCommandDockSurface = ({
+  cameraControlsLocked,
+  cameraFollow,
   controlsAvailable,
   openPanel,
   rootRef,
@@ -64,11 +73,13 @@ const MobileCommandDockSurface = ({
   tutorialFocused,
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
+  const cameraFollowDescription = getCameraFollowDescription(cameraFollow)
 
   return (
     <section
       aria-label="Mobile command dock"
       class="mobile-command-dock"
+      data-camera-follow={cameraFollow}
       data-open={String(openPanel !== null)}
       data-open-panel={openPanel ?? 'none'}
       data-tutorial-focused={tutorialFocused ?? 'none'}
@@ -108,6 +119,62 @@ const MobileCommandDockSurface = ({
           >
             {timeWarpStatus}
           </p>
+        </div>
+        <div
+          class="mobile-command-dock-nav-camera"
+          data-camera-controls-locked={String(cameraControlsLocked)}
+        >
+          <div class="mobile-command-dock-nav-heading">
+            <span>Camera</span>
+            <span aria-live="polite" data-mobile-camera-status="">
+              {cameraFollowDescription}
+            </span>
+          </div>
+          <div class="mobile-command-dock-camera-controls">
+            <fieldset
+              aria-label="Follow"
+              class="mobile-command-dock-camera-options"
+            >
+              {cameraFollowOptions.map((option) => {
+                const selected = option.follow === cameraFollow
+
+                return (
+                  <button
+                    aria-label={
+                      cameraControlsLocked
+                        ? `Camera controls unavailable: Follow ${option.label}`
+                        : `Follow ${option.label}`
+                    }
+                    aria-pressed={selected}
+                    class={
+                      selected
+                        ? 'mobile-command-dock-camera-option mobile-command-dock-camera-option-selected'
+                        : 'mobile-command-dock-camera-option'
+                    }
+                    data-camera-follow-option={option.follow}
+                    disabled={cameraControlsLocked}
+                    key={option.follow}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </fieldset>
+            <button
+              aria-label={
+                cameraControlsLocked
+                  ? 'Camera controls unavailable: Recenter followed subject'
+                  : 'Recenter followed subject'
+              }
+              class="mobile-command-dock-camera-recenter"
+              data-mobile-camera-action="recenter"
+              disabled={cameraControlsLocked}
+              type="button"
+            >
+              Recenter
+            </button>
+          </div>
         </div>
       </section>
 
@@ -182,6 +249,10 @@ const MobileCommandDockSurface = ({
 export const createMobileCommandDock = (options: {
   app: HTMLElement
   container: HTMLElement
+  getCameraControlsLocked(): boolean
+  getCameraFollow(): CameraFollowSubject
+  onCameraFollowSelect(follow: CameraFollowSubject): void
+  onCameraRecenter(): void
   onViewportBottomInsetChange?(bottomInset: number): void
   onOpenPanelChange?(
     nextPanel: MobileCommandDockPanel | null,
@@ -267,6 +338,8 @@ export const createMobileCommandDock = (options: {
   const renderState = () => {
     syncAppState()
     surface.render({
+      cameraControlsLocked: options.getCameraControlsLocked(),
+      cameraFollow: options.getCameraFollow(),
       controlsAvailable,
       openPanel,
       timeWarpReason,
@@ -308,6 +381,29 @@ export const createMobileCommandDock = (options: {
   if (!flightButton || !navButton) {
     throw new Error('Mobile command dock rendered without panel buttons')
   }
+
+  for (const cameraFollowOption of cameraFollowOptions) {
+    const button = surface.element.querySelector<HTMLButtonElement>(
+      `[data-camera-follow-option="${cameraFollowOption.follow}"]`,
+    )
+    if (!button) {
+      throw new Error('Mobile command dock rendered without camera controls')
+    }
+    addTapSafeButtonHandler(button, () => {
+      options.onCameraFollowSelect(cameraFollowOption.follow)
+      renderState()
+    })
+  }
+  const recenterButton = surface.element.querySelector<HTMLButtonElement>(
+    '[data-mobile-camera-action="recenter"]',
+  )
+  if (!recenterButton) {
+    throw new Error('Mobile command dock rendered without Recenter')
+  }
+  addTapSafeButtonHandler(recenterButton, () => {
+    options.onCameraRecenter()
+    renderState()
+  })
 
   addTapSafeButtonHandler(flightButton, () => {
     setOpenPanel(openPanel === 'flight' ? null : 'flight')
@@ -360,6 +456,7 @@ export const createMobileCommandDock = (options: {
       renderState()
     },
     setOpenPanel,
+    syncState: renderState,
     setTimeWarpState(nextState: {
       reason: TimeWarpFeedbackReason | null
       status: string

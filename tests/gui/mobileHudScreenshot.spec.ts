@@ -167,7 +167,11 @@ const openReachMoonMainMenu = async (page: Page, query = '') => {
   await expectWorldVisualsSuppressed(page)
 }
 
-const startReachMoonMission = async (page: Page, query = '') => {
+const startReachMoonMission = async (
+  page: Page,
+  query = '',
+  options: { touchControlsVisible?: boolean } = {},
+) => {
   await openReachMoonMainMenu(page, query)
 
   await page.getByRole('button', { name: 'Reach the Moon' }).click()
@@ -178,7 +182,11 @@ const startReachMoonMission = async (page: Page, query = '') => {
 
   await page.getByRole('button', { name: 'Start mission' }).click()
   await expect(page.locator('.scenario-prompt')).toBeHidden()
-  await expect(page.locator('.touch-controls')).toBeVisible()
+  if (options.touchControlsVisible === false) {
+    await expect(page.locator('.touch-controls')).toBeHidden()
+  } else {
+    await expect(page.locator('.touch-controls')).toBeVisible()
+  }
   await expect(
     page.getByRole('button', { name: 'Mission Brief' }),
   ).toBeVisible()
@@ -1444,7 +1452,7 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     checkpointPrimary: true,
     description:
       'Impact with Moon ended this run. Restart to try the approach again.',
-    events: ['load', 'checkpoint', 'exit', 'restart'],
+    events: ['load', 'exit'],
     focusAfterBackwardTrap: 'exit',
     focusAfterForwardTrap: 'checkpoint',
     loadHiddenAfterStaleClick: true,
@@ -1800,6 +1808,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const menu = createInGameControlsMenu({
       app,
       getCameraControlsLocked: () => cameraControlsLocked,
+      getCameraControlsVisible: () => true,
       getCameraFollow: () => cameraFollow,
       getCoastPredictionHorizonHours: () => coastHorizonHours,
       getMaxCoastPredictionHorizonHours: () => 8,
@@ -2064,6 +2073,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Horizon Shift + [ / ]',
       'Target selector T',
       'Follow C',
+      'Recenter Shift + C',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',
     menuButtonLabelAfterEscape: 'Open in-game controls',
@@ -2868,7 +2878,7 @@ test('captures the mobile top menu open over gameplay HUD', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-snapshot-save')
 })
 
-test('captures the mobile in-game controls menu open over gameplay HUD', async ({
+test('keeps mobile camera controls in Nav instead of the in-game controls menu', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -2879,15 +2889,15 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await expect(controlsDialog.getByText('Prediction horizon')).toBeVisible()
   await expect(
     controlsDialog.getByRole('group', { name: 'Follow' }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await expect(
     controlsDialog.getByRole('button', {
       name: 'Recenter followed subject',
     }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await expect(
     controlsDialog.locator('[data-in-game-camera-follow-status]'),
-  ).toHaveText('Spacecraft')
+  ).toHaveCount(0)
   await expect(controlsDialog.getByText('View', { exact: true })).toHaveCount(0)
 
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
@@ -2987,49 +2997,94 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
 })
 
 test('captures wide in-game controls keyboard hints', async ({
-  page,
+  baseURL,
+  browser,
 }, testInfo) => {
-  await page.setViewportSize({ width: 1024, height: 720 })
-  await startReachMoonMission(page)
+  if (!baseURL) {
+    throw new Error('Playwright base URL is not configured')
+  }
 
-  await page.getByRole('button', { name: 'Open in-game controls' }).click()
-  const controlsDialog = page.getByRole('dialog', { name: 'In-game controls' })
-  await expect(controlsDialog).toBeVisible()
-  await expect(
-    page.getByRole('group', { name: 'Keyboard shortcuts' }),
-  ).toBeVisible()
-  await expect(page.getByText('Normal burn')).toBeVisible()
-  await expect(page.getByText('Turn', { exact: true })).toBeVisible()
-  await expect(page.getByText('Precise turn', { exact: true })).toBeVisible()
-  await expect(
-    controlsDialog.getByText('Time warp', { exact: true }),
-  ).toBeVisible()
-  await expect(page.getByText('Burn latch')).toBeVisible()
-  await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
-  await expect(
-    controlsDialog.getByRole('group', { name: 'Follow' }),
-  ).toBeVisible()
-  await expect(
-    controlsDialog.getByRole('button', {
+  const context = await browser.newContext({
+    baseURL,
+    hasTouch: false,
+    isMobile: false,
+    viewport: { width: 1024, height: 720 },
+  })
+  const page = await context.newPage()
+
+  try {
+    await startReachMoonMission(page, '', { touchControlsVisible: false })
+
+    await page.getByRole('button', { name: 'Open in-game controls' }).click()
+    const controlsDialog = page.getByRole('dialog', {
+      name: 'In-game controls',
+    })
+    await expect(controlsDialog).toBeVisible()
+    await expect(
+      page.getByRole('group', { name: 'Keyboard shortcuts' }),
+    ).toBeVisible()
+    await expect(page.getByText('Normal burn')).toBeVisible()
+    await expect(page.getByText('Turn', { exact: true })).toBeVisible()
+    await expect(page.getByText('Precise turn', { exact: true })).toBeVisible()
+    await expect(
+      controlsDialog.getByText('Time warp', { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByText('Burn latch')).toBeVisible()
+    await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
+    await expect(
+      controlsDialog.getByRole('group', { name: 'Follow' }),
+    ).toBeVisible()
+    await expect(
+      controlsDialog.getByRole('button', {
+        name: 'Recenter followed subject',
+      }),
+    ).toBeVisible()
+    await expect(
+      controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
+        hasText: 'Follow',
+      }),
+    ).toBeVisible()
+    await expect(
+      controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
+        hasText: 'Recenter',
+      }),
+    ).toBeVisible()
+    const cameraGrid = controlsDialog.locator(
+      '.in-game-controls-menu-camera-grid',
+    )
+    const followGroup = controlsDialog.getByRole('group', { name: 'Follow' })
+    const recenterButton = controlsDialog.getByRole('button', {
       name: 'Recenter followed subject',
-    }),
-  ).toBeVisible()
-  await expect(
-    controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
-      hasText: 'Follow',
-    }),
-  ).toBeVisible()
-  await expect(
-    controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
-      hasText: 'View',
-    }),
-  ).toHaveCount(0)
+    })
+    const [cameraGridBounds, followGroupBounds, recenterBounds] =
+      await Promise.all([
+        cameraGrid.boundingBox(),
+        followGroup.boundingBox(),
+        recenterButton.boundingBox(),
+      ])
+    expect(cameraGridBounds).not.toBeNull()
+    expect(followGroupBounds).not.toBeNull()
+    expect(recenterBounds).not.toBeNull()
+    expect(followGroupBounds?.width ?? 0).toBeGreaterThanOrEqual(
+      (cameraGridBounds?.width ?? 0) * 0.9,
+    )
+    expect(recenterBounds?.width ?? 0).toBeLessThan(
+      (followGroupBounds?.width ?? 0) * 0.5,
+    )
+    await expect(
+      controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
+        hasText: 'View',
+      }),
+    ).toHaveCount(0)
 
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'wide-in-game-controls-keyboard-hints',
-  )
+    await attachMobileScreenshot(
+      page,
+      testInfo,
+      'wide-in-game-controls-keyboard-hints',
+    )
+  } finally {
+    await context.close()
+  }
 })
 
 test('captures the mobile UI settings dialog opened from in-game controls', async ({
