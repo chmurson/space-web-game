@@ -6,6 +6,7 @@ import {
   EARTH_VIEWPORT_SIZE,
 } from '@/domain/viewportPresets'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { getInfoPinKey } from '@/runtime/infoPins'
 import { applyScenarioRuntimeTransition } from '@/runtime/runtimeStateTransitions'
 import {
   createRequestedRuntimeScenario,
@@ -76,6 +77,7 @@ const createRuntime = (): AppRuntimeState => {
   )
 
   return {
+    info: { userPins: [] },
     simulation: {
       assistMode: 'off',
       assistTargetIndex: 1,
@@ -267,6 +269,27 @@ describe('reachMoonScenario', () => {
     applyRuntimeScenarioDirectiveConstraints(runtime, limits)
 
     expect(runtime.simulation.coastPredictionHorizonHours).toBe(768)
+  })
+
+  it('declares the exact scenario-owned Info pins for every mission phase', () => {
+    const runtime = createRuntime()
+    const expectedKeysByPhase = {
+      complete: [],
+      'orbit-earth': ['body:earth', 'periapsis', 'apoapsis'],
+      'orbit-moon': ['body:moon', 'periapsis', 'apoapsis'],
+      'reach-moon': ['body:moon'],
+      'return-earth': ['body:earth'],
+    }
+
+    for (const [phase, expectedKeys] of Object.entries(expectedKeysByPhase)) {
+      runtime.scenario.session.state = { phase }
+      const directives = resolveRuntimeScenarioDirectives(
+        runtime,
+        globalScenarioDirectiveLimits,
+      )
+
+      expect(directives.infoPins.map(getInfoPinKey)).toEqual(expectedKeys)
+    }
   })
 
   it('advances through Moon reach, three lunar orbits, Earth return, and one Earth orbit', () => {

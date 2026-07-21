@@ -224,7 +224,10 @@ The playable canvas owns the full viewport. DOM UI layers sit above it with fixe
 - Keep bottom notices and replay pills centered in `.bottom-pill-area`, above the bottom safe area and touch controls.
 - Keep the in-game controls menu near the lower left by default, using the bottom and left safe-area variables in `src/ui/overlayUI/overlayUIStyles.css`.
 - Mobile navigation controls use edge-reveal tabs from both sides and must preserve the center playfield; manual flight controls live in the bottom dock's Flight panel.
-- The mobile command dock sits above the bottom safe area and reserves space for bottom HUD notices. Its open Flight panel stays non-modal, with pointer handling limited to the dock and panel while the surrounding touch playfield remains interactive.
+- The mobile command dock sits above the bottom safe area and reserves space for bottom HUD notices. Flight and Info are the enabled panels and only one can be open at a time. Open panels stay non-modal, with pointer handling limited to the dock and panel while the surrounding touch playfield remains interactive.
+- Info is a compact telemetry surface, not a second navigation system. Desktop uses a top-bar pill with an anchored popover and a persistent top rail while the popover is closed. Mobile uses the Info dock panel and a safe-area-aware rail immediately above the dock.
+- Info rows show every scenario body once, followed by `Pe` and `Ap`; do not add separate spacecraft or active-target rows. Body values are spacecraft-to-body physical surface distances. `Pe` and `Ap` values are physical altitudes over the active target and show an unavailable dash when current prediction data does not match that target.
+- Player pins and scenario pins share the same visible rail but keep distinct ownership. Scenario pins are checked, labeled, and immutable; `Clear` and `Shift+I` remove player pins only. Use `I` to toggle the relevant desktop or mobile Info surface.
 - Modal prompts can center on desktop and dock toward the bottom on mobile.
 - Coach prompts can float near their anchor; when coaching playfield controls on mobile, dock near the bottom above controls.
 - Do not let labels, buttons, or prompt text overlap telemetry, touch controls, or each other. Use max widths, ellipsis, wrapping, and safe-area padding before adding new layers.

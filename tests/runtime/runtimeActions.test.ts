@@ -8,6 +8,11 @@ import * as sceneUpdates from '@/render/sceneUpdates'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { GameHighLevelActionsMediator } from '@/runtime/highLevelActions/gameHighLevelActionDispatcher'
 import {
+  apoapsisInfoPin,
+  createBodyInfoPin,
+  periapsisInfoPin,
+} from '@/runtime/infoPins'
+import {
   createNavigationTimeWarpController,
   type NavigationTimeWarpController,
 } from '@/runtime/navigationTimeWarpController'
@@ -39,6 +44,7 @@ const runtimeScenarioOptions = {
 }
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 1,
@@ -191,6 +197,45 @@ const getRequiredBody = (runtime: AppRuntimeState, index: number): Body => {
 }
 
 describe('createRuntimeActions', () => {
+  it('toggles valid player pins and clears only player ownership', () => {
+    const runtime = createRuntime()
+    runtime.scenario.directives.infoPins = [createBodyInfoPin('moon')]
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.toggleUserInfoPin(createBodyInfoPin('earth'))).toBe(
+      true,
+    )
+    expect(runtimeActions.toggleUserInfoPin(apoapsisInfoPin)).toBe(true)
+    expect(runtime.info.userPins).toEqual([
+      createBodyInfoPin('earth'),
+      apoapsisInfoPin,
+    ])
+    expect(runtimeActions.toggleUserInfoPin(createBodyInfoPin('moon'))).toBe(
+      false,
+    )
+    expect(runtimeActions.toggleUserInfoPin(createBodyInfoPin('missing'))).toBe(
+      false,
+    )
+
+    expect(runtimeActions.clearUserInfoPins()).toBe(true)
+    expect(runtime.info.userPins).toEqual([])
+    expect(runtime.scenario.directives.infoPins).toEqual([
+      createBodyInfoPin('moon'),
+    ])
+    expect(runtimeActions.clearUserInfoPins()).toBe(false)
+  })
+
+  it('handles the clear action without requesting a trajectory refresh', () => {
+    const runtime = createRuntime()
+    runtime.info.userPins = [periapsisInfoPin]
+    const runtimeActions = createTestRuntimeActions(runtime)
+
+    expect(runtimeActions.handleUIUserAction('clearInfoPins')).toEqual({
+      refreshTrajectoryPrediction: false,
+    })
+    expect(runtime.info.userPins).toEqual([])
+  })
+
   it('resets time warp to the initial index when resetting the scenario', () => {
     const runtime = createRuntime()
     const runtimeActions = createTestRuntimeActions(runtime)

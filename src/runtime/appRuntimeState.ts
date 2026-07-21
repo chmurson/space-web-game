@@ -8,6 +8,7 @@ import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import type { OrbitPointDisplaySettingOverrides } from '../userSettingsStorage'
+import type { InfoPin } from './infoPins'
 import type { RcsActualTurnFeedback } from './rcsActualTurnFeedback'
 
 export type AssistTargetSelectionMode = 'auto' | 'manual'
@@ -104,9 +105,14 @@ export type AppRuntimeDebugSlice = {
   fpsIndicatorEnabled: boolean
 }
 
+export type AppRuntimeInfoSlice = {
+  userPins: InfoPin[]
+}
+
 export type AppRuntimeState = {
   simulation: AppRuntimeSimulationSlice
   scenario: AppRuntimeScenarioSlice
   ui: AppRuntimeUiSlice
   debug: AppRuntimeDebugSlice
+  info: AppRuntimeInfoSlice
 }

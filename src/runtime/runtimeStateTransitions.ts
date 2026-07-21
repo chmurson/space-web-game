@@ -64,6 +64,7 @@ export const applyScenarioLoadTransition = (
   runtime.scenario.render = transition.scenario.render
   runtime.simulation.timeWarpIndex = 0
   runtime.simulation.state = transition.state
+  runtime.info.userPins = transition.userInfoPins.map((pin) => ({ ...pin }))
   runtime.simulation.viewportSize = transition.viewportSize
   runtime.simulation.coastPredictionHorizonHours =
     transition.coastPredictionHorizonHours

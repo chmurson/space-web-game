@@ -333,7 +333,7 @@ test('captures the mobile RCS yaw and thrust controls in Flight', async ({
   })
 
   await page.getByRole('button', { name: 'Open Flight panel' }).click()
-  await expect(page.locator('.mobile-command-dock-panel')).toBeVisible()
+  await expect(page.locator('#mobile-command-dock-flight-panel')).toBeVisible()
   await expect(page.locator('.touch-rcs-yaw-control-track')).toBeVisible()
   await expect(page.locator('.touch-thrust-control-track')).toBeVisible()
   await expect(page.locator('.touch-rcs-yaw-control')).toHaveCSS(
@@ -1158,7 +1158,7 @@ test('captures the mobile tutorial coach prompt transition', async ({
     'data-anchor',
     'thrust-control',
   )
-  await expect(page.locator('.mobile-command-dock-panel')).toBeVisible()
+  await expect(page.locator('#mobile-command-dock-flight-panel')).toBeVisible()
   await expect(page.locator('.mobile-command-dock')).toHaveAttribute(
     'data-tutorial-focused',
     'true',

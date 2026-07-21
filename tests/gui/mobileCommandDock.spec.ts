@@ -106,7 +106,7 @@ const captureDockState = async (options: {
   if (options.open) {
     await options.page.locator('#mobile-command-dock-flight-button').tap()
     await expect(
-      options.page.locator('.mobile-command-dock-panel'),
+      options.page.locator('#mobile-command-dock-flight-panel'),
     ).toBeVisible()
   }
 
@@ -122,7 +122,7 @@ test('toggles the Flight panel and lets Escape close the active panel', async ({
   await waitForGame(page)
 
   const flightButton = page.locator('#mobile-command-dock-flight-button')
-  const flightPanel = page.locator('.mobile-command-dock-panel')
+  const flightPanel = page.locator('#mobile-command-dock-flight-panel')
 
   await expect(flightButton).toHaveAttribute('aria-expanded', 'false')
   await expect(flightPanel).toBeHidden()
@@ -358,9 +358,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
   expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships all dock items with only Flight enabled and one label-free floating panel', async ({
-  page,
-}) => {
+test('ships all dock items with Flight and Info enabled', async ({ page }) => {
   await page.goto('/?scenario=earth-moon')
   await waitForGame(page)
 
@@ -370,23 +368,23 @@ test('ships all dock items with only Flight enabled and one label-free floating 
   await expect(dockItems).toHaveCount(5)
   await expect(dockItems).toHaveText([
     'Flight',
+    'Info',
     'Nav',
-    'Mission',
     'Ship',
     'Settings',
   ])
   await expect(page.locator('.mobile-command-dock-item:disabled')).toHaveCount(
-    4,
+    3,
   )
   await expect(
     page.locator('.mobile-command-dock-item:not(:disabled)'),
-  ).toHaveCount(1)
+  ).toHaveCount(2)
 
   const flightButton = page.locator('#mobile-command-dock-flight-button')
   await flightButton.tap()
   await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
   await expect(dock).toHaveAttribute('data-open', 'true')
-  const flightPanel = page.locator('.mobile-command-dock-panel')
+  const flightPanel = page.locator('#mobile-command-dock-flight-panel')
   await expect(flightPanel).toBeVisible()
   await expect(flightPanel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(flightPanel).toHaveCSS('box-shadow', 'none')
@@ -473,19 +471,19 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   })
 
   const flightPanelBounds = await page
-    .locator('.mobile-command-dock-panel')
+    .locator('#mobile-command-dock-flight-panel')
     .boundingBox()
   const rcsControlBounds = await page
-    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control')
+    .locator('#mobile-command-dock-flight-panel .touch-rcs-yaw-control')
     .boundingBox()
   const thrustControlBounds = await page
-    .locator('.mobile-command-dock-panel .touch-thrust-control')
+    .locator('#mobile-command-dock-flight-panel .touch-thrust-control')
     .boundingBox()
   const rcsTrackBounds = await page
-    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control-track')
+    .locator('#mobile-command-dock-flight-panel .touch-rcs-yaw-control-track')
     .boundingBox()
   const thrustTrackBounds = await page
-    .locator('.mobile-command-dock-panel .touch-thrust-control-track')
+    .locator('#mobile-command-dock-flight-panel .touch-thrust-control-track')
     .boundingBox()
   expect(flightPanelBounds).not.toBeNull()
   expect(rcsControlBounds).not.toBeNull()
@@ -520,7 +518,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   )
   const trackMaterials = await page
     .locator(
-      '.mobile-command-dock-panel .touch-rcs-yaw-control-track, .mobile-command-dock-panel .touch-thrust-control-track',
+      '#mobile-command-dock-flight-panel .touch-rcs-yaw-control-track, #mobile-command-dock-flight-panel .touch-thrust-control-track',
     )
     .evaluateAll((tracks) =>
       tracks.map((track) => {

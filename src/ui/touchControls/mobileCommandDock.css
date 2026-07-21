@@ -118,6 +118,14 @@
     pointer-events: none;
   }
 
+  .mobile-command-dock-info-rail-host:not(:empty) {
+    box-sizing: border-box;
+    display: flex;
+    width: min(100%, 520px);
+    margin-bottom: 8px;
+    pointer-events: auto;
+  }
+
   .mobile-command-dock-panel[hidden] {
     display: none;
   }
@@ -194,10 +202,6 @@
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  #app[data-mobile-command-dock-open="true"] {
-    --mobile-command-dock-hud-height: 224px;
-  }
-
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     bottom: calc(
       var(--mobile-command-dock-safe-bottom)
@@ -219,7 +223,7 @@
     );
   }
 
-  #app[data-mobile-command-dock-open="true"] .touch-edge-reveal-control {
+  #app[data-mobile-command-dock="true"] .touch-edge-reveal-control {
     bottom: calc(
       env(safe-area-inset-bottom, 0px)
       + var(--touch-edge-reveal-start)

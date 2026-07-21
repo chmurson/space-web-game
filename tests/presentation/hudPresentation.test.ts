@@ -281,6 +281,7 @@ const earth = createBody('earth', 'Earth')
 const moon = createBody('moon', 'Moon')
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   debug: {
     debugModeEnabled: false,
     debugNoGravityEnabled: false,
@@ -382,6 +383,7 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
   return {
     bodyLabels: new Map(),
     bottomPillArea: bottomPillArea as unknown as HTMLElement,
+    desktopInfoContainer: new FakeElement('div') as unknown as HTMLElement,
     cameraUnlockNotice: new FakeElement('div') as unknown as HTMLElement,
     cameraUnlockNoticeBody: null,
     cameraUnlockNoticeTitle: null,

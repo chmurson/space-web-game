@@ -10,18 +10,16 @@ type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
     rcsYaw: boolean
     thrust: boolean
   }
-  open: boolean
+  openPanel: MobileCommandDockPanel
   tutorialFocused: boolean
 }
+
+type MobileCommandDockPanel = 'flight' | 'info' | null
 
 const unavailableDockItems = [
   {
     iconPath: 'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm3.5 5.5-2 5-5 2 2-5 5-2Z',
     label: 'Nav',
-  },
-  {
-    iconPath: 'M6 21V4m0 1h10l-2.5 3L16 11H6',
-    label: 'Mission',
   },
   {
     iconPath: 'm12 3-5 5v8l5 5 5-5V8l-5-5ZM7 12h10',
@@ -43,35 +41,48 @@ const getFlightButtonLabel = (available: boolean, open: boolean) => {
 
 const MobileCommandDockSurface = ({
   controlsAvailable,
-  open,
+  openPanel,
   rootRef,
   tutorialFocused,
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
+  const flightOpen = openPanel === 'flight'
+  const infoOpen = openPanel === 'info'
 
   return (
     <section
       aria-label="Mobile command dock"
       class="mobile-command-dock"
-      data-open={String(open)}
+      data-open={String(openPanel !== null)}
+      data-open-panel={openPanel ?? ''}
       data-tutorial-focused={String(tutorialFocused)}
       ref={rootRef}
     >
+      <div class="mobile-command-dock-info-rail-host" />
       <section
-        aria-hidden={!open}
+        aria-hidden={!flightOpen}
         aria-labelledby="mobile-command-dock-flight-button"
         class="mobile-command-dock-panel"
-        hidden={!open}
+        hidden={!flightOpen}
         id="mobile-command-dock-flight-panel"
       >
         <div class="mobile-command-dock-panel-controls-host" />
+      </section>
+      <section
+        aria-hidden={!infoOpen}
+        aria-labelledby="mobile-command-dock-info-button"
+        class="mobile-command-dock-panel mobile-command-dock-info-panel"
+        hidden={!infoOpen}
+        id="mobile-command-dock-info-panel"
+      >
+        <div class="mobile-command-dock-info-panel-host" />
       </section>
 
       <nav aria-label="Mobile commands" class="mobile-command-dock-bar">
         <button
           aria-controls="mobile-command-dock-flight-panel"
-          aria-expanded={open}
-          aria-label={getFlightButtonLabel(flightAvailable, open)}
+          aria-expanded={flightOpen}
+          aria-label={getFlightButtonLabel(flightAvailable, flightOpen)}
           class="mobile-command-dock-item"
           disabled={!flightAvailable}
           id="mobile-command-dock-flight-button"
@@ -85,6 +96,25 @@ const MobileCommandDockSurface = ({
             <path d="M12 20V4M6.5 9.5 12 4l5.5 5.5" />
           </svg>
           <span>Flight</span>
+        </button>
+        <button
+          aria-controls="mobile-command-dock-info-panel"
+          aria-expanded={infoOpen}
+          aria-keyshortcuts="I"
+          aria-label={infoOpen ? 'Close Info panel' : 'Open Info panel'}
+          class="mobile-command-dock-item"
+          id="mobile-command-dock-info-button"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="mobile-command-dock-item-icon"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M12 10.5v6M12 7.5v.2" />
+          </svg>
+          <span>Info</span>
         </button>
         {unavailableDockItems.map((item) => (
           <button
@@ -137,7 +167,7 @@ export const createMobileCommandDock = (options: {
     rcsYaw: true,
     thrust: true,
   }
-  let open = false
+  let openPanel: MobileCommandDockPanel = null
   let tutorialFocused = false
   const surface = createPreactUiSurface<
     Omit<MobileCommandDockSurfaceProps, keyof SurfaceRootRefProps>
@@ -149,7 +179,8 @@ export const createMobileCommandDock = (options: {
 
   const syncAppState = () => {
     options.app.dataset.mobileCommandDock = 'true'
-    options.app.dataset.mobileCommandDockOpen = String(open)
+    options.app.dataset.mobileCommandDockOpen = String(openPanel !== null)
+    options.app.dataset.mobileCommandDockPanel = openPanel ?? ''
   }
 
   const syncFlightControls = () => {
@@ -170,22 +201,23 @@ export const createMobileCommandDock = (options: {
     syncAppState()
     surface.render({
       controlsAvailable,
-      open,
+      openPanel,
       tutorialFocused,
     })
     syncFlightControls()
   }
 
-  const setOpen = (nextOpen: boolean) => {
+  const setOpenPanel = (nextPanel: MobileCommandDockPanel) => {
     const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
-    const allowedOpen = nextOpen && flightAvailable
-    if (open === allowedOpen) {
+    const allowedPanel =
+      nextPanel === 'flight' && !flightAvailable ? null : nextPanel
+    if (openPanel === allowedPanel) {
       return
     }
 
-    open = allowedOpen
+    openPanel = allowedPanel
     renderState()
-    options.onOpenChange?.(open)
+    options.onOpenChange?.(openPanel === 'flight')
   }
 
   renderState()
@@ -198,54 +230,96 @@ export const createMobileCommandDock = (options: {
   }
 
   addTapSafeButtonHandler(flightButton, () => {
-    setOpen(!open)
+    setOpenPanel(openPanel === 'flight' ? null : 'flight')
+  })
+
+  const infoButton = surface.element.querySelector<HTMLButtonElement>(
+    '#mobile-command-dock-info-button',
+  )
+  const infoPanelContainer = surface.element.querySelector<HTMLElement>(
+    '.mobile-command-dock-info-panel-host',
+  )
+  const infoRailContainer = surface.element.querySelector<HTMLElement>(
+    '.mobile-command-dock-info-rail-host',
+  )
+  if (!infoButton || !infoPanelContainer || !infoRailContainer) {
+    throw new Error('Mobile command dock rendered without Info controls')
+  }
+
+  addTapSafeButtonHandler(infoButton, () => {
+    setOpenPanel(openPanel === 'info' ? null : 'info')
   })
 
   document.addEventListener('keydown', (event) => {
-    if (!open || event.key !== 'Escape') {
+    if (openPanel === null || event.key !== 'Escape') {
       return
     }
 
-    setOpen(false)
-    flightButton.focus()
+    const previouslyOpenPanel = openPanel
+    setOpenPanel(null)
+    if (previouslyOpenPanel === 'info') {
+      infoButton.focus()
+    } else {
+      flightButton.focus()
+    }
   })
+
+  const syncDockHeight = () => {
+    const height = Math.ceil(surface.element.getBoundingClientRect().height)
+    if (height > 0) {
+      options.app.style.setProperty(
+        '--mobile-command-dock-hud-height',
+        `${height}px`,
+      )
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncDockHeight).observe(surface.element)
+  }
 
   return {
     element: surface.element,
-    isOpen: () => open,
+    infoPanelContainer,
+    infoRailContainer,
+    isOpen: () => openPanel === 'flight',
     rcsYawContainer,
     setControlAvailability(nextAvailability: {
       rcsYaw: boolean
       thrust: boolean
     }) {
       controlsAvailable = { ...nextAvailability }
-      if (!controlsAvailable.rcsYaw && !controlsAvailable.thrust && open) {
-        setOpen(false)
+      if (
+        !controlsAvailable.rcsYaw &&
+        !controlsAvailable.thrust &&
+        openPanel === 'flight'
+      ) {
+        setOpenPanel(null)
         return
       }
       if (
         tutorialFocused &&
         (controlsAvailable.rcsYaw || controlsAvailable.thrust) &&
-        !open
+        openPanel !== 'flight'
       ) {
-        setOpen(true)
+        setOpenPanel('flight')
         return
       }
       renderState()
     },
-    setOpen,
+    setOpen: (open: boolean) => setOpenPanel(open ? 'flight' : null),
     setTutorialFocused(focused: boolean) {
       tutorialFocused = focused
       if (
         focused &&
         (controlsAvailable.rcsYaw || controlsAvailable.thrust) &&
-        !open
+        openPanel !== 'flight'
       ) {
-        setOpen(true)
+        setOpenPanel('flight')
         return
       }
       renderState()
     },
     thrustContainer,
+    toggleInfoPanel: () => setOpenPanel(openPanel === 'info' ? null : 'info'),
   }
 }

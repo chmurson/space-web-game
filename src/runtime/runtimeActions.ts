@@ -22,6 +22,7 @@ import type { AppRuntimeState, TargetHeadingPlan } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { AssistTargetUiState } from './gameQueries'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
+import { type InfoPin, includesInfoPin, toggleInfoPin } from './infoPins'
 import type { NavigationTimeWarpController } from './navigationTimeWarpController'
 import {
   clearTransientScenarioRuntimeState,
@@ -161,6 +162,7 @@ export const createRuntimeActions = (options: {
       coastPredictionHorizonHours:
         options.runtime.simulation.coastPredictionHorizonHours,
       scenarioSession: options.runtime.scenario.session,
+      userInfoPins: options.runtime.info.userPins,
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
@@ -337,7 +339,35 @@ export const createRuntimeActions = (options: {
     )
   }
 
+  const clearUserInfoPins = () => {
+    if (options.runtime.info.userPins.length === 0) {
+      return false
+    }
+
+    options.runtime.info.userPins = []
+    return true
+  }
+
+  const toggleUserInfoPin = (pin: InfoPin) => {
+    if (
+      includesInfoPin(options.runtime.scenario.directives.infoPins, pin) ||
+      (pin.kind === 'body' &&
+        !options.runtime.simulation.state.bodies.some(
+          (body) => body.id === pin.bodyId,
+        ))
+    ) {
+      return false
+    }
+
+    options.runtime.info.userPins = toggleInfoPin(
+      options.runtime.info.userPins,
+      pin,
+    )
+    return true
+  }
+
   return {
+    clearUserInfoPins,
     dispatchScenarioPromptAction,
     enterMainMenuBackground: scenarioRuntimeController.enterMainMenuBackground,
     getDebugSnapshotSuggestedName: () =>
@@ -345,6 +375,10 @@ export const createRuntimeActions = (options: {
         createCurrentDebugScenarioSnapshot(),
       ),
     handleUIUserAction: (action: UIUserAction): RuntimeActionsResult => {
+      if (action === 'clearInfoPins') {
+        clearUserInfoPins()
+        return { refreshTrajectoryPrediction: false }
+      }
       if (action === 'increaseTimeWarp') {
         selectTimeWarpIndex(options.runtime.simulation.timeWarpIndex + 1)
         return { refreshTrajectoryPrediction: false }
@@ -584,6 +618,7 @@ export const createRuntimeActions = (options: {
     startFreeRoam: scenarioRuntimeController.startFreeRoam,
     startReachMoon: scenarioRuntimeController.startReachMoon,
     startTutorial: scenarioRuntimeController.startTutorial,
+    toggleUserInfoPin,
     unlockCameraAtFollowTarget,
     updateCamera: () => updateCamera(),
     zoomCamera,

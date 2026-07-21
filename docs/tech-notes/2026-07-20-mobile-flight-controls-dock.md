@@ -113,8 +113,9 @@ controls, scenario rules, or tutorial progression.
 
 ## Follow-ups and known gaps
 
-- Nav, Mission, Ship, and Settings remain disabled until their owning issues
-  provide complete panels. They are not part of issue #238.
+- Nav, Ship, and Settings remain disabled until their owning issues provide
+  complete panels. The former Mission slot became the enabled Info panel in
+  issue #274; that later work remains outside issue #238.
 - No issue #238 acceptance item remains intentionally deferred.
 - Tutorial behavior and copy were deliberately left unchanged during the
   lightweight surface iteration.

@@ -1,4 +1,5 @@
 import type { AssistTargetSelectionMode } from './runtime/appRuntimeState'
+import { type InfoPin, normalizeInfoPins } from './runtime/infoPins'
 import type { CameraControlMode } from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
@@ -43,9 +44,15 @@ type DebugScenarioSnapshotV2 = {
   runtimeScenario?: RuntimeScenarioSession
 }
 
+type DebugScenarioSnapshotV3 = Omit<DebugScenarioSnapshotV2, 'version'> & {
+  version: 3
+  userInfoPins?: InfoPin[]
+}
+
 export type DebugScenarioSnapshot =
   | DebugScenarioSnapshotV1
   | DebugScenarioSnapshotV2
+  | DebugScenarioSnapshotV3
 
 export type DebugScenarioSnapshotEntry = {
   id: string
@@ -69,6 +76,7 @@ export type RuntimeScenario = Scenario & {
   elapsed?: number
   orbitPointDisplay?: OrbitPointDisplaySettingOverrides
   scenarioSession?: RuntimeScenarioSession
+  userInfoPins?: InfoPin[]
   viewportSize?: number
 }
 
@@ -84,19 +92,19 @@ const getSnapshotCoastPredictionHorizonHours = (
 const getSnapshotScenarioSession = (
   snapshot: DebugScenarioSnapshot,
 ): RuntimeScenarioSession =>
-  snapshot.version === 2 && snapshot.runtimeScenario
+  snapshot.version !== 1 && snapshot.runtimeScenario
     ? cloneRuntimeScenarioSession(snapshot.runtimeScenario)
     : createRuntimeScenarioSession('legacy-debug-snapshot')
 
 const getSnapshotAssistTargetIndex = (snapshot: DebugScenarioSnapshot) =>
-  snapshot.version === 2 && Number.isInteger(snapshot.assistTargetIndex)
+  snapshot.version !== 1 && Number.isInteger(snapshot.assistTargetIndex)
     ? snapshot.assistTargetIndex
     : undefined
 
 const getSnapshotAssistTargetSelectionMode = (
   snapshot: DebugScenarioSnapshot,
 ): AssistTargetSelectionMode | undefined =>
-  snapshot.version === 2 &&
+  snapshot.version !== 1 &&
   (snapshot.assistTargetSelectionMode === 'auto' ||
     snapshot.assistTargetSelectionMode === 'manual')
     ? snapshot.assistTargetSelectionMode
@@ -105,6 +113,14 @@ const getSnapshotAssistTargetSelectionMode = (
 const cloneDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
 ): DebugScenarioSnapshot => JSON.parse(JSON.stringify(snapshot))
+
+const getSnapshotUserInfoPins = (snapshot: DebugScenarioSnapshot): InfoPin[] =>
+  snapshot.version === 3
+    ? normalizeInfoPins(
+        snapshot.userInfoPins,
+        new Set(snapshot.bodies.map((body) => body.id)),
+      )
+    : []
 
 const formatElapsedLabel = (elapsed: number) => {
   if (!Number.isFinite(elapsed)) {
@@ -124,7 +140,7 @@ const formatElapsedLabel = (elapsed: number) => {
 }
 
 const getSnapshotPhaseLabel = (snapshot: DebugScenarioSnapshot) => {
-  if (snapshot.version !== 2 || !snapshot.runtimeScenario) {
+  if (snapshot.version === 1 || !snapshot.runtimeScenario) {
     return null
   }
 
@@ -165,7 +181,8 @@ const isDebugScenarioSnapshot = (
   typeof snapshot === 'object' &&
   'version' in snapshot &&
   ((snapshot as DebugScenarioSnapshot).version === 1 ||
-    (snapshot as DebugScenarioSnapshot).version === 2) &&
+    (snapshot as DebugScenarioSnapshot).version === 2 ||
+    (snapshot as DebugScenarioSnapshot).version === 3) &&
   Array.isArray((snapshot as DebugScenarioSnapshot).bodies) &&
   !!(snapshot as DebugScenarioSnapshot).spacecraft
 
@@ -270,6 +287,7 @@ export const createScenarioFromSnapshot = (
   bodies: cloneBodies(snapshot.bodies),
   scenarioSession: getSnapshotScenarioSession(snapshot),
   spacecraft: cloneSpacecraft(snapshot.spacecraft),
+  userInfoPins: getSnapshotUserInfoPins(snapshot),
 })
 
 export const createSnapshotFromState = (
@@ -279,10 +297,11 @@ export const createSnapshotFromState = (
     assistTargetSelectionMode?: AssistTargetSelectionMode
     coastPredictionHorizonHours?: number
     scenarioSession?: RuntimeScenarioSession
+    userInfoPins?: InfoPin[]
     viewportSize?: number
   } = {},
 ): DebugScenarioSnapshot => ({
-  version: 2,
+  version: 3,
   savedAt: new Date().toISOString(),
   assistTargetIndex: options.assistTargetIndex,
   assistTargetSelectionMode: options.assistTargetSelectionMode,
@@ -294,6 +313,10 @@ export const createSnapshotFromState = (
     ? cloneRuntimeScenarioSession(options.scenarioSession)
     : undefined,
   spacecraft: cloneSpacecraft(state.spacecraft),
+  userInfoPins: normalizeInfoPins(
+    options.userInfoPins,
+    new Set(state.bodies.map((body) => body.id)),
+  ),
 })
 
 export const readDebugScenarioSnapshot = (): DebugScenarioSnapshot | null => {

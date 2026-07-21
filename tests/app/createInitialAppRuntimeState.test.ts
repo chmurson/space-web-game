@@ -163,6 +163,7 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.scenario.session.scenarioId).toBe('tutorial')
     expect(runtime.scenario.metadata.title).toBe('Tutorial: Escape Earth')
     expect(runtime.scenario.orbitPointDisplay).toBeUndefined()
+    expect(runtime.info.userPins).toEqual([])
     expect(runtime.ui.camera.mode).toBe('centered')
     expect(runtime.ui.camera.panOffset).toEqual(
       runtime.simulation.state.spacecraft.position,
@@ -195,14 +196,18 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.simulation.assistTargetSelectionMode).toBe('auto')
   })
 
-  it('restores debug snapshot assist target selection on startup', () => {
+  it('restores debug snapshot target selection and player Info pins on startup', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithStorage({
-        version: 2,
+        version: 3,
         savedAt: '2026-06-27T10:00:00.000Z',
         assistTargetIndex: 2,
         assistTargetSelectionMode: 'manual',
+        userInfoPins: [
+          { bodyId: 'earth', kind: 'body' },
+          { apsis: 'apoapsis', kind: 'apsis' },
+        ],
         elapsed: 42,
         bodies: [
           {
@@ -258,5 +263,9 @@ describe('createInitialAppRuntimeState', () => {
 
     expect(runtime.simulation.assistTargetIndex).toBe(2)
     expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
+    expect(runtime.info.userPins).toEqual([
+      { bodyId: 'earth', kind: 'body' },
+      { apsis: 'apoapsis', kind: 'apsis' },
+    ])
   })
 })

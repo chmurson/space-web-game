@@ -1,0 +1,322 @@
+.desktop-info-hud,
+.mobile-info-rail {
+  display: none;
+}
+
+.desktop-info-hud-host {
+  display: contents;
+}
+
+.info-hud-panel-content {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.info-hud-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.info-hud-panel-header h2,
+.info-hud-panel-header p {
+  margin: 0;
+}
+
+.info-hud-panel-header h2 {
+  color: #f0f9ff;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.info-hud-panel-header p {
+  margin-top: 2px;
+  color: rgba(203, 213, 225, 0.68);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.info-hud-clear {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: 999px;
+  background: var(--ui-glass-control-bg);
+  color: #bae6fd;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  touch-action: manipulation;
+}
+
+.info-hud-clear:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.info-hud-list {
+  display: grid;
+  max-height: min(48vh, 360px);
+  gap: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.info-hud-row {
+  display: flex;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--ui-glass-row-bg);
+  color: rgba(226, 232, 240, 0.88);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.info-hud-row[aria-checked="true"] {
+  border-color: rgba(56, 189, 248, 0.36);
+  background: rgba(14, 116, 144, 0.18);
+  color: #e0f2fe;
+}
+
+.info-hud-row:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.info-hud-row-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.info-hud-row-label {
+  overflow: hidden;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-hud-row-separator,
+.info-hud-row-distance {
+  color: rgba(186, 230, 253, 0.78);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.info-hud-scenario-badge {
+  padding: 3px 5px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.14);
+  color: rgba(186, 230, 253, 0.84);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.info-hud-pin-status {
+  width: 14px;
+  flex: 0 0 auto;
+  color: #7dd3fc;
+  font-size: 10px;
+  text-align: center;
+}
+
+.info-hud-clear:focus-visible,
+.info-hud-row:focus-visible,
+.info-hud-rail-card:focus-visible,
+.desktop-info-pill:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.88);
+  outline-offset: 2px;
+}
+
+.info-hud-rail {
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.info-hud-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.info-hud-rail[hidden] {
+  display: none;
+}
+
+.info-hud-rail-card {
+  display: inline-flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: 999px;
+  background: var(--ui-glass-control-bg);
+  color: rgba(226, 232, 240, 0.92);
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.22);
+  backdrop-filter: var(--ui-glass-control-blur);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.info-hud-rail-card:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.info-hud-rail-card strong {
+  color: #bae6fd;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.info-hud-rail-lock {
+  margin-left: 2px;
+  color: #7dd3fc;
+  font-size: 8px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .desktop-info-hud {
+    position: relative;
+    order: 3;
+    display: block;
+    flex: 0 0 auto;
+    pointer-events: auto;
+  }
+
+  .desktop-info-pill {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border: 1px solid var(--ui-glass-control-border);
+    border-radius: 999px;
+    background: var(--ui-glass-control-bg);
+    color: rgba(240, 249, 255, 0.94);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: var(--ui-glass-control-blur);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    touch-action: manipulation;
+  }
+
+  .desktop-info-pill > span {
+    display: grid;
+    min-width: 16px;
+    height: 16px;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.18);
+    color: #bae6fd;
+    font-size: 9px;
+  }
+
+  .desktop-info-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: min(300px, calc(100vw - 24px));
+    padding: 11px;
+    border: 1px solid var(--ui-glass-panel-border);
+    border-radius: 14px;
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+    backdrop-filter: var(--ui-glass-panel-blur);
+  }
+
+  .desktop-info-popover[hidden] {
+    display: none;
+  }
+
+  .desktop-info-rail {
+    position: fixed;
+    top: 52px;
+    right: 12px;
+    display: flex;
+    max-width: min(620px, calc(100vw - 24px));
+    padding: 2px 0 4px;
+    pointer-events: auto;
+  }
+
+  .desktop-info-hud-open .desktop-info-rail {
+    display: none;
+  }
+
+  .desktop-info-pill:hover,
+  .info-hud-clear:hover:not(:disabled),
+  .info-hud-row:hover:not(:disabled),
+  .info-hud-rail-card:hover:not(:disabled) {
+    border-color: rgba(103, 232, 249, 0.48);
+    background: rgba(15, 23, 42, 0.66);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .mobile-info-rail {
+    box-sizing: border-box;
+    display: flex;
+    width: min(100%, 520px);
+    padding: 0 2px;
+    pointer-events: auto;
+  }
+
+  .mobile-info-rail[hidden] {
+    display: none;
+  }
+
+  .mobile-command-dock-info-panel {
+    padding: 12px;
+    border: 1px solid var(--ui-glass-panel-border);
+    border-radius: 15px;
+    background: var(--ui-glass-panel-bg);
+    box-shadow: var(--ui-glass-panel-shadow);
+    backdrop-filter: var(--ui-glass-panel-blur);
+    pointer-events: auto;
+  }
+
+  .mobile-command-dock-info-panel .info-hud-list {
+    max-height: min(42vh, 320px);
+  }
+
+  .mobile-command-dock-info-panel-host {
+    min-width: 0;
+    pointer-events: auto;
+  }
+}
+
+#app.app-crashed .desktop-info-hud {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-info-pill,
+  .info-hud-clear,
+  .info-hud-row,
+  .info-hud-rail-card {
+    transition: none;
+  }
+}

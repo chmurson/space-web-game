@@ -42,6 +42,8 @@ import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/creat
 
 export type TouchControls = {
   element: HTMLElement
+  infoPanelContainer: HTMLElement
+  infoRailContainer: HTMLElement
   openTargetControl(): void
   setFlightControlsVisible(visible: boolean): void
   setTargetControlSide(side: TouchControlRevealEdge): void
@@ -55,6 +57,7 @@ export type TouchControls = {
   ): void
   setTutorialHintTarget(target: ScenarioTouchHintTarget | null): void
   syncUi(): void
+  toggleInfoPanel(): void
   updateAssistMode(mode: AssistMode): void
 }
 
@@ -1613,6 +1616,8 @@ export const createTouchControls = (options: {
 
   return {
     element: panel,
+    infoPanelContainer: mobileCommandDock.infoPanelContainer,
+    infoRailContainer: mobileCommandDock.infoRailContainer,
     openTargetControl: () => {
       targetRevealControl.setOpen(true)
       syncTargetRecommendationCue()
@@ -1653,6 +1658,7 @@ export const createTouchControls = (options: {
       thrustControl.syncUi()
       rcsYawControl.syncUi()
     },
+    toggleInfoPanel: mobileCommandDock.toggleInfoPanel,
     updateAssistMode: (_mode) => {},
   }
 }
