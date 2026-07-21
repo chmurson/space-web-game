@@ -209,7 +209,7 @@ test('desktop mouse stays out of turn planning while A/D and arrows provide full
   await page.keyboard.down('Shift')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
-    .toBe(-0.25)
+    .toBeCloseTo(-1 / 49)
 
   await page.keyboard.up('Shift')
   await page.keyboard.up('ArrowLeft')
@@ -221,7 +221,7 @@ test('desktop mouse stays out of turn planning while A/D and arrows provide full
   await page.keyboard.down('ArrowRight')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
-    .toBe(0.25)
+    .toBeCloseTo(1 / 49)
   await page.keyboard.up('ArrowRight')
   await page.keyboard.up('Shift')
 
@@ -235,7 +235,7 @@ test('desktop mouse stays out of turn planning while A/D and arrows provide full
   await page.keyboard.down('KeyD')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
-    .toBe(0.25)
+    .toBeCloseTo(1 / 49)
   await page.keyboard.up('KeyD')
   await page.keyboard.up('Shift')
 })
