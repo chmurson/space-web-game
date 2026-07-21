@@ -2,14 +2,6 @@ import { render } from 'preact'
 
 const touchControlDockDefinitions = [
   {
-    className: 'touch-edge-reveal-dock touch-time-warp-reveal-dock',
-    id: 'warp',
-  },
-  {
-    className: 'touch-edge-reveal-dock touch-time-warp-prototype-reveal-dock',
-    id: 'warpPrototype',
-  },
-  {
     className: 'touch-edge-reveal-dock touch-trajectory-horizon-reveal-dock',
     id: 'trajectory',
   },
@@ -73,8 +65,6 @@ export const createTouchControlsShell = (): TouchControlsShell => {
   render(
     <TouchControlsShellSurface
       dockRefs={{
-        warp: createDockRef('warp'),
-        warpPrototype: createDockRef('warpPrototype'),
         trajectory: createDockRef('trajectory'),
         target: createDockRef('target'),
       }}
@@ -87,14 +77,6 @@ export const createTouchControlsShell = (): TouchControlsShell => {
 
   return {
     docks: {
-      warp: getRequiredElement<HTMLDivElement>(
-        docks.warp,
-        'Touch controls shell rendered without warp dock',
-      ),
-      warpPrototype: getRequiredElement<HTMLDivElement>(
-        docks.warpPrototype,
-        'Touch controls shell rendered without warp prototype dock',
-      ),
       trajectory: getRequiredElement<HTMLDivElement>(
         docks.trajectory,
         'Touch controls shell rendered without trajectory dock',

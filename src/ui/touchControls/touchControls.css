@@ -143,10 +143,6 @@
   justify-items: end;
 }
 
-.touch-time-warp-prototype-reveal-dock {
-  width: max-content;
-}
-
 .touch-edge-reveal-control-open .touch-edge-reveal-content {
   opacity: 1;
   pointer-events: auto;

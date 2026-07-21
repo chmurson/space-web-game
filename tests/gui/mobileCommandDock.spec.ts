@@ -2,6 +2,8 @@ import { expect, type Page, type TestInfo, test } from '@playwright/test'
 
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
+type MobileCommandDockModule =
+  typeof import('../../src/ui/touchControls/mobileCommandDock')
 
 const waitForGame = async (page: Page) => {
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
@@ -75,7 +77,7 @@ const dispatchControlTouch = async (options: {
 
 const captureDockState = async (options: {
   fileName: string
-  open: boolean
+  openPanel: 'flight' | 'nav' | null
   page: Page
   safeBottom: number
   testInfo: TestInfo
@@ -103,10 +105,12 @@ const captureDockState = async (options: {
     }, options.safeBottom)
   }
 
-  if (options.open) {
-    await options.page.locator('#mobile-command-dock-flight-button').tap()
+  if (options.openPanel) {
+    await options.page
+      .locator(`#mobile-command-dock-${options.openPanel}-button`)
+      .tap()
     await expect(
-      options.page.locator('.mobile-command-dock-panel'),
+      options.page.locator(`#mobile-command-dock-${options.openPanel}-panel`),
     ).toBeVisible()
   }
 
@@ -115,14 +119,16 @@ const captureDockState = async (options: {
   })
 }
 
-test('toggles the Flight panel and lets Escape close the active panel', async ({
+test('keeps one panel open, collapses the active panel, and closes with Escape', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
   await waitForGame(page)
 
   const flightButton = page.locator('#mobile-command-dock-flight-button')
-  const flightPanel = page.locator('.mobile-command-dock-panel')
+  const navButton = page.locator('#mobile-command-dock-nav-button')
+  const flightPanel = page.locator('#mobile-command-dock-flight-panel')
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
 
   await expect(flightButton).toHaveAttribute('aria-expanded', 'false')
   await expect(flightPanel).toBeHidden()
@@ -131,15 +137,249 @@ test('toggles the Flight panel and lets Escape close the active panel', async ({
   await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
   await expect(flightPanel).toBeVisible()
 
-  await flightButton.tap()
+  await navButton.tap()
   await expect(flightButton).toHaveAttribute('aria-expanded', 'false')
   await expect(flightPanel).toBeHidden()
+  await expect(navButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(navPanel).toBeVisible()
 
-  await flightButton.tap()
+  await navButton.tap()
+  await expect(navButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(navPanel).toBeHidden()
+
+  await navButton.tap()
   await page.keyboard.press('Escape')
-  await expect(flightButton).toHaveAttribute('aria-expanded', 'false')
-  await expect(flightPanel).toBeHidden()
-  await expect(flightButton).toBeFocused()
+  await expect(navButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(navPanel).toBeHidden()
+  await expect(navButton).toBeFocused()
+})
+
+test('switches camera mode from touch buttons in Nav', async ({ page }) => {
+  await page.goto('/?scenario=earth-moon')
+  await waitForGame(page)
+  await page.locator('#mobile-command-dock-nav-button').tap()
+
+  const spacecraft = page.locator('[data-camera-mode-option="centered"]')
+  const target = page.locator('[data-camera-mode-option="target"]')
+  const freeRoam = page.locator('[data-camera-mode-option="unlocked"]')
+
+  await expect(spacecraft).toHaveAttribute('aria-pressed', 'true')
+  await target.tap()
+  await expect(target).toHaveAttribute('aria-pressed', 'true')
+  await expect(spacecraft).toHaveAttribute('aria-pressed', 'false')
+  await freeRoam.tap()
+  await expect(freeRoam).toHaveAttribute('aria-pressed', 'true')
+  await expect(target).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('preserves locked target framing above Nav when entering free roam', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/?scenario=earth-moon&devtools=1')
+  await waitForGame(page)
+  await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
+  await page.evaluate(() => {
+    const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      mode: 'target',
+      type: 'set-camera-mode',
+    })
+    if (!response?.ok) {
+      throw new Error(response?.error ?? 'Devtools bridge is missing')
+    }
+  })
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('.body-label')).some(
+      (label) => getComputedStyle(label).display !== 'none',
+    ),
+  )
+
+  const dock = page.locator('.mobile-command-dock')
+  const targetLabel = page.locator('.body-label').filter({ hasText: 'Earth' })
+  await expect(targetLabel).toBeVisible()
+  const collapsedDockBounds = await dock.boundingBox()
+  const collapsedTargetBounds = await targetLabel.boundingBox()
+  if (!collapsedDockBounds || !collapsedTargetBounds) {
+    throw new Error('Collapsed camera framing elements are missing')
+  }
+  const collapsedTargetCenterY =
+    collapsedTargetBounds.y + collapsedTargetBounds.height * 0.5
+
+  await page.locator('#mobile-command-dock-nav-button').tap()
+  await expect(page.locator('#mobile-command-dock-nav-panel')).toBeVisible()
+  await expect(
+    page.locator('[data-camera-mode-option="target"]'),
+  ).toHaveAttribute('aria-pressed', 'true')
+
+  await expect
+    .poll(async () => {
+      const openDockBounds = await dock.boundingBox()
+      const openTargetBounds = await targetLabel.boundingBox()
+      if (!openDockBounds || !openTargetBounds) {
+        throw new Error('Open camera framing elements are missing')
+      }
+      const openTargetCenterY =
+        openTargetBounds.y + openTargetBounds.height * 0.5
+      const expectedShift =
+        (openDockBounds.height - collapsedDockBounds.height) * 0.5
+      const actualShift = collapsedTargetCenterY - openTargetCenterY
+      return Math.abs(expectedShift - actualShift)
+    })
+    .toBeLessThan(3)
+
+  const openTargetBounds = await targetLabel.boundingBox()
+  if (!openTargetBounds) {
+    throw new Error('Open target camera framing is missing')
+  }
+  const openTargetCenterY = openTargetBounds.y + openTargetBounds.height * 0.5
+
+  await page.screenshot({
+    path: testInfo.outputPath(
+      'mobile-command-dock-locked-target-centered-390.png',
+    ),
+  })
+
+  await page.locator('[data-camera-mode-option="unlocked"]').tap()
+  await expect(
+    page.locator('[data-camera-mode-option="unlocked"]'),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect
+    .poll(async () => {
+      const unlockedTargetBounds = await targetLabel.boundingBox()
+      if (!unlockedTargetBounds) {
+        throw new Error('Unlocked target camera framing is missing')
+      }
+      const unlockedTargetCenterY =
+        unlockedTargetBounds.y + unlockedTargetBounds.height * 0.5
+      return Math.abs(openTargetCenterY - unlockedTargetCenterY)
+    })
+    .toBeLessThan(3)
+
+  await page.screenshot({
+    path: testInfo.outputPath(
+      'mobile-command-dock-free-roam-transition-390.png',
+    ),
+  })
+})
+
+test('preserves camera state and explains when camera changes are locked', async ({
+  page,
+}) => {
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const modulePath = '/src/ui/touchControls/mobileCommandDock.tsx'
+    const { createMobileCommandDock } = (await import(
+      modulePath
+    )) as MobileCommandDockModule
+    const app = document.createElement('div')
+    const container = document.createElement('div')
+    let cameraMode: 'centered' | 'target' | 'unlocked' = 'centered'
+    let cameraModeChangesLocked = false
+    const actions: string[] = []
+    document.body.append(app, container)
+
+    const dock = createMobileCommandDock({
+      app,
+      container,
+      getCameraMode: () => cameraMode,
+      getCameraModeChangesLocked: () => cameraModeChangesLocked,
+      onCameraModeSelected: (mode) => {
+        actions.push(mode)
+        if (cameraModeChangesLocked) {
+          return false
+        }
+        cameraMode = mode
+        return true
+      },
+    })
+    dock.setTimeWarpState({
+      reason: null,
+      status: '',
+      tone: 'available',
+    })
+    dock.setOpenPanel('nav')
+    dock.setTutorialFocused('warp')
+    const tutorialFocusWhileAlreadyOpen = dock.element.dataset.tutorialFocused
+    dock.setControlAvailability({
+      rcsYaw: true,
+      thrust: true,
+      timeWarp: false,
+    })
+    dock.setControlAvailability({
+      rcsYaw: true,
+      thrust: true,
+      timeWarp: true,
+    })
+    const timeWarpAvailableAfterRestore = dock.element
+      .querySelector('.mobile-command-dock-nav-time-warp')
+      ?.getAttribute('data-available')
+
+    const getCameraOption = (mode: string) =>
+      dock.element.querySelector<HTMLButtonElement>(
+        `[data-camera-mode-option="${mode}"]`,
+      )
+    getCameraOption('target')?.click()
+    const targetPressedAfterTarget =
+      getCameraOption('target')?.getAttribute('aria-pressed')
+
+    cameraModeChangesLocked = true
+    dock.syncUi()
+    const lockedLabels = Array.from(
+      dock.element.querySelectorAll<HTMLButtonElement>(
+        '[data-camera-mode-option]',
+      ),
+    ).map((button) => ({
+      disabled: button.disabled,
+      label: button.getAttribute('aria-label'),
+    }))
+    getCameraOption('unlocked')?.click()
+    dock.setOpenPanel(null)
+    dock.setTutorialFocused('warp')
+
+    return {
+      actions,
+      cameraStatusCount: dock.element.querySelectorAll(
+        '[data-mobile-camera-status]',
+      ).length,
+      cameraMode,
+      lockedLabels,
+      openPanel: app.dataset.mobileCommandDockPanel,
+      targetPressedAfterTarget,
+      timeWarpAvailableAfterRestore,
+      timeWarpStatus: dock.element.querySelector(
+        '.mobile-command-dock-time-warp-status',
+      )?.textContent,
+      tutorialFocus: dock.element.dataset.tutorialFocused,
+      tutorialFocusWhileAlreadyOpen,
+    }
+  })
+
+  expect(result).toEqual({
+    actions: ['target'],
+    cameraStatusCount: 0,
+    cameraMode: 'target',
+    lockedLabels: [
+      {
+        disabled: true,
+        label: 'Camera mode changes unavailable: Free roam',
+      },
+      {
+        disabled: true,
+        label: 'Camera mode changes unavailable: Spacecraft',
+      },
+      {
+        disabled: true,
+        label: 'Camera mode changes unavailable: Target',
+      },
+    ],
+    openPanel: 'nav',
+    targetPressedAfterTarget: 'true',
+    timeWarpAvailableAfterRestore: 'true',
+    timeWarpStatus: '',
+    tutorialFocus: 'warp',
+    tutorialFocusWhileAlreadyOpen: 'warp',
+  })
 })
 
 test('keeps dock touches out of camera and heading input while the playfield remains interactive', async ({
@@ -199,7 +439,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       getTrajectoryHorizonPreviews: () => [],
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
-      initialWarpControlSide: 'right',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({
@@ -233,8 +472,14 @@ test('keeps dock touches out of camera and heading input while the playfield rem
     const flightButton = controls.element.querySelector<HTMLButtonElement>(
       '.mobile-command-dock-item',
     )
-    if (!flightButton) {
-      throw new Error('Missing Flight dock button')
+    const navButton = controls.element.querySelector<HTMLButtonElement>(
+      '#mobile-command-dock-nav-button',
+    )
+    const cameraOption = controls.element.querySelector<HTMLButtonElement>(
+      '[data-camera-mode-option="target"]',
+    )
+    if (!flightButton || !navButton || !cameraOption) {
+      throw new Error('Missing dock interaction targets')
     }
 
     const dispatchTouch = (options: {
@@ -307,22 +552,46 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       y: 266,
     })
 
+    navButton.click()
+    dispatchTouch({
+      id: 35,
+      target: cameraOption,
+      type: 'touchstart',
+      x: 260,
+      y: 650,
+    })
+    dispatchTouch({
+      id: 35,
+      target: cameraOption,
+      type: 'touchmove',
+      x: 286,
+      y: 676,
+    })
+    dispatchTouch({
+      id: 35,
+      target: cameraOption,
+      type: 'touchend',
+      x: 286,
+      y: 676,
+    })
+    const cameraPanCountAfterNavTouch = cameraPans.length
+
     startTargetHeadingByDrag = true
     dispatchTouch({
       id: 33,
-      target: flightButton,
+      target: cameraOption,
       type: 'touchstart',
       x: 195,
-      y: 806,
+      y: 650,
     })
     await new Promise((resolve) => window.setTimeout(resolve, 400))
     const plannedHeadingCountAfterDockTouch = plannedHeadings.length
     dispatchTouch({
       id: 33,
-      target: flightButton,
+      target: cameraOption,
       type: 'touchend',
       x: 195,
-      y: 806,
+      y: 650,
     })
 
     dispatchTouch({
@@ -344,21 +613,25 @@ test('keeps dock touches out of camera and heading input while the playfield rem
 
     return {
       cameraPanCountAfterDockTouch,
+      cameraPanCountAfterNavTouch,
       cameraPanCountAfterPlayfieldTouch: cameraPans.length,
       flightPanelOpen: flightButton.getAttribute('aria-expanded'),
+      navPanelOpen: navButton.getAttribute('aria-expanded'),
       plannedHeadingCountAfterDockTouch,
       plannedHeadingCountAfterPlayfieldTouch,
     }
   })
 
   expect(result.cameraPanCountAfterDockTouch).toBe(0)
+  expect(result.cameraPanCountAfterNavTouch).toBe(1)
   expect(result.cameraPanCountAfterPlayfieldTouch).toBe(1)
-  expect(result.flightPanelOpen).toBe('true')
+  expect(result.flightPanelOpen).toBe('false')
+  expect(result.navPanelOpen).toBe('true')
   expect(result.plannedHeadingCountAfterDockTouch).toBe(0)
   expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships all dock items with only Flight enabled and one label-free floating panel', async ({
+test('ships Flight and Nav as the two available dock panels', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -376,17 +649,17 @@ test('ships all dock items with only Flight enabled and one label-free floating 
     'Settings',
   ])
   await expect(page.locator('.mobile-command-dock-item:disabled')).toHaveCount(
-    4,
+    3,
   )
   await expect(
     page.locator('.mobile-command-dock-item:not(:disabled)'),
-  ).toHaveCount(1)
+  ).toHaveCount(2)
 
   const flightButton = page.locator('#mobile-command-dock-flight-button')
   await flightButton.tap()
   await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
   await expect(dock).toHaveAttribute('data-open', 'true')
-  const flightPanel = page.locator('.mobile-command-dock-panel')
+  const flightPanel = page.locator('#mobile-command-dock-flight-panel')
   await expect(flightPanel).toBeVisible()
   await expect(flightPanel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(flightPanel).toHaveCSS('box-shadow', 'none')
@@ -394,6 +667,20 @@ test('ships all dock items with only Flight enabled and one label-free floating 
     flightPanel.locator(
       '.mobile-command-dock-panel-heading, .mobile-command-dock-flight-control-label, .touch-rcs-yaw-control-header, .touch-rcs-yaw-control-close',
     ),
+  ).toHaveCount(0)
+
+  const navButton = page.locator('#mobile-command-dock-nav-button')
+  await navButton.tap()
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  await expect(flightPanel).toBeHidden()
+  await expect(navPanel).toBeVisible()
+  await expect(navPanel.getByLabel('Time Warp', { exact: true })).toBeVisible()
+  await expect(
+    navPanel.getByRole('group', { name: 'Camera mode' }),
+  ).toBeVisible()
+  await expect(navPanel).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(
+    page.locator('#touch-time-warp-reveal, #touch-time-warp-prototype-reveal'),
   ).toHaveCount(0)
 })
 
@@ -422,7 +709,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
 }, testInfo) => {
   await captureDockState({
     fileName: 'mobile-command-dock-collapsed-320.png',
-    open: false,
+    openPanel: null,
     page,
     safeBottom: 0,
     testInfo,
@@ -447,7 +734,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
 
   await captureDockState({
     fileName: 'mobile-command-dock-flight-open-320.png',
-    open: true,
+    openPanel: 'flight',
     page,
     safeBottom: 0,
     testInfo,
@@ -456,7 +743,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
 
   await captureDockState({
     fileName: 'mobile-command-dock-flight-open-safe-area-390.png',
-    open: true,
+    openPanel: 'flight',
     page,
     safeBottom: 24,
     testInfo,
@@ -465,7 +752,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
 
   await captureDockState({
     fileName: 'mobile-command-dock-flight-open-safe-area-430.png',
-    open: true,
+    openPanel: 'flight',
     page,
     safeBottom: 34,
     testInfo,
@@ -473,7 +760,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   })
 
   const flightPanelBounds = await page
-    .locator('.mobile-command-dock-panel')
+    .locator('#mobile-command-dock-flight-panel')
     .boundingBox()
   const rcsControlBounds = await page
     .locator('.mobile-command-dock-panel .touch-rcs-yaw-control')
@@ -540,6 +827,57 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   await expect(
     page.locator('#touch-rcs-yaw-reveal, #touch-thrust-reveal'),
   ).toHaveCount(0)
+
+  await captureDockState({
+    fileName: 'mobile-command-dock-nav-open-320.png',
+    openPanel: 'nav',
+    page,
+    safeBottom: 0,
+    testInfo,
+    viewport: { height: 720, width: 320 },
+  })
+  await captureDockState({
+    fileName: 'mobile-command-dock-nav-open-safe-area-390.png',
+    openPanel: 'nav',
+    page,
+    safeBottom: 24,
+    testInfo,
+    viewport: { height: 844, width: 390 },
+  })
+  await captureDockState({
+    fileName: 'mobile-command-dock-nav-open-safe-area-430.png',
+    openPanel: 'nav',
+    page,
+    safeBottom: 34,
+    testInfo,
+    viewport: { height: 932, width: 430 },
+  })
+
+  const navPanelBounds = await page
+    .locator('#mobile-command-dock-nav-panel')
+    .boundingBox()
+  const timeWarpBounds = await page.getByLabel('Time Warp').boundingBox()
+  const cameraBounds = await page
+    .locator('.mobile-command-dock-nav-camera')
+    .boundingBox()
+  const cameraOptionBounds = await page
+    .locator('.mobile-command-dock-camera-option')
+    .first()
+    .boundingBox()
+  expect(navPanelBounds).not.toBeNull()
+  expect(timeWarpBounds).not.toBeNull()
+  expect(cameraBounds).not.toBeNull()
+  expect(cameraOptionBounds).not.toBeNull()
+  expect(timeWarpBounds?.y ?? 0).toBeLessThan(cameraBounds?.y ?? 0)
+  expect(timeWarpBounds?.height ?? 0).toBeGreaterThan(
+    cameraOptionBounds?.height ?? 0,
+  )
+  expect(timeWarpBounds?.x ?? 0).toBeGreaterThanOrEqual(navPanelBounds?.x ?? 0)
+  expect(
+    (cameraBounds?.y ?? 0) + (cameraBounds?.height ?? 0),
+  ).toBeLessThanOrEqual(
+    (navPanelBounds?.y ?? 0) + (navPanelBounds?.height ?? 0),
+  )
 })
 
 test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
@@ -639,6 +977,83 @@ test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
   )
 })
 
+test('captures normal, capped, and blocked Time Warp feedback in Nav', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/?scenario=earth-moon')
+  await waitForGame(page)
+  await isolateMobileControlLayer(page)
+  await page.locator('#mobile-command-dock-nav-button').tap()
+
+  const status = page.locator('.mobile-command-dock-time-warp-status')
+  const timeWarp = page.getByLabel('Time Warp', { exact: true })
+  await expect(status).toHaveText('Minimum rate reached')
+  await expect(status).toHaveClass(/mobile-command-dock-visually-hidden/)
+  await expect(
+    page.locator(
+      '[data-mobile-time-warp-current], [data-mobile-camera-status]',
+    ),
+  ).toHaveCount(0)
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-nav-warp-capped-390.png'),
+  })
+
+  const bounds = await timeWarp.boundingBox()
+  if (!bounds) {
+    throw new Error('Missing Time Warp bounds')
+  }
+  const centerX = bounds.x + bounds.width / 2
+  const centerY = bounds.y + bounds.height / 2
+  await page.mouse.move(centerX, centerY)
+  await page.mouse.down()
+  await page.mouse.move(centerX - 56, centerY, { steps: 4 })
+  await page.waitForTimeout(80)
+  await page.mouse.up()
+  await expect(status).toBeEmpty()
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-nav-warp-normal-390.png'),
+  })
+
+  const currentTimeWarp = page.locator(
+    '.touch-step-selector-horizontal-step.touch-step-selector-current .touch-step-selector-value',
+  )
+  for (let step = 0; step < 8; step += 1) {
+    if ((await currentTimeWarp.textContent()) === 'x1m') {
+      break
+    }
+    await page.mouse.move(centerX, centerY)
+    await page.mouse.down()
+    await page.mouse.move(centerX - 56, centerY, { steps: 4 })
+    await page.waitForTimeout(80)
+    await page.mouse.up()
+  }
+  await expect(currentTimeWarp).toHaveText('x1m')
+
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        bubbles: true,
+        code: 'KeyW',
+        key: 'w',
+      }),
+    )
+  })
+  await expect(status).toHaveText('Main thrust blocks faster rates')
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-nav-warp-blocked-390.png'),
+  })
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new KeyboardEvent('keyup', {
+        bubbles: true,
+        code: 'KeyW',
+        key: 'w',
+      }),
+    )
+  })
+})
+
 test('does not change the fine-pointer desktop layout', async ({
   baseURL,
   browser,
@@ -662,6 +1077,12 @@ test('does not change the fine-pointer desktop layout', async ({
       'display',
       'none',
     )
+    await page.getByRole('button', { name: 'Open in-game controls' }).click()
+    await expect(
+      page
+        .getByRole('dialog', { name: 'In-game controls' })
+        .locator('.in-game-controls-menu-camera .menu-stepper-name'),
+    ).toBeVisible()
   } finally {
     await context.close()
   }

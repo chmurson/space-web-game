@@ -25,6 +25,7 @@ export const updateCameraView = (options: {
   gameScene: GameSceneRefs
   preserveStarfieldWorldPosition?: boolean
   viewportHeight: number
+  viewportBottomInset?: number
   viewportSize: number
   viewportWidth: number
 }) => {
@@ -42,8 +43,17 @@ export const updateCameraView = (options: {
     options.viewportSize *
     (options.viewportWidth / options.viewportHeight) *
     0.5
-  options.gameScene.camera.top = options.viewportSize * 0.5
-  options.gameScene.camera.bottom = -options.viewportSize * 0.5
+  const viewportBottomInset = THREE.MathUtils.clamp(
+    options.viewportBottomInset ?? 0,
+    0,
+    options.viewportHeight,
+  )
+  const verticalCenterOffset =
+    options.viewportSize * (viewportBottomInset / options.viewportHeight) * 0.5
+  options.gameScene.camera.top =
+    options.viewportSize * 0.5 - verticalCenterOffset
+  options.gameScene.camera.bottom =
+    -options.viewportSize * 0.5 - verticalCenterOffset
 
   const horizontal = Math.cos(options.cameraElevation) * options.cameraDistance
   const vertical = Math.sin(options.cameraElevation) * options.cameraDistance

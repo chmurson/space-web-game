@@ -24,6 +24,7 @@ export const createInGameControlsMenu = (options: {
   app: HTMLElement
   getCameraMode: () => CameraControlMode
   getCameraModeChangesLocked: () => boolean
+  getCameraModeControlVisible?: () => boolean
   getCoastPredictionHorizonHours: () => number
   getMaxCoastPredictionHorizonHours: () => number
   getMinCoastPredictionHorizonHours: () => number
@@ -39,6 +40,7 @@ export const createInGameControlsMenu = (options: {
 
   let cameraMode = options.getCameraMode()
   let cameraModeChangesLocked = options.getCameraModeChangesLocked()
+  let cameraModeVisible = options.getCameraModeControlVisible?.() ?? true
   let coastHorizonLabel = ''
   let decreaseCoastHorizonDisabled = false
   let increaseCoastHorizonDisabled = false
@@ -47,6 +49,8 @@ export const createInGameControlsMenu = (options: {
   const syncRenderState = () => {
     const nextCameraMode = options.getCameraMode()
     const nextCameraModeChangesLocked = options.getCameraModeChangesLocked()
+    const nextCameraModeVisible =
+      options.getCameraModeControlVisible?.() ?? true
     const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours()
     const nextCoastHorizonLabel = formatTrajectoryHorizonDuration(
       coastPredictionHorizonHours * 60 * 60,
@@ -58,12 +62,14 @@ export const createInGameControlsMenu = (options: {
     const changed =
       nextCameraMode !== cameraMode ||
       nextCameraModeChangesLocked !== cameraModeChangesLocked ||
+      nextCameraModeVisible !== cameraModeVisible ||
       nextCoastHorizonLabel !== coastHorizonLabel ||
       nextDecreaseCoastHorizonDisabled !== decreaseCoastHorizonDisabled ||
       nextIncreaseCoastHorizonDisabled !== increaseCoastHorizonDisabled
 
     cameraMode = nextCameraMode
     cameraModeChangesLocked = nextCameraModeChangesLocked
+    cameraModeVisible = nextCameraModeVisible
     coastHorizonLabel = nextCoastHorizonLabel
     decreaseCoastHorizonDisabled = nextDecreaseCoastHorizonDisabled
     increaseCoastHorizonDisabled = nextIncreaseCoastHorizonDisabled
@@ -75,6 +81,7 @@ export const createInGameControlsMenu = (options: {
     surface.render({
       cameraMode,
       cameraModeChangesLocked,
+      cameraModeVisible,
       coastHorizonLabel,
       decreaseCoastHorizonDisabled,
       increaseCoastHorizonDisabled,

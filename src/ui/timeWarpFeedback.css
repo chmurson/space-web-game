@@ -1,10 +1,8 @@
-.telemetry-pill-warp-bump,
-.touch-time-warp-feedback-confirm {
+.telemetry-pill-warp-bump {
   z-index: 1;
 }
 
-.telemetry-pill-warp-bump[data-warp-feedback-variant="v2"],
-.touch-time-warp-feedback-confirm[data-warp-feedback-variant="v2"] {
+.telemetry-pill-warp-bump[data-warp-feedback-variant="v2"] {
   --warp-feedback-ring: rgba(56, 189, 248, 0.22);
   --warp-feedback-glow: rgba(14, 165, 233, 0.24);
   --warp-feedback-brightness-peak: 1.24;
@@ -13,8 +11,7 @@
     ease;
 }
 
-.telemetry-pill-warp-bump[data-warp-feedback-variant="v4"],
-.touch-time-warp-feedback-confirm[data-warp-feedback-variant="v4"] {
+.telemetry-pill-warp-bump[data-warp-feedback-variant="v4"] {
   --warp-feedback-ring: rgba(244, 114, 182, 0.2);
   --warp-feedback-glow: rgba(225, 29, 72, 0.22);
   --warp-feedback-brightness-peak: 1.18;
