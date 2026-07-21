@@ -60,6 +60,21 @@ export type TrajectoryPredictionResult = {
   relativePoints: Vec2[]
 }
 
+export type CoastTrajectoryPredictionSample = {
+  absolutePoint: Vec2
+  closestApproach: PredictedClosestApproach | null
+  distanceSq: number
+  point: Vec2
+  time: number
+}
+
+export type CoastTrajectoryPredictionComputation = {
+  finalState: SimulationState
+  predictionTime: number
+  result: TrajectoryPredictionResult
+  samples: CoastTrajectoryPredictionSample[]
+}
+
 export type AssistedTrajectoryPredictionResult = {
   relativePoints: Vec2[]
 }
@@ -153,16 +168,7 @@ export const getCoastTrajectoryPredictionMaxIntegrationStepSeconds = (
   predictionConfig: TrajectoryPredictionConfig,
   allowLoopTrim: boolean,
 ) => {
-  if (!allowLoopTrim || target.radius <= 0) {
-    return predictionConfig.maxIntegrationStepSeconds
-  }
-
-  const currentTargetDistance = length(
-    sub(state.spacecraft.position, target.position),
-  )
-  const currentRadiusRatio = currentTargetDistance / target.radius
-
-  return currentRadiusRatio <= closeBoundCoastPrecisionRadiusRatio
+  return isCloseBoundCoastPrediction(state, target, allowLoopTrim)
     ? Math.min(
         closeBoundCoastMaxIntegrationStepSeconds,
         predictionConfig.maxIntegrationStepSeconds,
@@ -170,19 +176,23 @@ export const getCoastTrajectoryPredictionMaxIntegrationStepSeconds = (
     : predictionConfig.maxIntegrationStepSeconds
 }
 
-type TargetRelativePredictionSample = {
-  distanceSq: number
-  point: Vec2
-  time: number
-}
+export const isCloseBoundCoastPrediction = (
+  state: SimulationState,
+  target: Body,
+  allowLoopTrim: boolean,
+) =>
+  allowLoopTrim &&
+  target.radius > 0 &&
+  length(sub(state.spacecraft.position, target.position)) / target.radius <=
+    closeBoundCoastPrecisionRadiusRatio
 
 const isInteriorSample = (
   index: number,
-  samples: TargetRelativePredictionSample[],
+  samples: CoastTrajectoryPredictionSample[],
 ) => index > 0 && index < samples.length - 1
 
 const findTargetRelativeExtremum = (
-  samples: TargetRelativePredictionSample[],
+  samples: CoastTrajectoryPredictionSample[],
   compare: (candidate: number, current: number) => boolean,
 ) => {
   if (samples.length < 3) {
@@ -201,8 +211,8 @@ const findTargetRelativeExtremum = (
     : null
 }
 
-const getTargetRelativeEventMarkers = (
-  samples: TargetRelativePredictionSample[],
+export const getCoastTrajectoryEventMarkers = (
+  samples: CoastTrajectoryPredictionSample[],
   options: { includeApoapsis: boolean; targetRadius: number },
 ): TrajectoryPredictionEventMarker[] => {
   const eventMarkers: TrajectoryPredictionEventMarker[] = []
@@ -245,17 +255,17 @@ const getTargetRelativeEventMarkers = (
   return eventMarkers
 }
 
-export const predictCoastTrajectory = (
+export const computeCoastTrajectoryPrediction = (
   state: SimulationState,
   physicsEngine: PhysicsEngine,
   target: Body,
   predictionConfig: TrajectoryPredictionConfig,
   allowLoopTrim: boolean,
-): TrajectoryPredictionResult => {
+): CoastTrajectoryPredictionComputation => {
   let predictedState = cloneSimulationState(state)
   const absolutePoints: Vec2[] = [{ ...state.spacecraft.position }]
   const relativePoints: Vec2[] = []
-  const targetRelativeSamples: TargetRelativePredictionSample[] = []
+  const samples: CoastTrajectoryPredictionSample[] = []
   const maxIntegrationStepSeconds =
     getCoastTrajectoryPredictionMaxIntegrationStepSeconds(
       state,
@@ -266,6 +276,7 @@ export const predictCoastTrajectory = (
   const maxLoopAngularTravel = predictionConfig.maxLoopRevolutions * Math.PI * 2
   let closestApproach: PredictedClosestApproach | null = null
   let impact: PredictedImpact | null = null
+  let sampleClosestApproach: PredictedClosestApproach | null = null
   let previousPredictionAngle = Math.atan2(
     state.spacecraft.position.y - target.position.y,
     state.spacecraft.position.x - target.position.x,
@@ -305,13 +316,20 @@ export const predictCoastTrajectory = (
         const altitude =
           length(sub(predictedSpacecraft.position, predictedTarget.position)) -
           predictedTarget.radius
+        const approach = {
+          altitude,
+          bodyName: predictedTarget.name,
+          time: predictionTime,
+        }
 
         if (!closestApproach || altitude < closestApproach.altitude) {
-          closestApproach = {
-            altitude,
-            bodyName: predictedTarget.name,
-            time: predictionTime,
-          }
+          closestApproach = approach
+        }
+        if (
+          !sampleClosestApproach ||
+          altitude < sampleClosestApproach.altitude
+        ) {
+          sampleClosestApproach = approach
         }
       }
 
@@ -338,13 +356,17 @@ export const predictCoastTrajectory = (
       normalizeAngle(predictionAngle - previousPredictionAngle),
     )
     previousPredictionAngle = predictionAngle
-    absolutePoints.push({ ...predictedState.spacecraft.position })
+    const absolutePoint = { ...predictedState.spacecraft.position }
+    absolutePoints.push(absolutePoint)
     relativePoints.push(relativePoint)
-    targetRelativeSamples.push({
+    samples.push({
+      absolutePoint,
+      closestApproach: sampleClosestApproach,
       distanceSq: lengthSq(relativePoint),
       point: relativePoint,
       time: predictionTime,
     })
+    sampleClosestApproach = null
 
     if (allowLoopTrim && predictionAngularTravel >= maxLoopAngularTravel) {
       break
@@ -352,28 +374,48 @@ export const predictCoastTrajectory = (
   }
 
   return {
-    absoluteEndPoint:
-      relativePoints.length > 0
-        ? { ...predictedState.spacecraft.position }
-        : null,
-    absolutePoints,
-    closestApproach,
-    eventMarkers: getTargetRelativeEventMarkers(targetRelativeSamples, {
-      includeApoapsis: allowLoopTrim && !impact,
-      targetRadius: target.radius,
-    }),
-    impact,
-    integration: {
-      averageStepSeconds:
-        integrationStepCount > 0
-          ? integrationStepSecondsTotal / integrationStepCount
+    finalState: predictedState,
+    predictionTime,
+    result: {
+      absoluteEndPoint:
+        relativePoints.length > 0
+          ? { ...predictedState.spacecraft.position }
           : null,
-      minStepSeconds: integrationMinStepSeconds,
-      stepCount: integrationStepCount,
+      absolutePoints,
+      closestApproach,
+      eventMarkers: getCoastTrajectoryEventMarkers(samples, {
+        includeApoapsis: allowLoopTrim && !impact,
+        targetRadius: target.radius,
+      }),
+      impact,
+      integration: {
+        averageStepSeconds:
+          integrationStepCount > 0
+            ? integrationStepSecondsTotal / integrationStepCount
+            : null,
+        minStepSeconds: integrationMinStepSeconds,
+        stepCount: integrationStepCount,
+      },
+      relativePoints,
     },
-    relativePoints,
+    samples,
   }
 }
+
+export const predictCoastTrajectory = (
+  state: SimulationState,
+  physicsEngine: PhysicsEngine,
+  target: Body,
+  predictionConfig: TrajectoryPredictionConfig,
+  allowLoopTrim: boolean,
+): TrajectoryPredictionResult =>
+  computeCoastTrajectoryPrediction(
+    state,
+    physicsEngine,
+    target,
+    predictionConfig,
+    allowLoopTrim,
+  ).result
 
 export const predictAssistedTrajectory = (
   state: SimulationState,
