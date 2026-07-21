@@ -23,9 +23,10 @@ Shipit state: `.codex/shipit-workflows/agent/issue-239-mobile-nav.md`
   states replace the duplicate secondary mode copy. Spacecraft and Target
   follow modes now center their tracked object within the viewport remaining
   above the dock and its open panel. Entering Free roam preserves that clipped
-  viewport origin instead of jumping to the full-screen center, and swipe
-  panning begins with the next move after the unlock threshold. Fine-pointer
-  desktop and established Free roam camera behavior remain unchanged.
+  viewport origin for both bodies and parallax star layers instead of jumping
+  to the full-screen center, and swipe panning begins with the next move after
+  the unlock threshold. Fine-pointer desktop and established Free roam camera
+  behavior remain unchanged.
 - Removed the Warp-side row and runtime consumption while leaving its legacy
   persisted configuration field harmlessly ignored for issue #244.
 - Updated tutorial focus and copy to open Nav and direct the player to drag
@@ -62,7 +63,8 @@ migration boundary.
   Target and Trajectory only; Warp side is no longer consumed.
 - App composition caches the measured dock obstruction; runtime camera actions
   apply it to follow modes and convert that projection to an equivalent
-  world-space Free roam origin during mode transitions.
+  world-space Free roam origin during mode transitions. The transition also
+  marks the camera update as world-position preserving for the starfield.
 - `src/render/sceneUpdates.ts` shifts the follow-mode orthographic projection
   without changing zoom or simulation coordinates.
 
@@ -80,6 +82,9 @@ migration boundary.
   Free roam target using the camera's normalized 3D screen-up direction. The
   inset still remains follow-only; no parallel Free roam viewport state was
   introduced.
+- Reused the starfield's existing world-position-preserving camera update for
+  the translated unlock target. This keeps every star layer fixed during the
+  projection transition while ordinary Free roam panning resumes parallax.
 - Consumed the touch move that crosses the unlock threshold and seeded the next
   pan from that position, preventing threshold overshoot from becoming an
   unintended transition delta.
@@ -104,10 +109,11 @@ migration boundary.
   operator-at-line-start form with narrow Biome format suppressions.
 - `npm run build` passed, including config validation, TypeScript compilation,
   and the release Vite build; the existing large-chunk advisory remained.
-- `npm test` passed: 62 Vitest files / 575 tests, 16 automation-claim tests,
-  and 3 automation-workflow tests. This includes projection math and follow-mode
-  viewport-inset/free-roam transition coverage alongside every Time Warp status
-  reason mapping and the updated tutorial copy.
+- `npm test` passed: 62 Vitest files / 576 tests, 16 automation-claim tests,
+  and 3 automation-workflow tests. This includes projection math, follow-mode
+  viewport-inset/free-roam transition coverage, and a real generated star's
+  world/screen-position continuity alongside every Time Warp status reason
+  mapping and the updated tutorial copy.
 - `npm run test:gui` passed all 79 Playwright checks. The suite now exercises
   real mobile touch taps across multiple camera options in addition to
   Flight/Nav switching and cleanup, camera state and locks, no-op panel state
@@ -115,6 +121,8 @@ migration boundary.
   constraints, desktop isolation, the remaining Target/Trajectory reveals, and
   locked-target recentering as the Nav panel opens. Focused gesture coverage
   confirms the unlock-threshold move is consumed and the next move begins pan.
+  The locked/Free-roam screenshot pair confirms the body and surrounding stars
+  retain their positions while only the selected camera control changes.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
   normal, capped, blocked, and dragging Time Warp states. The compact panel
   fits without overlap, duplicate secondary/helper copy is absent, camera

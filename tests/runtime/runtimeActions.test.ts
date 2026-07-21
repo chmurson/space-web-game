@@ -428,7 +428,7 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('preserves clipped follow-camera framing when entering free roam', () => {
+  it('preserves clipped body and starfield framing when entering free roam', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
@@ -461,6 +461,7 @@ describe('createRuntimeActions', () => {
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
           cameraTargetPosition: runtime.ui.camera.panOffset,
+          preserveStarfieldWorldPosition: true,
           viewportBottomInset: 0,
         }),
       )

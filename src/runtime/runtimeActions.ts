@@ -265,7 +265,7 @@ export const createRuntimeActions = (options: {
         getFreeRoamTransitionTargetPosition()
     }
     options.runtime.ui.camera.mode = mode
-    updateCamera()
+    updateCamera(mode === 'unlocked')
     return true
   }
 
