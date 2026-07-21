@@ -145,8 +145,7 @@
     display: none;
   }
 
-  .mobile-command-dock-nav-time-warp,
-  .mobile-command-dock-nav-camera {
+  .mobile-command-dock-nav-time-warp {
     display: grid;
     min-width: 0;
     gap: 7px;
@@ -196,22 +195,6 @@
       0 10px 22px rgba(2, 6, 23, 0.24);
   }
 
-  .mobile-command-dock-nav-camera {
-    padding-top: 10px;
-    border-top: 1px solid rgba(148, 163, 184, 0.16);
-  }
-
-  .mobile-command-dock-camera-options {
-    display: grid;
-    min-width: 0;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
-    padding: 0;
-    border: 0;
-    margin: 0;
-  }
-
-  .mobile-command-dock-camera-legend,
   .mobile-command-dock-visually-hidden {
     position: absolute;
     width: 1px;
@@ -219,38 +202,6 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-
-  .mobile-command-dock-camera-option {
-    min-width: 0;
-    min-height: 42px;
-    padding: 7px 5px;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    border-radius: 10px;
-    background: var(--ui-glass-row-bg);
-    color: rgba(226, 232, 240, 0.76);
-    cursor: pointer;
-    font: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.1;
-    touch-action: manipulation;
-  }
-
-  .mobile-command-dock-camera-option-selected {
-    border-color: rgba(56, 189, 248, 0.54);
-    background: rgba(14, 116, 144, 0.22);
-    color: #bae6fd;
-  }
-
-  .mobile-command-dock-camera-option:disabled {
-    cursor: default;
-    opacity: 0.5;
-  }
-
-  .mobile-command-dock-camera-option:focus-visible {
-    outline: 2px solid rgba(125, 211, 252, 0.86);
-    outline-offset: 2px;
   }
 
   .mobile-command-dock-flight-controls {

@@ -101,7 +101,7 @@ describe('createScenarioFromSnapshot', () => {
     expect(snapshotBase.spacecraft.position.y).toBe(6)
   })
 
-  it('preserves scenario session metadata for version 2 snapshots', () => {
+  it('preserves scenario session metadata for current snapshots', () => {
     const snapshot = createSnapshotFromState(
       {
         elapsed: snapshotBase.elapsed,
@@ -143,7 +143,7 @@ describe('createScenarioFromSnapshot', () => {
     ).toBe('escape-earth')
   })
 
-  it('preserves assist target selection state for version 2 snapshots', () => {
+  it('preserves assist target selection state for current snapshots', () => {
     const snapshot = createSnapshotFromState(
       {
         elapsed: snapshotBase.elapsed,
@@ -164,6 +164,38 @@ describe('createScenarioFromSnapshot', () => {
     })
     expect(scenario.assistTargetIndex).toBe(1)
     expect(scenario.assistTargetSelectionMode).toBe('manual')
+  })
+
+  it('preserves Follow, View, and relative pan offset in version 3 snapshots', () => {
+    const snapshot = createSnapshotFromState(
+      {
+        elapsed: snapshotBase.elapsed,
+        bodies: snapshotBase.bodies,
+        spacecraft: snapshotBase.spacecraft,
+        controls: idleControls(),
+      },
+      {
+        cameraFollow: 'target',
+        cameraPanOffset: { x: 12, y: -24 },
+        cameraView: 'free',
+      },
+    )
+    const scenario = createScenarioFromSnapshot(snapshot)
+
+    expect(snapshot).toMatchObject({
+      cameraFollow: 'target',
+      cameraPanOffset: { x: 12, y: -24 },
+      cameraView: 'free',
+      version: 3,
+    })
+    expect(scenario).toMatchObject({
+      cameraFollow: 'target',
+      cameraPanOffset: { x: 12, y: -24 },
+      cameraView: 'free',
+    })
+    expect(scenario.cameraPanOffset).not.toBe(
+      'cameraPanOffset' in snapshot ? snapshot.cameraPanOffset : undefined,
+    )
   })
 })
 

@@ -7,7 +7,7 @@ import type {
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type { TrajectoryHorizonAction } from '../../runtime/trajectoryHorizonControlPolicy'
-import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
+import type { CameraViewMode } from '../../scenario/scenarioDirectiveTypes'
 import type {
   ScenarioTouchControlFocusTarget,
   ScenarioTouchHintTarget,
@@ -240,10 +240,10 @@ export const createTouchControls = (options: {
   initialTargetControlSide: TouchControlRevealEdge
   initialTrajectoryControlSide: TouchControlRevealState
   keyboardInput: KeyboardInput
-  getCameraMode(): CameraControlMode
-  getCameraModeChangesLocked(): boolean
+  getCameraControlsLocked(): boolean
+  getCameraView(): CameraViewMode
   onCameraUnlockedBySwipe?(): void
-  onCameraModeSelected(mode: CameraControlMode): boolean
+  onCameraViewSelected(view: CameraViewMode): boolean
   onFollowCameraViewportBottomInsetChange?(bottomInset: number): void
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
@@ -267,9 +267,6 @@ export const createTouchControls = (options: {
   const mobileCommandDock = createMobileCommandDock({
     app: options.app,
     container: panel,
-    getCameraMode: options.getCameraMode,
-    getCameraModeChangesLocked: options.getCameraModeChangesLocked,
-    onCameraModeSelected: options.onCameraModeSelected,
     onViewportBottomInsetChange:
       options.onFollowCameraViewportBottomInsetChange,
     onOpenPanelChange: (nextPanel, previousPanel) =>
@@ -1199,13 +1196,13 @@ export const createTouchControls = (options: {
             activeSession.hasMovedForTap = true
           }
 
-          if (options.getCameraMode() !== 'unlocked') {
+          if (options.getCameraView() !== 'free') {
             const unlockThresholdX =
               window.innerWidth * intentionalCameraUnlockSwipeViewportRatio
             const unlockThresholdY =
               window.innerHeight * intentionalCameraUnlockSwipeViewportRatio
             const shouldUnlock =
-              !options.getCameraModeChangesLocked() &&
+              !options.getCameraControlsLocked() &&
               (Math.abs(totalDeltaX) >= unlockThresholdX ||
                 Math.abs(totalDeltaY) >= unlockThresholdY)
 
@@ -1213,7 +1210,7 @@ export const createTouchControls = (options: {
               return
             }
 
-            if (options.onCameraModeSelected('unlocked')) {
+            if (options.onCameraViewSelected('free')) {
               options.onCameraUnlockedBySwipe?.()
             }
             activeSession.previousX = touch.clientX
@@ -1518,7 +1515,6 @@ export const createTouchControls = (options: {
   thrustControl.syncUi()
   timeWarpControl.syncUi()
   syncTimeWarpDockState()
-  mobileCommandDock.syncUi()
   syncTargetRecommendationCue()
   targetControl.syncUi()
   syncTrajectoryControlVisibility()
@@ -1529,7 +1525,6 @@ export const createTouchControls = (options: {
     thrustControl.syncUi()
     timeWarpControl.syncUi()
     syncTimeWarpDockState()
-    mobileCommandDock.syncUi()
     syncTargetRecommendationCue()
     targetControl.syncUi()
     trajectoryHorizonControl.syncUi()
@@ -1570,7 +1565,6 @@ export const createTouchControls = (options: {
       }
       timeWarpControl.syncUi()
       syncTimeWarpDockState()
-      mobileCommandDock.syncUi()
       syncTargetRecommendationCue()
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()

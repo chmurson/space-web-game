@@ -5,7 +5,8 @@ import {
   type RuntimeScenarioOptions,
 } from '../scenario/runtimeScenario'
 import type {
-  CameraControlMode,
+  CameraFollowSubject,
+  CameraViewMode,
   GlobalScenarioDirectiveLimits,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
@@ -24,7 +25,9 @@ import { createRuntimeCheckpointRestoreTransition } from './scenarioRecovery'
 export type ScenarioRuntimeTransition = {
   assistTargetIndex?: AppRuntimeSimulationSlice['assistTargetIndex']
   assistTargetSelectionMode?: AppRuntimeSimulationSlice['assistTargetSelectionMode']
-  cameraMode: CameraControlMode
+  cameraFollow: CameraFollowSubject
+  cameraPanOffset: { x: number; y: number }
+  cameraView: CameraViewMode
   coastPredictionHorizonHours: number
   scenario: Pick<
     AppRuntimeScenarioSlice,
@@ -55,7 +58,9 @@ export const createScenarioRuntimeTransition = (
   return {
     assistTargetIndex: runtimeScenarioState.assistTargetIndex,
     assistTargetSelectionMode: runtimeScenarioState.assistTargetSelectionMode,
-    cameraMode: runtimeScenarioState.cameraMode,
+    cameraFollow: runtimeScenarioState.cameraFollow,
+    cameraPanOffset: runtimeScenarioState.cameraPanOffset,
+    cameraView: runtimeScenarioState.cameraView,
     coastPredictionHorizonHours:
       runtimeScenarioState.coastPredictionHorizonHours,
     scenario: {
@@ -142,7 +147,9 @@ export const createScenarioRuntimeController = (options: {
             loadedDebugScenario.runtimeState.assistTargetSelectionMode,
           coastPredictionHorizonHours:
             loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
-          cameraMode: loadedDebugScenario.runtimeState.cameraMode,
+          cameraFollow: loadedDebugScenario.runtimeState.cameraFollow,
+          cameraPanOffset: loadedDebugScenario.runtimeState.cameraPanOffset,
+          cameraView: loadedDebugScenario.runtimeState.cameraView,
           scenario: {
             metadata: {
               description: loadedDebugScenario.scenario.description,

@@ -1,21 +1,28 @@
-import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
+import type {
+  CameraFollowSubject,
+  CameraViewMode,
+} from '../../scenario/scenarioDirectiveTypes'
 import {
-  cameraModeOptions,
-  getCameraModeAction,
-  getCameraModeDescription,
-} from '../cameraModeActions'
+  cameraFollowOptions,
+  cameraViewOptions,
+  getCameraFollowAction,
+  getCameraFollowDescription,
+  getCameraViewAction,
+  getCameraViewDescription,
+} from '../cameraControlActions'
 
 export type InGameControlsMenuSurfaceProps = {
-  cameraMode: CameraControlMode
-  cameraModeChangesLocked: boolean
-  cameraModeVisible: boolean
+  cameraControlsLocked: boolean
+  cameraFollow: CameraFollowSubject
+  cameraView: CameraViewMode
   coastHorizonLabel: string
   decreaseCoastHorizonDisabled: boolean
   increaseCoastHorizonDisabled: boolean
   menuId: string
   open: boolean
   rootRef(element: HTMLElement | null): void
-  onCameraModeSelect(mode: CameraControlMode): void
+  onCameraFollowSelect(follow: CameraFollowSubject): void
+  onCameraViewSelect(view: CameraViewMode): void
   onDecreaseCoastHorizon(): void
   onIncreaseCoastHorizon(): void
   onMenuButtonClick(): void
@@ -23,24 +30,27 @@ export type InGameControlsMenuSurfaceProps = {
 }
 
 export const InGameControlsMenuSurface = ({
-  cameraMode,
-  cameraModeChangesLocked,
-  cameraModeVisible,
+  cameraControlsLocked,
+  cameraFollow,
+  cameraView,
   coastHorizonLabel,
   decreaseCoastHorizonDisabled,
   increaseCoastHorizonDisabled,
   menuId,
   open,
   rootRef,
-  onCameraModeSelect,
+  onCameraFollowSelect,
+  onCameraViewSelect,
   onDecreaseCoastHorizon,
   onIncreaseCoastHorizon,
   onMenuButtonClick,
   onOpenUiSettings,
 }: InGameControlsMenuSurfaceProps) => {
-  const cameraControlLabelId = `${menuId}-camera`
+  const cameraFollowLabelId = `${menuId}-camera-follow`
+  const cameraViewLabelId = `${menuId}-camera-view`
   const trajectorySectionLabelId = `${menuId}-trajectory`
-  const cameraModeDescription = getCameraModeDescription(cameraMode)
+  const cameraFollowDescription = getCameraFollowDescription(cameraFollow)
+  const cameraViewDescription = getCameraViewDescription(cameraView)
 
   return (
     <section
@@ -49,7 +59,8 @@ export const InGameControlsMenuSurface = ({
           ? 'in-game-controls-menu in-game-controls-menu-open'
           : 'in-game-controls-menu'
       }
-      data-camera-mode={cameraMode}
+      data-camera-follow={cameraFollow}
+      data-camera-view={cameraView}
       ref={rootRef}
     >
       <button
@@ -71,50 +82,50 @@ export const InGameControlsMenuSurface = ({
         aria-label="In-game controls"
       >
         <div class="in-game-controls-menu-heading">Controls</div>
-        {cameraModeVisible ? (
-          <div class="menu-stepper in-game-controls-menu-camera">
+        <div class="in-game-controls-menu-camera-grid">
+          <div class="menu-stepper in-game-controls-menu-camera-control">
             <div class="menu-stepper-copy">
-              <span class="menu-stepper-name" id={cameraControlLabelId}>
-                Camera mode
+              <span class="menu-stepper-name" id={cameraFollowLabelId}>
+                Follow
               </span>
               <span
-                class="menu-stepper-value"
-                data-in-game-camera-status=""
                 aria-live="polite"
+                class="menu-stepper-value"
+                data-in-game-camera-follow-status=""
               >
-                {cameraModeDescription}
+                {cameraFollowDescription}
               </span>
             </div>
             <div class="menu-stepper-controls">
               <fieldset
+                aria-labelledby={cameraFollowLabelId}
                 class="segmented-control in-game-controls-menu-camera-options"
-                aria-labelledby={cameraControlLabelId}
               >
                 <legend class="in-game-controls-menu-camera-options-legend">
-                  Camera mode
+                  Camera follow subject
                 </legend>
-                {cameraModeOptions.map((option) => {
-                  const selected = option.mode === cameraMode
+                {cameraFollowOptions.map((option) => {
+                  const selected = option.follow === cameraFollow
 
                   return (
                     <button
-                      key={option.mode}
-                      type="button"
+                      aria-label={
+                        cameraControlsLocked
+                          ? `Camera controls unavailable: Follow ${option.label}`
+                          : `Follow ${option.label}`
+                      }
+                      aria-pressed={selected}
                       class={
                         selected
                           ? 'segmented-control-option segmented-control-option-selected'
                           : 'segmented-control-option'
                       }
-                      data-in-game-action={getCameraModeAction(option.mode)}
-                      data-camera-mode-option={option.mode}
-                      disabled={cameraModeChangesLocked}
-                      aria-pressed={selected}
-                      aria-label={
-                        cameraModeChangesLocked
-                          ? `Camera mode changes unavailable: ${option.label}`
-                          : `Set camera mode to ${option.label}`
-                      }
-                      onClick={() => onCameraModeSelect(option.mode)}
+                      data-camera-follow-option={option.follow}
+                      data-in-game-action={getCameraFollowAction(option.follow)}
+                      disabled={cameraControlsLocked}
+                      key={option.follow}
+                      onClick={() => onCameraFollowSelect(option.follow)}
+                      type="button"
                     >
                       {option.label}
                     </button>
@@ -123,7 +134,59 @@ export const InGameControlsMenuSurface = ({
               </fieldset>
             </div>
           </div>
-        ) : null}
+
+          <div class="menu-stepper in-game-controls-menu-camera-control">
+            <div class="menu-stepper-copy">
+              <span class="menu-stepper-name" id={cameraViewLabelId}>
+                View
+              </span>
+              <span
+                aria-live="polite"
+                class="menu-stepper-value"
+                data-in-game-camera-view-status=""
+              >
+                {cameraViewDescription}
+              </span>
+            </div>
+            <div class="menu-stepper-controls">
+              <fieldset
+                aria-labelledby={cameraViewLabelId}
+                class="segmented-control in-game-controls-menu-camera-options"
+              >
+                <legend class="in-game-controls-menu-camera-options-legend">
+                  Camera view
+                </legend>
+                {cameraViewOptions.map((option) => {
+                  const selected = option.view === cameraView
+
+                  return (
+                    <button
+                      aria-label={
+                        cameraControlsLocked
+                          ? `Camera controls unavailable: ${option.label} view`
+                          : `Use ${option.label} view`
+                      }
+                      aria-pressed={selected}
+                      class={
+                        selected
+                          ? 'segmented-control-option segmented-control-option-selected'
+                          : 'segmented-control-option'
+                      }
+                      data-camera-view-option={option.view}
+                      data-in-game-action={getCameraViewAction(option.view)}
+                      disabled={cameraControlsLocked}
+                      key={option.view}
+                      onClick={() => onCameraViewSelect(option.view)}
+                      type="button"
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </fieldset>
+            </div>
+          </div>
+        </div>
 
         <button
           class="in-game-controls-menu-action"
@@ -271,9 +334,15 @@ export const InGameControlsMenuSurface = ({
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">
-            <span class="in-game-controls-menu-keyboard-name">Camera</span>
+            <span class="in-game-controls-menu-keyboard-name">Follow</span>
             <span class="in-game-controls-menu-keyboard-keys">
               <kbd>C</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">View</span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>L</kbd>
             </span>
           </div>
         </fieldset>

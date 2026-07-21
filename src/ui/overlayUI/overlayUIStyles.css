@@ -180,7 +180,7 @@
   bottom: calc(100% + 8px);
   left: 0;
   display: grid;
-  width: min(276px, calc(100vw - 24px));
+  width: min(360px, calc(100vw - 24px));
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--ui-glass-panel-border);
@@ -227,25 +227,31 @@
   width: 100%;
 }
 
-.in-game-controls-menu-camera {
+.in-game-controls-menu-camera-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.in-game-controls-menu-camera-control {
   display: grid;
   gap: 8px;
 }
 
-.in-game-controls-menu-camera .menu-stepper-copy {
+.in-game-controls-menu-camera-control .menu-stepper-copy {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-width: 0;
 }
 
-.in-game-controls-menu-camera .menu-stepper-controls,
+.in-game-controls-menu-camera-control .menu-stepper-controls,
 .in-game-controls-menu-camera-options {
   width: 100%;
 }
 
 .in-game-controls-menu-camera-options {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-columns: unset;
   margin: 0;
   padding: 0;
@@ -737,7 +743,7 @@
   }
 
   .in-game-controls-menu-popover {
-    width: min(248px, calc(100vw - 24px));
+    width: min(320px, calc(100vw - 24px));
   }
 
   .in-game-controls-menu-keyboard-hints {

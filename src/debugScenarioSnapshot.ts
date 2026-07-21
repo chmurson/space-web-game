@@ -1,5 +1,8 @@
 import type { AssistTargetSelectionMode } from './runtime/appRuntimeState'
-import type { CameraControlMode } from './scenario/scenarioDirectiveTypes'
+import type {
+  CameraFollowSubject,
+  CameraViewMode,
+} from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
   createRuntimeScenarioSession,
@@ -12,6 +15,7 @@ import type {
   SimulationState,
   Spacecraft,
 } from './simulation/types'
+import type { Vec2 } from './simulation/vector'
 import type { OrbitPointDisplaySettingOverrides } from './userSettingsStorage'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
@@ -43,9 +47,26 @@ type DebugScenarioSnapshotV2 = {
   runtimeScenario?: RuntimeScenarioSession
 }
 
+type DebugScenarioSnapshotV3 = {
+  version: 3
+  savedAt: string
+  assistTargetIndex?: number
+  assistTargetSelectionMode?: AssistTargetSelectionMode
+  cameraFollow?: CameraFollowSubject
+  cameraPanOffset?: Vec2
+  cameraView?: CameraViewMode
+  elapsed: number
+  viewportSize?: number
+  coastPredictionHorizonHours?: number
+  bodies: Body[]
+  spacecraft: Spacecraft
+  runtimeScenario?: RuntimeScenarioSession
+}
+
 export type DebugScenarioSnapshot =
   | DebugScenarioSnapshotV1
   | DebugScenarioSnapshotV2
+  | DebugScenarioSnapshotV3
 
 export type DebugScenarioSnapshotEntry = {
   id: string
@@ -64,7 +85,9 @@ export type DebugScenarioSnapshotLink = Pick<
 export type RuntimeScenario = Scenario & {
   assistTargetIndex?: number
   assistTargetSelectionMode?: AssistTargetSelectionMode
-  cameraMode?: CameraControlMode
+  cameraFollow?: CameraFollowSubject
+  cameraPanOffset?: Vec2
+  cameraView?: CameraViewMode
   coastPredictionHorizonHours?: number
   elapsed?: number
   orbitPointDisplay?: OrbitPointDisplaySettingOverrides
@@ -84,19 +107,19 @@ const getSnapshotCoastPredictionHorizonHours = (
 const getSnapshotScenarioSession = (
   snapshot: DebugScenarioSnapshot,
 ): RuntimeScenarioSession =>
-  snapshot.version === 2 && snapshot.runtimeScenario
+  snapshot.version !== 1 && snapshot.runtimeScenario
     ? cloneRuntimeScenarioSession(snapshot.runtimeScenario)
     : createRuntimeScenarioSession('legacy-debug-snapshot')
 
 const getSnapshotAssistTargetIndex = (snapshot: DebugScenarioSnapshot) =>
-  snapshot.version === 2 && Number.isInteger(snapshot.assistTargetIndex)
+  snapshot.version !== 1 && Number.isInteger(snapshot.assistTargetIndex)
     ? snapshot.assistTargetIndex
     : undefined
 
 const getSnapshotAssistTargetSelectionMode = (
   snapshot: DebugScenarioSnapshot,
 ): AssistTargetSelectionMode | undefined =>
-  snapshot.version === 2 &&
+  snapshot.version !== 1 &&
   (snapshot.assistTargetSelectionMode === 'auto' ||
     snapshot.assistTargetSelectionMode === 'manual')
     ? snapshot.assistTargetSelectionMode
@@ -124,7 +147,7 @@ const formatElapsedLabel = (elapsed: number) => {
 }
 
 const getSnapshotPhaseLabel = (snapshot: DebugScenarioSnapshot) => {
-  if (snapshot.version !== 2 || !snapshot.runtimeScenario) {
+  if (snapshot.version === 1 || !snapshot.runtimeScenario) {
     return null
   }
 
@@ -165,7 +188,8 @@ const isDebugScenarioSnapshot = (
   typeof snapshot === 'object' &&
   'version' in snapshot &&
   ((snapshot as DebugScenarioSnapshot).version === 1 ||
-    (snapshot as DebugScenarioSnapshot).version === 2) &&
+    (snapshot as DebugScenarioSnapshot).version === 2 ||
+    (snapshot as DebugScenarioSnapshot).version === 3) &&
   Array.isArray((snapshot as DebugScenarioSnapshot).bodies) &&
   !!(snapshot as DebugScenarioSnapshot).spacecraft
 
@@ -264,6 +288,12 @@ export const createScenarioFromSnapshot = (
   description: `Frozen debug state from ${new Date(snapshot.savedAt).toLocaleString()}.`,
   assistTargetIndex: getSnapshotAssistTargetIndex(snapshot),
   assistTargetSelectionMode: getSnapshotAssistTargetSelectionMode(snapshot),
+  cameraFollow: snapshot.version === 3 ? snapshot.cameraFollow : undefined,
+  cameraPanOffset:
+    snapshot.version === 3 && snapshot.cameraPanOffset
+      ? { ...snapshot.cameraPanOffset }
+      : undefined,
+  cameraView: snapshot.version === 3 ? snapshot.cameraView : undefined,
   elapsed: snapshot.elapsed,
   viewportSize: snapshot.viewportSize,
   coastPredictionHorizonHours: getSnapshotCoastPredictionHorizonHours(snapshot),
@@ -277,15 +307,23 @@ export const createSnapshotFromState = (
   options: {
     assistTargetIndex?: number
     assistTargetSelectionMode?: AssistTargetSelectionMode
+    cameraFollow?: CameraFollowSubject
+    cameraPanOffset?: Vec2
+    cameraView?: CameraViewMode
     coastPredictionHorizonHours?: number
     scenarioSession?: RuntimeScenarioSession
     viewportSize?: number
   } = {},
 ): DebugScenarioSnapshot => ({
-  version: 2,
+  version: 3,
   savedAt: new Date().toISOString(),
   assistTargetIndex: options.assistTargetIndex,
   assistTargetSelectionMode: options.assistTargetSelectionMode,
+  cameraFollow: options.cameraFollow,
+  cameraPanOffset: options.cameraPanOffset
+    ? { ...options.cameraPanOffset }
+    : undefined,
+  cameraView: options.cameraView,
   elapsed: state.elapsed,
   viewportSize: options.viewportSize,
   coastPredictionHorizonHours: options.coastPredictionHorizonHours,

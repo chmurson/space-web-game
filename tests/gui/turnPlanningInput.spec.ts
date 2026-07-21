@@ -322,8 +322,8 @@ test('mobile pinch zoom uses an off-center world focal point', async ({
 
   const initial = await page.evaluate(() => {
     const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
-      mode: 'unlocked',
-      type: 'set-camera-mode',
+      type: 'set-camera-view',
+      view: 'free',
     })
     if (!response?.ok) {
       throw new Error(response?.error ?? 'Devtools bridge is missing')
@@ -358,7 +358,7 @@ test('mobile pinch zoom uses an off-center world focal point', async ({
     throw new Error('Devtools bridge is missing')
   }
 
-  expect(zoomed.camera.mode).toBe('unlocked')
+  expect(zoomed.camera.view).toBe('free')
   expect(zoomed.camera.panOffset).not.toEqual(initial.camera.panOffset)
   await createTouchScreenshot(page, testInfo, 'mobile-pinch-after')
 })

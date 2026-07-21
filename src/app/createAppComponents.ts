@@ -35,7 +35,10 @@ import {
 } from '../runtime/timeWarpFeedbackPolicy'
 import { getTrajectoryHorizonPreviews } from '../runtime/trajectoryHorizonControlPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
-import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
+import type {
+  CameraFollowSubject,
+  CameraViewMode,
+} from '../scenario/scenarioDirectiveTypes'
 import {
   parsePromptAction,
   resolveScenarioPrompts,
@@ -190,15 +193,11 @@ const createRuntimeCoordinator = (options: {
   }
 }
 
-const getCameraNoticeModeLabel = (mode: CameraControlMode) => {
-  if (mode === 'unlocked') {
-    return 'Free roam'
-  }
-  if (mode === 'centered') {
-    return 'Spacecraft'
-  }
-  return 'Target'
-}
+const getCameraFollowNoticeLabel = (follow: CameraFollowSubject) =>
+  follow === 'spacecraft' ? 'Spacecraft' : 'Target'
+
+const getCameraViewNoticeLabel = (view: CameraViewMode) =>
+  view === 'locked' ? 'Locked' : 'Free roam'
 
 const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   let hideTimeout: number | null = null
@@ -316,21 +315,16 @@ const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
   }
 
   return {
-    showModeChange(mode: CameraControlMode) {
-      const label = getCameraNoticeModeLabel(mode)
+    showState(follow: CameraFollowSubject, view: CameraViewMode) {
+      const followLabel = getCameraFollowNoticeLabel(follow)
+      const viewLabel = getCameraViewNoticeLabel(view)
       show({
-        ariaLabel: `Camera mode: ${label}`,
-        body: label,
-        title: 'Camera mode',
+        ariaLabel: `Camera: follow ${followLabel}; view ${viewLabel}.`,
+        body: `Follow ${followLabel} · View ${viewLabel}`,
+        title: 'Camera',
       })
     },
     setUnlockProgress,
-    showUnlockedForFreeRoam() {
-      show({
-        ariaLabel: 'Camera unlocked. Free roam is active.',
-        title: 'Camera unlocked',
-      })
-    },
   }
 }
 
@@ -468,7 +462,7 @@ export const createAppComponents = (options: {
     factor: number,
     focalPoint?: { x: number; y: number },
   ) => {
-    if (!focalPoint || runtimeActions.getCameraMode() !== 'unlocked') {
+    if (!focalPoint || runtimeActions.getCameraView() !== 'free') {
       runtimeActions.zoomCamera(factor)
       return
     }
@@ -632,10 +626,14 @@ export const createAppComponents = (options: {
     initialTargetControlSide: touchTargetControlSide,
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     keyboardInput,
-    getCameraMode: runtimeActions.getCameraMode,
-    getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
-    onCameraUnlockedBySwipe: cameraNotice.showUnlockedForFreeRoam,
-    onCameraModeSelected: runtimeActions.setCameraMode,
+    getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
+    getCameraView: runtimeActions.getCameraView,
+    onCameraUnlockedBySwipe: () =>
+      cameraNotice.showState(
+        runtimeActions.getCameraFollow(),
+        runtimeActions.getCameraView(),
+      ),
+    onCameraViewSelected: runtimeActions.setCameraView,
     onFollowCameraViewportBottomInsetChange: (bottomInset) => {
       followCameraViewportBottomInset = bottomInset
     },
@@ -771,9 +769,9 @@ export const createAppComponents = (options: {
   })
   const inGameControlsMenu = createInGameControlsMenu({
     app: options.app,
-    getCameraMode: runtimeActions.getCameraMode,
-    getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
-    getCameraModeControlVisible: () => desktopFinePointerMedia.matches,
+    getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
+    getCameraFollow: runtimeActions.getCameraFollow,
+    getCameraView: runtimeActions.getCameraView,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
     getMaxCoastPredictionHorizonHours: () =>
@@ -814,8 +812,8 @@ export const createAppComponents = (options: {
     camera: gameScene.camera,
     getDesktopEdgePanSpeedPixelsPerSecond: () =>
       desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
-    getCameraMode: runtimeActions.getCameraMode,
-    getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
+    getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
+    getCameraView: runtimeActions.getCameraView,
     getEdgeScrollEnabled: () =>
       desktopEdgePanEnabled &&
       desktopFinePointerMedia.matches &&
@@ -829,10 +827,14 @@ export const createAppComponents = (options: {
       options.runtimeState.simulation.state.spacecraft.position,
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
-    onCameraModeSelected: runtimeActions.setCameraMode,
+    onCameraViewSelected: runtimeActions.setCameraView,
     onCameraPan: runtimeActions.panCamera,
     onCameraUnlockProgressChange: cameraNotice.setUnlockProgress,
-    onCameraUnlocked: cameraNotice.showUnlockedForFreeRoam,
+    onCameraUnlocked: () =>
+      cameraNotice.showState(
+        runtimeActions.getCameraFollow(),
+        runtimeActions.getCameraView(),
+      ),
     onResize: runtimeActions.handleResize,
     onTargetHeadingPlan: (heading, selection) => {
       runtimeActions.planTargetHeading({
@@ -1023,12 +1025,18 @@ export const createAppComponents = (options: {
   })
 
   const handleKeyboardAction = (action: UIUserAction) => {
-    const previousCameraMode = runtimeActions.getCameraMode()
+    const previousCameraFollow = runtimeActions.getCameraFollow()
+    const previousCameraView = runtimeActions.getCameraView()
     dispatchRuntimeAction(action)
-    const nextCameraMode = runtimeActions.getCameraMode()
+    const nextCameraFollow = runtimeActions.getCameraFollow()
+    const nextCameraView = runtimeActions.getCameraView()
 
-    if (action === 'cycleCameraMode' && nextCameraMode !== previousCameraMode) {
-      cameraNotice.showModeChange(nextCameraMode)
+    if (
+      (action === 'toggleCameraFollow' &&
+        nextCameraFollow !== previousCameraFollow) ||
+      (action === 'toggleCameraView' && nextCameraView !== previousCameraView)
+    ) {
+      cameraNotice.showState(nextCameraFollow, nextCameraView)
     }
   }
 

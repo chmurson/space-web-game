@@ -133,8 +133,9 @@ const createDefaultRuntimeScenarioCheckpoint = (
   createRuntimeScenarioCheckpoint({
     assistMode: runtime.simulation.assistMode,
     assistTargetIndex: runtime.simulation.assistTargetIndex,
-    cameraMode: runtime.ui.camera.mode,
+    cameraFollow: runtime.ui.camera.follow,
     cameraPanOffset: runtime.ui.camera.panOffset,
+    cameraView: runtime.ui.camera.view,
     coastPredictionHorizonHours: runtime.simulation.coastPredictionHorizonHours,
     targetHeading: runtime.simulation.targetHeading,
     targetHeadingTurn: runtime.simulation.targetHeadingTurn ?? null,
@@ -203,8 +204,9 @@ const hasReachedTrajectoryCoach = (
   state.onboarding?.completedStepIds.includes('intro-trajectory') === true
 
 const createEarthFocusDirectives = (options: {
-  cameraMode?: RuntimeScenarioDirectives['cameraMode']
-  cameraModeChangesLocked?: RuntimeScenarioDirectives['cameraModeChangesLocked']
+  cameraControlsLocked?: RuntimeScenarioDirectives['cameraControlsLocked']
+  cameraFollow?: RuntimeScenarioDirectives['cameraFollow']
+  cameraView?: RuntimeScenarioDirectives['cameraView']
   hiddenBodyIds?: string[]
   hiddenUIElements?: RuntimeScenarioDirectives['hiddenUIElements']
   maxCoastPredictionHorizonHours: number
@@ -212,8 +214,9 @@ const createEarthFocusDirectives = (options: {
   maxViewportSize: number
 }): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
-  cameraMode: options.cameraMode ?? null,
-  cameraModeChangesLocked: options.cameraModeChangesLocked ?? false,
+  cameraControlsLocked: options.cameraControlsLocked ?? false,
+  cameraFollow: options.cameraFollow ?? null,
+  cameraView: options.cameraView ?? null,
   hiddenBodyIds: options.hiddenBodyIds ?? [],
   hiddenUIElements: options.hiddenUIElements ?? new Set(),
   maxCoastPredictionHorizonHours: options.maxCoastPredictionHorizonHours,
@@ -482,8 +485,10 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
     },
     directives: ({ state }) =>
       createEarthFocusDirectives({
-        cameraMode: state.onboarding?.gateActive === false ? null : 'centered',
-        cameraModeChangesLocked: state.onboarding?.gateActive !== false,
+        cameraControlsLocked: state.onboarding?.gateActive !== false,
+        cameraFollow:
+          state.onboarding?.gateActive === false ? null : 'spacecraft',
+        cameraView: state.onboarding?.gateActive === false ? null : 'locked',
         hiddenBodyIds: ['moon'],
         hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
         maxCoastPredictionHorizonHours:

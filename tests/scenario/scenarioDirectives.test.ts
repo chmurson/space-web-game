@@ -63,7 +63,11 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+      view: 'locked',
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -83,7 +87,7 @@ const createRuntime = (): AppRuntimeState => ({
 })
 
 describe('scenarioDirectives', () => {
-  it('resolves generic forced target and hidden body directives from scenario state', () => {
+  it('migrates legacy camera directives alongside generic scenario state', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession('custom', {
       cameraMode: 'unlocked',
@@ -100,46 +104,25 @@ describe('scenarioDirectives', () => {
       timeWarps: [1, 10, 100, 1000],
     })
 
-    expect(directives.cameraMode).toBe('unlocked')
-    expect(directives.cameraModeChangesLocked).toBe(true)
+    expect(directives.cameraControlsLocked).toBe(true)
+    expect(directives.cameraFollow).toBeNull()
+    expect(directives.cameraView).toBe('free')
     expect(directives.forcedAssistTargetId).toBe('moon')
     expect(directives.hiddenBodyIds).toEqual(['moon'])
   })
 
-  it('applies directive camera mode constraints to runtime camera state', () => {
+  it('applies directive Follow and View constraints to runtime camera state', () => {
     const runtime = createRuntime()
     runtime.ui.camera = {
-      mode: 'unlocked',
+      follow: 'target',
       panOffset: { x: 12, y: 24 },
+      view: 'free',
     }
     runtime.scenario.directives = {
       ...createDefaultScenarioDirectives(),
-      cameraMode: 'centered',
-      cameraModeChangesLocked: true,
-    }
-
-    applyRuntimeScenarioDirectiveConstraints(runtime, {
-      maxCoastPredictionHorizonHours: 48,
-      defaultViewportSize: 520,
-      maxViewportSize: 800,
-      minViewportSize: EARTH_VIEWPORT_SIZE,
-      timeWarps: [1, 10, 100, 1000],
-    })
-
-    expect(runtime.ui.camera.mode).toBe('centered')
-    expect(runtime.ui.camera.panOffset).toEqual({ x: 12, y: 24 })
-  })
-
-  it('preserves unlocked pan offset when forced unlocked mode is already active', () => {
-    const runtime = createRuntime()
-    runtime.ui.camera = {
-      mode: 'unlocked',
-      panOffset: { x: 12, y: 24 },
-    }
-    runtime.scenario.directives = {
-      ...createDefaultScenarioDirectives(),
-      cameraMode: 'unlocked',
-      cameraModeChangesLocked: true,
+      cameraControlsLocked: true,
+      cameraFollow: 'spacecraft',
+      cameraView: 'locked',
     }
 
     applyRuntimeScenarioDirectiveConstraints(runtime, {
@@ -151,8 +134,38 @@ describe('scenarioDirectives', () => {
     })
 
     expect(runtime.ui.camera).toEqual({
-      mode: 'unlocked',
+      follow: 'spacecraft',
       panOffset: { x: 12, y: 24 },
+      view: 'locked',
+    })
+  })
+
+  it('preserves unlocked pan offset when forced unlocked mode is already active', () => {
+    const runtime = createRuntime()
+    runtime.ui.camera = {
+      follow: 'target',
+      panOffset: { x: 12, y: 24 },
+      view: 'free',
+    }
+    runtime.scenario.directives = {
+      ...createDefaultScenarioDirectives(),
+      cameraControlsLocked: true,
+      cameraFollow: 'target',
+      cameraView: 'free',
+    }
+
+    applyRuntimeScenarioDirectiveConstraints(runtime, {
+      maxCoastPredictionHorizonHours: 48,
+      defaultViewportSize: 520,
+      maxViewportSize: 800,
+      minViewportSize: EARTH_VIEWPORT_SIZE,
+      timeWarps: [1, 10, 100, 1000],
+    })
+
+    expect(runtime.ui.camera).toEqual({
+      follow: 'target',
+      panOffset: { x: 12, y: 24 },
+      view: 'free',
     })
   })
 
@@ -223,10 +236,11 @@ describe('scenarioDirectives', () => {
     )
 
     expect(directives).toEqual({
+      cameraControlsLocked: true,
+      cameraFollow: 'spacecraft',
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
-      cameraMode: 'centered',
-      cameraModeChangesLocked: true,
+      cameraView: 'locked',
       forcedAssistTargetId: null,
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
@@ -263,8 +277,9 @@ describe('scenarioDirectives', () => {
       globalScenarioDirectiveLimits,
     )
 
-    expect(directives.cameraMode).toBeNull()
-    expect(directives.cameraModeChangesLocked).toBe(false)
+    expect(directives.cameraControlsLocked).toBe(false)
+    expect(directives.cameraFollow).toBeNull()
+    expect(directives.cameraView).toBeNull()
     expect(directives.maxCoastPredictionHorizonHours).toBe(2)
     expect(directives.maxTimeWarp).toBe(300)
     expect(directives.maxViewportSize).toBe(escapeEarthTrajectoryViewportSize)

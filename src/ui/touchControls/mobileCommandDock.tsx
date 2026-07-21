@@ -1,6 +1,4 @@
 import type { TimeWarpFeedbackReason } from '../../runtime/timeWarpFeedbackPolicy'
-import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
-import { cameraModeOptions, getCameraModeAction } from '../cameraModeActions'
 import {
   createPreactUiSurface,
   type SurfaceRootRefProps,
@@ -12,8 +10,6 @@ export type MobileCommandDockPanel = 'flight' | 'nav'
 type MobileCommandDockTutorialFocus = 'burn' | 'warp' | null
 
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
-  cameraMode: CameraControlMode
-  cameraModeChangesLocked: boolean
   controlsAvailable: {
     rcsYaw: boolean
     thrust: boolean
@@ -59,8 +55,6 @@ const getPanelButtonLabel = (options: {
 }
 
 const MobileCommandDockSurface = ({
-  cameraMode,
-  cameraModeChangesLocked,
   controlsAvailable,
   openPanel,
   rootRef,
@@ -114,46 +108,6 @@ const MobileCommandDockSurface = ({
           >
             {timeWarpStatus}
           </p>
-        </div>
-
-        <div class="mobile-command-dock-nav-camera">
-          <div class="mobile-command-dock-nav-heading">
-            <span id="mobile-command-dock-camera-label">Camera mode</span>
-          </div>
-          <fieldset
-            aria-labelledby="mobile-command-dock-camera-label"
-            class="mobile-command-dock-camera-options"
-          >
-            <legend class="mobile-command-dock-camera-legend">
-              Camera mode
-            </legend>
-            {cameraModeOptions.map((option) => {
-              const selected = option.mode === cameraMode
-
-              return (
-                <button
-                  aria-label={
-                    cameraModeChangesLocked
-                      ? `Camera mode changes unavailable: ${option.label}`
-                      : `Set camera mode to ${option.label}`
-                  }
-                  aria-pressed={selected}
-                  class={
-                    selected
-                      ? 'mobile-command-dock-camera-option mobile-command-dock-camera-option-selected'
-                      : 'mobile-command-dock-camera-option'
-                  }
-                  data-camera-mode-option={option.mode}
-                  data-in-game-action={getCameraModeAction(option.mode)}
-                  disabled={cameraModeChangesLocked}
-                  key={option.mode}
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              )
-            })}
-          </fieldset>
         </div>
       </section>
 
@@ -228,9 +182,6 @@ const MobileCommandDockSurface = ({
 export const createMobileCommandDock = (options: {
   app: HTMLElement
   container: HTMLElement
-  getCameraMode(): CameraControlMode
-  getCameraModeChangesLocked(): boolean
-  onCameraModeSelected(mode: CameraControlMode): boolean
   onViewportBottomInsetChange?(bottomInset: number): void
   onOpenPanelChange?(
     nextPanel: MobileCommandDockPanel | null,
@@ -267,8 +218,6 @@ export const createMobileCommandDock = (options: {
   let timeWarpStatus = ''
   let timeWarpStatusTone: 'available' | 'capped' = 'available'
   let tutorialFocused: MobileCommandDockTutorialFocus = null
-  let cameraMode = options.getCameraMode()
-  let cameraModeChangesLocked = options.getCameraModeChangesLocked()
   let viewportBottomInset = -1
   const surface = createPreactUiSurface<
     Omit<MobileCommandDockSurfaceProps, keyof SurfaceRootRefProps>
@@ -318,8 +267,6 @@ export const createMobileCommandDock = (options: {
   const renderState = () => {
     syncAppState()
     surface.render({
-      cameraMode,
-      cameraModeChangesLocked,
       controlsAvailable,
       openPanel,
       timeWarpReason,
@@ -329,21 +276,6 @@ export const createMobileCommandDock = (options: {
     })
     syncControlHosts()
     syncViewportBottomInset()
-  }
-
-  const syncCameraState = () => {
-    const nextCameraMode = options.getCameraMode()
-    const nextCameraModeChangesLocked = options.getCameraModeChangesLocked()
-    if (
-      cameraMode === nextCameraMode &&
-      cameraModeChangesLocked === nextCameraModeChangesLocked
-    ) {
-      return
-    }
-
-    cameraMode = nextCameraMode
-    cameraModeChangesLocked = nextCameraModeChangesLocked
-    renderState()
   }
 
   const isFlightAvailable = () =>
@@ -375,21 +307,6 @@ export const createMobileCommandDock = (options: {
   )
   if (!flightButton || !navButton) {
     throw new Error('Mobile command dock rendered without panel buttons')
-  }
-
-  for (const option of cameraModeOptions) {
-    const cameraModeButton = surface.element.querySelector<HTMLButtonElement>(
-      `[data-camera-mode-option="${option.mode}"]`,
-    )
-    if (!cameraModeButton) {
-      throw new Error(
-        'Mobile command dock rendered without camera mode buttons',
-      )
-    }
-    addTapSafeButtonHandler(cameraModeButton, () => {
-      options.onCameraModeSelected(option.mode)
-      syncCameraState()
-    })
   }
 
   addTapSafeButtonHandler(flightButton, () => {
@@ -473,7 +390,6 @@ export const createMobileCommandDock = (options: {
       }
       renderState()
     },
-    syncUi: syncCameraState,
     thrustContainer,
     timeWarpContainer,
   }

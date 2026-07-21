@@ -8,15 +8,17 @@ import type { UIUserAction } from '../input/uiUserActions'
 import { updateCameraView } from '../render/sceneUpdates'
 import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import {
-  type CameraControlMode,
+  type CameraFollowSubject,
+  type CameraViewMode,
   type GlobalScenarioDirectiveLimits,
-  getNextCameraControlMode,
+  getNextCameraFollowSubject,
+  getNextCameraViewMode,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
-import { add, type Vec2 } from '../simulation/vector'
+import { add, sub, type Vec2 } from '../simulation/vector'
 import type { Ripple } from '../ui/overlayUpdates'
 import type { AppRuntimeState, TargetHeadingPlan } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
@@ -161,6 +163,9 @@ export const createRuntimeActions = (options: {
         options.runtime.simulation.assistTargetSelectionMode,
       coastPredictionHorizonHours:
         options.runtime.simulation.coastPredictionHorizonHours,
+      cameraFollow: options.runtime.ui.camera.follow,
+      cameraPanOffset: options.runtime.ui.camera.panOffset,
+      cameraView: options.runtime.ui.camera.view,
       scenarioSession: options.runtime.scenario.session,
       viewportSize: options.runtime.simulation.viewportSize,
     })
@@ -195,12 +200,17 @@ export const createRuntimeActions = (options: {
   const getTargetCameraTargetPosition = () =>
     options.getAssistTargetUiState().activeTarget.position
 
-  const getCameraTargetPosition = () =>
-    options.runtime.ui.camera.mode === 'unlocked'
-      ? options.runtime.ui.camera.panOffset
-      : options.runtime.ui.camera.mode === 'target'
-        ? getTargetCameraTargetPosition()
-        : getFollowCameraTargetPosition()
+  const getCameraFollowSubjectPosition = () =>
+    options.runtime.ui.camera.follow === 'target'
+      ? getTargetCameraTargetPosition()
+      : getFollowCameraTargetPosition()
+
+  const getCameraTargetPosition = () => {
+    const followPosition = getCameraFollowSubjectPosition()
+    return options.runtime.ui.camera.view === 'free'
+      ? add(followPosition, options.runtime.ui.camera.panOffset)
+      : followPosition
+  }
 
   const updateCamera = (preserveStarfieldWorldPosition = false) =>
     updateCameraView({
@@ -210,7 +220,7 @@ export const createRuntimeActions = (options: {
       gameScene: options.gameScene,
       preserveStarfieldWorldPosition,
       viewportBottomInset:
-        options.runtime.ui.camera.mode === 'unlocked'
+        options.runtime.ui.camera.view === 'free'
           ? 0
           : (options.getFollowCameraViewportBottomInset?.() ?? 0),
       viewportHeight: window.innerHeight,
@@ -218,11 +228,10 @@ export const createRuntimeActions = (options: {
       viewportWidth: window.innerWidth,
     })
 
-  const getFreeRoamTransitionTargetPosition = () => {
-    const followTarget = getCameraTargetPosition()
+  const getFreeRoamTransitionPanOffset = () => {
     const viewportHeight = window.innerHeight
     if (viewportHeight <= 0) {
-      return { ...followTarget }
+      return { x: 0, y: 0 }
     }
 
     const targetNdcY = THREE.MathUtils.clamp(
@@ -232,7 +241,7 @@ export const createRuntimeActions = (options: {
     )
     const verticalDirection = Math.sin(options.cameraElevation)
     if (targetNdcY === 0 || Math.abs(verticalDirection) < 1e-6) {
-      return { ...followTarget }
+      return { x: 0, y: 0 }
     }
 
     const cameraDirectionLength = Math.hypot(
@@ -245,27 +254,37 @@ export const createRuntimeActions = (options: {
         targetNdcY *
         cameraDirectionLength) /
       (Math.SQRT2 * verticalDirection * RENDER_SCALE)
-    return {
-      x: followTarget.x + screenUpOffset,
-      y: followTarget.y + screenUpOffset,
-    }
+    return { x: screenUpOffset, y: screenUpOffset }
   }
 
-  const setCameraMode = (mode: CameraControlMode) => {
-    if (options.runtime.scenario.directives.cameraModeChangesLocked) {
+  const setCameraFollow = (follow: CameraFollowSubject) => {
+    if (options.runtime.scenario.directives.cameraControlsLocked) {
       return false
     }
 
-    if (mode === options.runtime.ui.camera.mode) {
+    if (follow === options.runtime.ui.camera.follow) {
       return true
     }
 
-    if (mode === 'unlocked') {
-      options.runtime.ui.camera.panOffset =
-        getFreeRoamTransitionTargetPosition()
+    options.runtime.ui.camera.follow = follow
+    updateCamera()
+    return true
+  }
+
+  const setCameraView = (view: CameraViewMode) => {
+    if (options.runtime.scenario.directives.cameraControlsLocked) {
+      return false
     }
-    options.runtime.ui.camera.mode = mode
-    updateCamera(mode === 'unlocked')
+
+    if (view === options.runtime.ui.camera.view) {
+      return true
+    }
+
+    if (view === 'free') {
+      options.runtime.ui.camera.panOffset = getFreeRoamTransitionPanOffset()
+    }
+    options.runtime.ui.camera.view = view
+    updateCamera(view === 'free')
     return true
   }
 
@@ -288,19 +307,19 @@ export const createRuntimeActions = (options: {
   const unlockCameraAtFollowTarget = (
     targetNdcY = crashInspectionTargetNdcY,
   ) => {
-    options.runtime.ui.camera.mode = 'centered'
+    options.runtime.ui.camera.view = 'locked'
     updateCamera()
-    options.runtime.ui.camera.panOffset =
-      getCrashInspectionCameraTargetPosition(
-        getFollowCameraTargetPosition(),
-        targetNdcY,
-      )
-    options.runtime.ui.camera.mode = 'unlocked'
+    const followPosition = getCameraFollowSubjectPosition()
+    options.runtime.ui.camera.panOffset = sub(
+      getCrashInspectionCameraTargetPosition(followPosition, targetNdcY),
+      followPosition,
+    )
+    options.runtime.ui.camera.view = 'free'
     updateCamera()
   }
 
   const panCamera = (delta: { x: number; y: number }) => {
-    if (options.runtime.ui.camera.mode !== 'unlocked') {
+    if (options.runtime.ui.camera.view !== 'free') {
       return false
     }
 
@@ -335,16 +354,19 @@ export const createRuntimeActions = (options: {
         options.maxViewport,
     )
     const preserveStarfieldWorldPosition =
-      focalWorldPoint !== undefined &&
-      options.runtime.ui.camera.mode === 'unlocked'
+      focalWorldPoint !== undefined && options.runtime.ui.camera.view === 'free'
 
     if (preserveStarfieldWorldPosition) {
       const cameraTarget = getCameraTargetPosition()
       const focalShift = 1 - nextViewportSize / previousViewportSize
-      options.runtime.ui.camera.panOffset = {
+      const nextCameraTarget = {
         x: cameraTarget.x + (focalWorldPoint.x - cameraTarget.x) * focalShift,
         y: cameraTarget.y + (focalWorldPoint.y - cameraTarget.y) * focalShift,
       }
+      options.runtime.ui.camera.panOffset = sub(
+        nextCameraTarget,
+        getCameraFollowSubjectPosition(),
+      )
     }
 
     options.runtime.simulation.viewportSize = nextViewportSize
@@ -475,20 +497,30 @@ export const createRuntimeActions = (options: {
       if (action === 'zoomOut') {
         zoomCamera(1.22)
       }
-      if (action === 'cycleCameraMode') {
-        setCameraMode(getNextCameraControlMode(options.runtime.ui.camera.mode))
+      if (action === 'toggleCameraFollow') {
+        setCameraFollow(
+          getNextCameraFollowSubject(options.runtime.ui.camera.follow),
+        )
         return { refreshTrajectoryPrediction: false }
       }
-      if (action === 'setCameraCentered') {
-        setCameraMode('centered')
+      if (action === 'toggleCameraView') {
+        setCameraView(getNextCameraViewMode(options.runtime.ui.camera.view))
         return { refreshTrajectoryPrediction: false }
       }
-      if (action === 'setCameraTarget') {
-        setCameraMode('target')
+      if (action === 'setCameraFollowSpacecraft') {
+        setCameraFollow('spacecraft')
         return { refreshTrajectoryPrediction: false }
       }
-      if (action === 'setCameraUnlocked') {
-        setCameraMode('unlocked')
+      if (action === 'setCameraFollowTarget') {
+        setCameraFollow('target')
+        return { refreshTrajectoryPrediction: false }
+      }
+      if (action === 'setCameraViewLocked') {
+        setCameraView('locked')
+        return { refreshTrajectoryPrediction: false }
+      }
+      if (action === 'setCameraViewFreeRoam') {
+        setCameraView('free')
         return { refreshTrajectoryPrediction: false }
       }
       if (action === 'promptConfirm') {
@@ -538,12 +570,14 @@ export const createRuntimeActions = (options: {
     },
     resetScenario: scenarioRuntimeController.resetScenario,
     restartFromCheckpoint: scenarioRuntimeController.restartFromCheckpoint,
-    getCameraMode: () => options.runtime.ui.camera.mode,
-    getCameraModeChangesLocked: () =>
-      options.runtime.scenario.directives.cameraModeChangesLocked,
+    getCameraControlsLocked: () =>
+      options.runtime.scenario.directives.cameraControlsLocked,
+    getCameraFollow: () => options.runtime.ui.camera.follow,
     getCameraTargetPosition,
+    getCameraView: () => options.runtime.ui.camera.view,
     panCamera,
-    setCameraMode,
+    setCameraFollow,
+    setCameraView,
     setTargetHeading: (
       heading: number,
       clientX: number,

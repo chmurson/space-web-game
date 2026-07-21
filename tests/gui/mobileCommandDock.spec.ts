@@ -154,22 +154,27 @@ test('keeps one panel open, collapses the active panel, and closes with Escape',
   await expect(navButton).toBeFocused()
 })
 
-test('switches camera mode from touch buttons in Nav', async ({ page }) => {
+test('switches camera Follow and View from the mobile Controls popover', async ({
+  page,
+}) => {
   await page.goto('/?scenario=earth-moon')
   await waitForGame(page)
-  await page.locator('#mobile-command-dock-nav-button').tap()
+  await page.getByLabel('Open in-game controls').tap()
 
-  const spacecraft = page.locator('[data-camera-mode-option="centered"]')
-  const target = page.locator('[data-camera-mode-option="target"]')
-  const freeRoam = page.locator('[data-camera-mode-option="unlocked"]')
+  const spacecraft = page.locator('[data-camera-follow-option="spacecraft"]')
+  const target = page.locator('[data-camera-follow-option="target"]')
+  const locked = page.locator('[data-camera-view-option="locked"]')
+  const freeRoam = page.locator('[data-camera-view-option="free"]')
 
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'true')
+  await expect(locked).toHaveAttribute('aria-pressed', 'true')
   await target.tap()
   await expect(target).toHaveAttribute('aria-pressed', 'true')
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'false')
   await freeRoam.tap()
   await expect(freeRoam).toHaveAttribute('aria-pressed', 'true')
-  await expect(target).toHaveAttribute('aria-pressed', 'false')
+  await expect(locked).toHaveAttribute('aria-pressed', 'false')
+  await expect(target).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('preserves locked target framing above Nav when entering free roam', async ({
@@ -181,8 +186,8 @@ test('preserves locked target framing above Nav when entering free roam', async 
   await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
   await page.evaluate(() => {
     const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
-      mode: 'target',
-      type: 'set-camera-mode',
+      follow: 'target',
+      type: 'set-camera-follow',
     })
     if (!response?.ok) {
       throw new Error(response?.error ?? 'Devtools bridge is missing')
@@ -207,9 +212,13 @@ test('preserves locked target framing above Nav when entering free roam', async 
 
   await page.locator('#mobile-command-dock-nav-button').tap()
   await expect(page.locator('#mobile-command-dock-nav-panel')).toBeVisible()
-  await expect(
-    page.locator('[data-camera-mode-option="target"]'),
-  ).toHaveAttribute('aria-pressed', 'true')
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () => window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot().camera.follow,
+      ),
+    )
+    .toBe('target')
 
   await expect
     .poll(async () => {
@@ -234,15 +243,25 @@ test('preserves locked target framing above Nav when entering free roam', async 
   const openTargetCenterY = openTargetBounds.y + openTargetBounds.height * 0.5
 
   await page.screenshot({
-    path: testInfo.outputPath(
-      'mobile-command-dock-locked-target-centered-390.png',
-    ),
+    path: testInfo.outputPath('mobile-command-dock-locked-target-390.png'),
   })
 
-  await page.locator('[data-camera-mode-option="unlocked"]').tap()
-  await expect(
-    page.locator('[data-camera-mode-option="unlocked"]'),
-  ).toHaveAttribute('aria-pressed', 'true')
+  await page.evaluate(() => {
+    const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      type: 'set-camera-view',
+      view: 'free',
+    })
+    if (!response?.ok) {
+      throw new Error(response?.error ?? 'Devtools bridge is missing')
+    }
+  })
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () => window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot().camera.view,
+      ),
+    )
+    .toBe('free')
   await expect
     .poll(async () => {
       const unlockedTargetBounds = await targetLabel.boundingBox()
@@ -262,7 +281,7 @@ test('preserves locked target framing above Nav when entering free roam', async 
   })
 })
 
-test('preserves camera state and explains when camera changes are locked', async ({
+test('keeps Nav focused on time warp without duplicate camera controls', async ({
   page,
 }) => {
   await page.goto('/')
@@ -274,24 +293,11 @@ test('preserves camera state and explains when camera changes are locked', async
     )) as MobileCommandDockModule
     const app = document.createElement('div')
     const container = document.createElement('div')
-    let cameraMode: 'centered' | 'target' | 'unlocked' = 'centered'
-    let cameraModeChangesLocked = false
-    const actions: string[] = []
     document.body.append(app, container)
 
     const dock = createMobileCommandDock({
       app,
       container,
-      getCameraMode: () => cameraMode,
-      getCameraModeChangesLocked: () => cameraModeChangesLocked,
-      onCameraModeSelected: (mode) => {
-        actions.push(mode)
-        if (cameraModeChangesLocked) {
-          return false
-        }
-        cameraMode = mode
-        return true
-      },
     })
     dock.setTimeWarpState({
       reason: null,
@@ -315,37 +321,14 @@ test('preserves camera state and explains when camera changes are locked', async
       .querySelector('.mobile-command-dock-nav-time-warp')
       ?.getAttribute('data-available')
 
-    const getCameraOption = (mode: string) =>
-      dock.element.querySelector<HTMLButtonElement>(
-        `[data-camera-mode-option="${mode}"]`,
-      )
-    getCameraOption('target')?.click()
-    const targetPressedAfterTarget =
-      getCameraOption('target')?.getAttribute('aria-pressed')
-
-    cameraModeChangesLocked = true
-    dock.syncUi()
-    const lockedLabels = Array.from(
-      dock.element.querySelectorAll<HTMLButtonElement>(
-        '[data-camera-mode-option]',
-      ),
-    ).map((button) => ({
-      disabled: button.disabled,
-      label: button.getAttribute('aria-label'),
-    }))
-    getCameraOption('unlocked')?.click()
     dock.setOpenPanel(null)
     dock.setTutorialFocused('warp')
 
     return {
-      actions,
-      cameraStatusCount: dock.element.querySelectorAll(
-        '[data-mobile-camera-status]',
+      cameraControlCount: dock.element.querySelectorAll(
+        '[data-camera-follow-option], [data-camera-view-option]',
       ).length,
-      cameraMode,
-      lockedLabels,
       openPanel: app.dataset.mobileCommandDockPanel,
-      targetPressedAfterTarget,
       timeWarpAvailableAfterRestore,
       timeWarpStatus: dock.element.querySelector(
         '.mobile-command-dock-time-warp-status',
@@ -356,25 +339,8 @@ test('preserves camera state and explains when camera changes are locked', async
   })
 
   expect(result).toEqual({
-    actions: ['target'],
-    cameraStatusCount: 0,
-    cameraMode: 'target',
-    lockedLabels: [
-      {
-        disabled: true,
-        label: 'Camera mode changes unavailable: Free roam',
-      },
-      {
-        disabled: true,
-        label: 'Camera mode changes unavailable: Spacecraft',
-      },
-      {
-        disabled: true,
-        label: 'Camera mode changes unavailable: Target',
-      },
-    ],
+    cameraControlCount: 0,
     openPanel: 'nav',
-    targetPressedAfterTarget: 'true',
     timeWarpAvailableAfterRestore: 'true',
     timeWarpStatus: '',
     tutorialFocus: 'warp',
@@ -422,8 +388,8 @@ test('keeps dock touches out of camera and heading input while the playfield rem
         mode: 'auto',
         recommendedTarget: null,
       }),
-      getCameraMode: () => 'unlocked',
-      getCameraModeChangesLocked: () => false,
+      getCameraControlsLocked: () => false,
+      getCameraView: () => 'free',
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
@@ -453,7 +419,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
         setVirtualKey: () => {},
         setVirtualTurn: () => {},
       },
-      onCameraModeSelected: () => true,
+      onCameraViewSelected: () => true,
       onCameraPanGesture: () => {
         cameraPans.push(1)
         return true
@@ -475,10 +441,10 @@ test('keeps dock touches out of camera and heading input while the playfield rem
     const navButton = controls.element.querySelector<HTMLButtonElement>(
       '#mobile-command-dock-nav-button',
     )
-    const cameraOption = controls.element.querySelector<HTMLButtonElement>(
-      '[data-camera-mode-option="target"]',
+    const navPanel = controls.element.querySelector<HTMLElement>(
+      '#mobile-command-dock-nav-panel',
     )
-    if (!flightButton || !navButton || !cameraOption) {
+    if (!flightButton || !navButton || !navPanel) {
       throw new Error('Missing dock interaction targets')
     }
 
@@ -555,21 +521,21 @@ test('keeps dock touches out of camera and heading input while the playfield rem
     navButton.click()
     dispatchTouch({
       id: 35,
-      target: cameraOption,
+      target: navPanel,
       type: 'touchstart',
       x: 260,
       y: 650,
     })
     dispatchTouch({
       id: 35,
-      target: cameraOption,
+      target: navPanel,
       type: 'touchmove',
       x: 286,
       y: 676,
     })
     dispatchTouch({
       id: 35,
-      target: cameraOption,
+      target: navPanel,
       type: 'touchend',
       x: 286,
       y: 676,
@@ -579,7 +545,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
     startTargetHeadingByDrag = true
     dispatchTouch({
       id: 33,
-      target: cameraOption,
+      target: navPanel,
       type: 'touchstart',
       x: 195,
       y: 650,
@@ -588,7 +554,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
     const plannedHeadingCountAfterDockTouch = plannedHeadings.length
     dispatchTouch({
       id: 33,
-      target: cameraOption,
+      target: navPanel,
       type: 'touchend',
       x: 195,
       y: 650,
@@ -675,9 +641,8 @@ test('ships Flight and Nav as the two available dock panels', async ({
   await expect(flightPanel).toBeHidden()
   await expect(navPanel).toBeVisible()
   await expect(navPanel.getByLabel('Time Warp', { exact: true })).toBeVisible()
-  await expect(
-    navPanel.getByRole('group', { name: 'Camera mode' }),
-  ).toBeVisible()
+  await expect(navPanel.locator('[data-camera-follow-option]')).toHaveCount(0)
+  await expect(navPanel.locator('[data-camera-view-option]')).toHaveCount(0)
   await expect(navPanel).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(
     page.locator('#touch-time-warp-reveal, #touch-time-warp-prototype-reveal'),
@@ -857,27 +822,15 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
     .locator('#mobile-command-dock-nav-panel')
     .boundingBox()
   const timeWarpBounds = await page.getByLabel('Time Warp').boundingBox()
-  const cameraBounds = await page
-    .locator('.mobile-command-dock-nav-camera')
-    .boundingBox()
-  const cameraOptionBounds = await page
-    .locator('.mobile-command-dock-camera-option')
-    .first()
-    .boundingBox()
   expect(navPanelBounds).not.toBeNull()
   expect(timeWarpBounds).not.toBeNull()
-  expect(cameraBounds).not.toBeNull()
-  expect(cameraOptionBounds).not.toBeNull()
-  expect(timeWarpBounds?.y ?? 0).toBeLessThan(cameraBounds?.y ?? 0)
-  expect(timeWarpBounds?.height ?? 0).toBeGreaterThan(
-    cameraOptionBounds?.height ?? 0,
-  )
   expect(timeWarpBounds?.x ?? 0).toBeGreaterThanOrEqual(navPanelBounds?.x ?? 0)
   expect(
-    (cameraBounds?.y ?? 0) + (cameraBounds?.height ?? 0),
+    (timeWarpBounds?.y ?? 0) + (timeWarpBounds?.height ?? 0),
   ).toBeLessThanOrEqual(
     (navPanelBounds?.y ?? 0) + (navPanelBounds?.height ?? 0),
   )
+  await expect(page.locator('.mobile-command-dock-nav-camera')).toHaveCount(0)
 })
 
 test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
@@ -1078,10 +1031,14 @@ test('does not change the fine-pointer desktop layout', async ({
       'none',
     )
     await page.getByRole('button', { name: 'Open in-game controls' }).click()
+    const controlsDialog = page.getByRole('dialog', {
+      name: 'In-game controls',
+    })
     await expect(
-      page
-        .getByRole('dialog', { name: 'In-game controls' })
-        .locator('.in-game-controls-menu-camera .menu-stepper-name'),
+      controlsDialog.getByRole('group', { name: 'Follow' }),
+    ).toBeVisible()
+    await expect(
+      controlsDialog.getByRole('group', { name: 'View' }),
     ).toBeVisible()
   } finally {
     await context.close()

@@ -18,8 +18,10 @@ import type { RuntimeActions } from '../runtime/runtimeActions'
 import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import {
-  type CameraControlMode,
-  isCameraControlMode,
+  type CameraFollowSubject,
+  type CameraViewMode,
+  isCameraFollowSubject,
+  isCameraViewMode,
 } from '../scenario/scenarioDirectiveTypes'
 import type { Body, ControlInput, Spacecraft } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
@@ -41,7 +43,7 @@ type DevtoolsBridgeOptions = {
   maxPredictionLoopRevolutions: number
   predictionSampling: TrajectoryPredictionSamplingConfig
   runtime: AppRuntimeState
-  runtimeActions: Pick<RuntimeActions, 'setCameraMode'>
+  runtimeActions: Pick<RuntimeActions, 'setCameraFollow' | 'setCameraView'>
   setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds(
     value: number | null,
   ): boolean
@@ -74,21 +76,23 @@ export type SpaceGameDevtoolsSnapshot = {
   appMode: AppMode
   capturedAt: number
   camera: {
-    mode: CameraControlMode
+    follow: CameraFollowSubject
     panOffset: DevtoolsVec2
     targetHeadingScreenPosition: DevtoolsVec2 | null
     targetHeadingSelectionEpoch: number
     targetHeadingWorldPosition: DevtoolsVec2 | null
+    view: CameraViewMode
   }
   debug: AppRuntimeDebugSlice
-  protocolVersion: 1
+  protocolVersion: 2
   recentDebugSnapshots: DebugScenarioSnapshotLink[]
   scenario: {
     completed: boolean
     description: string
     directives: {
-      cameraMode: CameraControlMode | null
-      cameraModeChangesLocked: boolean
+      cameraControlsLocked: boolean
+      cameraFollow: CameraFollowSubject | null
+      cameraView: CameraViewMode | null
       forcedAssistTargetId: string | null
       hiddenBodyIds: string[]
       hiddenUIElements: string[]
@@ -132,7 +136,8 @@ export type SpaceGameDevtoolsSnapshot = {
 export type DevtoolsBridgeRequest =
   | { type: 'dispatch-ui-action'; action: UIUserAction }
   | { type: 'get-snapshot' }
-  | { type: 'set-camera-mode'; mode: CameraControlMode }
+  | { type: 'set-camera-follow'; follow: CameraFollowSubject }
+  | { type: 'set-camera-view'; view: CameraViewMode }
   | { type: 'set-debug-flag'; flag: WritableDebugFlag; value: boolean }
   | {
       type: 'set-far-coalescing-min-interval-override'
@@ -155,7 +160,7 @@ export type DevtoolsBridgeResponse =
 export type SpaceGameDevtoolsBridge = {
   getSnapshot(): SpaceGameDevtoolsSnapshot
   handleRequest(request: unknown): DevtoolsBridgeResponse
-  protocolVersion: 1
+  protocolVersion: 2
 }
 
 declare global {
@@ -244,7 +249,7 @@ export const createDevtoolsSnapshot = (
     appMode: options.getAppMode(),
     capturedAt: performance.now(),
     camera: {
-      mode: runtime.ui.camera.mode,
+      follow: runtime.ui.camera.follow,
       panOffset: cloneVec2(runtime.ui.camera.panOffset),
       targetHeadingScreenPosition: runtime.ui.targetHeadingScreenPosition
         ? cloneVec2(runtime.ui.targetHeadingScreenPosition)
@@ -253,9 +258,10 @@ export const createDevtoolsSnapshot = (
       targetHeadingWorldPosition: runtime.ui.targetHeadingWorldPosition
         ? cloneVec2(runtime.ui.targetHeadingWorldPosition)
         : null,
+      view: runtime.ui.camera.view,
     },
     debug: { ...runtime.debug },
-    protocolVersion: 1,
+    protocolVersion: 2,
     recentDebugSnapshots:
       typeof window === 'undefined'
         ? []
@@ -264,9 +270,9 @@ export const createDevtoolsSnapshot = (
       completed: runtime.scenario.session.completed,
       description: runtime.scenario.metadata.description,
       directives: {
-        cameraMode: runtime.scenario.directives.cameraMode,
-        cameraModeChangesLocked:
-          runtime.scenario.directives.cameraModeChangesLocked,
+        cameraControlsLocked: runtime.scenario.directives.cameraControlsLocked,
+        cameraFollow: runtime.scenario.directives.cameraFollow,
+        cameraView: runtime.scenario.directives.cameraView,
         forcedAssistTargetId: runtime.scenario.directives.forcedAssistTargetId,
         hiddenBodyIds: [...runtime.scenario.directives.hiddenBodyIds],
         hiddenUIElements: [
@@ -386,14 +392,24 @@ export const createDevtoolsBridge = (
         )
       }
 
-      if (request.type === 'set-camera-mode') {
-        if (!isCameraControlMode(request.mode)) {
-          return fail('set-camera-mode requires centered, unlocked, or target')
+      if (request.type === 'set-camera-follow') {
+        if (!isCameraFollowSubject(request.follow)) {
+          return fail('set-camera-follow requires spacecraft or target')
         }
 
-        return options.runtimeActions.setCameraMode(request.mode)
-          ? ok(`camera mode set to ${request.mode}`)
-          : fail('camera mode change is locked by the current scenario')
+        return options.runtimeActions.setCameraFollow(request.follow)
+          ? ok(`camera follow set to ${request.follow}`)
+          : fail('camera controls are locked by the current scenario')
+      }
+
+      if (request.type === 'set-camera-view') {
+        if (!isCameraViewMode(request.view)) {
+          return fail('set-camera-view requires locked or free')
+        }
+
+        return options.runtimeActions.setCameraView(request.view)
+          ? ok(`camera view set to ${request.view}`)
+          : fail('camera controls are locked by the current scenario')
       }
 
       if (request.type === 'set-debug-flag') {
@@ -432,7 +448,7 @@ export const createDevtoolsBridge = (
 
       return fail(`unknown request type: ${request.type}`)
     },
-    protocolVersion: 1,
+    protocolVersion: 2,
   }
 }
 

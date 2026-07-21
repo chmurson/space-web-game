@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
+import type { CameraViewMode } from '../scenario/scenarioDirectiveTypes'
 import type { Vec2 } from '../simulation/vector'
 import { getIntentionalSwipeThresholdPoint } from './intentionalSwipeThreshold'
 
@@ -28,12 +28,12 @@ export type PointerCameraInputOptions = {
   getDesktopEdgePanSpeedPixelsPerSecond?: () => number
   getEdgeScrollEnabled?: () => boolean
   getInteractionsEnabled: () => boolean
-  getCameraMode: () => CameraControlMode
-  getCameraModeChangesLocked: () => boolean
+  getCameraControlsLocked: () => boolean
+  getCameraView: () => CameraViewMode
   getSpacecraftVisible: () => boolean
   getSpacecraftPosition: () => Vec2
   getTargetHeadingSelectionEnabled?: () => boolean
-  onCameraModeSelected: (mode: CameraControlMode) => boolean
+  onCameraViewSelected: (view: CameraViewMode) => boolean
   onCameraPan: (delta: Vec2) => boolean
   onCameraUnlockProgressChange?: (progress: CameraUnlockProgress | null) => void
   onCameraUnlocked?: () => void
@@ -284,13 +284,13 @@ export const bindPointerCameraInput = (
   }
 
   const unlockCameraForFreeRoam = () => {
-    if (options.getCameraMode() === 'unlocked') {
+    if (options.getCameraView() === 'free') {
       return true
     }
-    if (options.getCameraModeChangesLocked()) {
+    if (options.getCameraControlsLocked()) {
       return false
     }
-    if (!options.onCameraModeSelected('unlocked')) {
+    if (!options.onCameraViewSelected('free')) {
       return false
     }
     options.onCameraUnlocked?.()
@@ -380,8 +380,8 @@ export const bindPointerCameraInput = (
       return
     }
 
-    const cameraMode = options.getCameraMode()
-    if (cameraMode !== 'unlocked' && options.getCameraModeChangesLocked()) {
+    const cameraView = options.getCameraView()
+    if (cameraView !== 'free' && options.getCameraControlsLocked()) {
       clearEdgeDwell()
       setEdgeScrollCursor(null)
       return
@@ -389,7 +389,7 @@ export const bindPointerCameraInput = (
 
     setEdgeScrollCursor(getEdgeScrollCursor(direction))
 
-    if (cameraMode !== 'unlocked') {
+    if (cameraView !== 'free') {
       const directionKey = `${Math.sign(direction.x)},${Math.sign(direction.y)}`
       if (
         edgeDwellStartedAtMs === null ||
@@ -601,13 +601,13 @@ export const bindPointerCameraInput = (
       return
     }
 
-    if (options.getCameraMode() !== 'unlocked') {
+    if (options.getCameraView() !== 'free') {
       const unlockThresholdX =
         options.windowTarget.innerWidth * intentionalSwipeViewportRatio
       const unlockThresholdY =
         options.windowTarget.innerHeight * intentionalSwipeViewportRatio
       const shouldUnlock =
-        !options.getCameraModeChangesLocked() &&
+        !options.getCameraControlsLocked() &&
         (Math.abs(totalDeltaX) >= unlockThresholdX ||
           Math.abs(totalDeltaY) >= unlockThresholdY)
 

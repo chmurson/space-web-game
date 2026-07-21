@@ -13,7 +13,8 @@ import type {
   TrajectoryPredictionDiagnostics,
 } from '@/runtime/trajectoryPredictionRuntime'
 import {
-  type CameraControlMode,
+  type CameraFollowSubject,
+  type CameraViewMode,
   createDefaultScenarioDirectives,
 } from '@/scenario/scenarioDirectiveTypes'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
@@ -167,7 +168,11 @@ const createRuntime = (): AppRuntimeState => ({
     session: createRuntimeScenarioSession('test-scenario', { phase: 'test' }),
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 1, y: 2 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 1, y: 2 },
+      view: 'locked',
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingScreenPosition: { x: 300, y: 200 },
     targetHeadingSelectionEpoch: 3,
@@ -206,12 +211,20 @@ const createBridgeHarness = (
 ) => {
   const dispatchedActions: UIUserAction[] = []
   let farCoalescingOverrideSeconds: number | null = null
-  const setCameraMode = vi.fn((mode: CameraControlMode) => {
-    if (runtime.scenario.directives.cameraModeChangesLocked) {
+  const setCameraFollow = vi.fn((follow: CameraFollowSubject) => {
+    if (runtime.scenario.directives.cameraControlsLocked) {
       return false
     }
 
-    runtime.ui.camera.mode = mode
+    runtime.ui.camera.follow = follow
+    return true
+  })
+  const setCameraView = vi.fn((view: CameraViewMode) => {
+    if (runtime.scenario.directives.cameraControlsLocked) {
+      return false
+    }
+
+    runtime.ui.camera.view = view
     return true
   })
   const bridge = createDevtoolsBridge({
@@ -228,7 +241,7 @@ const createBridgeHarness = (
     runtime,
     maxPredictionLoopRevolutions: 2.5,
     predictionSampling,
-    runtimeActions: { setCameraMode },
+    runtimeActions: { setCameraFollow, setCameraView },
     setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds: vi.fn(
       (value) => {
         farCoalescingOverrideSeconds = value
@@ -243,7 +256,8 @@ const createBridgeHarness = (
     dispatchedActions,
     getFarCoalescingOverrideSeconds: () => farCoalescingOverrideSeconds,
     runtime,
-    setCameraMode,
+    setCameraFollow,
+    setCameraView,
   }
 }
 
@@ -291,6 +305,12 @@ describe('createDevtoolsSnapshot', () => {
     })
 
     expect(snapshot.appMode).toBe('game')
+    expect(snapshot.camera).toMatchObject({
+      follow: 'spacecraft',
+      panOffset: { x: 1, y: 2 },
+      view: 'locked',
+    })
+    expect(snapshot.protocolVersion).toBe(2)
     expect(snapshot.scenario).toMatchObject({
       scenarioId: 'test-scenario',
       state: { phase: 'test' },
@@ -466,26 +486,29 @@ describe('createDevtoolsBridge', () => {
     expect(response.snapshot.simulation.timeWarp).toBe(10)
   })
 
-  it('routes camera mode changes through runtime actions', () => {
-    const { bridge, runtime, setCameraMode } = createBridgeHarness()
+  it('routes independent camera Follow and View changes through runtime actions', () => {
+    const { bridge, runtime, setCameraFollow, setCameraView } =
+      createBridgeHarness()
 
-    const response = bridge.handleRequest({
-      mode: 'unlocked',
-      type: 'set-camera-mode',
+    const followResponse = bridge.handleRequest({
+      follow: 'target',
+      type: 'set-camera-follow',
     })
 
-    expect(response.ok).toBe(true)
-    expect(setCameraMode).toHaveBeenCalledWith('unlocked')
-    expect(runtime.ui.camera.mode).toBe('unlocked')
+    expect(followResponse.ok).toBe(true)
+    expect(setCameraFollow).toHaveBeenCalledWith('target')
+    expect(runtime.ui.camera.follow).toBe('target')
+    expect(runtime.ui.camera.view).toBe('locked')
 
-    const targetResponse = bridge.handleRequest({
-      mode: 'target',
-      type: 'set-camera-mode',
+    const viewResponse = bridge.handleRequest({
+      type: 'set-camera-view',
+      view: 'free',
     })
 
-    expect(targetResponse.ok).toBe(true)
-    expect(setCameraMode).toHaveBeenCalledWith('target')
-    expect(runtime.ui.camera.mode).toBe('target')
+    expect(viewResponse.ok).toBe(true)
+    expect(setCameraView).toHaveBeenCalledWith('free')
+    expect(runtime.ui.camera.follow).toBe('target')
+    expect(runtime.ui.camera.view).toBe('free')
   })
 
   it('sets debug flags through the matching toggle action', () => {

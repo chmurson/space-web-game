@@ -87,16 +87,21 @@ test('shows transient bottom notices on desktop', async ({
 
   const notice = page.locator('.hud-notice-transient')
   await expect(notice).toBeVisible()
-  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
-  await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
-  await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
+  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera')
+  await expect(notice.locator('.hud-notice-body')).toHaveText(
+    'Follow Target · View Locked',
+  )
+  await expect(notice).toHaveAttribute(
+    'aria-label',
+    'Camera: follow Target; view Locked.',
+  )
 
   await expectNoticeInsideViewport(notice)
 
-  await attachScreenshot(page, testInfo, 'desktop-camera-mode-notice')
+  await attachScreenshot(page, testInfo, 'desktop-camera-state-notice')
 })
 
-test('shows camera unlock notice when desktop drag unlocks follow camera', async ({
+test('shows camera state when desktop drag changes View to free roam', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -118,17 +123,17 @@ test('shows camera unlock notice when desktop drag unlocks follow camera', async
 
   const notice = page.locator('.hud-notice-transient')
   await expect(notice).toBeVisible()
-  await expect(notice.locator('.hud-notice-title')).toHaveText(
-    'Camera unlocked',
+  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera')
+  await expect(notice.locator('.hud-notice-body')).toHaveText(
+    'Follow Spacecraft · View Free roam',
   )
-  await expect(notice.locator('.hud-notice-body')).toHaveText('')
   await expect(notice).toHaveAttribute(
     'aria-label',
-    'Camera unlocked. Free roam is active.',
+    'Camera: follow Spacecraft; view Free roam.',
   )
   await expectNoticeInsideViewport(notice)
 
-  await attachScreenshot(page, testInfo, 'desktop-camera-drag-unlock-notice')
+  await attachScreenshot(page, testInfo, 'desktop-camera-drag-view-notice')
 })
 
 test('hides mobile-only spacecraft settings in desktop UI settings', async ({

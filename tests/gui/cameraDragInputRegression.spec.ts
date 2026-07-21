@@ -27,7 +27,7 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
       radius: 1,
       velocity: { x: 0, y: 0 },
     }
-    let cameraMode: 'centered' | 'target' | 'unlocked' = 'centered'
+    let cameraView: 'locked' | 'free' = 'locked'
     const cameraPans: {
       next: { x: number; y: number }
       previous: { x: number; y: number }
@@ -44,8 +44,8 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
         mode: 'auto',
         recommendedTarget: null,
       }),
-      getCameraMode: () => cameraMode,
-      getCameraModeChangesLocked: () => false,
+      getCameraControlsLocked: () => false,
+      getCameraView: () => cameraView,
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
@@ -75,9 +75,9 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
         setVirtualKey: () => {},
         setVirtualTurn: () => {},
       },
-      onCameraModeSelected: (mode) => {
-        modeSelections.push(mode)
-        cameraMode = mode
+      onCameraViewSelected: (view) => {
+        modeSelections.push(view)
+        cameraView = view
         return true
       },
       onCameraPanGesture: (previous, next) => {
@@ -132,7 +132,7 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
     }
   })
 
-  expect(result.modeSelections).toEqual(['unlocked'])
+  expect(result.modeSelections).toEqual(['free'])
   expect(result.unlockNotices).toBe(1)
   expect(result.panCountOnUnlockMove).toBe(0)
   expect(result.cameraPans).toEqual([
@@ -191,14 +191,14 @@ test('keeps desktop edge-scroll panning independent of heading planning visibili
       const pointerInput = bindPointerCameraInput({
         camera,
         getDesktopEdgePanSpeedPixelsPerSecond: () => 420,
-        getCameraMode: () => 'unlocked',
-        getCameraModeChangesLocked: () => false,
+        getCameraControlsLocked: () => false,
+        getCameraView: () => 'free',
         getEdgeScrollEnabled: () => true,
         getInteractionsEnabled: () => true,
         getSpacecraftPosition: () => ({ x: 0, y: 0 }),
         getSpacecraftVisible: () => spacecraftVisible,
         getTargetHeadingSelectionEnabled: () => true,
-        onCameraModeSelected: () => true,
+        onCameraViewSelected: () => true,
         onCameraPan: (delta) => {
           pans.push(delta)
           return true
@@ -374,8 +374,8 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
           mode: 'auto',
           recommendedTarget: null,
         }),
-        getCameraMode: () => 'unlocked',
-        getCameraModeChangesLocked: () => false,
+        getCameraControlsLocked: () => false,
+        getCameraView: () => 'free',
         getCurrentTimeWarp: () => 1,
         getCurrentTrajectoryHorizonHours: () => 1,
         getInteractionsEnabled: () => true,
@@ -405,7 +405,7 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
           setVirtualKey: () => {},
           setVirtualTurn: () => {},
         },
-        onCameraModeSelected: () => true,
+        onCameraViewSelected: () => true,
         onCameraPanGesture: (previous, next) => {
           cameraPans.push({ next, previous })
           return true
