@@ -92,6 +92,25 @@ change does not add canvas interaction or presentation behavior.
   available to this worker. The equivalent real-browser flows and screenshots
   passed through Playwright Chromium.
 
+### PR conversation follow-up
+
+- Synced the branch through current `origin/main`, resolving the mobile dock
+  conflicts so Flight, Info, and Nav remain one-open-at-a-time panels.
+- Focused Info and dock Playwright coverage passed 14/14, and the final full GUI
+  rerun passed 82/82 after one dock-offset correction and an isolated rerun of
+  the existing timing-sensitive Time Warp fling check.
+- The final release build passed. Vitest passed 65 files / 610 tests and the
+  automation claim suite passed 16/16. The automation workflow suite passed
+  2/3; its remaining assertion expects wording removed by current `main`, and
+  this branch has no diff from `origin/main` in either the policy or its test.
+- Final desktop and mobile Info screenshots were inspected. Secondary labels
+  remain inside rows, pinned pills remain compact, and the mobile panel stays
+  above the merged command dock:
+  - `tmp/playwright-results/infoHud-desktop-Info-popov-2d1f4--leaves-the-rail-persistent-mobile-chromium/desktop-info-popover-pinned.png`
+  - `tmp/playwright-results/infoHud-mobile-Info-panel--8252c-d-keeps-pins-above-the-dock-mobile-chromium/mobile-info-panel-pinned.png`
+- The in-app browser backend remained unavailable; Playwright Chromium covered
+  the desktop and mobile interaction smoke instead.
+
 ## Follow-ups and known gaps
 
 - Canvas presentation and hit testing remain with #277.
