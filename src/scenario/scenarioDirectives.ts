@@ -65,6 +65,19 @@ const getCameraViewValue = (
   value: CameraViewMode | undefined,
 ): CameraViewMode | null => (isCameraViewMode(value) ? value : null)
 
+const getLegacyCameraFollow = (
+  cameraMode: CommonScenarioDirectiveState['cameraMode'],
+): CameraFollowSubject | null => {
+  if (cameraMode === 'centered') {
+    return 'spacecraft'
+  }
+  if (cameraMode === 'target') {
+    return 'target'
+  }
+
+  return null
+}
+
 const getLegacyCameraView = (
   cameraMode: CommonScenarioDirectiveState['cameraMode'],
 ): CameraViewMode | null => {
@@ -112,7 +125,7 @@ const resolveBaseScenarioDirectives = (
     ),
     cameraFollow:
       getCameraFollowValue(commonState.cameraFollow) ??
-      (legacyCameraMode === 'target' ? 'target' : null),
+      getLegacyCameraFollow(legacyCameraMode),
     cameraFollowBodyId: getStringValue(commonState.cameraFollowBodyId),
     cameraFollowOffset: {
       x: getNumberValue(commonState.cameraFollowOffsetX) ?? 0,
@@ -181,7 +194,9 @@ export const applyRuntimeScenarioDirectiveConstraints = (
   if (forcedCameraFollow) {
     runtime.ui.camera.follow = forcedCameraFollow
   }
-  const forcedCameraView = runtime.scenario.directives.cameraView
+  const forcedCameraView = runtime.scenario.directives.cameraControlsLocked
+    ? 'locked'
+    : runtime.scenario.directives.cameraView
   if (forcedCameraView) {
     runtime.ui.camera.view = forcedCameraView
   }

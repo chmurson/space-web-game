@@ -307,6 +307,10 @@ export const createRuntimeActions = (options: {
   const unlockCameraAtFollowTarget = (
     targetNdcY = crashInspectionTargetNdcY,
   ) => {
+    if (options.runtime.scenario.directives.cameraControlsLocked) {
+      return
+    }
+
     options.runtime.ui.camera.view = 'locked'
     updateCamera()
     const followPosition = getCameraFollowSubjectPosition()
@@ -319,7 +323,10 @@ export const createRuntimeActions = (options: {
   }
 
   const panCamera = (delta: { x: number; y: number }) => {
-    if (options.runtime.ui.camera.view !== 'free') {
+    if (
+      options.runtime.scenario.directives.cameraControlsLocked ||
+      options.runtime.ui.camera.view !== 'free'
+    ) {
       return false
     }
 
@@ -354,7 +361,9 @@ export const createRuntimeActions = (options: {
         options.maxViewport,
     )
     const preserveStarfieldWorldPosition =
-      focalWorldPoint !== undefined && options.runtime.ui.camera.view === 'free'
+      !options.runtime.scenario.directives.cameraControlsLocked &&
+      focalWorldPoint !== undefined &&
+      options.runtime.ui.camera.view === 'free'
 
     if (preserveStarfieldWorldPosition) {
       const cameraTarget = getCameraTargetPosition()

@@ -558,30 +558,54 @@ describe('createRuntimeActions', () => {
   })
 
   it('does not change camera controls while scenario directives lock them', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
     const runtime = createRuntime()
     runtime.scenario.directives.cameraControlsLocked = true
+    runtime.ui.camera = {
+      follow: 'spacecraft',
+      panOffset: { x: 12, y: 24 },
+      view: 'free',
+    }
     const updateCameraViewSpy = vi
       .spyOn(sceneUpdates, 'updateCameraView')
       .mockImplementation(() => {})
-    const runtimeActions = createTestRuntimeActions(runtime)
 
-    expect(runtimeActions.setCameraFollow('target')).toBe(false)
-    expect(runtimeActions.setCameraView('free')).toBe(false)
-    expect(runtime.ui.camera).toEqual({
-      follow: 'spacecraft',
-      panOffset: { x: 0, y: 0 },
-      view: 'locked',
-    })
-    expect(updateCameraViewSpy).not.toHaveBeenCalled()
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
 
-    vi.restoreAllMocks()
+      expect(runtimeActions.setCameraFollow('target')).toBe(false)
+      expect(runtimeActions.setCameraView('locked')).toBe(false)
+      expect(runtimeActions.panCamera({ x: 3, y: 4 })).toBe(false)
+      runtimeActions.unlockCameraAtFollowTarget()
+      runtimeActions.zoomCamera(0.5, { x: 300, y: 500 })
+      expect(runtime.ui.camera).toEqual({
+        follow: 'spacecraft',
+        panOffset: { x: 12, y: 24 },
+        view: 'free',
+      })
+      expect(runtime.simulation.viewportSize).toBe(300)
+      expect(updateCameraViewSpy).toHaveBeenCalledTimes(1)
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preserveStarfieldWorldPosition: false,
+        }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
   })
 
   it('unlocks the camera with the follow target framed above the crash panel', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
-    runtime.scenario.directives.cameraControlsLocked = true
     runtime.ui.camera.panOffset = { x: 999, y: 999 }
     const updateCameraViewSpy = vi
       .spyOn(sceneUpdates, 'updateCameraView')

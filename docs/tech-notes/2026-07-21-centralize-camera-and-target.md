@@ -47,7 +47,11 @@ follow to remain live while panning and make each control predictable.
 - Legacy camera fields remain read-only migration inputs for saved checkpoints
   and scenario state. They are not exposed through current runtime or UI APIs.
 - Camera controls are scenario-locked together because existing onboarding
-  gates treat camera interaction as one capability.
+  gates treat camera interaction as one capability. Enabling that lock makes
+  Locked view authoritative and blocks pan, crash-inspection unlock, and focal
+  free-roam zoom adjustments.
+- Legacy `centered` directives restore Spacecraft follow as well as Locked view;
+  legacy `target` and `unlocked` mappings retain their prior meanings.
 
 ## Validation
 
@@ -58,6 +62,10 @@ follow to remain live while panning and make each control predictable.
   and accessibility.
 - Visually inspected the generated mobile and desktop Controls screenshots;
   both settings are adjacent, readable, and show their selected values.
+- PR review follow-up: focused runtime/directive tests (40), full Vitest suite
+  (581), automation claim/workflow tests (19), production build, changed-file
+  Biome checks, diff checks, and focused camera-drag Playwright coverage (4)
+  all passed after adding lock enforcement and legacy follow migration.
 
 ## Follow-ups and known gaps
 

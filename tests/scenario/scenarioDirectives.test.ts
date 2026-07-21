@@ -9,6 +9,7 @@ import {
   applyRuntimeScenarioDirectiveConstraints,
   getConstrainedTimeWarpIndex,
   resolveRuntimeScenarioDirectives,
+  syncRuntimeScenarioDirectives,
 } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from '@/scenario/scenarioRegistry'
@@ -111,6 +112,24 @@ describe('scenarioDirectives', () => {
     expect(directives.hiddenBodyIds).toEqual(['moon'])
   })
 
+  it.each([
+    ['centered', 'spacecraft'],
+    ['target', 'target'],
+    ['unlocked', null],
+  ] as const)('maps legacy %s camera mode to the expected follow subject', (cameraMode, expectedFollow) => {
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession('custom', {
+      cameraMode,
+    })
+
+    const directives = resolveRuntimeScenarioDirectives(
+      runtime,
+      globalScenarioDirectiveLimits,
+    )
+
+    expect(directives.cameraFollow).toBe(expectedFollow)
+  })
+
   it('applies directive Follow and View constraints to runtime camera state', () => {
     const runtime = createRuntime()
     runtime.ui.camera = {
@@ -140,32 +159,25 @@ describe('scenarioDirectives', () => {
     })
   })
 
-  it('preserves unlocked pan offset when forced unlocked mode is already active', () => {
+  it('locks free-roam view when camera controls become locked', () => {
     const runtime = createRuntime()
     runtime.ui.camera = {
       follow: 'target',
       panOffset: { x: 12, y: 24 },
       view: 'free',
     }
-    runtime.scenario.directives = {
-      ...createDefaultScenarioDirectives(),
+    runtime.scenario.session = createRuntimeScenarioSession('custom', {
       cameraControlsLocked: true,
       cameraFollow: 'target',
       cameraView: 'free',
-    }
-
-    applyRuntimeScenarioDirectiveConstraints(runtime, {
-      maxCoastPredictionHorizonHours: 48,
-      defaultViewportSize: 520,
-      maxViewportSize: 800,
-      minViewportSize: EARTH_VIEWPORT_SIZE,
-      timeWarps: [1, 10, 100, 1000],
     })
+
+    syncRuntimeScenarioDirectives(runtime, globalScenarioDirectiveLimits)
 
     expect(runtime.ui.camera).toEqual({
       follow: 'target',
       panOffset: { x: 12, y: 24 },
-      view: 'free',
+      view: 'locked',
     })
   })
 
