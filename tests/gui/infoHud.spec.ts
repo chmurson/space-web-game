@@ -40,6 +40,7 @@ test('desktop Info popover manages player pins and leaves the rail persistent', 
     })
     const popover = page.locator('#desktop-info-popover')
     const earthSwitch = popover.locator('[data-info-pin="body:earth"]')
+    const earthPinStatus = earthSwitch.locator('.info-hud-pin-status')
 
     await expect(infoButton).toBeVisible()
     await expect(infoButton).toHaveAttribute('aria-expanded', 'false')
@@ -48,9 +49,11 @@ test('desktop Info popover manages player pins and leaves the rail persistent', 
     await expect(popover).toBeVisible()
     await expect(popover.getByRole('switch')).toHaveCount(4)
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'false')
+    await expect(earthPinStatus).toHaveText('○')
 
     await earthSwitch.click()
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
+    await expect(earthPinStatus).toHaveText('●')
     await captureScreenshot(page, testInfo, 'desktop-info-popover-pinned')
 
     await page.keyboard.press('KeyI')
@@ -77,8 +80,10 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
   const infoPanel = page.locator('#mobile-command-dock-info-panel')
   const flightButton = page.locator('#mobile-command-dock-flight-button')
   const flightPanel = page.locator('#mobile-command-dock-flight-panel')
+  const railHost = page.locator('.mobile-command-dock-info-rail-host')
 
   await expect(infoButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(railHost).toHaveCSS('margin-bottom', '0px')
   await infoButton.tap()
   await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
   await expect(infoPanel).toBeVisible()
@@ -90,6 +95,7 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
     '.mobile-info-rail [data-info-pin="body:earth"]',
   )
   await expect(railCard).toBeVisible()
+  await expect(railHost).toHaveCSS('margin-bottom', '8px')
 
   const [railBounds, dockBounds] = await Promise.all([
     railCard.boundingBox(),
@@ -110,6 +116,7 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
 
   await page.keyboard.press('Shift+KeyI')
   await expect(page.locator('.mobile-info-rail')).toBeHidden()
+  await expect(railHost).toHaveCSS('margin-bottom', '0px')
 })
 
 test('scenario-owned pins are exposed as checked, immutable switches', async ({
@@ -132,6 +139,7 @@ test('scenario-owned pins are exposed as checked, immutable switches', async ({
   await expect(moonSwitch).toHaveAttribute('aria-checked', 'true')
   await expect(moonSwitch).toBeDisabled()
   await expect(moonSwitch).toContainText('Scenario')
+  await expect(moonSwitch.locator('.info-hud-pin-status')).toHaveText('◆')
   await expect(
     page.locator('.mobile-info-rail [data-info-pin="body:moon"]'),
   ).toBeDisabled()

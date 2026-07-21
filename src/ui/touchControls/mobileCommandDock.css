@@ -118,7 +118,7 @@
     pointer-events: none;
   }
 
-  .mobile-command-dock-info-rail-host:not(:empty) {
+  .mobile-command-dock-info-rail-host:has(.info-hud-rail:not([hidden])) {
     box-sizing: border-box;
     display: flex;
     width: min(100%, 520px);

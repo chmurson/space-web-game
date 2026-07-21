@@ -31,9 +31,19 @@ const TapSafeButton = ({ onActivate, ...props }: TapSafeButtonProps) => {
   return <button {...props} ref={buttonRef} />
 }
 
+const getPinStatusGlyph = (row: InfoHudRow) => {
+  if (row.scenarioOwned) {
+    return '◆'
+  }
+  if (row.pinned) {
+    return '●'
+  }
+  return '○'
+}
+
 const PinStatus = ({ row }: { row: InfoHudRow }) => (
   <span aria-hidden="true" class="info-hud-pin-status">
-    {row.scenarioOwned ? '◆' : row.pinned ? '●' : '○'}
+    {getPinStatusGlyph(row)}
   </span>
 )
 
