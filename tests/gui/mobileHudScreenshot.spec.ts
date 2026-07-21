@@ -1161,7 +1161,7 @@ test('captures the mobile tutorial coach prompt transition', async ({
   await expect(page.locator('#mobile-command-dock-flight-panel')).toBeVisible()
   await expect(page.locator('.mobile-command-dock')).toHaveAttribute(
     'data-tutorial-focused',
-    'true',
+    'burn',
   )
 
   await attachMobileScreenshot(page, testInfo, 'mobile-tutorial-coach-prompt')
@@ -2324,7 +2324,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const openEvents: boolean[] = []
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
-    let warpSide: 'left' | 'right' = 'left'
     let desktopEdgePanEnabled = false
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
@@ -2350,7 +2349,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchTargetControlSide: () => targetSide,
       getTouchTrajectoryControlSide: () => trajectorySide,
-      getTouchWarpControlSide: () => warpSide,
       onOrbitPointDisplayChange: (settings: typeof orbitPointDisplay) => {
         orbitEvents.push(
           `markers:${settings.markersVisible};labels:${settings.labelsVisible};center:${settings.centerDistanceVisible};name:${settings.pointNameVisible}`,
@@ -2379,10 +2377,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       ) => {
         events.push(`trajectory:${side}`)
         trajectorySide = side
-      },
-      onTouchWarpControlSideChange: (side: 'left' | 'right') => {
-        events.push(`warp:${side}`)
-        warpSide = side
       },
     })
     const getCloseButton = () =>
@@ -2455,7 +2449,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const selectedAfterOpen = {
       target: getSelectedValue('Target control side'),
       trajectory: getSelectedValue('Trajectory control side'),
-      warp: getSelectedValue('Warp control side'),
     }
     const maneuverSwitchInitial = getButtonByText(
       'Starts by drag or tap',
@@ -2481,12 +2474,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       getEdgePanSpeedButton('increase')?.disabled
     getControlButton('Target control side', 'left')?.click()
     getControlButton('Trajectory control side', 'right')?.click()
-    getControlButton('Warp control side', 'right')?.click()
     dialog.syncState()
     const selectedAfterChanges = {
       target: getSelectedValue('Target control side'),
       trajectory: getSelectedValue('Trajectory control side'),
-      warp: getSelectedValue('Warp control side'),
     }
     const maneuverSwitchAfter = getButtonByText(
       'Starts by drag or tap',
@@ -2697,7 +2688,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       'edgePanSpeed:fast',
       'target:left',
       'trajectory:right',
-      'warp:right',
     ],
     focusAfterBackwardTrap: true,
     focusAfterForwardTrap: true,
@@ -2765,12 +2755,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     selectedAfterChanges: {
       target: 'left',
       trajectory: 'right',
-      warp: 'right',
     },
     selectedAfterOpen: {
       target: 'right',
       trajectory: 'hidden',
-      warp: 'left',
     },
     spacecraftControlGroup: 'Control sides',
     spacecraftControlGroups: ['Control sides', 'Maneuvers', 'Camera'],
@@ -2800,10 +2788,9 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
     let touchControlsVisible = false
     let targetControlAvailable = true
     const trajectoryControlAvailable = true
-    let warpControlAvailable = true
     let targetSide: 'left' | 'right' = 'right'
     let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
-    let warpSide: 'left' | 'right' = 'right'
+    const warpSide: 'left' | 'right' = 'right'
     let desktopEdgePanEnabled = false
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
@@ -2829,8 +2816,6 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
       getTouchTargetControlSide: () => targetSide,
       getTouchTrajectoryControlAvailable: () => trajectoryControlAvailable,
       getTouchTrajectoryControlSide: () => trajectorySide,
-      getTouchWarpControlAvailable: () => warpControlAvailable,
-      getTouchWarpControlSide: () => warpSide,
       onDesktopEdgePanEnabledChange: (enabled: boolean) => {
         events.push(`edgePan:${enabled}`)
         desktopEdgePanEnabled = enabled
@@ -2856,10 +2841,6 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
       ) => {
         events.push(`trajectory:${side}`)
         trajectorySide = side
-      },
-      onTouchWarpControlSideChange: (side: 'left' | 'right') => {
-        events.push(`warp:${side}`)
-        warpSide = side
       },
     })
 
@@ -2891,7 +2872,6 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
     const mobileManeuverSwitch = getButtonByText('Starts by drag or tap')
 
     targetControlAvailable = false
-    warpControlAvailable = false
     dialog.syncState()
     getButtonByText('Back')?.click()
     const partiallyHiddenSummary = getSummaryText()
@@ -2933,7 +2913,7 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
   expect(result.mobileControlSideGroupVisible).toBe(true)
   expect(result.mobileManeuverSwitchVisible).toBe(true)
   expect(result.mobilePaneText).not.toContain('Burn side')
-  expect(result.mobilePaneText).toContain('Warp side')
+  expect(result.mobilePaneText).not.toContain('Warp side')
   expect(result.mobilePaneText).toContain('Target side')
   expect(result.mobilePaneText).toContain('Trajectory side')
   expect(result.mobilePaneText).toContain('Starts by drag or tap')
@@ -2982,10 +2962,10 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   await startReachMoonMission(page)
 
   await page.getByRole('button', { name: 'Open in-game controls' }).click()
-  await expect(
-    page.getByRole('dialog', { name: 'In-game controls' }),
-  ).toBeVisible()
-  await expect(page.getByText('Prediction horizon')).toBeVisible()
+  const controlsDialog = page.getByRole('dialog', { name: 'In-game controls' })
+  await expect(controlsDialog).toBeVisible()
+  await expect(controlsDialog.getByText('Prediction horizon')).toBeVisible()
+  await expect(controlsDialog.getByText('Camera mode')).toHaveCount(0)
 
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
 })
@@ -3032,7 +3012,6 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
       }),
       getTouchTargetControlSide: () => 'left',
       getTouchTrajectoryControlSide: () => 'hidden',
-      getTouchWarpControlSide: () => 'right',
       onDesktopEdgePanEnabledChange: (enabled: boolean) => {
         desktopEdgePanEnabled = enabled
       },
@@ -3043,7 +3022,6 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
       onOrbitPointDisplayChange: () => {},
       onTouchTargetControlSideChange: () => {},
       onTouchTrajectoryControlSideChange: () => {},
-      onTouchWarpControlSideChange: () => {},
     })
 
     dialog.open()
@@ -3092,16 +3070,17 @@ test('captures wide in-game controls keyboard hints', async ({
   await startReachMoonMission(page)
 
   await page.getByRole('button', { name: 'Open in-game controls' }).click()
-  await expect(
-    page.getByRole('dialog', { name: 'In-game controls' }),
-  ).toBeVisible()
+  const controlsDialog = page.getByRole('dialog', { name: 'In-game controls' })
+  await expect(controlsDialog).toBeVisible()
   await expect(
     page.getByRole('group', { name: 'Keyboard shortcuts' }),
   ).toBeVisible()
   await expect(page.getByText('Normal burn')).toBeVisible()
   await expect(page.getByText('Turn', { exact: true })).toBeVisible()
   await expect(page.getByText('Precise turn', { exact: true })).toBeVisible()
-  await expect(page.getByText('Time warp')).toBeVisible()
+  await expect(
+    controlsDialog.getByText('Time warp', { exact: true }),
+  ).toBeVisible()
   await expect(page.getByText('Burn latch')).toBeVisible()
   await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
 
@@ -3204,41 +3183,22 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   )
 })
 
-test('captures the mobile time warp touch control after reveal', async ({
+test('captures the mobile Time Warp control in Nav', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
 
-  await page
-    .getByRole('button', { exact: true, name: 'Reveal time warp control' })
-    .click()
-  await page.getByRole('button', { name: 'Reveal Time Warp control 2' }).click()
-  const timeWarpReveal = page.locator('#touch-time-warp-reveal')
-  const timeWarpPrototypeReveal = page.locator(
-    '#touch-time-warp-prototype-reveal',
-  )
-  await expect(timeWarpReveal).toHaveClass(/touch-edge-reveal-control-open/)
-  await expect(timeWarpPrototypeReveal).toHaveClass(
-    /touch-edge-reveal-control-open/,
-  )
+  await page.getByRole('button', { name: 'Open Nav panel' }).click()
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const timeWarpControl = navPanel.getByLabel('Time Warp', { exact: true })
+  await expect(navPanel).toBeVisible()
+  await expect(timeWarpControl).toBeVisible()
   await expect(
-    timeWarpReveal.getByLabel('Time warp control', { exact: true }),
-  ).toBeVisible()
-  const timeWarpPrototypeControl = timeWarpPrototypeReveal.getByLabel(
-    'Time Warp control 2',
-    { exact: true },
-  )
-  await expect(timeWarpPrototypeControl).toBeVisible()
-  await expect(
-    timeWarpReveal.getByLabel('Time Warp control 2', { exact: true }),
+    page.locator('#touch-time-warp-reveal, #touch-time-warp-prototype-reveal'),
   ).toHaveCount(0)
-  await expect(timeWarpReveal.locator('.touch-edge-reveal-content')).toHaveCSS(
-    'transform',
-    'matrix(1, 0, 0, 1, 0, 0)',
-  )
   await expect(
-    timeWarpPrototypeReveal.locator('.touch-edge-reveal-content'),
-  ).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)')
+    page.getByLabel(/Time Warp control [12]/, { exact: true }),
+  ).toHaveCount(0)
 
   await attachMobileScreenshot(page, testInfo, 'mobile-time-warp-control')
   await page.addStyleTag({
@@ -3249,23 +3209,21 @@ test('captures the mobile time warp touch control after reveal', async ({
     `,
   })
 
-  const prototypeBox = await timeWarpPrototypeControl.boundingBox()
-  if (!prototypeBox) {
-    throw new Error('Expected Time Warp control 2 bounds')
+  const timeWarpBox = await timeWarpControl.boundingBox()
+  if (!timeWarpBox) {
+    throw new Error('Expected Time Warp bounds')
   }
   await page.mouse.move(
-    prototypeBox.x + prototypeBox.width / 2,
-    prototypeBox.y + prototypeBox.height / 2,
+    timeWarpBox.x + timeWarpBox.width / 2,
+    timeWarpBox.y + timeWarpBox.height / 2,
   )
   await page.mouse.down()
   await page.mouse.move(
-    prototypeBox.x + prototypeBox.width / 2 - 69,
-    prototypeBox.y + prototypeBox.height / 2,
+    timeWarpBox.x + timeWarpBox.width / 2 - 69,
+    timeWarpBox.y + timeWarpBox.height / 2,
     { steps: 3 },
   )
-  await expect(timeWarpPrototypeControl).toHaveClass(
-    /touch-step-selector-dragging/,
-  )
+  await expect(timeWarpControl).toHaveClass(/touch-step-selector-dragging/)
   await attachMobileScreenshot(
     page,
     testInfo,
@@ -3280,7 +3238,7 @@ test('captures the mobile time warp touch control after reveal', async ({
     { animations: 'allow' },
   )
   await expect(
-    timeWarpPrototypeControl.locator('.touch-step-selector-value-current'),
+    timeWarpControl.locator('.touch-step-selector-value-current'),
   ).toHaveText('x4m')
   await attachMobileScreenshot(
     page,

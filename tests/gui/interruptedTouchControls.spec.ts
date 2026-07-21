@@ -96,7 +96,6 @@ test('hands interrupted control gestures to the newest touch', async ({
         getTrajectoryHorizonPreviews: () => [],
         initialTargetControlSide: 'left',
         initialTrajectoryControlSide: 'hidden',
-        initialWarpControlSide: 'right',
         keyboardInput: {
           clear: () => {},
           getManualControls: () => ({
@@ -130,32 +129,25 @@ test('hands interrupted control gestures to the newest touch', async ({
         onZoom: () => {},
       })
 
-      const prototypeReveal = controls.element.querySelector<HTMLElement>(
-        '#touch-time-warp-prototype-reveal',
-      )
       const flightButton = controls.element.querySelector<HTMLButtonElement>(
         '#mobile-command-dock-flight-button',
       )
-      const prototypeRevealButton =
-        prototypeReveal?.querySelector<HTMLButtonElement>(
-          '.touch-edge-reveal-tab',
-        )
-      if (!prototypeReveal || !prototypeRevealButton || !flightButton) {
-        throw new Error('Expected Time Warp reveal and Flight dock controls')
+      const navButton = controls.element.querySelector<HTMLButtonElement>(
+        '#mobile-command-dock-nav-button',
+      )
+      if (!flightButton || !navButton) {
+        throw new Error('Expected Flight and Nav dock controls')
       }
-      prototypeRevealButton.click()
-      flightButton.click()
+      navButton.click()
 
-      const timeWarpControl = prototypeReveal.querySelector<HTMLElement>(
-        '[aria-label="Time Warp control 2"]',
+      const timeWarpControl = controls.element.querySelector<HTMLElement>(
+        '[aria-label="Time Warp"]',
       )
       const thrustControl = controls.element.querySelector<HTMLElement>(
         '.touch-thrust-control',
       )
       if (!timeWarpControl || !thrustControl) {
-        throw new Error(
-          'Expected revealed Time Warp and docked thrust controls',
-        )
+        throw new Error('Expected Nav Time Warp and docked thrust controls')
       }
 
       const createTouch = (point: TouchPoint) =>
@@ -197,11 +189,13 @@ test('hands interrupted control gestures to the newest touch', async ({
         getThrustEngagementCount: () => thrustEngagementCount,
         getThrustEngaged: () => thrustEngaged,
         getTimeWarp: () => timeWarps[timeWarpIndex],
+        getThrustStart: () => center(thrustControl),
+        getTimeWarpStart: () => center(timeWarpControl),
+        openFlightPanel: () => flightButton.click(),
+        openNavPanel: () => navButton.click(),
         remove: () => app.remove(),
         thrustControl,
-        thrustStart: center(thrustControl),
         timeWarpControl,
-        timeWarpStart: center(timeWarpControl),
       }
     }
 
@@ -209,13 +203,13 @@ test('hands interrupted control gestures to the newest touch', async ({
     const firstWarpTouch = {
       id: 1,
       target: successiveTimeWarp.timeWarpControl,
-      ...successiveTimeWarp.timeWarpStart,
+      ...successiveTimeWarp.getTimeWarpStart(),
     }
     const firstWarpMove = { ...firstWarpTouch, x: firstWarpTouch.x - 10 }
     const secondWarpTouch = {
       id: 2,
       target: successiveTimeWarp.timeWarpControl,
-      ...successiveTimeWarp.timeWarpStart,
+      ...successiveTimeWarp.getTimeWarpStart(),
     }
     const secondWarpMove = { ...secondWarpTouch, x: secondWarpTouch.x - 54 }
     successiveTimeWarp.dispatchTouch(
@@ -261,13 +255,13 @@ test('hands interrupted control gestures to the newest touch', async ({
     const oldWarpTouch = {
       id: 3,
       target: timeWarpToThrust.timeWarpControl,
-      ...timeWarpToThrust.timeWarpStart,
+      ...timeWarpToThrust.getTimeWarpStart(),
     }
     const oldWarpMove = { ...oldWarpTouch, x: oldWarpTouch.x - 10 }
     const newThrustTouch = {
       id: 4,
       target: timeWarpToThrust.thrustControl,
-      ...timeWarpToThrust.thrustStart,
+      ...timeWarpToThrust.getThrustStart(),
     }
     const newThrustMove = { ...newThrustTouch, y: newThrustTouch.y - 80 }
     timeWarpToThrust.dispatchTouch(
@@ -282,16 +276,11 @@ test('hands interrupted control gestures to the newest touch', async ({
       [oldWarpMove],
       [oldWarpMove],
     )
+    timeWarpToThrust.openFlightPanel()
     timeWarpToThrust.dispatchTouch(
       timeWarpToThrust.thrustControl,
       'touchstart',
       [newThrustTouch],
-      [oldWarpMove, newThrustTouch],
-    )
-    timeWarpToThrust.dispatchTouch(
-      timeWarpToThrust.timeWarpControl,
-      'touchend',
-      [oldWarpMove],
       [newThrustTouch],
     )
     timeWarpToThrust.dispatchTouch(
@@ -307,16 +296,18 @@ test('hands interrupted control gestures to the newest touch', async ({
       [],
     )
     const thrustEngaged = timeWarpToThrust.getThrustEngagementCount() > 0
+    const timeWarpAfterFlightSwitch = timeWarpToThrust.getTimeWarp()
     const thrustLatchedAfterRelease = timeWarpToThrust.getThrustEngaged()
     timeWarpToThrust.closeFlightPanel()
     const thrustAfterPanelClose = timeWarpToThrust.getThrustEngaged()
     timeWarpToThrust.remove()
 
     const closedThrustGesture = createHarness()
+    closedThrustGesture.openFlightPanel()
     const closedThrustTouch = {
       id: 7,
       target: closedThrustGesture.thrustControl,
-      ...closedThrustGesture.thrustStart,
+      ...closedThrustGesture.getThrustStart(),
     }
     const closedThrustMove = {
       ...closedThrustTouch,
@@ -356,33 +347,29 @@ test('hands interrupted control gestures to the newest touch', async ({
     closedThrustGesture.remove()
 
     const thrustToTimeWarp = createHarness()
+    thrustToTimeWarp.openFlightPanel()
     const oldThrustTouch = {
       id: 5,
       target: thrustToTimeWarp.thrustControl,
-      ...thrustToTimeWarp.thrustStart,
+      ...thrustToTimeWarp.getThrustStart(),
     }
-    const newWarpTouch = {
-      id: 6,
-      target: thrustToTimeWarp.timeWarpControl,
-      ...thrustToTimeWarp.timeWarpStart,
-    }
-    const newWarpMove = { ...newWarpTouch, x: newWarpTouch.x - 54 }
     thrustToTimeWarp.dispatchTouch(
       thrustToTimeWarp.thrustControl,
       'touchstart',
       [oldThrustTouch],
       [oldThrustTouch],
     )
+    thrustToTimeWarp.openNavPanel()
+    const newWarpTouch = {
+      id: 6,
+      target: thrustToTimeWarp.timeWarpControl,
+      ...thrustToTimeWarp.getTimeWarpStart(),
+    }
+    const newWarpMove = { ...newWarpTouch, x: newWarpTouch.x - 54 }
     thrustToTimeWarp.dispatchTouch(
       thrustToTimeWarp.timeWarpControl,
       'touchstart',
       [newWarpTouch],
-      [oldThrustTouch, newWarpTouch],
-    )
-    thrustToTimeWarp.dispatchTouch(
-      thrustToTimeWarp.thrustControl,
-      'touchend',
-      [oldThrustTouch],
       [newWarpTouch],
     )
     thrustToTimeWarp.dispatchTouch(
@@ -410,6 +397,7 @@ test('hands interrupted control gestures to the newest touch', async ({
       thrustBeforeActivePanelClose,
       thrustEngaged,
       thrustLatchedAfterRelease,
+      timeWarpAfterFlightSwitch,
     }
   })
 
@@ -423,5 +411,6 @@ test('hands interrupted control gestures to the newest touch', async ({
     thrustBeforeActivePanelClose: true,
     thrustEngaged: true,
     thrustLatchedAfterRelease: true,
+    timeWarpAfterFlightSwitch: 10,
   })
 })

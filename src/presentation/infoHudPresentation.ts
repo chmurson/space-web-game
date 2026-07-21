@@ -21,6 +21,7 @@ export type InfoHudRow = {
   pin: InfoPin
   pinned: boolean
   scenarioOwned: boolean
+  secondaryLabel: string
 }
 
 export type InfoHudView = {
@@ -68,6 +69,7 @@ const createRow = (options: {
   label: string
   pin: InfoPin
   runtime: AppRuntimeState
+  secondaryLabel: string
 }): InfoHudRow => {
   const scenarioOwned = includesInfoPin(
     options.runtime.scenario.directives.infoPins,
@@ -83,6 +85,7 @@ const createRow = (options: {
     pin: { ...options.pin },
     pinned: scenarioOwned || userOwned,
     scenarioOwned,
+    secondaryLabel: options.secondaryLabel,
   }
 }
 
@@ -102,6 +105,7 @@ export const createInfoHudView = (options: {
       label: body.name,
       pin: createBodyInfoPin(body.id),
       runtime: options.runtime,
+      secondaryLabel: 'to spacecraft',
     })
   })
   const createApsisRow = (
@@ -118,6 +122,7 @@ export const createInfoHudView = (options: {
       label,
       pin,
       runtime: options.runtime,
+      secondaryLabel: `to ${target.name}`,
     })
   }
   const rows = [

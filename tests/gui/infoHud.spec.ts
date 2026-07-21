@@ -48,6 +48,12 @@ test('desktop Info popover manages player pins and leaves the rail persistent', 
     await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
     await expect(popover).toBeVisible()
     await expect(popover.getByRole('switch')).toHaveCount(4)
+    await expect(
+      popover.locator('[data-info-pin^="body:"] .info-hud-row-secondary'),
+    ).toHaveText(['to spacecraft', 'to spacecraft'])
+    await expect(
+      popover.locator('[data-info-pin="periapsis"] .info-hud-row-secondary'),
+    ).toHaveText(/^to (Earth|Moon)$/)
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'false')
     await expect(earthPinStatus).toHaveText('○')
 
@@ -61,6 +67,9 @@ test('desktop Info popover manages player pins and leaves the rail persistent', 
     await expect(
       page.locator('.desktop-info-rail [data-info-pin="body:earth"]'),
     ).toBeVisible()
+    await expect(
+      page.locator('.desktop-info-rail .info-hud-row-secondary'),
+    ).toHaveCount(0)
 
     await page.keyboard.press('Shift+KeyI')
     await expect(page.locator('.desktop-info-rail')).toBeHidden()
@@ -88,6 +97,9 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
   await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
   await expect(infoPanel).toBeVisible()
   await expect(infoPanel.getByRole('switch')).toHaveCount(4)
+  await expect(
+    infoPanel.locator('[data-info-pin^="body:"] .info-hud-row-secondary'),
+  ).toHaveText(['to spacecraft', 'to spacecraft'])
   await expect(dock).toHaveAttribute('data-open-panel', 'info')
 
   await infoPanel.locator('[data-info-pin="body:earth"]').tap()
@@ -95,6 +107,9 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
     '.mobile-info-rail [data-info-pin="body:earth"]',
   )
   await expect(railCard).toBeVisible()
+  await expect(
+    page.locator('.mobile-info-rail .info-hud-row-secondary'),
+  ).toHaveCount(0)
   await expect(railHost).toHaveCSS('margin-bottom', '8px')
 
   const [railBounds, dockBounds] = await Promise.all([

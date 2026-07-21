@@ -318,7 +318,7 @@ test('covers all DOM game surfaces with one top-level guard', async ({
       scenarioLoading: '[data-visible="false"] > [role="status"]',
       scenarioPrompt: '[data-prompt-mode="modal"]',
       topHud: '[data-menu-action="toggleDebugMode"]',
-      touchControls: '[data-touch-control-dock="warp"]',
+      touchControls: '.mobile-command-dock',
       uiSettings: '[data-dialog-close="true"]',
     }
 

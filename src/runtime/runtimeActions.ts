@@ -75,6 +75,7 @@ export const createRuntimeActions = (options: {
   createRipple: RippleCreator
   gameScene: GameSceneRefs
   getAssistTargetUiState: () => AssistTargetUiState
+  getFollowCameraViewportBottomInset?: () => number
   maxCoastPredictionHorizonHours: number
   maxViewport: number
   minCoastPredictionHorizonHours: number
@@ -210,10 +211,47 @@ export const createRuntimeActions = (options: {
       cameraTargetPosition: getCameraTargetPosition(),
       gameScene: options.gameScene,
       preserveStarfieldWorldPosition,
+      viewportBottomInset:
+        options.runtime.ui.camera.mode === 'unlocked'
+          ? 0
+          : (options.getFollowCameraViewportBottomInset?.() ?? 0),
       viewportHeight: window.innerHeight,
       viewportSize: options.runtime.simulation.viewportSize,
       viewportWidth: window.innerWidth,
     })
+
+  const getFreeRoamTransitionTargetPosition = () => {
+    const followTarget = getCameraTargetPosition()
+    const viewportHeight = window.innerHeight
+    if (viewportHeight <= 0) {
+      return { ...followTarget }
+    }
+
+    const targetNdcY = THREE.MathUtils.clamp(
+      (options.getFollowCameraViewportBottomInset?.() ?? 0) / viewportHeight,
+      0,
+      1,
+    )
+    const verticalDirection = Math.sin(options.cameraElevation)
+    if (targetNdcY === 0 || Math.abs(verticalDirection) < 1e-6) {
+      return { ...followTarget }
+    }
+
+    const cameraDirectionLength = Math.hypot(
+      Math.SQRT2 * Math.cos(options.cameraElevation),
+      verticalDirection,
+    )
+    const screenUpOffset =
+      (options.runtime.simulation.viewportSize *
+        0.5 *
+        targetNdcY *
+        cameraDirectionLength) /
+      (Math.SQRT2 * verticalDirection * RENDER_SCALE)
+    return {
+      x: followTarget.x + screenUpOffset,
+      y: followTarget.y + screenUpOffset,
+    }
+  }
 
   const setCameraMode = (mode: CameraControlMode) => {
     if (options.runtime.scenario.directives.cameraModeChangesLocked) {
@@ -225,12 +263,11 @@ export const createRuntimeActions = (options: {
     }
 
     if (mode === 'unlocked') {
-      options.runtime.ui.camera.panOffset = {
-        ...getCameraTargetPosition(),
-      }
+      options.runtime.ui.camera.panOffset =
+        getFreeRoamTransitionTargetPosition()
     }
     options.runtime.ui.camera.mode = mode
-    updateCamera()
+    updateCamera(mode === 'unlocked')
     return true
   }
 

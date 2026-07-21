@@ -486,6 +486,7 @@ export const createAppComponents = (options: {
     maxControlWarp: defaultMaxControlWarp,
     timeWarps: options.config.controls.timeWarps,
   })
+  let followCameraViewportBottomInset = 0
   const runtimeActions = createRuntimeActions({
     app: options.app,
     autoSelectNearestSurface:
@@ -496,6 +497,7 @@ export const createAppComponents = (options: {
     createRipple,
     gameScene,
     getAssistTargetUiState: queries.getAssistTargetUiState,
+    getFollowCameraViewportBottomInset: () => followCameraViewportBottomInset,
     maxCoastPredictionHorizonHours:
       options.config.trajectory.maxCoastPredictionHorizonHours,
     maxViewport: options.config.camera.maxViewport,
@@ -516,19 +518,15 @@ export const createAppComponents = (options: {
     options.config.userSettings.touchTargetControlSide
   let touchTrajectoryControlSide: TouchTrajectoryControlState =
     options.config.userSettings.touchTrajectoryControlSide
-  let touchWarpControlSide: TouchControlSide =
-    options.config.userSettings.touchWarpControlSide
   let touchControlAvailability: TouchControlAvailability = {
     target: true,
     trajectory: true,
-    warp: true,
   }
   const isSameTouchControlAvailability = (
     nextVisibility: TouchControlAvailability,
   ) =>
     touchControlAvailability.target === nextVisibility.target &&
-    touchControlAvailability.trajectory === nextVisibility.trajectory &&
-    touchControlAvailability.warp === nextVisibility.warp
+    touchControlAvailability.trajectory === nextVisibility.trajectory
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
   let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
@@ -635,12 +633,14 @@ export const createAppComponents = (options: {
     },
     initialTargetControlSide: touchTargetControlSide,
     initialTrajectoryControlSide: touchTrajectoryControlSide,
-    initialWarpControlSide: touchWarpControlSide,
     keyboardInput,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     onCameraUnlockedBySwipe: cameraNotice.showUnlockedForFreeRoam,
     onCameraModeSelected: runtimeActions.setCameraMode,
+    onFollowCameraViewportBottomInsetChange: (bottomInset) => {
+      followCameraViewportBottomInset = bottomInset
+    },
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
       runtimeActions.returnToAutomaticAssistTargetSelection,
@@ -743,8 +743,6 @@ export const createAppComponents = (options: {
     getTouchTrajectoryControlAvailable: () =>
       touchControlAvailability.trajectory,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
-    getTouchWarpControlAvailable: () => touchControlAvailability.warp,
-    getTouchWarpControlSide: () => touchWarpControlSide,
     onOrbitPointDisplayChange: (settings) => {
       userOrbitPointDisplaySettings = { ...settings }
       updateUserSettings({ orbitPointDisplay: userOrbitPointDisplaySettings })
@@ -777,11 +775,6 @@ export const createAppComponents = (options: {
       touchControls.setTrajectoryControlSide(side)
       updateUserSettings({ touchTrajectoryControlSide: side })
     },
-    onTouchWarpControlSideChange: (side) => {
-      touchWarpControlSide = side
-      touchControls.setWarpControlSide(side)
-      updateUserSettings({ touchWarpControlSide: side })
-    },
   })
 
   const topMenu = createTopMenu({
@@ -797,6 +790,7 @@ export const createAppComponents = (options: {
     app: options.app,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
+    getCameraModeControlVisible: () => desktopFinePointerMedia.matches,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
     getMaxCoastPredictionHorizonHours: () =>

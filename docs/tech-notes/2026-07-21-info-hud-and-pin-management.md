@@ -15,11 +15,15 @@ Branch: `agent/issue-274-info-hud`
   discarded during load.
 - Added a desktop Info pill, anchored popover, and persistent compact rail.
 - Replaced the mobile Mission placeholder with an enabled Info dock panel and
-  a safe-area-aware persistent rail. Flight and Info are mutually exclusive.
+  a safe-area-aware persistent rail. Flight, Info, and Nav are mutually
+  exclusive panels after syncing the branch with `main`.
 - Added `I` to toggle the active Info surface and `Shift+I` to clear player
   pins, while preserving editable-control keyboard isolation.
 - Added live physical surface-distance presentation for every scenario body
   and target-relative `Pe`/`Ap` trajectory markers.
+- Added concise row-only context beneath each value: body rows say
+  `to spacecraft`, while `Pe` and `Ap` name the active target. Pinned rail
+  pills retain their compact label-and-value layout.
 
 ## Why
 
@@ -61,6 +65,8 @@ change does not add canvas interaction or presentation behavior.
   matches the current active target; stale values render as `—`.
 - The desktop rail is hidden while its popover is open to prevent overlapping
   duplicate telemetry, then becomes persistent again when the popover closes.
+- Secondary distance context belongs to panel rows, not the shared pinned rail,
+  so the always-visible pills remain compact on desktop and mobile.
 - Shared glass tokens and the existing tap-safe button helper are reused; no
   generic telemetry registry or separate UI state store was introduced.
 

@@ -74,7 +74,12 @@ const InfoRow = (options: {
         <span aria-hidden="true" class="info-hud-row-separator">
           ·
         </span>
-        <span class="info-hud-row-distance">{row.distanceLabel}</span>
+        <span class="info-hud-row-value">
+          <span class="info-hud-row-distance">{row.distanceLabel}</span>
+          <span aria-hidden="true" class="info-hud-row-secondary">
+            {row.secondaryLabel}
+          </span>
+        </span>
       </span>
       {row.scenarioOwned ? (
         <span class="info-hud-scenario-badge">Scenario</span>

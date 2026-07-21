@@ -139,6 +139,12 @@ describe('createInfoHudView', () => {
       '123 km',
       '456 km',
     ])
+    expect(view.rows.map(({ secondaryLabel }) => secondaryLabel)).toEqual([
+      'to spacecraft',
+      'to spacecraft',
+      'to Moon',
+      'to Moon',
+    ])
     expect(view.pinnedRows.map(({ label }) => label)).toEqual([
       'Earth',
       'Moon',

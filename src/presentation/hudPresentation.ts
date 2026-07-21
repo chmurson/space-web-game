@@ -45,7 +45,6 @@ type TargetSelectorControls = {
 export type TouchControlAvailability = {
   target: boolean
   trajectory: boolean
-  warp: boolean
 }
 
 const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
@@ -495,7 +494,6 @@ export const createHudPresentation = (options: {
       options.onTouchControlAvailabilityChange?.({
         target: showTargetControl,
         trajectory: showTrajectoryControl,
-        warp: showTimePill,
       })
       options.touchControls?.setFlightControlsVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
