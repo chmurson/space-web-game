@@ -1,5 +1,7 @@
 # Bound and Expired-Metadata Far Prediction Reuse
 
+> Follow-up: `2026-07-21-bound-reuse-continuity.md` replaces deferred validation with validation and seam checks on every reuse, and adds a speed-relative bound-orbit position tolerance. The cadence and tolerance details below describe the earlier implementation.
+
 ## What Changed
 
 - Passive-coast far prediction reuse now supports stable bound trajectories whose full prediction stops at the configured angular loop limit.

@@ -122,15 +122,18 @@ export type FarTrajectoryPredictionReuseDiagnostics = {
   retainedSeconds: number
   trimmedPointCount: number
   trimmedSeconds: number
-  validation: 'full' | 'performed' | 'skipped'
+  validation: 'full' | 'performed'
   validationSeconds: number
 }
 
 const nowMs = () => performance.now()
 const maxReuseElapsedHorizonRatio = 0.25
-const validateEveryConsecutiveCoastReuses = 4
 const maxConsecutiveCoastReusesBeforeFullRecalculation = 16
 const boundReusePrecisionStepSeconds = 1
+const boundValidationPositionPhaseToleranceSeconds = 20
+const maxBoundValidationPositionToleranceMeters = 50_000
+const boundSeamPositionPhaseToleranceSeconds = 25
+const maxBoundSeamPositionToleranceMeters = 60_000
 const statePositionToleranceMeters = 5_000
 const stateVelocityToleranceMetersPerSecond = 5
 const stateScalarTolerance = 0.001
@@ -142,7 +145,6 @@ type FarTrajectoryPredictionCache = {
   initialState: SimulationState
   reuseCount: number
   semanticInputKey: string
-  validationState: SimulationState
 }
 
 type FarTrajectoryPredictionCalculation = {
@@ -221,6 +223,33 @@ const getVectorDelta = (left: Vec2, right: Vec2) => {
   return Number.isFinite(delta) ? delta : null
 }
 
+const getSpacecraftPositionToleranceMeters = (
+  state: SimulationState,
+  target: Body,
+  allowLoopTrim: boolean,
+  boundPhaseToleranceSeconds: number,
+  maxBoundToleranceMeters: number,
+) => {
+  if (!allowLoopTrim) {
+    return statePositionToleranceMeters
+  }
+
+  const targetRelativeSpeed = length(
+    sub(state.spacecraft.velocity, target.velocity),
+  )
+  if (!Number.isFinite(targetRelativeSpeed)) {
+    return statePositionToleranceMeters
+  }
+
+  return Math.min(
+    maxBoundToleranceMeters,
+    Math.max(
+      statePositionToleranceMeters,
+      targetRelativeSpeed * boundPhaseToleranceSeconds,
+    ),
+  )
+}
+
 const isWithinTolerance = (
   measurement: FarTrajectoryPredictionDivergenceMeasurement,
 ) => measurement.delta !== null && measurement.delta <= measurement.tolerance
@@ -229,6 +258,7 @@ const getStateDivergenceDiagnostics = (
   predictedState: SimulationState,
   liveState: SimulationState,
   targetId: string,
+  spacecraftPositionToleranceMeters: number,
 ): FarTrajectoryPredictionDivergenceDiagnostics | null => {
   const measurements: FarTrajectoryPredictionDivergenceMeasurement[] = [
     {
@@ -247,7 +277,7 @@ const getStateDivergenceDiagnostics = (
       ),
       gatesReuse: true,
       metric: 'spacecraft-position',
-      tolerance: statePositionToleranceMeters,
+      tolerance: spacecraftPositionToleranceMeters,
       unit: 'meters',
     },
     {
@@ -397,7 +427,7 @@ const getStateDivergenceDiagnostics = (
         ),
         gatesReuse: false,
         metric: 'spacecraft-target-relative-position',
-        tolerance: statePositionToleranceMeters,
+        tolerance: spacecraftPositionToleranceMeters,
         unit: 'meters',
       },
       {
@@ -605,8 +635,8 @@ const tryReuseCoastPrediction = (
   }
 
   const elapsedSeconds = state.elapsed - cache.initialState.elapsed
-  const validationElapsedSeconds = state.elapsed - cache.validationState.elapsed
-  const validationTarget = cache.validationState.bodies.find(
+  const validationElapsedSeconds = elapsedSeconds
+  const validationTarget = cache.initialState.bodies.find(
     (body) => body.id === payload.targetId,
   )
   if (!validationTarget) {
@@ -619,10 +649,16 @@ const tryReuseCoastPrediction = (
       fallbackReason: 'state-diverged',
     }
   }
-  const shouldValidate =
-    cache.reuseCount % validateEveryConsecutiveCoastReuses === 0
+  const validationSpacecraftPositionToleranceMeters =
+    getSpacecraftPositionToleranceMeters(
+      state,
+      target,
+      allowLoopTrim,
+      boundValidationPositionPhaseToleranceSeconds,
+      maxBoundValidationPositionToleranceMeters,
+    )
   const validationMaxIntegrationStepSeconds = isCloseBoundCoastPrediction(
-    cache.validationState,
+    cache.initialState,
     validationTarget,
     allowLoopTrim,
   )
@@ -631,20 +667,18 @@ const tryReuseCoastPrediction = (
         payload.predictionConfig.maxIntegrationStepSeconds,
       )
     : payload.predictionConfig.maxIntegrationStepSeconds
-  const validation = shouldValidate
-    ? computeCoastTrajectoryPrediction(
-        cache.validationState,
-        semiImplicitEuler,
-        validationTarget,
-        {
-          ...payload.predictionConfig,
-          horizonSeconds: validationElapsedSeconds,
-          maxIntegrationStepSeconds: validationMaxIntegrationStepSeconds,
-        },
-        false,
-      )
-    : null
-  if (validation?.result.impact) {
+  const validation = computeCoastTrajectoryPrediction(
+    cache.initialState,
+    semiImplicitEuler,
+    validationTarget,
+    {
+      ...payload.predictionConfig,
+      horizonSeconds: validationElapsedSeconds,
+      maxIntegrationStepSeconds: validationMaxIntegrationStepSeconds,
+    },
+    false,
+  )
+  if (validation.result.impact) {
     return {
       divergence: {
         detail: validation.result.impact.bodyName,
@@ -654,17 +688,16 @@ const tryReuseCoastPrediction = (
       fallbackReason: 'state-diverged',
     }
   }
-  if (validation) {
-    const divergence = getStateDivergenceDiagnostics(
-      validation.finalState,
-      state,
-      payload.targetId,
-    )
-    if (divergence) {
-      return {
-        divergence,
-        fallbackReason: 'state-diverged',
-      }
+  const divergence = getStateDivergenceDiagnostics(
+    validation.finalState,
+    state,
+    payload.targetId,
+    validationSpacecraftPositionToleranceMeters,
+  )
+  if (divergence) {
+    return {
+      divergence,
+      fallbackReason: 'state-diverged',
     }
   }
 
@@ -673,7 +706,15 @@ const tryReuseCoastPrediction = (
     .map((sample) => shiftSample(sample, -elapsedSeconds))
   let seam: CoastTrajectoryPredictionComputation | null = null
   const firstRetainedSample = retainedSamples[0]
-  if (firstRetainedSample && !firstRetainedSample.closestApproach) {
+  if (firstRetainedSample) {
+    const seamSpacecraftPositionToleranceMeters =
+      getSpacecraftPositionToleranceMeters(
+        state,
+        target,
+        allowLoopTrim,
+        boundSeamPositionPhaseToleranceSeconds,
+        maxBoundSeamPositionToleranceMeters,
+      )
     const seamConfig = {
       ...payload.predictionConfig,
       horizonSeconds: firstRetainedSample.time,
@@ -720,7 +761,7 @@ const tryReuseCoastPrediction = (
         ),
         gatesReuse: true,
         metric: 'seam-position',
-        tolerance: statePositionToleranceMeters,
+        tolerance: seamSpacecraftPositionToleranceMeters,
         unit: 'meters',
       }
     if (!isWithinTolerance(seamPositionMeasurement)) {
@@ -849,8 +890,8 @@ const tryReuseCoastPrediction = (
       trimmedPointCount:
         cache.computation.samples.length - retainedSamples.length,
       trimmedSeconds: elapsedSeconds,
-      validation: shouldValidate ? 'performed' : 'skipped',
-      validationSeconds: shouldValidate ? validationElapsedSeconds : 0,
+      validation: 'performed',
+      validationSeconds: validationElapsedSeconds,
     },
     reuseCount: cache.reuseCount + 1,
   }
@@ -927,10 +968,6 @@ const calculateFarTrajectory = (
       initialState: state,
       reuseCount: coastCalculation.reuseCount,
       semanticInputKey: payload.semanticInputKey,
-      validationState:
-        coastCalculation.reuse.validation === 'skipped'
-          ? (cache?.validationState ?? state)
-          : state,
     },
     result: {
       assistedPoints,
