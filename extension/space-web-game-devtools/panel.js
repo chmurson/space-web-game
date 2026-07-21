@@ -1,5 +1,6 @@
 const pollIntervalMs = 500
 const commandLogLimit = 24
+const reuseHistoryLimit = 24
 const devtoolsVersionFileName = 'space-web-game-devtools-version.json'
 
 const elements = {
@@ -24,6 +25,8 @@ const elements = {
     predictionEventSummary: document.querySelector('#predictionEventSummary'),
     predictionFarCalculation: document.querySelector('#predictionFarCalculation'),
     predictionFarCoalescing: document.querySelector('#predictionFarCoalescing'),
+    predictionFarReuse: document.querySelector('#predictionFarReuse'),
+    predictionFarReuseHistory: document.querySelector('#predictionFarReuseHistory'),
     predictionGeometryDuration: document.querySelector('#predictionGeometryDuration'),
     predictionInputKeys: document.querySelector('#predictionInputKeys'),
     predictionIntegrationStats: document.querySelector('#predictionIntegrationStats'),
@@ -148,6 +151,79 @@ const formatFarCoalescing = (prediction) =>
     ]
         .filter(Boolean)
         .join(' · ')
+const formatDivergenceValue = (value, unit) => {
+    if (unit === 'meters') {
+        return formatDistance(value)
+    }
+    if (unit === 'meters-per-second') {
+        return `${formatNumber(value, 3)} m/s`
+    }
+    if (unit === 'seconds') {
+        return `${formatNumber(value, 6)} s`
+    }
+    if (unit === 'count') {
+        return formatNumber(value, 0)
+    }
+    return formatNumber(value, 6)
+}
+const formatDivergence = (divergence) => {
+    if (!divergence) {
+        return null
+    }
+
+    const measurements = (divergence.measurements ?? []).map((measurement) => {
+        const body = measurement.bodyId ? ` ${measurement.bodyId}` : ''
+        const diagnosticOnly = measurement.gatesReuse === false ? ' (info)' : ''
+        return `${measurement.metric}${body}${diagnosticOnly} Δ ${formatDivergenceValue(measurement.delta, measurement.unit)} / limit ${formatDivergenceValue(measurement.tolerance, measurement.unit)}`
+    })
+    return [
+        divergence.reason,
+        divergence.detail ? `detail ${divergence.detail}` : null,
+        ...measurements,
+    ]
+        .filter(Boolean)
+        .join(' · ')
+}
+const formatReuseDetails = (reuse) => {
+    if (reuse.mode === 'trim-extend') {
+        const previousPointCount = reuse.trimmedPointCount + reuse.retainedPointCount
+        const currentPointCount = reuse.retainedPointCount + reuse.extendedPointCount
+        const previousSeconds = reuse.trimmedSeconds + reuse.retainedSeconds
+        const currentSeconds = reuse.retainedSeconds + reuse.extendedSeconds
+        const oldPointShares = `${formatPercent(reuse.trimmedPointCount / previousPointCount)}/${formatPercent(reuse.retainedPointCount / previousPointCount)}`
+        const oldTimeShares = `${formatPercent(reuse.trimmedSeconds / previousSeconds)}/${formatPercent(reuse.retainedSeconds / previousSeconds)}`
+        const newPointShares = `${formatPercent(reuse.retainedPointCount / currentPointCount)}/${formatPercent(reuse.extendedPointCount / currentPointCount)}`
+        const newTimeShares = `${formatPercent(reuse.retainedSeconds / currentSeconds)}/${formatPercent(reuse.extendedSeconds / currentSeconds)}`
+        return [
+            'trim + extend',
+            `trim ${formatNumber(reuse.trimmedPointCount, 0)} pts / ${formatSeconds(reuse.trimmedSeconds)}`,
+            `kept ${formatNumber(reuse.retainedPointCount, 0)} pts / ${formatSeconds(reuse.retainedSeconds)}`,
+            `extend ${formatNumber(reuse.extendedPointCount, 0)} pts / ${formatSeconds(reuse.extendedSeconds)}`,
+            `validation ${reuse.validation}${reuse.validation === 'performed' ? ` / ${formatSeconds(reuse.validationSeconds)}` : ''}`,
+            `old pts trim/kept ${oldPointShares}; time ${oldTimeShares}`,
+            `new pts kept/extend ${newPointShares}; time ${newTimeShares}`,
+        ].join(' · ')
+    }
+    if (reuse.mode === 'full') {
+        const divergence = formatDivergence(reuse.divergence)
+        return `full${reuse.fallbackReason ? ` · ${reuse.fallbackReason}` : ''}${divergence ? ` · ${divergence}` : ''}`
+    }
+    return '—'
+}
+const formatFarReuse = (prediction) =>
+    formatReuseDetails({
+        divergence: prediction.farReuseDivergence,
+        extendedPointCount: prediction.farReuseExtendedPointCount,
+        extendedSeconds: prediction.farReuseExtendedSeconds,
+        fallbackReason: prediction.farReuseFallbackReason,
+        mode: prediction.farReuseMode,
+        retainedPointCount: prediction.farReuseRetainedPointCount,
+        retainedSeconds: prediction.farReuseRetainedSeconds,
+        trimmedPointCount: prediction.farReuseTrimmedPointCount,
+        trimmedSeconds: prediction.farReuseTrimmedSeconds,
+        validation: prediction.farReuseValidation,
+        validationSeconds: prediction.farReuseValidationSeconds,
+    })
 let latestRawSnapshotJson = '{}'
 let renderedRecentDebugSnapshotsJson = ''
 
@@ -449,6 +525,16 @@ const renderBodies = (snapshot) => {
     elements.bodyList.replaceChildren(...items)
 }
 
+const renderFarReuseHistory = (history) => {
+    const entries = (history || []).slice(-reuseHistoryLimit).reverse().map((reuse) => {
+        const item = document.createElement('li')
+        item.textContent = `at ${formatSeconds(reuse.elapsedSeconds)} · ${formatReuseDetails(reuse)}`
+        return item
+    })
+
+    elements.predictionFarReuseHistory.replaceChildren(...entries)
+}
+
 const renderPredictionSampling = (snapshot) => {
     const sampling = snapshot.simulation.predictionSampling
     const prediction = snapshot.simulation.trajectoryPrediction
@@ -470,6 +556,8 @@ const renderPredictionSampling = (snapshot) => {
         elements.predictionRefreshSummary.textContent = '—'
         elements.predictionNearCalculation.textContent = '—'
         elements.predictionFarCalculation.textContent = '—'
+        elements.predictionFarReuse.textContent = '—'
+        elements.predictionFarReuseHistory.replaceChildren()
         elements.predictionFarCoalescing.textContent = '—'
         elements.predictionNearTravel.textContent = '—'
         elements.predictionIntegrationStats.textContent = '—'
@@ -524,6 +612,8 @@ const renderPredictionSampling = (snapshot) => {
         prediction.farCalculationAgeSeconds,
         prediction.farCalculationWindows,
     )
+    elements.predictionFarReuse.textContent = formatFarReuse(prediction)
+    renderFarReuseHistory(prediction.farReuseHistory)
     elements.predictionFarCoalescing.textContent = formatFarCoalescing(prediction)
     renderFarCoalescingControls(prediction)
     elements.predictionNearTravel.textContent = formatNearTravel(
