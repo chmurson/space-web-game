@@ -26,6 +26,7 @@ import { createFrameLoop } from '../runtime/frameLoop'
 import { createGameQueries } from '../runtime/gameQueries'
 import { GameHighLevelActionsMediator } from '../runtime/highLevelActions/gameHighLevelActionDispatcher'
 import { registerHighLevelActions } from '../runtime/highLevelActions/registerHighLevelActions'
+import { createNavigationTimeWarpController } from '../runtime/navigationTimeWarpController'
 import { createRuntimeActions } from '../runtime/runtimeActions'
 import { defaultMaxControlWarp } from '../runtime/simulationStep'
 import {
@@ -479,6 +480,11 @@ export const createAppComponents = (options: {
     runtimeActions.zoomCamera(factor, previousWorld ?? undefined)
   }
   const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
+  const navigationTimeWarpController = createNavigationTimeWarpController({
+    maxControlWarp: defaultMaxControlWarp,
+    timeWarps: options.config.controls.timeWarps,
+  })
+  let followCameraViewportBottomInset = 0
   const runtimeActions = createRuntimeActions({
     app: options.app,
     autoSelectNearestSurface:
@@ -489,12 +495,14 @@ export const createAppComponents = (options: {
     createRipple,
     gameScene,
     getAssistTargetUiState: queries.getAssistTargetUiState,
+    getFollowCameraViewportBottomInset: () => followCameraViewportBottomInset,
     maxCoastPredictionHorizonHours:
       options.config.trajectory.maxCoastPredictionHorizonHours,
     maxViewport: options.config.camera.maxViewport,
     minCoastPredictionHorizonHours:
       options.config.trajectory.minCoastPredictionHorizonHours,
     minViewport: options.config.camera.minViewport,
+    navigationTimeWarpController,
     renderer,
     ripples,
     runtime: options.runtimeState,
@@ -504,27 +512,19 @@ export const createAppComponents = (options: {
     updateUserSettings,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
-  let touchBurnControlSide: TouchControlSide =
-    options.config.userSettings.touchBurnControlSide
   let touchTargetControlSide: TouchControlSide =
     options.config.userSettings.touchTargetControlSide
   let touchTrajectoryControlSide: TouchTrajectoryControlState =
     options.config.userSettings.touchTrajectoryControlSide
-  let touchWarpControlSide: TouchControlSide =
-    options.config.userSettings.touchWarpControlSide
   let touchControlAvailability: TouchControlAvailability = {
-    burn: true,
     target: true,
     trajectory: true,
-    warp: true,
   }
   const isSameTouchControlAvailability = (
     nextVisibility: TouchControlAvailability,
   ) =>
-    touchControlAvailability.burn === nextVisibility.burn &&
     touchControlAvailability.target === nextVisibility.target &&
-    touchControlAvailability.trajectory === nextVisibility.trajectory &&
-    touchControlAvailability.warp === nextVisibility.warp
+    touchControlAvailability.trajectory === nextVisibility.trajectory
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
   let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
@@ -629,15 +629,16 @@ export const createAppComponents = (options: {
         timeWarps: options.config.controls.timeWarps,
       })
     },
-    initialBurnControlSide: touchBurnControlSide,
     initialTargetControlSide: touchTargetControlSide,
     initialTrajectoryControlSide: touchTrajectoryControlSide,
-    initialWarpControlSide: touchWarpControlSide,
     keyboardInput,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
     onCameraUnlockedBySwipe: cameraNotice.showUnlockedForFreeRoam,
     onCameraModeSelected: runtimeActions.setCameraMode,
+    onFollowCameraViewportBottomInsetChange: (bottomInset) => {
+      followCameraViewportBottomInset = bottomInset
+    },
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
       runtimeActions.returnToAutomaticAssistTargetSelection,
@@ -720,15 +721,11 @@ export const createAppComponents = (options: {
     getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
-    getTouchBurnControlAvailable: () => touchControlAvailability.burn,
-    getTouchBurnControlSide: () => touchBurnControlSide,
     getTouchTargetControlAvailable: () => touchControlAvailability.target,
     getTouchTargetControlSide: () => touchTargetControlSide,
     getTouchTrajectoryControlAvailable: () =>
       touchControlAvailability.trajectory,
     getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
-    getTouchWarpControlAvailable: () => touchControlAvailability.warp,
-    getTouchWarpControlSide: () => touchWarpControlSide,
     onOrbitPointDisplayChange: (settings) => {
       userOrbitPointDisplaySettings = { ...settings }
       updateUserSettings({ orbitPointDisplay: userOrbitPointDisplaySettings })
@@ -751,11 +748,6 @@ export const createAppComponents = (options: {
       mobileManeuverStartByDrag = startByDrag
       updateUserSettings({ mobileManeuverStartByDrag: startByDrag })
     },
-    onTouchBurnControlSideChange: (side) => {
-      touchBurnControlSide = side
-      touchControls.setBurnControlSide(side)
-      updateUserSettings({ touchBurnControlSide: side })
-    },
     onTouchTargetControlSideChange: (side) => {
       touchTargetControlSide = side
       touchControls.setTargetControlSide(side)
@@ -765,11 +757,6 @@ export const createAppComponents = (options: {
       touchTrajectoryControlSide = side
       touchControls.setTrajectoryControlSide(side)
       updateUserSettings({ touchTrajectoryControlSide: side })
-    },
-    onTouchWarpControlSideChange: (side) => {
-      touchWarpControlSide = side
-      touchControls.setWarpControlSide(side)
-      updateUserSettings({ touchWarpControlSide: side })
     },
   })
 
@@ -786,6 +773,7 @@ export const createAppComponents = (options: {
     app: options.app,
     getCameraMode: runtimeActions.getCameraMode,
     getCameraModeChangesLocked: runtimeActions.getCameraModeChangesLocked,
+    getCameraModeControlVisible: () => desktopFinePointerMedia.matches,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
     getMaxCoastPredictionHorizonHours: () =>
@@ -967,6 +955,7 @@ export const createAppComponents = (options: {
       getAppMode() === 'game' &&
       options.runtimeState.simulation.crashedBodyName === null,
     keyboardInput,
+    navigationTimeWarpController,
     pointerCameraInput,
     physicsEngine: options.config.physicsEngine,
     queries,

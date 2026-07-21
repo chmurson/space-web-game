@@ -68,15 +68,15 @@ const tutorialOnboardingPromptDefinitions: Record<
   'intro-show-thrust-control': {
     id: 'intro-show-thrust-control',
     title: ({ inputMode }) =>
-      inputMode === 'mobile' ? 'Open Burn Control' : 'Start A Burn',
+      inputMode === 'mobile' ? 'Flight Controls' : 'Start A Burn',
     shortLabel: ({ inputMode }) =>
-      inputMode === 'mobile' ? 'Open Burn Control' : 'Start A Burn',
+      inputMode === 'mobile' ? 'Flight Controls' : 'Start A Burn',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
         ? [
-            'Swipe inward from the ',
-            { text: 'Burn tab', tone: 'concept' },
-            ' on the screen edge to open the burn control.',
+            'Use ',
+            { text: 'Main Thrust', tone: 'concept' },
+            ' in the open Flight panel to control the burn.',
           ]
         : [
             'Press ',
@@ -197,9 +197,11 @@ const tutorialOnboardingPromptDefinitions: Record<
     description: ({ inputMode }) =>
       inputMode === 'mobile'
         ? [
-            'Swipe inward from the ',
-            { text: 'Warp tab', tone: 'concept' },
-            ' on the screen edge, then drag the selector upward until the ',
+            'Open ',
+            { text: 'Nav', tone: 'concept' },
+            ', then drag ',
+            { text: 'Time Warp', tone: 'concept' },
+            ' left for faster rates until the ',
             { text: 'time pill', tone: 'concept' },
             ' reaches ',
             { text: 'x30s', tone: 'number' },
@@ -257,9 +259,9 @@ const tutorialOnboardingPromptDefinitions: Record<
             { text: 'time warp', tone: 'concept' },
             ' at ',
             { text: 'x30s', tone: 'number' },
-            ', then open ',
-            { text: 'Burn', tone: 'concept' },
-            ' and hold the handle up for a few seconds to move away from ',
+            ', then use ',
+            { text: 'Main Thrust', tone: 'concept' },
+            ' in the open Flight panel and hold its handle up for a few seconds to move away from ',
             { text: 'Earth', tone: 'concept' },
             '.',
           ]

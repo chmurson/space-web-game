@@ -172,6 +172,74 @@ const tap = async (page: Page, point: TouchPoint) => {
   await dispatchTouch(page, 'touchend', [], [point])
 }
 
+test('desktop mouse stays out of turn planning while A/D and arrows provide full and precise yaw', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 720 })
+  await startGame(page)
+
+  await page
+    .locator('canvas')
+    .first()
+    .evaluate((canvas) => {
+      for (const type of ['pointerdown', 'pointerup']) {
+        canvas.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            button: 0,
+            clientX: 700,
+            clientY: 360,
+            isPrimary: true,
+            pointerId: 1,
+            pointerType: 'mouse',
+          }),
+        )
+      }
+    })
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.targetHeading)
+    .toBeNull()
+  await expectHeadingTargetHidden(page)
+
+  await page.keyboard.down('ArrowLeft')
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
+    .toBe(-1)
+
+  await page.keyboard.down('Shift')
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
+    .toBe(-0.25)
+
+  await page.keyboard.up('Shift')
+  await page.keyboard.up('ArrowLeft')
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
+    .toBe(0)
+
+  await page.keyboard.down('Shift')
+  await page.keyboard.down('ArrowRight')
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
+    .toBe(0.25)
+  await page.keyboard.up('ArrowRight')
+  await page.keyboard.up('Shift')
+
+  await page.keyboard.down('KeyA')
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
+    .toBe(-1)
+  await page.keyboard.up('KeyA')
+
+  await page.keyboard.down('Shift')
+  await page.keyboard.down('KeyD')
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
+    .toBe(0.25)
+  await page.keyboard.up('KeyD')
+  await page.keyboard.up('Shift')
+})
+
 test('mobile tap planning persists through drag release and confirms on second tap', async ({
   page,
 }, testInfo) => {

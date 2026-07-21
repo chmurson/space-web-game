@@ -1,9 +1,14 @@
 import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
-import { getCameraModeAction } from '../cameraModeActions'
+import {
+  cameraModeOptions,
+  getCameraModeAction,
+  getCameraModeDescription,
+} from '../cameraModeActions'
 
 export type InGameControlsMenuSurfaceProps = {
   cameraMode: CameraControlMode
   cameraModeChangesLocked: boolean
+  cameraModeVisible: boolean
   coastHorizonLabel: string
   decreaseCoastHorizonDisabled: boolean
   increaseCoastHorizonDisabled: boolean
@@ -17,21 +22,10 @@ export type InGameControlsMenuSurfaceProps = {
   onOpenUiSettings(): void
 }
 
-const cameraModeOptions = [
-  { label: 'Free roam', mode: 'unlocked' },
-  { label: 'Spacecraft', mode: 'centered' },
-  { label: 'Target', mode: 'target' },
-] satisfies Array<{
-  label: string
-  mode: CameraControlMode
-}>
-
-const getCameraModeDescription = (mode: CameraControlMode) =>
-  cameraModeOptions.find((option) => option.mode === mode)?.label ?? 'Unknown'
-
 export const InGameControlsMenuSurface = ({
   cameraMode,
   cameraModeChangesLocked,
+  cameraModeVisible,
   coastHorizonLabel,
   decreaseCoastHorizonDisabled,
   increaseCoastHorizonDisabled,
@@ -77,57 +71,59 @@ export const InGameControlsMenuSurface = ({
         aria-label="In-game controls"
       >
         <div class="in-game-controls-menu-heading">Controls</div>
-        <div class="menu-stepper in-game-controls-menu-camera">
-          <div class="menu-stepper-copy">
-            <span class="menu-stepper-name" id={cameraControlLabelId}>
-              Camera mode
-            </span>
-            <span
-              class="menu-stepper-value"
-              data-in-game-camera-status=""
-              aria-live="polite"
-            >
-              {cameraModeDescription}
-            </span>
-          </div>
-          <div class="menu-stepper-controls">
-            <fieldset
-              class="segmented-control in-game-controls-menu-camera-options"
-              aria-labelledby={cameraControlLabelId}
-            >
-              <legend class="in-game-controls-menu-camera-options-legend">
+        {cameraModeVisible ? (
+          <div class="menu-stepper in-game-controls-menu-camera">
+            <div class="menu-stepper-copy">
+              <span class="menu-stepper-name" id={cameraControlLabelId}>
                 Camera mode
-              </legend>
-              {cameraModeOptions.map((option) => {
-                const selected = option.mode === cameraMode
+              </span>
+              <span
+                class="menu-stepper-value"
+                data-in-game-camera-status=""
+                aria-live="polite"
+              >
+                {cameraModeDescription}
+              </span>
+            </div>
+            <div class="menu-stepper-controls">
+              <fieldset
+                class="segmented-control in-game-controls-menu-camera-options"
+                aria-labelledby={cameraControlLabelId}
+              >
+                <legend class="in-game-controls-menu-camera-options-legend">
+                  Camera mode
+                </legend>
+                {cameraModeOptions.map((option) => {
+                  const selected = option.mode === cameraMode
 
-                return (
-                  <button
-                    key={option.mode}
-                    type="button"
-                    class={
-                      selected
-                        ? 'segmented-control-option segmented-control-option-selected'
-                        : 'segmented-control-option'
-                    }
-                    data-in-game-action={getCameraModeAction(option.mode)}
-                    data-camera-mode-option={option.mode}
-                    disabled={cameraModeChangesLocked}
-                    aria-pressed={selected}
-                    aria-label={
-                      cameraModeChangesLocked
-                        ? `Camera mode changes unavailable: ${option.label}`
-                        : `Set camera mode to ${option.label}`
-                    }
-                    onClick={() => onCameraModeSelect(option.mode)}
-                  >
-                    {option.label}
-                  </button>
-                )
-              })}
-            </fieldset>
+                  return (
+                    <button
+                      key={option.mode}
+                      type="button"
+                      class={
+                        selected
+                          ? 'segmented-control-option segmented-control-option-selected'
+                          : 'segmented-control-option'
+                      }
+                      data-in-game-action={getCameraModeAction(option.mode)}
+                      data-camera-mode-option={option.mode}
+                      disabled={cameraModeChangesLocked}
+                      aria-pressed={selected}
+                      aria-label={
+                        cameraModeChangesLocked
+                          ? `Camera mode changes unavailable: ${option.label}`
+                          : `Set camera mode to ${option.label}`
+                      }
+                      onClick={() => onCameraModeSelect(option.mode)}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </fieldset>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <button
           class="in-game-controls-menu-action"
@@ -223,7 +219,29 @@ export const InGameControlsMenuSurface = ({
           <div class="in-game-controls-menu-keyboard-row">
             <span class="in-game-controls-menu-keyboard-name">Turn</span>
             <span class="in-game-controls-menu-keyboard-keys">
-              <span>click, move, click</span>
+              <kbd>A</kbd>
+              <span> / </span>
+              <kbd>D</kbd>
+              <span> / </span>
+              <kbd>←</kbd>
+              <span> / </span>
+              <kbd>→</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">
+              Precise turn
+            </span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>Shift</kbd>
+              <span> + </span>
+              <kbd>A</kbd>
+              <span> / </span>
+              <kbd>D</kbd>
+              <span> / </span>
+              <kbd>←</kbd>
+              <span> / </span>
+              <kbd>→</kbd>
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">

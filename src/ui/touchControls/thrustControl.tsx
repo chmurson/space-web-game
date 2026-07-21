@@ -296,6 +296,19 @@ export const createThrustControl = (options: {
     return { kind: 'none' }
   }
 
+  const clearInput = () => {
+    clearPendingFadeTimer()
+    clearLabelHideTimer()
+    clearPendingHoldTimer(currentSession)
+    isPendingFadeReady = false
+    isPendingVisible = false
+    isThrustLabelVisible = true
+    applySnapshot(interactionModel.clearThrust())
+    if (currentSession.kind !== 'none') {
+      setSession({ kind: 'none' })
+    }
+  }
+
   const promotePendingSession = (
     session: ThrustGestureSession,
   ): ThrustGestureSession => {
@@ -497,6 +510,8 @@ export const createThrustControl = (options: {
       setSession(nextSession)
       return nextSession
     },
+    clearInput,
+    element: thrustControl,
     ownsTouch(session: ThrustGestureSession, touchId: number) {
       return (
         (session.kind === 'right-zone-pending' ||
@@ -508,7 +523,7 @@ export const createThrustControl = (options: {
     setAvailable(available: boolean) {
       isAvailable = available
       if (!available) {
-        clearGesture(currentSession)
+        clearInput()
       }
       syncUi()
     },

@@ -7,6 +7,10 @@ import {
 import * as sceneUpdates from '@/render/sceneUpdates'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
 import { GameHighLevelActionsMediator } from '@/runtime/highLevelActions/gameHighLevelActionDispatcher'
+import {
+  createNavigationTimeWarpController,
+  type NavigationTimeWarpController,
+} from '@/runtime/navigationTimeWarpController'
 import { createRuntimeActions } from '@/runtime/runtimeActions'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
 import {
@@ -115,6 +119,8 @@ const createTestRuntimeActions = (
   options: {
     autoSelectNearestSurface?: boolean
     createRipple?: Parameters<typeof createRuntimeActions>[0]['createRipple']
+    getFollowCameraViewportBottomInset?: () => number
+    navigationTimeWarpController?: NavigationTimeWarpController
   } = {},
 ) =>
   createRuntimeActions({
@@ -134,10 +140,18 @@ const createTestRuntimeActions = (
           : 'manual',
       recommendedTarget: null,
     }),
+    getFollowCameraViewportBottomInset:
+      options.getFollowCameraViewportBottomInset,
     maxCoastPredictionHorizonHours: 48,
     maxViewport: EARTH_MOON_VIEWPORT_SIZE,
     minCoastPredictionHorizonHours: 0.5,
     minViewport: EARTH_VIEWPORT_SIZE,
+    navigationTimeWarpController:
+      options.navigationTimeWarpController ??
+      createNavigationTimeWarpController({
+        maxControlWarp: 100,
+        timeWarps: requestedTimeWarps,
+      }),
     renderer: { setSize: () => {} },
     ripples: [],
     runtime,
@@ -376,6 +390,91 @@ describe('createRuntimeActions', () => {
     }
   })
 
+  it('applies the mobile viewport inset only to follow camera modes', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(390, 844)
+      const runtimeActions = createTestRuntimeActions(runtime, {
+        getFollowCameraViewportBottomInset: () => 260,
+      })
+
+      runtimeActions.updateCamera()
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ viewportBottomInset: 260 }),
+      )
+
+      runtimeActions.setCameraMode('target')
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ viewportBottomInset: 260 }),
+      )
+
+      runtimeActions.setCameraMode('unlocked')
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ viewportBottomInset: 0 }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('preserves clipped body and starfield framing when entering free roam', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      const viewportHeight = 844
+      const viewportBottomInset = 260
+      setWindowSize(390, viewportHeight)
+      const runtimeActions = createTestRuntimeActions(runtime, {
+        getFollowCameraViewportBottomInset: () => viewportBottomInset,
+      })
+
+      expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
+
+      const expectedOffset =
+        (runtime.simulation.viewportSize *
+          0.5 *
+          (viewportBottomInset / viewportHeight) *
+          Math.hypot(Math.SQRT2 * Math.cos(1), Math.sin(1))) /
+        (Math.SQRT2 * Math.sin(1) * RENDER_SCALE)
+      expect(runtime.ui.camera.panOffset.x).toBeCloseTo(
+        runtime.simulation.state.spacecraft.position.x + expectedOffset,
+      )
+      expect(runtime.ui.camera.panOffset.y).toBeCloseTo(
+        runtime.simulation.state.spacecraft.position.y + expectedOffset,
+      )
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: runtime.ui.camera.panOffset,
+          preserveStarfieldWorldPosition: true,
+          viewportBottomInset: 0,
+        }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
   it('cycles camera modes through free roam, spacecraft, and target', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
@@ -538,6 +637,45 @@ describe('createRuntimeActions', () => {
     })
 
     expect(runtime.simulation.timeWarpIndex).toBe(1)
+  })
+
+  it('uses a time-warp action during navigation as the new restore target', () => {
+    const runtime = createRuntime()
+    const navigationTimeWarpController = createNavigationTimeWarpController({
+      maxControlWarp: 100,
+      timeWarps: requestedTimeWarps,
+    })
+    const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
+    const cappedTimeWarpIndex = requestedTimeWarps.indexOf(60)
+    const replacementTimeWarpIndex = requestedTimeWarps.indexOf(120)
+    runtime.simulation.timeWarpIndex =
+      navigationTimeWarpController.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 0,
+        simulationNavigationActive: true,
+        timeWarpIndex: originalTimeWarpIndex,
+      })
+    const runtimeActions = createTestRuntimeActions(runtime, {
+      navigationTimeWarpController,
+    })
+
+    runtimeActions.handleUIUserAction('increaseTimeWarp')
+
+    expect(runtime.simulation.timeWarpIndex).toBe(cappedTimeWarpIndex)
+    navigationTimeWarpController.resolveFrame({
+      maxTimeWarp: null,
+      nowMs: 100,
+      simulationNavigationActive: false,
+      timeWarpIndex: runtime.simulation.timeWarpIndex,
+    })
+    expect(
+      navigationTimeWarpController.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 420,
+        simulationNavigationActive: false,
+        timeWarpIndex: runtime.simulation.timeWarpIndex,
+      }),
+    ).toBe(replacementTimeWarpIndex)
   })
 
   it('clears a planned target heading when cycling assist mode', () => {
@@ -784,6 +922,10 @@ describe('createRuntimeActions', () => {
         maxViewport: EARTH_MOON_VIEWPORT_SIZE,
         minCoastPredictionHorizonHours: 0.5,
         minViewport: EARTH_VIEWPORT_SIZE,
+        navigationTimeWarpController: createNavigationTimeWarpController({
+          maxControlWarp: 100,
+          timeWarps: requestedTimeWarps,
+        }),
         renderer,
         ripples: [],
         runtime,

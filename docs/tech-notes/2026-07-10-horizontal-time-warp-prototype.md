@@ -1,5 +1,14 @@
 # Horizontal Time Warp Prototype
 
+## Resolution — 2026-07-20
+
+Issue [#239](https://github.com/chmurson/space-web-game/issues/239)
+selected the horizontal interaction described below as the shipped mobile Time
+Warp control. The original vertical control, the two-control comparison, both
+Warp edge reveals, and all prototype numbering were removed. The retained
+horizontal selector now lives as `Time Warp` at the top of the Nav command-dock
+panel. The remainder of this note records the earlier comparison phase.
+
 ## Summary
 
 - Added a temporary second mobile Time Warp selector labeled `Time Warp control 2`.

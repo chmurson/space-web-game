@@ -1,5 +1,4 @@
 import type { AssistMode } from '../../assist/orbitalAssist'
-import { getIntentionalSwipeThresholdPoint } from '../../input/intentionalSwipeThreshold'
 import type { KeyboardInput } from '../../input/keyboardInput'
 import type { TouchThrustControlUiState } from '../../runtime/appRuntimeState'
 import type { AssistTargetUiState } from '../../runtime/gameQueries'
@@ -14,16 +13,17 @@ import type {
   ScenarioTouchHintTarget,
 } from '../../scenario/scenarioPromptTypes'
 import './touchControls.css'
-import {
-  createConfiguredTimeWarpControl,
-  createPrototypeTimeWarpControl2,
-} from './createTimeWarpControl'
+import { createConfiguredTimeWarpControl } from './createTimeWarpControl'
 import {
   createEdgeRevealControl,
   type EdgeRevealControl,
   type TouchControlRevealEdge,
   type TouchControlRevealPlacement,
 } from './edgeRevealControl'
+import {
+  createMobileCommandDock,
+  type MobileCommandDockPanel,
+} from './mobileCommandDock'
 import { createRcsYawControl, type RcsYawGestureSession } from './rcsYawControl'
 import type {
   StepSelectorGesturePoint,
@@ -34,7 +34,8 @@ import {
   type TargetControlBodyRow,
 } from './targetControl/createTargetControl'
 import { createThrustControl, type ThrustGestureSession } from './thrustControl'
-import type { TimeWarpControl, TimeWarpControlId } from './timeWarpControlTypes'
+import { getTimeWarpControlStatus } from './timeWarpControlStatus'
+import type { TimeWarpControlId } from './timeWarpControlTypes'
 import { createTouchControlsShell } from './touchControlsShell'
 import { createTouchControlsTutorialHint } from './touchControlsTutorialHint'
 import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/createTrajectoryHorizonControl'
@@ -42,13 +43,11 @@ import { createTrajectoryHorizonControl } from './trajectoryHorizonControl/creat
 export type TouchControls = {
   element: HTMLElement
   openTargetControl(): void
-  setBurnControlVisible(visible: boolean): void
-  setBurnControlSide(side: TouchControlRevealEdge): void
+  setFlightControlsVisible(visible: boolean): void
   setTargetControlSide(side: TouchControlRevealEdge): void
   setTargetControlVisible(visible: boolean): void
   setTrajectoryControlSide(side: TouchControlRevealState): void
   setTrajectoryControlVisible(visible: boolean): void
-  setWarpControlSide(side: TouchControlRevealEdge): void
   setTimeWarpControlVisible(visible: boolean): void
   setTutorialFocusedControl(
     target: ScenarioTouchControlFocusTarget | null,
@@ -76,22 +75,10 @@ const touchControlRevealLayout = {
   gapPx: 66,
   startOffsetPx: 72,
   controls: {
-    timeWarp: {
-      edge: 'right',
-      priority: 10,
-    },
     target: {
       priority: 20,
     },
     trajectory: {
-      priority: 10,
-    },
-    rcsYaw: {
-      edge: 'left',
-      priority: 10,
-    },
-    thrust: {
-      edge: 'right',
       priority: 10,
     },
   },
@@ -250,15 +237,14 @@ export const createTouchControls = (options: {
     reason: TimeWarpFeedbackReason | null
     value: number
   }[]
-  initialBurnControlSide: TouchControlRevealEdge
   initialTargetControlSide: TouchControlRevealEdge
   initialTrajectoryControlSide: TouchControlRevealState
-  initialWarpControlSide: TouchControlRevealEdge
   keyboardInput: KeyboardInput
   getCameraMode(): CameraControlMode
   getCameraModeChangesLocked(): boolean
   onCameraUnlockedBySwipe?(): void
   onCameraModeSelected(mode: CameraControlMode): boolean
+  onFollowCameraViewportBottomInsetChange?(bottomInset: number): void
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
   onSelectTargetIndex(index: number): boolean
@@ -271,15 +257,24 @@ export const createTouchControls = (options: {
 }): TouchControls => {
   const touchControlsShell = createTouchControlsShell()
   const panel = touchControlsShell.element
-  const {
-    burn: thrustDock,
-    rcsYaw: rcsYawDock,
-    target: targetDock,
-    trajectory: trajectoryHorizonDock,
-    warp: timeWarpDock,
-    warpPrototype: timeWarpPrototypeDock,
-  } = touchControlsShell.docks
+  const { target: targetDock, trajectory: trajectoryHorizonDock } =
+    touchControlsShell.docks
 
+  let handleDockPanelChange = (
+    _nextPanel: MobileCommandDockPanel | null,
+    _previousPanel: MobileCommandDockPanel | null,
+  ) => {}
+  const mobileCommandDock = createMobileCommandDock({
+    app: options.app,
+    container: panel,
+    getCameraMode: options.getCameraMode,
+    getCameraModeChangesLocked: options.getCameraModeChangesLocked,
+    onCameraModeSelected: options.onCameraModeSelected,
+    onViewportBottomInsetChange:
+      options.onFollowCameraViewportBottomInsetChange,
+    onOpenPanelChange: (nextPanel, previousPanel) =>
+      handleDockPanelChange(nextPanel, previousPanel),
+  })
   const tutorialHint = createTouchControlsTutorialHint({ container: panel })
 
   const tapTouches = new Map<number, TapState>()
@@ -287,6 +282,7 @@ export const createTouchControls = (options: {
   let lastTap: (ScreenPoint & { time: number }) | null = null
   let pinchSuppressTapUntil = 0
   let targetHeadingPlanActive = false
+  let flightControlsVisible = true
   let timeWarpControlVisible = true
   let syncTargetRecommendationCue = () => {}
 
@@ -299,7 +295,7 @@ export const createTouchControls = (options: {
   }
 
   const timeWarpControl = createConfiguredTimeWarpControl({
-    container: timeWarpDock,
+    container: mobileCommandDock.timeWarpContainer,
     commitTimeWarp: options.commitTimeWarp,
     getCurrentTimeWarp: options.getCurrentTimeWarp,
     getTimeWarpPreview: options.getTimeWarpPreview,
@@ -309,45 +305,15 @@ export const createTouchControls = (options: {
     },
     panel,
   })
-  const timeWarpControl2 = createPrototypeTimeWarpControl2({
-    container: timeWarpPrototypeDock,
-    commitTimeWarp: options.commitTimeWarp,
-    getCurrentTimeWarp: options.getCurrentTimeWarp,
-    getTimeWarpPreview: options.getTimeWarpPreview,
-    getTimeWarpPreviews: options.getTimeWarpPreviews,
-    onSessionChange: (session) => {
-      activeSession = session
-    },
-    panel,
-  })
-  const isTimeWarpControlId = (
-    controlId: string,
-  ): controlId is TimeWarpControlId =>
-    controlId === 'time-warp' || controlId === 'time-warp-2'
   const isTimeWarpStepSelectorSession = (
     session: ActiveGestureSession,
   ): session is StepSelectorGestureSession<TimeWarpControlId> =>
-    session.kind === 'step-selector' && isTimeWarpControlId(session.controlId)
+    session.kind === 'step-selector' && session.controlId === 'time-warp'
   const isTrajectoryHorizonStepSelectorSession = (
     session: ActiveGestureSession,
   ): session is StepSelectorGestureSession<'trajectory-horizon'> =>
     session.kind === 'step-selector' &&
     session.controlId === 'trajectory-horizon'
-  const getTimeWarpControlForSession = (
-    session: StepSelectorGestureSession<TimeWarpControlId>,
-  ): TimeWarpControl =>
-    session.controlId === 'time-warp-2' ? timeWarpControl2 : timeWarpControl
-  const getTimeWarpControlForTarget = (
-    target: EventTarget | null,
-  ): TimeWarpControl | null => {
-    if (isEventTargetInside(timeWarpControl2.element, target)) {
-      return timeWarpControl2
-    }
-    if (isEventTargetInside(timeWarpControl.element, target)) {
-      return timeWarpControl
-    }
-    return null
-  }
 
   const trajectoryHorizonControl = createTrajectoryHorizonControl({
     container: trajectoryHorizonDock,
@@ -375,16 +341,18 @@ export const createTouchControls = (options: {
   })
   targetDock.appendChild(targetControl.element)
 
-  let burnControlRevealed = false
   const thrustControl = createThrustControl({
-    container: thrustDock,
+    container: mobileCommandDock.thrustContainer,
     onSessionChange: (session) => {
       activeSession = session
     },
     onUiStateChange: (state) => {
+      const panelOpen = mobileCommandDock.isPanelOpen('flight')
       options.onThrustControlUiStateChange({
         ...state,
-        revealed: state.revealed && burnControlRevealed,
+        interactive: state.interactive && panelOpen,
+        revealed: state.revealed && panelOpen,
+        visible: state.visible && panelOpen,
       })
     },
     panel,
@@ -392,24 +360,14 @@ export const createTouchControls = (options: {
     tapMoveTolerancePx,
     vibrate,
   })
-  let closeRcsYawControl = () => {}
   const rcsYawControl = createRcsYawControl({
-    container: rcsYawDock,
-    onCloseRequest: () => closeRcsYawControl(),
+    container: mobileCommandDock.rcsYawContainer,
     onSessionChange: (session) => {
       activeSession = session
     },
     setTurn: syncRcsYawTurn,
   })
 
-  const timeWarpRevealPlacement: TouchControlRevealPlacement = {
-    edge: options.initialWarpControlSide,
-    priority: touchControlRevealLayout.controls.timeWarp.priority,
-  }
-  const timeWarpPrototypeRevealPlacement: TouchControlRevealPlacement = {
-    edge: options.initialWarpControlSide,
-    priority: touchControlRevealLayout.controls.timeWarp.priority,
-  }
   const trajectoryHorizonRevealPlacement: TouchControlRevealPlacement = {
     edge: getRevealEdge(options.initialTrajectoryControlSide),
     priority: touchControlRevealLayout.controls.trajectory.priority,
@@ -418,30 +376,6 @@ export const createTouchControls = (options: {
     edge: options.initialTargetControlSide,
     priority: touchControlRevealLayout.controls.target.priority,
   }
-  const rcsYawRevealPlacement: TouchControlRevealPlacement = {
-    edge: touchControlRevealLayout.controls.rcsYaw.edge,
-    priority: touchControlRevealLayout.controls.rcsYaw.priority,
-  }
-  const thrustRevealPlacement: TouchControlRevealPlacement = {
-    edge: options.initialBurnControlSide,
-    priority: touchControlRevealLayout.controls.thrust.priority,
-  }
-
-  const timeWarpRevealControl = createEdgeRevealControl({
-    content: timeWarpDock,
-    icon: 'Warp',
-    id: 'touch-time-warp-reveal',
-    label: 'Reveal time warp control',
-    placement: timeWarpRevealPlacement,
-  })
-  const timeWarpPrototypeRevealControl = createEdgeRevealControl({
-    allowContentSwipeClose: false,
-    content: timeWarpPrototypeDock,
-    icon: 'Warp 2',
-    id: 'touch-time-warp-prototype-reveal',
-    label: 'Reveal Time Warp control 2',
-    placement: timeWarpPrototypeRevealPlacement,
-  })
   const trajectoryHorizonRevealControl = createEdgeRevealControl({
     content: trajectoryHorizonDock,
     icon: 'Traj',
@@ -457,50 +391,16 @@ export const createTouchControls = (options: {
     placement: targetRevealPlacement,
   })
   closeTargetControl = targetRevealControl.close
-  const rcsYawRevealControl = createEdgeRevealControl({
-    className: 'touch-rcs-yaw-reveal',
-    content: rcsYawDock,
-    icon: 'RCS',
-    id: 'touch-rcs-yaw-reveal',
-    label: 'Reveal RCS yaw control',
-    onOpenChange: (open) => {
-      if (!open) {
-        clearRcsYawInput()
-      }
-    },
-    placement: rcsYawRevealPlacement,
-  })
-  closeRcsYawControl = rcsYawRevealControl.close
   const targetRevealTab =
     targetRevealControl.element.querySelector<HTMLButtonElement>(
       '.touch-edge-reveal-tab',
     )
-  const thrustRevealControl = createEdgeRevealControl({
-    content: thrustDock,
-    icon: 'Burn',
-    id: 'touch-thrust-reveal',
-    label: 'Reveal thrust control',
-    onOpenChange: (open) => {
-      burnControlRevealed = open
-      thrustControl.syncUi()
-    },
-    placement: thrustRevealPlacement,
-  })
-  const revealControls = [
-    timeWarpRevealControl,
-    timeWarpPrototypeRevealControl,
-    trajectoryHorizonRevealControl,
-    targetRevealControl,
-    rcsYawRevealControl,
-    thrustRevealControl,
-  ]
+  const revealControls = [trajectoryHorizonRevealControl, targetRevealControl]
   const tutorialFocusTargets: Record<
-    ScenarioTouchControlFocusTarget,
+    Exclude<ScenarioTouchControlFocusTarget, 'burn' | 'warp'>,
     EdgeRevealControl
   > = {
-    burn: thrustRevealControl,
     trajectory: trajectoryHorizonRevealControl,
-    warp: timeWarpRevealControl,
   }
 
   const setTutorialFocusedControl = (
@@ -512,9 +412,16 @@ export const createTouchControls = (options: {
       delete panel.dataset.tutorialFocusedControl
     }
 
+    mobileCommandDock.setTutorialFocused(
+      target === 'burn' || target === 'warp' ? target : null,
+    )
+
     for (const [controlTarget, revealControl] of Object.entries(
       tutorialFocusTargets,
-    ) as [ScenarioTouchControlFocusTarget, EdgeRevealControl][]) {
+    ) as [
+      Exclude<ScenarioTouchControlFocusTarget, 'burn' | 'warp'>,
+      EdgeRevealControl,
+    ][]) {
       revealControl.element.classList.toggle(
         'touch-edge-reveal-control-tutorial-focused',
         target === controlTarget,
@@ -523,12 +430,8 @@ export const createTouchControls = (options: {
   }
   syncRevealControlLayout(revealControls)
   panel.append(
-    timeWarpRevealControl.element,
-    timeWarpPrototypeRevealControl.element,
     trajectoryHorizonRevealControl.element,
     targetRevealControl.element,
-    rcsYawRevealControl.element,
-    thrustRevealControl.element,
   )
 
   syncTargetRecommendationCue = () => {
@@ -567,7 +470,7 @@ export const createTouchControls = (options: {
     }
 
     if (isTimeWarpStepSelectorSession(activeSession)) {
-      activeSession = getTimeWarpControlForSession(activeSession).finishGesture(
+      activeSession = timeWarpControl.finishGesture(
         activeSession,
         commitPreview && timeWarpControlVisible,
       )
@@ -582,16 +485,30 @@ export const createTouchControls = (options: {
     }
   }
 
+  const syncTimeWarpDockState = () => {
+    const status = getTimeWarpControlStatus({
+      decreasePreview: options.getTimeWarpPreview('decreaseTimeWarp'),
+      increasePreview: options.getTimeWarpPreview('increaseTimeWarp'),
+    })
+    mobileCommandDock.setTimeWarpState({
+      reason: status.reason,
+      status: status.text,
+      tone: status.tone,
+    })
+  }
+
   const setTimeWarpControlVisible = (visible: boolean) => {
     timeWarpControlVisible = visible
     if (!visible && isTimeWarpStepSelectorSession(activeSession)) {
       finishStepSelectorGesture(false)
     }
-    timeWarpRevealControl.setAvailable(visible)
-    timeWarpPrototypeRevealControl.setAvailable(visible)
     timeWarpControl.setVisible(visible)
-    timeWarpControl2.setVisible(visible)
-    syncRevealControlLayout(revealControls)
+    mobileCommandDock.setControlAvailability({
+      rcsYaw: flightControlsVisible,
+      thrust: flightControlsVisible,
+      timeWarp: visible,
+    })
+    syncTimeWarpDockState()
   }
 
   let trajectoryHorizonScenarioVisible = true
@@ -628,38 +545,55 @@ export const createTouchControls = (options: {
     syncRevealControlLayout(revealControls)
   }
 
-  const setBurnControlVisible = (visible: boolean) => {
-    if (
-      !visible &&
-      (activeSession.kind === 'right-zone-pending' ||
-        activeSession.kind === 'right-zone-active')
-    ) {
-      clearRightZoneGesture()
-    }
-    thrustRevealControl.setAvailable(visible)
-    thrustControl.setAvailable(visible)
-    syncRevealControlLayout(revealControls)
-  }
-
   const clearRcsYawGesture = () => {
     activeSession = rcsYawControl.clearGesture(
       activeSession as RcsYawGestureSession,
     )
   }
 
-  const clearRcsYawInput = () => {
-    if (activeSession.kind === 'rcs-yaw-active') {
-      clearRcsYawGesture()
-      return
-    }
-
-    rcsYawControl.clearInput()
-  }
-
   const clearRightZoneGesture = () => {
     activeSession = thrustControl.clearGesture(
       activeSession as ThrustGestureSession,
     )
+  }
+
+  const clearFlightInputs = () => {
+    if (activeSession.kind === 'rcs-yaw-active') {
+      clearRcsYawGesture()
+    } else {
+      rcsYawControl.clearInput()
+    }
+    if (
+      activeSession.kind === 'right-zone-pending' ||
+      activeSession.kind === 'right-zone-active'
+    ) {
+      clearRightZoneGesture()
+    }
+    thrustControl.clearInput()
+  }
+
+  handleDockPanelChange = (_nextPanel, previousPanel) => {
+    if (previousPanel === 'flight') {
+      clearFlightInputs()
+    }
+    if (
+      previousPanel === 'nav' &&
+      isTimeWarpStepSelectorSession(activeSession)
+    ) {
+      finishStepSelectorGesture(false)
+    }
+    thrustControl.syncUi()
+  }
+
+  const setFlightControlsVisible = (visible: boolean) => {
+    flightControlsVisible = visible
+    rcsYawControl.setAvailable(visible)
+    thrustControl.setAvailable(visible)
+    mobileCommandDock.setControlAvailability({
+      rcsYaw: visible,
+      thrust: visible,
+      timeWarp: timeWarpControlVisible,
+    })
   }
 
   const clearZoneGesture = () => {
@@ -685,6 +619,7 @@ export const createTouchControls = (options: {
     clearPendingTapState()
     cancelTargetHeadingPlan()
     clearZoneGesture()
+    clearFlightInputs()
     clearActiveSession()
     options.keyboardInput.clear()
   }
@@ -714,24 +649,15 @@ export const createTouchControls = (options: {
     point: StepSelectorGesturePoint,
     target: EventTarget | null,
   ) => {
-    if (!timeWarpControlVisible) {
+    if (
+      !timeWarpControlVisible ||
+      !mobileCommandDock.isPanelOpen('nav') ||
+      !isEventTargetInside(timeWarpControl.element, target)
+    ) {
       return
     }
 
-    const timeWarpSessionControl = getTimeWarpControlForTarget(target)
-    if (!timeWarpSessionControl) {
-      return
-    }
-
-    const revealControl =
-      timeWarpSessionControl === timeWarpControl2
-        ? timeWarpPrototypeRevealControl
-        : timeWarpRevealControl
-    if (!revealControl.isOpen()) {
-      return
-    }
-
-    activeSession = timeWarpSessionControl.beginGesture(point)
+    activeSession = timeWarpControl.beginGesture(point)
   }
 
   const beginTrajectoryHorizonSession = (point: StepSelectorGesturePoint) => {
@@ -746,7 +672,7 @@ export const createTouchControls = (options: {
   }
 
   const beginDockedThrustSession = (touch: Touch) => {
-    if (!thrustRevealControl.isOpen()) {
+    if (!mobileCommandDock.isPanelOpen('flight')) {
       return
     }
 
@@ -757,7 +683,7 @@ export const createTouchControls = (options: {
   }
 
   const beginRcsYawSession = (touch: Touch) => {
-    if (!rcsYawRevealControl.isOpen()) {
+    if (!mobileCommandDock.isPanelOpen('flight')) {
       return
     }
 
@@ -797,10 +723,7 @@ export const createTouchControls = (options: {
         return
       }
 
-      activeSession = getTimeWarpControlForSession(activeSession).updateGesture(
-        point,
-        activeSession,
-      )
+      activeSession = timeWarpControl.updateGesture(point, activeSession)
       return
     }
 
@@ -962,10 +885,7 @@ export const createTouchControls = (options: {
 
         if (activeSession.kind === 'step-selector') {
           if (isTimeWarpStepSelectorSession(activeSession)) {
-            return getTimeWarpControlForSession(activeSession).ownsTouch(
-              activeSession,
-              touchId,
-            )
+            return timeWarpControl.ownsTouch(activeSession, touchId)
           }
 
           return trajectoryHorizonControl.ownsTouch(activeSession, touchId)
@@ -1014,32 +934,31 @@ export const createTouchControls = (options: {
       }
 
       const eventTarget = event.target
+      const isMobileCommandDockTarget = isEventTargetInside(
+        mobileCommandDock.element,
+        eventTarget,
+      )
       const isTimeWarpTarget =
-        timeWarpRevealControl.isOpen() &&
-        isEventTargetInside(timeWarpRevealControl.element, eventTarget)
-      const isTimeWarpPrototypeTarget =
-        timeWarpPrototypeRevealControl.isOpen() &&
-        isEventTargetInside(timeWarpPrototypeRevealControl.element, eventTarget)
+        mobileCommandDock.isPanelOpen('nav') &&
+        isEventTargetInside(timeWarpControl.element, eventTarget)
       const isTrajectoryHorizonTarget =
         trajectoryHorizonRevealControl.isOpen() &&
         isEventTargetInside(trajectoryHorizonRevealControl.element, eventTarget)
       const isTargetControlTarget =
         targetRevealControl.isOpen() &&
         isEventTargetInside(targetRevealControl.element, eventTarget)
-      const isRcsYawRevealTarget =
-        rcsYawRevealControl.isOpen() &&
-        isEventTargetInside(rcsYawRevealControl.element, eventTarget)
       const isRcsYawGestureTarget =
-        isRcsYawRevealTarget && rcsYawControl.containsGestureTarget(eventTarget)
+        mobileCommandDock.isPanelOpen('flight') &&
+        rcsYawControl.containsGestureTarget(eventTarget)
       const isThrustTarget =
-        thrustRevealControl.isOpen() &&
-        isEventTargetInside(thrustRevealControl.element, eventTarget)
+        mobileCommandDock.isPanelOpen('flight') &&
+        isEventTargetInside(thrustControl.element, eventTarget)
       const isRevealControlTarget =
+        isMobileCommandDockTarget ||
         isTimeWarpTarget ||
-        isTimeWarpPrototypeTarget ||
         isTrajectoryHorizonTarget ||
         isTargetControlTarget ||
-        isRcsYawRevealTarget ||
+        isRcsYawGestureTarget ||
         isThrustTarget
       let startedDoubleTapZoom = false
 
@@ -1132,7 +1051,7 @@ export const createTouchControls = (options: {
         }
 
         for (const touch of Array.from(event.changedTouches)) {
-          if (isTimeWarpTarget || isTimeWarpPrototypeTarget) {
+          if (isTimeWarpTarget) {
             beginTimeWarpSession(touch, eventTarget)
           } else if (isTrajectoryHorizonTarget) {
             beginTrajectoryHorizonSession(touch)
@@ -1294,22 +1213,8 @@ export const createTouchControls = (options: {
               return
             }
 
-            const thresholdPoint = getIntentionalSwipeThresholdPoint({
-              currentX: touch.clientX,
-              currentY: touch.clientY,
-              startX: activeSession.startX,
-              startY: activeSession.startY,
-              thresholdX: unlockThresholdX,
-              thresholdY: unlockThresholdY,
-            })
-
-            if (thresholdPoint && options.onCameraModeSelected('unlocked')) {
+            if (options.onCameraModeSelected('unlocked')) {
               options.onCameraUnlockedBySwipe?.()
-              activeSession.hasPanned =
-                options.onCameraPanGesture(thresholdPoint, {
-                  x: touch.clientX,
-                  y: touch.clientY,
-                }) || activeSession.hasPanned
             }
             activeSession.previousX = touch.clientX
             activeSession.previousY = touch.clientY
@@ -1529,7 +1434,6 @@ export const createTouchControls = (options: {
       }
 
       timeWarpControl.syncUi()
-      timeWarpControl2.syncUi()
       syncTargetRecommendationCue()
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()
@@ -1554,27 +1458,20 @@ export const createTouchControls = (options: {
 
     const eventTarget = event.target
     const isTimeWarpTarget =
-      timeWarpRevealControl.isOpen() &&
-      isEventTargetInside(timeWarpRevealControl.element, eventTarget)
-    const isTimeWarpPrototypeTarget =
-      timeWarpPrototypeRevealControl.isOpen() &&
-      isEventTargetInside(timeWarpPrototypeRevealControl.element, eventTarget)
+      mobileCommandDock.isPanelOpen('nav') &&
+      isEventTargetInside(timeWarpControl.element, eventTarget)
     const isTrajectoryHorizonTarget =
       trajectoryHorizonRevealControl.isOpen() &&
       isEventTargetInside(trajectoryHorizonRevealControl.element, eventTarget)
 
-    if (
-      !isTimeWarpTarget &&
-      !isTimeWarpPrototypeTarget &&
-      !isTrajectoryHorizonTarget
-    ) {
+    if (!isTimeWarpTarget && !isTrajectoryHorizonTarget) {
       return
     }
 
     event.preventDefault()
     clearPendingTapState()
     const point = getMouseStepSelectorPoint(event)
-    if (isTimeWarpTarget || isTimeWarpPrototypeTarget) {
+    if (isTimeWarpTarget) {
       beginTimeWarpSession(point, eventTarget)
       return
     }
@@ -1611,17 +1508,17 @@ export const createTouchControls = (options: {
   })
 
   window.addEventListener('blur', () => {
-    if (!isMouseStepSelectorSession()) {
-      return
+    if (isMouseStepSelectorSession()) {
+      finishStepSelectorGesture(false)
     }
-
-    finishStepSelectorGesture(false)
+    clearGameplayTouchInput()
   })
 
   options.app.appendChild(panel)
   thrustControl.syncUi()
   timeWarpControl.syncUi()
-  timeWarpControl2.syncUi()
+  syncTimeWarpDockState()
+  mobileCommandDock.syncUi()
   syncTargetRecommendationCue()
   targetControl.syncUi()
   syncTrajectoryControlVisibility()
@@ -1631,7 +1528,8 @@ export const createTouchControls = (options: {
   window.addEventListener('resize', () => {
     thrustControl.syncUi()
     timeWarpControl.syncUi()
-    timeWarpControl2.syncUi()
+    syncTimeWarpDockState()
+    mobileCommandDock.syncUi()
     syncTargetRecommendationCue()
     targetControl.syncUi()
     trajectoryHorizonControl.syncUi()
@@ -1645,11 +1543,7 @@ export const createTouchControls = (options: {
       syncTargetRecommendationCue()
       targetControl.syncUi()
     },
-    setBurnControlVisible,
-    setBurnControlSide: (side) => {
-      thrustRevealControl.setEdge(side)
-      syncRevealControlLayout(revealControls)
-    },
+    setFlightControlsVisible,
     setTargetControlSide: (side) => {
       targetRevealControl.setEdge(side)
       syncRevealControlLayout(revealControls)
@@ -1663,11 +1557,6 @@ export const createTouchControls = (options: {
     },
     setTargetControlVisible,
     setTrajectoryControlVisible,
-    setWarpControlSide: (side) => {
-      timeWarpRevealControl.setEdge(side)
-      timeWarpPrototypeRevealControl.setEdge(side)
-      syncRevealControlLayout(revealControls)
-    },
     setTimeWarpControlVisible,
     setTutorialFocusedControl,
     setTutorialHintTarget: (target) => {
@@ -1676,8 +1565,12 @@ export const createTouchControls = (options: {
       tutorialHint.element.dataset.target = target ?? ''
     },
     syncUi: () => {
+      if (!options.getInteractionsEnabled()) {
+        clearGameplayTouchInput()
+      }
       timeWarpControl.syncUi()
-      timeWarpControl2.syncUi()
+      syncTimeWarpDockState()
+      mobileCommandDock.syncUi()
       syncTargetRecommendationCue()
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()

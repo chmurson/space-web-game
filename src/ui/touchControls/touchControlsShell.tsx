@@ -2,28 +2,12 @@ import { render } from 'preact'
 
 const touchControlDockDefinitions = [
   {
-    className: 'touch-edge-reveal-dock touch-time-warp-reveal-dock',
-    id: 'warp',
-  },
-  {
-    className: 'touch-edge-reveal-dock touch-time-warp-prototype-reveal-dock',
-    id: 'warpPrototype',
-  },
-  {
     className: 'touch-edge-reveal-dock touch-trajectory-horizon-reveal-dock',
     id: 'trajectory',
   },
   {
     className: 'touch-edge-reveal-dock touch-target-reveal-dock',
     id: 'target',
-  },
-  {
-    className: 'touch-edge-reveal-dock touch-rcs-yaw-reveal-dock',
-    id: 'rcsYaw',
-  },
-  {
-    className: 'touch-edge-reveal-dock touch-thrust-reveal-dock',
-    id: 'burn',
   },
 ] as const
 
@@ -81,12 +65,8 @@ export const createTouchControlsShell = (): TouchControlsShell => {
   render(
     <TouchControlsShellSurface
       dockRefs={{
-        warp: createDockRef('warp'),
-        warpPrototype: createDockRef('warpPrototype'),
         trajectory: createDockRef('trajectory'),
         target: createDockRef('target'),
-        rcsYaw: createDockRef('rcsYaw'),
-        burn: createDockRef('burn'),
       }}
       rootRef={(root) => {
         element = root
@@ -97,14 +77,6 @@ export const createTouchControlsShell = (): TouchControlsShell => {
 
   return {
     docks: {
-      warp: getRequiredElement<HTMLDivElement>(
-        docks.warp,
-        'Touch controls shell rendered without warp dock',
-      ),
-      warpPrototype: getRequiredElement<HTMLDivElement>(
-        docks.warpPrototype,
-        'Touch controls shell rendered without warp prototype dock',
-      ),
       trajectory: getRequiredElement<HTMLDivElement>(
         docks.trajectory,
         'Touch controls shell rendered without trajectory dock',
@@ -112,14 +84,6 @@ export const createTouchControlsShell = (): TouchControlsShell => {
       target: getRequiredElement<HTMLDivElement>(
         docks.target,
         'Touch controls shell rendered without target dock',
-      ),
-      rcsYaw: getRequiredElement<HTMLDivElement>(
-        docks.rcsYaw,
-        'Touch controls shell rendered without RCS yaw dock',
-      ),
-      burn: getRequiredElement<HTMLDivElement>(
-        docks.burn,
-        'Touch controls shell rendered without burn dock',
       ),
     },
     element: getRequiredElement<HTMLElement>(

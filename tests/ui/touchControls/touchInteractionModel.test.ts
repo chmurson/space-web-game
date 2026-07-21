@@ -95,4 +95,26 @@ describe('touchInteractionModel', () => {
     })
     expect(snapshot.shouldPulseHaptics).toBe(true)
   })
+
+  it('clears a latched thrust when its panel becomes unavailable', () => {
+    const model = createTouchInteractionModel()
+
+    model.showThrust({ x: 90, y: 150 })
+    model.updateThrustDrag({
+      currentY: 100,
+      startLatched: false,
+      startY: 150,
+    })
+
+    expect(model.clearThrust()).toEqual({
+      shouldPulseHaptics: false,
+      thrust: {
+        anchor: { x: 90, y: 150 },
+        engaged: false,
+        latched: false,
+        offset: 0,
+        visible: false,
+      },
+    })
+  })
 })

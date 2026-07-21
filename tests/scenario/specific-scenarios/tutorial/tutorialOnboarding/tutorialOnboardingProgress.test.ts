@@ -119,19 +119,17 @@ describe('tutorialOnboardingProgress', () => {
     ).toBeUndefined()
   })
 
-  it('uses current mobile copy for opening and using the burn control', () => {
+  it('uses current mobile copy for the docked Flight controls', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-show-thrust-control', 'mobile'),
     ).toMatchObject({
       anchor: 'thrust-control',
       focusedTouchControl: 'burn',
-      title: 'Open Burn Control',
+      title: 'Flight Controls',
     })
     expect(
       getOnboardingDescription('intro-show-thrust-control', 'mobile'),
-    ).toBe(
-      'Swipe inward from the Burn tab on the screen edge to open the burn control.',
-    )
+    ).toBe('Use Main Thrust in the open Flight panel to control the burn.')
     expect(
       getTutorialOnboardingPromptContent('intro-thrust', 'mobile'),
     ).toMatchObject({
@@ -173,7 +171,7 @@ describe('tutorialOnboardingProgress', () => {
       title: 'Set Time Warp',
     })
     expect(getOnboardingDescription('intro-timewarp', 'mobile')).toBe(
-      'Swipe inward from the Warp tab on the screen edge, then drag the selector upward until the time pill reaches x30s.',
+      'Open Nav, then drag Time Warp left for faster rates until the time pill reaches x30s.',
     )
     expect(
       getTutorialOnboardingPromptContent('intro-timewarp', 'desktop'),
@@ -212,7 +210,7 @@ describe('tutorialOnboardingProgress', () => {
 
   it('explains that the high-warp burn needs the x30s time warp notch', () => {
     expect(getOnboardingDescription('intro-timewarp-thrust', 'mobile')).toBe(
-      'Keep time warp at x30s, then open Burn and hold the handle up for a few seconds to move away from Earth.',
+      'Keep time warp at x30s, then use Main Thrust in the open Flight panel and hold its handle up for a few seconds to move away from Earth.',
     )
     expect(getOnboardingDescription('intro-timewarp-thrust', 'desktop')).toBe(
       'Keep time warp at x30s, then hold W or Up Arrow for a few seconds to move away from Earth.',

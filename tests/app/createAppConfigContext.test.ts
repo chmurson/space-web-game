@@ -77,7 +77,7 @@ describe('createAppConfigContext', () => {
     })
   })
 
-  it('allows URL params to override touch control sides for layout harnessing', () => {
+  it('ignores retired Burn placement while overriding active control sides', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch(
@@ -99,7 +99,7 @@ describe('createAppConfigContext', () => {
     expect(config.requestedScenarioId).toBe('earth-moon')
     expect(config.userSettings).toMatchObject({
       mobileManeuverStartByDrag: true,
-      touchBurnControlSide: 'left',
+      touchBurnControlSide: 'right',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',

@@ -10,7 +10,7 @@ type TimeWarpControlModule =
   typeof import('../../src/ui/touchControls/createTimeWarpControl')
 type GameConfigModule = typeof import('../../src/config/gameConfig')
 
-test('routes the horizontal prototype time warp control to shared state', async ({
+test('routes the retained horizontal Time Warp control to shared state', async ({
   page,
 }) => {
   await page.goto('/')
@@ -94,10 +94,8 @@ test('routes the horizontal prototype time warp control to shared state', async 
       getTimeWarpPreview: (action) => getTimeWarpPreviews(action, 1)[0],
       getTimeWarpPreviews,
       getTrajectoryHorizonPreviews: () => [],
-      initialBurnControlSide: 'right',
       initialTargetControlSide: 'left',
       initialTrajectoryControlSide: 'hidden',
-      initialWarpControlSide: 'right',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({
@@ -125,73 +123,54 @@ test('routes the horizontal prototype time warp control to shared state', async 
     })
     document.body.append(controls.element)
 
-    const originalReveal = controls.element.querySelector<HTMLElement>(
-      '#touch-time-warp-reveal',
-    )
-    const prototypeReveal = controls.element.querySelector<HTMLElement>(
-      '#touch-time-warp-prototype-reveal',
-    )
-    const revealButton = originalReveal?.querySelector<HTMLButtonElement>(
-      '.touch-edge-reveal-tab',
-    )
-    const prototypeRevealButton =
-      prototypeReveal?.querySelector<HTMLButtonElement>(
-        '.touch-edge-reveal-tab',
-      )
-    if (
-      !originalReveal ||
-      !prototypeReveal ||
-      !revealButton ||
-      !prototypeRevealButton
-    ) {
-      throw new Error('Expected separate time warp reveal controls to render')
-    }
     const instantAnimationStyle = document.createElement('style')
     instantAnimationStyle.textContent = `
       .touch-controls {
         display: block !important;
+      }
+      .mobile-command-dock {
+        display: grid !important;
       }
       .touch-step-selector-value {
         transition: none !important;
       }
     `
     document.head.append(instantAnimationStyle)
-    revealButton.click()
-    prototypeRevealButton.click()
-    const originalControl = originalReveal.querySelector<HTMLElement>(
-      '[aria-label="Time warp control"]',
+    const navButton = controls.element.querySelector<HTMLButtonElement>(
+      '#mobile-command-dock-nav-button',
     )
-    const prototypeControl = prototypeReveal.querySelector<HTMLElement>(
-      '[aria-label="Time Warp control 2"]',
-    )
-    if (!originalControl || !prototypeControl) {
-      throw new Error('Expected both time warp controls to render')
+    if (!navButton) {
+      throw new Error('Expected Nav dock button to render')
     }
-    if (originalReveal.contains(prototypeControl)) {
-      throw new Error('Expected prototype control to use a separate reveal')
+    navButton.click()
+    const timeWarpControl = controls.element.querySelector<HTMLElement>(
+      '[aria-label="Time Warp"]',
+    )
+    if (!timeWarpControl) {
+      throw new Error('Expected Time Warp to render in Nav')
     }
     for (let attempt = 0; attempt < 30; attempt += 1) {
-      if (getComputedStyle(prototypeControl).touchAction === 'none') {
+      if (getComputedStyle(timeWarpControl).touchAction === 'none') {
         break
       }
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve()),
       )
     }
-    if (getComputedStyle(prototypeControl).touchAction !== 'none') {
+    if (getComputedStyle(timeWarpControl).touchAction !== 'none') {
       throw new Error('Expected step selector styles to load')
     }
 
-    const dragPrototype = async (
+    const dragTimeWarp = async (
       params: { beforeMouseup?: () => void; distanceX?: number } = {},
     ) => {
-      const rect = prototypeControl.getBoundingClientRect()
+      const rect = timeWarpControl.getBoundingClientRect()
       const start = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
       }
       const end = { x: start.x + (params.distanceX ?? -54), y: start.y }
-      prototypeControl.dispatchEvent(
+      timeWarpControl.dispatchEvent(
         new MouseEvent('mousedown', {
           bubbles: true,
           button: 0,
@@ -224,26 +203,26 @@ test('routes the horizontal prototype time warp control to shared state', async 
     }
 
     const inspectSwipeAnimation = async (distanceX: number) => {
-      const rect = prototypeControl.getBoundingClientRect()
+      const rect = timeWarpControl.getBoundingClientRect()
       const start = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
       }
-      const currentValue = prototypeControl.querySelector<HTMLElement>(
+      const currentValue = timeWarpControl.querySelector<HTMLElement>(
         '.touch-step-selector-value-current',
       )
-      const decreaseValue = prototypeControl.querySelector<HTMLElement>(
+      const decreaseValue = timeWarpControl.querySelector<HTMLElement>(
         '.touch-step-selector-value-up-near',
       )
-      const increaseValue = prototypeControl.querySelector<HTMLElement>(
+      const increaseValue = timeWarpControl.querySelector<HTMLElement>(
         '.touch-step-selector-value-down-near',
       )
       const stripValues = Array.from(
-        prototypeControl.querySelectorAll<HTMLElement>(
+        timeWarpControl.querySelectorAll<HTMLElement>(
           '.touch-step-selector-value-up-far, .touch-step-selector-value-up-near, .touch-step-selector-value-current, .touch-step-selector-value-down-near, .touch-step-selector-value-down-far',
         ),
       )
-      const track = prototypeControl.querySelector<HTMLElement>(
+      const track = timeWarpControl.querySelector<HTMLElement>(
         '.touch-step-selector-horizontal-track',
       )
       if (!currentValue || !decreaseValue || !increaseValue || !track) {
@@ -269,7 +248,7 @@ test('routes the horizontal prototype time warp control to shared state', async 
       const currentStartX = getCenterX(currentValue)
       const targetStartX = getCenterX(targetValue)
       const valueStartXs = stripValues.map(getCenterX)
-      prototypeControl.dispatchEvent(
+      timeWarpControl.dispatchEvent(
         new MouseEvent('mousedown', {
           bubbles: true,
           button: 0,
@@ -290,9 +269,9 @@ test('routes the horizontal prototype time warp control to shared state', async 
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve()),
       )
-      const className = prototypeControl.className
+      const className = timeWarpControl.className
       const dragProgress = Number.parseFloat(
-        getComputedStyle(prototypeControl).getPropertyValue(
+        getComputedStyle(timeWarpControl).getPropertyValue(
           '--touch-step-selector-drag-progress',
         ),
       )
@@ -325,22 +304,23 @@ test('routes the horizontal prototype time warp control to shared state', async 
     const rightDragAnimation = await inspectSwipeAnimation(22)
     timeWarpIndex = 0
     controls.syncUi()
-    await dragPrototype()
+    await dragTimeWarp()
     const firstCommitTimeWarp = timeWarps[timeWarpIndex]
 
-    await dragPrototype({
+    await dragTimeWarp({
       beforeMouseup: () => {
         interactionsEnabled = false
+        controls.syncUi()
       },
       distanceX: 22,
     })
     const disabledMouseupTimeWarp = timeWarps[timeWarpIndex]
     interactionsEnabled = true
 
-    await dragPrototype()
+    await dragTimeWarp()
     const postDisabledRecoveryTimeWarp = timeWarps[timeWarpIndex]
 
-    await dragPrototype({
+    await dragTimeWarp({
       beforeMouseup: () => {
         window.dispatchEvent(new Event('blur'))
       },
@@ -348,19 +328,44 @@ test('routes the horizontal prototype time warp control to shared state', async 
     })
     const blurCancelTimeWarp = timeWarps[timeWarpIndex]
 
-    await dragPrototype()
+    await dragTimeWarp()
+    const beforeUnavailableTimeWarp = timeWarps[timeWarpIndex]
+    await dragTimeWarp({
+      beforeMouseup: () => {
+        controls.setTimeWarpControlVisible(false)
+      },
+      distanceX: 22,
+    })
+    const unavailableCancelTimeWarp = timeWarps[timeWarpIndex]
+    controls.setTimeWarpControlVisible(true)
+
+    await dragTimeWarp({
+      beforeMouseup: () => {
+        navButton.click()
+      },
+      distanceX: 22,
+    })
+    const collapsedPanelCancelTimeWarp = timeWarps[timeWarpIndex]
+    navButton.click()
+
+    await dragTimeWarp()
     controls.syncUi()
 
     return {
+      beforeUnavailableTimeWarp,
       blurCancelTimeWarp,
+      collapsedPanelCancelTimeWarp,
       currentTimeWarp: timeWarps[timeWarpIndex],
       disabledMouseupTimeWarp,
       firstCommitTimeWarp,
       leftDragAnimation,
-      originalText: originalControl.textContent,
+      oldEntryPointCount: controls.element.querySelectorAll(
+        '#touch-time-warp-reveal, #touch-time-warp-prototype-reveal, [aria-label="Time warp control"], [aria-label="Time Warp control 1"], [aria-label="Time Warp control 2"]',
+      ).length,
       postDisabledRecoveryTimeWarp,
-      prototypeText: prototypeControl.textContent,
+      timeWarpText: timeWarpControl.textContent,
       rightDragAnimation,
+      unavailableCancelTimeWarp,
     }
   })
 
@@ -368,6 +373,9 @@ test('routes the horizontal prototype time warp control to shared state', async 
   expect(result.disabledMouseupTimeWarp).toBe(10)
   expect(result.postDisabledRecoveryTimeWarp).toBe(30)
   expect(result.blurCancelTimeWarp).toBe(30)
+  expect(result.beforeUnavailableTimeWarp).toBe(60)
+  expect(result.unavailableCancelTimeWarp).toBe(60)
+  expect(result.collapsedPanelCancelTimeWarp).toBe(60)
   expect(result.currentTimeWarp).toBe(60)
   expect(
     Math.max(...result.leftDragAnimation.valueCenterYs) -
@@ -418,8 +426,8 @@ test('routes the horizontal prototype time warp control to shared state', async 
         result.rightDragAnimation.currentStartX,
     ),
   )
-  expect(result.originalText).toContain('x1m')
-  expect(result.prototypeText).toContain('x1m')
+  expect(result.oldEntryPointCount).toBe(0)
+  expect(result.timeWarpText).toContain('x1m')
 })
 
 test('scales a controlled horizontal fling with recent release velocity', async ({
@@ -431,7 +439,7 @@ test('scales a controlled horizontal fling with recent release velocity', async 
   const result = await page.evaluate(async () => {
     const timeWarpControlModulePath =
       '/src/ui/touchControls/createTimeWarpControl.ts'
-    const { createPrototypeTimeWarpControl2 } = (await import(
+    const { createConfiguredTimeWarpControl } = (await import(
       timeWarpControlModulePath
     )) as TimeWarpControlModule
     const timeWarps = [1, 10, 30, 60, 120, 180, 240, 300, 360, 420, 480, 540]
@@ -439,7 +447,7 @@ test('scales a controlled horizontal fling with recent release velocity', async 
     const panel = document.createElement('div')
     document.body.append(panel)
     const createControl = () =>
-      createPrototypeTimeWarpControl2({
+      createConfiguredTimeWarpControl({
         commitTimeWarp: (action) => {
           timeWarpIndex = Math.max(
             0,
@@ -610,7 +618,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     const timeWarpControlModulePath =
       '/src/ui/touchControls/createTimeWarpControl.ts'
     const gameConfigModulePath = '/src/config/gameConfig.ts'
-    const { createPrototypeTimeWarpControl2 } = (await import(
+    const { createConfiguredTimeWarpControl } = (await import(
       timeWarpControlModulePath
     )) as TimeWarpControlModule
     const { gameConfig } = (await import(
@@ -664,7 +672,7 @@ test('keeps the horizontal track anchored while midpoint commits settle smoothly
     }
     const panel = document.createElement('div')
     document.body.append(panel)
-    const control = createPrototypeTimeWarpControl2({
+    const control = createConfiguredTimeWarpControl({
       commitTimeWarp: (action) => {
         if (action === 'increaseTimeWarp') {
           timeWarpIndex = Math.min(timeWarps.length - 1, timeWarpIndex + 1)

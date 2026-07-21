@@ -62,24 +62,18 @@ export const createUiSettingsDialog = (options: {
   getDesktopEdgePanVisible: () => boolean
   getMobileManeuverStartByDrag: () => boolean
   getOrbitPointDisplay: () => OrbitPointDisplaySettings
-  getTouchBurnControlAvailable?: () => boolean
-  getTouchBurnControlSide: () => TouchControlSide
   getTouchControlsVisible?: () => boolean
   getTouchTargetControlAvailable?: () => boolean
   getTouchTargetControlSide: () => TouchControlSide
   getTouchTrajectoryControlAvailable?: () => boolean
   getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
-  getTouchWarpControlAvailable?: () => boolean
-  getTouchWarpControlSide: () => TouchControlSide
   onDesktopEdgePanEnabledChange(enabled: boolean): void
   onDesktopEdgePanSpeedChange(speed: DesktopEdgePanSpeed): void
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onOpenChange?: (open: boolean) => void
-  onTouchBurnControlSideChange(side: TouchControlSide): void
   onTouchTargetControlSideChange(side: TouchControlSide): void
   onTouchTrajectoryControlSideChange(side: TouchTrajectoryControlState): void
-  onTouchWarpControlSideChange(side: TouchControlSide): void
 }): UiSettingsDialog => {
   const dialogId = `app-dialog-${++nextUiSettingsDialogId}`
   const touchControlsVisibleMedia = window.matchMedia(touchControlsVisibleQuery)
@@ -126,9 +120,6 @@ export const createUiSettingsDialog = (options: {
       mobileManeuverStartByDrag: options.getMobileManeuverStartByDrag(),
       orbitPointDisplay: options.getOrbitPointDisplay(),
       open,
-      touchBurnControlAvailable:
-        options.getTouchBurnControlAvailable?.() ?? true,
-      touchBurnControlSide: options.getTouchBurnControlSide(),
       touchControlsVisible:
         options.getTouchControlsVisible?.() ??
         touchControlsVisibleMedia.matches,
@@ -138,9 +129,6 @@ export const createUiSettingsDialog = (options: {
       touchTrajectoryControlAvailable:
         options.getTouchTrajectoryControlAvailable?.() ?? true,
       touchTrajectoryControlSide: options.getTouchTrajectoryControlSide(),
-      touchWarpControlAvailable:
-        options.getTouchWarpControlAvailable?.() ?? true,
-      touchWarpControlSide: options.getTouchWarpControlSide(),
       onBackToMainSettings: () => {
         activePane = 'main'
         syncState()
@@ -170,20 +158,12 @@ export const createUiSettingsDialog = (options: {
         options.onOrbitPointDisplayChange(settings)
         syncState()
       },
-      onTouchBurnControlSideChange: (side) => {
-        options.onTouchBurnControlSideChange(side)
-        syncState()
-      },
       onTouchTargetControlSideChange: (side) => {
         options.onTouchTargetControlSideChange(side)
         syncState()
       },
       onTouchTrajectoryControlSideChange: (side) => {
         options.onTouchTrajectoryControlSideChange(side)
-        syncState()
-      },
-      onTouchWarpControlSideChange: (side) => {
-        options.onTouchWarpControlSideChange(side)
         syncState()
       },
     })

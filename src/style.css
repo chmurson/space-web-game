@@ -2817,7 +2817,6 @@ button.app-dialog-setting {
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,
 #app.app-main-menu .touch-controls,
-#app.app-main-menu .touch-time-warp-feedback,
 #app.app-main-menu .touch-step-selector,
 #app.app-main-menu .fps-indicator,
 #app.app-main-menu .debug-panel {
@@ -2839,7 +2838,6 @@ button.app-dialog-setting {
 #app.app-crashed .offscreen-indicator,
 #app.app-crashed .body-label,
 #app.app-crashed .touch-controls,
-#app.app-crashed .touch-time-warp-feedback,
 #app.app-crashed .touch-step-selector,
 #app.app-crashed .fps-indicator,
 #app.app-crashed .debug-panel,

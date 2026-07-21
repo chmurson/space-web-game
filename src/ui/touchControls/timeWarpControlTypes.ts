@@ -15,7 +15,7 @@ export type TimeWarpPreview = {
   value: number
 }
 
-export type TimeWarpControlId = 'time-warp' | 'time-warp-2'
+export type TimeWarpControlId = 'time-warp'
 
 export type TimeWarpGestureSession =
   | { kind: 'none' }
