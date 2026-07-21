@@ -4,7 +4,6 @@ import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
   bindPointerCameraInput,
-  type CameraUnlockProgress,
   createScreenPointWorldPicker,
 } from '../input/pointerCameraInput'
 import type { UIUserAction } from '../input/uiUserActions'
@@ -35,10 +34,6 @@ import {
 } from '../runtime/timeWarpFeedbackPolicy'
 import { getTrajectoryHorizonPreviews } from '../runtime/trajectoryHorizonControlPolicy'
 import { createTrajectoryPredictionRuntime } from '../runtime/trajectoryPredictionRuntime'
-import type {
-  CameraFollowSubject,
-  CameraViewMode,
-} from '../scenario/scenarioDirectiveTypes'
 import {
   parsePromptAction,
   resolveScenarioPrompts,
@@ -86,10 +81,6 @@ type AppRuntimeCoordinator = {
   initialize(): void
 }
 
-const cameraNoticeDurationMs = 2400
-const cameraUnlockProgressOffsetPx = 14
-const cameraUnlockProgressFallbackWidthPx = 148
-const cameraUnlockProgressFallbackHeightPx = 32
 const desktopFinePointerQuery = '(hover: hover) and (pointer: fine)'
 const desktopEdgePanSpeedPixelsPerSecond: Record<DesktopEdgePanSpeed, number> =
   {
@@ -193,141 +184,6 @@ const createRuntimeCoordinator = (options: {
   }
 }
 
-const getCameraFollowNoticeLabel = (follow: CameraFollowSubject) =>
-  follow === 'spacecraft' ? 'Spacecraft' : 'Target'
-
-const getCameraViewNoticeLabel = (view: CameraViewMode) =>
-  view === 'locked' ? 'Locked' : 'Free roam'
-
-const createCameraNoticePresenter = (overlayUi: OverlayUiRefs) => {
-  let hideTimeout: number | null = null
-  let finishHideTimeout: number | null = null
-  let finishProgressHideTimeout: number | null = null
-  let revealProgressFrame: number | null = null
-  let cameraUnlockProgressVisible = false
-
-  const hide = () => {
-    overlayUi.cameraUnlockNotice.dataset.visible = 'false'
-    overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'true')
-    finishHideTimeout = window.setTimeout(() => {
-      if (overlayUi.cameraUnlockNotice.dataset.visible !== 'true') {
-        overlayUi.cameraUnlockNotice.hidden = true
-      }
-      finishHideTimeout = null
-    }, 180)
-    hideTimeout = null
-  }
-
-  const show = (options: {
-    ariaLabel: string
-    body?: string
-    title: string
-  }) => {
-    if (finishHideTimeout !== null) {
-      window.clearTimeout(finishHideTimeout)
-      finishHideTimeout = null
-    }
-    overlayUi.cameraUnlockNotice.hidden = false
-    overlayUi.cameraUnlockNoticeTitle?.replaceChildren(options.title)
-    if (options.body === undefined) {
-      overlayUi.cameraUnlockNoticeBody?.replaceChildren()
-    } else {
-      overlayUi.cameraUnlockNoticeBody?.replaceChildren(options.body)
-    }
-    overlayUi.cameraUnlockNotice.setAttribute('aria-label', options.ariaLabel)
-    overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'false')
-    window.requestAnimationFrame(() => {
-      overlayUi.cameraUnlockNotice.dataset.visible = 'true'
-    })
-
-    if (hideTimeout !== null) {
-      window.clearTimeout(hideTimeout)
-    }
-    hideTimeout = window.setTimeout(hide, cameraNoticeDurationMs)
-  }
-
-  const setUnlockProgress = (progress: CameraUnlockProgress | null) => {
-    if (progress === null) {
-      cameraUnlockProgressVisible = false
-      if (revealProgressFrame !== null) {
-        window.cancelAnimationFrame(revealProgressFrame)
-        revealProgressFrame = null
-      }
-      overlayUi.cameraUnlockProgress.dataset.visible = 'false'
-      overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'true')
-      overlayUi.cameraUnlockProgress.setAttribute('aria-valuenow', '0')
-      overlayUi.cameraUnlockProgress.style.removeProperty(
-        '--camera-unlock-progress',
-      )
-      if (finishProgressHideTimeout !== null) {
-        window.clearTimeout(finishProgressHideTimeout)
-      }
-      finishProgressHideTimeout = window.setTimeout(() => {
-        if (overlayUi.cameraUnlockProgress.dataset.visible !== 'true') {
-          overlayUi.cameraUnlockProgress.hidden = true
-        }
-        finishProgressHideTimeout = null
-      }, 120)
-      return
-    }
-
-    if (finishProgressHideTimeout !== null) {
-      window.clearTimeout(finishProgressHideTimeout)
-      finishProgressHideTimeout = null
-    }
-    overlayUi.cameraUnlockProgress.hidden = false
-    if (!cameraUnlockProgressVisible) {
-      cameraUnlockProgressVisible = true
-      revealProgressFrame = window.requestAnimationFrame(() => {
-        revealProgressFrame = null
-        if (cameraUnlockProgressVisible) {
-          overlayUi.cameraUnlockProgress.dataset.visible = 'true'
-        }
-      })
-    }
-
-    const clampedProgress = THREE.MathUtils.clamp(progress.progress, 0, 1)
-    const bounds = overlayUi.cameraUnlockProgress.getBoundingClientRect()
-    const width = bounds.width || cameraUnlockProgressFallbackWidthPx
-    const height = bounds.height || cameraUnlockProgressFallbackHeightPx
-    const left = THREE.MathUtils.clamp(
-      progress.screenPosition.x + cameraUnlockProgressOffsetPx,
-      8,
-      Math.max(8, window.innerWidth - width - 8),
-    )
-    const top = THREE.MathUtils.clamp(
-      progress.screenPosition.y + cameraUnlockProgressOffsetPx,
-      8,
-      Math.max(8, window.innerHeight - height - 8),
-    )
-
-    overlayUi.cameraUnlockProgress.setAttribute('aria-hidden', 'false')
-    overlayUi.cameraUnlockProgress.setAttribute(
-      'aria-valuenow',
-      Math.round(clampedProgress * 100).toString(),
-    )
-    overlayUi.cameraUnlockProgress.style.left = `${left}px`
-    overlayUi.cameraUnlockProgress.style.top = `${top}px`
-    overlayUi.cameraUnlockProgress.style.setProperty(
-      '--camera-unlock-progress',
-      clampedProgress.toFixed(3),
-    )
-  }
-
-  return {
-    showState(follow: CameraFollowSubject, view: CameraViewMode) {
-      const followLabel = getCameraFollowNoticeLabel(follow)
-      const viewLabel = getCameraViewNoticeLabel(view)
-      show({
-        ariaLabel: `Camera: follow ${followLabel}; view ${viewLabel}.`,
-        body: `Follow ${followLabel} · View ${viewLabel}`,
-        title: 'Camera',
-      })
-    },
-    setUnlockProgress,
-  }
-}
-
 export const createAppComponents = (options: {
   app: HTMLDivElement
   config: AppConfigContext
@@ -401,7 +257,6 @@ export const createAppComponents = (options: {
     bodies: options.runtimeState.simulation.state.bodies,
     showCycleTargetHint: !options.config.assistTarget.autoSelectNearestSurface,
   })
-  const cameraNotice = createCameraNoticePresenter(overlayUi)
   const queries = createGameQueries({
     autoSelectNearestSurface:
       options.config.assistTarget.autoSelectNearestSurface,
@@ -462,7 +317,7 @@ export const createAppComponents = (options: {
     factor: number,
     focalPoint?: { x: number; y: number },
   ) => {
-    if (!focalPoint || runtimeActions.getCameraView() !== 'free') {
+    if (!focalPoint) {
       runtimeActions.zoomCamera(factor)
       return
     }
@@ -627,15 +482,9 @@ export const createAppComponents = (options: {
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     keyboardInput,
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
-    getCameraView: runtimeActions.getCameraView,
-    onCameraUnlockedBySwipe: () =>
-      cameraNotice.showState(
-        runtimeActions.getCameraFollow(),
-        runtimeActions.getCameraView(),
-      ),
-    onCameraViewSelected: runtimeActions.setCameraView,
     onFollowCameraViewportBottomInsetChange: (bottomInset) => {
       followCameraViewportBottomInset = bottomInset
+      runtimeActions.updateCamera()
     },
     onCameraPanGesture: panCameraBetweenScreenPoints,
     onReturnToAutomaticTarget:
@@ -771,7 +620,6 @@ export const createAppComponents = (options: {
     app: options.app,
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
     getCameraFollow: runtimeActions.getCameraFollow,
-    getCameraView: runtimeActions.getCameraView,
     getCoastPredictionHorizonHours: () =>
       options.runtimeState.simulation.coastPredictionHorizonHours,
     getMaxCoastPredictionHorizonHours: () =>
@@ -813,7 +661,6 @@ export const createAppComponents = (options: {
     getDesktopEdgePanSpeedPixelsPerSecond: () =>
       desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
-    getCameraView: runtimeActions.getCameraView,
     getEdgeScrollEnabled: () =>
       desktopEdgePanEnabled &&
       desktopFinePointerMedia.matches &&
@@ -827,14 +674,7 @@ export const createAppComponents = (options: {
       options.runtimeState.simulation.state.spacecraft.position,
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
-    onCameraViewSelected: runtimeActions.setCameraView,
     onCameraPan: runtimeActions.panCamera,
-    onCameraUnlockProgressChange: cameraNotice.setUnlockProgress,
-    onCameraUnlocked: () =>
-      cameraNotice.showState(
-        runtimeActions.getCameraFollow(),
-        runtimeActions.getCameraView(),
-      ),
     onResize: runtimeActions.handleResize,
     onTargetHeadingPlan: (heading, selection) => {
       runtimeActions.planTargetHeading({
@@ -941,7 +781,7 @@ export const createAppComponents = (options: {
           inGameControlsMenu.close()
           uiSettingsDialog.close(false)
           if (crashCameraFocusedBodyName !== crashedBodyName) {
-            runtimeActions.unlockCameraAtFollowTarget(
+            runtimeActions.panCameraForCrashInspection(
               getCrashInspectionTargetNdcY(),
             )
             crashCameraFocusedBodyName = crashedBodyName
@@ -1024,29 +864,13 @@ export const createAppComponents = (options: {
     timeWarps: options.config.controls.timeWarps,
   })
 
-  const handleKeyboardAction = (action: UIUserAction) => {
-    const previousCameraFollow = runtimeActions.getCameraFollow()
-    const previousCameraView = runtimeActions.getCameraView()
-    dispatchRuntimeAction(action)
-    const nextCameraFollow = runtimeActions.getCameraFollow()
-    const nextCameraView = runtimeActions.getCameraView()
-
-    if (
-      (action === 'toggleCameraFollow' &&
-        nextCameraFollow !== previousCameraFollow) ||
-      (action === 'toggleCameraView' && nextCameraView !== previousCameraView)
-    ) {
-      cameraNotice.showState(nextCameraFollow, nextCameraView)
-    }
-  }
-
   bindKeyboardShortcuts({
     autoDiscoverStrongestInfluence:
       options.config.assistTarget.autoSelectNearestSurface,
     getDebugModeEnabled: () => options.runtimeState.debug.debugModeEnabled,
     getInteractionsEnabled: getGameInteractionsEnabled,
     handleTargetSelectorShortcut: desktopTargetSelector.toggleFromShortcut,
-    handleAction: handleKeyboardAction,
+    handleAction: dispatchRuntimeAction,
     keyboardInput,
     windowTarget: window,
   })

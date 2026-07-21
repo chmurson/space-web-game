@@ -19,9 +19,7 @@ import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredi
 import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import {
   type CameraFollowSubject,
-  type CameraViewMode,
   isCameraFollowSubject,
-  isCameraViewMode,
 } from '../scenario/scenarioDirectiveTypes'
 import type { Body, ControlInput, Spacecraft } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
@@ -43,7 +41,7 @@ type DevtoolsBridgeOptions = {
   maxPredictionLoopRevolutions: number
   predictionSampling: TrajectoryPredictionSamplingConfig
   runtime: AppRuntimeState
-  runtimeActions: Pick<RuntimeActions, 'setCameraFollow' | 'setCameraView'>
+  runtimeActions: Pick<RuntimeActions, 'recenterCamera' | 'setCameraFollow'>
   setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds(
     value: number | null,
   ): boolean
@@ -81,7 +79,6 @@ export type SpaceGameDevtoolsSnapshot = {
     targetHeadingScreenPosition: DevtoolsVec2 | null
     targetHeadingSelectionEpoch: number
     targetHeadingWorldPosition: DevtoolsVec2 | null
-    view: CameraViewMode
   }
   debug: AppRuntimeDebugSlice
   protocolVersion: 2
@@ -92,7 +89,6 @@ export type SpaceGameDevtoolsSnapshot = {
     directives: {
       cameraControlsLocked: boolean
       cameraFollow: CameraFollowSubject | null
-      cameraView: CameraViewMode | null
       forcedAssistTargetId: string | null
       hiddenBodyIds: string[]
       hiddenUIElements: string[]
@@ -136,8 +132,8 @@ export type SpaceGameDevtoolsSnapshot = {
 export type DevtoolsBridgeRequest =
   | { type: 'dispatch-ui-action'; action: UIUserAction }
   | { type: 'get-snapshot' }
+  | { type: 'recenter-camera' }
   | { type: 'set-camera-follow'; follow: CameraFollowSubject }
-  | { type: 'set-camera-view'; view: CameraViewMode }
   | { type: 'set-debug-flag'; flag: WritableDebugFlag; value: boolean }
   | {
       type: 'set-far-coalescing-min-interval-override'
@@ -258,7 +254,6 @@ export const createDevtoolsSnapshot = (
       targetHeadingWorldPosition: runtime.ui.targetHeadingWorldPosition
         ? cloneVec2(runtime.ui.targetHeadingWorldPosition)
         : null,
-      view: runtime.ui.camera.view,
     },
     debug: { ...runtime.debug },
     protocolVersion: 2,
@@ -272,7 +267,6 @@ export const createDevtoolsSnapshot = (
       directives: {
         cameraControlsLocked: runtime.scenario.directives.cameraControlsLocked,
         cameraFollow: runtime.scenario.directives.cameraFollow,
-        cameraView: runtime.scenario.directives.cameraView,
         forcedAssistTargetId: runtime.scenario.directives.forcedAssistTargetId,
         hiddenBodyIds: [...runtime.scenario.directives.hiddenBodyIds],
         hiddenUIElements: [
@@ -402,13 +396,9 @@ export const createDevtoolsBridge = (
           : fail('camera controls are locked by the current scenario')
       }
 
-      if (request.type === 'set-camera-view') {
-        if (!isCameraViewMode(request.view)) {
-          return fail('set-camera-view requires locked or free')
-        }
-
-        return options.runtimeActions.setCameraView(request.view)
-          ? ok(`camera view set to ${request.view}`)
+      if (request.type === 'recenter-camera') {
+        return options.runtimeActions.recenterCamera()
+          ? ok('camera recentered')
           : fail('camera controls are locked by the current scenario')
       }
 

@@ -166,7 +166,6 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.ui.camera).toEqual({
       follow: 'spacecraft',
       panOffset: { x: 0, y: 0 },
-      view: 'locked',
     })
   })
 

@@ -347,27 +347,27 @@ export const createHudPresentation = (options: {
       window.clearTimeout(transientNoticeFinishHideTimeoutId)
       transientNoticeFinishHideTimeoutId = null
     }
-    options.overlayUi.cameraUnlockNotice.hidden = false
-    options.overlayUi.cameraUnlockNoticeTitle?.replaceChildren(notice.title)
-    options.overlayUi.cameraUnlockNoticeBody?.replaceChildren(notice.body ?? '')
-    options.overlayUi.cameraUnlockNotice.setAttribute(
+    options.overlayUi.transientNotice.hidden = false
+    options.overlayUi.transientNoticeTitle?.replaceChildren(notice.title)
+    options.overlayUi.transientNoticeBody?.replaceChildren(notice.body ?? '')
+    options.overlayUi.transientNotice.setAttribute(
       'aria-label',
       notice.body ? `${notice.title}: ${notice.body}` : notice.title,
     )
-    options.overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'false')
+    options.overlayUi.transientNotice.setAttribute('aria-hidden', 'false')
     window.requestAnimationFrame(() => {
-      options.overlayUi.cameraUnlockNotice.dataset.visible = 'true'
+      options.overlayUi.transientNotice.dataset.visible = 'true'
     })
     if (transientNoticeHideTimeoutId !== null) {
       window.clearTimeout(transientNoticeHideTimeoutId)
     }
     transientNoticeHideTimeoutId = window.setTimeout(() => {
       if (options.runtime.ui.transientNotice?.id === notice.id) {
-        options.overlayUi.cameraUnlockNotice.dataset.visible = 'false'
-        options.overlayUi.cameraUnlockNotice.setAttribute('aria-hidden', 'true')
+        options.overlayUi.transientNotice.dataset.visible = 'false'
+        options.overlayUi.transientNotice.setAttribute('aria-hidden', 'true')
         transientNoticeFinishHideTimeoutId = window.setTimeout(() => {
-          if (options.overlayUi.cameraUnlockNotice.dataset.visible !== 'true') {
-            options.overlayUi.cameraUnlockNotice.hidden = true
+          if (options.overlayUi.transientNotice.dataset.visible !== 'true') {
+            options.overlayUi.transientNotice.hidden = true
           }
           transientNoticeFinishHideTimeoutId = null
         }, transientNoticeHideSettleMs)

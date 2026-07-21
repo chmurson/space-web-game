@@ -64,7 +64,6 @@ describe('createRuntimeScenarioState', () => {
     expect(runtimeScenario.coastPredictionHorizonHours).toBe(48)
     expect(runtimeScenario.cameraFollow).toBe('spacecraft')
     expect(runtimeScenario.cameraPanOffset).toEqual({ x: 0, y: 0 })
-    expect(runtimeScenario.cameraView).toBe('locked')
     expect(runtimeScenario.scenarioSession).toEqual({
       checkpoint: null,
       completed: false,
@@ -111,7 +110,7 @@ describe('createRuntimeScenarioState', () => {
     expect(runtimeScenario.state.elapsed).toBe(0)
   })
 
-  it('uses scenario-defined starting Follow, View, and pan offset when present', () => {
+  it('uses scenario-defined starting Follow and pan offset when present', () => {
     const runtimeScenario = createRuntimeScenarioState(
       {
         id: 'test',
@@ -119,7 +118,6 @@ describe('createRuntimeScenarioState', () => {
         description: 'Test scenario',
         cameraFollow: 'target',
         cameraPanOffset: { x: 12, y: 24 },
-        cameraView: 'free',
         bodies: [],
         spacecraft: {
           position: { x: 0, y: 0 },
@@ -137,7 +135,6 @@ describe('createRuntimeScenarioState', () => {
 
     expect(runtimeScenario.cameraFollow).toBe('target')
     expect(runtimeScenario.cameraPanOffset).toEqual({ x: 12, y: 24 })
-    expect(runtimeScenario.cameraView).toBe('free')
   })
 
   it('creates a Reach the Moon runtime scenario on the Earth-Moon world', () => {

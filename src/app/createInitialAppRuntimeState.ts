@@ -60,7 +60,6 @@ export const createInitialAppRuntimeState = (
     ui: {
       camera: createDefaultCameraControlUiState(
         initialScenarioTransition.cameraFollow,
-        initialScenarioTransition.cameraView,
         initialScenarioTransition.cameraPanOffset,
       ),
       rcsActualTurnFeedback: null,

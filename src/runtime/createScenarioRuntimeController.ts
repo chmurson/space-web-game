@@ -6,7 +6,6 @@ import {
 } from '../scenario/runtimeScenario'
 import type {
   CameraFollowSubject,
-  CameraViewMode,
   GlobalScenarioDirectiveLimits,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
@@ -27,7 +26,6 @@ export type ScenarioRuntimeTransition = {
   assistTargetSelectionMode?: AppRuntimeSimulationSlice['assistTargetSelectionMode']
   cameraFollow: CameraFollowSubject
   cameraPanOffset: { x: number; y: number }
-  cameraView: CameraViewMode
   coastPredictionHorizonHours: number
   scenario: Pick<
     AppRuntimeScenarioSlice,
@@ -60,7 +58,6 @@ export const createScenarioRuntimeTransition = (
     assistTargetSelectionMode: runtimeScenarioState.assistTargetSelectionMode,
     cameraFollow: runtimeScenarioState.cameraFollow,
     cameraPanOffset: runtimeScenarioState.cameraPanOffset,
-    cameraView: runtimeScenarioState.cameraView,
     coastPredictionHorizonHours:
       runtimeScenarioState.coastPredictionHorizonHours,
     scenario: {
@@ -149,7 +146,6 @@ export const createScenarioRuntimeController = (options: {
             loadedDebugScenario.runtimeState.coastPredictionHorizonHours,
           cameraFollow: loadedDebugScenario.runtimeState.cameraFollow,
           cameraPanOffset: loadedDebugScenario.runtimeState.cameraPanOffset,
-          cameraView: loadedDebugScenario.runtimeState.cameraView,
           scenario: {
             metadata: {
               description: loadedDebugScenario.scenario.description,

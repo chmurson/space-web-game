@@ -61,7 +61,6 @@ const createRuntime = (
     camera: {
       follow: 'spacecraft',
       panOffset: { x: 0, y: 0 },
-      view: 'locked',
     },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,

@@ -1,8 +1,6 @@
 export const cameraFollowSubjects = ['spacecraft', 'target'] as const
-export const cameraViewModes = ['locked', 'free'] as const
 
 export type CameraFollowSubject = (typeof cameraFollowSubjects)[number]
-export type CameraViewMode = (typeof cameraViewModes)[number]
 
 export const isCameraFollowSubject = (
   value: unknown,
@@ -10,15 +8,9 @@ export const isCameraFollowSubject = (
   typeof value === 'string' &&
   cameraFollowSubjects.includes(value as CameraFollowSubject)
 
-export const isCameraViewMode = (value: unknown): value is CameraViewMode =>
-  typeof value === 'string' && cameraViewModes.includes(value as CameraViewMode)
-
 export const getNextCameraFollowSubject = (
   follow: CameraFollowSubject,
 ): CameraFollowSubject => (follow === 'spacecraft' ? 'target' : 'spacecraft')
-
-export const getNextCameraViewMode = (view: CameraViewMode): CameraViewMode =>
-  view === 'locked' ? 'free' : 'locked'
 
 export type RuntimeScenarioHiddenUIElement =
   | 'scenarioInfoButton'
@@ -35,7 +27,6 @@ export type RuntimeScenarioDirectives = {
   cameraFollow: CameraFollowSubject | null
   cameraFollowBodyId: string | null
   cameraFollowOffset: { x: number; y: number }
-  cameraView: CameraViewMode | null
   forcedAssistTargetId: string | null
   hiddenBodyIds: string[]
   maxCoastPredictionHorizonHours: number | null
@@ -59,7 +50,6 @@ export const createDefaultScenarioDirectives =
     cameraFollow: null,
     cameraFollowBodyId: null,
     cameraFollowOffset: { x: 0, y: 0 },
-    cameraView: null,
     forcedAssistTargetId: null,
     hiddenBodyIds: [],
     maxCoastPredictionHorizonHours: null,

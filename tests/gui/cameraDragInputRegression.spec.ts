@@ -6,9 +6,7 @@ type ThreeModule = typeof import('three')
 type TouchControlsModule =
   typeof import('../../src/ui/touchControls/createTouchControls')
 
-test('starts mobile panning after the touch move that unlocks free roam', async ({
-  page,
-}) => {
+test('starts mobile panning on the first touch movement', async ({ page }) => {
   await page.setViewportSize({ height: 844, width: 390 })
   await page.goto('/')
 
@@ -27,13 +25,10 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
       radius: 1,
       velocity: { x: 0, y: 0 },
     }
-    let cameraView: 'locked' | 'free' = 'locked'
     const cameraPans: {
       next: { x: number; y: number }
       previous: { x: number; y: number }
     }[] = []
-    const modeSelections: string[] = []
-    let unlockNotices = 0
     const controls = createTouchControls({
       app: document.body,
       automaticTargetingAvailable: true,
@@ -45,7 +40,6 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
         recommendedTarget: null,
       }),
       getCameraControlsLocked: () => false,
-      getCameraView: () => cameraView,
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
@@ -75,17 +69,9 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
         setVirtualKey: () => {},
         setVirtualTurn: () => {},
       },
-      onCameraViewSelected: (view) => {
-        modeSelections.push(view)
-        cameraView = view
-        return true
-      },
       onCameraPanGesture: (previous, next) => {
         cameraPans.push({ next, previous })
         return true
-      },
-      onCameraUnlockedBySwipe: () => {
-        unlockNotices += 1
       },
       onReturnToAutomaticTarget: () => true,
       onSelectTargetIndex: () => true,
@@ -120,22 +106,22 @@ test('starts mobile panning after the touch move that unlocks free roam', async 
 
     dispatchTouch('touchstart', { x: 20, y: 100 })
     dispatchTouch('touchmove', { x: 230, y: 100 })
-    const panCountOnUnlockMove = cameraPans.length
+    const panCountOnFirstMove = cameraPans.length
     dispatchTouch('touchmove', { x: 250, y: 100 })
 
     controls.element.remove()
     return {
       cameraPans,
-      modeSelections,
-      panCountOnUnlockMove,
-      unlockNotices,
+      panCountOnFirstMove,
     }
   })
 
-  expect(result.modeSelections).toEqual(['free'])
-  expect(result.unlockNotices).toBe(1)
-  expect(result.panCountOnUnlockMove).toBe(0)
+  expect(result.panCountOnFirstMove).toBe(1)
   expect(result.cameraPans).toEqual([
+    {
+      next: { x: 230, y: 100 },
+      previous: { x: 20, y: 100 },
+    },
     {
       next: { x: 250, y: 100 },
       previous: { x: 230, y: 100 },
@@ -192,13 +178,11 @@ test('keeps desktop edge-scroll panning independent of heading planning visibili
         camera,
         getDesktopEdgePanSpeedPixelsPerSecond: () => 420,
         getCameraControlsLocked: () => false,
-        getCameraView: () => 'free',
         getEdgeScrollEnabled: () => true,
         getInteractionsEnabled: () => true,
         getSpacecraftPosition: () => ({ x: 0, y: 0 }),
         getSpacecraftVisible: () => spacecraftVisible,
         getTargetHeadingSelectionEnabled: () => true,
-        onCameraViewSelected: () => true,
         onCameraPan: (delta) => {
           pans.push(delta)
           return true
@@ -375,7 +359,6 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
           recommendedTarget: null,
         }),
         getCameraControlsLocked: () => false,
-        getCameraView: () => 'free',
         getCurrentTimeWarp: () => 1,
         getCurrentTrajectoryHorizonHours: () => 1,
         getInteractionsEnabled: () => true,
@@ -405,7 +388,6 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
           setVirtualKey: () => {},
           setVirtualTurn: () => {},
         },
-        onCameraViewSelected: () => true,
         onCameraPanGesture: (previous, next) => {
           cameraPans.push({ next, previous })
           return true

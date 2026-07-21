@@ -1,8 +1,5 @@
 import type { AssistTargetSelectionMode } from './runtime/appRuntimeState'
-import type {
-  CameraFollowSubject,
-  CameraViewMode,
-} from './scenario/scenarioDirectiveTypes'
+import type { CameraFollowSubject } from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
   createRuntimeScenarioSession,
@@ -54,7 +51,7 @@ type DebugScenarioSnapshotV3 = {
   assistTargetSelectionMode?: AssistTargetSelectionMode
   cameraFollow?: CameraFollowSubject
   cameraPanOffset?: Vec2
-  cameraView?: CameraViewMode
+  cameraView?: 'free' | 'locked'
   elapsed: number
   viewportSize?: number
   coastPredictionHorizonHours?: number
@@ -87,7 +84,6 @@ export type RuntimeScenario = Scenario & {
   assistTargetSelectionMode?: AssistTargetSelectionMode
   cameraFollow?: CameraFollowSubject
   cameraPanOffset?: Vec2
-  cameraView?: CameraViewMode
   coastPredictionHorizonHours?: number
   elapsed?: number
   orbitPointDisplay?: OrbitPointDisplaySettingOverrides
@@ -124,6 +120,19 @@ const getSnapshotAssistTargetSelectionMode = (
     snapshot.assistTargetSelectionMode === 'manual')
     ? snapshot.assistTargetSelectionMode
     : undefined
+
+const getSnapshotCameraPanOffset = (
+  snapshot: DebugScenarioSnapshot,
+): Vec2 | undefined => {
+  if (snapshot.version !== 3 || !snapshot.cameraPanOffset) {
+    return undefined
+  }
+  if (snapshot.cameraView === 'locked') {
+    return { x: 0, y: 0 }
+  }
+
+  return { ...snapshot.cameraPanOffset }
+}
 
 const cloneDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
@@ -289,11 +298,7 @@ export const createScenarioFromSnapshot = (
   assistTargetIndex: getSnapshotAssistTargetIndex(snapshot),
   assistTargetSelectionMode: getSnapshotAssistTargetSelectionMode(snapshot),
   cameraFollow: snapshot.version === 3 ? snapshot.cameraFollow : undefined,
-  cameraPanOffset:
-    snapshot.version === 3 && snapshot.cameraPanOffset
-      ? { ...snapshot.cameraPanOffset }
-      : undefined,
-  cameraView: snapshot.version === 3 ? snapshot.cameraView : undefined,
+  cameraPanOffset: getSnapshotCameraPanOffset(snapshot),
   elapsed: snapshot.elapsed,
   viewportSize: snapshot.viewportSize,
   coastPredictionHorizonHours: getSnapshotCoastPredictionHorizonHours(snapshot),
@@ -309,7 +314,6 @@ export const createSnapshotFromState = (
     assistTargetSelectionMode?: AssistTargetSelectionMode
     cameraFollow?: CameraFollowSubject
     cameraPanOffset?: Vec2
-    cameraView?: CameraViewMode
     coastPredictionHorizonHours?: number
     scenarioSession?: RuntimeScenarioSession
     viewportSize?: number
@@ -323,7 +327,6 @@ export const createSnapshotFromState = (
   cameraPanOffset: options.cameraPanOffset
     ? { ...options.cameraPanOffset }
     : undefined,
-  cameraView: options.cameraView,
   elapsed: state.elapsed,
   viewportSize: options.viewportSize,
   coastPredictionHorizonHours: options.coastPredictionHorizonHours,

@@ -100,7 +100,6 @@ const createRuntime = (): AppRuntimeState => {
       camera: {
         follow: runtimeScenario.cameraFollow,
         panOffset: runtimeScenario.cameraPanOffset,
-        view: runtimeScenario.cameraView,
       },
       spacecraftLabelIntroUntil: 0,
       targetHeadingSelectionEpoch: 0,

@@ -58,7 +58,6 @@ const createRuntime = (): AppRuntimeState => ({
     camera: {
       follow: 'spacecraft',
       panOffset: { x: 0, y: 0 },
-      view: 'locked',
     },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
@@ -86,7 +85,6 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
       assistTargetIndex: 0,
       cameraFollow: 'target',
       cameraPanOffset: { x: 12, y: 24 },
-      cameraView: 'free',
       coastPredictionHorizonHours: 12,
       targetHeading: null,
       viewportSize: 320,
@@ -125,7 +123,6 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
       assistTargetIndex: 0,
       cameraFollow: 'target',
       cameraPanOffset: { x: 12, y: 24 },
-      cameraView: 'free',
       coastPredictionHorizonHours: 12,
       targetHeading: null,
       timeWarpIndex: 0,
@@ -157,7 +154,6 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
     expect(createRuntimeCheckpointRestoreTransition(runtime)).toMatchObject({
       cameraFollow: 'spacecraft',
       cameraPanOffset: { x: 15, y: 22 },
-      cameraView: 'free',
     })
   })
 

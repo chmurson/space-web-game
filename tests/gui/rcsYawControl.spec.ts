@@ -41,7 +41,6 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
         recommendedTarget: null,
       }),
       getCameraControlsLocked: () => false,
-      getCameraView: () => 'free',
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
@@ -75,7 +74,6 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
           virtualTurns.push(turn)
         },
       },
-      onCameraViewSelected: () => true,
       onCameraPanGesture: () => false,
       onReturnToAutomaticTarget: () => true,
       onSelectTargetIndex: () => true,

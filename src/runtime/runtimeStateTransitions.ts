@@ -70,7 +70,6 @@ export const applyScenarioLoadTransition = (
   runtime.scenario.session = transition.scenario.session
   runtime.ui.camera = createDefaultCameraControlUiState(
     transition.cameraFollow,
-    transition.cameraView,
     transition.cameraPanOffset,
   )
   runtime.ui.uiEffectEpoch += 1
@@ -108,7 +107,6 @@ export const applyCheckpointRestoreTransition = (
   runtime.simulation.viewportSize = transition.viewportSize
   runtime.ui.camera = createDefaultCameraControlUiState(
     transition.cameraFollow ?? 'spacecraft',
-    transition.cameraView ?? 'locked',
     transition.cameraPanOffset,
   )
   options.clearTransientScenarioState()

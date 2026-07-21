@@ -7,7 +7,6 @@ import type {
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type { TrajectoryHorizonAction } from '../../runtime/trajectoryHorizonControlPolicy'
-import type { CameraViewMode } from '../../scenario/scenarioDirectiveTypes'
 import type {
   ScenarioTouchControlFocusTarget,
   ScenarioTouchHintTarget,
@@ -68,7 +67,6 @@ const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
 const cameraPanTapTolerancePx = 8
 const targetHeadingHoldDelayMs = 320
-const intentionalCameraUnlockSwipeViewportRatio = 0.5
 const touchControlRevealTabHeightPx = 84
 const mouseStepSelectorTouchId = -1
 const touchControlRevealLayout = {
@@ -241,9 +239,6 @@ export const createTouchControls = (options: {
   initialTrajectoryControlSide: TouchControlRevealState
   keyboardInput: KeyboardInput
   getCameraControlsLocked(): boolean
-  getCameraView(): CameraViewMode
-  onCameraUnlockedBySwipe?(): void
-  onCameraViewSelected(view: CameraViewMode): boolean
   onFollowCameraViewportBottomInsetChange?(bottomInset: number): void
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
@@ -1196,23 +1191,7 @@ export const createTouchControls = (options: {
             activeSession.hasMovedForTap = true
           }
 
-          if (options.getCameraView() !== 'free') {
-            const unlockThresholdX =
-              window.innerWidth * intentionalCameraUnlockSwipeViewportRatio
-            const unlockThresholdY =
-              window.innerHeight * intentionalCameraUnlockSwipeViewportRatio
-            const shouldUnlock =
-              !options.getCameraControlsLocked() &&
-              (Math.abs(totalDeltaX) >= unlockThresholdX ||
-                Math.abs(totalDeltaY) >= unlockThresholdY)
-
-            if (!shouldUnlock) {
-              return
-            }
-
-            if (options.onCameraViewSelected('free')) {
-              options.onCameraUnlockedBySwipe?.()
-            }
+          if (options.getCameraControlsLocked()) {
             activeSession.previousX = touch.clientX
             activeSession.previousY = touch.clientY
             return

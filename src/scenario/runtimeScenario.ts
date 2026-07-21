@@ -8,10 +8,7 @@ import {
 import type { AssistTargetSelectionMode } from '../runtime/appRuntimeState'
 import { idleControls } from '../simulation/state'
 import type { SimulationState } from '../simulation/types'
-import type {
-  CameraFollowSubject,
-  CameraViewMode,
-} from './scenarioDirectiveTypes'
+import type { CameraFollowSubject } from './scenarioDirectiveTypes'
 import { getRuntimeScenarioDefinition } from './scenarioRegistry'
 import {
   cloneRuntimeScenarioSession,
@@ -32,7 +29,6 @@ export type RuntimeScenarioState = {
   assistTargetSelectionMode?: AssistTargetSelectionMode
   cameraFollow: CameraFollowSubject
   cameraPanOffset: { x: number; y: number }
-  cameraView: CameraViewMode
   coastPredictionHorizonHours: number
   scenarioSession: ReturnType<typeof createRuntimeScenarioSession>
   state: SimulationState
@@ -108,7 +104,6 @@ export const createRuntimeScenarioState = (
   assistTargetSelectionMode: scenario.assistTargetSelectionMode,
   cameraFollow: scenario.cameraFollow ?? 'spacecraft',
   cameraPanOffset: { ...(scenario.cameraPanOffset ?? { x: 0, y: 0 }) },
-  cameraView: scenario.cameraView ?? 'locked',
   coastPredictionHorizonHours: clamp(
     scenario.coastPredictionHorizonHours ??
       options.defaultCoastPredictionHorizonHours,

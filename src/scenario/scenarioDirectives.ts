@@ -1,11 +1,9 @@
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import {
   type CameraFollowSubject,
-  type CameraViewMode,
   createDefaultScenarioDirectives,
   type GlobalScenarioDirectiveLimits,
   isCameraFollowSubject,
-  isCameraViewMode,
   type RuntimeScenarioDirectives,
 } from './scenarioDirectiveTypes'
 import { resolveCurrentScenarioScene } from './scenarioScenes'
@@ -28,7 +26,6 @@ type CommonScenarioDirectiveState = {
   cameraFollowOffsetY?: number
   cameraMode?: 'centered' | 'target' | 'unlocked'
   cameraModeChangesLocked?: boolean
-  cameraView?: CameraViewMode
   forcedAssistTargetId?: string
   hiddenBodyIds?: string[]
 }
@@ -61,10 +58,6 @@ const getCameraFollowValue = (
   value: CameraFollowSubject | undefined,
 ): CameraFollowSubject | null => (isCameraFollowSubject(value) ? value : null)
 
-const getCameraViewValue = (
-  value: CameraViewMode | undefined,
-): CameraViewMode | null => (isCameraViewMode(value) ? value : null)
-
 const getLegacyCameraFollow = (
   cameraMode: CommonScenarioDirectiveState['cameraMode'],
 ): CameraFollowSubject | null => {
@@ -78,19 +71,6 @@ const getLegacyCameraFollow = (
   return null
 }
 
-const getLegacyCameraView = (
-  cameraMode: CommonScenarioDirectiveState['cameraMode'],
-): CameraViewMode | null => {
-  if (cameraMode === 'unlocked') {
-    return 'free'
-  }
-  if (cameraMode === 'centered' || cameraMode === 'target') {
-    return 'locked'
-  }
-
-  return null
-}
-
 const resolveBaseScenarioDirectives = (
   state: ScenarioSessionValue,
 ): Pick<
@@ -99,7 +79,6 @@ const resolveBaseScenarioDirectives = (
   | 'cameraFollow'
   | 'cameraFollowBodyId'
   | 'cameraFollowOffset'
-  | 'cameraView'
   | 'forcedAssistTargetId'
   | 'hiddenBodyIds'
 > => {
@@ -111,7 +90,6 @@ const resolveBaseScenarioDirectives = (
       cameraFollow: null,
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
-      cameraView: null,
       forcedAssistTargetId: null,
       hiddenBodyIds: [],
     }
@@ -131,9 +109,6 @@ const resolveBaseScenarioDirectives = (
       x: getNumberValue(commonState.cameraFollowOffsetX) ?? 0,
       y: getNumberValue(commonState.cameraFollowOffsetY) ?? 0,
     },
-    cameraView:
-      getCameraViewValue(commonState.cameraView) ??
-      getLegacyCameraView(legacyCameraMode),
     forcedAssistTargetId: getStringValue(commonState.forcedAssistTargetId),
     hiddenBodyIds: getStringArrayValue(commonState.hiddenBodyIds),
   }
@@ -191,14 +166,12 @@ export const applyRuntimeScenarioDirectiveConstraints = (
   limits: GlobalScenarioDirectiveLimits,
 ) => {
   const forcedCameraFollow = runtime.scenario.directives.cameraFollow
-  if (forcedCameraFollow) {
+  if (forcedCameraFollow && forcedCameraFollow !== runtime.ui.camera.follow) {
     runtime.ui.camera.follow = forcedCameraFollow
+    runtime.ui.camera.panOffset = { x: 0, y: 0 }
   }
-  const forcedCameraView = runtime.scenario.directives.cameraControlsLocked
-    ? 'locked'
-    : runtime.scenario.directives.cameraView
-  if (forcedCameraView) {
-    runtime.ui.camera.view = forcedCameraView
+  if (runtime.scenario.directives.cameraControlsLocked) {
+    runtime.ui.camera.panOffset = { x: 0, y: 0 }
   }
   runtime.simulation.timeWarpIndex = getConstrainedTimeWarpIndex(
     runtime.simulation.timeWarpIndex,

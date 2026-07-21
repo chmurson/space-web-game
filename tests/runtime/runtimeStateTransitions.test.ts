@@ -83,7 +83,6 @@ const createRuntime = (): AppRuntimeState => ({
     camera: {
       follow: 'spacecraft',
       panOffset: { x: 0, y: 0 },
-      view: 'locked',
     },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
@@ -113,7 +112,6 @@ describe('runtimeStateTransitions', () => {
       {
         cameraFollow: 'target',
         cameraPanOffset: { x: 12, y: 24 },
-        cameraView: 'free',
         coastPredictionHorizonHours: 2,
         scenario: {
           metadata: {
@@ -164,7 +162,6 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.ui.camera).toEqual({
       follow: 'target',
       panOffset: { x: 12, y: 24 },
-      view: 'free',
     })
   })
 
@@ -179,7 +176,6 @@ describe('runtimeStateTransitions', () => {
         assistTargetSelectionMode: 'manual',
         cameraFollow: 'spacecraft',
         cameraPanOffset: { x: 0, y: 0 },
-        cameraView: 'locked',
         coastPredictionHorizonHours: 2,
         scenario: {
           metadata: {
@@ -238,7 +234,6 @@ describe('runtimeStateTransitions', () => {
         assistTargetIndex: 0,
         cameraFollow: 'target',
         cameraPanOffset: { x: 12, y: 24 },
-        cameraView: 'free',
         coastPredictionHorizonHours: 12,
         state: {
           elapsed: 42,
@@ -268,8 +263,7 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.simulation.targetHeading).toBeNull()
     expect(runtime.ui.camera).toEqual({
       follow: 'spacecraft',
-      panOffset: { x: 12, y: 24 },
-      view: 'locked',
+      panOffset: { x: 0, y: 0 },
     })
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
       new Set([

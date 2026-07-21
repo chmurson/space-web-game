@@ -42,9 +42,6 @@ export const getKeyboardShortcutAction = (
   if (!event.repeat && event.code === 'KeyC') {
     return 'toggleCameraFollow'
   }
-  if (!event.repeat && event.code === 'KeyL') {
-    return 'toggleCameraView'
-  }
   if (!event.repeat && event.ctrlKey && event.code === 'KeyX') {
     return 'toggleDebugMode'
   }

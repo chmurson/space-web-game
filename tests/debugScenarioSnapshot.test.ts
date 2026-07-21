@@ -166,7 +166,7 @@ describe('createScenarioFromSnapshot', () => {
     expect(scenario.assistTargetSelectionMode).toBe('manual')
   })
 
-  it('preserves Follow, View, and relative pan offset in version 3 snapshots', () => {
+  it('preserves Follow and relative pan offset in version 3 snapshots', () => {
     const snapshot = createSnapshotFromState(
       {
         elapsed: snapshotBase.elapsed,
@@ -177,7 +177,6 @@ describe('createScenarioFromSnapshot', () => {
       {
         cameraFollow: 'target',
         cameraPanOffset: { x: 12, y: -24 },
-        cameraView: 'free',
       },
     )
     const scenario = createScenarioFromSnapshot(snapshot)
@@ -185,17 +184,30 @@ describe('createScenarioFromSnapshot', () => {
     expect(snapshot).toMatchObject({
       cameraFollow: 'target',
       cameraPanOffset: { x: 12, y: -24 },
-      cameraView: 'free',
       version: 3,
     })
     expect(scenario).toMatchObject({
       cameraFollow: 'target',
       cameraPanOffset: { x: 12, y: -24 },
-      cameraView: 'free',
     })
     expect(scenario.cameraPanOffset).not.toBe(
       'cameraPanOffset' in snapshot ? snapshot.cameraPanOffset : undefined,
     )
+  })
+
+  it('recenters legacy locked version 3 snapshots', () => {
+    const snapshot = {
+      ...snapshotBase,
+      cameraFollow: 'target' as const,
+      cameraPanOffset: { x: 12, y: -24 },
+      cameraView: 'locked' as const,
+      version: 3 as const,
+    }
+
+    expect(createScenarioFromSnapshot(snapshot)).toMatchObject({
+      cameraFollow: 'target',
+      cameraPanOffset: { x: 0, y: 0 },
+    })
   })
 })
 

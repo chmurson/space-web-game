@@ -88,7 +88,6 @@ const createRuntime = (): AppRuntimeState => ({
     camera: {
       follow: 'spacecraft',
       panOffset: { x: 0, y: 0 },
-      view: 'locked',
     },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
@@ -262,7 +261,6 @@ describe('tutorialScenario', () => {
       cameraFollow: 'spacecraft',
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
-      cameraView: 'locked',
       forcedAssistTargetId: null,
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),

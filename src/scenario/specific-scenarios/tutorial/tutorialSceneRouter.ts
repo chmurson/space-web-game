@@ -135,7 +135,6 @@ const createDefaultRuntimeScenarioCheckpoint = (
     assistTargetIndex: runtime.simulation.assistTargetIndex,
     cameraFollow: runtime.ui.camera.follow,
     cameraPanOffset: runtime.ui.camera.panOffset,
-    cameraView: runtime.ui.camera.view,
     coastPredictionHorizonHours: runtime.simulation.coastPredictionHorizonHours,
     targetHeading: runtime.simulation.targetHeading,
     targetHeadingTurn: runtime.simulation.targetHeadingTurn ?? null,
@@ -206,7 +205,6 @@ const hasReachedTrajectoryCoach = (
 const createEarthFocusDirectives = (options: {
   cameraControlsLocked?: RuntimeScenarioDirectives['cameraControlsLocked']
   cameraFollow?: RuntimeScenarioDirectives['cameraFollow']
-  cameraView?: RuntimeScenarioDirectives['cameraView']
   hiddenBodyIds?: string[]
   hiddenUIElements?: RuntimeScenarioDirectives['hiddenUIElements']
   maxCoastPredictionHorizonHours: number
@@ -216,7 +214,6 @@ const createEarthFocusDirectives = (options: {
   ...createDefaultScenarioDirectives(),
   cameraControlsLocked: options.cameraControlsLocked ?? false,
   cameraFollow: options.cameraFollow ?? null,
-  cameraView: options.cameraView ?? null,
   hiddenBodyIds: options.hiddenBodyIds ?? [],
   hiddenUIElements: options.hiddenUIElements ?? new Set(),
   maxCoastPredictionHorizonHours: options.maxCoastPredictionHorizonHours,
@@ -488,7 +485,6 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
         cameraControlsLocked: state.onboarding?.gateActive !== false,
         cameraFollow:
           state.onboarding?.gateActive === false ? null : 'spacecraft',
-        cameraView: state.onboarding?.gateActive === false ? null : 'locked',
         hiddenBodyIds: ['moon'],
         hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
         maxCoastPredictionHorizonHours:

@@ -9,7 +9,6 @@ const elements = {
     bodyList: document.querySelector('#bodyList'),
     cameraFollow: document.querySelector('#cameraFollow'),
     cameraPan: document.querySelector('#cameraPan'),
-    cameraView: document.querySelector('#cameraView'),
     coastHorizon: document.querySelector('#coastHorizon'),
     closeRawSnapshotButton: document.querySelector('#closeRawSnapshotButton'),
     commandLog: document.querySelector('#commandLog'),
@@ -605,7 +604,6 @@ const renderSnapshot = (snapshot) => {
     elements.spacecraftFuel.textContent = `${formatNumber(spacecraft.fuel, 2)} / ${formatNumber(spacecraft.fuelCapacity, 2)}`
 
     elements.cameraFollow.textContent = snapshot.camera.follow
-    elements.cameraView.textContent = snapshot.camera.view
     elements.viewportSize.textContent = formatNumber(snapshot.simulation.viewportSize, 1)
     elements.cameraPan.textContent = formatVec(snapshot.camera.panOffset)
     elements.targetHeading.textContent = snapshot.simulation.targetHeading === null ? 'none' : formatNumber(snapshot.simulation.targetHeading, 4)
@@ -743,12 +741,8 @@ document.addEventListener('click', (event) => {
         runCommand('Follow target', { follow: 'target', type: 'set-camera-follow' })
     }
 
-    if (commandButton.dataset.command === 'camera-view:locked') {
-        runCommand('View locked', { type: 'set-camera-view', view: 'locked' })
-    }
-
-    if (commandButton.dataset.command === 'camera-view:free') {
-        runCommand('View free roam', { type: 'set-camera-view', view: 'free' })
+    if (commandButton.dataset.command === 'camera:recenter') {
+        runCommand('Recenter camera', { type: 'recenter-camera' })
     }
 })
 

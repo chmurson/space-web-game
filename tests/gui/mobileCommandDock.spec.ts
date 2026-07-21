@@ -154,7 +154,7 @@ test('keeps one panel open, collapses the active panel, and closes with Escape',
   await expect(navButton).toBeFocused()
 })
 
-test('switches camera Follow and View from the mobile Controls popover', async ({
+test('switches camera Follow and recenters from the mobile Controls popover', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -163,21 +163,19 @@ test('switches camera Follow and View from the mobile Controls popover', async (
 
   const spacecraft = page.locator('[data-camera-follow-option="spacecraft"]')
   const target = page.locator('[data-camera-follow-option="target"]')
-  const locked = page.locator('[data-camera-view-option="locked"]')
-  const freeRoam = page.locator('[data-camera-view-option="free"]')
+  const recenter = page.locator('[data-in-game-action="recenterCamera"]')
 
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'true')
-  await expect(locked).toHaveAttribute('aria-pressed', 'true')
+  await expect(recenter).toBeEnabled()
+  await expect(page.locator('[data-camera-view-option]')).toHaveCount(0)
   await target.tap()
   await expect(target).toHaveAttribute('aria-pressed', 'true')
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'false')
-  await freeRoam.tap()
-  await expect(freeRoam).toHaveAttribute('aria-pressed', 'true')
-  await expect(locked).toHaveAttribute('aria-pressed', 'false')
+  await recenter.tap()
   await expect(target).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('preserves locked target framing above Nav when entering free roam', async ({
+test('recenters target framing above Nav using the current playable viewport', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
@@ -248,8 +246,7 @@ test('preserves locked target framing above Nav when entering free roam', async 
 
   await page.evaluate(() => {
     const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
-      type: 'set-camera-view',
-      view: 'free',
+      type: 'recenter-camera',
     })
     if (!response?.ok) {
       throw new Error(response?.error ?? 'Devtools bridge is missing')
@@ -258,26 +255,25 @@ test('preserves locked target framing above Nav when entering free roam', async 
   await expect
     .poll(async () =>
       page.evaluate(
-        () => window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot().camera.view,
+        () =>
+          window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot().camera.panOffset,
       ),
     )
-    .toBe('free')
+    .toEqual({ x: 0, y: 0 })
   await expect
     .poll(async () => {
-      const unlockedTargetBounds = await targetLabel.boundingBox()
-      if (!unlockedTargetBounds) {
-        throw new Error('Unlocked target camera framing is missing')
+      const recenteredTargetBounds = await targetLabel.boundingBox()
+      if (!recenteredTargetBounds) {
+        throw new Error('Recentered target camera framing is missing')
       }
-      const unlockedTargetCenterY =
-        unlockedTargetBounds.y + unlockedTargetBounds.height * 0.5
-      return Math.abs(openTargetCenterY - unlockedTargetCenterY)
+      const recenteredTargetCenterY =
+        recenteredTargetBounds.y + recenteredTargetBounds.height * 0.5
+      return Math.abs(openTargetCenterY - recenteredTargetCenterY)
     })
     .toBeLessThan(3)
 
   await page.screenshot({
-    path: testInfo.outputPath(
-      'mobile-command-dock-free-roam-transition-390.png',
-    ),
+    path: testInfo.outputPath('mobile-command-dock-recentered-target-390.png'),
   })
 })
 
@@ -389,7 +385,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
         recommendedTarget: null,
       }),
       getCameraControlsLocked: () => false,
-      getCameraView: () => 'free',
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
@@ -419,7 +414,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
         setVirtualKey: () => {},
         setVirtualTurn: () => {},
       },
-      onCameraViewSelected: () => true,
       onCameraPanGesture: () => {
         cameraPans.push(1)
         return true
@@ -1038,7 +1032,9 @@ test('does not change the fine-pointer desktop layout', async ({
       controlsDialog.getByRole('group', { name: 'Follow' }),
     ).toBeVisible()
     await expect(
-      controlsDialog.getByRole('group', { name: 'View' }),
+      controlsDialog.getByRole('button', {
+        name: 'Recenter followed subject',
+      }),
     ).toBeVisible()
   } finally {
     await context.close()

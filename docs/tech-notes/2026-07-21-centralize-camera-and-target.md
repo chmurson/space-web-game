@@ -1,71 +1,73 @@
-# Centralize camera Follow and View
+# Centralize camera Follow, pan, and recenter
 
 ## What changed
 
-- Replaced the three-way camera mode with two independent runtime settings:
-  `Follow` (`Spacecraft` or the active `Target`) and `View` (`Locked` or
-  `Free roam`).
-- Centralized camera target resolution so every frame derives the camera target
-  from the current followed subject plus a relative free-roam offset.
-- Added separate C and L shortcuts, adjacent Follow and View controls in the
-  shared in-game Controls popover, and notices that report both values.
-- Migrated scenario directives, tutorial checkpoints, debug snapshots, crash
-  recovery, and the DevTools protocol to the new state model.
-- Removed the duplicate mobile Nav camera selector; mobile and desktop now use
-  the same Controls popover.
+- The camera now has one player-facing choice: `Follow` (`Spacecraft` or the
+  active `Target`). A relative pan offset lets drag, edge pan, and focal zoom
+  move away from that subject without changing what is followed.
+- Added an explicit `Recenter` action to the shared in-game Controls popover.
+  Recenter and every Follow change clear the pan offset.
+- Removed player-facing View state, the `L` shortcut, camera-state notices,
+  edge-dwell unlock progress, and swipe-unlock thresholds.
+- Kept scenario-only camera locking private. It blocks Follow, Recenter,
+  pointer/touch/edge pan, crash-inspection pan, and focal zoom adjustment.
+- Updated debug snapshots, checkpoints, scenarios, DevTools protocol v2, and
+  the browser extension to expose Follow, pan offset, and Recenter only.
 
 ## Why
 
-The previous `centered` / `target` / `unlocked` mode combined two decisions:
-what the camera follows and whether the player can pan away from it. That made
-free roaming lose its follow subject and made camera state inconsistent across
-runtime, scenarios, snapshots, UI, and DevTools. Independent axes allow target
-follow to remain live while panning and make each control predictable.
+The earlier Follow/View split still exposed an unnecessary lock concept to
+players and made panning wait for a mode transition. Follow plus a relative pan
+offset expresses the useful behavior directly: the selected subject remains
+live, panning starts immediately, and one explicit action restores neutral
+framing.
 
 ## Ownership boundaries
 
-- `src/runtime/runtimeActions.ts` resolves the live follow subject, applies the
-  relative pan offset, and owns Follow/View transitions.
-- `src/scenario/scenarioDirectiveTypes.ts`, `src/scenario/scenarioDirectives.ts`,
-  and `src/scenario/scenarioSession.ts` define forced camera state and persisted
-  checkpoint compatibility.
+- `src/runtime/runtimeActions.ts` resolves the live followed subject, owns the
+  relative pan offset, and guards all camera mutations against scenario locks.
+- `src/input/pointerCameraInput.ts` and
+  `src/ui/touchControls/createTouchControls.ts` translate direct pan and zoom
+  gestures without unlock state or thresholds.
+- `src/scenario/scenarioDirectiveTypes.ts` and
+  `src/scenario/scenarioDirectives.ts` own private scenario constraints.
 - `src/ui/components/InGameControlsMenuSurface.tsx` and
-  `src/ui/createInGameControlsMenu.ts` own the shared camera controls.
+  `src/ui/createInGameControlsMenu.ts` own the shared Follow/Recenter controls.
+- `src/debugScenarioSnapshot.ts`, `src/scenario/scenarioSession.ts`, and
+  `src/runtime/scenarioRecovery.ts` retain narrow read compatibility for old
+  saved camera fields.
 - `src/devtools/devtoolsBridge.ts` and `extension/space-web-game-devtools/` own
   protocol version 2 and the matching extension controls.
-- `src/debugScenarioSnapshot.ts` owns snapshot version 3 and defaults older
-  snapshots to Follow Spacecraft / View Locked.
 
 ## Important decisions
 
-- Free-roam pan is stored relative to the followed subject. Changing Follow
-  therefore preserves both View and pan offset, including when the automatic
-  assist target changes later.
-- Switching to Locked immediately centers on the current followed subject but
-  does not mutate the saved relative offset. Entering Free roam derives the
-  current dock-aware framing offset so the visible world does not jump.
-- Legacy camera fields remain read-only migration inputs for saved checkpoints
-  and scenario state. They are not exposed through current runtime or UI APIs.
-- Camera controls are scenario-locked together because existing onboarding
-  gates treat camera interaction as one capability. Enabling that lock makes
-  Locked view authoritative and blocks pan, crash-inspection unlock, and focal
-  free-roam zoom adjustments.
-- Legacy `centered` directives restore Spacecraft follow as well as Locked view;
-  legacy `target` and `unlocked` mappings retain their prior meanings.
+- Zero pan is the neutral state. Rendering combines it with the current
+  viewport dimensions and measured mobile-dock inset, so Recenter never stores
+  a stale dock-derived world offset.
+- Follow changes clear pan. Automatic movement or replacement of the active
+  target does not clear pan; the offset remains relative to the current target.
+- Scenario locking is not player-facing and has no unlock route. Lock
+  application recenters, while every runtime mutation path fails closed.
+  Ordinary centered zoom remains available, but a locked camera cannot preserve
+  an off-center focal point.
+- Current runtime, scenario, snapshot-write, UI, and DevTools APIs contain no
+  View state. Legacy snapshot/checkpoint `cameraView: locked` is read only to
+  clear old pan offsets; legacy unlocked offsets remain recoverable.
+- The existing 8 px tap-versus-drag tolerance remains only for distinguishing a
+  touch tap from a heading-plan drag. It does not delay camera pan.
 
 ## Validation
 
-- `npm run build`
-- `npm test` (578 tests)
-- `npm run test:gui` (79 Playwright tests), including desktop/mobile Follow
-  and View controls, keyboard notices, drag-to-free-roam behavior, framing,
-  and accessibility.
-- Visually inspected the generated mobile and desktop Controls screenshots;
-  both settings are adjacent, readable, and show their selected values.
-- PR review follow-up: focused runtime/directive tests (40), full Vitest suite
-  (581), automation claim/workflow tests (19), production build, changed-file
-  Biome checks, diff checks, and focused camera-drag Playwright coverage (4)
-  all passed after adding lock enforcement and legacy follow migration.
+- `npm run build` passed, including config validation, TypeScript, and the
+  release Vite bundle.
+- `npm test` passed: 578 Vitest tests and 19 automation claim/workflow tests.
+- `npm run test:gui` passed all 76 Playwright tests, including direct first-move
+  touch pan, immediate edge pan, no player camera notices, Follow/Recenter UI,
+  and dock-aware target framing.
+- Inspected the generated mobile and wide Controls screenshots plus the before
+  and after dock-aware Recenter screenshots. Follow and Recenter are readable,
+  the View/L UI is absent, and the followed target remains centered in the
+  playable area above the open mobile Nav panel.
 
 ## Follow-ups and known gaps
 

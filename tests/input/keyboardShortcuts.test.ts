@@ -86,7 +86,7 @@ describe('getKeyboardShortcutAction', () => {
     ).toBe('toggleFpsIndicator')
   })
 
-  it('maps C to Follow, L to View, and Shift+C to assist mode', () => {
+  it('maps C to Follow, leaves L unreserved, and maps Shift+C to assist mode', () => {
     expect(
       getKeyboardShortcutAction(createDebugShortcutEvent('KeyC'), {
         autoDiscoverStrongestInfluence: false,
@@ -107,7 +107,7 @@ describe('getKeyboardShortcutAction', () => {
         autoDiscoverStrongestInfluence: false,
         debugModeEnabled: false,
       }),
-    ).toBe('toggleCameraView')
+    ).toBeNull()
     expect(
       getKeyboardShortcutAction(
         { ...createDebugShortcutEvent('KeyL'), repeat: true },
