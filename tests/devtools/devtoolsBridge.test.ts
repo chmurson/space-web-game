@@ -59,11 +59,13 @@ const createTrajectoryPredictionDiagnostics = (
   farCoalescingSkippedCount: 0,
   farInputKeyShort: 'far-key',
   farPointCount: 10,
+  farReuseDivergence: null,
   farReuseExtendedPointCount: 2,
   farReuseExtendedSeconds: 120,
   farReuseFallbackReason: null,
   farReuseHistory: [
     {
+      divergence: null,
       elapsedSeconds: 240,
       extendedPointCount: 2,
       extendedSeconds: 120,

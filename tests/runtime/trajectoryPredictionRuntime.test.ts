@@ -140,6 +140,7 @@ const createFarWorkerResult = (
     inputKey: request.inputKey,
     jobId: request.jobId,
     reuse: {
+      divergence: null,
       extendedPointCount: 0,
       extendedSeconds: 0,
       fallbackReason: 'no-cache',

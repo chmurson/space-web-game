@@ -62,6 +62,7 @@ const createDebugPanelInput = (
     farCoalescingSkippedCount: 0,
     farInputKeyShort: null,
     farPointCount: 0,
+    farReuseDivergence: null,
     farReuseExtendedPointCount: 0,
     farReuseExtendedSeconds: 0,
     farReuseFallbackReason: null,

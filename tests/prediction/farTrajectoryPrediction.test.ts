@@ -6,6 +6,7 @@ import {
   type FarTrajectoryPredictionRequestPayload,
   predictFarTrajectory,
 } from '@/prediction/farTrajectoryPrediction'
+import { computeCoastTrajectoryPrediction } from '@/prediction/trajectoryPrediction'
 import { EARTH_MASS, EARTH_RADIUS, G } from '@/simulation/constants'
 import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
 import { idleControls } from '@/simulation/state'
@@ -85,6 +86,7 @@ describe('createFarTrajectoryPredictor', () => {
     const full = predictFarTrajectory(request)
 
     expect(initial.reuse).toEqual({
+      divergence: null,
       extendedPointCount: 0,
       extendedSeconds: 0,
       fallbackReason: 'no-cache',
@@ -97,6 +99,7 @@ describe('createFarTrajectoryPredictor', () => {
       validationSeconds: 0,
     })
     expect(reused.reuse).toEqual({
+      divergence: null,
       extendedPointCount: 2,
       extendedSeconds: 20,
       fallbackReason: null,
@@ -143,6 +146,7 @@ describe('createFarTrajectoryPredictor', () => {
     const full = predictFarTrajectory(request)
 
     expect(reused.reuse).toEqual({
+      divergence: null,
       extendedPointCount: 20,
       extendedSeconds: 2_000,
       fallbackReason: null,
@@ -235,6 +239,9 @@ describe('createFarTrajectoryPredictor', () => {
 
     expect(skipped.reuse.validation).toBe('skipped')
     expect(checked.reuse).toMatchObject({
+      divergence: {
+        reason: 'validation-spacecraft-position',
+      },
       fallbackReason: 'state-diverged',
       mode: 'full',
       validation: 'full',
@@ -310,6 +317,7 @@ describe('createFarTrajectoryPredictor', () => {
     const reused = predict(request)
 
     expect(reused.reuse).toEqual({
+      divergence: null,
       extendedPointCount: 3,
       extendedSeconds: 25,
       fallbackReason: null,
@@ -390,7 +398,25 @@ describe('createFarTrajectoryPredictor', () => {
     const result = predict(request)
     const full = predictFarTrajectory(request)
 
-    expect(result.reuse).toEqual({
+    expect(result.reuse).toMatchObject({
+      divergence: {
+        detail: null,
+        measurements: expect.arrayContaining([
+          expect.objectContaining({
+            bodyId: null,
+            delta: 49_900,
+            metric: 'spacecraft-position',
+            tolerance: 5_000,
+            unit: 'meters',
+          }),
+          expect.objectContaining({
+            bodyId: 'target',
+            delta: 0,
+            metric: 'body-position',
+          }),
+        ]),
+        reason: 'validation-spacecraft-position',
+      },
       extendedPointCount: 0,
       extendedSeconds: 0,
       fallbackReason: 'state-diverged',
@@ -403,6 +429,83 @@ describe('createFarTrajectoryPredictor', () => {
       validationSeconds: 0,
     })
     expect(result.coastPrediction).toEqual(full.coastPrediction)
+  })
+
+  it('reports absolute body drift separately from spacecraft drift', () => {
+    const predict = createFarTrajectoryPredictor()
+    const initialState = createState()
+    predict(createRequest(initialState))
+    const coastedState = advanceState(initialState, 20)
+    const divergedState = {
+      ...coastedState,
+      bodies: [
+        {
+          ...coastedState.bodies[0],
+          position: { x: 50_000, y: 0 },
+        },
+      ],
+    }
+
+    const result = predict(
+      createRequest(divergedState, { inputKey: 'input-2', jobId: 2 }),
+    )
+
+    expect(result.reuse).toMatchObject({
+      divergence: {
+        measurements: expect.arrayContaining([
+          expect.objectContaining({
+            bodyId: 'target',
+            delta: 50_000,
+            gatesReuse: true,
+            metric: 'body-position',
+            tolerance: 5_000,
+            unit: 'meters',
+          }),
+          expect.objectContaining({
+            bodyId: 'target',
+            delta: 50_000,
+            gatesReuse: false,
+            metric: 'target-position',
+          }),
+          expect.objectContaining({
+            bodyId: 'target',
+            delta: 50_000,
+            gatesReuse: false,
+            metric: 'spacecraft-target-relative-position',
+          }),
+        ]),
+        reason: 'validation-body-position',
+      },
+      fallbackReason: 'state-diverged',
+      mode: 'full',
+    })
+  })
+
+  it('does not gate reuse on informational target-relative drift', () => {
+    const predict = createFarTrajectoryPredictor()
+    const initialState = createState()
+    predict(createRequest(initialState))
+    const coastedState = advanceState(initialState, 20)
+    const shiftedState = {
+      ...coastedState,
+      bodies: [
+        {
+          ...coastedState.bodies[0],
+          position: { x: 0, y: -4_000 },
+        },
+      ],
+      spacecraft: {
+        ...coastedState.spacecraft,
+        position: { ...coastedState.spacecraft.position, y: 4_100 },
+      },
+    }
+
+    const result = predict(
+      createRequest(shiftedState, { inputKey: 'input-2', jobId: 2 }),
+    )
+
+    expect(result.reuse.mode).toBe('trim-extend')
+    expect(result.reuse.divergence).toBeNull()
   })
 
   it('falls back for semantic changes and active controls', () => {
@@ -527,6 +630,69 @@ describe('createFarTrajectoryPredictor', () => {
     expect(length(sub(reusedAgainEnd, fullAgainEnd))).toBeLessThan(10)
   })
 
+  it('validates a close bound orbit at live-simulation precision', () => {
+    const predict = createFarTrajectoryPredictor()
+    const orbitingTarget = {
+      ...target,
+      mass: EARTH_MASS,
+      radius: EARTH_RADIUS,
+    }
+    const initialState = {
+      ...createState(),
+      bodies: [orbitingTarget],
+      spacecraft: {
+        ...createState().spacecraft,
+        position: { x: 18_780_247, y: 0 },
+        velocity: { x: 0, y: 3_575 },
+      },
+    }
+    const config = {
+      horizonSeconds: 14_400,
+      maxIntegrationStepSeconds: 8,
+      maxLoopRevolutions: 1,
+      stepSeconds: 30,
+    }
+    const initialRequest = createRequest(initialState, config)
+    predict(initialRequest)
+    let liveState = initialState
+    for (let second = 0; second < 1_800; second += 1) {
+      liveState = advanceState(liveState, 1)
+    }
+    const coarseValidation = computeCoastTrajectoryPrediction(
+      initialState,
+      semiImplicitEuler,
+      orbitingTarget,
+      {
+        ...initialRequest.predictionConfig,
+        horizonSeconds: 1_800,
+      },
+      false,
+    )
+
+    const result = predict(
+      createRequest(liveState, {
+        ...config,
+        inputKey: 'input-2',
+        jobId: 2,
+      }),
+    )
+
+    expect(
+      length(
+        sub(
+          coarseValidation.finalState.spacecraft.position,
+          liveState.spacecraft.position,
+        ),
+      ),
+    ).toBeGreaterThan(5_000)
+    expect(result.reuse).toMatchObject({
+      divergence: null,
+      mode: 'trim-extend',
+      validation: 'performed',
+      validationSeconds: 1_800,
+    })
+  })
+
   it('falls back after sixteen consecutive reuse rolls', () => {
     const predict = createFarTrajectoryPredictor()
     let state = createState(1_000_000)
@@ -560,6 +726,7 @@ describe('createFarTrajectoryPredictor', () => {
     )
 
     expect(forcedFull.reuse).toEqual({
+      divergence: null,
       extendedPointCount: 0,
       extendedSeconds: 0,
       fallbackReason: 'reuse-limit',
@@ -607,6 +774,69 @@ describe('createFarTrajectoryPredictor', () => {
     )
     expect(reused.coastPrediction.integration.stepCount).toBeLessThan(
       full.coastPrediction.integration.stepCount,
+    )
+  })
+
+  it('reports a seam position mismatch during a skipped validation', () => {
+    const predict = createFarTrajectoryPredictor()
+    const initialState = {
+      ...createState(100),
+      spacecraft: {
+        ...createState(100).spacecraft,
+        velocity: { x: 10, y: 0 },
+      },
+    }
+    const config = {
+      horizonSeconds: 1_000,
+      maxIntegrationStepSeconds: 10,
+      stepSeconds: 100,
+    }
+    predict(createRequest(initialState, config))
+    const firstLiveState = advanceState(initialState, 25)
+    predict(
+      createRequest(firstLiveState, {
+        ...config,
+        inputKey: 'input-2',
+        jobId: 2,
+      }),
+    )
+    const coastedState = advanceState(firstLiveState, 25)
+    const divergedState = {
+      ...coastedState,
+      spacecraft: {
+        ...coastedState.spacecraft,
+        position: {
+          ...coastedState.spacecraft.position,
+          y: coastedState.spacecraft.position.y + 50_000,
+        },
+      },
+    }
+
+    const result = predict(
+      createRequest(divergedState, {
+        ...config,
+        inputKey: 'input-3',
+        jobId: 3,
+      }),
+    )
+
+    expect(result.reuse).toMatchObject({
+      divergence: {
+        measurements: [
+          expect.objectContaining({
+            delta: expect.any(Number),
+            metric: 'seam-position',
+            tolerance: 5_000,
+            unit: 'meters',
+          }),
+        ],
+        reason: 'seam-position',
+      },
+      fallbackReason: 'state-diverged',
+      mode: 'full',
+    })
+    expect(result.reuse.divergence?.measurements[0]?.delta).toBeGreaterThan(
+      5_000,
     )
   })
 

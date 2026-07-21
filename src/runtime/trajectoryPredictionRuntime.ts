@@ -1,6 +1,7 @@
 import type { AssistMode, CaptureMetrics } from '../assist/orbitalAssist'
 import {
   createFarTrajectoryPredictionStateSnapshot,
+  type FarTrajectoryPredictionDivergenceDiagnostics,
   type FarTrajectoryPredictionRequestPayload,
   type FarTrajectoryPredictionResultPayload,
   type FarTrajectoryPredictionReuseDiagnostics,
@@ -153,6 +154,7 @@ export type TrajectoryPredictionDiagnostics = {
   farCoalescingSkippedCount: number
   farInputKeyShort: string | null
   farPointCount: number
+  farReuseDivergence: FarTrajectoryPredictionDivergenceDiagnostics | null
   farReuseExtendedPointCount: number
   farReuseExtendedSeconds: number
   farReuseFallbackReason: FarTrajectoryPredictionReuseFallbackReason | null
@@ -284,6 +286,7 @@ export const emptyTrajectoryPredictionDiagnostics =
     farCoalescingSkippedCount: 0,
     farInputKeyShort: null,
     farPointCount: 0,
+    farReuseDivergence: null,
     farReuseExtendedPointCount: 0,
     farReuseExtendedSeconds: 0,
     farReuseFallbackReason: null,
@@ -1137,6 +1140,7 @@ export const createTrajectoryPredictionRuntime = (
     ].slice(-farReuseHistoryLimit)
     predictionDiagnostics = {
       ...predictionDiagnostics,
+      farReuseDivergence: result.reuse.divergence,
       farReuseExtendedPointCount: result.reuse.extendedPointCount,
       farReuseExtendedSeconds: result.reuse.extendedSeconds,
       farReuseFallbackReason: result.reuse.fallbackReason,

@@ -151,6 +151,39 @@ const formatFarCoalescing = (prediction) =>
     ]
         .filter(Boolean)
         .join(' · ')
+const formatDivergenceValue = (value, unit) => {
+    if (unit === 'meters') {
+        return formatDistance(value)
+    }
+    if (unit === 'meters-per-second') {
+        return `${formatNumber(value, 3)} m/s`
+    }
+    if (unit === 'seconds') {
+        return `${formatNumber(value, 6)} s`
+    }
+    if (unit === 'count') {
+        return formatNumber(value, 0)
+    }
+    return formatNumber(value, 6)
+}
+const formatDivergence = (divergence) => {
+    if (!divergence) {
+        return null
+    }
+
+    const measurements = (divergence.measurements ?? []).map((measurement) => {
+        const body = measurement.bodyId ? ` ${measurement.bodyId}` : ''
+        const diagnosticOnly = measurement.gatesReuse === false ? ' (info)' : ''
+        return `${measurement.metric}${body}${diagnosticOnly} Δ ${formatDivergenceValue(measurement.delta, measurement.unit)} / limit ${formatDivergenceValue(measurement.tolerance, measurement.unit)}`
+    })
+    return [
+        divergence.reason,
+        divergence.detail ? `detail ${divergence.detail}` : null,
+        ...measurements,
+    ]
+        .filter(Boolean)
+        .join(' · ')
+}
 const formatReuseDetails = (reuse) => {
     if (reuse.mode === 'trim-extend') {
         const previousPointCount = reuse.trimmedPointCount + reuse.retainedPointCount
@@ -172,12 +205,14 @@ const formatReuseDetails = (reuse) => {
         ].join(' · ')
     }
     if (reuse.mode === 'full') {
-        return `full${reuse.fallbackReason ? ` · ${reuse.fallbackReason}` : ''}`
+        const divergence = formatDivergence(reuse.divergence)
+        return `full${reuse.fallbackReason ? ` · ${reuse.fallbackReason}` : ''}${divergence ? ` · ${divergence}` : ''}`
     }
     return '—'
 }
 const formatFarReuse = (prediction) =>
     formatReuseDetails({
+        divergence: prediction.farReuseDivergence,
         extendedPointCount: prediction.farReuseExtendedPointCount,
         extendedSeconds: prediction.farReuseExtendedSeconds,
         fallbackReason: prediction.farReuseFallbackReason,

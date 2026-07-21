@@ -20,6 +20,7 @@ import type {
 import {
   computeCoastTrajectoryPrediction,
   getCoastTrajectoryEventMarkers,
+  isCloseBoundCoastPrediction,
   predictAssistedTrajectory,
 } from './trajectoryPrediction'
 
@@ -64,7 +65,55 @@ export type FarTrajectoryPredictionReuseFallbackReason =
   | 'semantic-change'
   | 'state-diverged'
 
+export type FarTrajectoryPredictionDivergenceReason =
+  | 'extension-target-missing'
+  | 'seam-endpoint-missing'
+  | 'seam-impact'
+  | 'seam-position'
+  | 'validation-body-count'
+  | 'validation-body-id'
+  | 'validation-body-position'
+  | 'validation-body-velocity'
+  | 'validation-elapsed'
+  | 'validation-impact'
+  | 'validation-spacecraft-fuel'
+  | 'validation-spacecraft-fuel-used'
+  | 'validation-spacecraft-heading'
+  | 'validation-spacecraft-position'
+  | 'validation-spacecraft-velocity'
+  | 'validation-target-missing'
+
+export type FarTrajectoryPredictionDivergenceMeasurement = {
+  bodyId: string | null
+  delta: number | null
+  gatesReuse: boolean
+  metric:
+    | 'body-count'
+    | 'body-position'
+    | 'body-velocity'
+    | 'elapsed'
+    | 'seam-position'
+    | 'spacecraft-fuel'
+    | 'spacecraft-fuel-used'
+    | 'spacecraft-heading'
+    | 'spacecraft-position'
+    | 'spacecraft-target-relative-position'
+    | 'spacecraft-target-relative-velocity'
+    | 'spacecraft-velocity'
+    | 'target-position'
+    | 'target-velocity'
+  tolerance: number
+  unit: 'count' | 'meters' | 'meters-per-second' | 'scalar' | 'seconds'
+}
+
+export type FarTrajectoryPredictionDivergenceDiagnostics = {
+  detail: string | null
+  measurements: FarTrajectoryPredictionDivergenceMeasurement[]
+  reason: FarTrajectoryPredictionDivergenceReason
+}
+
 export type FarTrajectoryPredictionReuseDiagnostics = {
+  divergence: FarTrajectoryPredictionDivergenceDiagnostics | null
   extendedPointCount: number
   extendedSeconds: number
   fallbackReason: FarTrajectoryPredictionReuseFallbackReason | null
@@ -81,6 +130,7 @@ const nowMs = () => performance.now()
 const maxReuseElapsedHorizonRatio = 0.25
 const validateEveryConsecutiveCoastReuses = 4
 const maxConsecutiveCoastReusesBeforeFullRecalculation = 16
+const boundReusePrecisionStepSeconds = 1
 const statePositionToleranceMeters = 5_000
 const stateVelocityToleranceMetersPerSecond = 5
 const stateScalarTolerance = 0.001
@@ -104,6 +154,11 @@ type CoastPredictionCalculation = {
   computation: CoastTrajectoryPredictionComputation
   reuse: FarTrajectoryPredictionReuseDiagnostics
   reuseCount: number
+}
+
+type CoastPredictionFallback = {
+  divergence: FarTrajectoryPredictionDivergenceDiagnostics | null
+  fallbackReason: FarTrajectoryPredictionReuseFallbackReason
 }
 
 const cloneBodySnapshot = (body: Body): FarTrajectoryPredictionBodySnapshot => {
@@ -156,70 +211,236 @@ const isPassiveCoast = (payload: FarTrajectoryPredictionRequestPayload) =>
   payload.state.controls.strafe === 0 &&
   payload.state.controls.turn === 0
 
-const isCloseScalar = (left: number, right: number, tolerance: number) =>
-  Number.isFinite(left) &&
-  Number.isFinite(right) &&
-  Math.abs(left - right) <= tolerance
+const getScalarDelta = (left: number, right: number) =>
+  Number.isFinite(left) && Number.isFinite(right)
+    ? Math.abs(left - right)
+    : null
 
-const isCloseVector = (left: Vec2, right: Vec2, tolerance: number) =>
-  length(sub(left, right)) <= tolerance
+const getVectorDelta = (left: Vec2, right: Vec2) => {
+  const delta = length(sub(left, right))
+  return Number.isFinite(delta) ? delta : null
+}
 
-const isContinuousState = (
+const isWithinTolerance = (
+  measurement: FarTrajectoryPredictionDivergenceMeasurement,
+) => measurement.delta !== null && measurement.delta <= measurement.tolerance
+
+const getStateDivergenceDiagnostics = (
   predictedState: SimulationState,
   liveState: SimulationState,
-) => {
-  if (
-    !isCloseScalar(
-      predictedState.elapsed,
-      liveState.elapsed,
-      timeToleranceSeconds,
-    ) ||
-    predictedState.bodies.length !== liveState.bodies.length ||
-    !isCloseVector(
-      predictedState.spacecraft.position,
-      liveState.spacecraft.position,
-      statePositionToleranceMeters,
-    ) ||
-    !isCloseVector(
-      predictedState.spacecraft.velocity,
-      liveState.spacecraft.velocity,
-      stateVelocityToleranceMetersPerSecond,
-    ) ||
-    !isCloseScalar(
-      predictedState.spacecraft.heading,
-      liveState.spacecraft.heading,
-      stateScalarTolerance,
-    ) ||
-    !isCloseScalar(
-      predictedState.spacecraft.fuel,
-      liveState.spacecraft.fuel,
-      stateScalarTolerance,
-    ) ||
-    !isCloseScalar(
-      predictedState.spacecraft.fuelUsed,
-      liveState.spacecraft.fuelUsed,
-      stateScalarTolerance,
-    )
-  ) {
-    return false
+  targetId: string,
+): FarTrajectoryPredictionDivergenceDiagnostics | null => {
+  const measurements: FarTrajectoryPredictionDivergenceMeasurement[] = [
+    {
+      bodyId: null,
+      delta: getScalarDelta(predictedState.elapsed, liveState.elapsed),
+      gatesReuse: true,
+      metric: 'elapsed',
+      tolerance: timeToleranceSeconds,
+      unit: 'seconds',
+    },
+    {
+      bodyId: null,
+      delta: getVectorDelta(
+        predictedState.spacecraft.position,
+        liveState.spacecraft.position,
+      ),
+      gatesReuse: true,
+      metric: 'spacecraft-position',
+      tolerance: statePositionToleranceMeters,
+      unit: 'meters',
+    },
+    {
+      bodyId: null,
+      delta: getVectorDelta(
+        predictedState.spacecraft.velocity,
+        liveState.spacecraft.velocity,
+      ),
+      gatesReuse: true,
+      metric: 'spacecraft-velocity',
+      tolerance: stateVelocityToleranceMetersPerSecond,
+      unit: 'meters-per-second',
+    },
+    {
+      bodyId: null,
+      delta: getScalarDelta(
+        predictedState.spacecraft.heading,
+        liveState.spacecraft.heading,
+      ),
+      gatesReuse: true,
+      metric: 'spacecraft-heading',
+      tolerance: stateScalarTolerance,
+      unit: 'scalar',
+    },
+    {
+      bodyId: null,
+      delta: getScalarDelta(
+        predictedState.spacecraft.fuel,
+        liveState.spacecraft.fuel,
+      ),
+      gatesReuse: true,
+      metric: 'spacecraft-fuel',
+      tolerance: stateScalarTolerance,
+      unit: 'scalar',
+    },
+    {
+      bodyId: null,
+      delta: getScalarDelta(
+        predictedState.spacecraft.fuelUsed,
+        liveState.spacecraft.fuelUsed,
+      ),
+      gatesReuse: true,
+      metric: 'spacecraft-fuel-used',
+      tolerance: stateScalarTolerance,
+      unit: 'scalar',
+    },
+  ]
+
+  if (predictedState.bodies.length !== liveState.bodies.length) {
+    measurements.push({
+      bodyId: null,
+      delta: Math.abs(predictedState.bodies.length - liveState.bodies.length),
+      gatesReuse: true,
+      metric: 'body-count',
+      tolerance: 0,
+      unit: 'count',
+    })
+    return {
+      detail: `${predictedState.bodies.length} predicted / ${liveState.bodies.length} live`,
+      measurements,
+      reason: 'validation-body-count',
+    }
   }
 
-  return predictedState.bodies.every((predictedBody, index) => {
+  let maxBodyPosition: FarTrajectoryPredictionDivergenceMeasurement | null =
+    null
+  let maxBodyVelocity: FarTrajectoryPredictionDivergenceMeasurement | null =
+    null
+  for (const [index, predictedBody] of predictedState.bodies.entries()) {
     const liveBody = liveState.bodies[index]
-    return (
-      liveBody?.id === predictedBody.id &&
-      isCloseVector(
-        predictedBody.position,
-        liveBody.position,
-        statePositionToleranceMeters,
-      ) &&
-      isCloseVector(
-        predictedBody.velocity,
-        liveBody.velocity,
-        stateVelocityToleranceMetersPerSecond,
-      )
+    if (liveBody?.id !== predictedBody.id) {
+      return {
+        detail: `index ${index}: expected ${predictedBody.id}, got ${liveBody?.id ?? 'missing'}`,
+        measurements,
+        reason: 'validation-body-id',
+      }
+    }
+
+    const bodyPosition: FarTrajectoryPredictionDivergenceMeasurement = {
+      bodyId: predictedBody.id,
+      delta: getVectorDelta(predictedBody.position, liveBody.position),
+      gatesReuse: true,
+      metric: 'body-position',
+      tolerance: statePositionToleranceMeters,
+      unit: 'meters',
+    }
+    if (
+      !maxBodyPosition ||
+      bodyPosition.delta === null ||
+      (maxBodyPosition.delta !== null &&
+        bodyPosition.delta > maxBodyPosition.delta)
+    ) {
+      maxBodyPosition = bodyPosition
+    }
+
+    const bodyVelocity: FarTrajectoryPredictionDivergenceMeasurement = {
+      bodyId: predictedBody.id,
+      delta: getVectorDelta(predictedBody.velocity, liveBody.velocity),
+      gatesReuse: true,
+      metric: 'body-velocity',
+      tolerance: stateVelocityToleranceMetersPerSecond,
+      unit: 'meters-per-second',
+    }
+    if (
+      !maxBodyVelocity ||
+      bodyVelocity.delta === null ||
+      (maxBodyVelocity.delta !== null &&
+        bodyVelocity.delta > maxBodyVelocity.delta)
+    ) {
+      maxBodyVelocity = bodyVelocity
+    }
+  }
+  if (maxBodyPosition) {
+    measurements.push(maxBodyPosition)
+  }
+  if (maxBodyVelocity) {
+    measurements.push(maxBodyVelocity)
+  }
+
+  const predictedTarget = predictedState.bodies.find(
+    (body) => body.id === targetId,
+  )
+  const liveTarget = liveState.bodies.find((body) => body.id === targetId)
+  if (predictedTarget && liveTarget) {
+    measurements.push(
+      {
+        bodyId: targetId,
+        delta: getVectorDelta(predictedTarget.position, liveTarget.position),
+        gatesReuse: false,
+        metric: 'target-position',
+        tolerance: statePositionToleranceMeters,
+        unit: 'meters',
+      },
+      {
+        bodyId: targetId,
+        delta: getVectorDelta(predictedTarget.velocity, liveTarget.velocity),
+        gatesReuse: false,
+        metric: 'target-velocity',
+        tolerance: stateVelocityToleranceMetersPerSecond,
+        unit: 'meters-per-second',
+      },
+      {
+        bodyId: targetId,
+        delta: getVectorDelta(
+          sub(predictedState.spacecraft.position, predictedTarget.position),
+          sub(liveState.spacecraft.position, liveTarget.position),
+        ),
+        gatesReuse: false,
+        metric: 'spacecraft-target-relative-position',
+        tolerance: statePositionToleranceMeters,
+        unit: 'meters',
+      },
+      {
+        bodyId: targetId,
+        delta: getVectorDelta(
+          sub(predictedState.spacecraft.velocity, predictedTarget.velocity),
+          sub(liveState.spacecraft.velocity, liveTarget.velocity),
+        ),
+        gatesReuse: false,
+        metric: 'spacecraft-target-relative-velocity',
+        tolerance: stateVelocityToleranceMetersPerSecond,
+        unit: 'meters-per-second',
+      },
     )
-  })
+  }
+
+  const failures = measurements.filter(
+    (measurement) => measurement.gatesReuse && !isWithinTolerance(measurement),
+  )
+  const dominantFailure = failures.reduce<
+    FarTrajectoryPredictionDivergenceMeasurement | undefined
+  >((dominant, measurement) => {
+    if (!dominant || measurement.delta === null) {
+      return measurement
+    }
+    if (dominant.delta === null) {
+      return dominant
+    }
+    return measurement.delta / measurement.tolerance >
+      dominant.delta / dominant.tolerance
+      ? measurement
+      : dominant
+  }, undefined)
+  if (!dominantFailure) {
+    return null
+  }
+
+  return {
+    detail: null,
+    measurements,
+    reason:
+      `validation-${dominantFailure.metric}` as FarTrajectoryPredictionDivergenceReason,
+  }
 }
 
 const combineIntegrationDiagnostics = (
@@ -369,7 +590,7 @@ const tryReuseCoastPrediction = (
   target: Body,
   cache: FarTrajectoryPredictionCache | null,
   allowLoopTrim: boolean,
-): CoastPredictionCalculation | FarTrajectoryPredictionReuseFallbackReason => {
+): CoastPredictionCalculation | CoastPredictionFallback => {
   const fallbackReason = getReuseFallbackReason(
     payload,
     state,
@@ -377,7 +598,10 @@ const tryReuseCoastPrediction = (
     allowLoopTrim,
   )
   if (fallbackReason || !cache) {
-    return fallbackReason ?? 'no-cache'
+    return {
+      divergence: null,
+      fallbackReason: fallbackReason ?? 'no-cache',
+    }
   }
 
   const elapsedSeconds = state.elapsed - cache.initialState.elapsed
@@ -386,10 +610,27 @@ const tryReuseCoastPrediction = (
     (body) => body.id === payload.targetId,
   )
   if (!validationTarget) {
-    return 'state-diverged'
+    return {
+      divergence: {
+        detail: payload.targetId,
+        measurements: [],
+        reason: 'validation-target-missing',
+      },
+      fallbackReason: 'state-diverged',
+    }
   }
   const shouldValidate =
     cache.reuseCount % validateEveryConsecutiveCoastReuses === 0
+  const validationMaxIntegrationStepSeconds = isCloseBoundCoastPrediction(
+    cache.validationState,
+    validationTarget,
+    allowLoopTrim,
+  )
+    ? Math.min(
+        boundReusePrecisionStepSeconds,
+        payload.predictionConfig.maxIntegrationStepSeconds,
+      )
+    : payload.predictionConfig.maxIntegrationStepSeconds
   const validation = shouldValidate
     ? computeCoastTrajectoryPrediction(
         cache.validationState,
@@ -398,16 +639,33 @@ const tryReuseCoastPrediction = (
         {
           ...payload.predictionConfig,
           horizonSeconds: validationElapsedSeconds,
+          maxIntegrationStepSeconds: validationMaxIntegrationStepSeconds,
         },
         false,
       )
     : null
-  if (
-    validation &&
-    (validation.result.impact ||
-      !isContinuousState(validation.finalState, state))
-  ) {
-    return 'state-diverged'
+  if (validation?.result.impact) {
+    return {
+      divergence: {
+        detail: validation.result.impact.bodyName,
+        measurements: [],
+        reason: 'validation-impact',
+      },
+      fallbackReason: 'state-diverged',
+    }
+  }
+  if (validation) {
+    const divergence = getStateDivergenceDiagnostics(
+      validation.finalState,
+      state,
+      payload.targetId,
+    )
+    if (divergence) {
+      return {
+        divergence,
+        fallbackReason: 'state-diverged',
+      }
+    }
   }
 
   let retainedSamples = cache.computation.samples
@@ -419,6 +677,12 @@ const tryReuseCoastPrediction = (
     const seamConfig = {
       ...payload.predictionConfig,
       horizonSeconds: firstRetainedSample.time,
+      maxIntegrationStepSeconds: allowLoopTrim
+        ? Math.min(
+            boundReusePrecisionStepSeconds,
+            payload.predictionConfig.maxIntegrationStepSeconds,
+          )
+        : payload.predictionConfig.maxIntegrationStepSeconds,
     }
     seam = computeCoastTrajectoryPrediction(
       state,
@@ -427,16 +691,47 @@ const tryReuseCoastPrediction = (
       seamConfig,
       false,
     )
-    if (
-      seam.result.impact ||
-      !seam.result.absoluteEndPoint ||
-      !isCloseVector(
-        seam.result.absoluteEndPoint,
-        firstRetainedSample.absolutePoint,
-        statePositionToleranceMeters,
-      )
-    ) {
-      return 'state-diverged'
+    if (seam.result.impact) {
+      return {
+        divergence: {
+          detail: seam.result.impact.bodyName,
+          measurements: [],
+          reason: 'seam-impact',
+        },
+        fallbackReason: 'state-diverged',
+      }
+    }
+    if (!seam.result.absoluteEndPoint) {
+      return {
+        divergence: {
+          detail: null,
+          measurements: [],
+          reason: 'seam-endpoint-missing',
+        },
+        fallbackReason: 'state-diverged',
+      }
+    }
+    const seamPositionMeasurement: FarTrajectoryPredictionDivergenceMeasurement =
+      {
+        bodyId: null,
+        delta: getVectorDelta(
+          seam.result.absoluteEndPoint,
+          firstRetainedSample.absolutePoint,
+        ),
+        gatesReuse: true,
+        metric: 'seam-position',
+        tolerance: statePositionToleranceMeters,
+        unit: 'meters',
+      }
+    if (!isWithinTolerance(seamPositionMeasurement)) {
+      return {
+        divergence: {
+          detail: null,
+          measurements: [seamPositionMeasurement],
+          reason: 'seam-position',
+        },
+        fallbackReason: 'state-diverged',
+      }
     }
     retainedSamples = [
       {
@@ -470,7 +765,14 @@ const tryReuseCoastPrediction = (
     (body) => body.id === payload.targetId,
   )
   if (shouldExtend && !extensionTarget) {
-    return 'state-diverged'
+    return {
+      divergence: {
+        detail: payload.targetId,
+        measurements: [],
+        reason: 'extension-target-missing',
+      },
+      fallbackReason: 'state-diverged',
+    }
   }
   const extension =
     shouldExtend && extensionTarget
@@ -537,6 +839,7 @@ const tryReuseCoastPrediction = (
       samples,
     },
     reuse: {
+      divergence: null,
       extendedPointCount: extensionSamples.length,
       extendedSeconds: extension?.predictionTime ?? 0,
       fallbackReason: null,
@@ -575,7 +878,7 @@ const calculateFarTrajectory = (
     allowLoopTrim,
   )
   const coastCalculation: CoastPredictionCalculation =
-    typeof reused === 'string'
+    'fallbackReason' in reused
       ? {
           computation: computeCoastTrajectoryPrediction(
             state,
@@ -585,9 +888,10 @@ const calculateFarTrajectory = (
             allowLoopTrim,
           ),
           reuse: {
+            divergence: reused.divergence,
             extendedPointCount: 0,
             extendedSeconds: 0,
-            fallbackReason: reused,
+            fallbackReason: reused.fallbackReason,
             mode: 'full',
             retainedPointCount: 0,
             retainedSeconds: 0,

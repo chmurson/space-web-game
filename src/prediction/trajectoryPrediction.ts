@@ -168,22 +168,23 @@ export const getCoastTrajectoryPredictionMaxIntegrationStepSeconds = (
   predictionConfig: TrajectoryPredictionConfig,
   allowLoopTrim: boolean,
 ) => {
-  if (!allowLoopTrim || target.radius <= 0) {
-    return predictionConfig.maxIntegrationStepSeconds
-  }
-
-  const currentTargetDistance = length(
-    sub(state.spacecraft.position, target.position),
-  )
-  const currentRadiusRatio = currentTargetDistance / target.radius
-
-  return currentRadiusRatio <= closeBoundCoastPrecisionRadiusRatio
+  return isCloseBoundCoastPrediction(state, target, allowLoopTrim)
     ? Math.min(
         closeBoundCoastMaxIntegrationStepSeconds,
         predictionConfig.maxIntegrationStepSeconds,
       )
     : predictionConfig.maxIntegrationStepSeconds
 }
+
+export const isCloseBoundCoastPrediction = (
+  state: SimulationState,
+  target: Body,
+  allowLoopTrim: boolean,
+) =>
+  allowLoopTrim &&
+  target.radius > 0 &&
+  length(sub(state.spacecraft.position, target.position)) / target.radius <=
+    closeBoundCoastPrecisionRadiusRatio
 
 const isInteriorSample = (
   index: number,
