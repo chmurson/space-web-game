@@ -374,6 +374,16 @@ main {
     color: var(--text);
 }
 
+.reuse-history {
+    color: var(--muted);
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    max-height: 180px;
+    overflow: auto;
+    padding-left: 18px;
+}
+
 .raw-card summary {
     cursor: pointer;
     font-weight: 600;
