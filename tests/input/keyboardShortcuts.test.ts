@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { getKeyboardShortcutAction } from '@/input/keyboardShortcuts'
 
 const createDebugShortcutEvent = (code: string) => ({
+  altKey: false,
   code,
   ctrlKey: false,
+  metaKey: false,
   repeat: false,
   shiftKey: false,
 })
@@ -141,6 +143,33 @@ describe('getKeyboardShortcutAction', () => {
         },
       ),
     ).toBeNull()
+  })
+
+  it('leaves browser-modified C combinations unreserved', () => {
+    for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+      expect(
+        getKeyboardShortcutAction(
+          { ...createDebugShortcutEvent('KeyC'), [modifier]: true },
+          {
+            autoDiscoverStrongestInfluence: false,
+            debugModeEnabled: false,
+          },
+        ),
+      ).toBeNull()
+      expect(
+        getKeyboardShortcutAction(
+          {
+            ...createDebugShortcutEvent('KeyC'),
+            [modifier]: true,
+            shiftKey: true,
+          },
+          {
+            autoDiscoverStrongestInfluence: false,
+            debugModeEnabled: false,
+          },
+        ),
+      ).toBeNull()
+    }
   })
 
   it('maps T to target cycling when automatic target discovery is disabled', () => {

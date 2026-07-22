@@ -11,8 +11,10 @@
   Controls popover now uses a full-width Follow group and compact Recenter,
   while mobile keeps those controls in Nav instead of duplicating them.
 - Updated desktop keyboard behavior so `C` changes Follow, `Shift+C` recenters,
-  and both actions announce the centered spacecraft or active body. Removed the
-  `R` scenario-restart shortcut and its remaining player-facing guidance.
+  and both actions announce the centered spacecraft or active body. Browser-
+  modified combinations such as `Cmd+C`, `Ctrl+C`, and `Alt+C` remain
+  unreserved. Removed the `R` scenario-restart shortcut and its remaining
+  player-facing guidance.
 - Removed player-facing View state, the `L` shortcut, camera-state notices,
   edge-dwell unlock progress, and swipe-unlock thresholds.
 - Kept scenario-only camera locking private. It blocks Follow, Recenter,
