@@ -164,7 +164,21 @@ describe('stepSimulationFrame', () => {
       expectedWarp: 1800,
       name: 'leaves normal time warp unchanged while controls are idle',
     },
-  ])('$name', ({ controls, expectedMaxWarp, expectedReason, expectedWarp }) => {
+    {
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+      expectedMaxWarp: null,
+      expectedReason: 'prediction-coverage' as const,
+      expectedWarp: 480,
+      name: 'caps idle time warp by two hours of usable prediction coverage',
+      usablePredictionCoverageSeconds: 2 * 60 * 60,
+    },
+  ])('$name', ({
+    controls,
+    expectedMaxWarp,
+    expectedReason,
+    expectedWarp,
+    usablePredictionCoverageSeconds,
+  }) => {
     const result = resolveSimulationTimeWarp({
       assistMode: 'off',
       crashedBodyName: null,
@@ -203,6 +217,7 @@ describe('stepSimulationFrame', () => {
       targetHeading: null,
       timeWarpIndex: requestedTimeWarps.indexOf(1800),
       timeWarps: requestedTimeWarps,
+      usablePredictionCoverageSeconds,
     })
 
     expect(result.activeControlMaxWarp).toBe(expectedMaxWarp)

@@ -12,11 +12,11 @@ import {
 } from '../prediction/farTrajectoryPrediction'
 import {
   type CoastTrajectoryPredictionTerminationReason,
+  computeCoastTrajectoryPrediction,
   getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
   type PredictedClosestApproach,
   type PredictedImpact,
   predictAssistedTrajectory,
-  predictCoastTrajectory,
   type TrajectoryPredictionConfig,
   type TrajectoryPredictionEventMarker,
   type TrajectoryPredictionIntegrationDiagnostics,
@@ -241,8 +241,10 @@ type PredictionInputKeyParts = {
 type TrajectoryPredictionTier = {
   assistedPoints: Vec2[]
   coastPrediction: TrajectoryPredictionResult
+  coverageSeconds: number
   inputKey: string
   targetId: string
+  terminationReason: CoastTrajectoryPredictionTerminationReason
 }
 
 type TrajectoryPredictionFarRequest = {
@@ -954,7 +956,7 @@ export const createTrajectoryPredictionRuntime = (
     inputKey: string,
   ): TrajectoryPredictionTier => {
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
-    const coastPrediction = predictCoastTrajectory(
+    const coastComputation = computeCoastTrajectoryPrediction(
       options.state,
       options.physicsEngine,
       target,
@@ -973,9 +975,11 @@ export const createTrajectoryPredictionRuntime = (
               predictionConfig,
               options.getAssistPredictionControls,
             ).relativePoints,
-      coastPrediction,
+      coastPrediction: coastComputation.result,
+      coverageSeconds: coastComputation.predictionTime,
       inputKey,
       targetId: target.id,
+      terminationReason: coastComputation.terminationReason,
     }
   }
 
@@ -1042,14 +1046,21 @@ export const createTrajectoryPredictionRuntime = (
       farTier: {
         assistedPoints: [],
         coastPrediction: slice.farPrediction,
+        coverageSeconds: slice.remainingCoverageSeconds,
         inputKey,
         targetId: target.id,
+        terminationReason: acceptedWindow.coastWindow.terminationReason,
       },
       nearTier: {
         assistedPoints: [],
         coastPrediction: slice.nearPrediction,
+        coverageSeconds: Math.min(
+          slice.remainingCoverageSeconds,
+          nearHorizonSeconds,
+        ),
         inputKey,
         targetId: target.id,
+        terminationReason: acceptedWindow.coastWindow.terminationReason,
       },
       predictionAnchorElapsed: acceptedWindow.coastWindow.anchorElapsed,
       predictionTerminationReason: acceptedWindow.coastWindow.terminationReason,
@@ -1146,8 +1157,10 @@ export const createTrajectoryPredictionRuntime = (
   ): TrajectoryPredictionTier => ({
     assistedPoints: result.assistedPoints,
     coastPrediction: result.coastPrediction,
+    coverageSeconds: result.coastWindow.totalCoverageSeconds,
     inputKey: result.inputKey,
     targetId: result.targetId,
+    terminationReason: result.coastWindow.terminationReason,
   })
 
   const postActiveFarPredictionRequest = () => {
@@ -1561,7 +1574,8 @@ export const createTrajectoryPredictionRuntime = (
           ? predictionDiagnostics.predictionRefreshMs
           : nowMs() - options.refreshStartMs,
       predictionTerminationReason:
-        options.nearWindow?.predictionTerminationReason ?? null,
+        options.nearWindow?.predictionTerminationReason ??
+        options.nearTier.terminationReason,
       refreshCountLastSecond: getRefreshCountLastSecond(options.refreshStartMs),
       refreshIntervalSeconds: options.predictionConfig.refreshInterval,
       refreshReason:
@@ -1570,7 +1584,8 @@ export const createTrajectoryPredictionRuntime = (
           : options.reason,
       relativePointCount: predictionState.targetRelativePredictionPoints.length,
       remainingUsableCoverageSeconds:
-        options.nearWindow?.remainingUsableCoverageSeconds ?? 0,
+        options.nearWindow?.remainingUsableCoverageSeconds ??
+        options.nearTier.coverageSeconds,
       retainedFarPointCount: options.nearWindow?.retainedFarPointCount ?? 0,
       retainedNearPointCount: options.nearWindow?.retainedNearPointCount ?? 0,
       sampleStepSeconds: options.predictionConfig.stepSeconds,

@@ -201,4 +201,20 @@ describe('timeWarpFeedbackPolicy', () => {
       value: 15,
     })
   })
+
+  it('reports when prediction coverage blocks a faster selection', () => {
+    const preview = getTimeWarpFeedbackPreview({
+      ...createBaseOptions(),
+      action: 'increaseTimeWarp',
+      currentTimeWarpIndex: requestedTimeWarps.indexOf(60),
+      usablePredictionCoverageSeconds: 10 * 60,
+    })
+
+    expect(preview).toEqual({
+      action: 'increaseTimeWarp',
+      canCommit: false,
+      reason: 'prediction-coverage',
+      value: 60,
+    })
+  })
 })

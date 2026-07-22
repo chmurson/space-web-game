@@ -12,6 +12,7 @@ import type {
   PredictedImpact,
 } from '../prediction/trajectoryPrediction'
 import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
+import type { NavigationTimeWarpDiagnostics } from '../runtime/navigationTimeWarpController'
 import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import type { BodyInfluence } from '../simulation/bodyInfluence'
 import {
@@ -19,6 +20,7 @@ import {
   formatDistance,
   formatDuration,
   formatSpecificEnergy,
+  formatTimeWarpLabel,
   formatTrajectoryHorizonDuration,
 } from './formatters'
 
@@ -101,6 +103,7 @@ export type DebugPanelTextInput = {
   predictedTargetClosestApproach: PredictedClosestApproach | null
   targetMetrics: CaptureMetrics
   targetName: string
+  timeWarpDiagnostics: NavigationTimeWarpDiagnostics
   trailDetail: {
     label: string
     level: number
@@ -191,11 +194,24 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
     input.trailDetail.renderFrame === 'target-relative'
       ? `target-relative ${input.targetName}`
       : 'inertial'
+  const predictionCoverageLimit =
+    input.timeWarpDiagnostics.predictionCoverageLimit
+  const requestedTimeWarp = input.timeWarpDiagnostics.requestedTimeWarp
+  const effectiveTimeWarp = input.timeWarpDiagnostics.effectiveTimeWarp
+  const timeWarpLine = [
+    `time warp: requested ${requestedTimeWarp === null ? 'n/a' : formatTimeWarpLabel(requestedTimeWarp)}`,
+    `effective ${effectiveTimeWarp === null ? 'n/a' : formatTimeWarpLabel(effectiveTimeWarp)}`,
+    predictionCoverageLimit
+      ? `coverage ${formatDuration(predictionCoverageLimit.remainingCoverageSeconds)} => cap ${formatTimeWarpLabel(predictionCoverageLimit.maxTimeWarp)}`
+      : 'coverage n/a',
+    `constraint ${input.timeWarpDiagnostics.constraintReason ?? 'none'}`,
+  ].join(' | ')
 
   return [
     `debug: no-gravity ${input.debugNoGravityEnabled ? 'on' : 'off'} | fps ${input.fpsIndicatorEnabled ? 'on' : 'off'}`,
     getScenarioProgressLine(input),
     `coast horizon: ${formatTrajectoryHorizonDuration(input.coastPredictionHorizonSeconds)}`,
+    timeWarpLine,
     `prediction step: ${formatDuration(input.predictionStepSeconds)} | integrate max ${formatDuration(input.predictionDiagnostics.integrationStepSeconds)} | refresh ${input.predictionDiagnostics.refreshReason ?? 'none'} ${input.predictionDiagnostics.predictionRefreshMs.toFixed(1)}ms (${input.predictionDiagnostics.refreshCountLastSecond}/s) | geometry ${input.predictionDiagnostics.geometryUpdateMs.toFixed(1)}ms | pts ${input.predictionDiagnostics.absolutePointCount}/${input.predictionDiagnostics.relativePointCount}/${input.predictionDiagnostics.assistedPointCount} | events ${input.predictionDiagnostics.eventMarkerCount}`,
     `snapshot: save/load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
     `viewport: ${input.viewportSize.toFixed(2)} | zoom: ${input.zoom.toFixed(1)}x`,
