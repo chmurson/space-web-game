@@ -115,6 +115,26 @@ describe('createNavigationTimeWarpController', () => {
     ).toBe(originalTimeWarpIndex)
   })
 
+  it('uses the lower simulation cap while a heading plan is active', () => {
+    const controller = createController()
+    const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
+    const lowerSimulationCapIndex = requestedTimeWarps.indexOf(30)
+
+    controller.resolveFrame({
+      maxTimeWarp: null,
+      nowMs: 0,
+      simulationControlMaxWarp: 30,
+      timeWarpIndex: lowerSimulationCapIndex,
+    })
+
+    expect(
+      controller.beginHeadingPlan({
+        maxTimeWarp: null,
+        timeWarpIndex: originalTimeWarpIndex,
+      }),
+    ).toBe(lowerSimulationCapIndex)
+  })
+
   it('keeps the original selection through overlapping and repeated navigation', () => {
     const controller = createController()
     const originalTimeWarpIndex = requestedTimeWarps.indexOf(3600)
