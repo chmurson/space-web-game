@@ -98,6 +98,15 @@ describe('createFarTrajectoryPredictor', () => {
       validation: 'full',
       validationSeconds: 0,
     })
+    expect(initial.coastWindow).toMatchObject({
+      allowLoopTrim: false,
+      anchorElapsed: 0,
+      terminationReason: 'horizon',
+      totalCoverageSeconds: 100,
+    })
+    expect(initial.coastWindow.sampleTimes).toEqual([
+      10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+    ])
     expect(reused.reuse).toEqual({
       divergence: null,
       extendedPointCount: 2,
@@ -110,6 +119,11 @@ describe('createFarTrajectoryPredictor', () => {
       trimmedSeconds: 20,
       validation: 'performed',
       validationSeconds: 20,
+    })
+    expect(reused.coastWindow).toMatchObject({
+      anchorElapsed: 20,
+      terminationReason: 'horizon',
+      totalCoverageSeconds: 100,
     })
     expect(reused.coastPrediction).toMatchObject({
       absoluteEndPoint: full.coastPrediction.absoluteEndPoint,
@@ -353,6 +367,11 @@ describe('createFarTrajectoryPredictor', () => {
       time: 90,
     })
     expect(reused.coastPrediction.impact).toEqual(full.coastPrediction.impact)
+    expect(reused.coastWindow).toMatchObject({
+      anchorElapsed: 20,
+      terminationReason: 'impact',
+      totalCoverageSeconds: 90,
+    })
   })
 
   it('falls back when too much of the cached horizon has elapsed', () => {
@@ -569,7 +588,22 @@ describe('createFarTrajectoryPredictor', () => {
     expect(initial.coastPrediction.relativePoints.length).toBeLessThan(
       config.horizonSeconds / config.stepSeconds,
     )
+    expect(initial.coastWindow).toMatchObject({
+      allowLoopTrim: true,
+      terminationReason: 'loop-limit',
+    })
+    expect(initial.coastWindow.totalCoverageSeconds).toBeLessThan(
+      config.horizonSeconds,
+    )
     expect(reused.reuse.mode).toBe('trim-extend')
+    expect(reused.coastWindow).toMatchObject({
+      allowLoopTrim: true,
+      anchorElapsed: 20,
+      terminationReason: 'loop-limit',
+    })
+    expect(reused.coastWindow.totalCoverageSeconds).toBeLessThan(
+      config.horizonSeconds,
+    )
     expect(reused.reuse.extendedSeconds).toBeGreaterThan(0)
     expect(reused.coastPrediction.relativePoints).toHaveLength(
       full.coastPrediction.relativePoints.length,

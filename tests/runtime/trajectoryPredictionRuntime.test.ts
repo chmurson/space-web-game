@@ -6,6 +6,7 @@ import type {
   FarTrajectoryPredictionRequestPayload,
   FarTrajectoryPredictionResultPayload,
 } from '@/prediction/farTrajectoryPrediction'
+import type { CoastTrajectoryPredictionSample } from '@/prediction/trajectoryPrediction'
 import { createTrajectoryPredictionRuntime } from '@/runtime/trajectoryPredictionRuntime'
 import type {
   TrajectoryPredictionFarWorkerClientFactory,
@@ -92,6 +93,7 @@ const createFarWorkerResult = (
 
   const absolutePoints = [{ ...request.state.spacecraft.position }]
   const relativePoints: Array<{ x: number; y: number }> = []
+  const samples: CoastTrajectoryPredictionSample[] = []
   const stepDurations: number[] = []
   let predictionTime = 0
 
@@ -113,10 +115,25 @@ const createFarWorkerResult = (
         request.state.spacecraft.velocity.y * predictionTime,
     }
     absolutePoints.push(absolutePoint)
-    relativePoints.push({
+    const relativePoint = {
       x: absolutePoint.x - target.position.x,
       y: absolutePoint.y - target.position.y,
+    }
+    relativePoints.push(relativePoint)
+    samples.push({
+      absolutePoint,
+      closestApproach: null,
+      distanceSq: relativePoint.x ** 2 + relativePoint.y ** 2,
+      point: relativePoint,
+      time: predictionTime,
     })
+  }
+
+  const integration = {
+    averageStepSeconds:
+      stepDurations.reduce((total, dt) => total + dt, 0) / stepDurations.length,
+    minStepSeconds: Math.min(...stepDurations),
+    stepCount: stepDurations.length,
   }
 
   return {
@@ -128,14 +145,16 @@ const createFarWorkerResult = (
       closestApproach: null,
       eventMarkers: [],
       impact: null,
-      integration: {
-        averageStepSeconds:
-          stepDurations.reduce((total, dt) => total + dt, 0) /
-          stepDurations.length,
-        minStepSeconds: Math.min(...stepDurations),
-        stepCount: stepDurations.length,
-      },
+      integration,
       relativePoints,
+    },
+    coastWindow: {
+      allowLoopTrim: false,
+      anchorElapsed: request.state.elapsed,
+      sampleClosestApproaches: samples.map((sample) => sample.closestApproach),
+      sampleTimes: samples.map((sample) => sample.time),
+      terminationReason: 'horizon',
+      totalCoverageSeconds: predictionTime,
     },
     inputKey: request.inputKey,
     jobId: request.jobId,
@@ -200,10 +219,14 @@ const createFarWorkerHarness = () => {
       clientIndex: number,
       requestIndex: number,
       calculationMs?: number,
+      transformResult?: (
+        result: FarTrajectoryPredictionResultPayload,
+      ) => FarTrajectoryPredictionResultPayload,
     ) => {
       const request = getRequest(clientIndex, requestIndex)
+      const result = createFarWorkerResult(request, calculationMs)
       getClient(clientIndex).handlers.handleResult(
-        createFarWorkerResult(request, calculationMs),
+        transformResult ? transformResult(result) : result,
       )
     },
     createFarWorkerClient,
@@ -1374,8 +1397,9 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
-  it('extends the near horizon when recent movement exceeds the near-span budget', () => {
+  it('expands a non-sample-aligned accepted-window near slice without recalculating', () => {
     const {
+      engineStep,
       farWorker,
       getOptions,
       predictionRuntime,
@@ -1397,6 +1421,7 @@ describe('createTrajectoryPredictionRuntime', () => {
 
     predictionRuntime.refresh(getOptions())
     farWorker.completeRequest(0, 0)
+    const synchronousStepCount = engineStep.mock.calls.length
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
       nearCalculationTravel: {
         horizonDistanceMeters: 60_000,
@@ -1407,6 +1432,7 @@ describe('createTrajectoryPredictionRuntime', () => {
 
     setState({
       ...state(),
+      elapsed: 50,
       spacecraft: {
         ...state().spacecraft,
         position: { x: 5_010, y: 0 },
@@ -1414,28 +1440,39 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
 
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(engineStep).toHaveBeenCalledTimes(synchronousStepCount)
 
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
-      farVisible: 'retained-stale',
+      farVisible: 'current',
       nearCalculationTravel: {
-        distanceSinceCalculationMeters: 0,
-        horizonDistanceMeters: 500_000,
-        horizonRatio: 0,
-        lastCalculationGapMeters: 5_000,
+        distanceSinceCalculationMeters: 5_000,
+        horizonDistanceMeters: 60_000,
+        lastCalculationGapMeters: null,
         lastStepDistanceMeters: 5_000,
-        lastStepHorizonRatio: 0.01,
       },
-      nearPointCount: 17,
+      nearFallbackReason: null,
+      nearPointCount: 16,
+      nearSource: 'accepted-window',
+      predictionAnchorElapsed: 0,
+      predictionTerminationReason: 'horizon',
       refreshReason: 'spacecraft-change',
+      remainingUsableCoverageSeconds: 17_950,
+      retainedFarPointCount: 60,
+      retainedNearPointCount: 16,
       splitHorizon: true,
     })
     expect(
-      predictionRuntime.getDiagnostics().nearCalculationTravel
-        .lastCalculationGapRatio,
+      predictionRuntime.getDiagnostics().nearCalculationTravel.horizonRatio,
     ).toBeCloseTo(5_000 / 60_000)
+    expect(
+      predictionRuntime.getDiagnostics().nearCalculationTravel
+        .lastStepHorizonRatio,
+    ).toBeCloseTo(5_000 / 60_000)
+    expect(predictionRuntime.getRemainingUsableCoverageSeconds()).toBe(17_950)
 
     setState({
       ...state(),
+      elapsed: 100,
       spacecraft: {
         ...state().spacecraft,
         position: { x: 10_010, y: 0 },
@@ -1443,17 +1480,361 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
 
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(engineStep).toHaveBeenCalledTimes(synchronousStepCount)
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
       nearCalculationTravel: {
-        horizonDistanceMeters: 500_000,
-        lastCalculationGapMeters: 5_000,
-        lastCalculationGapRatio: 0.01,
+        distanceSinceCalculationMeters: 10_000,
+        horizonDistanceMeters: 60_000,
+        lastCalculationGapMeters: null,
         lastStepDistanceMeters: 5_000,
-        lastStepHorizonRatio: 0.01,
       },
       nearPointCount: 17,
+      nearSource: 'accepted-window',
       refreshReason: 'spacecraft-change',
+      remainingUsableCoverageSeconds: 17_900,
+      retainedNearPointCount: 17,
     })
+  })
+
+  it('invalidates accepted coverage and calculates near synchronously on target change', () => {
+    const {
+      engineStep,
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setTarget,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+    const acceptedStepCount = engineStep.mock.calls.length
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearFallbackReason: null,
+      nearSource: 'accepted-window',
+      predictionAnchorElapsed: 0,
+      remainingUsableCoverageSeconds: 1_200,
+    })
+
+    setTarget(moon)
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(engineStep.mock.calls.length).toBeGreaterThan(acceptedStepCount)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearFallbackReason: 'semantic-change',
+      nearSource: 'synchronous',
+      predictionAnchorElapsed: null,
+      refreshReason: 'target-change',
+      remainingUsableCoverageSeconds: 0,
+      retainedFarPointCount: 0,
+      retainedNearPointCount: 0,
+    })
+  })
+
+  it('reuses accepted near coverage across passive body-position drift', () => {
+    const {
+      engineStep,
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+    const acceptedStepCount = engineStep.mock.calls.length
+    setState({
+      ...state(),
+      elapsed: 50,
+      bodies: [
+        state().bodies[0] ?? earth,
+        { ...moon, position: { x: 7_000, y: 0 } },
+      ],
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 510, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(engineStep).toHaveBeenCalledTimes(acceptedStepCount)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearFallbackReason: null,
+      nearSource: 'accepted-window',
+      predictionAnchorElapsed: 0,
+      refreshReason: 'body-state-change',
+      remainingUsableCoverageSeconds: 1_150,
+    })
+  })
+
+  it('hard-invalidates accepted coverage when bound policy changes', () => {
+    const {
+      engineStep,
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      setTarget,
+      state,
+    } = createRuntimeHarness()
+    const massiveTarget = { ...earth, mass: 1_000_000_000_000_000 }
+    setTarget(massiveTarget)
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    setState({
+      ...state(),
+      bodies: [massiveTarget, moon],
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 100_000, y: 0 },
+      },
+    })
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+    const acceptedStepCount = engineStep.mock.calls.length
+    expect(predictionRuntime.getDiagnostics().nearSource).toBe(
+      'accepted-window',
+    )
+
+    setState({
+      ...state(),
+      spacecraft: {
+        ...state().spacecraft,
+        velocity: { x: 10, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(engineStep.mock.calls.length).toBeGreaterThan(acceptedStepCount)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearFallbackReason: 'semantic-change',
+      nearSource: 'synchronous',
+      predictionAnchorElapsed: null,
+      refreshReason: 'orbit-policy-change',
+      remainingUsableCoverageSeconds: 0,
+    })
+  })
+
+  it('falls back synchronously when accepted coverage is exhausted', () => {
+    const {
+      engineStep,
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+    const acceptedStepCount = engineStep.mock.calls.length
+    setState({
+      ...state(),
+      elapsed: 1_200,
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 12_010, y: 0 },
+      },
+    })
+
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(engineStep.mock.calls.length).toBeGreaterThan(acceptedStepCount)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      farVisible: 'none',
+      nearFallbackReason: 'coverage-exhausted',
+      nearSource: 'synchronous',
+      predictionAnchorElapsed: null,
+      remainingUsableCoverageSeconds: 0,
+      retainedFarPointCount: 0,
+      retainedNearPointCount: 0,
+    })
+  })
+
+  it('falls back synchronously on worker divergence before accepting the new baseline', () => {
+    const {
+      engineStep,
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+    setState({
+      ...state(),
+      elapsed: 600,
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 6_010, y: 0 },
+      },
+    })
+    const acceptedStepCount = engineStep.mock.calls.length
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(engineStep).toHaveBeenCalledTimes(acceptedStepCount)
+
+    farWorker.completeRequest(0, 1, 4, (result) => ({
+      ...result,
+      reuse: {
+        ...result.reuse,
+        divergence: {
+          detail: null,
+          measurements: [],
+          reason: 'validation-spacecraft-position',
+        },
+        fallbackReason: 'state-diverged',
+      },
+    }))
+
+    expect(engineStep.mock.calls.length).toBeGreaterThan(acceptedStepCount)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearFallbackReason: 'state-diverged',
+      nearSource: 'synchronous',
+      predictionAnchorElapsed: null,
+      remainingUsableCoverageSeconds: 0,
+    })
+
+    const divergenceStepCount = engineStep.mock.calls.length
+    setState({
+      ...state(),
+      elapsed: 650,
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 6_510, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(false)
+    expect(engineStep).toHaveBeenCalledTimes(divergenceStepCount)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      nearFallbackReason: null,
+      nearSource: 'accepted-window',
+      predictionAnchorElapsed: 600,
+      remainingUsableCoverageSeconds: 1_150,
+    })
+  })
+
+  it('bounds usable coverage at loop and impact termination', () => {
+    const loopHarness = createRuntimeHarness()
+    const boundTarget = { ...earth, mass: 1_000_000_000_000_000 }
+    loopHarness.setPredictionConfig(createLongHorizonPredictionConfig())
+    loopHarness.setTarget(boundTarget)
+    loopHarness.setState({
+      ...loopHarness.state(),
+      bodies: [boundTarget, moon],
+    })
+    loopHarness.predictionRuntime.refresh(loopHarness.getOptions())
+    loopHarness.farWorker.completeRequest(0, 0, 4, (result) => {
+      const absolutePoints = result.coastPrediction.absolutePoints.slice(0, 3)
+      return {
+        ...result,
+        coastPrediction: {
+          ...result.coastPrediction,
+          absoluteEndPoint: absolutePoints.at(-1) ?? null,
+          absolutePoints,
+          relativePoints: result.coastPrediction.relativePoints.slice(0, 2),
+        },
+        coastWindow: {
+          ...result.coastWindow,
+          allowLoopTrim: true,
+          sampleClosestApproaches:
+            result.coastWindow.sampleClosestApproaches.slice(0, 2),
+          sampleTimes: result.coastWindow.sampleTimes.slice(0, 2),
+          terminationReason: 'loop-limit',
+          totalCoverageSeconds: 600,
+        },
+      }
+    })
+
+    expect(loopHarness.predictionRuntime.getDiagnostics()).toMatchObject({
+      nearSource: 'accepted-window',
+      predictionTerminationReason: 'loop-limit',
+      remainingUsableCoverageSeconds: 600,
+      retainedFarPointCount: 2,
+    })
+
+    const impactHarness = createRuntimeHarness()
+    impactHarness.setPredictionConfig(createLongHorizonPredictionConfig())
+    impactHarness.predictionRuntime.refresh(impactHarness.getOptions())
+    impactHarness.farWorker.completeRequest(0, 0, 4, (result) => {
+      const firstAbsolutePoint = result.coastPrediction.absolutePoints[1]
+      const firstRelativePoint = result.coastPrediction.relativePoints[0]
+      const firstSampleTime = result.coastWindow.sampleTimes[0]
+      if (!firstAbsolutePoint || !firstRelativePoint || !firstSampleTime) {
+        throw new Error('Expected two fake coast samples.')
+      }
+      const impactPoint = { x: 4_510, y: 0 }
+      const impact = { bodyName: earth.name, time: 450 }
+      return {
+        ...result,
+        coastPrediction: {
+          ...result.coastPrediction,
+          absoluteEndPoint: impactPoint,
+          absolutePoints: [
+            result.coastPrediction.absolutePoints[0] ?? { x: 10, y: 0 },
+            firstAbsolutePoint,
+            impactPoint,
+          ],
+          impact,
+          relativePoints: [firstRelativePoint, impactPoint],
+        },
+        coastWindow: {
+          ...result.coastWindow,
+          sampleClosestApproaches: [
+            result.coastWindow.sampleClosestApproaches[0] ?? null,
+            result.coastWindow.sampleClosestApproaches[1] ?? null,
+          ],
+          sampleTimes: [firstSampleTime, 450],
+          terminationReason: 'impact',
+          totalCoverageSeconds: 450,
+        },
+      }
+    })
+
+    expect(impactHarness.predictionRuntime.getState().predictedImpact).toEqual({
+      bodyName: earth.name,
+      time: 450,
+    })
+    expect(impactHarness.predictionRuntime.getDiagnostics()).toMatchObject({
+      nearSource: 'accepted-window',
+      predictionTerminationReason: 'impact',
+      remainingUsableCoverageSeconds: 450,
+      retainedFarPointCount: 2,
+    })
+
+    impactHarness.setState({
+      ...impactHarness.state(),
+      elapsed: 150,
+      spacecraft: {
+        ...impactHarness.state().spacecraft,
+        position: { x: 1_510, y: 0 },
+      },
+    })
+    expect(
+      impactHarness.predictionRuntime.maybeRefresh(
+        0,
+        impactHarness.getOptions(),
+      ),
+    ).toBe(false)
+    expect(impactHarness.predictionRuntime.getState().predictedImpact).toEqual({
+      bodyName: earth.name,
+      time: 300,
+    })
+    expect(
+      impactHarness.predictionRuntime.getRemainingUsableCoverageSeconds(),
+    ).toBe(300)
   })
 
   it('keeps active far work and replaces only the waiting pending request', () => {
@@ -1609,12 +1990,50 @@ describe('createTrajectoryPredictionRuntime', () => {
       activeFar: true,
       farCalculationSampleCount: 0,
       farVisible: 'none',
+      nearSource: 'synchronous',
       pendingFar: false,
+      predictionAnchorElapsed: null,
       refreshReason: 'target-change',
+      remainingUsableCoverageSeconds: 0,
     })
     expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
       event: 'refresh',
       reason: 'target-change',
+    })
+  })
+
+  it('rejects a stale worker result after controls leave and return to idle', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.refresh(getOptions())
+
+    setState({
+      ...state(),
+      controls: { ...state().controls, turn: 1 },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    setState({
+      ...state(),
+      controls: idleControls(),
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    farWorker.completeRequest(0, 0)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farCalculationSampleCount: 0,
+      farVisible: 'none',
+      nearSource: 'synchronous',
+      predictionAnchorElapsed: null,
+      remainingUsableCoverageSeconds: 0,
     })
   })
 
