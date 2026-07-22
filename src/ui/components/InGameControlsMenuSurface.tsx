@@ -288,6 +288,22 @@ export const InGameControlsMenuSurface = ({
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">Toggle Info</span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>I</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
+            <span class="in-game-controls-menu-keyboard-name">
+              Clear Info pins
+            </span>
+            <span class="in-game-controls-menu-keyboard-keys">
+              <kbd>Shift</kbd>
+              <span> + </span>
+              <kbd>I</kbd>
+            </span>
+          </div>
+          <div class="in-game-controls-menu-keyboard-row">
             <span class="in-game-controls-menu-keyboard-name">Follow</span>
             <span class="in-game-controls-menu-keyboard-keys">
               <kbd>C</kbd>

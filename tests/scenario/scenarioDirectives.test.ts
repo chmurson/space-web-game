@@ -26,6 +26,7 @@ const globalScenarioDirectiveLimits = {
 }
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'off',
     assistTargetIndex: 0,
@@ -247,6 +248,7 @@ describe('scenarioDirectives', () => {
       forcedAssistTargetId: null,
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
+      infoPins: [{ bodyId: 'earth', kind: 'body' }],
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 30,
       maxViewportSize: EARTH_VIEWPORT_SIZE,

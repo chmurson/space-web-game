@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { EARTH_VIEWPORT_SIZE } from '@/domain/viewportPresets'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import { getInfoPinKey } from '@/runtime/infoPins'
 import { applyScenarioRuntimeTransition } from '@/runtime/runtimeStateTransitions'
 import { resolveRuntimeScenarioDirectives } from '@/scenario/scenarioDirectives'
 import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
@@ -29,6 +30,7 @@ const globalScenarioDirectiveLimits = {
 }
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'off',
     assistTargetIndex: 0,
@@ -217,6 +219,28 @@ const captureRuntimeCheckpoint = (runtime: AppRuntimeState) =>
   })
 
 describe('tutorialScenario', () => {
+  it('declares the exact scenario-owned Info pins for every tutorial phase', () => {
+    const runtime = createRuntime()
+    const expectedKeysByPhase = {
+      complete: [],
+      'escape-earth': ['body:earth'],
+      'orbit-earth': ['body:earth', 'periapsis', 'apoapsis'],
+      'orbit-moon': ['body:moon', 'periapsis', 'apoapsis'],
+      'reach-moon': ['body:moon'],
+      'return-earth': ['body:earth'],
+    }
+
+    for (const [phase, expectedKeys] of Object.entries(expectedKeysByPhase)) {
+      runtime.scenario.session.state = { phase }
+      const directives = resolveRuntimeScenarioDirectives(
+        runtime,
+        globalScenarioDirectiveLimits,
+      )
+
+      expect(directives.infoPins.map(getInfoPinKey)).toEqual(expectedKeys)
+    }
+  })
+
   it('creates a tutorial session with explicit prompt UI state', () => {
     const tutorialScenario = registerTutorialScenario()
     const scenario = tutorialScenario.createScenario()
@@ -264,6 +288,7 @@ describe('tutorialScenario', () => {
       forcedAssistTargetId: null,
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),
+      infoPins: [{ bodyId: 'earth', kind: 'body' }],
       maxCoastPredictionHorizonHours: 2,
       maxTimeWarp: 30,
       maxViewportSize: EARTH_VIEWPORT_SIZE,

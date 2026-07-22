@@ -4,6 +4,12 @@ import {
   EARTH_VIEWPORT_SIZE,
 } from '../../../domain/viewportPresets'
 import type { AppRuntimeState } from '../../../runtime/appRuntimeState'
+import {
+  apoapsisInfoPin,
+  createBodyInfoPin,
+  type InfoPin,
+  periapsisInfoPin,
+} from '../../../runtime/infoPins'
 import type { TrajectoryPredictionState } from '../../../runtime/trajectoryPredictionRuntime'
 import {
   EARTH_MOON_DISTANCE,
@@ -207,6 +213,7 @@ const createEarthFocusDirectives = (options: {
   cameraFollow?: RuntimeScenarioDirectives['cameraFollow']
   hiddenBodyIds?: string[]
   hiddenUIElements?: RuntimeScenarioDirectives['hiddenUIElements']
+  infoPins?: InfoPin[]
   maxCoastPredictionHorizonHours: number
   maxTimeWarp: number
   maxViewportSize: number
@@ -216,17 +223,34 @@ const createEarthFocusDirectives = (options: {
   cameraFollow: options.cameraFollow ?? null,
   hiddenBodyIds: options.hiddenBodyIds ?? [],
   hiddenUIElements: options.hiddenUIElements ?? new Set(),
+  infoPins: options.infoPins?.map((pin) => ({ ...pin })) ?? [],
   maxCoastPredictionHorizonHours: options.maxCoastPredictionHorizonHours,
   maxTimeWarp: options.maxTimeWarp,
   maxViewportSize: options.maxViewportSize,
 })
 
-const createMoonFocusDirectives = (): RuntimeScenarioDirectives => ({
+const createMoonFocusDirectives = (
+  infoPins: InfoPin[],
+): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
+  infoPins: infoPins.map((pin) => ({ ...pin })),
   maxCoastPredictionHorizonHours: 24,
   maxTimeWarp: 2000,
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
 })
+
+const earthInfoPins = [createBodyInfoPin('earth')]
+const earthOrbitInfoPins = [
+  createBodyInfoPin('earth'),
+  periapsisInfoPin,
+  apoapsisInfoPin,
+]
+const moonInfoPins = [createBodyInfoPin('moon')]
+const moonOrbitInfoPins = [
+  createBodyInfoPin('moon'),
+  periapsisInfoPin,
+  apoapsisInfoPin,
+]
 
 const positionMoonForPhaseTwo = (runtime: AppRuntimeState) => {
   const earth = runtime.simulation.state.bodies.find(
@@ -487,6 +511,7 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
           state.onboarding?.gateActive === false ? null : 'spacecraft',
         hiddenBodyIds: ['moon'],
         hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
+        infoPins: earthInfoPins,
         maxCoastPredictionHorizonHours:
           escapeEarthVisiblePredictionHorizonHours,
         maxTimeWarp:
@@ -515,7 +540,7 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
             },
           )
         : null,
-    directives: () => createMoonFocusDirectives(),
+    directives: () => createMoonFocusDirectives(moonInfoPins),
   },
   'orbit-moon': {
     advance: ({ runtime, state }) => {
@@ -538,7 +563,7 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
         },
       )
     },
-    directives: () => createMoonFocusDirectives(),
+    directives: () => createMoonFocusDirectives(moonOrbitInfoPins),
   },
   'return-earth': {
     advance: ({ runtime }) =>
@@ -559,6 +584,7 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
         : null,
     directives: () =>
       createEarthFocusDirectives({
+        infoPins: earthInfoPins,
         maxCoastPredictionHorizonHours: 24,
         maxTimeWarp: 2000,
         maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
@@ -585,6 +611,7 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
     },
     directives: () =>
       createEarthFocusDirectives({
+        infoPins: earthOrbitInfoPins,
         maxCoastPredictionHorizonHours: 24,
         maxTimeWarp: 2000,
         maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,

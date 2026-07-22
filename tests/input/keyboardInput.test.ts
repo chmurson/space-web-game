@@ -98,12 +98,12 @@ describe('createKeyboardInput', () => {
     }
   })
 
-  it('uses quarter power while either Shift key is held', () => {
+  it('shapes quarter-travel input while either Shift key is held', () => {
     const keyboardInput = createKeyboardInput()
 
     keyboardInput.press('KeyA')
     keyboardInput.press('ShiftLeft')
-    expect(keyboardInput.getManualControls().turn).toBe(-0.25)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-1 / 49)
 
     keyboardInput.release('ShiftLeft')
     expect(keyboardInput.getManualControls().turn).toBe(-1)
@@ -111,7 +111,7 @@ describe('createKeyboardInput', () => {
     keyboardInput.release('KeyA')
     keyboardInput.press('ShiftRight')
     keyboardInput.press('KeyD')
-    expect(keyboardInput.getManualControls().turn).toBe(0.25)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(1 / 49)
 
     keyboardInput.clear()
     expect(keyboardInput.getManualControls().turn).toBe(0)
@@ -130,12 +130,23 @@ describe('createKeyboardInput', () => {
     expect(keyboardInput.getManualControls().turn).toBe(-1)
   })
 
-  it('supports clamped analog virtual turn input and clears it', () => {
+  it('applies a one-eighth dead zone and quadratic response to analog turn', () => {
     const keyboardInput = createKeyboardInput()
 
-    keyboardInput.setVirtualTurn(0.42)
-    expect(keyboardInput.getManualControls().turn).toBe(0.42)
+    keyboardInput.setVirtualTurn(0.125)
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+
+    keyboardInput.setVirtualTurn(-0.125)
+    expect(keyboardInput.getManualControls().turn).toBe(0)
+    expect(keyboardInput.hasManualTurn()).toBe(false)
+
+    keyboardInput.setVirtualTurn(0.5625)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(0.25)
     expect(keyboardInput.hasManualTurn()).toBe(true)
+
+    keyboardInput.setVirtualTurn(-0.5625)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-0.25)
 
     keyboardInput.setVirtualTurn(2)
     expect(keyboardInput.getManualControls().turn).toBe(1)
@@ -147,7 +158,7 @@ describe('createKeyboardInput', () => {
     expect(keyboardInput.getManualControls().turn).toBe(0)
     expect(keyboardInput.hasManualTurn()).toBe(false)
 
-    keyboardInput.setVirtualTurn(0.5)
+    keyboardInput.setVirtualTurn(0.5625)
     keyboardInput.clear()
     expect(keyboardInput.getManualControls().turn).toBe(0)
     expect(keyboardInput.hasManualTurn()).toBe(false)
@@ -162,16 +173,18 @@ describe('createKeyboardInput', () => {
     expect(keyboardInput.hasManualTurn()).toBe(true)
 
     keyboardInput.setVirtualKey('turnLeft', false)
-    expect(keyboardInput.getManualControls().turn).toBeCloseTo(0.7)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo((23 / 35) ** 2)
 
     keyboardInput.setVirtualKey('turnRight', true)
-    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-0.3)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-0.04)
 
     keyboardInput.setVirtualTurn(-0.7)
     expect(keyboardInput.getManualControls().turn).toBe(-1)
 
     keyboardInput.setVirtualKey('turnRight', false)
-    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-0.7)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(
+      -((23 / 35) ** 2),
+    )
 
     keyboardInput.clear()
     expect(keyboardInput.getManualControls().turn).toBe(0)

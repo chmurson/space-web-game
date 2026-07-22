@@ -12,6 +12,7 @@ import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { Starfield } from '../scene/starfield'
 import { getBodyInfluences } from '../simulation/bodyInfluence'
 import type { Body } from '../simulation/types'
+import type { InfoHud } from '../ui/createInfoHud'
 import type { InGameControlsMenu } from '../ui/createInGameControlsMenu'
 import {
   formatCompactElapsed,
@@ -173,6 +174,7 @@ const createDebugStateCopyPayload = (options: {
 export const createHudPresentation = (options: {
   defaultViewport: number
   inGameControlsMenu?: InGameControlsMenu
+  infoHud?: InfoHud
   getStarfieldLayerDebugInfo?: Starfield['getLayerDebugInfo']
   overlayUi: OverlayUiRefs
   physicsEngineName: string
@@ -428,6 +430,7 @@ export const createHudPresentation = (options: {
           : null
       const predictionState =
         options.trajectoryPresentation.getPredictionState()
+      options.infoHud?.sync()
       const prompts = resolveScenarioPrompts(options.runtime, inputMode)
 
       const hiddenUIElements =

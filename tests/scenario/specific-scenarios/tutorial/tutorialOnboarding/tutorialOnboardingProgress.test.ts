@@ -15,6 +15,7 @@ import {
 } from '@/scenario/specific-scenarios/tutorial/tutorialOnboarding/tutorialOnboardingProgress'
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 0,

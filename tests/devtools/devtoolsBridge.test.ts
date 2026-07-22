@@ -141,6 +141,7 @@ const createTrajectoryPredictionDiagnostics = (
 })
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 1,

@@ -26,7 +26,7 @@ const resolveFrame = (
   controller.resolveFrame({
     maxTimeWarp: null,
     nowMs: options.nowMs,
-    simulationNavigationActive: options.navigationActive,
+    simulationControlMaxWarp: options.navigationActive ? maxControlWarp : null,
     timeWarpIndex: options.timeWarpIndex,
   })
 
@@ -65,6 +65,74 @@ describe('createNavigationTimeWarpController', () => {
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(originalTimeWarpIndex)
+  })
+
+  it('tracks a changing control cap without losing the original selection', () => {
+    const controller = createController()
+    const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
+    const rcsTimeWarpIndex = requestedTimeWarps.indexOf(15)
+    const thrustTimeWarpIndex = requestedTimeWarps.indexOf(60)
+
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 0,
+        simulationControlMaxWarp: 15,
+        timeWarpIndex: originalTimeWarpIndex,
+      }),
+    ).toBe(rcsTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 100,
+        simulationControlMaxWarp: 100,
+        timeWarpIndex: rcsTimeWarpIndex,
+      }),
+    ).toBe(thrustTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 200,
+        simulationControlMaxWarp: 15,
+        timeWarpIndex: thrustTimeWarpIndex,
+      }),
+    ).toBe(rcsTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 300,
+        simulationControlMaxWarp: null,
+        timeWarpIndex: rcsTimeWarpIndex,
+      }),
+    ).toBe(rcsTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 300 + navigationTimeWarpRestoreDelayMs,
+        simulationControlMaxWarp: null,
+        timeWarpIndex: rcsTimeWarpIndex,
+      }),
+    ).toBe(originalTimeWarpIndex)
+  })
+
+  it('uses the lower simulation cap while a heading plan is active', () => {
+    const controller = createController()
+    const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
+    const lowerSimulationCapIndex = requestedTimeWarps.indexOf(30)
+
+    controller.resolveFrame({
+      maxTimeWarp: null,
+      nowMs: 0,
+      simulationControlMaxWarp: 30,
+      timeWarpIndex: lowerSimulationCapIndex,
+    })
+
+    expect(
+      controller.beginHeadingPlan({
+        maxTimeWarp: null,
+        timeWarpIndex: originalTimeWarpIndex,
+      }),
+    ).toBe(lowerSimulationCapIndex)
   })
 
   it('keeps the original selection through overlapping and repeated navigation', () => {
@@ -224,7 +292,7 @@ describe('createNavigationTimeWarpController', () => {
       controller.resolveFrame({
         maxTimeWarp: 120,
         nowMs: 100,
-        simulationNavigationActive: false,
+        simulationControlMaxWarp: null,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(maxControlTimeWarpIndex)
@@ -232,7 +300,7 @@ describe('createNavigationTimeWarpController', () => {
       controller.resolveFrame({
         maxTimeWarp: 120,
         nowMs: 420,
-        simulationNavigationActive: false,
+        simulationControlMaxWarp: null,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(scenarioMaximumTimeWarpIndex)

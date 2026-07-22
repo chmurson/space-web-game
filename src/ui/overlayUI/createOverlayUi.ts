@@ -26,6 +26,7 @@ export type OverlayUiRefs = {
   transientNoticeBody: HTMLSpanElement | null
   transientNoticeTitle: HTMLSpanElement | null
   debugPanel: DebugPanel
+  desktopInfoContainer: HTMLElement
   fpsIndicator: HTMLElement
   fuelDepletedNotice: HTMLElement
   fuelIconLevel: SVGRectElement | null
@@ -175,6 +176,9 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     app: options.app,
     topBar,
   })
+  const desktopInfoContainer = document.createElement('div')
+  desktopInfoContainer.className = 'desktop-info-hud-host'
+  topBar.appendChild(desktopInfoContainer)
 
   const scenarioPromptUi = createScenarioPromptUI(options.app, bottomPillArea)
 
@@ -293,6 +297,7 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     bodyLabels,
     bottomPillArea,
     debugPanel,
+    desktopInfoContainer,
     fpsIndicator: hudTelemetry.fpsIndicator,
     fuelDepletedNotice: bottomHudNotices.fuelDepletedNotice,
     fuelIconLevel: hudTelemetry.telemetryRefs.fuelIconLevel,

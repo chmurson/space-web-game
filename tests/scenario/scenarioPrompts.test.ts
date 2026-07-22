@@ -13,6 +13,7 @@ import {
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'off',
     assistTargetIndex: 0,
