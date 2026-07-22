@@ -18,7 +18,7 @@ test('creates bottom HUD notices with the preserved DOM contract', async ({
     })
 
     const fuel = overlayUi.fuelDepletedNotice
-    const camera = overlayUi.cameraUnlockNotice
+    const transient = overlayUi.transientNotice
     const target = overlayUi.targetRecommendationNotice
     const targetDismissIcon =
       overlayUi.targetRecommendationNoticeDismissButton?.querySelector(
@@ -27,18 +27,18 @@ test('creates bottom HUD notices with the preserved DOM contract', async ({
 
     const snapshot = {
       bottomPillAreaClass: overlayUi.bottomPillArea.className,
-      camera: {
-        ariaAtomic: camera.getAttribute('aria-atomic'),
-        ariaHidden: camera.getAttribute('aria-hidden'),
-        ariaLive: camera.getAttribute('aria-live'),
-        bodyText: overlayUi.cameraUnlockNoticeBody?.textContent,
-        className: camera.className,
-        dataVisible: camera.dataset.visible,
-        hidden: camera.hidden,
+      transient: {
+        ariaAtomic: transient.getAttribute('aria-atomic'),
+        ariaHidden: transient.getAttribute('aria-hidden'),
+        ariaLive: transient.getAttribute('aria-live'),
+        bodyText: overlayUi.transientNoticeBody?.textContent,
+        className: transient.className,
+        dataVisible: transient.dataset.visible,
+        hidden: transient.hidden,
         parentIsBottomPillArea:
-          camera.parentElement === overlayUi.bottomPillArea,
-        role: camera.getAttribute('role'),
-        titleText: overlayUi.cameraUnlockNoticeTitle?.textContent,
+          transient.parentElement === overlayUi.bottomPillArea,
+        role: transient.getAttribute('role'),
+        titleText: overlayUi.transientNoticeTitle?.textContent,
       },
       fuel: {
         ariaAtomic: fuel.getAttribute('aria-atomic'),
@@ -96,7 +96,7 @@ test('creates bottom HUD notices with the preserved DOM contract', async ({
     titleText: 'Fuel depleted',
   })
   expect(contract.hasBurnNotice).toBe(false)
-  expect(contract.camera).toEqual({
+  expect(contract.transient).toEqual({
     ariaAtomic: 'true',
     ariaHidden: 'true',
     ariaLive: 'polite',

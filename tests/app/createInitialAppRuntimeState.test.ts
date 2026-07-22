@@ -164,10 +164,10 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.scenario.metadata.title).toBe('Tutorial: Escape Earth')
     expect(runtime.scenario.orbitPointDisplay).toBeUndefined()
     expect(runtime.info.userPins).toEqual([])
-    expect(runtime.ui.camera.mode).toBe('centered')
-    expect(runtime.ui.camera.panOffset).toEqual(
-      runtime.simulation.state.spacecraft.position,
-    )
+    expect(runtime.ui.camera).toEqual({
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    })
   })
 
   it('starts manual target selection when auto target selection is disabled', () => {

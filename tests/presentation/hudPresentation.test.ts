@@ -323,7 +323,10 @@ const createRuntime = (): AppRuntimeState => ({
     viewportSize: 100,
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingScreenPosition: null,
     targetHeadingSelectionEpoch: 0,
@@ -383,11 +386,10 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
   return {
     bodyLabels: new Map(),
     bottomPillArea: bottomPillArea as unknown as HTMLElement,
+    transientNotice: new FakeElement('div') as unknown as HTMLElement,
+    transientNoticeBody: null,
+    transientNoticeTitle: null,
     desktopInfoContainer: new FakeElement('div') as unknown as HTMLElement,
-    cameraUnlockNotice: new FakeElement('div') as unknown as HTMLElement,
-    cameraUnlockNoticeBody: null,
-    cameraUnlockNoticeTitle: null,
-    cameraUnlockProgress: new FakeElement('div') as unknown as HTMLElement,
     debugPanel: {
       element: new FakeElement('div') as unknown as HTMLElement,
       setCloseHandler: vi.fn(),
@@ -852,12 +854,11 @@ describe('createHudPresentation', () => {
     app.id = 'app'
     app.isConnected = true
     const overlayUi = createOverlayUi(app)
-    const notice = overlayUi.cameraUnlockNotice as unknown as FakeElement
+    const notice = overlayUi.transientNotice as unknown as FakeElement
     const noticeBody = new FakeElement('span')
     const noticeTitle = new FakeElement('span')
-    overlayUi.cameraUnlockNoticeBody = noticeBody as unknown as HTMLSpanElement
-    overlayUi.cameraUnlockNoticeTitle =
-      noticeTitle as unknown as HTMLSpanElement
+    overlayUi.transientNoticeBody = noticeBody as unknown as HTMLSpanElement
+    overlayUi.transientNoticeTitle = noticeTitle as unknown as HTMLSpanElement
     const runtime = createRuntime()
     const presentation = createHudPresentation({
       defaultViewport: 100,

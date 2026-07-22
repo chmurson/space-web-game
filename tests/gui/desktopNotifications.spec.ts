@@ -1,10 +1,4 @@
-import {
-  expect,
-  type Locator,
-  type Page,
-  type TestInfo,
-  test,
-} from '@playwright/test'
+import { expect, type Page, type TestInfo, test } from '@playwright/test'
 
 test.use({
   hasTouch: false,
@@ -47,59 +41,50 @@ const attachScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-const expectNoticeInsideViewport = async (notice: Locator) => {
-  await expect(notice).toHaveCSS('opacity', '1')
-
-  const metrics = await notice.evaluate((noticeElement) => {
-    const rect = noticeElement.getBoundingClientRect()
-    const style = getComputedStyle(noticeElement)
-
-    return {
-      bottom: rect.bottom,
-      height: rect.height,
-      left: rect.left,
-      opacity: style.opacity,
-      right: rect.right,
-      top: rect.top,
-      visibility: style.visibility,
-      viewportHeight: window.innerHeight,
-      viewportWidth: window.innerWidth,
-      width: rect.width,
-    }
-  })
-
-  expect(metrics.width).toBeGreaterThan(0)
-  expect(metrics.height).toBeGreaterThan(0)
-  expect(metrics.top).toBeGreaterThanOrEqual(0)
-  expect(metrics.left).toBeGreaterThanOrEqual(0)
-  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth)
-  expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
-  expect(metrics.opacity).toBe('1')
-  expect(metrics.visibility).toBe('visible')
-}
-
-test('shows transient bottom notices on desktop', async ({
+test('names the centered target for desktop keyboard camera actions', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
-
-  await page.keyboard.press('KeyC')
 
   const notice = page.locator('.hud-notice-transient')
+  await page.keyboard.press('KeyC')
   await expect(notice).toBeVisible()
-  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
-  await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
-  await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera centered',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Earth')
 
-  await expectNoticeInsideViewport(notice)
+  await page.keyboard.press('KeyC')
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
 
-  await attachScreenshot(page, testInfo, 'desktop-camera-mode-notice')
+  await page.keyboard.press('Shift+KeyC')
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
+  await expect
+    .poll(async () =>
+      notice.locator('.hud-notice-title').evaluate((element) =>
+        Math.ceil(element.scrollWidth - element.clientWidth),
+      ),
+    )
+    .toBe(0)
+  await attachScreenshot(page, testInfo, 'desktop-camera-centered-notice')
 })
 
-test('shows camera unlock notice when desktop drag unlocks follow camera', async ({
+test('does not show camera notices for modified C, unassigned L, or pointer drag', async ({
   page,
-}, testInfo) => {
+}) => {
   await startReachMoonMission(page)
+
+  for (const shortcut of [
+    'Alt+KeyC',
+    'Control+KeyC',
+    'Meta+KeyC',
+    'Alt+Shift+KeyC',
+    'Control+Shift+KeyC',
+    'Meta+Shift+KeyC',
+  ]) {
+    await page.keyboard.press(shortcut)
+  }
+  await page.keyboard.press('KeyL')
 
   const canvas = page.locator('canvas')
   await expect(canvas).toBeVisible()
@@ -116,19 +101,7 @@ test('shows camera unlock notice when desktop drag unlocks follow camera', async
   await page.mouse.move(endX, startY, { steps: 8 })
   await page.mouse.up()
 
-  const notice = page.locator('.hud-notice-transient')
-  await expect(notice).toBeVisible()
-  await expect(notice.locator('.hud-notice-title')).toHaveText(
-    'Camera unlocked',
-  )
-  await expect(notice.locator('.hud-notice-body')).toHaveText('')
-  await expect(notice).toHaveAttribute(
-    'aria-label',
-    'Camera unlocked. Free roam is active.',
-  )
-  await expectNoticeInsideViewport(notice)
-
-  await attachScreenshot(page, testInfo, 'desktop-camera-drag-unlock-notice')
+  await expect(page.locator('.hud-notice-transient')).toBeHidden()
 })
 
 test('hides mobile-only spacecraft settings in desktop UI settings', async ({

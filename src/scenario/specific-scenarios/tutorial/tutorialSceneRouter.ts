@@ -139,7 +139,7 @@ const createDefaultRuntimeScenarioCheckpoint = (
   createRuntimeScenarioCheckpoint({
     assistMode: runtime.simulation.assistMode,
     assistTargetIndex: runtime.simulation.assistTargetIndex,
-    cameraMode: runtime.ui.camera.mode,
+    cameraFollow: runtime.ui.camera.follow,
     cameraPanOffset: runtime.ui.camera.panOffset,
     coastPredictionHorizonHours: runtime.simulation.coastPredictionHorizonHours,
     targetHeading: runtime.simulation.targetHeading,
@@ -209,8 +209,8 @@ const hasReachedTrajectoryCoach = (
   state.onboarding?.completedStepIds.includes('intro-trajectory') === true
 
 const createEarthFocusDirectives = (options: {
-  cameraMode?: RuntimeScenarioDirectives['cameraMode']
-  cameraModeChangesLocked?: RuntimeScenarioDirectives['cameraModeChangesLocked']
+  cameraControlsLocked?: RuntimeScenarioDirectives['cameraControlsLocked']
+  cameraFollow?: RuntimeScenarioDirectives['cameraFollow']
   hiddenBodyIds?: string[]
   hiddenUIElements?: RuntimeScenarioDirectives['hiddenUIElements']
   infoPins?: InfoPin[]
@@ -219,8 +219,8 @@ const createEarthFocusDirectives = (options: {
   maxViewportSize: number
 }): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
-  cameraMode: options.cameraMode ?? null,
-  cameraModeChangesLocked: options.cameraModeChangesLocked ?? false,
+  cameraControlsLocked: options.cameraControlsLocked ?? false,
+  cameraFollow: options.cameraFollow ?? null,
   hiddenBodyIds: options.hiddenBodyIds ?? [],
   hiddenUIElements: options.hiddenUIElements ?? new Set(),
   infoPins: options.infoPins?.map((pin) => ({ ...pin })) ?? [],
@@ -506,8 +506,9 @@ const tutorialSceneDefinitions: TutorialSceneDefinitionMap = {
     },
     directives: ({ state }) =>
       createEarthFocusDirectives({
-        cameraMode: state.onboarding?.gateActive === false ? null : 'centered',
-        cameraModeChangesLocked: state.onboarding?.gateActive !== false,
+        cameraControlsLocked: state.onboarding?.gateActive !== false,
+        cameraFollow:
+          state.onboarding?.gateActive === false ? null : 'spacecraft',
         hiddenBodyIds: ['moon'],
         hiddenUIElements: getHiddenOnboardingUIElements(state.onboarding),
         infoPins: earthInfoPins,

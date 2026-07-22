@@ -60,48 +60,6 @@
   pointer-events: auto;
 }
 
-.camera-unlock-progress {
-  position: fixed;
-  z-index: var(--z-overlay-hud);
-  width: 24px;
-  height: 24px;
-  box-shadow:
-    0 4px 12px rgba(2, 6, 23, 0.36),
-    0 0 8px rgba(56, 189, 248, 0.28);
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(4px);
-  transition:
-    opacity 120ms ease,
-    transform 120ms ease,
-    visibility 120ms ease;
-  visibility: hidden;
-}
-
-.camera-unlock-progress[hidden] {
-  display: none;
-}
-
-.camera-unlock-progress[data-visible="true"] {
-  opacity: 1;
-  transform: translateY(0);
-  visibility: visible;
-}
-
-.camera-unlock-progress-ring {
-  display: block;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: conic-gradient(
-    from -90deg,
-    #38bdf8 calc(var(--camera-unlock-progress, 0) * 1turn),
-    transparent 0
-  );
-  mask: radial-gradient(transparent 52%, #000 55%);
-}
-
 .telemetry-strip {
   order: 2;
 }
@@ -180,7 +138,12 @@
   bottom: calc(100% + 8px);
   left: 0;
   display: grid;
-  width: min(276px, calc(100vw - 24px));
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(
+    100dvh - var(--bottom-safe-area-inset)
+    - var(--bottom-hud-edge-gap)
+    - 54px
+  );
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--ui-glass-panel-border);
@@ -191,6 +154,15 @@
     var(--ui-glass-panel-shadow);
   backdrop-filter: var(--ui-glass-panel-blur);
   color: #f0f9ff;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 721px) and (hover: hover) and (pointer: fine) {
+  .in-game-controls-menu-popover {
+    /* Compensate for the 1.25 desktop HUD zoom while retaining a top gap. */
+    max-height: calc(80dvh - 60px);
+  }
 }
 
 .in-game-controls-menu-popover[hidden] {
@@ -227,25 +199,46 @@
   width: 100%;
 }
 
-.in-game-controls-menu-camera {
+.in-game-controls-menu-camera-grid {
   display: grid;
   gap: 8px;
 }
 
-.in-game-controls-menu-camera .menu-stepper-copy {
+.in-game-controls-menu-camera-recenter {
+  min-height: 32px;
+  justify-self: end;
+  justify-content: center;
+  padding: 7px 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.in-game-controls-menu-camera-recenter:disabled {
+  opacity: 0.58;
+}
+
+.in-game-controls-menu .in-game-controls-menu-camera-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  width: 100%;
+  gap: 8px;
+}
+
+.in-game-controls-menu-camera-control .menu-stepper-copy {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-width: 0;
 }
 
-.in-game-controls-menu-camera .menu-stepper-controls,
 .in-game-controls-menu-camera-options {
+  box-sizing: border-box;
   width: 100%;
 }
 
 .in-game-controls-menu-camera-options {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-columns: unset;
   margin: 0;
   padding: 0;
@@ -535,6 +528,17 @@
   color: rgba(125, 211, 252, 0.72);
 }
 
+@media (min-width: 721px) {
+  .hud-notice-transient .hud-notice-title {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .hud-notice-transient .hud-notice-body {
+    flex: 0 1 auto;
+  }
+}
+
 .target-recommendation-notice {
   order: 12;
   display: inline-flex;
@@ -737,7 +741,7 @@
   }
 
   .in-game-controls-menu-popover {
-    width: min(248px, calc(100vw - 24px));
+    width: min(320px, calc(100vw - 24px));
   }
 
   .in-game-controls-menu-keyboard-hints {
@@ -767,7 +771,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .camera-unlock-progress,
   .hud-notice-transient {
     transition:
       opacity 120ms ease,

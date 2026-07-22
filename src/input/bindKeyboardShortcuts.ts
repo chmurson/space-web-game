@@ -55,9 +55,6 @@ export const bindKeyboardShortcuts = (options: {
 
     if (shortcutAction) {
       options.handleAction(shortcutAction)
-      if (shortcutAction === 'resetScenario') {
-        options.keyboardInput.clear()
-      }
     }
   })
 

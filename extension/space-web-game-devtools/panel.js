@@ -8,7 +8,7 @@ const elements = {
     assistMode: document.querySelector('#assistMode'),
     assistTarget: document.querySelector('#assistTarget'),
     bodyList: document.querySelector('#bodyList'),
-    cameraMode: document.querySelector('#cameraMode'),
+    cameraFollow: document.querySelector('#cameraFollow'),
     cameraPan: document.querySelector('#cameraPan'),
     coastHorizon: document.querySelector('#coastHorizon'),
     closeRawSnapshotButton: document.querySelector('#closeRawSnapshotButton'),
@@ -693,7 +693,7 @@ const renderSnapshot = (snapshot) => {
     elements.spacecraftHeading.textContent = formatNumber(spacecraft.heading, 4)
     elements.spacecraftFuel.textContent = `${formatNumber(spacecraft.fuel, 2)} / ${formatNumber(spacecraft.fuelCapacity, 2)}`
 
-    elements.cameraMode.textContent = snapshot.camera.mode
+    elements.cameraFollow.textContent = snapshot.camera.follow
     elements.viewportSize.textContent = formatNumber(snapshot.simulation.viewportSize, 1)
     elements.cameraPan.textContent = formatVec(snapshot.camera.panOffset)
     elements.targetHeading.textContent = snapshot.simulation.targetHeading === null ? 'none' : formatNumber(snapshot.simulation.targetHeading, 4)
@@ -820,12 +820,19 @@ document.addEventListener('click', (event) => {
         return
     }
 
-    if (commandButton.dataset.command === 'camera:centered') {
-        runCommand('Camera centered', { mode: 'centered', type: 'set-camera-mode' })
+    if (commandButton.dataset.command === 'camera-follow:spacecraft') {
+        runCommand('Follow spacecraft', {
+            follow: 'spacecraft',
+            type: 'set-camera-follow',
+        })
     }
 
-    if (commandButton.dataset.command === 'camera:unlocked') {
-        runCommand('Camera unlocked', { mode: 'unlocked', type: 'set-camera-mode' })
+    if (commandButton.dataset.command === 'camera-follow:target') {
+        runCommand('Follow target', { follow: 'target', type: 'set-camera-follow' })
+    }
+
+    if (commandButton.dataset.command === 'camera:recenter') {
+        runCommand('Recenter camera', { type: 'recenter-camera' })
     }
 })
 

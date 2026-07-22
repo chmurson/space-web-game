@@ -81,7 +81,10 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -108,7 +111,8 @@ describe('runtimeStateTransitions', () => {
     applyScenarioLoadTransition(
       runtime,
       {
-        cameraMode: 'unlocked',
+        cameraFollow: 'target',
+        cameraPanOffset: { x: 12, y: 24 },
         coastPredictionHorizonHours: 2,
         userInfoPins: [],
         scenario: {
@@ -158,8 +162,8 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.scenario.directives.cameraFollowBodyId).toBe('earth')
     expect(runtime.scenario.directives.hiddenBodyIds).toEqual(['moon'])
     expect(runtime.ui.camera).toEqual({
-      mode: 'unlocked',
-      panOffset: runtime.simulation.state.spacecraft.position,
+      follow: 'target',
+      panOffset: { x: 12, y: 24 },
     })
   })
 
@@ -172,7 +176,8 @@ describe('runtimeStateTransitions', () => {
       {
         assistTargetIndex: 1,
         assistTargetSelectionMode: 'manual',
-        cameraMode: 'centered',
+        cameraFollow: 'spacecraft',
+        cameraPanOffset: { x: 0, y: 0 },
         coastPredictionHorizonHours: 2,
         userInfoPins: [],
         scenario: {
@@ -230,7 +235,7 @@ describe('runtimeStateTransitions', () => {
       {
         assistMode: 'capture',
         assistTargetIndex: 0,
-        cameraMode: 'unlocked',
+        cameraFollow: 'target',
         cameraPanOffset: { x: 12, y: 24 },
         coastPredictionHorizonHours: 12,
         state: {
@@ -259,7 +264,10 @@ describe('runtimeStateTransitions', () => {
     expect(runtime.simulation.coastPredictionHorizonHours).toBe(2)
     expect(runtime.simulation.assistMode).toBe('off')
     expect(runtime.simulation.targetHeading).toBeNull()
-    expect(runtime.ui.camera.mode).toBe('centered')
+    expect(runtime.ui.camera).toEqual({
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    })
     expect(runtime.scenario.directives.hiddenUIElements).toEqual(
       new Set([
         'scenarioInfoButton',

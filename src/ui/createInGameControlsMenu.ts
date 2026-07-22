@@ -1,6 +1,6 @@
 import type { UIUserAction } from '../input/uiUserActions'
-import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
-import { getCameraModeAction } from './cameraModeActions'
+import type { CameraFollowSubject } from '../scenario/scenarioDirectiveTypes'
+import { getCameraFollowAction } from './cameraControlActions'
 import {
   InGameControlsMenuSurface,
   type InGameControlsMenuSurfaceProps,
@@ -22,9 +22,10 @@ type InGameControlsMenuRenderProps = Omit<
 
 export const createInGameControlsMenu = (options: {
   app: HTMLElement
-  getCameraMode: () => CameraControlMode
-  getCameraModeChangesLocked: () => boolean
-  getCameraModeControlVisible?: () => boolean
+  getCameraCanRecenter: () => boolean
+  getCameraControlsLocked: () => boolean
+  getCameraControlsVisible: () => boolean
+  getCameraFollow: () => CameraFollowSubject
   getCoastPredictionHorizonHours: () => number
   getMaxCoastPredictionHorizonHours: () => number
   getMinCoastPredictionHorizonHours: () => number
@@ -38,19 +39,20 @@ export const createInGameControlsMenu = (options: {
     missingRootError: 'Failed to create in-game controls menu',
   })
 
-  let cameraMode = options.getCameraMode()
-  let cameraModeChangesLocked = options.getCameraModeChangesLocked()
-  let cameraModeVisible = options.getCameraModeControlVisible?.() ?? true
+  let cameraCanRecenter = options.getCameraCanRecenter()
+  let cameraControlsLocked = options.getCameraControlsLocked()
+  let cameraControlsVisible = options.getCameraControlsVisible()
+  let cameraFollow = options.getCameraFollow()
   let coastHorizonLabel = ''
   let decreaseCoastHorizonDisabled = false
   let increaseCoastHorizonDisabled = false
   let open = false
 
   const syncRenderState = () => {
-    const nextCameraMode = options.getCameraMode()
-    const nextCameraModeChangesLocked = options.getCameraModeChangesLocked()
-    const nextCameraModeVisible =
-      options.getCameraModeControlVisible?.() ?? true
+    const nextCameraCanRecenter = options.getCameraCanRecenter()
+    const nextCameraControlsLocked = options.getCameraControlsLocked()
+    const nextCameraControlsVisible = options.getCameraControlsVisible()
+    const nextCameraFollow = options.getCameraFollow()
     const coastPredictionHorizonHours = options.getCoastPredictionHorizonHours()
     const nextCoastHorizonLabel = formatTrajectoryHorizonDuration(
       coastPredictionHorizonHours * 60 * 60,
@@ -60,16 +62,18 @@ export const createInGameControlsMenu = (options: {
     const nextIncreaseCoastHorizonDisabled =
       coastPredictionHorizonHours >= options.getMaxCoastPredictionHorizonHours()
     const changed =
-      nextCameraMode !== cameraMode ||
-      nextCameraModeChangesLocked !== cameraModeChangesLocked ||
-      nextCameraModeVisible !== cameraModeVisible ||
+      nextCameraCanRecenter !== cameraCanRecenter ||
+      nextCameraControlsLocked !== cameraControlsLocked ||
+      nextCameraControlsVisible !== cameraControlsVisible ||
+      nextCameraFollow !== cameraFollow ||
       nextCoastHorizonLabel !== coastHorizonLabel ||
       nextDecreaseCoastHorizonDisabled !== decreaseCoastHorizonDisabled ||
       nextIncreaseCoastHorizonDisabled !== increaseCoastHorizonDisabled
 
-    cameraMode = nextCameraMode
-    cameraModeChangesLocked = nextCameraModeChangesLocked
-    cameraModeVisible = nextCameraModeVisible
+    cameraCanRecenter = nextCameraCanRecenter
+    cameraControlsLocked = nextCameraControlsLocked
+    cameraControlsVisible = nextCameraControlsVisible
+    cameraFollow = nextCameraFollow
     coastHorizonLabel = nextCoastHorizonLabel
     decreaseCoastHorizonDisabled = nextDecreaseCoastHorizonDisabled
     increaseCoastHorizonDisabled = nextIncreaseCoastHorizonDisabled
@@ -79,16 +83,21 @@ export const createInGameControlsMenu = (options: {
 
   const renderMenu = () => {
     surface.render({
-      cameraMode,
-      cameraModeChangesLocked,
-      cameraModeVisible,
+      cameraControlsLocked,
+      cameraCanRecenter,
+      cameraControlsVisible,
+      cameraFollow,
       coastHorizonLabel,
       decreaseCoastHorizonDisabled,
       increaseCoastHorizonDisabled,
       menuId,
       open,
-      onCameraModeSelect: (mode) => {
-        options.onAction(getCameraModeAction(mode))
+      onCameraFollowSelect: (follow) => {
+        options.onAction(getCameraFollowAction(follow))
+        syncState()
+      },
+      onCameraRecenter: () => {
+        options.onAction('recenterCamera')
         syncState()
       },
       onDecreaseCoastHorizon: () => {

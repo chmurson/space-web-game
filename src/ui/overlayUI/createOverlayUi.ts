@@ -22,10 +22,9 @@ export const spacecraftOffscreenIndicatorId = '__spacecraft__'
 export type OverlayUiRefs = {
   bodyLabels: Map<string, HTMLElement>
   bottomPillArea: HTMLElement
-  cameraUnlockNotice: HTMLElement
-  cameraUnlockNoticeBody: HTMLSpanElement | null
-  cameraUnlockNoticeTitle: HTMLSpanElement | null
-  cameraUnlockProgress: HTMLElement
+  transientNotice: HTMLElement
+  transientNoticeBody: HTMLSpanElement | null
+  transientNoticeTitle: HTMLSpanElement | null
   debugPanel: DebugPanel
   desktopInfoContainer: HTMLElement
   fpsIndicator: HTMLElement
@@ -171,20 +170,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const bottomHudNotices = createBottomHudNoticesSurface(options.app)
   const { bottomPillArea } = bottomHudNotices
 
-  const cameraUnlockProgress = document.createElement('div')
-  cameraUnlockProgress.className = 'camera-unlock-progress'
-  cameraUnlockProgress.hidden = true
-  cameraUnlockProgress.dataset.visible = 'false'
-  cameraUnlockProgress.setAttribute('aria-hidden', 'true')
-  cameraUnlockProgress.setAttribute('aria-label', 'Loading free roam')
-  cameraUnlockProgress.setAttribute('aria-valuemax', '100')
-  cameraUnlockProgress.setAttribute('aria-valuemin', '0')
-  cameraUnlockProgress.setAttribute('aria-valuenow', '0')
-  cameraUnlockProgress.setAttribute('role', 'progressbar')
-  cameraUnlockProgress.innerHTML =
-    '<span class="camera-unlock-progress-ring"></span>'
-  options.app.appendChild(cameraUnlockProgress)
-
   const debugPanel = createDebugPanel(options.app)
 
   const hudTelemetry = createHudTelemetryShells({
@@ -311,10 +296,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   return {
     bodyLabels,
     bottomPillArea,
-    cameraUnlockNotice: bottomHudNotices.cameraUnlockNotice,
-    cameraUnlockNoticeBody: bottomHudNotices.cameraUnlockNoticeBody,
-    cameraUnlockNoticeTitle: bottomHudNotices.cameraUnlockNoticeTitle,
-    cameraUnlockProgress,
     debugPanel,
     desktopInfoContainer,
     fpsIndicator: hudTelemetry.fpsIndicator,
@@ -378,5 +359,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     trajectoryEventMarkerLabels,
     statWarp: null,
     statZoom: null,
+    transientNotice: bottomHudNotices.transientNotice,
+    transientNoticeBody: bottomHudNotices.transientNoticeBody,
+    transientNoticeTitle: bottomHudNotices.transientNoticeTitle,
   }
 }

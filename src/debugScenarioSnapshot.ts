@@ -1,6 +1,6 @@
 import type { AssistTargetSelectionMode } from './runtime/appRuntimeState'
 import { type InfoPin, normalizeInfoPins } from './runtime/infoPins'
-import type { CameraControlMode } from './scenario/scenarioDirectiveTypes'
+import type { CameraFollowSubject } from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
   createRuntimeScenarioSession,
@@ -13,6 +13,7 @@ import type {
   SimulationState,
   Spacecraft,
 } from './simulation/types'
+import type { Vec2 } from './simulation/vector'
 import type { OrbitPointDisplaySettingOverrides } from './userSettingsStorage'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
@@ -46,6 +47,9 @@ type DebugScenarioSnapshotV2 = {
 
 type DebugScenarioSnapshotV3 = Omit<DebugScenarioSnapshotV2, 'version'> & {
   version: 3
+  cameraFollow?: CameraFollowSubject
+  cameraPanOffset?: Vec2
+  cameraView?: 'free' | 'locked'
   userInfoPins?: InfoPin[]
 }
 
@@ -71,7 +75,8 @@ export type DebugScenarioSnapshotLink = Pick<
 export type RuntimeScenario = Scenario & {
   assistTargetIndex?: number
   assistTargetSelectionMode?: AssistTargetSelectionMode
-  cameraMode?: CameraControlMode
+  cameraFollow?: CameraFollowSubject
+  cameraPanOffset?: Vec2
   coastPredictionHorizonHours?: number
   elapsed?: number
   orbitPointDisplay?: OrbitPointDisplaySettingOverrides
@@ -109,6 +114,19 @@ const getSnapshotAssistTargetSelectionMode = (
     snapshot.assistTargetSelectionMode === 'manual')
     ? snapshot.assistTargetSelectionMode
     : undefined
+
+const getSnapshotCameraPanOffset = (
+  snapshot: DebugScenarioSnapshot,
+): Vec2 | undefined => {
+  if (snapshot.version !== 3 || !snapshot.cameraPanOffset) {
+    return undefined
+  }
+  if (snapshot.cameraView === 'locked') {
+    return { x: 0, y: 0 }
+  }
+
+  return { ...snapshot.cameraPanOffset }
+}
 
 const cloneDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
@@ -281,6 +299,8 @@ export const createScenarioFromSnapshot = (
   description: `Frozen debug state from ${new Date(snapshot.savedAt).toLocaleString()}.`,
   assistTargetIndex: getSnapshotAssistTargetIndex(snapshot),
   assistTargetSelectionMode: getSnapshotAssistTargetSelectionMode(snapshot),
+  cameraFollow: snapshot.version === 3 ? snapshot.cameraFollow : undefined,
+  cameraPanOffset: getSnapshotCameraPanOffset(snapshot),
   elapsed: snapshot.elapsed,
   viewportSize: snapshot.viewportSize,
   coastPredictionHorizonHours: getSnapshotCoastPredictionHorizonHours(snapshot),
@@ -295,6 +315,8 @@ export const createSnapshotFromState = (
   options: {
     assistTargetIndex?: number
     assistTargetSelectionMode?: AssistTargetSelectionMode
+    cameraFollow?: CameraFollowSubject
+    cameraPanOffset?: Vec2
     coastPredictionHorizonHours?: number
     scenarioSession?: RuntimeScenarioSession
     userInfoPins?: InfoPin[]
@@ -305,6 +327,10 @@ export const createSnapshotFromState = (
   savedAt: new Date().toISOString(),
   assistTargetIndex: options.assistTargetIndex,
   assistTargetSelectionMode: options.assistTargetSelectionMode,
+  cameraFollow: options.cameraFollow,
+  cameraPanOffset: options.cameraPanOffset
+    ? { ...options.cameraPanOffset }
+    : undefined,
   elapsed: state.elapsed,
   viewportSize: options.viewportSize,
   coastPredictionHorizonHours: options.coastPredictionHorizonHours,

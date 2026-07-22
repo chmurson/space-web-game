@@ -2,7 +2,9 @@ import type { AssistMode } from '../assist/orbitalAssist'
 import { cloneSimulationState } from '../simulation/state'
 import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
-import type { CameraControlMode } from './scenarioDirectiveTypes'
+import type { CameraFollowSubject } from './scenarioDirectiveTypes'
+
+type LegacyCameraControlMode = 'centered' | 'target' | 'unlocked'
 
 export type ScenarioSessionValue =
   | null
@@ -15,8 +17,10 @@ export type ScenarioSessionValue =
 export type RuntimeScenarioCheckpoint = {
   assistMode: AssistMode
   assistTargetIndex: number
-  cameraMode?: CameraControlMode
+  cameraFollow?: CameraFollowSubject
+  cameraMode?: LegacyCameraControlMode
   cameraPanOffset?: Vec2
+  cameraView?: 'free' | 'locked'
   coastPredictionHorizonHours: number
   targetHeading: number | null
   targetHeadingTurn?: TargetHeadingTurn | null
@@ -42,7 +46,7 @@ export type RuntimeScenarioSession<
 export type RuntimeScenarioCheckpointSource = {
   assistMode: AssistMode
   assistTargetIndex: number
-  cameraMode?: CameraControlMode
+  cameraFollow?: CameraFollowSubject
   cameraPanOffset?: Vec2
   coastPredictionHorizonHours: number
   targetHeading: number | null
@@ -110,12 +114,11 @@ export const createRuntimeScenarioCheckpoint = (
     world: cloneSimulationState(source.world),
   }
 
-  if (source.cameraMode !== undefined) {
-    checkpoint.cameraMode = source.cameraMode
+  if (source.cameraFollow !== undefined) {
+    checkpoint.cameraFollow = source.cameraFollow
   }
   if (source.cameraPanOffset !== undefined) {
     checkpoint.cameraPanOffset = { ...source.cameraPanOffset }
   }
-
   return checkpoint
 }

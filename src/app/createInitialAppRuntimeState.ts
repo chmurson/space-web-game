@@ -59,8 +59,8 @@ export const createInitialAppRuntimeState = (
     },
     ui: {
       camera: createDefaultCameraControlUiState(
-        initialScenarioTransition.cameraMode,
-        initialScenarioTransition.state.spacecraft.position,
+        initialScenarioTransition.cameraFollow,
+        initialScenarioTransition.cameraPanOffset,
       ),
       rcsActualTurnFeedback: null,
       spacecraftLabelIntroUntil: performance.now() + 5_000,

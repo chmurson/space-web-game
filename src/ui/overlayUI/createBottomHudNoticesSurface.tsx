@@ -3,10 +3,10 @@ import { createPreactUiSurface } from '../createPreactUiSurface'
 
 export type BottomHudNoticesRefs = {
   bottomPillArea: HTMLElement
-  cameraUnlockNotice: HTMLElement
-  cameraUnlockNoticeBody: HTMLSpanElement
-  cameraUnlockNoticeTitle: HTMLSpanElement
   fuelDepletedNotice: HTMLElement
+  transientNotice: HTMLElement
+  transientNoticeBody: HTMLSpanElement
+  transientNoticeTitle: HTMLSpanElement
   targetRecommendationNotice: HTMLElement
   targetRecommendationNoticeDismissButton: HTMLButtonElement
   targetRecommendationNoticeMessage: HTMLSpanElement
@@ -93,9 +93,9 @@ export const createBottomHudNoticesSurface = (
     bottomPillArea.querySelector<HTMLElement>('.fuel-depleted-notice'),
     'Failed to create fuel depleted notice',
   )
-  const cameraUnlockNotice = getRequiredElement(
+  const transientNotice = getRequiredElement(
     bottomPillArea.querySelector<HTMLElement>('.hud-notice-transient'),
-    'Failed to create camera unlock notice',
+    'Failed to create transient HUD notice',
   )
   const targetRecommendationNotice = getRequiredElement(
     bottomPillArea.querySelector<HTMLElement>('.target-recommendation-notice'),
@@ -104,16 +104,16 @@ export const createBottomHudNoticesSurface = (
 
   return {
     bottomPillArea,
-    cameraUnlockNotice,
-    cameraUnlockNoticeBody: getRequiredElement(
-      cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-body'),
-      'Failed to create camera unlock notice body',
-    ),
-    cameraUnlockNoticeTitle: getRequiredElement(
-      cameraUnlockNotice.querySelector<HTMLSpanElement>('.hud-notice-title'),
-      'Failed to create camera unlock notice title',
-    ),
     fuelDepletedNotice,
+    transientNotice,
+    transientNoticeBody: getRequiredElement(
+      transientNotice.querySelector<HTMLSpanElement>('.hud-notice-body'),
+      'Failed to create transient HUD notice body',
+    ),
+    transientNoticeTitle: getRequiredElement(
+      transientNotice.querySelector<HTMLSpanElement>('.hud-notice-title'),
+      'Failed to create transient HUD notice title',
+    ),
     targetRecommendationNotice,
     targetRecommendationNoticeDismissButton: getRequiredElement(
       targetRecommendationNotice.querySelector<HTMLButtonElement>(

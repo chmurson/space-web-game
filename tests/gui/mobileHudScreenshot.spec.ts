@@ -167,7 +167,11 @@ const openReachMoonMainMenu = async (page: Page, query = '') => {
   await expectWorldVisualsSuppressed(page)
 }
 
-const startReachMoonMission = async (page: Page, query = '') => {
+const startReachMoonMission = async (
+  page: Page,
+  query = '',
+  options: { touchControlsVisible?: boolean } = {},
+) => {
   await openReachMoonMainMenu(page, query)
 
   await page.getByRole('button', { name: 'Reach the Moon' }).click()
@@ -178,7 +182,11 @@ const startReachMoonMission = async (page: Page, query = '') => {
 
   await page.getByRole('button', { name: 'Start mission' }).click()
   await expect(page.locator('.scenario-prompt')).toBeHidden()
-  await expect(page.locator('.touch-controls')).toBeVisible()
+  if (options.touchControlsVisible === false) {
+    await expect(page.locator('.touch-controls')).toBeHidden()
+  } else {
+    await expect(page.locator('.touch-controls')).toBeVisible()
+  }
   await expect(
     page.getByRole('button', { name: 'Mission Brief' }),
   ).toBeVisible()
@@ -300,7 +308,8 @@ test('blocks gameplay shortcuts while editing a debug snapshot name', async ({
   const after = await page.evaluate(() =>
     window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot(),
   )
-  expect(after?.camera.mode).toBe(before?.camera.mode)
+  expect(after?.camera.follow).toBe(before?.camera.follow)
+  expect(after?.camera.panOffset).toEqual(before?.camera.panOffset)
   expect(after?.simulation.controls).toEqual({
     main: 0,
     reverse: 0,
@@ -1443,7 +1452,7 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     checkpointPrimary: true,
     description:
       'Impact with Moon ended this run. Restart to try the approach again.',
-    events: ['load', 'checkpoint', 'exit', 'restart'],
+    events: ['load', 'exit'],
     focusAfterBackwardTrap: 'exit',
     focusAfterForwardTrap: 'checkpoint',
     loadHiddenAfterStaleClick: true,
@@ -1788,8 +1797,9 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const app = document.createElement('div')
     const outsideButton = document.createElement('button')
     const events: string[] = []
-    let cameraMode: 'centered' | 'target' | 'unlocked' = 'centered'
-    let cameraModeChangesLocked = false
+    let cameraCanRecenter = false
+    let cameraControlsLocked = false
+    let cameraFollow: 'spacecraft' | 'target' = 'spacecraft'
     let coastHorizonHours = 6
     let settingsOpened = false
 
@@ -1798,21 +1808,23 @@ test('keeps the in-game controls menu adapter state and actions', async ({
 
     const menu = createInGameControlsMenu({
       app,
-      getCameraMode: () => cameraMode,
-      getCameraModeChangesLocked: () => cameraModeChangesLocked,
+      getCameraCanRecenter: () => cameraCanRecenter,
+      getCameraControlsLocked: () => cameraControlsLocked,
+      getCameraControlsVisible: () => true,
+      getCameraFollow: () => cameraFollow,
       getCoastPredictionHorizonHours: () => coastHorizonHours,
       getMaxCoastPredictionHorizonHours: () => 8,
       getMinCoastPredictionHorizonHours: () => 2,
       onAction: (action: UIUserAction) => {
         events.push(action)
-        if (action === 'setCameraUnlocked') {
-          cameraMode = 'unlocked'
+        if (action === 'setCameraFollowSpacecraft') {
+          cameraFollow = 'spacecraft'
         }
-        if (action === 'setCameraCentered') {
-          cameraMode = 'centered'
+        if (action === 'setCameraFollowTarget') {
+          cameraFollow = 'target'
         }
-        if (action === 'setCameraTarget') {
-          cameraMode = 'target'
+        if (action === 'recenterCamera') {
+          cameraCanRecenter = false
         }
         if (action === 'decreaseCoastHorizon') {
           coastHorizonHours = Math.max(2, coastHorizonHours - 2)
@@ -1837,31 +1849,32 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       menu.element.querySelector(
         `[data-in-game-action="${action}"]`,
       ) as HTMLButtonElement | null
-    const getCameraOption = (mode: string) =>
+    const getCameraFollowOption = (follow: string) =>
       menu.element.querySelector(
-        `[data-camera-mode-option="${mode}"]`,
+        `[data-camera-follow-option="${follow}"]`,
       ) as HTMLButtonElement | null
-    const getCameraOptions = () =>
+    const getCameraFollowOptions = () =>
       Array.from(
         menu.element.querySelectorAll(
-          '[data-camera-mode-option]',
+          '[data-camera-follow-option]',
         ) as NodeListOf<HTMLButtonElement>,
       ).map((element) => ({
         disabled: element.disabled,
         label: element.textContent?.trim(),
-        mode: element.dataset.cameraModeOption,
+        value: element.dataset.cameraFollowOption,
         pressed: element.getAttribute('aria-pressed'),
       }))
-    const getCameraStatus = () =>
-      menu.element.querySelector('[data-in-game-camera-status]')?.textContent
-    const getCameraOptionAriaLabels = () =>
+    const getCameraFollowStatus = () =>
+      menu.element.querySelector('[data-in-game-camera-follow-status]')
+        ?.textContent
+    const getCameraOptionAriaLabels = (selector: string, dataKey: string) =>
       Object.fromEntries(
         Array.from(
           menu.element.querySelectorAll(
-            '[data-camera-mode-option]',
+            selector,
           ) as NodeListOf<HTMLButtonElement>,
         ).map((element) => [
-          element.dataset.cameraModeOption,
+          element.dataset[dataKey],
           element.getAttribute('aria-label'),
         ]),
       )
@@ -1900,23 +1913,44 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const expandedAfterClick = getMenuButton()?.getAttribute('aria-expanded')
     const menuButtonLabelAfterClick =
       getMenuButton()?.getAttribute('aria-label')
-    const cameraModeDataInitial = menu.element.dataset.cameraMode
-    const cameraStatusInitial = getCameraStatus()
-    const cameraOptionsInitial = getCameraOptions()
+    const cameraFollowDataInitial = menu.element.dataset.cameraFollow
+    const cameraFollowStatusInitial = getCameraFollowStatus()
+    const cameraFollowOptionsInitial = getCameraFollowOptions()
+    const recenterButtonInitial = getActionButton('recenterCamera')
+    const recenterDisabledInitial = recenterButtonInitial?.disabled
+    const recenterAriaLabelInitial = recenterButtonInitial?.getAttribute(
+      'aria-label',
+    )
     const coastHorizonInitial = getCoastHorizon()
 
-    getCameraOption('target')?.click()
-    const cameraModeDataAfterTarget = menu.element.dataset.cameraMode
-    const cameraStatusAfterTarget = getCameraStatus()
-    const cameraOptionsAfterTarget = getCameraOptions()
-
-    cameraModeChangesLocked = true
+    cameraCanRecenter = true
     menu.syncState()
-    const cameraOptionsWhenLocked = getCameraOptions()
-    const cameraOptionAriaLabelsWhenLocked = getCameraOptionAriaLabels()
-    const targetLabelWhenLocked =
-      getCameraOption('target')?.getAttribute('aria-label')
-    getCameraOption('unlocked')?.click()
+    const recenterButtonAfterPan = getActionButton('recenterCamera')
+    const recenterDisabledAfterPan = recenterButtonAfterPan?.disabled
+    const recenterPressableAfterPan = recenterButtonAfterPan?.classList.contains(
+      'ui-pressable-strong',
+    )
+    recenterButtonAfterPan?.click()
+
+    getCameraFollowOption('target')?.click()
+    getActionButton('recenterCamera')?.click()
+    const cameraFollowDataAfterSelection = menu.element.dataset.cameraFollow
+    const cameraFollowStatusAfterSelection = getCameraFollowStatus()
+    const cameraFollowOptionsAfterSelection = getCameraFollowOptions()
+
+    cameraControlsLocked = true
+    menu.syncState()
+    const cameraFollowOptionsWhenLocked = getCameraFollowOptions()
+    const cameraFollowAriaLabelsWhenLocked = getCameraOptionAriaLabels(
+      '[data-camera-follow-option]',
+      'cameraFollowOption',
+    )
+    const recenterButtonWhenLocked = getActionButton('recenterCamera')
+    const recenterAriaLabelWhenLocked =
+      recenterButtonWhenLocked?.getAttribute('aria-label')
+    const recenterDisabledWhenLocked = recenterButtonWhenLocked?.disabled
+    recenterButtonWhenLocked?.click()
+    getCameraFollowOption('spacecraft')?.click()
     const eventCountAfterLockedClick = events.length
 
     getActionButton('decreaseCoastHorizon')?.click()
@@ -1956,14 +1990,14 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const closedAfterClose = getPopover()?.hidden
 
     return {
-      cameraModeDataAfterTarget,
-      cameraModeDataInitial,
-      cameraOptionAriaLabelsWhenLocked,
-      cameraOptionsAfterTarget,
-      cameraOptionsInitial,
-      cameraOptionsWhenLocked,
-      cameraStatusAfterTarget,
-      cameraStatusInitial,
+      cameraFollowAriaLabelsWhenLocked,
+      cameraFollowDataAfterSelection,
+      cameraFollowDataInitial,
+      cameraFollowOptionsAfterSelection,
+      cameraFollowOptionsInitial,
+      cameraFollowOptionsWhenLocked,
+      cameraFollowStatusAfterSelection,
+      cameraFollowStatusInitial,
       closedAfterClose,
       closedAfterEscape,
       closedAfterOutsidePointer,
@@ -1982,66 +2016,52 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       menuButtonLabelAfterClick,
       menuButtonLabelAfterEscape,
       openAfterClick,
+      recenterAriaLabelWhenLocked,
+      recenterAriaLabelInitial,
+      recenterDisabledAfterPan,
+      recenterDisabledInitial,
+      recenterDisabledWhenLocked,
+      recenterPressableAfterPan,
       settingsOpened,
-      targetLabelWhenLocked,
     }
   })
 
   expect(result).toEqual({
-    cameraModeDataAfterTarget: 'target',
-    cameraModeDataInitial: 'centered',
-    cameraOptionAriaLabelsWhenLocked: {
-      centered: 'Camera mode changes unavailable: Spacecraft',
-      target: 'Camera mode changes unavailable: Target',
-      unlocked: 'Camera mode changes unavailable: Free roam',
+    cameraFollowAriaLabelsWhenLocked: {
+      spacecraft: 'Camera controls unavailable: Follow Spacecraft',
+      target: 'Camera controls unavailable: Follow Target',
     },
-    cameraOptionsAfterTarget: [
-      {
-        disabled: false,
-        label: 'Free roam',
-        mode: 'unlocked',
-        pressed: 'false',
-      },
+    cameraFollowDataAfterSelection: 'target',
+    cameraFollowDataInitial: 'spacecraft',
+    cameraFollowOptionsAfterSelection: [
       {
         disabled: false,
         label: 'Spacecraft',
-        mode: 'centered',
         pressed: 'false',
+        value: 'spacecraft',
       },
-      { disabled: false, label: 'Target', mode: 'target', pressed: 'true' },
+      { disabled: false, label: 'Target', pressed: 'true', value: 'target' },
     ],
-    cameraOptionsInitial: [
-      {
-        disabled: false,
-        label: 'Free roam',
-        mode: 'unlocked',
-        pressed: 'false',
-      },
+    cameraFollowOptionsInitial: [
       {
         disabled: false,
         label: 'Spacecraft',
-        mode: 'centered',
         pressed: 'true',
+        value: 'spacecraft',
       },
-      { disabled: false, label: 'Target', mode: 'target', pressed: 'false' },
+      { disabled: false, label: 'Target', pressed: 'false', value: 'target' },
     ],
-    cameraOptionsWhenLocked: [
-      {
-        disabled: true,
-        label: 'Free roam',
-        mode: 'unlocked',
-        pressed: 'false',
-      },
+    cameraFollowOptionsWhenLocked: [
       {
         disabled: true,
         label: 'Spacecraft',
-        mode: 'centered',
         pressed: 'false',
+        value: 'spacecraft',
       },
-      { disabled: true, label: 'Target', mode: 'target', pressed: 'true' },
+      { disabled: true, label: 'Target', pressed: 'true', value: 'target' },
     ],
-    cameraStatusAfterTarget: 'Target',
-    cameraStatusInitial: 'Spacecraft',
+    cameraFollowStatusAfterSelection: 'Target',
+    cameraFollowStatusInitial: 'Spacecraft',
     closedAfterClose: true,
     closedAfterEscape: true,
     closedAfterOutsidePointer: true,
@@ -2050,10 +2070,11 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     coastHorizonAtMin: '2h',
     coastHorizonInitial: '6h',
     decreaseDisabledAtMin: true,
-    eventCountAfterDisabledDecrease: 3,
-    eventCountAfterLockedClick: 1,
+    eventCountAfterDisabledDecrease: 4,
+    eventCountAfterLockedClick: 2,
     events: [
-      'setCameraTarget',
+      'recenterCamera',
+      'setCameraFollowTarget',
       'decreaseCoastHorizon',
       'decreaseCoastHorizon',
       'increaseCoastHorizon',
@@ -2072,31 +2093,26 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
       'Target selector T',
-      'Camera C',
+      'Toggle Info I',
+      'Clear Info pins Shift + I',
+      'Switch camera follow C',
+      'Recenter camera Shift + C',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',
     menuButtonLabelAfterEscape: 'Open in-game controls',
     openAfterClick: true,
+    recenterAriaLabelInitial: 'Camera already centered on followed subject',
+    recenterAriaLabelWhenLocked:
+      'Camera controls unavailable: Recenter followed subject',
+    recenterDisabledAfterPan: false,
+    recenterDisabledInitial: true,
+    recenterDisabledWhenLocked: true,
+    recenterPressableAfterPan: true,
     settingsOpened: true,
-    targetLabelWhenLocked: 'Camera mode changes unavailable: Target',
   })
 })
 
-test('shows a bottom notice when cycling camera mode from the keyboard', async ({
-  page,
-}) => {
-  await startReachMoonMission(page)
-
-  await page.keyboard.press('KeyC')
-
-  const notice = page.locator('.hud-notice-transient')
-  await expect(notice).toBeVisible()
-  await expect(notice.locator('.hud-notice-title')).toHaveText('Camera mode')
-  await expect(notice.locator('.hud-notice-body')).toHaveText('Target')
-  await expect(notice).toHaveAttribute('aria-label', 'Camera mode: Target')
-})
-
-test('keeps the empty camera unlock notice title readable inside the bottom pill', async ({
+test('keeps an empty transient notice title readable inside the bottom pill', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -2114,26 +2130,20 @@ test('keeps the empty camera unlock notice title readable inside the bottom pill
       throw new Error('Missing transient notice DOM')
     }
 
-    titleElement.textContent = 'Camera unlocked'
+    titleElement.textContent = 'Checkpoint saved'
     bodyElement.replaceChildren()
     noticeElement.hidden = false
     noticeElement.dataset.visible = 'true'
     noticeElement.setAttribute('aria-hidden', 'false')
-    noticeElement.setAttribute(
-      'aria-label',
-      'Camera unlocked. Drag anywhere to pan.',
-    )
+    noticeElement.setAttribute('aria-label', 'Checkpoint saved')
   })
 
   await expect(notice).toBeVisible()
   await expect(notice.locator('.hud-notice-title')).toHaveText(
-    'Camera unlocked',
+    'Checkpoint saved',
   )
   await expect(notice.locator('.hud-notice-body')).toHaveText('')
-  await expect(notice).toHaveAttribute(
-    'aria-label',
-    'Camera unlocked. Drag anywhere to pan.',
-  )
+  await expect(notice).toHaveAttribute('aria-label', 'Checkpoint saved')
 
   const getMetrics = () =>
     notice.evaluate((noticeElement) => {
@@ -2165,11 +2175,7 @@ test('keeps the empty camera unlock notice title readable inside the bottom pill
     mobileMetrics.titleClientWidth,
   )
 
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'mobile-camera-unlocked-empty-notice',
-  )
+  await attachMobileScreenshot(page, testInfo, 'mobile-empty-transient-notice')
 
   await page.setViewportSize({ width: 1024, height: 720 })
   await expect(notice).toBeVisible()
@@ -2184,65 +2190,7 @@ test('keeps the empty camera unlock notice title readable inside the bottom pill
     wideMetrics.titleClientWidth,
   )
 
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'wide-camera-unlocked-empty-notice',
-  )
-})
-
-test('keeps the edge-pan free-roam progress indicator near the cursor', async ({
-  page,
-}, testInfo) => {
-  await page.setViewportSize({ width: 1024, height: 720 })
-  await openReachMoonMainMenu(page)
-
-  const metrics = await page.evaluate(() => {
-    const indicator = document.querySelector<HTMLElement>(
-      '.camera-unlock-progress',
-    )
-    if (!indicator) {
-      throw new Error('Missing camera unlock progress indicator')
-    }
-
-    indicator.hidden = false
-    indicator.dataset.visible = 'true'
-    indicator.setAttribute('aria-hidden', 'false')
-    indicator.setAttribute('aria-valuenow', '68')
-    indicator.style.left = '868px'
-    indicator.style.top = '58px'
-    indicator.style.setProperty('--camera-unlock-progress', '0.68')
-
-    const bounds = indicator.getBoundingClientRect()
-    return {
-      ariaLabel: indicator.getAttribute('aria-label'),
-      ariaValueNow: indicator.getAttribute('aria-valuenow'),
-      bottom: bounds.bottom,
-      left: bounds.left,
-      right: bounds.right,
-      text: indicator.textContent?.trim(),
-      top: bounds.top,
-      viewportHeight: window.innerHeight,
-      viewportWidth: window.innerWidth,
-    }
-  })
-
-  expect(metrics).toMatchObject({
-    ariaLabel: 'Loading free roam',
-    ariaValueNow: '68',
-    text: '',
-  })
-  expect(metrics.left).toBeGreaterThanOrEqual(0)
-  expect(metrics.top).toBeGreaterThanOrEqual(0)
-  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth)
-  expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
-
-  await expect(page.locator('.camera-unlock-progress')).toBeVisible()
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'desktop-edge-pan-unlock-progress',
-  )
+  await attachMobileScreenshot(page, testInfo, 'wide-empty-transient-notice')
 })
 
 test('keeps the lunar orbit quality notice text inside the bottom pill', async ({
@@ -2956,7 +2904,7 @@ test('captures the mobile top menu open over gameplay HUD', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-snapshot-save')
 })
 
-test('captures the mobile in-game controls menu open over gameplay HUD', async ({
+test('keeps mobile camera controls in Nav instead of the in-game controls menu', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -2965,7 +2913,18 @@ test('captures the mobile in-game controls menu open over gameplay HUD', async (
   const controlsDialog = page.getByRole('dialog', { name: 'In-game controls' })
   await expect(controlsDialog).toBeVisible()
   await expect(controlsDialog.getByText('Prediction horizon')).toBeVisible()
-  await expect(controlsDialog.getByText('Camera mode')).toHaveCount(0)
+  await expect(
+    controlsDialog.getByRole('group', { name: 'Follow' }),
+  ).toHaveCount(0)
+  await expect(
+    controlsDialog.getByRole('button', {
+      name: 'Recenter followed subject',
+    }),
+  ).toHaveCount(0)
+  await expect(
+    controlsDialog.locator('[data-in-game-camera-follow-status]'),
+  ).toHaveCount(0)
+  await expect(controlsDialog.getByText('View', { exact: true })).toHaveCount(0)
 
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
 })
@@ -3064,33 +3023,117 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
 })
 
 test('captures wide in-game controls keyboard hints', async ({
-  page,
+  baseURL,
+  browser,
 }, testInfo) => {
-  await page.setViewportSize({ width: 1024, height: 720 })
-  await startReachMoonMission(page)
+  if (!baseURL) {
+    throw new Error('Playwright base URL is not configured')
+  }
 
-  await page.getByRole('button', { name: 'Open in-game controls' }).click()
-  const controlsDialog = page.getByRole('dialog', { name: 'In-game controls' })
-  await expect(controlsDialog).toBeVisible()
-  await expect(
-    page.getByRole('group', { name: 'Keyboard shortcuts' }),
-  ).toBeVisible()
-  await expect(page.getByText('Normal burn')).toBeVisible()
-  await expect(page.getByText('Turn', { exact: true })).toBeVisible()
-  await expect(page.getByText('Precise turn', { exact: true })).toBeVisible()
-  await expect(
-    controlsDialog.getByText('Time warp', { exact: true }),
-  ).toBeVisible()
-  await expect(page.getByText('Burn latch')).toBeVisible()
-  await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
-  await expect(page.getByText('Toggle Info', { exact: true })).toBeVisible()
-  await expect(page.getByText('Clear Info pins', { exact: true })).toBeVisible()
+  const context = await browser.newContext({
+    baseURL,
+    hasTouch: false,
+    isMobile: false,
+    viewport: { width: 1024, height: 720 },
+  })
+  const page = await context.newPage()
 
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'wide-in-game-controls-keyboard-hints',
-  )
+  try {
+    await startReachMoonMission(page, '', { touchControlsVisible: false })
+
+    await page.getByRole('button', { name: 'Open in-game controls' }).click()
+    const controlsDialog = page.getByRole('dialog', {
+      name: 'In-game controls',
+    })
+    await expect(controlsDialog).toBeVisible()
+    await expect(
+      page.getByRole('group', { name: 'Keyboard shortcuts' }),
+    ).toBeVisible()
+    const controlsBounds = await controlsDialog.boundingBox()
+    expect(controlsBounds).not.toBeNull()
+    expect(controlsBounds?.y ?? -1).toBeGreaterThanOrEqual(0)
+    expect(
+      (controlsBounds?.y ?? 0) + (controlsBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(720)
+    const controlsScrollMetrics = await controlsDialog.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }))
+    expect(controlsScrollMetrics.scrollHeight).toBeGreaterThan(
+      controlsScrollMetrics.clientHeight,
+    )
+    await expect(page.getByText('Normal burn')).toBeVisible()
+    await expect(page.getByText('Turn', { exact: true })).toBeVisible()
+    await expect(page.getByText('Precise turn', { exact: true })).toBeVisible()
+    await expect(
+      controlsDialog.getByText('Time warp', { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByText('Burn latch')).toBeVisible()
+    await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
+    await expect(page.getByText('Toggle Info', { exact: true })).toBeVisible()
+    await expect(page.getByText('Clear Info pins', { exact: true })).toBeVisible()
+    await expect(
+      controlsDialog.getByRole('group', { name: 'Follow' }),
+    ).toBeVisible()
+    await expect(
+      controlsDialog.getByRole('button', {
+        name: 'Camera already centered on followed subject',
+      }),
+    ).toBeVisible()
+    await expect(
+      controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
+        hasText: 'Switch camera follow',
+      }),
+    ).toBeVisible()
+    await expect(
+      controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
+        hasText: 'Recenter camera',
+      }),
+    ).toBeVisible()
+    const cameraGrid = controlsDialog.locator(
+      '.in-game-controls-menu-camera-grid',
+    )
+    const followGroup = controlsDialog.getByRole('group', { name: 'Follow' })
+    const recenterButton = controlsDialog.getByRole('button', {
+      name: 'Camera already centered on followed subject',
+    })
+    const [cameraGridBounds, followGroupBounds, recenterBounds] =
+      await Promise.all([
+        cameraGrid.boundingBox(),
+        followGroup.boundingBox(),
+        recenterButton.boundingBox(),
+      ])
+    expect(cameraGridBounds).not.toBeNull()
+    expect(followGroupBounds).not.toBeNull()
+    expect(recenterBounds).not.toBeNull()
+    expect(followGroupBounds?.width ?? 0).toBeGreaterThanOrEqual(
+      (cameraGridBounds?.width ?? 0) * 0.9,
+    )
+    expect(recenterBounds?.width ?? 0).toBeLessThan(
+      (followGroupBounds?.width ?? 0) * 0.5,
+    )
+    await expect(
+      controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
+        hasText: 'View',
+      }),
+    ).toHaveCount(0)
+    await attachMobileScreenshot(
+      page,
+      testInfo,
+      'wide-in-game-controls-menu-top',
+    )
+    await controlsDialog.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+
+    await attachMobileScreenshot(
+      page,
+      testInfo,
+      'wide-in-game-controls-keyboard-hints',
+    )
+  } finally {
+    await context.close()
+  }
 })
 
 test('captures the mobile UI settings dialog opened from in-game controls', async ({

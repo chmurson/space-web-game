@@ -140,7 +140,7 @@ describe('createScenarioFromSnapshot', () => {
     expect(snapshotBase.spacecraft.position.y).toBe(6)
   })
 
-  it('preserves scenario session metadata for version 2 snapshots', () => {
+  it('preserves scenario session metadata for current snapshots', () => {
     const snapshot = createSnapshotFromState(
       {
         elapsed: snapshotBase.elapsed,
@@ -182,7 +182,7 @@ describe('createScenarioFromSnapshot', () => {
     ).toBe('escape-earth')
   })
 
-  it('preserves assist target selection state for version 2 snapshots', () => {
+  it('preserves assist target selection state for current snapshots', () => {
     const snapshot = createSnapshotFromState(
       {
         elapsed: snapshotBase.elapsed,
@@ -203,6 +203,50 @@ describe('createScenarioFromSnapshot', () => {
     })
     expect(scenario.assistTargetIndex).toBe(1)
     expect(scenario.assistTargetSelectionMode).toBe('manual')
+  })
+
+  it('preserves Follow and relative pan offset in version 3 snapshots', () => {
+    const snapshot = createSnapshotFromState(
+      {
+        elapsed: snapshotBase.elapsed,
+        bodies: snapshotBase.bodies,
+        spacecraft: snapshotBase.spacecraft,
+        controls: idleControls(),
+      },
+      {
+        cameraFollow: 'target',
+        cameraPanOffset: { x: 12, y: -24 },
+      },
+    )
+    const scenario = createScenarioFromSnapshot(snapshot)
+
+    expect(snapshot).toMatchObject({
+      cameraFollow: 'target',
+      cameraPanOffset: { x: 12, y: -24 },
+      version: 3,
+    })
+    expect(scenario).toMatchObject({
+      cameraFollow: 'target',
+      cameraPanOffset: { x: 12, y: -24 },
+    })
+    expect(scenario.cameraPanOffset).not.toBe(
+      'cameraPanOffset' in snapshot ? snapshot.cameraPanOffset : undefined,
+    )
+  })
+
+  it('recenters legacy locked version 3 snapshots', () => {
+    const snapshot = {
+      ...snapshotBase,
+      cameraFollow: 'target' as const,
+      cameraPanOffset: { x: 12, y: -24 },
+      cameraView: 'locked' as const,
+      version: 3 as const,
+    }
+
+    expect(createScenarioFromSnapshot(snapshot)).toMatchObject({
+      cameraFollow: 'target',
+      cameraPanOffset: { x: 0, y: 0 },
+    })
   })
 })
 

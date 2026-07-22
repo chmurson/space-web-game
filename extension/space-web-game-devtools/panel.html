@@ -104,7 +104,7 @@
         <article class="card">
           <h2>Camera</h2>
           <dl class="kv-list">
-            <div><dt>Mode</dt><dd id="cameraMode">—</dd></div>
+            <div><dt>Follow</dt><dd id="cameraFollow">—</dd></div>
             <div><dt>Viewport</dt><dd id="viewportSize">—</dd></div>
             <div><dt>Pan</dt><dd id="cameraPan">—</dd></div>
             <div><dt>Target heading</dt><dd id="targetHeading">—</dd></div>
@@ -123,8 +123,9 @@
           <button data-ui-action="increaseTimeWarp" type="button">Warp +</button>
           <button data-ui-action="decreaseCoastHorizon" type="button">Horizon −</button>
           <button data-ui-action="increaseCoastHorizon" type="button">Horizon +</button>
-          <button data-command="camera:centered" type="button">Camera centered</button>
-          <button data-command="camera:unlocked" type="button">Camera unlocked</button>
+          <button data-command="camera-follow:spacecraft" type="button">Follow spacecraft</button>
+          <button data-command="camera-follow:target" type="button">Follow target</button>
+          <button data-command="camera:recenter" type="button">Recenter camera</button>
           <button data-ui-action="cycleAssistMode" type="button">Cycle assist</button>
           <button data-ui-action="cycleAssistTarget" type="button">Cycle target</button>
           <button data-ui-action="saveDebugSnapshot" type="button">Save debug snapshot</button>

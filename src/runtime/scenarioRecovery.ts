@@ -1,4 +1,5 @@
 import { cloneSimulationState } from '../simulation/state'
+import { sub } from '../simulation/vector'
 import type {
   AppRuntimeSimulationSlice,
   AppRuntimeState,
@@ -8,7 +9,7 @@ import type {
 export type RuntimeCheckpointRestoreTransition = {
   assistMode: AppRuntimeSimulationSlice['assistMode']
   assistTargetIndex: AppRuntimeSimulationSlice['assistTargetIndex']
-  cameraMode?: CameraControlUiState['mode']
+  cameraFollow?: CameraControlUiState['follow']
   cameraPanOffset?: CameraControlUiState['panOffset']
   coastPredictionHorizonHours: AppRuntimeSimulationSlice['coastPredictionHorizonHours']
   state: AppRuntimeSimulationSlice['state']
@@ -26,13 +27,29 @@ export const createRuntimeCheckpointRestoreTransition = (
     return null
   }
 
+  const legacyCameraMode = checkpoint.cameraMode
+  const cameraFollow =
+    checkpoint.cameraFollow ??
+    (legacyCameraMode === 'target' ? 'target' : 'spacecraft')
+  let cameraPanOffset = checkpoint.cameraPanOffset
+  if (legacyCameraMode === 'unlocked' && checkpoint.cameraPanOffset) {
+    cameraPanOffset = sub(
+      checkpoint.cameraPanOffset,
+      checkpoint.world.spacecraft.position,
+    )
+  } else if (
+    legacyCameraMode === 'centered' ||
+    legacyCameraMode === 'target' ||
+    checkpoint.cameraView === 'locked'
+  ) {
+    cameraPanOffset = { x: 0, y: 0 }
+  }
+
   return {
     assistMode: checkpoint.assistMode,
     assistTargetIndex: checkpoint.assistTargetIndex,
-    cameraMode: checkpoint.cameraMode,
-    cameraPanOffset: checkpoint.cameraPanOffset
-      ? { ...checkpoint.cameraPanOffset }
-      : undefined,
+    cameraFollow,
+    cameraPanOffset: cameraPanOffset ? { ...cameraPanOffset } : undefined,
     coastPredictionHorizonHours: checkpoint.coastPredictionHorizonHours,
     state: cloneSimulationState(checkpoint.world, checkpoint.world.controls),
     targetHeading: checkpoint.targetHeading,

@@ -7,9 +7,8 @@ export type KeyboardShortcutContext = {
 
 type KeyboardShortcutEvent = Pick<
   KeyboardEvent,
-  'code' | 'ctrlKey' | 'repeat' | 'shiftKey'
-> &
-  Partial<Pick<KeyboardEvent, 'altKey' | 'metaKey'>>
+  'altKey' | 'code' | 'ctrlKey' | 'metaKey' | 'repeat' | 'shiftKey'
+>
 
 export const getKeyboardShortcutAction = (
   event: KeyboardShortcutEvent,
@@ -36,9 +35,6 @@ export const getKeyboardShortcutAction = (
   if (event.code === 'BracketLeft') {
     return 'decreaseTimeWarp'
   }
-  if (event.code === 'KeyR') {
-    return 'resetScenario'
-  }
   if (
     !event.repeat &&
     !context.autoDiscoverStrongestInfluence &&
@@ -46,11 +42,23 @@ export const getKeyboardShortcutAction = (
   ) {
     return 'cycleAssistTarget'
   }
-  if (!event.repeat && event.shiftKey && event.code === 'KeyC') {
-    return 'cycleAssistMode'
+  const cameraShortcutHasBrowserModifier =
+    event.altKey || event.ctrlKey || event.metaKey
+  if (
+    !event.repeat &&
+    !cameraShortcutHasBrowserModifier &&
+    event.shiftKey &&
+    event.code === 'KeyC'
+  ) {
+    return 'recenterCamera'
   }
-  if (!event.repeat && event.code === 'KeyC') {
-    return 'cycleCameraMode'
+  if (
+    !event.repeat &&
+    !cameraShortcutHasBrowserModifier &&
+    !event.shiftKey &&
+    event.code === 'KeyC'
+  ) {
+    return 'toggleCameraFollow'
   }
   if (!event.repeat && event.ctrlKey && event.code === 'KeyX') {
     return 'toggleDebugMode'

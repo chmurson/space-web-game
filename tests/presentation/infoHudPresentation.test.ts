@@ -75,7 +75,7 @@ const runtime: AppRuntimeState = {
     viewportSize: 100,
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: { follow: 'spacecraft', panOffset: { x: 0, y: 0 } },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -169,9 +169,8 @@ describe('createInfoHudView', () => {
       runtime,
     })
 
-    expect(view.rows.slice(-2).map(({ distanceLabel }) => distanceLabel)).toEqual([
-      '—',
-      '—',
-    ])
+    expect(
+      view.rows.slice(-2).map(({ distanceLabel }) => distanceLabel),
+    ).toEqual(['—', '—'])
   })
 })

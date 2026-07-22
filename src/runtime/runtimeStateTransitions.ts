@@ -70,8 +70,8 @@ export const applyScenarioLoadTransition = (
     transition.coastPredictionHorizonHours
   runtime.scenario.session = transition.scenario.session
   runtime.ui.camera = createDefaultCameraControlUiState(
-    transition.cameraMode,
-    transition.state.spacecraft.position,
+    transition.cameraFollow,
+    transition.cameraPanOffset,
   )
   runtime.ui.uiEffectEpoch += 1
   options.clearTransientScenarioState()
@@ -107,8 +107,8 @@ export const applyCheckpointRestoreTransition = (
   runtime.simulation.timeWarpIndex = transition.timeWarpIndex
   runtime.simulation.viewportSize = transition.viewportSize
   runtime.ui.camera = createDefaultCameraControlUiState(
-    transition.cameraMode ?? 'centered',
-    transition.cameraPanOffset ?? transition.state.spacecraft.position,
+    transition.cameraFollow ?? 'spacecraft',
+    transition.cameraPanOffset,
   )
   options.clearTransientScenarioState()
   syncRuntimeScenarioDirectives(runtime, options.globalScenarioDirectiveLimits)

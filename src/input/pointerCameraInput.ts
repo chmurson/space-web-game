@@ -1,7 +1,5 @@
 import * as THREE from 'three'
-import type { CameraControlMode } from '../scenario/scenarioDirectiveTypes'
 import type { Vec2 } from '../simulation/vector'
-import { getIntentionalSwipeThresholdPoint } from './intentionalSwipeThreshold'
 
 export type PointerScreenPosition = {
   x: number
@@ -11,11 +9,6 @@ export type PointerScreenPosition = {
 export type TargetHeadingSelection = {
   screenPosition: PointerScreenPosition
   worldPosition: Vec2
-}
-
-export type CameraUnlockProgress = {
-  progress: number
-  screenPosition: PointerScreenPosition
 }
 
 export type PointerCameraInput = {
@@ -28,15 +21,11 @@ export type PointerCameraInputOptions = {
   getDesktopEdgePanSpeedPixelsPerSecond?: () => number
   getEdgeScrollEnabled?: () => boolean
   getInteractionsEnabled: () => boolean
-  getCameraMode: () => CameraControlMode
-  getCameraModeChangesLocked: () => boolean
+  getCameraControlsLocked: () => boolean
   getSpacecraftVisible: () => boolean
   getSpacecraftPosition: () => Vec2
   getTargetHeadingSelectionEnabled?: () => boolean
-  onCameraModeSelected: (mode: CameraControlMode) => boolean
   onCameraPan: (delta: Vec2) => boolean
-  onCameraUnlockProgressChange?: (progress: CameraUnlockProgress | null) => void
-  onCameraUnlocked?: () => void
   onResize: () => void
   onTargetHeadingPlan: (
     heading: number,
@@ -57,9 +46,6 @@ const wheelLineModePixels = 16
 const cameraPanTapTolerancePx = 8
 const defaultDesktopEdgePanSpeedPixelsPerSecond = 420
 const edgeScrollBandPx = 44
-const edgeUnlockDwellMs = 2_000
-const edgeUnlockProgressDelayMs = 1_000
-const intentionalSwipeViewportRatio = 0.5
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -230,9 +216,6 @@ export const bindPointerCameraInput = (
   let targetHeadingPlanActive = false
   let suppressNextContextMenu = false
   let pointerInsideRenderer = false
-  let edgeDwellStartedAtMs: number | null = null
-  let edgeDwellDirectionKey = ''
-  let cameraUnlockProgressVisible = false
   const defaultRendererCursor = options.rendererElement.style.cursor
   let activeCameraPan: {
     hasMovedForTap: boolean
@@ -259,42 +242,6 @@ export const bindPointerCameraInput = (
       return
     }
     options.rendererElement.style.cursor = nextCursor
-  }
-
-  const syncCameraUnlockProgress = (progress: number) => {
-    cameraUnlockProgressVisible = true
-    options.onCameraUnlockProgressChange?.({
-      progress: clamp(progress, 0, 1),
-      screenPosition: { ...pointerScreenPosition },
-    })
-  }
-
-  const clearCameraUnlockProgress = () => {
-    if (!cameraUnlockProgressVisible) {
-      return
-    }
-    cameraUnlockProgressVisible = false
-    options.onCameraUnlockProgressChange?.(null)
-  }
-
-  const clearEdgeDwell = () => {
-    edgeDwellStartedAtMs = null
-    edgeDwellDirectionKey = ''
-    clearCameraUnlockProgress()
-  }
-
-  const unlockCameraForFreeRoam = () => {
-    if (options.getCameraMode() === 'unlocked') {
-      return true
-    }
-    if (options.getCameraModeChangesLocked()) {
-      return false
-    }
-    if (!options.onCameraModeSelected('unlocked')) {
-      return false
-    }
-    options.onCameraUnlocked?.()
-    return true
   }
 
   const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
@@ -358,7 +305,7 @@ export const bindPointerCameraInput = (
     )
   }
 
-  const updateEdgeScroll = (nowMs: number, dtSeconds: number) => {
+  const updateEdgeScroll = (_nowMs: number, dtSeconds: number) => {
     if (
       !pointerInsideRenderer ||
       activeCameraPan !== null ||
@@ -366,7 +313,6 @@ export const bindPointerCameraInput = (
       !options.getInteractionsEnabled() ||
       !(options.getEdgeScrollEnabled?.() ?? false)
     ) {
-      clearEdgeDwell()
       setEdgeScrollCursor(null)
       return
     }
@@ -375,49 +321,16 @@ export const bindPointerCameraInput = (
     const direction = getEdgeScrollDirection(bounds)
 
     if (!direction) {
-      clearEdgeDwell()
       setEdgeScrollCursor(null)
       return
     }
 
-    const cameraMode = options.getCameraMode()
-    if (cameraMode !== 'unlocked' && options.getCameraModeChangesLocked()) {
-      clearEdgeDwell()
+    if (options.getCameraControlsLocked()) {
       setEdgeScrollCursor(null)
       return
     }
 
     setEdgeScrollCursor(getEdgeScrollCursor(direction))
-
-    if (cameraMode !== 'unlocked') {
-      const directionKey = `${Math.sign(direction.x)},${Math.sign(direction.y)}`
-      if (
-        edgeDwellStartedAtMs === null ||
-        edgeDwellDirectionKey !== directionKey
-      ) {
-        edgeDwellStartedAtMs = nowMs
-        edgeDwellDirectionKey = directionKey
-        return
-      }
-
-      const progress = (nowMs - edgeDwellStartedAtMs) / edgeUnlockDwellMs
-      if (nowMs - edgeDwellStartedAtMs >= edgeUnlockProgressDelayMs) {
-        syncCameraUnlockProgress(
-          (nowMs - edgeDwellStartedAtMs - edgeUnlockProgressDelayMs) /
-            (edgeUnlockDwellMs - edgeUnlockProgressDelayMs),
-        )
-      }
-      if (progress < 1) {
-        return
-      }
-
-      if (!unlockCameraForFreeRoam()) {
-        clearEdgeDwell()
-        return
-      }
-    }
-
-    clearEdgeDwell()
     panCameraAlongEdge(direction, dtSeconds, bounds)
   }
 
@@ -601,39 +514,7 @@ export const bindPointerCameraInput = (
       return
     }
 
-    if (options.getCameraMode() !== 'unlocked') {
-      const unlockThresholdX =
-        options.windowTarget.innerWidth * intentionalSwipeViewportRatio
-      const unlockThresholdY =
-        options.windowTarget.innerHeight * intentionalSwipeViewportRatio
-      const shouldUnlock =
-        !options.getCameraModeChangesLocked() &&
-        (Math.abs(totalDeltaX) >= unlockThresholdX ||
-          Math.abs(totalDeltaY) >= unlockThresholdY)
-
-      if (!shouldUnlock) {
-        return
-      }
-
-      const thresholdPoint = getIntentionalSwipeThresholdPoint({
-        currentX: event.clientX,
-        currentY: event.clientY,
-        startX: activeCameraPan.startX,
-        startY: activeCameraPan.startY,
-        thresholdX: unlockThresholdX,
-        thresholdY: unlockThresholdY,
-      })
-
-      event.preventDefault()
-      if (thresholdPoint && unlockCameraForFreeRoam()) {
-        activeCameraPan.hasPanned =
-          panCameraBetweenScreenPoints(
-            thresholdPoint.x,
-            thresholdPoint.y,
-            event.clientX,
-            event.clientY,
-          ) || activeCameraPan.hasPanned
-      }
+    if (options.getCameraControlsLocked()) {
       activeCameraPan.previousX = event.clientX
       activeCameraPan.previousY = event.clientY
       return
@@ -688,7 +569,6 @@ export const bindPointerCameraInput = (
 
   options.rendererElement.addEventListener('pointerleave', () => {
     pointerInsideRenderer = false
-    clearEdgeDwell()
     setEdgeScrollCursor(null)
   })
 

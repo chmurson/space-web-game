@@ -1,24 +1,18 @@
 import type { InfoPin } from '../runtime/infoPins'
 
-export const cameraControlModes = ['unlocked', 'centered', 'target'] as const
+export const cameraFollowSubjects = ['spacecraft', 'target'] as const
 
-export type CameraControlMode = (typeof cameraControlModes)[number]
+export type CameraFollowSubject = (typeof cameraFollowSubjects)[number]
 
-export const isCameraControlMode = (
+export const isCameraFollowSubject = (
   value: unknown,
-): value is CameraControlMode =>
+): value is CameraFollowSubject =>
   typeof value === 'string' &&
-  cameraControlModes.includes(value as CameraControlMode)
+  cameraFollowSubjects.includes(value as CameraFollowSubject)
 
-export const getNextCameraControlMode = (
-  mode: CameraControlMode,
-): CameraControlMode => {
-  const currentIndex = cameraControlModes.indexOf(mode)
-  return (
-    cameraControlModes[(currentIndex + 1) % cameraControlModes.length] ??
-    'unlocked'
-  )
-}
+export const getNextCameraFollowSubject = (
+  follow: CameraFollowSubject,
+): CameraFollowSubject => (follow === 'spacecraft' ? 'target' : 'spacecraft')
 
 export type RuntimeScenarioHiddenUIElement =
   | 'scenarioInfoButton'
@@ -31,10 +25,10 @@ export type RuntimeScenarioHiddenUIElement =
   | 'trajectory'
 
 export type RuntimeScenarioDirectives = {
+  cameraControlsLocked: boolean
+  cameraFollow: CameraFollowSubject | null
   cameraFollowBodyId: string | null
   cameraFollowOffset: { x: number; y: number }
-  cameraMode: CameraControlMode | null
-  cameraModeChangesLocked: boolean
   forcedAssistTargetId: string | null
   hiddenBodyIds: string[]
   maxCoastPredictionHorizonHours: number | null
@@ -55,10 +49,10 @@ export type GlobalScenarioDirectiveLimits = {
 
 export const createDefaultScenarioDirectives =
   (): RuntimeScenarioDirectives => ({
+    cameraControlsLocked: false,
+    cameraFollow: null,
     cameraFollowBodyId: null,
     cameraFollowOffset: { x: 0, y: 0 },
-    cameraMode: null,
-    cameraModeChangesLocked: false,
     forcedAssistTargetId: null,
     hiddenBodyIds: [],
     maxCoastPredictionHorizonHours: null,

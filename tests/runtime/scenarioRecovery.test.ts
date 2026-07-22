@@ -56,7 +56,10 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -81,7 +84,7 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
     runtime.scenario.session.checkpoint = createRuntimeScenarioCheckpoint({
       assistMode: 'off',
       assistTargetIndex: 0,
-      cameraMode: 'unlocked',
+      cameraFollow: 'target',
       cameraPanOffset: { x: 12, y: 24 },
       coastPredictionHorizonHours: 12,
       targetHeading: null,
@@ -119,7 +122,7 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
     expect(transition).toMatchObject({
       assistMode: 'off',
       assistTargetIndex: 0,
-      cameraMode: 'unlocked',
+      cameraFollow: 'target',
       cameraPanOffset: { x: 12, y: 24 },
       coastPredictionHorizonHours: 12,
       targetHeading: null,
@@ -131,6 +134,28 @@ describe('createRuntimeCheckpointRestoreTransition', () => {
     expect(transition?.state).not.toBe(
       runtime.scenario.session.checkpoint?.world,
     )
+  })
+
+  it('migrates legacy unlocked absolute camera positions to relative offsets', () => {
+    const runtime = createRuntime()
+    const checkpoint = createRuntimeScenarioCheckpoint({
+      assistMode: 'off',
+      assistTargetIndex: 0,
+      coastPredictionHorizonHours: 12,
+      targetHeading: null,
+      viewportSize: 320,
+      world: runtime.simulation.state,
+    })
+    runtime.scenario.session.checkpoint = {
+      ...checkpoint,
+      cameraMode: 'unlocked',
+      cameraPanOffset: { x: 65, y: 82 },
+    }
+
+    expect(createRuntimeCheckpointRestoreTransition(runtime)).toMatchObject({
+      cameraFollow: 'spacecraft',
+      cameraPanOffset: { x: 15, y: 22 },
+    })
   })
 
   it('returns null when no checkpoint exists', () => {

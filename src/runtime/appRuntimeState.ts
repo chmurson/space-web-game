@@ -1,6 +1,6 @@
 import type { AssistMode } from '../assist/orbitalAssist'
 import type {
-  CameraControlMode,
+  CameraFollowSubject,
   RuntimeScenarioDirectives,
 } from '../scenario/scenarioDirectiveTypes'
 import type { ScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
@@ -39,7 +39,7 @@ export type TouchThrustControlUiState = {
 }
 
 export type CameraControlUiState = {
-  mode: CameraControlMode
+  follow: CameraFollowSubject
   panOffset: Vec2
 }
 
@@ -67,10 +67,10 @@ export const createDefaultTouchThrustControlUiState =
   })
 
 export const createDefaultCameraControlUiState = (
-  mode: CameraControlMode = 'centered',
+  follow: CameraFollowSubject = 'spacecraft',
   panOffset: Vec2 = { x: 0, y: 0 },
 ): CameraControlUiState => ({
-  mode,
+  follow,
   panOffset: { ...panOffset },
 })
 

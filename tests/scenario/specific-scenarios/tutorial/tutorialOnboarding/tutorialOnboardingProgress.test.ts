@@ -72,7 +72,10 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {

@@ -87,7 +87,10 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -278,10 +281,10 @@ describe('tutorialScenario', () => {
         state: runtime.scenario.session.state,
       }),
     ).toEqual({
+      cameraControlsLocked: true,
+      cameraFollow: 'spacecraft',
       cameraFollowBodyId: null,
       cameraFollowOffset: { x: 0, y: 0 },
-      cameraMode: 'centered',
-      cameraModeChangesLocked: true,
       forcedAssistTargetId: null,
       hiddenBodyIds: ['moon'],
       hiddenUIElements: new Set(),

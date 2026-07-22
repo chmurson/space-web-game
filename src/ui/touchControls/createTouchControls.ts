@@ -7,7 +7,7 @@ import type {
   TimeWarpFeedbackReason,
 } from '../../runtime/timeWarpFeedbackPolicy'
 import type { TrajectoryHorizonAction } from '../../runtime/trajectoryHorizonControlPolicy'
-import type { CameraControlMode } from '../../scenario/scenarioDirectiveTypes'
+import type { CameraFollowSubject } from '../../scenario/scenarioDirectiveTypes'
 import type {
   ScenarioTouchControlFocusTarget,
   ScenarioTouchHintTarget,
@@ -71,7 +71,6 @@ const doubleTapZoomMinFactor = 0.9
 const doubleTapZoomMaxFactor = 1.12
 const cameraPanTapTolerancePx = 8
 const targetHeadingHoldDelayMs = 320
-const intentionalCameraUnlockSwipeViewportRatio = 0.5
 const touchControlRevealTabHeightPx = 84
 const mouseStepSelectorTouchId = -1
 const touchControlRevealLayout = {
@@ -243,10 +242,11 @@ export const createTouchControls = (options: {
   initialTargetControlSide: TouchControlRevealEdge
   initialTrajectoryControlSide: TouchControlRevealState
   keyboardInput: KeyboardInput
-  getCameraMode(): CameraControlMode
-  getCameraModeChangesLocked(): boolean
-  onCameraUnlockedBySwipe?(): void
-  onCameraModeSelected(mode: CameraControlMode): boolean
+  getCameraCanRecenter(): boolean
+  getCameraControlsLocked(): boolean
+  getCameraFollow(): CameraFollowSubject
+  onCameraFollowSelect(follow: CameraFollowSubject): void
+  onCameraRecenter(): void
   onFollowCameraViewportBottomInsetChange?(bottomInset: number): void
   onCameraPanGesture(previous: ScreenPoint, next: ScreenPoint): boolean
   onReturnToAutomaticTarget(): boolean
@@ -270,9 +270,11 @@ export const createTouchControls = (options: {
   const mobileCommandDock = createMobileCommandDock({
     app: options.app,
     container: panel,
-    getCameraMode: options.getCameraMode,
-    getCameraModeChangesLocked: options.getCameraModeChangesLocked,
-    onCameraModeSelected: options.onCameraModeSelected,
+    getCameraCanRecenter: options.getCameraCanRecenter,
+    getCameraControlsLocked: options.getCameraControlsLocked,
+    getCameraFollow: options.getCameraFollow,
+    onCameraFollowSelect: options.onCameraFollowSelect,
+    onCameraRecenter: options.onCameraRecenter,
     onViewportBottomInsetChange:
       options.onFollowCameraViewportBottomInsetChange,
     onOpenPanelChange: (nextPanel, previousPanel) =>
@@ -1202,23 +1204,7 @@ export const createTouchControls = (options: {
             activeSession.hasMovedForTap = true
           }
 
-          if (options.getCameraMode() !== 'unlocked') {
-            const unlockThresholdX =
-              window.innerWidth * intentionalCameraUnlockSwipeViewportRatio
-            const unlockThresholdY =
-              window.innerHeight * intentionalCameraUnlockSwipeViewportRatio
-            const shouldUnlock =
-              !options.getCameraModeChangesLocked() &&
-              (Math.abs(totalDeltaX) >= unlockThresholdX ||
-                Math.abs(totalDeltaY) >= unlockThresholdY)
-
-            if (!shouldUnlock) {
-              return
-            }
-
-            if (options.onCameraModeSelected('unlocked')) {
-              options.onCameraUnlockedBySwipe?.()
-            }
+          if (options.getCameraControlsLocked()) {
             activeSession.previousX = touch.clientX
             activeSession.previousY = touch.clientY
             return
@@ -1520,8 +1506,8 @@ export const createTouchControls = (options: {
   options.app.appendChild(panel)
   thrustControl.syncUi()
   timeWarpControl.syncUi()
+  mobileCommandDock.syncState()
   syncTimeWarpDockState()
-  mobileCommandDock.syncUi()
   syncTargetRecommendationCue()
   targetControl.syncUi()
   syncTrajectoryControlVisibility()
@@ -1531,8 +1517,8 @@ export const createTouchControls = (options: {
   window.addEventListener('resize', () => {
     thrustControl.syncUi()
     timeWarpControl.syncUi()
+    mobileCommandDock.syncState()
     syncTimeWarpDockState()
-    mobileCommandDock.syncUi()
     syncTargetRecommendationCue()
     targetControl.syncUi()
     trajectoryHorizonControl.syncUi()
@@ -1574,8 +1560,8 @@ export const createTouchControls = (options: {
         clearGameplayTouchInput()
       }
       timeWarpControl.syncUi()
+      mobileCommandDock.syncState()
       syncTimeWarpDockState()
-      mobileCommandDock.syncUi()
       syncTargetRecommendationCue()
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()

@@ -101,7 +101,10 @@ const createRuntime = (): AppRuntimeState => ({
     }),
   },
   ui: {
-    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    camera: {
+      follow: 'spacecraft',
+      panOffset: { x: 0, y: 0 },
+    },
     spacecraftLabelIntroUntil: 0,
     targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
@@ -291,7 +294,7 @@ describe('createRuntimeActions', () => {
     expect(runtime.simulation.viewportSize).toBe(320)
   })
 
-  it('switches between centered and unlocked camera modes', () => {
+  it('pans relative to the followed spacecraft and recenters', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
@@ -303,23 +306,24 @@ describe('createRuntimeActions', () => {
       setWindowSize(800, 400)
       const runtimeActions = createTestRuntimeActions(runtime)
 
-      expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
-      expect(runtime.ui.camera).toEqual({
-        mode: 'unlocked',
-        panOffset: runtime.simulation.state.spacecraft.position,
-      })
-
+      expect(runtimeActions.canRecenterCamera()).toBe(false)
       expect(runtimeActions.panCamera({ x: 10, y: -5 })).toBe(true)
-      expect(runtime.ui.camera.panOffset).toEqual({ x: 60, y: 55 })
+      expect(runtimeActions.canRecenterCamera()).toBe(true)
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 10, y: -5 })
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
           cameraTargetPosition: { x: 60, y: 55 },
         }),
       )
 
-      expect(runtimeActions.setCameraMode('centered')).toBe(true)
-      expect(runtime.ui.camera.mode).toBe('centered')
-      expect(runtimeActions.panCamera({ x: 1, y: 1 })).toBe(false)
+      expect(runtimeActions.recenterCamera()).toBe(true)
+      expect(runtimeActions.canRecenterCamera()).toBe(false)
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 0, y: 0 })
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: runtime.simulation.state.spacecraft.position,
+        }),
+      )
     } finally {
       if (originalWindow === undefined) {
         delete globals.window
@@ -330,13 +334,13 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('zooms an unlocked camera around a world focal point in one update', () => {
+  it('zooms a panned camera around a world focal point in one update', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
     runtime.ui.camera = {
-      mode: 'unlocked',
-      panOffset: { x: 100, y: 200 },
+      follow: 'spacecraft',
+      panOffset: { x: 50, y: 140 },
     }
     const updateCameraViewSpy = vi
       .spyOn(sceneUpdates, 'updateCameraView')
@@ -349,7 +353,7 @@ describe('createRuntimeActions', () => {
       runtimeActions.zoomCamera(0.5, { x: 300, y: 500 })
 
       expect(runtime.simulation.viewportSize).toBe(300)
-      expect(runtime.ui.camera.panOffset).toEqual({ x: 200, y: 350 })
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 150, y: 290 })
       expect(updateCameraViewSpy).toHaveBeenCalledTimes(1)
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -399,7 +403,7 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('centers the target camera mode on the active assist target', () => {
+  it('preserves pan while following live targets and switching Follow', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
@@ -415,16 +419,38 @@ describe('createRuntimeActions', () => {
       setWindowSize(800, 400)
       const runtimeActions = createTestRuntimeActions(runtime)
 
-      expect(runtimeActions.setCameraMode('target')).toBe(true)
-      expect(runtime.ui.camera.mode).toBe('target')
+      expect(runtimeActions.setCameraFollow('target')).toBe(true)
+      expect(runtime.ui.camera.follow).toBe('target')
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
           cameraTargetPosition: { x: 150, y: 160 },
         }),
       )
 
-      expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
-      expect(runtime.ui.camera.panOffset).toEqual({ x: 150, y: 160 })
+      expect(runtimeActions.panCamera({ x: 10, y: -5 })).toBe(true)
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 10, y: -5 })
+
+      runtime.simulation.state.bodies[1] = {
+        ...getRequiredBody(runtime, 1),
+        position: { x: 180, y: 190 },
+      }
+      runtimeActions.updateCamera()
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: { x: 190, y: 185 },
+        }),
+      )
+
+      expect(runtimeActions.setCameraFollow('spacecraft')).toBe(true)
+      expect(runtime.ui.camera).toEqual({
+        follow: 'spacecraft',
+        panOffset: { x: 10, y: -5 },
+      })
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: { x: 60, y: 55 },
+        }),
+      )
     } finally {
       if (originalWindow === undefined) {
         delete globals.window
@@ -435,7 +461,7 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('applies the mobile viewport inset only to follow camera modes', () => {
+  it('applies the current mobile viewport inset to centered and panned framing', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
@@ -454,14 +480,14 @@ describe('createRuntimeActions', () => {
         expect.objectContaining({ viewportBottomInset: 260 }),
       )
 
-      runtimeActions.setCameraMode('target')
+      runtimeActions.setCameraFollow('target')
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({ viewportBottomInset: 260 }),
       )
 
-      runtimeActions.setCameraMode('unlocked')
+      runtimeActions.panCamera({ x: 10, y: -5 })
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
-        expect.objectContaining({ viewportBottomInset: 0 }),
+        expect.objectContaining({ viewportBottomInset: 260 }),
       )
     } finally {
       if (originalWindow === undefined) {
@@ -473,7 +499,7 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('preserves clipped body and starfield framing when entering free roam', () => {
+  it('recenters from the current playable viewport framing', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
@@ -483,32 +509,26 @@ describe('createRuntimeActions', () => {
 
     try {
       const viewportHeight = 844
-      const viewportBottomInset = 260
+      let viewportBottomInset = 260
       setWindowSize(390, viewportHeight)
       const runtimeActions = createTestRuntimeActions(runtime, {
         getFollowCameraViewportBottomInset: () => viewportBottomInset,
       })
 
-      expect(runtimeActions.setCameraMode('unlocked')).toBe(true)
-
-      const expectedOffset =
-        (runtime.simulation.viewportSize *
-          0.5 *
-          (viewportBottomInset / viewportHeight) *
-          Math.hypot(Math.SQRT2 * Math.cos(1), Math.sin(1))) /
-        (Math.SQRT2 * Math.sin(1) * RENDER_SCALE)
-      expect(runtime.ui.camera.panOffset.x).toBeCloseTo(
-        runtime.simulation.state.spacecraft.position.x + expectedOffset,
-      )
-      expect(runtime.ui.camera.panOffset.y).toBeCloseTo(
-        runtime.simulation.state.spacecraft.position.y + expectedOffset,
-      )
+      runtimeActions.panCamera({ x: 17, y: -9 })
+      expect(runtimeActions.recenterCamera()).toBe(true)
+      expect(runtime.ui.camera.panOffset).toEqual({ x: 0, y: 0 })
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          cameraTargetPosition: runtime.ui.camera.panOffset,
-          preserveStarfieldWorldPosition: true,
-          viewportBottomInset: 0,
+          cameraTargetPosition: runtime.simulation.state.spacecraft.position,
+          viewportBottomInset: 260,
         }),
+      )
+
+      viewportBottomInset = 120
+      runtimeActions.updateCamera()
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ viewportBottomInset: 120 }),
       )
     } finally {
       if (originalWindow === undefined) {
@@ -520,7 +540,7 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('cycles camera modes through free roam, spacecraft, and target', () => {
+  it('recenters whenever Follow changes and through the explicit action', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
@@ -536,22 +556,31 @@ describe('createRuntimeActions', () => {
       setWindowSize(800, 400)
       const runtimeActions = createTestRuntimeActions(runtime)
 
-      expect(runtimeActions.handleUIUserAction('cycleCameraMode')).toEqual({
+      runtime.ui.camera.panOffset = { x: 3, y: 4 }
+      expect(runtimeActions.handleUIUserAction('toggleCameraFollow')).toEqual({
         refreshTrajectoryPrediction: false,
       })
-      expect(runtime.ui.camera.mode).toBe('target')
-
-      runtimeActions.handleUIUserAction('cycleCameraMode')
       expect(runtime.ui.camera).toEqual({
-        mode: 'unlocked',
-        panOffset: { x: 150, y: 160 },
+        follow: 'target',
+        panOffset: { x: 3, y: 4 },
       })
 
-      runtimeActions.handleUIUserAction('cycleCameraMode')
-      expect(runtime.ui.camera.mode).toBe('centered')
+      runtimeActions.panCamera({ x: 7, y: -2 })
+      runtimeActions.handleUIUserAction('recenterCamera')
+      expect(runtime.ui.camera).toEqual({
+        follow: 'target',
+        panOffset: { x: 0, y: 0 },
+      })
+
+      runtimeActions.panCamera({ x: 7, y: -2 })
+      runtimeActions.handleUIUserAction('toggleCameraFollow')
+      expect(runtime.ui.camera).toEqual({
+        follow: 'spacecraft',
+        panOffset: { x: 7, y: -2 },
+      })
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          cameraTargetPosition: runtime.simulation.state.spacecraft.position,
+          cameraTargetPosition: { x: 57, y: 58 },
         }),
       )
     } finally {
@@ -564,26 +593,53 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('does not change camera mode while scenario directives lock changes', () => {
-    const runtime = createRuntime()
-    runtime.scenario.directives.cameraModeChangesLocked = true
-    const updateCameraViewSpy = vi
-      .spyOn(sceneUpdates, 'updateCameraView')
-      .mockImplementation(() => {})
-    const runtimeActions = createTestRuntimeActions(runtime)
-
-    expect(runtimeActions.setCameraMode('unlocked')).toBe(false)
-    expect(runtime.ui.camera.mode).toBe('centered')
-    expect(updateCameraViewSpy).not.toHaveBeenCalled()
-
-    vi.restoreAllMocks()
-  })
-
-  it('unlocks the camera with the follow target framed above the crash panel', () => {
+  it('does not change camera controls while scenario directives lock them', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
-    runtime.scenario.directives.cameraModeChangesLocked = true
+    runtime.scenario.directives.cameraControlsLocked = true
+    runtime.ui.camera = {
+      follow: 'spacecraft',
+      panOffset: { x: 12, y: 24 },
+    }
+    const updateCameraViewSpy = vi
+      .spyOn(sceneUpdates, 'updateCameraView')
+      .mockImplementation(() => {})
+
+    try {
+      setWindowSize(800, 400)
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(runtimeActions.setCameraFollow('target')).toBe(false)
+      expect(runtimeActions.recenterCamera()).toBe(false)
+      expect(runtimeActions.panCamera({ x: 3, y: 4 })).toBe(false)
+      runtimeActions.panCameraForCrashInspection()
+      runtimeActions.zoomCamera(0.5, { x: 300, y: 500 })
+      expect(runtime.ui.camera).toEqual({
+        follow: 'spacecraft',
+        panOffset: { x: 12, y: 24 },
+      })
+      expect(runtime.simulation.viewportSize).toBe(300)
+      expect(updateCameraViewSpy).toHaveBeenCalledTimes(1)
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preserveStarfieldWorldPosition: false,
+        }),
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('pans the camera with the follow target framed above the crash panel', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+    const runtime = createRuntime()
     runtime.ui.camera.panOffset = { x: 999, y: 999 }
     const updateCameraViewSpy = vi
       .spyOn(sceneUpdates, 'updateCameraView')
@@ -593,22 +649,20 @@ describe('createRuntimeActions', () => {
       setWindowSize(800, 400)
       const runtimeActions = createTestRuntimeActions(runtime)
 
-      runtimeActions.unlockCameraAtFollowTarget()
+      runtimeActions.panCameraForCrashInspection()
 
       const expectedOffset =
         (runtime.simulation.viewportSize * 0.5 * 0.38 * Math.sin(1)) /
         (Math.SQRT2 * RENDER_SCALE)
 
-      expect(runtime.ui.camera.mode).toBe('unlocked')
-      expect(runtime.ui.camera.panOffset.x).toBeCloseTo(
-        runtime.simulation.state.spacecraft.position.x + expectedOffset,
-      )
-      expect(runtime.ui.camera.panOffset.y).toBeCloseTo(
-        runtime.simulation.state.spacecraft.position.y + expectedOffset,
-      )
+      expect(runtime.ui.camera.panOffset.x).toBeCloseTo(expectedOffset)
+      expect(runtime.ui.camera.panOffset.y).toBeCloseTo(expectedOffset)
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          cameraTargetPosition: runtime.ui.camera.panOffset,
+          cameraTargetPosition: {
+            x: runtime.simulation.state.spacecraft.position.x + expectedOffset,
+            y: runtime.simulation.state.spacecraft.position.y + expectedOffset,
+          },
         }),
       )
     } finally {

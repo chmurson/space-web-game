@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { getKeyboardShortcutAction } from '@/input/keyboardShortcuts'
 
 const createDebugShortcutEvent = (code: string) => ({
+  altKey: false,
   code,
   ctrlKey: false,
+  metaKey: false,
   repeat: false,
   shiftKey: false,
 })
@@ -119,16 +121,37 @@ describe('getKeyboardShortcutAction', () => {
     ).toBe('toggleFpsIndicator')
   })
 
-  it('maps C to camera mode cycling and Shift+C to assist mode cycling', () => {
+  it('maps C to Follow, maps Shift+C to Recenter, and leaves L and R unreserved', () => {
     expect(
       getKeyboardShortcutAction(createDebugShortcutEvent('KeyC'), {
         autoDiscoverStrongestInfluence: false,
         debugModeEnabled: false,
       }),
-    ).toBe('cycleCameraMode')
+    ).toBe('toggleCameraFollow')
     expect(
       getKeyboardShortcutAction(
         { ...createDebugShortcutEvent('KeyC'), repeat: true },
+        {
+          autoDiscoverStrongestInfluence: false,
+          debugModeEnabled: false,
+        },
+      ),
+    ).toBeNull()
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('KeyL'), {
+        autoDiscoverStrongestInfluence: false,
+        debugModeEnabled: false,
+      }),
+    ).toBeNull()
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('KeyR'), {
+        autoDiscoverStrongestInfluence: false,
+        debugModeEnabled: false,
+      }),
+    ).toBeNull()
+    expect(
+      getKeyboardShortcutAction(
+        { ...createDebugShortcutEvent('KeyL'), repeat: true },
         {
           autoDiscoverStrongestInfluence: false,
           debugModeEnabled: false,
@@ -143,7 +166,7 @@ describe('getKeyboardShortcutAction', () => {
           debugModeEnabled: false,
         },
       ),
-    ).toBe('cycleAssistMode')
+    ).toBe('recenterCamera')
     expect(
       getKeyboardShortcutAction(
         { ...createDebugShortcutEvent('KeyC'), repeat: true, shiftKey: true },
@@ -153,6 +176,33 @@ describe('getKeyboardShortcutAction', () => {
         },
       ),
     ).toBeNull()
+  })
+
+  it('leaves browser-modified C combinations unreserved', () => {
+    for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+      expect(
+        getKeyboardShortcutAction(
+          { ...createDebugShortcutEvent('KeyC'), [modifier]: true },
+          {
+            autoDiscoverStrongestInfluence: false,
+            debugModeEnabled: false,
+          },
+        ),
+      ).toBeNull()
+      expect(
+        getKeyboardShortcutAction(
+          {
+            ...createDebugShortcutEvent('KeyC'),
+            [modifier]: true,
+            shiftKey: true,
+          },
+          {
+            autoDiscoverStrongestInfluence: false,
+            debugModeEnabled: false,
+          },
+        ),
+      ).toBeNull()
+    }
   })
 
   it('maps T to target cycling when automatic target discovery is disabled', () => {

@@ -69,15 +69,6 @@ export const createCrashMenu = (options: {
     primaryButton?.focus({ preventScroll: true })
   }
 
-  const restartFromPrimaryAction = () => {
-    if (hasCheckpoint) {
-      options.onRestartFromCheckpoint()
-      return
-    }
-
-    options.onRestart()
-  }
-
   const renderMenu = () => {
     surface.render({
       crashedBodyName,
@@ -109,17 +100,6 @@ export const createCrashMenu = (options: {
     if (event.key === 'Escape') {
       event.preventDefault()
       options.onExit()
-      return
-    }
-
-    if (
-      event.code === 'KeyR' &&
-      !event.altKey &&
-      !event.ctrlKey &&
-      !event.metaKey
-    ) {
-      event.preventDefault()
-      restartFromPrimaryAction()
       return
     }
 
