@@ -12,6 +12,11 @@ import {
 } from '../rendering/line2Geometry'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { GameQueries } from '../runtime/gameQueries'
+import {
+  apoapsisInfoPin,
+  includesInfoPin,
+  periapsisInfoPin,
+} from '../runtime/infoPins'
 import type {
   TrajectoryPredictionFarVisibility,
   TrajectoryPredictionRuntime,
@@ -21,7 +26,6 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
-import { formatDistance } from '../ui/formatters'
 import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
@@ -268,6 +272,7 @@ const updateTargetRelativePredictionVisuals = (options: {
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
   orbitPointDisplaySettings: OrbitPointDisplaySettings
+  pinnedEventMarkerKinds: ReadonlySet<TrajectoryPredictionEventMarkerKind>
   predictedImpact: { bodyName: string; time: number } | null
   stabilizedEventMarkers: Map<
     TrajectoryPredictionEventMarkerKind,
@@ -393,6 +398,7 @@ const updateTargetRelativePredictionVisuals = (options: {
     eventMarkerLabels: options.eventMarkerLabels,
     gameScene: options.gameScene,
     orbitPointDisplaySettings: options.orbitPointDisplaySettings,
+    pinnedEventMarkerKinds: options.pinnedEventMarkerKinds,
     stabilizedEventMarkers: options.stabilizedEventMarkers,
     target: options.target,
     viewportHeight: options.viewportHeight,
@@ -540,41 +546,10 @@ const getStabilizedTrajectoryEventMarkers = (options: {
 
 const getTrajectoryEventMarkerText = (
   eventMarker: TrajectoryPredictionEventMarker,
-  settings: OrbitPointDisplaySettings,
 ) => {
-  const distanceLabel = formatDistance(Math.max(0, eventMarker.distance))
-  const altitudeLabel = formatDistance(Math.max(0, eventMarker.altitude))
-  const textParts: string[] = []
-  const accessibleDetails: string[] = []
-
-  if (settings.pointNameVisible) {
-    textParts.push(trajectoryEventMarkerShortLabels[eventMarker.kind])
-  }
-
-  if (settings.altitudeVisible) {
-    textParts.push(`alt ${altitudeLabel}`)
-    accessibleDetails.push(`altitude ${altitudeLabel}`)
-  }
-
-  if (settings.centerDistanceVisible) {
-    textParts.push(`center ${distanceLabel}`)
-    accessibleDetails.push(`center distance ${distanceLabel}`)
-  }
-
-  if (textParts.length === 0) {
-    return null
-  }
-
-  const name = settings.pointNameVisible
-    ? trajectoryEventMarkerAccessibleNames[eventMarker.kind]
-    : 'Orbit point'
-
   return {
-    accessibleLabel:
-      accessibleDetails.length > 0
-        ? `${name}: ${accessibleDetails.join(', ')}`
-        : name,
-    text: textParts.join(' · '),
+    accessibleLabel: trajectoryEventMarkerAccessibleNames[eventMarker.kind],
+    text: trajectoryEventMarkerShortLabels[eventMarker.kind],
   }
 }
 
@@ -582,7 +557,7 @@ const updateTrajectoryEventMarkerLabel = (options: {
   camera: THREE.Camera
   eventMarker: TrajectoryPredictionEventMarker
   label: HTMLElement
-  orbitPointDisplaySettings: OrbitPointDisplaySettings
+  pinned: boolean
   position: THREE.Vector3
 }) => {
   const projectedPosition = options.position.clone().project(options.camera)
@@ -601,18 +576,15 @@ const updateTrajectoryEventMarkerLabel = (options: {
 
   const screenX = (projectedPosition.x * 0.5 + 0.5) * window.innerWidth
   const screenY = (-projectedPosition.y * 0.5 + 0.5) * window.innerHeight
-  const markerText = getTrajectoryEventMarkerText(
-    options.eventMarker,
-    options.orbitPointDisplaySettings,
-  )
-  if (!markerText) {
-    hideTrajectoryEventMarkerLabel(options.label)
-    return
-  }
+  const markerText = getTrajectoryEventMarkerText(options.eventMarker)
 
   options.label.textContent = markerText.text
   options.label.title = markerText.accessibleLabel
-  options.label.setAttribute('aria-label', markerText.accessibleLabel)
+  options.label.setAttribute(
+    'aria-label',
+    `${markerText.accessibleLabel}; ${options.pinned ? 'unpin' : 'pin'} in Info`,
+  )
+  options.label.setAttribute('aria-pressed', options.pinned ? 'true' : 'false')
   options.label.setAttribute('aria-hidden', 'false')
   options.label.style.display = 'block'
   options.label.style.visibility = 'hidden'
@@ -643,6 +615,7 @@ const updateTrajectoryEventMarkers = (options: {
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
   orbitPointDisplaySettings: OrbitPointDisplaySettings
+  pinnedEventMarkerKinds: ReadonlySet<TrajectoryPredictionEventMarkerKind>
   stabilizedEventMarkers: Map<
     TrajectoryPredictionEventMarkerKind,
     TrajectoryPredictionEventMarker
@@ -692,7 +665,6 @@ const updateTrajectoryEventMarkers = (options: {
     (options.viewportSize / markerScaleViewportSize) *
     distantViewportScale
   const labelVisible =
-    options.orbitPointDisplaySettings.labelsVisible &&
     options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
   const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()
 
@@ -725,7 +697,7 @@ const updateTrajectoryEventMarkers = (options: {
         camera: options.gameScene.camera,
         eventMarker,
         label,
-        orbitPointDisplaySettings: options.orbitPointDisplaySettings,
+        pinned: options.pinnedEventMarkerKinds.has(eventMarker.kind),
         position,
       })
     } else {
@@ -839,6 +811,25 @@ const getEffectiveOrbitPointDisplaySettings = (
     ...settings,
     markersVisible: false,
   }
+}
+
+const getPinnedEventMarkerKinds = (runtime: AppRuntimeState) => {
+  const pinnedKinds = new Set<TrajectoryPredictionEventMarkerKind>()
+  const pinByKind = {
+    apoapsis: apoapsisInfoPin,
+    periapsis: periapsisInfoPin,
+  } as const
+
+  for (const [kind, pin] of Object.entries(pinByKind)) {
+    if (
+      includesInfoPin(runtime.scenario.directives.infoPins, pin) ||
+      includesInfoPin(runtime.info.userPins, pin)
+    ) {
+      pinnedKinds.add(kind as TrajectoryPredictionEventMarkerKind)
+    }
+  }
+
+  return pinnedKinds
 }
 
 export const createTrajectoryPresentation = (options: {
@@ -1025,6 +1016,7 @@ export const createTrajectoryPresentation = (options: {
           options.runtime,
           options.getOrbitPointDisplaySettings(),
         ),
+        pinnedEventMarkerKinds: getPinnedEventMarkerKinds(options.runtime),
         predictedImpact: predictionTargetMatches
           ? predictionState.predictedImpact
           : null,

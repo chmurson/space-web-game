@@ -5,13 +5,13 @@ import {
   apoapsisInfoPin,
   createBodyInfoPin,
   getInfoPinKey,
-  includesInfoPin,
   type InfoPin,
+  includesInfoPin,
   periapsisInfoPin,
 } from '../runtime/infoPins'
 import type { TrajectoryPredictionState } from '../runtime/trajectoryPredictionRuntime'
-import type { Body } from '../simulation/types'
 import { formatDistance } from '../ui/formatters'
+import { getBodySurfaceDistanceMeters } from './bodyDistanceContext'
 
 export type InfoHudRow = {
   accessibleLabel: string
@@ -36,16 +36,6 @@ const formatSurfaceDistance = (meters: number | null) =>
   meters !== null && Number.isFinite(meters)
     ? formatDistance(Math.max(0, meters))
     : unavailableDistanceLabel
-
-const getBodySurfaceDistance = (body: Body, runtime: AppRuntimeState) => {
-  const spacecraft = runtime.simulation.state.spacecraft
-  return (
-    Math.hypot(
-      spacecraft.position.x - body.position.x,
-      spacecraft.position.y - body.position.y,
-    ) - body.radius
-  )
-}
 
 const getApsisSurfaceDistance = (
   kind: TrajectoryPredictionEventMarkerKind,
@@ -97,7 +87,10 @@ export const createInfoHudView = (options: {
   const target = options.queries.getAssistTargetUiState().activeTarget
   const bodyRows = options.runtime.simulation.state.bodies.map((body) => {
     const distanceLabel = formatSurfaceDistance(
-      getBodySurfaceDistance(body, options.runtime),
+      getBodySurfaceDistanceMeters(
+        body,
+        options.runtime.simulation.state.spacecraft.position,
+      ),
     )
     return createRow({
       accessibleLabel: `${body.name}, surface distance ${distanceLabel}`,

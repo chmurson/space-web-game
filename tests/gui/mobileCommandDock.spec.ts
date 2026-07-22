@@ -213,7 +213,7 @@ test('recenters target framing above Nav using the current playable viewport', a
   )
 
   const dock = page.locator('.mobile-command-dock')
-  const targetLabel = page.locator('.body-label').filter({ hasText: 'Earth' })
+  const targetLabel = page.locator('.body-label-active-target')
   await expect(targetLabel).toBeVisible()
   const collapsedDockBounds = await dock.boundingBox()
   const collapsedTargetBounds = await targetLabel.boundingBox()
@@ -356,13 +356,13 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     const recenterAriaLabelInitial = recenterButton?.getAttribute('aria-label')
     cameraCanRecenter = true
     dock.syncState()
-    const recenterButtonAfterPan = dock.element.querySelector<HTMLButtonElement>(
-      '[data-mobile-camera-action="recenter"]',
-    )
+    const recenterButtonAfterPan =
+      dock.element.querySelector<HTMLButtonElement>(
+        '[data-mobile-camera-action="recenter"]',
+      )
     const recenterDisabledAfterPan = recenterButtonAfterPan?.disabled
-    const recenterPressableAfterPan = recenterButtonAfterPan?.classList.contains(
-      'ui-pressable-strong',
-    )
+    const recenterPressableAfterPan =
+      recenterButtonAfterPan?.classList.contains('ui-pressable-strong')
     targetButton?.click()
     recenterButtonAfterPan?.click()
     cameraControlsLocked = true

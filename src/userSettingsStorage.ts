@@ -1,11 +1,7 @@
 const userSettingsStorageKey = 'space-web-game.userSettings.v1'
 
 export type OrbitPointDisplaySettings = {
-  altitudeVisible: boolean
-  centerDistanceVisible: boolean
-  labelsVisible: boolean
   markersVisible: boolean
-  pointNameVisible: boolean
 }
 
 export type OrbitPointDisplaySettingOverrides =
@@ -29,11 +25,7 @@ export type TouchTrajectoryControlState = TouchControlSide | 'hidden'
 
 const createDefaultOrbitPointDisplaySettings =
   (): OrbitPointDisplaySettings => ({
-    altitudeVisible: true,
-    centerDistanceVisible: false,
-    labelsVisible: true,
     markersVisible: true,
-    pointNameVisible: true,
   })
 
 const createDefaultUserSettings = (): UserSettings => ({
@@ -74,29 +66,11 @@ const parseOrbitPointDisplaySettings = (
     return { ...defaults }
   }
 
-  const settings = value as Partial<
-    Record<keyof OrbitPointDisplaySettings, unknown>
-  >
+  const settings = value as { markersVisible?: unknown }
   return {
-    altitudeVisible: parseBooleanSetting(
-      settings.altitudeVisible,
-      defaults.altitudeVisible,
-    ),
-    centerDistanceVisible: parseBooleanSetting(
-      settings.centerDistanceVisible,
-      defaults.centerDistanceVisible,
-    ),
-    labelsVisible: parseBooleanSetting(
-      settings.labelsVisible,
-      defaults.labelsVisible,
-    ),
     markersVisible: parseBooleanSetting(
       settings.markersVisible,
       defaults.markersVisible,
-    ),
-    pointNameVisible: parseBooleanSetting(
-      settings.pointNameVisible,
-      defaults.pointNameVisible,
     ),
   }
 }

@@ -1,6 +1,10 @@
 import * as THREE from 'three'
 import { installDevtoolsBridge } from '../devtools/devtoolsBridge'
 import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
+import {
+  bindCanvasInfoPinLabels,
+  createCanvasInfoPinPicker,
+} from '../input/canvasInfoPinInput'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
   bindPointerCameraInput,
@@ -362,6 +366,15 @@ export const createAppComponents = (options: {
     timeWarps: options.config.controls.timeWarps,
     updateUserSettings,
   })
+  bindCanvasInfoPinLabels({
+    onTogglePin: runtimeActions.toggleUserInfoPin,
+    overlayUi,
+  })
+  const pickCanvasInfoPin = createCanvasInfoPinPicker({
+    gameScene,
+    markerHitRadiusPixels: desktopFinePointerMedia.matches ? 18 : 24,
+    rendererElement: renderer.domElement,
+  })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
   let touchTargetControlSide: TouchControlSide =
     options.config.userSettings.touchTargetControlSide
@@ -700,6 +713,15 @@ export const createAppComponents = (options: {
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
     onCameraPan: runtimeActions.panCamera,
+    onPrimaryTap: (clientX, clientY) => {
+      const pin = pickCanvasInfoPin(clientX, clientY)
+      if (!pin) {
+        return false
+      }
+
+      runtimeActions.toggleUserInfoPin(pin)
+      return true
+    },
     onResize: runtimeActions.handleResize,
     onTargetHeadingPlan: (heading, selection) => {
       runtimeActions.planTargetHeading({

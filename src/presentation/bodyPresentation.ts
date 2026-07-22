@@ -1,9 +1,11 @@
 import { renderPosition } from '../render/sceneUpdates'
+import type { InfoPin } from '../runtime/infoPins'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import type { BodyDistanceContext } from './bodyDistanceContext'
+import { createActiveTargetLabelVisibility } from './bodyPresentation/activeTargetLabelVisibility'
 import { updateBodyLabels } from './bodyPresentation/updateBodyLabels'
 import { updateOffscreenIndicators } from './bodyPresentation/updateOffscreenIndicators'
 import {
@@ -47,40 +49,59 @@ const updateBodyWorldVisuals = (options: {
 export const createBodyPresentation = (options: {
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
-}) => ({
-  updateVisuals: (state: {
-    bodies: Body[]
-    distanceContext?: BodyDistanceContext | null
-    elapsed: number
-    hiddenBodyIds: string[]
-    spacecraftPosition: Vec2
-    viewportSize: number
-  }) => {
-    const visibleBodies = state.bodies.filter(
-      (body) => !state.hiddenBodyIds.includes(body.id),
-    )
+}) => {
+  const isActiveTargetFullLabelVisible = createActiveTargetLabelVisibility()
 
-    updateBodyWorldVisuals({
-      allBodies: state.bodies,
-      bodies: visibleBodies,
-      elapsedSeconds: state.elapsed,
-      gameScene: options.gameScene,
-    })
-    updateOffscreenIndicators({
-      bodies: visibleBodies,
-      gameScene: options.gameScene,
-      overlayUi: options.overlayUi,
-      spacecraftPosition: state.spacecraftPosition,
-      viewportSize: state.viewportSize,
-    })
-    updateBodyLabels({
-      bodies: visibleBodies,
-      distanceContext: state.distanceContext ?? null,
-      gameScene: options.gameScene,
-      overlayUi: options.overlayUi,
-      viewportSize: state.viewportSize,
-    })
-  },
-})
+  return {
+    updateVisuals: (state: {
+      bodies: Body[]
+      distanceContext?: BodyDistanceContext | null
+      elapsed: number
+      hiddenBodyIds: string[]
+      infoPins: readonly InfoPin[]
+      nowMs: number
+      spacecraftPosition: Vec2
+      viewportSize: number
+    }) => {
+      const visibleBodies = state.bodies.filter(
+        (body) => !state.hiddenBodyIds.includes(body.id),
+      )
+
+      updateBodyWorldVisuals({
+        allBodies: state.bodies,
+        bodies: visibleBodies,
+        elapsedSeconds: state.elapsed,
+        gameScene: options.gameScene,
+      })
+      const nextActiveTargetId = state.distanceContext?.bodyId ?? null
+      const activeTargetFullLabelVisible = isActiveTargetFullLabelVisible(
+        nextActiveTargetId,
+        state.nowMs,
+      )
+      const pinnedBodyIds = new Set(
+        state.infoPins.flatMap((pin) =>
+          pin.kind === 'body' ? [pin.bodyId] : [],
+        ),
+      )
+      updateOffscreenIndicators({
+        bodies: visibleBodies,
+        gameScene: options.gameScene,
+        overlayUi: options.overlayUi,
+        pinnedBodyIds,
+        spacecraftPosition: state.spacecraftPosition,
+        targetBodyId: nextActiveTargetId,
+      })
+      updateBodyLabels({
+        activeTargetFullLabelVisible,
+        bodies: visibleBodies,
+        distanceContext: state.distanceContext ?? null,
+        gameScene: options.gameScene,
+        overlayUi: options.overlayUi,
+        pinnedBodyIds,
+        viewportSize: state.viewportSize,
+      })
+    },
+  }
+}
 
 export type BodyPresentation = ReturnType<typeof createBodyPresentation>

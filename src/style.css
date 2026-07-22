@@ -2447,12 +2447,31 @@ button.app-dialog-setting {
 }
 
 .offscreen-indicator .pointer {
-  width: 0;
-  height: 0;
-  border-right: 5px solid transparent;
-  border-bottom: 10px solid #38bdf8;
-  border-left: 5px solid transparent;
+  width: 12px;
+  height: 12px;
+  overflow: visible;
+  fill: #38bdf8;
+  stroke: #38bdf8;
+  stroke-linejoin: round;
+  stroke-width: 1.4px;
   filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.9));
+  transform-origin: center;
+}
+
+#app .offscreen-indicator-unpinned-body .pointer {
+  fill: none;
+}
+
+#app .offscreen-indicator-spacecraft .pointer {
+  fill: #f4f7fb;
+  stroke: #f4f7fb;
+  filter: drop-shadow(0 0 6px rgba(244, 247, 251, 0.92));
+}
+
+#app .offscreen-indicator-active-target .pointer {
+  fill: #7dd3fc;
+  stroke: #7dd3fc;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 1));
 }
 
 #app .offscreen-indicator .label {
@@ -2461,6 +2480,17 @@ button.app-dialog-setting {
   border-radius: 4px;
   background: rgba(8, 13, 24, 0.78);
   white-space: nowrap;
+}
+
+#app .offscreen-indicator-unlabeled .label {
+  display: none;
+}
+
+#app .offscreen-indicator-active-target .label {
+  border-color: rgba(125, 211, 252, 0.72);
+  background: rgba(14, 116, 144, 0.84);
+  color: #f4f7fb;
+  font-weight: 700;
 }
 
 #app .body-label,
@@ -2472,10 +2502,25 @@ button.app-dialog-setting {
   background: var(--ui-glass-label-bg);
   color: #dbeafe;
   font-size: 10px;
-  pointer-events: none;
+  appearance: none;
+  font-family: inherit;
+  line-height: inherit;
+  pointer-events: auto;
+  touch-action: manipulation;
   transform: translateY(-50%);
   white-space: nowrap;
   z-index: var(--z-in-game-floating-elements);
+}
+
+#app .body-label:hover,
+#app .trajectory-event-label:hover {
+  border-color: rgba(125, 211, 252, 0.62);
+}
+
+#app .body-label:focus-visible,
+#app .trajectory-event-label:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.86);
+  outline-offset: 2px;
 }
 
 #app .body-label {
@@ -2485,6 +2530,13 @@ button.app-dialog-setting {
   font-variant-numeric: tabular-nums;
   transform: translateY(-50%);
   will-change: transform;
+}
+
+#app .body-label-active-target {
+  border-color: rgba(125, 211, 252, 0.72);
+  background: rgba(14, 116, 144, 0.74);
+  color: #f4f7fb;
+  font-weight: 700;
 }
 
 #app .body-label-distance-context,

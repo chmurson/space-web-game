@@ -440,9 +440,10 @@ const createPredictionMarkerCircle = (fillOpacity = 0.5) => {
 }
 
 const createTrajectoryEventMarker = (
-  _kind: TrajectoryPredictionEventMarkerKind,
+  kind: TrajectoryPredictionEventMarkerKind,
 ): TrajectoryEventMarkerVisual => {
   const marker = createPredictionMarkerCircle(0.72)
+  marker.fill.material.color.set(kind === 'periapsis' ? '#67e8f9' : '#f59e0b')
   marker.group.visible = false
 
   return {

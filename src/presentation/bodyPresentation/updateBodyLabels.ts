@@ -20,7 +20,9 @@ type BodyLabelBounds = {
 
 type BodyLabelState = {
   accessibleLabel: string
+  activeTarget: boolean
   hasDistanceContext: boolean
+  pinned: boolean
   text: string
   wrap: boolean
 }
@@ -96,7 +98,14 @@ const applyBodyLabelState = (label: HTMLElement, state: BodyLabelState) => {
     label.title = state.accessibleLabel
   }
 
-  setAttributeValue(label, 'aria-label', state.accessibleLabel)
+  setAttributeValue(
+    label,
+    'aria-label',
+    `${state.accessibleLabel}; ${state.pinned ? 'unpin' : 'pin'} in Info`,
+  )
+  setAttributeValue(label, 'aria-pressed', state.pinned ? 'true' : 'false')
+  setClassEnabled(label, 'body-label-active-target', state.activeTarget)
+  setClassEnabled(label, 'body-label-pinned', state.pinned)
   setClassEnabled(
     label,
     'body-label-distance-context',
@@ -181,10 +190,12 @@ const getBodyLabelBounds = (options: {
 }
 
 export const updateBodyLabels = (options: {
+  activeTargetFullLabelVisible: boolean
   bodies: Body[]
   distanceContext: BodyDistanceContext | null
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
+  pinnedBodyIds: ReadonlySet<string>
   viewportSize: number
 }) => {
   const labelRadiusThreshold = 24
@@ -238,6 +249,10 @@ export const updateBodyLabels = (options: {
       options.distanceContext?.bodyId === body.id
         ? options.distanceContext
         : null
+    const pinned = options.pinnedBodyIds.has(body.id)
+    setClassEnabled(label, 'body-label-active-target', !!distanceContext)
+    setClassEnabled(label, 'body-label-pinned', pinned)
+    setAttributeValue(label, 'aria-pressed', pinned ? 'true' : 'false')
 
     if (
       !isVisible ||
@@ -253,12 +268,20 @@ export const updateBodyLabels = (options: {
       mobileViewport &&
       screenX > viewportWidth * 0.22 &&
       screenX < viewportWidth * 0.78
+    let labelText = body.name
+    if (distanceContext) {
+      labelText = options.activeTargetFullLabelVisible
+        ? distanceContext.tooltipLabel
+        : distanceContext.altitudeLabel
+    }
     const labelState = {
       accessibleLabel: distanceContext
         ? distanceContext.accessibleLabel
         : body.name,
+      activeTarget: !!distanceContext,
       hasDistanceContext: !!distanceContext,
-      text: distanceContext ? distanceContext.tooltipLabel : body.name,
+      pinned,
+      text: labelText,
       wrap: shouldWrapLabel,
     }
     const cacheKey = getBodyLabelBoundsCacheKey({

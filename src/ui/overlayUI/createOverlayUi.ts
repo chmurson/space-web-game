@@ -153,9 +153,11 @@ const createTrajectoryEventMarkerLabel = (
   app: HTMLElement,
   kind: TrajectoryPredictionEventMarkerKind,
 ) => {
-  const label = document.createElement('div')
+  const label = document.createElement('button')
+  label.type = 'button'
   label.className = `trajectory-event-label trajectory-event-label-${kind}`
   label.dataset.trajectoryEventMarker = kind
+  label.dataset.infoPin = kind
   label.style.display = 'none'
   label.setAttribute('aria-hidden', 'true')
   app.appendChild(label)
@@ -270,7 +272,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   const createOffscreenIndicator = () => {
     const indicator = document.createElement('div')
     indicator.className = 'offscreen-indicator'
-    indicator.innerHTML = '<div class="pointer"></div><div class="label"></div>'
+    indicator.innerHTML =
+      '<svg class="pointer" viewBox="0 0 12 12" aria-hidden="true"><path d="M 1 10 L 6 1 L 11 10 Z"></path></svg><div class="label"></div>'
     indicator.style.display = 'none'
     options.app.appendChild(indicator)
     return indicator
@@ -278,19 +281,25 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
 
   for (const body of options.bodies) {
     const indicator = createOffscreenIndicator()
+    indicator.dataset.offscreenTarget = body.id
     offscreenIndicators.set(body.id, indicator)
 
-    const label = document.createElement('div')
+    const label = document.createElement('button')
+    label.type = 'button'
     label.className = 'body-label'
+    label.dataset.infoPin = `body:${body.id}`
     label.textContent = body.name
     label.style.display = 'none'
     options.app.appendChild(label)
     bodyLabels.set(body.id, label)
   }
 
+  const spacecraftOffscreenIndicator = createOffscreenIndicator()
+  spacecraftOffscreenIndicator.dataset.offscreenTarget =
+    spacecraftOffscreenIndicatorId
   offscreenIndicators.set(
     spacecraftOffscreenIndicatorId,
-    createOffscreenIndicator(),
+    spacecraftOffscreenIndicator,
   )
 
   return {

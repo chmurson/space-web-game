@@ -26,6 +26,7 @@ export type PointerCameraInputOptions = {
   getSpacecraftPosition: () => Vec2
   getTargetHeadingSelectionEnabled?: () => boolean
   onCameraPan: (delta: Vec2) => boolean
+  onPrimaryTap?: (clientX: number, clientY: number) => boolean
   onResize: () => void
   onTargetHeadingPlan: (
     heading: number,
@@ -543,6 +544,15 @@ export const bindPointerCameraInput = (
       const completedPan =
         activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned
       clearActiveCameraPan(event)
+      if (
+        !completedPan &&
+        event.isPrimary &&
+        options.onPrimaryTap?.(event.clientX, event.clientY)
+      ) {
+        event.preventDefault()
+        cancelTargetHeadingPlan()
+        return
+      }
       if (!completedPan && event.isPrimary && event.pointerType !== 'mouse') {
         if (!getTargetHeadingSelectionEnabled()) {
           cancelTargetHeadingPlan()
