@@ -53,8 +53,8 @@ test('caps manual RCS at x15s while thrust-only keeps the x1m cap', async ({
   await page.keyboard.down('KeyW')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
-    .toBe(15)
-  await expect(page.locator('[data-stat="time"]')).toContainText('x15s')
+    .toBe(60)
+  await expect(page.locator('[data-stat="time"]')).toContainText('x1m')
 
   await page.keyboard.up('KeyD')
   await expect

@@ -393,13 +393,15 @@ const getActiveControlMaxWarp = (
   const linearThrustActive =
     controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0
 
-  if (manualRcsTurnActive && controls.turn !== 0) {
-    return linearThrustActive
-      ? Math.min(maxControlWarp, temporaryMaxRcsTurnWarp)
-      : temporaryMaxRcsTurnWarp
+  if (linearThrustActive) {
+    return maxControlWarp
   }
 
-  return linearThrustActive || controls.turn !== 0 ? maxControlWarp : null
+  if (manualRcsTurnActive && controls.turn !== 0) {
+    return temporaryMaxRcsTurnWarp
+  }
+
+  return controls.turn !== 0 ? maxControlWarp : null
 }
 
 export const resolveSimulationTimeWarp = (

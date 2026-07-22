@@ -7,7 +7,8 @@ Shipit state: `.codex/shipit-workflows/automation/issue-281-rcs-timewarp-cap.md`
 Manual RCS turning now temporarily caps effective time warp at 15x, displayed
 by the shipped time-warp ladder as x15s. Linear thrust and non-manual navigation
 continue to use the existing 100x ceiling, whose highest configured ladder value
-is 60x (x1m). When thrust and manual RCS overlap, the lower RCS cap wins.
+is 60x (x1m). When thrust and manual RCS overlap, thrust takes priority and the
+effective cap is 60x (x1m).
 
 Releasing the controls retains the existing 320 ms idle delay and restores the
 player's pre-control time-warp selection. The restoration controller now accepts
@@ -36,15 +37,15 @@ removed without changing input producers, physics, or the time-warp ladder.
 
 ## Validation
 
-- Human correction follow-up: focused runtime/action Vitest 53/53 passed.
-- Human correction follow-up: release build, config validation, and TypeScript
+- Final overlap-contract follow-up: focused runtime/action Vitest 53/53 passed.
+- Final overlap-contract follow-up: release build, config validation, and TypeScript
   passed; Vite emitted only the existing large-chunk advisory.
-- Human correction follow-up: focused Playwright passed 1/1, covering RCS-only,
-  RCS/thrust overlap, thrust-only, and delayed restoration states.
+- Final overlap-contract follow-up: focused Playwright passed 1/1, covering
+  RCS-only x15s, RCS/thrust x1m, thrust-only x1m, and delayed restoration.
 - The x15s screenshot was inspected at
   `tmp/playwright-results/rcsTimeWarpCap-caps-manual-88770-rust-only-keeps-the-x1m-cap-mobile-chromium/manual-rcs-x15s.png`
   and matched the expected active RCS state.
-- Human correction follow-up: focused Biome and `git diff --check` passed.
+- Final overlap-contract follow-up: focused Biome and `git diff --check` passed.
 - Original feature validation: full product Vitest 603/603 passed.
 - Automation claim tests: 16 tests passed.
 - Focused Playwright: the RCS/thrust/restoration scenario passed. The full
