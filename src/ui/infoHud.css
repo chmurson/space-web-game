@@ -68,7 +68,7 @@
 .info-hud-row {
   display: flex;
   min-width: 0;
-  min-height: 44px;
+  min-height: 36px;
   align-items: center;
   gap: 8px;
   padding: 7px 9px;
@@ -118,17 +118,23 @@
 
 .info-hud-row-value {
   display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   min-width: 0;
   gap: 1px;
+  column-gap: 4px;
 }
 
+.info-hud-row-distance {
+  align-self: end;
+}
 .info-hud-row-secondary {
   overflow: hidden;
   color: rgba(203, 213, 225, 0.62);
-  font-size: 9px;
-  line-height: 1.1;
+  font-size: 0.75em;
   text-overflow: ellipsis;
   white-space: nowrap;
+  align-self: end;
+  transform:translateY(-1.5px)
 }
 
 .info-hud-scenario-badge {
