@@ -61,7 +61,7 @@ const InfoRow = (options: {
     <TapSafeButton
       aria-checked={row.pinned}
       aria-label={`${row.accessibleLabel}, ${ownershipLabel}`}
-      class="info-hud-row"
+      class="info-hud-row ui-pressable"
       data-info-pin={row.key}
       data-scenario-owned={String(row.scenarioOwned)}
       disabled={row.scenarioOwned}
@@ -91,6 +91,7 @@ const InfoRow = (options: {
 
 const InfoPanelContent = (options: {
   onClear(): void
+  onSelectAll(): void
   onTogglePin(pin: InfoPin): void
   titleId: string
   view: InfoHudView
@@ -101,15 +102,27 @@ const InfoPanelContent = (options: {
         <h2 id={options.titleId}>Info</h2>
         <p>Pin live distances</p>
       </div>
-      <TapSafeButton
-        aria-keyshortcuts="Shift+I"
-        class="info-hud-clear"
-        disabled={!options.view.clearAvailable}
-        onActivate={options.onClear}
-        type="button"
-      >
-        Clear
-      </TapSafeButton>
+      <div class="info-hud-header-actions">
+        <TapSafeButton
+          class="info-hud-select-all ui-pressable-strong"
+          disabled={
+            !options.view.rows.some((row) => !row.pinned && !row.scenarioOwned)
+          }
+          onActivate={options.onSelectAll}
+          type="button"
+        >
+          Select all
+        </TapSafeButton>
+        <TapSafeButton
+          aria-keyshortcuts="Shift+I"
+          class="info-hud-clear ui-pressable-strong"
+          disabled={!options.view.clearAvailable}
+          onActivate={options.onClear}
+          type="button"
+        >
+          Clear
+        </TapSafeButton>
+      </div>
     </header>
     <div aria-label="Pinnable information" class="info-hud-list">
       {options.view.rows.map((row) => (
@@ -163,6 +176,7 @@ const InfoRail = (options: {
 
 const DesktopInfoHud = (options: {
   onClear(): void
+  onSelectAll(): void
   onToggleOpen(): void
   onTogglePin(pin: InfoPin): void
   open: boolean
@@ -197,6 +211,7 @@ const DesktopInfoHud = (options: {
     >
       <InfoPanelContent
         onClear={options.onClear}
+        onSelectAll={options.onSelectAll}
         onTogglePin={options.onTogglePin}
         titleId="desktop-info-title"
         view={options.view}
@@ -243,6 +258,14 @@ export const createInfoHud = (options: {
     options.onClear()
     syncAfterAction()
   }
+  const selectAll = () => {
+    for (const row of view.rows) {
+      if (!row.pinned && !row.scenarioOwned) {
+        options.onTogglePin(row.pin)
+      }
+    }
+    syncAfterAction()
+  }
   const togglePin = (pin: InfoPin) => {
     options.onTogglePin(pin)
     syncAfterAction()
@@ -251,6 +274,7 @@ export const createInfoHud = (options: {
     render(
       <DesktopInfoHud
         onClear={clear}
+        onSelectAll={selectAll}
         onToggleOpen={() => setDesktopOpen(!desktopOpen)}
         onTogglePin={togglePin}
         open={desktopOpen}
@@ -261,6 +285,7 @@ export const createInfoHud = (options: {
     render(
       <InfoPanelContent
         onClear={clear}
+        onSelectAll={selectAll}
         onTogglePin={togglePin}
         titleId="mobile-command-dock-info-title"
         view={view}

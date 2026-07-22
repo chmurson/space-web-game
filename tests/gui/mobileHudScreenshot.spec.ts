@@ -3083,6 +3083,8 @@ test('captures wide in-game controls keyboard hints', async ({
   ).toBeVisible()
   await expect(page.getByText('Burn latch')).toBeVisible()
   await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
+  await expect(page.getByText('Toggle Info', { exact: true })).toBeVisible()
+  await expect(page.getByText('Clear Info pins', { exact: true })).toBeVisible()
 
   await attachMobileScreenshot(
     page,

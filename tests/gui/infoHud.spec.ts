@@ -58,11 +58,21 @@ test('desktop Info popover manages player pins and leaves the rail persistent', 
     ).toHaveText(/^to (Earth|Moon)$/)
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'false')
     await expect(earthPinStatus).toHaveText('○')
+    const selectAllButton = popover.getByRole('button', {
+      name: 'Select all',
+    })
+    await expect(selectAllButton).toBeEnabled()
 
     await earthSwitch.click()
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
     await expect(earthPinStatus).toHaveText('●')
     await captureScreenshot(page, testInfo, 'desktop-info-popover-pinned')
+
+    await selectAllButton.click()
+    await expect(selectAllButton).toBeDisabled()
+    await expect(
+      page.locator('.desktop-info-rail [data-info-pin]'),
+    ).toHaveCount(4)
 
     await page.keyboard.press('KeyI')
     await expect(popover).toBeHidden()

@@ -38,7 +38,13 @@
   line-height: 1.2;
 }
 
-.info-hud-clear {
+.info-hud-header-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.info-hud-clear,
+.info-hud-select-all {
   min-height: 32px;
   padding: 5px 10px;
   border: 1px solid var(--ui-glass-control-border);
@@ -48,11 +54,12 @@
   cursor: pointer;
   font: inherit;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 600;
   touch-action: manipulation;
 }
 
-.info-hud-clear:disabled {
+.info-hud-clear:disabled,
+.info-hud-select-all:disabled {
   cursor: default;
   opacity: 0.45;
 }
@@ -104,7 +111,7 @@
 
 .info-hud-row-label {
   overflow: hidden;
-  font-weight: 750;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -157,6 +164,7 @@
 }
 
 .info-hud-clear:focus-visible,
+.info-hud-select-all:focus-visible,
 .info-hud-row:focus-visible,
 .info-hud-rail-card:focus-visible,
 .desktop-info-pill:focus-visible {
@@ -289,6 +297,7 @@
 
   .desktop-info-pill:hover,
   .info-hud-clear:hover:not(:disabled),
+  .info-hud-select-all:hover:not(:disabled),
   .info-hud-row:hover:not(:disabled),
   .info-hud-rail-card:hover:not(:disabled) {
     border-color: rgba(103, 232, 249, 0.48);
