@@ -63,6 +63,45 @@ beforeEach(() => {
 })
 
 describe('createScenarioFromSnapshot', () => {
+  it('round-trips normalized player Info pins in version 3 snapshots', () => {
+    const snapshot = createSnapshotFromState(
+      {
+        elapsed: snapshotBase.elapsed,
+        bodies: snapshotBase.bodies,
+        spacecraft: snapshotBase.spacecraft,
+        controls: idleControls(),
+      },
+      {
+        userInfoPins: [
+          { bodyId: 'earth', kind: 'body' },
+          { bodyId: 'earth', kind: 'body' },
+          { bodyId: 'missing', kind: 'body' },
+          { apsis: 'periapsis', kind: 'apsis' },
+        ],
+      },
+    )
+    if (snapshot.version !== 3) {
+      throw new Error('Expected a version 3 snapshot.')
+    }
+    const scenario = createScenarioFromSnapshot(snapshot)
+
+    expect(snapshot).toMatchObject({
+      userInfoPins: [
+        { bodyId: 'earth', kind: 'body' },
+        { apsis: 'periapsis', kind: 'apsis' },
+      ],
+      version: 3,
+    })
+    expect(scenario.userInfoPins).toEqual(snapshot.userInfoPins)
+  })
+
+  it('migrates legacy snapshots with no player Info pins', () => {
+    expect(createScenarioFromSnapshot(snapshotBase).userInfoPins).toEqual([])
+    expect(
+      createScenarioFromSnapshot({ ...snapshotBase, version: 2 }).userInfoPins,
+    ).toEqual([])
+  })
+
   it('prefers explicit horizon hours from the snapshot', () => {
     const scenario = createScenarioFromSnapshot({
       ...snapshotBase,

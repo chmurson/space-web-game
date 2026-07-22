@@ -23,6 +23,7 @@ const createRuntime = (
   bodies: AppRuntimeState['simulation']['state']['bodies'],
   coastPredictionHorizonHours: number,
 ): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'off',
     assistTargetIndex: 0,

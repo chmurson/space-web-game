@@ -169,6 +169,27 @@ describe('bindKeyboardShortcuts', () => {
     expect(handleAction).toHaveBeenCalledWith('cycleAssistTarget')
   })
 
+  it('dispatches Info shortcuts outside editable controls', () => {
+    const keyboardInput = createKeyboardInput()
+    const keyboardTarget = createKeyboardTarget()
+    const handleAction = vi.fn()
+
+    bindKeyboardShortcuts({
+      autoDiscoverStrongestInfluence: false,
+      getDebugModeEnabled: () => false,
+      getInteractionsEnabled: () => true,
+      handleAction,
+      keyboardInput,
+      windowTarget: keyboardTarget,
+    })
+
+    keyboardTarget.dispatch('keydown', 'KeyI')
+    keyboardTarget.dispatch('keydown', 'KeyI', { shiftKey: true })
+
+    expect(handleAction).toHaveBeenNthCalledWith(1, 'toggleInfo')
+    expect(handleAction).toHaveBeenNthCalledWith(2, 'clearInfoPins')
+  })
+
   it('ignores gameplay input while an editable element owns the keyboard', () => {
     const keyboardInput = createKeyboardInput()
     const keyboardTarget = createKeyboardTarget()

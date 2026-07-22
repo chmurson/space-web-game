@@ -10,6 +10,39 @@ const createDebugShortcutEvent = (code: string) => ({
 })
 
 describe('getKeyboardShortcutAction', () => {
+  it('maps I to Info and Shift+I to clearing player pins', () => {
+    const context = {
+      autoDiscoverStrongestInfluence: false,
+      debugModeEnabled: false,
+    }
+
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('KeyI'), context),
+    ).toBe('toggleInfo')
+    expect(
+      getKeyboardShortcutAction(
+        { ...createDebugShortcutEvent('KeyI'), shiftKey: true },
+        context,
+      ),
+    ).toBe('clearInfoPins')
+  })
+
+  it('ignores repeated or modified Info shortcuts', () => {
+    const context = {
+      autoDiscoverStrongestInfluence: false,
+      debugModeEnabled: false,
+    }
+
+    for (const event of [
+      { ...createDebugShortcutEvent('KeyI'), repeat: true },
+      { ...createDebugShortcutEvent('KeyI'), altKey: true },
+      { ...createDebugShortcutEvent('KeyI'), ctrlKey: true },
+      { ...createDebugShortcutEvent('KeyI'), metaKey: true },
+    ]) {
+      expect(getKeyboardShortcutAction(event, context)).toBeNull()
+    }
+  })
+
   it('keeps plain bracket shortcuts mapped to time warp', () => {
     expect(
       getKeyboardShortcutAction(createDebugShortcutEvent('BracketLeft'), {

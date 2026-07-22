@@ -1,3 +1,5 @@
+import type { InfoPin } from '../runtime/infoPins'
+
 export const cameraFollowSubjects = ['spacecraft', 'target'] as const
 
 export type CameraFollowSubject = (typeof cameraFollowSubjects)[number]
@@ -34,6 +36,7 @@ export type RuntimeScenarioDirectives = {
   maxViewportSize: number | null
   minViewportSize: number | null
   hiddenUIElements: Set<RuntimeScenarioHiddenUIElement>
+  infoPins: InfoPin[]
 }
 
 export type GlobalScenarioDirectiveLimits = {
@@ -57,4 +60,5 @@ export const createDefaultScenarioDirectives =
     maxViewportSize: null,
     minViewportSize: null,
     hiddenUIElements: new Set(),
+    infoPins: [],
   })

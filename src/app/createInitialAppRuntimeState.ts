@@ -77,6 +77,9 @@ export const createInitialAppRuntimeState = (
       debugSnapshotStatus: '',
       fpsIndicatorEnabled: false,
     },
+    info: {
+      userPins: initialScenarioTransition.userInfoPins,
+    },
   }
 
   syncRuntimeScenarioDirectives(

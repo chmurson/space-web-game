@@ -1,6 +1,7 @@
 export const uiUserActions = [
   'cycleAssistMode',
   'cycleAssistTarget',
+  'clearInfoPins',
   'decreaseCoastHorizon',
   'decreaseTimeWarp',
   'increaseCoastHorizon',
@@ -16,6 +17,7 @@ export const uiUserActions = [
   'toggleDebugMode',
   'toggleFpsIndicator',
   'toggleNoGravityDebug',
+  'toggleInfo',
   'zoomIn',
   'zoomOut',
 ] as const

@@ -2,6 +2,14 @@
   box-sizing: border-box;
 }
 
+.ui-pressable:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ui-pressable-strong:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
 :root {
   /* base z-index values */
   --z-in-game-elements: 10;
@@ -42,6 +50,7 @@
 
   .top-menu,
   .telemetry-strip,
+  .desktop-info-hud,
   .in-game-controls-menu,
   .bottom-pill-area > *,
   .scenario-loading-panel,
@@ -383,7 +392,7 @@ canvas {
   color: #e0f2fe;
   font: inherit;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 600;
   touch-action: manipulation;
 }
 
@@ -698,7 +707,7 @@ canvas {
 .crash-menu-kicker {
   margin: 0;
   color: rgba(254, 205, 211, 0.78);
-  font-weight: 750;
+  font-weight: 600;
   letter-spacing: 0.16em;
 }
 

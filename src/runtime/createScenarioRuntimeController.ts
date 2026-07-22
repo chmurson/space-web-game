@@ -15,6 +15,7 @@ import type {
   AppRuntimeState,
   RuntimeScenarioMetadata,
 } from './appRuntimeState'
+import type { InfoPin } from './infoPins'
 import {
   applyCheckpointRestoreTransition,
   applyScenarioLoadTransition,
@@ -32,6 +33,7 @@ export type ScenarioRuntimeTransition = {
     'metadata' | 'orbitPointDisplay' | 'render' | 'session'
   >
   state: AppRuntimeSimulationSlice['state']
+  userInfoPins: InfoPin[]
   viewportSize: number
 }
 
@@ -70,6 +72,7 @@ export const createScenarioRuntimeTransition = (
       session: runtimeScenarioState.scenarioSession,
     },
     state: runtimeScenarioState.state,
+    userInfoPins: runtimeScenarioState.userInfoPins,
     viewportSize: runtimeScenarioState.viewportSize,
   }
 }
@@ -158,6 +161,7 @@ export const createScenarioRuntimeController = (options: {
             session: loadedDebugScenario.runtimeState.scenarioSession,
           },
           state: loadedDebugScenario.runtimeState.state,
+          userInfoPins: loadedDebugScenario.runtimeState.userInfoPins,
           viewportSize: loadedDebugScenario.runtimeState.viewportSize,
         },
         {

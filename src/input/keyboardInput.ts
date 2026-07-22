@@ -24,7 +24,9 @@ const turnLeftKeys = ['KeyA', 'ArrowLeft']
 const turnRightKeys = ['KeyD', 'ArrowRight']
 const preciseTurnModifierKeys = ['ShiftLeft', 'ShiftRight']
 const mainThrustLatchDoubleTapMs = 300
-const preciseTurnPower = 0.25
+const preciseTurnTravel = 0.25
+const rcsTurnDeadZone = 1 / 8
+const rcsTurnExponent = 2
 
 const hasAny = (pressedKeys: Set<string>, codes: string[]) =>
   codes.some((code) => pressedKeys.has(code))
@@ -32,13 +34,24 @@ const isMainThrustKey = (code: string) => mainThrustKeys.includes(code)
 const isReverseThrustKey = (code: string) => reverseThrustKeys.includes(code)
 const getInputTimeStampMs = () =>
   typeof performance === 'undefined' ? Date.now() : performance.now()
-const clampVirtualTurn = (turn: number) => {
+const sanitizeTurn = (turn: number) => {
   if (!Number.isFinite(turn)) {
     return 0
   }
 
   const clamped = Math.min(1, Math.max(-1, turn))
   return Math.abs(clamped) < 0.001 ? 0 : clamped
+}
+const applyRcsTurnResponse = (turn: number) => {
+  const clampedTurn = sanitizeTurn(turn)
+  const magnitude = Math.abs(clampedTurn)
+
+  if (magnitude <= rcsTurnDeadZone) {
+    return 0
+  }
+
+  const normalizedTravel = (magnitude - rcsTurnDeadZone) / (1 - rcsTurnDeadZone)
+  return Math.sign(clampedTurn) * normalizedTravel ** rcsTurnExponent
 }
 
 export const createKeyboardInput = (): KeyboardInput => {
@@ -62,7 +75,7 @@ export const createKeyboardInput = (): KeyboardInput => {
 
   const getKeyboardTurn = () => {
     const power = hasAny(pressedKeys, preciseTurnModifierKeys)
-      ? preciseTurnPower
+      ? preciseTurnTravel
       : 1
 
     return (
@@ -70,6 +83,13 @@ export const createKeyboardInput = (): KeyboardInput => {
       (hasAny(pressedKeys, turnRightKeys) ? power : 0)
     )
   }
+  const getManualTurn = () =>
+    applyRcsTurnResponse(
+      virtualTurn +
+        getKeyboardTurn() +
+        (virtualControls.turnLeft ? 1 : 0) +
+        (virtualControls.turnRight ? -1 : 0),
+    )
 
   return {
     clear: () => {
@@ -96,18 +116,9 @@ export const createKeyboardInput = (): KeyboardInput => {
       strafe:
         (pressedKeys.has('KeyQ') || virtualControls.strafeLeft ? -1 : 0) +
         (pressedKeys.has('KeyE') || virtualControls.strafeRight ? 1 : 0),
-      turn: clampVirtualTurn(
-        virtualTurn +
-          getKeyboardTurn() +
-          (virtualControls.turnLeft ? 1 : 0) +
-          (virtualControls.turnRight ? -1 : 0),
-      ),
+      turn: getManualTurn(),
     }),
-    hasManualTurn: () =>
-      virtualTurn !== 0 ||
-      getKeyboardTurn() !== 0 ||
-      virtualControls.turnLeft ||
-      virtualControls.turnRight,
+    hasManualTurn: () => getManualTurn() !== 0,
     press: (code, options) => {
       if (pressedKeys.has(code)) {
         return
@@ -144,7 +155,7 @@ export const createKeyboardInput = (): KeyboardInput => {
       virtualControls[control] = pressed
     },
     setVirtualTurn: (turn) => {
-      virtualTurn = clampVirtualTurn(turn)
+      virtualTurn = sanitizeTurn(turn)
     },
   }
 }

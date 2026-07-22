@@ -6,6 +6,7 @@ import {
   readDebugScenarioSnapshot,
 } from '../debugScenarioSnapshot'
 import type { AssistTargetSelectionMode } from '../runtime/appRuntimeState'
+import { type InfoPin, normalizeInfoPins } from '../runtime/infoPins'
 import { idleControls } from '../simulation/state'
 import type { SimulationState } from '../simulation/types'
 import type { CameraFollowSubject } from './scenarioDirectiveTypes'
@@ -32,6 +33,7 @@ export type RuntimeScenarioState = {
   coastPredictionHorizonHours: number
   scenarioSession: ReturnType<typeof createRuntimeScenarioSession>
   state: SimulationState
+  userInfoPins: InfoPin[]
   viewportSize: number
 }
 
@@ -119,6 +121,10 @@ export const createRuntimeScenarioState = (
     spacecraft: scenario.spacecraft,
     controls: idleControls(),
   },
+  userInfoPins: normalizeInfoPins(
+    scenario.userInfoPins,
+    new Set(scenario.bodies.map((body) => body.id)),
+  ),
   viewportSize: clamp(
     scenario.viewportSize ?? options.defaultViewportSize,
     options.minViewportSize,

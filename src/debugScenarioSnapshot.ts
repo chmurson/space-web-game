@@ -1,4 +1,5 @@
 import type { AssistTargetSelectionMode } from './runtime/appRuntimeState'
+import { type InfoPin, normalizeInfoPins } from './runtime/infoPins'
 import type { CameraFollowSubject } from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
@@ -58,6 +59,7 @@ type DebugScenarioSnapshotV3 = {
   bodies: Body[]
   spacecraft: Spacecraft
   runtimeScenario?: RuntimeScenarioSession
+  userInfoPins?: InfoPin[]
 }
 
 export type DebugScenarioSnapshot =
@@ -88,6 +90,7 @@ export type RuntimeScenario = Scenario & {
   elapsed?: number
   orbitPointDisplay?: OrbitPointDisplaySettingOverrides
   scenarioSession?: RuntimeScenarioSession
+  userInfoPins?: InfoPin[]
   viewportSize?: number
 }
 
@@ -137,6 +140,14 @@ const getSnapshotCameraPanOffset = (
 const cloneDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
 ): DebugScenarioSnapshot => JSON.parse(JSON.stringify(snapshot))
+
+const getSnapshotUserInfoPins = (snapshot: DebugScenarioSnapshot): InfoPin[] =>
+  snapshot.version === 3
+    ? normalizeInfoPins(
+        snapshot.userInfoPins,
+        new Set(snapshot.bodies.map((body) => body.id)),
+      )
+    : []
 
 const formatElapsedLabel = (elapsed: number) => {
   if (!Number.isFinite(elapsed)) {
@@ -305,6 +316,7 @@ export const createScenarioFromSnapshot = (
   bodies: cloneBodies(snapshot.bodies),
   scenarioSession: getSnapshotScenarioSession(snapshot),
   spacecraft: cloneSpacecraft(snapshot.spacecraft),
+  userInfoPins: getSnapshotUserInfoPins(snapshot),
 })
 
 export const createSnapshotFromState = (
@@ -316,6 +328,7 @@ export const createSnapshotFromState = (
     cameraPanOffset?: Vec2
     coastPredictionHorizonHours?: number
     scenarioSession?: RuntimeScenarioSession
+    userInfoPins?: InfoPin[]
     viewportSize?: number
   } = {},
 ): DebugScenarioSnapshot => ({
@@ -335,6 +348,10 @@ export const createSnapshotFromState = (
     ? cloneRuntimeScenarioSession(options.scenarioSession)
     : undefined,
   spacecraft: cloneSpacecraft(state.spacecraft),
+  userInfoPins: normalizeInfoPins(
+    options.userInfoPins,
+    new Set(state.bodies.map((body) => body.id)),
+  ),
 })
 
 export const readDebugScenarioSnapshot = (): DebugScenarioSnapshot | null => {
