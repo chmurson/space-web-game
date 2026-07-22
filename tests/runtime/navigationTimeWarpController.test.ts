@@ -26,7 +26,7 @@ const resolveFrame = (
   controller.resolveFrame({
     maxTimeWarp: null,
     nowMs: options.nowMs,
-    simulationNavigationActive: options.navigationActive,
+    simulationControlMaxWarp: options.navigationActive ? maxControlWarp : null,
     timeWarpIndex: options.timeWarpIndex,
   })
 
@@ -63,6 +63,54 @@ describe('createNavigationTimeWarpController', () => {
         navigationActive: false,
         nowMs: 100 + navigationTimeWarpRestoreDelayMs,
         timeWarpIndex: cappedTimeWarpIndex,
+      }),
+    ).toBe(originalTimeWarpIndex)
+  })
+
+  it('tracks a changing control cap without losing the original selection', () => {
+    const controller = createController()
+    const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
+    const rcsTimeWarpIndex = requestedTimeWarps.indexOf(900)
+    const thrustTimeWarpIndex = requestedTimeWarps.indexOf(60)
+
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 0,
+        simulationControlMaxWarp: 900,
+        timeWarpIndex: originalTimeWarpIndex,
+      }),
+    ).toBe(rcsTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 100,
+        simulationControlMaxWarp: 100,
+        timeWarpIndex: rcsTimeWarpIndex,
+      }),
+    ).toBe(thrustTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 200,
+        simulationControlMaxWarp: 900,
+        timeWarpIndex: thrustTimeWarpIndex,
+      }),
+    ).toBe(rcsTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 300,
+        simulationControlMaxWarp: null,
+        timeWarpIndex: rcsTimeWarpIndex,
+      }),
+    ).toBe(rcsTimeWarpIndex)
+    expect(
+      controller.resolveFrame({
+        maxTimeWarp: null,
+        nowMs: 300 + navigationTimeWarpRestoreDelayMs,
+        simulationControlMaxWarp: null,
+        timeWarpIndex: rcsTimeWarpIndex,
       }),
     ).toBe(originalTimeWarpIndex)
   })
@@ -224,7 +272,7 @@ describe('createNavigationTimeWarpController', () => {
       controller.resolveFrame({
         maxTimeWarp: 120,
         nowMs: 100,
-        simulationNavigationActive: false,
+        simulationControlMaxWarp: null,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(maxControlTimeWarpIndex)
@@ -232,7 +280,7 @@ describe('createNavigationTimeWarpController', () => {
       controller.resolveFrame({
         maxTimeWarp: 120,
         nowMs: 420,
-        simulationNavigationActive: false,
+        simulationControlMaxWarp: null,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(scenarioMaximumTimeWarpIndex)

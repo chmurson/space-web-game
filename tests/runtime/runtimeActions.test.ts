@@ -652,7 +652,7 @@ describe('createRuntimeActions', () => {
       navigationTimeWarpController.resolveFrame({
         maxTimeWarp: null,
         nowMs: 0,
-        simulationNavigationActive: true,
+        simulationControlMaxWarp: 100,
         timeWarpIndex: originalTimeWarpIndex,
       })
     const runtimeActions = createTestRuntimeActions(runtime, {
@@ -665,14 +665,14 @@ describe('createRuntimeActions', () => {
     navigationTimeWarpController.resolveFrame({
       maxTimeWarp: null,
       nowMs: 100,
-      simulationNavigationActive: false,
+      simulationControlMaxWarp: null,
       timeWarpIndex: runtime.simulation.timeWarpIndex,
     })
     expect(
       navigationTimeWarpController.resolveFrame({
         maxTimeWarp: null,
         nowMs: 420,
-        simulationNavigationActive: false,
+        simulationControlMaxWarp: null,
         timeWarpIndex: runtime.simulation.timeWarpIndex,
       }),
     ).toBe(replacementTimeWarpIndex)

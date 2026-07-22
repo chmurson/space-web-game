@@ -135,7 +135,36 @@ const simulateTargetHeadingTurn = (targetHeadingRadians: number) => {
 }
 
 describe('stepSimulationFrame', () => {
-  it('reports an active-controls clamp at the highest configured safe warp', () => {
+  it.each([
+    {
+      controls: { main: 1, reverse: 0, strafe: 0, turn: 0 },
+      expectedMaxWarp: 100,
+      expectedReason: 'active-controls' as const,
+      expectedWarp: 60,
+      name: 'keeps thrust at the x1m cap',
+    },
+    {
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 1 },
+      expectedMaxWarp: 900,
+      expectedReason: 'active-controls' as const,
+      expectedWarp: 900,
+      name: 'caps manual RCS turning at x15m',
+    },
+    {
+      controls: { main: 1, reverse: 0, strafe: 0, turn: 1 },
+      expectedMaxWarp: 100,
+      expectedReason: 'active-controls' as const,
+      expectedWarp: 60,
+      name: 'gives the thrust cap priority over simultaneous RCS turning',
+    },
+    {
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+      expectedMaxWarp: null,
+      expectedReason: null,
+      expectedWarp: 1800,
+      name: 'leaves normal time warp unchanged while controls are idle',
+    },
+  ])('$name', ({ controls, expectedMaxWarp, expectedReason, expectedWarp }) => {
     const result = resolveSimulationTimeWarp({
       assistMode: 'off',
       crashedBodyName: null,
@@ -160,8 +189,8 @@ describe('stepSimulationFrame', () => {
       }),
       keyboardInput: {
         clear: () => {},
-        getManualControls: () => ({ main: 1, reverse: 0, strafe: 0, turn: 0 }),
-        hasManualTurn: () => false,
+        getManualControls: () => controls,
+        hasManualTurn: () => controls.turn !== 0,
         press: () => {},
         release: () => {},
         setVirtualKey: () => {},
@@ -176,9 +205,9 @@ describe('stepSimulationFrame', () => {
       timeWarps: requestedTimeWarps,
     })
 
-    expect(result.reason).toBe('active-controls')
-    expect(result.timeWarpIndex).toBe(requestedTimeWarps.indexOf(60))
-    expect(result.simulationControls.controls.main).toBe(1)
+    expect(result.activeControlMaxWarp).toBe(expectedMaxWarp)
+    expect(result.reason).toBe(expectedReason)
+    expect(result.timeWarpIndex).toBe(requestedTimeWarps.indexOf(expectedWarp))
   })
 
   it('restores the selected warp after all simulation controls are idle for 320 ms', () => {

@@ -46,6 +46,10 @@ type ResolvedSimulationControls = {
   targetHeadingTurn: TargetHeadingTurn | null
 }
 
+type ResolvedSimulationControlsWithInputState = ResolvedSimulationControls & {
+  manualRcsTurnActive: boolean
+}
+
 export type TimeWarpConstraintReason = 'scenario-limit' | 'active-controls'
 
 export type StepSimulationFrameOptions = SimulationStepQueries & {
@@ -76,6 +80,7 @@ export type StepSimulationFrameResult = {
 }
 
 export const defaultMaxControlWarp = 100
+const temporaryMaxRcsTurnWarp = 15 * 60
 
 const targetHeadingDeadZone = 0.015
 const targetHeadingTurnBaseAccelerationSeconds = 0.65
@@ -294,11 +299,12 @@ const resolveTargetHeadingTurn = (options: {
 
 const resolveSimulationControls = (
   options: ResolveSimulationControlsOptions,
-): ResolvedSimulationControls => {
+): ResolvedSimulationControlsWithInputState => {
   if (options.crashedBodyName) {
     return {
       assistMode: options.assistMode,
       controls: idleControls(),
+      manualRcsTurnActive: false,
       targetHeading: options.targetHeading,
       targetHeadingTurn: null,
     }
@@ -364,6 +370,7 @@ const resolveSimulationControls = (
     return {
       assistMode,
       controls: idleControls(),
+      manualRcsTurnActive: false,
       targetHeading: null,
       targetHeadingTurn: null,
     }
@@ -372,40 +379,27 @@ const resolveSimulationControls = (
   return {
     assistMode,
     controls,
+    manualRcsTurnActive: manualTurn !== 0,
     targetHeading,
     targetHeadingTurn,
   }
 }
 
-const capTimeWarpForActiveControls = (
+const getActiveControlMaxWarp = (
   controls: SimulationState['controls'],
-  timeWarpIndex: number,
-  timeWarps: number[],
+  manualRcsTurnActive: boolean,
   maxControlWarp: number,
 ) => {
-  const usingControls = hasActiveNavigationControls(controls)
-  const maxControlWarpIndex = timeWarps.reduce(
-    (safeIndex, timeWarp, index) =>
-      timeWarp <= maxControlWarp ? index : safeIndex,
-    -1,
-  )
-
-  if (
-    usingControls &&
-    maxControlWarpIndex >= 0 &&
-    timeWarps[timeWarpIndex] > maxControlWarp
-  ) {
-    return maxControlWarpIndex
+  if (controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0) {
+    return maxControlWarp
   }
 
-  return timeWarpIndex
-}
+  if (controls.turn === 0) {
+    return null
+  }
 
-const hasActiveNavigationControls = (controls: SimulationState['controls']) =>
-  controls.main !== 0 ||
-  controls.reverse !== 0 ||
-  controls.strafe !== 0 ||
-  controls.turn !== 0
+  return manualRcsTurnActive ? temporaryMaxRcsTurnWarp : maxControlWarp
+}
 
 export const resolveSimulationTimeWarp = (
   options: ResolveSimulationControlsOptions & {
@@ -415,30 +409,39 @@ export const resolveSimulationTimeWarp = (
     timeWarps: number[]
   },
 ): {
+  activeControlMaxWarp: number | null
   reason: TimeWarpConstraintReason | null
   simulationControls: ResolvedSimulationControls
   timeWarpIndex: number
 } => {
-  const simulationControls = resolveSimulationControls(options)
+  const { manualRcsTurnActive, ...simulationControls } =
+    resolveSimulationControls(options)
+  const activeControlMaxWarp = getActiveControlMaxWarp(
+    simulationControls.controls,
+    manualRcsTurnActive,
+    options.maxControlWarp,
+  )
   const scenarioConstrainedTimeWarpIndex = getConstrainedTimeWarpIndex(
     options.timeWarpIndex,
     options.timeWarps,
     options.maxTimeWarp,
   )
-  const controlConstrainedTimeWarpIndex = capTimeWarpForActiveControls(
-    simulationControls.controls,
+  const controlConstrainedTimeWarpIndex = getConstrainedTimeWarpIndex(
     scenarioConstrainedTimeWarpIndex,
     options.timeWarps,
-    options.maxControlWarp,
+    activeControlMaxWarp,
   )
+  let reason: TimeWarpConstraintReason | null = null
+
+  if (controlConstrainedTimeWarpIndex !== scenarioConstrainedTimeWarpIndex) {
+    reason = 'active-controls'
+  } else if (scenarioConstrainedTimeWarpIndex !== options.timeWarpIndex) {
+    reason = 'scenario-limit'
+  }
 
   return {
-    reason:
-      controlConstrainedTimeWarpIndex !== scenarioConstrainedTimeWarpIndex
-        ? 'active-controls'
-        : scenarioConstrainedTimeWarpIndex !== options.timeWarpIndex
-          ? 'scenario-limit'
-          : null,
+    activeControlMaxWarp,
+    reason,
     simulationControls,
     timeWarpIndex: controlConstrainedTimeWarpIndex,
   }
@@ -517,9 +520,7 @@ export const stepSimulationFrame = (
     ? options.navigationTimeWarpController.resolveFrame({
         maxTimeWarp: options.maxTimeWarp ?? null,
         nowMs: options.nowMs ?? performance.now(),
-        simulationNavigationActive: hasActiveNavigationControls(
-          resolvedTimeWarp.simulationControls.controls,
-        ),
+        simulationControlMaxWarp: resolvedTimeWarp.activeControlMaxWarp,
         timeWarpIndex: options.timeWarpIndex,
       })
     : resolvedTimeWarp.timeWarpIndex

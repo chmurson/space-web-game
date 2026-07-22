@@ -11,13 +11,8 @@ export const createNavigationTimeWarpController = (options: {
   maxControlWarp: number
   timeWarps: number[]
 }) => {
-  const maxControlTimeWarpIndex = options.timeWarps.reduce(
-    (safeIndex, timeWarp, index) =>
-      timeWarp <= options.maxControlWarp ? index : safeIndex,
-    -1,
-  )
   let headingPlanActive = false
-  let simulationNavigationActive = false
+  let simulationControlMaxWarp: number | null = null
   let restoreTimeWarpIndex: number | null = null
   let navigationStoppedAtMs: number | null = null
 
@@ -27,18 +22,31 @@ export const createNavigationTimeWarpController = (options: {
   }: TimeWarpSelectionOptions) =>
     getConstrainedTimeWarpIndex(timeWarpIndex, options.timeWarps, maxTimeWarp)
 
-  const capTimeWarpIndex = (timeWarpIndex: number) =>
-    maxControlTimeWarpIndex < 0
-      ? timeWarpIndex
-      : Math.min(timeWarpIndex, maxControlTimeWarpIndex)
+  const getActiveControlMaxWarp = () => {
+    if (headingPlanActive && simulationControlMaxWarp !== null) {
+      return Math.min(options.maxControlWarp, simulationControlMaxWarp)
+    }
 
-  const navigationActive = () => headingPlanActive || simulationNavigationActive
+    if (headingPlanActive) {
+      return options.maxControlWarp
+    }
+
+    return simulationControlMaxWarp
+  }
+
+  const capTimeWarpIndex = (timeWarpIndex: number) =>
+    getConstrainedTimeWarpIndex(
+      timeWarpIndex,
+      options.timeWarps,
+      getActiveControlMaxWarp(),
+    )
+
+  const navigationActive = () => getActiveControlMaxWarp() !== null
 
   const preserveTimeWarpForNavigation = (timeWarpIndex: number) => {
     if (
       restoreTimeWarpIndex === null &&
-      maxControlTimeWarpIndex >= 0 &&
-      timeWarpIndex > maxControlTimeWarpIndex
+      capTimeWarpIndex(timeWarpIndex) !== timeWarpIndex
     ) {
       restoreTimeWarpIndex = timeWarpIndex
     }
@@ -48,7 +56,7 @@ export const createNavigationTimeWarpController = (options: {
     const constrainedTimeWarpIndex = constrainTimeWarpIndex(selection)
     preserveTimeWarpForNavigation(constrainedTimeWarpIndex)
     navigationStoppedAtMs = null
-    return capTimeWarpIndex(constrainedTimeWarpIndex)
+    return capTimeWarpIndex(restoreTimeWarpIndex ?? constrainedTimeWarpIndex)
   }
 
   const markNavigationStopped = (nowMs: number) => {
@@ -63,7 +71,7 @@ export const createNavigationTimeWarpController = (options: {
 
   const reset = () => {
     headingPlanActive = false
-    simulationNavigationActive = false
+    simulationControlMaxWarp = null
     restoreTimeWarpIndex = null
     navigationStoppedAtMs = null
   }
@@ -81,10 +89,10 @@ export const createNavigationTimeWarpController = (options: {
     resolveFrame: (
       selection: TimeWarpSelectionOptions & {
         nowMs: number
-        simulationNavigationActive: boolean
+        simulationControlMaxWarp: number | null
       },
     ) => {
-      simulationNavigationActive = selection.simulationNavigationActive
+      simulationControlMaxWarp = selection.simulationControlMaxWarp
       const constrainedTimeWarpIndex = constrainTimeWarpIndex(selection)
       if (restoreTimeWarpIndex !== null) {
         restoreTimeWarpIndex = constrainTimeWarpIndex({
