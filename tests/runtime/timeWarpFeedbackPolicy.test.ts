@@ -153,4 +153,52 @@ describe('timeWarpFeedbackPolicy', () => {
     expect(preview.reason).toBe('thrust-active')
     expect(preview.value).toBe(60)
   })
+
+  it('allows manual RCS turning to increase through x15s', () => {
+    const preview = getTimeWarpFeedbackPreview({
+      ...createBaseOptions(),
+      action: 'increaseTimeWarp',
+      currentTimeWarpIndex: requestedTimeWarps.indexOf(8),
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({ main: 0, reverse: 0, strafe: 0, turn: 1 }),
+        hasManualTurn: () => true,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+        setVirtualTurn: () => {},
+      },
+    })
+
+    expect(preview).toEqual({
+      action: 'increaseTimeWarp',
+      canCommit: true,
+      reason: null,
+      value: 15,
+    })
+  })
+
+  it('reports turning when manual RCS reaches the x15s cap', () => {
+    const preview = getTimeWarpFeedbackPreview({
+      ...createBaseOptions(),
+      action: 'increaseTimeWarp',
+      currentTimeWarpIndex: requestedTimeWarps.indexOf(15),
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({ main: 0, reverse: 0, strafe: 0, turn: 1 }),
+        hasManualTurn: () => true,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+        setVirtualTurn: () => {},
+      },
+    })
+
+    expect(preview).toEqual({
+      action: 'increaseTimeWarp',
+      canCommit: false,
+      reason: 'turning',
+      value: 15,
+    })
+  })
 })
