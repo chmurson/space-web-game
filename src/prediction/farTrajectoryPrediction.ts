@@ -14,6 +14,7 @@ import { length, sub, type Vec2 } from '../simulation/vector'
 import type {
   CoastTrajectoryPredictionComputation,
   CoastTrajectoryPredictionSample,
+  CoastTrajectoryPredictionTerminationReason,
   TrajectoryPredictionConfig,
   TrajectoryPredictionResult,
 } from './trajectoryPrediction'
@@ -48,11 +49,36 @@ export type FarTrajectoryPredictionResultPayload = {
   assistedPoints: Array<{ x: number; y: number }>
   calculationMs: number
   coastPrediction: TrajectoryPredictionResult
+  coastWindow: FarTrajectoryPredictionCoastWindow
   inputKey: string
   jobId: number
   semanticInputKey: string
   targetId: string
   reuse: FarTrajectoryPredictionReuseDiagnostics
+}
+
+export type FarTrajectoryPredictionCoastWindow = {
+  allowLoopTrim: boolean
+  anchorElapsed: number
+  sampleClosestApproaches: Array<
+    CoastTrajectoryPredictionSample['closestApproach']
+  >
+  sampleTimes: number[]
+  terminationReason: CoastTrajectoryPredictionTerminationReason
+  totalCoverageSeconds: number
+}
+
+export type FarTrajectoryPredictionCoastWindowFallbackReason =
+  | 'continuity-unavailable'
+  | 'coverage-exhausted'
+  | 'insufficient-future-samples'
+
+export type FarTrajectoryPredictionCoastWindowSlice = {
+  farPrediction: TrajectoryPredictionResult
+  nearPrediction: TrajectoryPredictionResult
+  remainingCoverageSeconds: number
+  retainedFarPointCount: number
+  retainedNearPointCount: number
 }
 
 export type FarTrajectoryPredictionReuseFallbackReason =
@@ -547,6 +573,151 @@ const getSamplesClosestApproach = (
     null,
   )
 
+const isFinitePoint = (point: Vec2) =>
+  Number.isFinite(point.x) && Number.isFinite(point.y)
+
+const hasContinuousSampleTimes = (samples: CoastTrajectoryPredictionSample[]) =>
+  samples.every((sample, index) => {
+    const previousSample = samples[index - 1]
+    return (
+      Number.isFinite(sample.time) &&
+      sample.time > timeToleranceSeconds &&
+      (!previousSample || sample.time > previousSample.time) &&
+      isFinitePoint(sample.absolutePoint) &&
+      isFinitePoint(sample.point)
+    )
+  })
+
+const createCoastWindowPrediction = (
+  window: FarTrajectoryPredictionCoastWindow,
+  samples: CoastTrajectoryPredictionSample[],
+  absoluteStartPoint: Vec2,
+  targetRadius: number,
+  impact: TrajectoryPredictionResult['impact'],
+  integration: TrajectoryPredictionResult['integration'],
+): TrajectoryPredictionResult => ({
+  absoluteEndPoint: samples.at(-1)?.absolutePoint ?? null,
+  absolutePoints: [
+    { ...absoluteStartPoint },
+    ...samples.map((sample) => sample.absolutePoint),
+  ],
+  closestApproach: getSamplesClosestApproach(samples),
+  eventMarkers: getCoastTrajectoryEventMarkers(samples, {
+    includeApoapsis: window.allowLoopTrim && !impact,
+    targetRadius,
+  }),
+  impact,
+  integration,
+  relativePoints: samples.map((sample) => sample.point),
+})
+
+export const sliceFarTrajectoryPredictionCoastWindow = (
+  window: FarTrajectoryPredictionCoastWindow,
+  coastPrediction: TrajectoryPredictionResult,
+  options: {
+    absoluteStartPoint: Vec2
+    currentElapsed: number
+    nearHorizonSeconds: number
+    targetRadius: number
+  },
+):
+  | FarTrajectoryPredictionCoastWindowSlice
+  | { fallbackReason: FarTrajectoryPredictionCoastWindowFallbackReason } => {
+  const elapsedSeconds = options.currentElapsed - window.anchorElapsed
+  if (
+    !Number.isFinite(elapsedSeconds) ||
+    elapsedSeconds < -timeToleranceSeconds ||
+    !Number.isFinite(window.totalCoverageSeconds) ||
+    !isFinitePoint(options.absoluteStartPoint)
+  ) {
+    return { fallbackReason: 'continuity-unavailable' }
+  }
+
+  const remainingCoverageSeconds = window.totalCoverageSeconds - elapsedSeconds
+  if (remainingCoverageSeconds <= timeToleranceSeconds) {
+    return { fallbackReason: 'coverage-exhausted' }
+  }
+
+  if (
+    window.sampleTimes.length !== coastPrediction.relativePoints.length ||
+    window.sampleTimes.length !== coastPrediction.absolutePoints.length - 1 ||
+    window.sampleClosestApproaches.length !== window.sampleTimes.length
+  ) {
+    return { fallbackReason: 'continuity-unavailable' }
+  }
+  const samples: CoastTrajectoryPredictionSample[] = []
+  for (const [index, time] of window.sampleTimes.entries()) {
+    const absolutePoint = coastPrediction.absolutePoints[index + 1]
+    const point = coastPrediction.relativePoints[index]
+    if (!absolutePoint || !point) {
+      return { fallbackReason: 'continuity-unavailable' }
+    }
+    samples.push({
+      absolutePoint,
+      closestApproach: window.sampleClosestApproaches[index] ?? null,
+      distanceSq: point.x ** 2 + point.y ** 2,
+      point,
+      time,
+    })
+  }
+  const retainedSamples = samples
+    .filter((sample) => sample.time > elapsedSeconds + timeToleranceSeconds)
+    .map((sample) => shiftSample(sample, -elapsedSeconds))
+  if (retainedSamples.length < 2) {
+    return { fallbackReason: 'insufficient-future-samples' }
+  }
+  if (!hasContinuousSampleTimes(retainedSamples)) {
+    return { fallbackReason: 'continuity-unavailable' }
+  }
+
+  let nearSamples = retainedSamples.filter(
+    (sample) =>
+      sample.time <= options.nearHorizonSeconds + timeToleranceSeconds,
+  )
+  if (nearSamples.length === 0) {
+    nearSamples = retainedSamples.slice(0, 1)
+  }
+
+  const shiftedImpact = coastPrediction.impact
+    ? {
+        ...coastPrediction.impact,
+        time: coastPrediction.impact.time - elapsedSeconds,
+      }
+    : null
+  const nearEndTime = nearSamples.at(-1)?.time ?? 0
+  const nearImpact =
+    shiftedImpact && shiftedImpact.time <= nearEndTime + timeToleranceSeconds
+      ? shiftedImpact
+      : null
+  const emptyIntegration: TrajectoryPredictionResult['integration'] = {
+    averageStepSeconds: null,
+    minStepSeconds: null,
+    stepCount: 0,
+  }
+
+  return {
+    farPrediction: createCoastWindowPrediction(
+      window,
+      retainedSamples,
+      options.absoluteStartPoint,
+      options.targetRadius,
+      shiftedImpact,
+      coastPrediction.integration,
+    ),
+    nearPrediction: createCoastWindowPrediction(
+      window,
+      nearSamples,
+      options.absoluteStartPoint,
+      options.targetRadius,
+      nearImpact,
+      emptyIntegration,
+    ),
+    remainingCoverageSeconds,
+    retainedFarPointCount: retainedSamples.length,
+    retainedNearPointCount: nearSamples.length,
+  }
+}
+
 const normalizeAngle = (angle: number) =>
   Math.atan2(Math.sin(angle), Math.cos(angle))
 
@@ -878,6 +1049,8 @@ const tryReuseCoastPrediction = (
       predictionTime: extensionOffsetSeconds + (extension?.predictionTime ?? 0),
       result,
       samples,
+      terminationReason:
+        extension?.terminationReason ?? cache.computation.terminationReason,
     },
     reuse: {
       divergence: null,
@@ -973,6 +1146,18 @@ const calculateFarTrajectory = (
       assistedPoints,
       calculationMs: nowMs() - calculationStartMs,
       coastPrediction: coastCalculation.computation.result,
+      coastWindow: {
+        allowLoopTrim,
+        anchorElapsed: state.elapsed,
+        sampleClosestApproaches: coastCalculation.computation.samples.map(
+          (sample) => sample.closestApproach,
+        ),
+        sampleTimes: coastCalculation.computation.samples.map(
+          (sample) => sample.time,
+        ),
+        terminationReason: coastCalculation.computation.terminationReason,
+        totalCoverageSeconds: coastCalculation.computation.predictionTime,
+      },
       inputKey: payload.inputKey,
       jobId: payload.jobId,
       reuse: coastCalculation.reuse,

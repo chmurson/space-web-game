@@ -1,13 +1,17 @@
 import type { AssistMode, CaptureMetrics } from '../assist/orbitalAssist'
 import {
   createFarTrajectoryPredictionStateSnapshot,
+  type FarTrajectoryPredictionCoastWindow,
+  type FarTrajectoryPredictionCoastWindowFallbackReason,
   type FarTrajectoryPredictionDivergenceDiagnostics,
   type FarTrajectoryPredictionRequestPayload,
   type FarTrajectoryPredictionResultPayload,
   type FarTrajectoryPredictionReuseDiagnostics,
   type FarTrajectoryPredictionReuseFallbackReason,
+  sliceFarTrajectoryPredictionCoastWindow,
 } from '../prediction/farTrajectoryPrediction'
 import {
+  type CoastTrajectoryPredictionTerminationReason,
   getCoastTrajectoryPredictionMaxIntegrationStepSeconds,
   type PredictedClosestApproach,
   type PredictedImpact,
@@ -51,6 +55,7 @@ export type TrajectoryPredictionRefreshReason =
   | 'horizon-change'
   | 'initial'
   | 'manual'
+  | 'orbit-policy-change'
   | 'sampling-change'
   | 'spacecraft-change'
   | 'target-change'
@@ -134,6 +139,15 @@ export type TrajectoryPredictionFarReuseDiagnostic =
     horizonSeconds: number
   }
 
+export type TrajectoryPredictionNearSource = 'accepted-window' | 'synchronous'
+
+export type TrajectoryPredictionNearFallbackReason =
+  | FarTrajectoryPredictionCoastWindowFallbackReason
+  | 'no-accepted-window'
+  | 'not-passive-coast'
+  | 'semantic-change'
+  | 'state-diverged'
+
 export type TrajectoryPredictionDiagnostics = {
   absolutePointCount: number
   activeFar: boolean
@@ -180,14 +194,21 @@ export type TrajectoryPredictionDiagnostics = {
   nearCalculationSampleCount: number
   nearCalculationTravel: TrajectoryPredictionNearTravelDiagnostics
   nearCalculationWindows: TrajectoryPredictionCalculationWindowDiagnostics
+  nearFallbackReason: TrajectoryPredictionNearFallbackReason | null
   nearPointCount: number
+  nearSource: TrajectoryPredictionNearSource | null
   pendingFar: boolean
   pendingFarInputKeyShort: string | null
   predictionRefreshMs: number
+  predictionAnchorElapsed: number | null
+  predictionTerminationReason: CoastTrajectoryPredictionTerminationReason | null
   refreshCountLastSecond: number
   refreshIntervalSeconds: number
   refreshReason: TrajectoryPredictionRefreshReason | null
   relativePointCount: number
+  remainingUsableCoverageSeconds: number
+  retainedFarPointCount: number
+  retainedNearPointCount: number
   sampleStepSeconds: number
   splitHorizon: boolean
   visiblePointCount: number
@@ -230,6 +251,23 @@ type TrajectoryPredictionFarRequest = {
   jobId: number
   payload: FarTrajectoryPredictionRequestPayload
   semanticInputKey: string
+}
+
+type AcceptedCoastPredictionWindow = {
+  coastPrediction: TrajectoryPredictionResult
+  coastWindow: FarTrajectoryPredictionCoastWindow
+  semanticInputKey: string
+  targetId: string
+}
+
+type AcceptedCoastPredictionWindowTiers = {
+  farTier: TrajectoryPredictionTier
+  nearTier: TrajectoryPredictionTier
+  predictionAnchorElapsed: number
+  predictionTerminationReason: CoastTrajectoryPredictionTerminationReason
+  remainingUsableCoverageSeconds: number
+  retainedFarPointCount: number
+  retainedNearPointCount: number
 }
 
 export type CreateTrajectoryPredictionRuntimeOptions = {
@@ -323,14 +361,21 @@ export const emptyTrajectoryPredictionDiagnostics =
       lastStepHorizonRatio: null,
     },
     nearCalculationWindows: emptyCalculationWindowDiagnostics(),
+    nearFallbackReason: null,
     nearPointCount: 0,
+    nearSource: null,
     pendingFar: false,
     pendingFarInputKeyShort: null,
     predictionRefreshMs: 0,
+    predictionAnchorElapsed: null,
+    predictionTerminationReason: null,
     refreshCountLastSecond: 0,
     refreshIntervalSeconds: 0,
     refreshReason: null,
     relativePointCount: 0,
+    remainingUsableCoverageSeconds: 0,
+    retainedFarPointCount: 0,
+    retainedNearPointCount: 0,
     sampleStepSeconds: 0,
     splitHorizon: false,
     visiblePointCount: 0,
@@ -406,7 +451,22 @@ const forcesFarPredictionRefresh = (
   reason === 'target-change' ||
   reason === 'horizon-change' ||
   reason === 'sampling-change' ||
-  reason === 'assist-change'
+  reason === 'assist-change' ||
+  reason === 'orbit-policy-change'
+
+const isPassiveCoast = (options: RefreshTrajectoryPredictionOptions) =>
+  options.assistMode === 'off' &&
+  options.state.controls.main === 0 &&
+  options.state.controls.reverse === 0 &&
+  options.state.controls.strafe === 0 &&
+  options.state.controls.turn === 0
+
+const canReuseAcceptedWindowForReason = (
+  reason: TrajectoryPredictionRefreshReason,
+) =>
+  reason === 'body-state-change' ||
+  reason === 'spacecraft-change' ||
+  reason === 'timed-refresh'
 
 const recordCalculationTiming = (
   stats: CalculationTimingStats,
@@ -528,8 +588,10 @@ const createPredictionInputKey = (parts: PredictionInputKeyParts) =>
 const createFarPredictionSemanticInputKey = (
   parts: PredictionInputKeyParts,
   generation: number,
+  allowLoopTrim: boolean,
 ) =>
   JSON.stringify({
+    allowLoopTrim,
     assist: parts.assist,
     bodies: (
       JSON.parse(parts.bodies) as Array<{
@@ -685,6 +747,7 @@ const getRefreshReason = (
 export const createTrajectoryPredictionRuntime = (
   runtimeOptions: CreateTrajectoryPredictionRuntimeOptions = {},
 ) => {
+  let acceptedCoastPredictionWindow: AcceptedCoastPredictionWindow | null = null
   let activeFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
   let farPredictionTier: TrajectoryPredictionTier | null = null
   let farWorkerClient: TrajectoryPredictionFarWorkerClient | null = null
@@ -700,6 +763,7 @@ export const createTrajectoryPredictionRuntime = (
   let farCoalescingLastSkipStage: TrajectoryPredictionFarCoalescingSkipStage | null =
     null
   let predictionInputHadActiveThrust = false
+  let predictionInputAllowLoopTrim: boolean | null = null
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
   let farReuseHistory: TrajectoryPredictionFarReuseDiagnostic[] = []
@@ -929,6 +993,72 @@ export const createTrajectoryPredictionRuntime = (
     }
   }
 
+  const getAcceptedWindowTiers = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+    inputKeyParts: PredictionInputKeyParts,
+    nearHorizonSeconds: number,
+  ):
+    | AcceptedCoastPredictionWindowTiers
+    | { fallbackReason: TrajectoryPredictionNearFallbackReason } => {
+    if (!isPassiveCoast(options)) {
+      return { fallbackReason: 'not-passive-coast' }
+    }
+    const acceptedWindow = acceptedCoastPredictionWindow
+    if (!acceptedWindow) {
+      return { fallbackReason: 'no-accepted-window' }
+    }
+
+    const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
+    const semanticInputKey = createFarPredictionSemanticInputKey(
+      inputKeyParts,
+      farSemanticGeneration,
+      allowLoopTrim,
+    )
+    if (
+      acceptedWindow.semanticInputKey !== semanticInputKey ||
+      acceptedWindow.targetId !== target.id ||
+      acceptedWindow.coastWindow.allowLoopTrim !== allowLoopTrim
+    ) {
+      return { fallbackReason: 'semantic-change' }
+    }
+
+    const slice = sliceFarTrajectoryPredictionCoastWindow(
+      acceptedWindow.coastWindow,
+      acceptedWindow.coastPrediction,
+      {
+        absoluteStartPoint: options.state.spacecraft.position,
+        currentElapsed: options.state.elapsed,
+        nearHorizonSeconds,
+        targetRadius: target.radius,
+      },
+    )
+    if ('fallbackReason' in slice) {
+      return slice
+    }
+
+    const inputKey = createPredictionInputKey(inputKeyParts)
+    return {
+      farTier: {
+        assistedPoints: [],
+        coastPrediction: slice.farPrediction,
+        inputKey,
+        targetId: target.id,
+      },
+      nearTier: {
+        assistedPoints: [],
+        coastPrediction: slice.nearPrediction,
+        inputKey,
+        targetId: target.id,
+      },
+      predictionAnchorElapsed: acceptedWindow.coastWindow.anchorElapsed,
+      predictionTerminationReason: acceptedWindow.coastWindow.terminationReason,
+      remainingUsableCoverageSeconds: slice.remainingCoverageSeconds,
+      retainedFarPointCount: slice.retainedFarPointCount,
+      retainedNearPointCount: slice.retainedNearPointCount,
+    }
+  }
+
   const pushDiagnosticEvent = (
     event: Omit<TrajectoryPredictionDiagnosticEvent, 'dtMs' | 't'> & {
       t?: number
@@ -958,9 +1088,11 @@ export const createTrajectoryPredictionRuntime = (
     coalescingMinIntervalSeconds: number | null,
   ): TrajectoryPredictionFarRequest => {
     const inputKey = createPredictionInputKey(inputKeyParts)
+    const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const semanticInputKey = createFarPredictionSemanticInputKey(
       inputKeyParts,
       farSemanticGeneration,
+      allowLoopTrim,
     )
     const jobId = nextFarPredictionJobId
     nextFarPredictionJobId += 1
@@ -1100,15 +1232,19 @@ export const createTrajectoryPredictionRuntime = (
     const target = options.getAssistTarget()
     const nextInputKeyParts = createPredictionInputKeyParts(options, target)
     const inputKey = createPredictionInputKey(nextInputKeyParts)
+    const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const semanticInputKey = createFarPredictionSemanticInputKey(
       nextInputKeyParts,
       farSemanticGeneration,
+      allowLoopTrim,
     )
 
     if (
       result.semanticInputKey !== semanticInputKey ||
       request.semanticInputKey !== semanticInputKey ||
-      result.targetId !== target.id
+      result.targetId !== target.id ||
+      result.coastWindow.allowLoopTrim !== allowLoopTrim ||
+      result.coastWindow.anchorElapsed !== request.payload.state.elapsed
     ) {
       postActiveFarPredictionRequest()
       return
@@ -1129,7 +1265,12 @@ export const createTrajectoryPredictionRuntime = (
     }
 
     predictionRefreshTimesMs.push(refreshStartMs)
-    farPredictionTier = createFarTierFromWorkerResult(result)
+    acceptedCoastPredictionWindow = {
+      coastPrediction: result.coastPrediction,
+      coastWindow: result.coastWindow,
+      semanticInputKey: result.semanticInputKey,
+      targetId: result.targetId,
+    }
     farReuseHistory = [
       ...farReuseHistory,
       {
@@ -1157,21 +1298,61 @@ export const createTrajectoryPredictionRuntime = (
       options.predictionConfig,
       getNearPredictionHorizonSeconds(options.predictionConfig),
     )
+    const acceptedWindowTiers = getAcceptedWindowTiers(
+      options,
+      target,
+      nextInputKeyParts,
+      liveNearPredictionConfig.horizonSeconds,
+    )
     let nearCalculationMs: number | null = null
-    let currentNearTier = nearPredictionTier
+    let nearFallbackReason: TrajectoryPredictionNearFallbackReason | null = null
+    let nearSource: TrajectoryPredictionNearSource = 'accepted-window'
+    let nearWindow: AcceptedCoastPredictionWindowTiers | null = null
+    let currentFarTier: TrajectoryPredictionTier | null
+    let currentNearTier: TrajectoryPredictionTier
     if (
-      currentNearTier?.inputKey !== inputKey ||
-      currentNearTier.targetId !== target.id
+      'fallbackReason' in acceptedWindowTiers ||
+      result.reuse.fallbackReason === 'state-diverged'
     ) {
-      const nearPrediction = predictTierWithTiming(
-        options,
-        target,
-        liveNearPredictionConfig,
-        inputKey,
-      )
-      currentNearTier = nearPrediction.tier
-      nearCalculationMs = nearPrediction.calculationMs
+      const existingNearTier = nearPredictionTier
+      const mustCalculateNear =
+        result.reuse.fallbackReason === 'state-diverged' ||
+        existingNearTier?.inputKey !== inputKey ||
+        existingNearTier.targetId !== target.id
+      if (mustCalculateNear) {
+        const nearPrediction = predictTierWithTiming(
+          options,
+          target,
+          liveNearPredictionConfig,
+          inputKey,
+        )
+        currentNearTier = nearPrediction.tier
+        nearCalculationMs = nearPrediction.calculationMs
+      } else {
+        currentNearTier = existingNearTier
+      }
+      if ('fallbackReason' in acceptedWindowTiers) {
+        acceptedCoastPredictionWindow = null
+      }
+      if (result.reuse.fallbackReason === 'state-diverged') {
+        nearFallbackReason = 'state-diverged'
+      } else if ('fallbackReason' in acceptedWindowTiers) {
+        nearFallbackReason = acceptedWindowTiers.fallbackReason
+      }
+      nearSource = 'synchronous'
+      if (!('fallbackReason' in acceptedWindowTiers)) {
+        currentFarTier = acceptedWindowTiers.farTier
+      } else if (acceptedWindowTiers.fallbackReason === 'not-passive-coast') {
+        currentFarTier = createFarTierFromWorkerResult(result)
+      } else {
+        currentFarTier = null
+      }
+    } else {
+      currentFarTier = acceptedWindowTiers.farTier
+      currentNearTier = acceptedWindowTiers.nearTier
+      nearWindow = acceptedWindowTiers
     }
+    farPredictionTier = currentFarTier
     nearPredictionTier = currentNearTier
     applyPredictionTier({
       changedParts: [],
@@ -1188,8 +1369,11 @@ export const createTrajectoryPredictionRuntime = (
         options.predictionConfig,
       ),
       nearCalculationMs,
+      nearFallbackReason,
       nearHorizonSeconds: liveNearPredictionConfig.horizonSeconds,
       nearTier: currentNearTier,
+      nearSource,
+      nearWindow,
       predictionConfig: options.predictionConfig,
       reason: 'timed-refresh',
       refreshStartMs,
@@ -1215,7 +1399,7 @@ export const createTrajectoryPredictionRuntime = (
 
   const applyPredictionTier = (options: {
     changedParts: TrajectoryPredictionInputChangePart[]
-    event: TrajectoryPredictionEventKind
+    event: TrajectoryPredictionEventKind | null
     farApplied: boolean
     farCalculationMs: number | null
     farCoalescingMinIntervalSeconds: number
@@ -1223,8 +1407,11 @@ export const createTrajectoryPredictionRuntime = (
     inputKey: string
     integrationStepSeconds: number
     nearCalculationMs: number | null
+    nearFallbackReason: TrajectoryPredictionNearFallbackReason | null
     nearHorizonSeconds: number
     nearTier: TrajectoryPredictionTier
+    nearSource: TrajectoryPredictionNearSource
+    nearWindow: AcceptedCoastPredictionWindowTiers | null
     predictionConfig: TrajectoryPredictionConfig
     reason: TrajectoryPredictionRefreshReason
     refreshStartMs: number
@@ -1299,7 +1486,6 @@ export const createTrajectoryPredictionRuntime = (
       previousSpacecraftPosition =
         options.nearTier.coastPrediction.absolutePoints[0] ?? null
     }
-
     predictionState = {
       absolutePredictionEnd: visibleCoastPrediction.absoluteEndPoint,
       absolutePredictionPoints,
@@ -1363,40 +1549,59 @@ export const createTrajectoryPredictionRuntime = (
         nearCalculationStats,
         calculationRecordedAtMs,
       ),
+      nearFallbackReason: options.nearFallbackReason,
       nearPointCount: options.nearTier.coastPrediction.relativePoints.length,
+      nearSource: options.nearSource,
       pendingFar: pendingFarPredictionRequest !== null,
       pendingFarInputKeyShort,
-      predictionRefreshMs: nowMs() - options.refreshStartMs,
+      predictionAnchorElapsed:
+        options.nearWindow?.predictionAnchorElapsed ?? null,
+      predictionRefreshMs:
+        options.event === null
+          ? predictionDiagnostics.predictionRefreshMs
+          : nowMs() - options.refreshStartMs,
+      predictionTerminationReason:
+        options.nearWindow?.predictionTerminationReason ?? null,
       refreshCountLastSecond: getRefreshCountLastSecond(options.refreshStartMs),
       refreshIntervalSeconds: options.predictionConfig.refreshInterval,
-      refreshReason: options.reason,
+      refreshReason:
+        options.event === null
+          ? predictionDiagnostics.refreshReason
+          : options.reason,
       relativePointCount: predictionState.targetRelativePredictionPoints.length,
+      remainingUsableCoverageSeconds:
+        options.nearWindow?.remainingUsableCoverageSeconds ?? 0,
+      retainedFarPointCount: options.nearWindow?.retainedFarPointCount ?? 0,
+      retainedNearPointCount: options.nearWindow?.retainedNearPointCount ?? 0,
       sampleStepSeconds: options.predictionConfig.stepSeconds,
       splitHorizon: shouldSplitPredictionHorizon(options.predictionConfig),
       visiblePointCount: predictionState.targetRelativePredictionPoints.length,
     }
-    pushDiagnosticEvent({
-      activeFar: activeFarPredictionRequest !== null,
-      activeFarInputKeyShort,
-      changedParts: options.changedParts,
-      elapsedSinceRefreshSeconds: predictionRefreshElapsed,
-      event: options.event,
-      farApplied: options.farApplied,
-      farCalculationMs: options.farCalculationMs,
-      farInputKeyShort,
-      farPointCount,
-      farVisible,
-      horizonSeconds: options.predictionConfig.horizonSeconds,
-      inputKeyShort: inputKeyShort ?? '',
-      nearCalculationMs: options.nearCalculationMs,
-      nearPointCount: options.nearTier.coastPrediction.relativePoints.length,
-      pendingFar: pendingFarPredictionRequest !== null,
-      pendingFarInputKeyShort,
-      reason: options.reason,
-      refreshIntervalSeconds: options.predictionConfig.refreshInterval,
-      splitHorizon: shouldSplitPredictionHorizon(options.predictionConfig),
-      visiblePointCount: predictionState.targetRelativePredictionPoints.length,
-    })
+    if (options.event !== null) {
+      pushDiagnosticEvent({
+        activeFar: activeFarPredictionRequest !== null,
+        activeFarInputKeyShort,
+        changedParts: options.changedParts,
+        elapsedSinceRefreshSeconds: predictionRefreshElapsed,
+        event: options.event,
+        farApplied: options.farApplied,
+        farCalculationMs: options.farCalculationMs,
+        farInputKeyShort,
+        farPointCount,
+        farVisible,
+        horizonSeconds: options.predictionConfig.horizonSeconds,
+        inputKeyShort: inputKeyShort ?? '',
+        nearCalculationMs: options.nearCalculationMs,
+        nearPointCount: options.nearTier.coastPrediction.relativePoints.length,
+        pendingFar: pendingFarPredictionRequest !== null,
+        pendingFarInputKeyShort,
+        reason: options.reason,
+        refreshIntervalSeconds: options.predictionConfig.refreshInterval,
+        splitHorizon: shouldSplitPredictionHorizon(options.predictionConfig),
+        visiblePointCount:
+          predictionState.targetRelativePredictionPoints.length,
+      })
+    }
     predictionDiagnostics = {
       ...predictionDiagnostics,
       events: predictionDiagnosticEvents,
@@ -1427,21 +1632,81 @@ export const createTrajectoryPredictionRuntime = (
         )
       : predictionConfig
     const previousInputKeyParts = predictionInputKeyParts
+    const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const activeThrustEnded =
       previousInputKeyParts !== null &&
       predictionInputHadActiveThrust &&
       !isActiveThrustControl(options.state.controls)
-    if (activeThrustEnded) {
+    const semanticInputChanged =
+      previousInputKeyParts !== null &&
+      createFarPredictionSemanticInputKey(
+        previousInputKeyParts,
+        0,
+        predictionInputAllowLoopTrim ?? allowLoopTrim,
+      ) !==
+        createFarPredictionSemanticInputKey(nextInputKeyParts, 0, allowLoopTrim)
+    const hardSemanticInvalidation =
+      previousInputKeyParts !== null &&
+      (semanticInputChanged || !canReuseAcceptedWindowForReason(reason))
+    if (hardSemanticInvalidation) {
       farSemanticGeneration += 1
+      acceptedCoastPredictionWindow = null
     }
-    const nearPrediction = predictTierWithTiming(
-      options,
-      target,
-      nearPredictionConfig,
-      inputKey,
-    )
-    const nearTier = nearPrediction.tier
-    nearPredictionTier = nearTier
+    const shouldUseAcceptedWindow =
+      splitPredictionHorizon &&
+      canReuseAcceptedWindowForReason(reason) &&
+      !hardSemanticInvalidation
+    if (!shouldUseAcceptedWindow && !canReuseAcceptedWindowForReason(reason)) {
+      acceptedCoastPredictionWindow = null
+    }
+
+    const acceptedWindowTiers = shouldUseAcceptedWindow
+      ? getAcceptedWindowTiers(
+          options,
+          target,
+          nextInputKeyParts,
+          nearPredictionConfig.horizonSeconds,
+        )
+      : null
+    let nearCalculationMs: number | null = null
+    let nearFallbackReason: TrajectoryPredictionNearFallbackReason | null = null
+    let nearSource: TrajectoryPredictionNearSource = 'accepted-window'
+    let nearWindow: AcceptedCoastPredictionWindowTiers | null = null
+    let nearTier: TrajectoryPredictionTier
+    if (acceptedWindowTiers && !('fallbackReason' in acceptedWindowTiers)) {
+      nearTier = acceptedWindowTiers.nearTier
+      farPredictionTier = acceptedWindowTiers.farTier
+      nearWindow = acceptedWindowTiers
+    } else {
+      const nearPrediction = predictTierWithTiming(
+        options,
+        target,
+        nearPredictionConfig,
+        inputKey,
+      )
+      nearTier = nearPrediction.tier
+      nearCalculationMs = nearPrediction.calculationMs
+      nearSource = 'synchronous'
+      if (acceptedWindowTiers && 'fallbackReason' in acceptedWindowTiers) {
+        nearFallbackReason = acceptedWindowTiers.fallbackReason
+        acceptedCoastPredictionWindow = null
+        if (
+          acceptedWindowTiers.fallbackReason === 'continuity-unavailable' ||
+          acceptedWindowTiers.fallbackReason === 'coverage-exhausted' ||
+          acceptedWindowTiers.fallbackReason ===
+            'insufficient-future-samples' ||
+          acceptedWindowTiers.fallbackReason === 'semantic-change'
+        ) {
+          farPredictionTier = null
+        }
+      } else if (!isPassiveCoast(options)) {
+        nearFallbackReason = 'not-passive-coast'
+      } else if (reason === 'initial') {
+        nearFallbackReason = 'no-accepted-window'
+      } else {
+        nearFallbackReason = 'semantic-change'
+      }
+    }
     let replacedPendingFar = false
     const farRequestCoalescingMinIntervalSeconds =
       getFarRequestCoalescingMinIntervalSeconds(
@@ -1479,6 +1744,8 @@ export const createTrajectoryPredictionRuntime = (
     predictionInputHadActiveThrust = isActiveThrustControl(
       options.state.controls,
     )
+    predictionInputAllowLoopTrim = allowLoopTrim
+    nearPredictionTier = nearTier
     applyPredictionTier({
       changedParts: getChangedPredictionInputParts(
         previousInputKeyParts,
@@ -1492,9 +1759,12 @@ export const createTrajectoryPredictionRuntime = (
       farTier: farPredictionTier,
       inputKey,
       integrationStepSeconds,
-      nearCalculationMs: nearPrediction.calculationMs,
+      nearCalculationMs,
+      nearFallbackReason,
       nearHorizonSeconds: nearPredictionConfig.horizonSeconds,
       nearTier,
+      nearSource,
+      nearWindow,
       predictionConfig,
       reason,
       refreshStartMs,
@@ -1511,7 +1781,6 @@ export const createTrajectoryPredictionRuntime = (
       ? 'manual'
       : 'initial',
   ) => {
-    farSemanticGeneration += 1
     lastRefreshOptions = options
     const target = options.getAssistTarget()
     setCurrentSpacecraftPosition(options.state.spacecraft.position)
@@ -1547,6 +1816,8 @@ export const createTrajectoryPredictionRuntime = (
         refreshCountLastSecond: getRefreshCountLastSecond(currentTimeMs),
       }
     },
+    getRemainingUsableCoverageSeconds: () =>
+      predictionDiagnostics.remainingUsableCoverageSeconds,
     getState: () => predictionState,
     maybeRefresh: (
       realDt: number,
@@ -1557,16 +1828,74 @@ export const createTrajectoryPredictionRuntime = (
       setCurrentSpacecraftPosition(options.state.spacecraft.position)
       const target = options.getAssistTarget()
       const nextInputKeyParts = createPredictionInputKeyParts(options, target)
-      const reason = getRefreshReason(
+      let reason = getRefreshReason(
         predictionInputKeyParts,
         nextInputKeyParts,
         predictionRefreshElapsed,
         options.predictionConfig.refreshInterval,
       )
+      const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
+      const orbitPolicyChanged =
+        predictionInputAllowLoopTrim !== null &&
+        predictionInputAllowLoopTrim !== allowLoopTrim
+      if (
+        orbitPolicyChanged &&
+        (!reason || canReuseAcceptedWindowForReason(reason))
+      ) {
+        reason = 'orbit-policy-change'
+      }
       let refreshed = false
       if (reason) {
         refreshForTarget(options, target, reason, nextInputKeyParts)
         refreshed = true
+      } else if (
+        acceptedCoastPredictionWindow &&
+        shouldSplitPredictionHorizon(options.predictionConfig)
+      ) {
+        const nearPredictionConfig = createPredictionConfigWithHorizon(
+          options.predictionConfig,
+          getNearPredictionHorizonSeconds(options.predictionConfig),
+        )
+        const acceptedWindowTiers = getAcceptedWindowTiers(
+          options,
+          target,
+          nextInputKeyParts,
+          nearPredictionConfig.horizonSeconds,
+        )
+        if ('fallbackReason' in acceptedWindowTiers) {
+          refreshForTarget(options, target, 'timed-refresh', nextInputKeyParts)
+          refreshed = true
+        } else {
+          const inputKey = createPredictionInputKey(nextInputKeyParts)
+          nearPredictionTier = acceptedWindowTiers.nearTier
+          farPredictionTier = acceptedWindowTiers.farTier
+          applyPredictionTier({
+            changedParts: [],
+            event: null,
+            farApplied: false,
+            farCalculationMs: null,
+            farCoalescingMinIntervalSeconds:
+              getCurrentFarCoalescingMinIntervalSeconds(options),
+            farTier: acceptedWindowTiers.farTier,
+            inputKey,
+            integrationStepSeconds: getIntegrationStepSeconds(
+              options,
+              target,
+              options.predictionConfig,
+            ),
+            nearCalculationMs: null,
+            nearFallbackReason: null,
+            nearHorizonSeconds: nearPredictionConfig.horizonSeconds,
+            nearTier: acceptedWindowTiers.nearTier,
+            nearSource: 'accepted-window',
+            nearWindow: acceptedWindowTiers,
+            predictionConfig: options.predictionConfig,
+            reason: predictionDiagnostics.refreshReason ?? 'timed-refresh',
+            refreshStartMs: nowMs(),
+            target,
+            timeWarp: options.timeWarp,
+          })
+        }
       }
       return refreshed
     },

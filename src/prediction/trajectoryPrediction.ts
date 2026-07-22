@@ -68,11 +68,17 @@ export type CoastTrajectoryPredictionSample = {
   time: number
 }
 
+export type CoastTrajectoryPredictionTerminationReason =
+  | 'horizon'
+  | 'impact'
+  | 'loop-limit'
+
 export type CoastTrajectoryPredictionComputation = {
   finalState: SimulationState
   predictionTime: number
   result: TrajectoryPredictionResult
   samples: CoastTrajectoryPredictionSample[]
+  terminationReason: CoastTrajectoryPredictionTerminationReason
 }
 
 export type AssistedTrajectoryPredictionResult = {
@@ -283,6 +289,7 @@ export const computeCoastTrajectoryPrediction = (
   )
   let predictionAngularTravel = 0
   let predictionTime = 0
+  let reachedLoopLimit = false
   let integrationMinStepSeconds: number | null = null
   let integrationStepCount = 0
   let integrationStepSecondsTotal = 0
@@ -369,8 +376,16 @@ export const computeCoastTrajectoryPrediction = (
     sampleClosestApproach = null
 
     if (allowLoopTrim && predictionAngularTravel >= maxLoopAngularTravel) {
+      reachedLoopLimit = true
       break
     }
+  }
+
+  let terminationReason: CoastTrajectoryPredictionTerminationReason = 'horizon'
+  if (impact) {
+    terminationReason = 'impact'
+  } else if (reachedLoopLimit) {
+    terminationReason = 'loop-limit'
   }
 
   return {
@@ -399,6 +414,7 @@ export const computeCoastTrajectoryPrediction = (
       relativePoints,
     },
     samples,
+    terminationReason,
   }
 }
 
