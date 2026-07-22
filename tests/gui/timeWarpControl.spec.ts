@@ -83,6 +83,7 @@ test('routes the retained horizontal Time Warp control to shared state', async (
         mode: 'auto',
         recommendedTarget: null,
       }),
+      getCameraCanRecenter: () => true,
       getCameraControlsLocked: () => false,
       getCameraFollow: () => 'spacecraft',
       getCurrentTimeWarp: () => timeWarps[timeWarpIndex],

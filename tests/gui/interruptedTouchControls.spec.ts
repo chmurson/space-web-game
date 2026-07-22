@@ -83,6 +83,7 @@ test('hands interrupted control gestures to the newest touch', async ({
           mode: 'auto',
           recommendedTarget: null,
         }),
+        getCameraCanRecenter: () => true,
         getCameraControlsLocked: () => false,
         getCameraFollow: () => 'spacecraft',
         getCurrentTimeWarp: () => timeWarps[timeWarpIndex],

@@ -1,9 +1,6 @@
 import type { TimeWarpFeedbackReason } from '../../runtime/timeWarpFeedbackPolicy'
 import type { CameraFollowSubject } from '../../scenario/scenarioDirectiveTypes'
-import {
-  cameraFollowOptions,
-  getCameraFollowDescription,
-} from '../cameraControlActions'
+import { cameraFollowOptions } from '../cameraControlActions'
 import {
   createPreactUiSurface,
   type SurfaceRootRefProps,
@@ -15,6 +12,7 @@ export type MobileCommandDockPanel = 'flight' | 'info' | 'nav'
 type MobileCommandDockTutorialFocus = 'burn' | 'warp' | null
 
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
+  cameraCanRecenter: boolean
   cameraControlsLocked: boolean
   cameraFollow: CameraFollowSubject
   controlsAvailable: {
@@ -58,6 +56,7 @@ const getPanelButtonLabel = (options: {
 }
 
 const MobileCommandDockSurface = ({
+  cameraCanRecenter,
   cameraControlsLocked,
   cameraFollow,
   controlsAvailable,
@@ -69,8 +68,16 @@ const MobileCommandDockSurface = ({
   tutorialFocused,
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
-  const cameraFollowDescription = getCameraFollowDescription(cameraFollow)
   const infoOpen = openPanel === 'info'
+  const cameraRecenterDisabled =
+    cameraControlsLocked || !cameraCanRecenter
+  let cameraRecenterAriaLabel = 'Camera already centered on followed subject'
+  if (cameraControlsLocked) {
+    cameraRecenterAriaLabel =
+      'Camera controls unavailable: Recenter followed subject'
+  } else if (cameraCanRecenter) {
+    cameraRecenterAriaLabel = 'Recenter followed subject'
+  }
 
   return (
     <section
@@ -133,9 +140,6 @@ const MobileCommandDockSurface = ({
         >
           <div class="mobile-command-dock-nav-heading">
             <span>Camera</span>
-            <span aria-live="polite" data-mobile-camera-status="">
-              {cameraFollowDescription}
-            </span>
           </div>
           <div class="mobile-command-dock-camera-controls">
             <fieldset
@@ -169,14 +173,10 @@ const MobileCommandDockSurface = ({
               })}
             </fieldset>
             <button
-              aria-label={
-                cameraControlsLocked
-                  ? 'Camera controls unavailable: Recenter followed subject'
-                  : 'Recenter followed subject'
-              }
-              class="mobile-command-dock-camera-recenter"
+              aria-label={cameraRecenterAriaLabel}
+              class="mobile-command-dock-camera-recenter ui-pressable-strong"
               data-mobile-camera-action="recenter"
-              disabled={cameraControlsLocked}
+              disabled={cameraRecenterDisabled}
               type="button"
             >
               Recenter
@@ -279,6 +279,7 @@ const MobileCommandDockSurface = ({
 export const createMobileCommandDock = (options: {
   app: HTMLElement
   container: HTMLElement
+  getCameraCanRecenter(): boolean
   getCameraControlsLocked(): boolean
   getCameraFollow(): CameraFollowSubject
   onCameraFollowSelect(follow: CameraFollowSubject): void
@@ -374,6 +375,7 @@ export const createMobileCommandDock = (options: {
   const renderState = () => {
     syncAppState()
     surface.render({
+      cameraCanRecenter: options.getCameraCanRecenter(),
       cameraControlsLocked: options.getCameraControlsLocked(),
       cameraFollow: options.getCameraFollow(),
       controlsAvailable,

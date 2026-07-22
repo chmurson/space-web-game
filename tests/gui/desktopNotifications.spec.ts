@@ -59,6 +59,13 @@ test('names the centered target for desktop keyboard camera actions', async ({
 
   await page.keyboard.press('Shift+KeyC')
   await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
+  await expect
+    .poll(async () =>
+      notice.locator('.hud-notice-title').evaluate((element) =>
+        Math.ceil(element.scrollWidth - element.clientWidth),
+      ),
+    )
+    .toBe(0)
   await attachScreenshot(page, testInfo, 'desktop-camera-centered-notice')
 })
 

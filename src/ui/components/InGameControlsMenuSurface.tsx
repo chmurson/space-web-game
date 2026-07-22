@@ -6,6 +6,7 @@ import {
 } from '../cameraControlActions'
 
 export type InGameControlsMenuSurfaceProps = {
+  cameraCanRecenter: boolean
   cameraControlsLocked: boolean
   cameraControlsVisible: boolean
   cameraFollow: CameraFollowSubject
@@ -24,6 +25,7 @@ export type InGameControlsMenuSurfaceProps = {
 }
 
 export const InGameControlsMenuSurface = ({
+  cameraCanRecenter,
   cameraControlsLocked,
   cameraControlsVisible,
   cameraFollow,
@@ -43,6 +45,15 @@ export const InGameControlsMenuSurface = ({
   const cameraFollowLabelId = `${menuId}-camera-follow`
   const trajectorySectionLabelId = `${menuId}-trajectory`
   const cameraFollowDescription = getCameraFollowDescription(cameraFollow)
+  const cameraRecenterDisabled =
+    cameraControlsLocked || !cameraCanRecenter
+  let cameraRecenterAriaLabel = 'Camera already centered on followed subject'
+  if (cameraControlsLocked) {
+    cameraRecenterAriaLabel =
+      'Camera controls unavailable: Recenter followed subject'
+  } else if (cameraCanRecenter) {
+    cameraRecenterAriaLabel = 'Recenter followed subject'
+  }
 
   return (
     <section
@@ -126,14 +137,10 @@ export const InGameControlsMenuSurface = ({
             </div>
 
             <button
-              aria-label={
-                cameraControlsLocked
-                  ? 'Camera controls unavailable: Recenter followed subject'
-                  : 'Recenter followed subject'
-              }
-              class="in-game-controls-menu-action in-game-controls-menu-camera-recenter"
+              aria-label={cameraRecenterAriaLabel}
+              class="in-game-controls-menu-action in-game-controls-menu-camera-recenter ui-pressable-strong"
               data-in-game-action="recenterCamera"
-              disabled={cameraControlsLocked}
+              disabled={cameraRecenterDisabled}
               onClick={onCameraRecenter}
               type="button"
             >
@@ -304,13 +311,17 @@ export const InGameControlsMenuSurface = ({
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">
-            <span class="in-game-controls-menu-keyboard-name">Follow</span>
+            <span class="in-game-controls-menu-keyboard-name">
+              Switch camera follow
+            </span>
             <span class="in-game-controls-menu-keyboard-keys">
               <kbd>C</kbd>
             </span>
           </div>
           <div class="in-game-controls-menu-keyboard-row">
-            <span class="in-game-controls-menu-keyboard-name">Recenter</span>
+            <span class="in-game-controls-menu-keyboard-name">
+              Recenter camera
+            </span>
             <span class="in-game-controls-menu-keyboard-keys">
               <kbd>Shift</kbd>
               <span> + </span>

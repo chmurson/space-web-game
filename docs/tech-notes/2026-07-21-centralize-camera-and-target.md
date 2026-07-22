@@ -6,7 +6,7 @@
   active `Target`). A relative pan offset lets drag, edge pan, and focal zoom
   move away from that subject without changing what is followed.
 - Added an explicit `Recenter` action to the shared in-game Controls popover.
-  Recenter and every Follow change clear the pan offset.
+  Recenter clears the pan offset; Follow changes preserve it.
 - Added the same Follow/Recenter actions to the mobile Nav dock. The desktop
   Controls popover now uses a full-width Follow group and compact Recenter,
   while mobile keeps those controls in Nav instead of duplicating them.
@@ -50,8 +50,8 @@ framing.
 - Zero pan is the neutral state. Rendering combines it with the current
   viewport dimensions and measured mobile-dock inset, so Recenter never stores
   a stale dock-derived world offset.
-- Follow changes clear pan. Automatic movement or replacement of the active
-  target does not clear pan; the offset remains relative to the current target.
+- Follow changes, automatic movement, and replacement of the active target do
+  not clear pan; the offset remains relative to the current subject.
 - Scenario locking is not player-facing and has no unlock route. Lock
   application recenters, while every runtime mutation path fails closed.
   Ordinary centered zoom remains available, but a locked camera cannot preserve

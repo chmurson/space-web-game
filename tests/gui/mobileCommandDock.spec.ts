@@ -177,15 +177,16 @@ test('switches camera Follow and recenters from the mobile Nav panel', async ({
   const recenter = navPanel.locator('[data-mobile-camera-action="recenter"]')
 
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'true')
-  await expect(recenter).toBeEnabled()
+  await expect(recenter).toBeDisabled()
+  await expect(recenter).toHaveAccessibleName(
+    'Camera already centered on followed subject',
+  )
   await expect(page.locator('[data-camera-view-option]')).toHaveCount(0)
   await target.tap()
   await expect(target).toHaveAttribute('aria-pressed', 'true')
   await expect(spacecraft).toHaveAttribute('aria-pressed', 'false')
-  await expect(navPanel.locator('[data-mobile-camera-status]')).toHaveText(
-    'Target',
-  )
-  await recenter.tap()
+  await expect(navPanel.locator('[data-mobile-camera-status]')).toHaveCount(0)
+  await expect(recenter).toBeDisabled()
   await expect(target).toHaveAttribute('aria-pressed', 'true')
 })
 
@@ -304,6 +305,7 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     const app = document.createElement('div')
     const container = document.createElement('div')
     const cameraActions: string[] = []
+    let cameraCanRecenter = false
     let cameraControlsLocked = false
     let cameraFollow: 'spacecraft' | 'target' = 'spacecraft'
     document.body.append(app, container)
@@ -311,6 +313,7 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     const dock = createMobileCommandDock({
       app,
       container,
+      getCameraCanRecenter: () => cameraCanRecenter,
       getCameraControlsLocked: () => cameraControlsLocked,
       getCameraFollow: () => cameraFollow,
       onCameraFollowSelect: (follow) => {
@@ -349,8 +352,19 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     const recenterButton = dock.element.querySelector<HTMLButtonElement>(
       '[data-mobile-camera-action="recenter"]',
     )
+    const recenterDisabledInitial = recenterButton?.disabled
+    const recenterAriaLabelInitial = recenterButton?.getAttribute('aria-label')
+    cameraCanRecenter = true
+    dock.syncState()
+    const recenterButtonAfterPan = dock.element.querySelector<HTMLButtonElement>(
+      '[data-mobile-camera-action="recenter"]',
+    )
+    const recenterDisabledAfterPan = recenterButtonAfterPan?.disabled
+    const recenterPressableAfterPan = recenterButtonAfterPan?.classList.contains(
+      'ui-pressable-strong',
+    )
     targetButton?.click()
-    recenterButton?.click()
+    recenterButtonAfterPan?.click()
     cameraControlsLocked = true
     dock.syncState()
 
@@ -360,13 +374,15 @@ test('keeps Time Warp and camera controls together in Nav', async ({
         '[data-camera-follow-option]',
       ).length,
       cameraFollow: dock.element.dataset.cameraFollow,
-      cameraStatus: dock.element.querySelector('[data-mobile-camera-status]')
-        ?.textContent,
       recenterDisabled: (
         dock.element.querySelector(
           '[data-mobile-camera-action="recenter"]',
         ) as HTMLButtonElement | null
       )?.disabled,
+      recenterAriaLabelInitial,
+      recenterDisabledAfterPan,
+      recenterDisabledInitial,
+      recenterPressableAfterPan,
       openPanel: app.dataset.mobileCommandDockPanel,
       timeWarpAvailableAfterRestore,
       timeWarpStatus: dock.element.querySelector(
@@ -381,8 +397,11 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     cameraActions: ['follow:target', 'recenter'],
     cameraControlCount: 2,
     cameraFollow: 'target',
-    cameraStatus: 'Target',
+    recenterAriaLabelInitial: 'Camera already centered on followed subject',
+    recenterDisabledAfterPan: false,
+    recenterDisabledInitial: true,
     recenterDisabled: true,
+    recenterPressableAfterPan: true,
     openPanel: 'nav',
     timeWarpAvailableAfterRestore: 'true',
     timeWarpStatus: '',
@@ -431,6 +450,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
         mode: 'auto',
         recommendedTarget: null,
       }),
+      getCameraCanRecenter: () => true,
       getCameraControlsLocked: () => false,
       getCameraFollow: () => 'spacecraft',
       getCurrentTimeWarp: () => 1,
@@ -688,7 +708,9 @@ test('ships Flight, Info, and Nav as available dock panels', async ({
   await expect(navPanel.getByRole('group', { name: 'Follow' })).toBeVisible()
   await expect(navPanel.locator('[data-camera-follow-option]')).toHaveCount(2)
   await expect(
-    navPanel.getByRole('button', { name: 'Recenter followed subject' }),
+    navPanel.getByRole('button', {
+      name: 'Camera already centered on followed subject',
+    }),
   ).toBeVisible()
   await expect(navPanel.locator('[data-camera-view-option]')).toHaveCount(0)
   await expect(navPanel).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
@@ -1083,7 +1105,7 @@ test('does not change the fine-pointer desktop layout', async ({
     ).toBeVisible()
     await expect(
       controlsDialog.getByRole('button', {
-        name: 'Recenter followed subject',
+        name: 'Camera already centered on followed subject',
       }),
     ).toBeVisible()
   } finally {

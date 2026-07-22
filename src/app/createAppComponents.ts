@@ -484,6 +484,7 @@ export const createAppComponents = (options: {
     initialTargetControlSide: touchTargetControlSide,
     initialTrajectoryControlSide: touchTrajectoryControlSide,
     keyboardInput,
+    getCameraCanRecenter: runtimeActions.canRecenterCamera,
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
     getCameraFollow: runtimeActions.getCameraFollow,
     onCameraFollowSelect: runtimeActions.setCameraFollow,
@@ -639,6 +640,7 @@ export const createAppComponents = (options: {
   })
   const inGameControlsMenu = createInGameControlsMenu({
     app: options.app,
+    getCameraCanRecenter: runtimeActions.canRecenterCamera,
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
     getCameraControlsVisible: () => desktopFinePointerMedia.matches,
     getCameraFollow: runtimeActions.getCameraFollow,

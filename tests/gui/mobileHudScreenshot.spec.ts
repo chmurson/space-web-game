@@ -1797,6 +1797,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const app = document.createElement('div')
     const outsideButton = document.createElement('button')
     const events: string[] = []
+    let cameraCanRecenter = false
     let cameraControlsLocked = false
     let cameraFollow: 'spacecraft' | 'target' = 'spacecraft'
     let coastHorizonHours = 6
@@ -1807,6 +1808,7 @@ test('keeps the in-game controls menu adapter state and actions', async ({
 
     const menu = createInGameControlsMenu({
       app,
+      getCameraCanRecenter: () => cameraCanRecenter,
       getCameraControlsLocked: () => cameraControlsLocked,
       getCameraControlsVisible: () => true,
       getCameraFollow: () => cameraFollow,
@@ -1820,6 +1822,9 @@ test('keeps the in-game controls menu adapter state and actions', async ({
         }
         if (action === 'setCameraFollowTarget') {
           cameraFollow = 'target'
+        }
+        if (action === 'recenterCamera') {
+          cameraCanRecenter = false
         }
         if (action === 'decreaseCoastHorizon') {
           coastHorizonHours = Math.max(2, coastHorizonHours - 2)
@@ -1911,8 +1916,21 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const cameraFollowDataInitial = menu.element.dataset.cameraFollow
     const cameraFollowStatusInitial = getCameraFollowStatus()
     const cameraFollowOptionsInitial = getCameraFollowOptions()
-    const recenterDisabledInitial = getActionButton('recenterCamera')?.disabled
+    const recenterButtonInitial = getActionButton('recenterCamera')
+    const recenterDisabledInitial = recenterButtonInitial?.disabled
+    const recenterAriaLabelInitial = recenterButtonInitial?.getAttribute(
+      'aria-label',
+    )
     const coastHorizonInitial = getCoastHorizon()
+
+    cameraCanRecenter = true
+    menu.syncState()
+    const recenterButtonAfterPan = getActionButton('recenterCamera')
+    const recenterDisabledAfterPan = recenterButtonAfterPan?.disabled
+    const recenterPressableAfterPan = recenterButtonAfterPan?.classList.contains(
+      'ui-pressable-strong',
+    )
+    recenterButtonAfterPan?.click()
 
     getCameraFollowOption('target')?.click()
     getActionButton('recenterCamera')?.click()
@@ -1999,8 +2017,11 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       menuButtonLabelAfterEscape,
       openAfterClick,
       recenterAriaLabelWhenLocked,
+      recenterAriaLabelInitial,
+      recenterDisabledAfterPan,
       recenterDisabledInitial,
       recenterDisabledWhenLocked,
+      recenterPressableAfterPan,
       settingsOpened,
     }
   })
@@ -2052,8 +2073,8 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     eventCountAfterDisabledDecrease: 4,
     eventCountAfterLockedClick: 2,
     events: [
-      'setCameraFollowTarget',
       'recenterCamera',
+      'setCameraFollowTarget',
       'decreaseCoastHorizon',
       'decreaseCoastHorizon',
       'increaseCoastHorizon',
@@ -2072,16 +2093,19 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
       'Target selector T',
-      'Follow C',
-      'Recenter Shift + C',
+      'Switch camera follow C',
+      'Recenter camera Shift + C',
     ],
     menuButtonLabelAfterClick: 'Close in-game controls',
     menuButtonLabelAfterEscape: 'Open in-game controls',
     openAfterClick: true,
+    recenterAriaLabelInitial: 'Camera already centered on followed subject',
     recenterAriaLabelWhenLocked:
       'Camera controls unavailable: Recenter followed subject',
-    recenterDisabledInitial: false,
+    recenterDisabledAfterPan: false,
+    recenterDisabledInitial: true,
     recenterDisabledWhenLocked: true,
+    recenterPressableAfterPan: true,
     settingsOpened: true,
   })
 })
@@ -3038,17 +3062,17 @@ test('captures wide in-game controls keyboard hints', async ({
     ).toBeVisible()
     await expect(
       controlsDialog.getByRole('button', {
-        name: 'Recenter followed subject',
+        name: 'Camera already centered on followed subject',
       }),
     ).toBeVisible()
     await expect(
       controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
-        hasText: 'Follow',
+        hasText: 'Switch camera follow',
       }),
     ).toBeVisible()
     await expect(
       controlsDialog.locator('.in-game-controls-menu-keyboard-name', {
-        hasText: 'Recenter',
+        hasText: 'Recenter camera',
       }),
     ).toBeVisible()
     const cameraGrid = controlsDialog.locator(
@@ -3056,7 +3080,7 @@ test('captures wide in-game controls keyboard hints', async ({
     )
     const followGroup = controlsDialog.getByRole('group', { name: 'Follow' })
     const recenterButton = controlsDialog.getByRole('button', {
-      name: 'Recenter followed subject',
+      name: 'Camera already centered on followed subject',
     })
     const [cameraGridBounds, followGroupBounds, recenterBounds] =
       await Promise.all([

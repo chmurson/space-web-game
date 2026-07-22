@@ -230,7 +230,6 @@ export const createRuntimeActions = (options: {
     }
 
     options.runtime.ui.camera.follow = follow
-    options.runtime.ui.camera.panOffset = { x: 0, y: 0 }
     updateCamera()
     return true
   }
@@ -243,6 +242,11 @@ export const createRuntimeActions = (options: {
     options.runtime.ui.camera.panOffset = { x: 0, y: 0 }
     updateCamera()
     return true
+  }
+
+  const canRecenterCamera = () => {
+    const { x, y } = options.runtime.ui.camera.panOffset
+    return x !== 0 || y !== 0
   }
 
   const getCrashInspectionCameraTargetPosition = (
@@ -553,6 +557,7 @@ export const createRuntimeActions = (options: {
     },
     resetScenario: scenarioRuntimeController.resetScenario,
     restartFromCheckpoint: scenarioRuntimeController.restartFromCheckpoint,
+    canRecenterCamera,
     getCameraControlsLocked: () =>
       options.runtime.scenario.directives.cameraControlsLocked,
     getCameraFollow: () => options.runtime.ui.camera.follow,

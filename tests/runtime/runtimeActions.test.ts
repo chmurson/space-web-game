@@ -306,7 +306,9 @@ describe('createRuntimeActions', () => {
       setWindowSize(800, 400)
       const runtimeActions = createTestRuntimeActions(runtime)
 
+      expect(runtimeActions.canRecenterCamera()).toBe(false)
       expect(runtimeActions.panCamera({ x: 10, y: -5 })).toBe(true)
+      expect(runtimeActions.canRecenterCamera()).toBe(true)
       expect(runtime.ui.camera.panOffset).toEqual({ x: 10, y: -5 })
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -315,6 +317,7 @@ describe('createRuntimeActions', () => {
       )
 
       expect(runtimeActions.recenterCamera()).toBe(true)
+      expect(runtimeActions.canRecenterCamera()).toBe(false)
       expect(runtime.ui.camera.panOffset).toEqual({ x: 0, y: 0 })
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -400,7 +403,7 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('follows live target changes, preserving pan until Follow changes', () => {
+  it('preserves pan while following live targets and switching Follow', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
     const runtime = createRuntime()
@@ -441,8 +444,13 @@ describe('createRuntimeActions', () => {
       expect(runtimeActions.setCameraFollow('spacecraft')).toBe(true)
       expect(runtime.ui.camera).toEqual({
         follow: 'spacecraft',
-        panOffset: { x: 0, y: 0 },
+        panOffset: { x: 10, y: -5 },
       })
+      expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cameraTargetPosition: { x: 60, y: 55 },
+        }),
+      )
     } finally {
       if (originalWindow === undefined) {
         delete globals.window
@@ -554,7 +562,7 @@ describe('createRuntimeActions', () => {
       })
       expect(runtime.ui.camera).toEqual({
         follow: 'target',
-        panOffset: { x: 0, y: 0 },
+        panOffset: { x: 3, y: 4 },
       })
 
       runtimeActions.panCamera({ x: 7, y: -2 })
@@ -568,11 +576,11 @@ describe('createRuntimeActions', () => {
       runtimeActions.handleUIUserAction('toggleCameraFollow')
       expect(runtime.ui.camera).toEqual({
         follow: 'spacecraft',
-        panOffset: { x: 0, y: 0 },
+        panOffset: { x: 7, y: -2 },
       })
       expect(updateCameraViewSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          cameraTargetPosition: runtime.simulation.state.spacecraft.position,
+          cameraTargetPosition: { x: 57, y: 58 },
         }),
       )
     } finally {

@@ -244,7 +244,6 @@ const createBridgeHarness = (
     }
 
     runtime.ui.camera.follow = follow
-    runtime.ui.camera.panOffset = { x: 0, y: 0 }
     return true
   })
   const recenterCamera = vi.fn(() => {

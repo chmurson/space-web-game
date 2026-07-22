@@ -22,6 +22,7 @@ type InGameControlsMenuRenderProps = Omit<
 
 export const createInGameControlsMenu = (options: {
   app: HTMLElement
+  getCameraCanRecenter: () => boolean
   getCameraControlsLocked: () => boolean
   getCameraControlsVisible: () => boolean
   getCameraFollow: () => CameraFollowSubject
@@ -38,6 +39,7 @@ export const createInGameControlsMenu = (options: {
     missingRootError: 'Failed to create in-game controls menu',
   })
 
+  let cameraCanRecenter = options.getCameraCanRecenter()
   let cameraControlsLocked = options.getCameraControlsLocked()
   let cameraControlsVisible = options.getCameraControlsVisible()
   let cameraFollow = options.getCameraFollow()
@@ -47,6 +49,7 @@ export const createInGameControlsMenu = (options: {
   let open = false
 
   const syncRenderState = () => {
+    const nextCameraCanRecenter = options.getCameraCanRecenter()
     const nextCameraControlsLocked = options.getCameraControlsLocked()
     const nextCameraControlsVisible = options.getCameraControlsVisible()
     const nextCameraFollow = options.getCameraFollow()
@@ -59,6 +62,7 @@ export const createInGameControlsMenu = (options: {
     const nextIncreaseCoastHorizonDisabled =
       coastPredictionHorizonHours >= options.getMaxCoastPredictionHorizonHours()
     const changed =
+      nextCameraCanRecenter !== cameraCanRecenter ||
       nextCameraControlsLocked !== cameraControlsLocked ||
       nextCameraControlsVisible !== cameraControlsVisible ||
       nextCameraFollow !== cameraFollow ||
@@ -66,6 +70,7 @@ export const createInGameControlsMenu = (options: {
       nextDecreaseCoastHorizonDisabled !== decreaseCoastHorizonDisabled ||
       nextIncreaseCoastHorizonDisabled !== increaseCoastHorizonDisabled
 
+    cameraCanRecenter = nextCameraCanRecenter
     cameraControlsLocked = nextCameraControlsLocked
     cameraControlsVisible = nextCameraControlsVisible
     cameraFollow = nextCameraFollow
@@ -79,6 +84,7 @@ export const createInGameControlsMenu = (options: {
   const renderMenu = () => {
     surface.render({
       cameraControlsLocked,
+      cameraCanRecenter,
       cameraControlsVisible,
       cameraFollow,
       coastHorizonLabel,

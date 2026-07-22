@@ -242,6 +242,7 @@ export const createTouchControls = (options: {
   initialTargetControlSide: TouchControlRevealEdge
   initialTrajectoryControlSide: TouchControlRevealState
   keyboardInput: KeyboardInput
+  getCameraCanRecenter(): boolean
   getCameraControlsLocked(): boolean
   getCameraFollow(): CameraFollowSubject
   onCameraFollowSelect(follow: CameraFollowSubject): void
@@ -269,6 +270,7 @@ export const createTouchControls = (options: {
   const mobileCommandDock = createMobileCommandDock({
     app: options.app,
     container: panel,
+    getCameraCanRecenter: options.getCameraCanRecenter,
     getCameraControlsLocked: options.getCameraControlsLocked,
     getCameraFollow: options.getCameraFollow,
     onCameraFollowSelect: options.onCameraFollowSelect,

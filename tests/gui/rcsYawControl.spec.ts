@@ -40,6 +40,7 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
         mode: 'auto',
         recommendedTarget: null,
       }),
+      getCameraCanRecenter: () => true,
       getCameraControlsLocked: () => false,
       getCameraFollow: () => 'spacecraft',
       getCurrentTimeWarp: () => 1,

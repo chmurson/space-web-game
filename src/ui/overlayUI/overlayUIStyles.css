@@ -514,6 +514,17 @@
   color: rgba(125, 211, 252, 0.72);
 }
 
+@media (min-width: 721px) {
+  .hud-notice-transient .hud-notice-title {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .hud-notice-transient .hud-notice-body {
+    flex: 0 1 auto;
+  }
+}
+
 .target-recommendation-notice {
   order: 12;
   display: inline-flex;
