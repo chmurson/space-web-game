@@ -290,6 +290,7 @@ export const createInfoHud = (options: {
       rows: nextView.rows.map((row) => [
         row.key,
         row.distanceLabel,
+        row.secondaryLabel,
         row.pinned,
         row.scenarioOwned,
       ]),

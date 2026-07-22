@@ -1,5 +1,7 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test'
 
+type InfoHudModule = typeof import('../../src/ui/createInfoHud')
+
 const waitForGame = async (page: Page) => {
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 }
@@ -132,6 +134,83 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
   await page.keyboard.press('Shift+KeyI')
   await expect(page.locator('.mobile-info-rail')).toBeHidden()
   await expect(railHost).toHaveCSS('margin-bottom', '0px')
+})
+
+test('refreshes target context when unavailable apsis values stay unchanged', async ({
+  page,
+}) => {
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const modulePath = '/src/ui/createInfoHud.tsx'
+    const { createInfoHud } = (await import(modulePath)) as InfoHudModule
+    const host = document.createElement('div')
+    const desktopContainer = document.createElement('div')
+    const mobilePanelContainer = document.createElement('div')
+    const mobileRailContainer = document.createElement('div')
+    host.append(desktopContainer, mobilePanelContainer, mobileRailContainer)
+    document.body.append(host)
+
+    let targetName = 'Earth'
+    const getView = () => ({
+      clearAvailable: false,
+      pinnedRows: [],
+      rows: [
+        {
+          accessibleLabel: `Pe, surface distance from ${targetName} —`,
+          distanceLabel: '—',
+          key: 'periapsis',
+          label: 'Pe',
+          pin: { apsis: 'periapsis', kind: 'apsis' } as const,
+          pinned: false,
+          scenarioOwned: false,
+          secondaryLabel: `to ${targetName}`,
+        },
+      ],
+    })
+    const infoHud = createInfoHud({
+      desktopContainer,
+      getMobileSurfaceActive: () => false,
+      getView,
+      mobilePanelContainer,
+      mobileRailContainer,
+      onClear: () => undefined,
+      onTogglePin: () => undefined,
+      toggleMobileInfoPanel: () => undefined,
+    })
+    const readRow = () => {
+      const row = mobilePanelContainer.querySelector('.info-hud-row')
+      return {
+        accessibleLabel: row?.getAttribute('aria-label'),
+        railLabelCount: mobileRailContainer.querySelectorAll(
+          '.info-hud-row-secondary',
+        ).length,
+        secondaryLabel: row?.querySelector('.info-hud-row-secondary')
+          ?.textContent,
+      }
+    }
+
+    const before = readRow()
+    targetName = 'Moon'
+    infoHud.sync()
+    const after = readRow()
+    host.remove()
+
+    return { after, before }
+  })
+
+  expect(result).toEqual({
+    after: {
+      accessibleLabel: 'Pe, surface distance from Moon —, not pinned',
+      railLabelCount: 0,
+      secondaryLabel: 'to Moon',
+    },
+    before: {
+      accessibleLabel: 'Pe, surface distance from Earth —, not pinned',
+      railLabelCount: 0,
+      secondaryLabel: 'to Earth',
+    },
+  })
 })
 
 test('scenario-owned pins are exposed as checked, immutable switches', async ({
