@@ -1,3 +1,5 @@
+import type { InfoPin } from '../runtime/infoPins'
+
 export const cameraControlModes = ['unlocked', 'centered', 'target'] as const
 
 export type CameraControlMode = (typeof cameraControlModes)[number]
@@ -40,6 +42,7 @@ export type RuntimeScenarioDirectives = {
   maxViewportSize: number | null
   minViewportSize: number | null
   hiddenUIElements: Set<RuntimeScenarioHiddenUIElement>
+  infoPins: InfoPin[]
 }
 
 export type GlobalScenarioDirectiveLimits = {
@@ -63,4 +66,5 @@ export const createDefaultScenarioDirectives =
     maxViewportSize: null,
     minViewportSize: null,
     hiddenUIElements: new Set(),
+    infoPins: [],
   })

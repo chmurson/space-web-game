@@ -4,6 +4,12 @@ import type {
   AppRuntimeState,
   RuntimeTransientNotice,
 } from '../../runtime/appRuntimeState'
+import {
+  apoapsisInfoPin,
+  createBodyInfoPin,
+  type InfoPin,
+  periapsisInfoPin,
+} from '../../runtime/infoPins'
 import { createEarthMoonScenario } from '../../simulation/scenarios/earthMoon'
 import {
   createDefaultScenarioDirectives,
@@ -440,8 +446,24 @@ const advanceOrbitProgress = <TState extends OrbitMoonState | OrbitEarthState>(
   })
 }
 
-const createMissionDirectives = (): RuntimeScenarioDirectives => ({
+const moonInfoPins = [createBodyInfoPin('moon')]
+const moonOrbitInfoPins = [
+  createBodyInfoPin('moon'),
+  periapsisInfoPin,
+  apoapsisInfoPin,
+]
+const earthInfoPins = [createBodyInfoPin('earth')]
+const earthOrbitInfoPins = [
+  createBodyInfoPin('earth'),
+  periapsisInfoPin,
+  apoapsisInfoPin,
+]
+
+const createMissionDirectives = (
+  infoPins: InfoPin[],
+): RuntimeScenarioDirectives => ({
   ...createDefaultScenarioDirectives(),
+  infoPins: infoPins.map((pin) => ({ ...pin })),
   maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
 })
 
@@ -469,7 +491,7 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
             },
           )
         : null,
-    directives: createMissionDirectives,
+    directives: () => createMissionDirectives(moonInfoPins),
   },
   'orbit-moon': {
     advance: ({ runtime, state }) => {
@@ -540,7 +562,7 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
         },
       )
     },
-    directives: createMissionDirectives,
+    directives: () => createMissionDirectives(moonOrbitInfoPins),
   },
   'return-earth': {
     advance: ({ runtime, state }) =>
@@ -559,7 +581,7 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
             },
           )
         : null,
-    directives: createMissionDirectives,
+    directives: () => createMissionDirectives(earthInfoPins),
   },
   'orbit-earth': {
     advance: ({ runtime, state }) => {
@@ -591,7 +613,7 @@ const reachMoonSceneDefinitions: ReachMoonSceneDefinitionMap = {
         },
       )
     },
-    directives: createMissionDirectives,
+    directives: () => createMissionDirectives(earthOrbitInfoPins),
   },
   complete: {
     directives: () => createDefaultScenarioDirectives(),

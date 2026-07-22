@@ -63,7 +63,7 @@
     cursor: pointer;
     font: inherit;
     font-size: 11px;
-    font-weight: 750;
+    font-weight: 600;
     letter-spacing: 0.04em;
     line-height: 1;
     touch-action: manipulation;
@@ -117,6 +117,14 @@
     background: transparent;
     color: rgba(240, 249, 255, 0.96);
     pointer-events: none;
+  }
+
+  .mobile-command-dock-info-rail-host:has(.info-hud-rail:not([hidden])) {
+    box-sizing: border-box;
+    display: flex;
+    width: min(100%, 520px);
+    margin-bottom: 8px;
+    pointer-events: auto;
   }
 
   .mobile-command-dock-panel[hidden] {
@@ -336,7 +344,6 @@
   #app[data-mobile-command-dock-panel="nav"] {
     --mobile-command-dock-hud-height: 260px;
   }
-
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     /* biome-ignore format: Stylelint requires operators to start continuation lines. */
     bottom: calc(
@@ -360,7 +367,7 @@
     );
   }
 
-  #app[data-mobile-command-dock-open="true"] .touch-edge-reveal-control {
+  #app[data-mobile-command-dock="true"] .touch-edge-reveal-control {
     /* biome-ignore format: Stylelint requires operators to start continuation lines. */
     bottom: calc(
       env(safe-area-inset-bottom, 0px)

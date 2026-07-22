@@ -24,6 +24,7 @@ const globalScenarioDirectiveLimits = {
 }
 
 const createRuntime = (): AppRuntimeState => ({
+  info: { userPins: [] },
   simulation: {
     assistMode: 'capture',
     assistTargetIndex: 1,
@@ -109,6 +110,7 @@ describe('runtimeStateTransitions', () => {
       {
         cameraMode: 'unlocked',
         coastPredictionHorizonHours: 2,
+        userInfoPins: [],
         scenario: {
           metadata: {
             description: 'Menu background description',
@@ -172,6 +174,7 @@ describe('runtimeStateTransitions', () => {
         assistTargetSelectionMode: 'manual',
         cameraMode: 'centered',
         coastPredictionHorizonHours: 2,
+        userInfoPins: [],
         scenario: {
           metadata: {
             description: 'Debug snapshot description',

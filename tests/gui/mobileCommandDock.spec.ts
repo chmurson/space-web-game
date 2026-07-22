@@ -77,7 +77,7 @@ const dispatchControlTouch = async (options: {
 
 const captureDockState = async (options: {
   fileName: string
-  openPanel: 'flight' | 'nav' | null
+  openPanel: 'flight' | 'info' | 'nav' | null
   page: Page
   safeBottom: number
   testInfo: TestInfo
@@ -126,8 +126,10 @@ test('keeps one panel open, collapses the active panel, and closes with Escape',
   await waitForGame(page)
 
   const flightButton = page.locator('#mobile-command-dock-flight-button')
+  const infoButton = page.locator('#mobile-command-dock-info-button')
   const navButton = page.locator('#mobile-command-dock-nav-button')
   const flightPanel = page.locator('#mobile-command-dock-flight-panel')
+  const infoPanel = page.locator('#mobile-command-dock-info-panel')
   const navPanel = page.locator('#mobile-command-dock-nav-panel')
 
   await expect(flightButton).toHaveAttribute('aria-expanded', 'false')
@@ -137,9 +139,15 @@ test('keeps one panel open, collapses the active panel, and closes with Escape',
   await expect(flightButton).toHaveAttribute('aria-expanded', 'true')
   await expect(flightPanel).toBeVisible()
 
-  await navButton.tap()
+  await infoButton.tap()
   await expect(flightButton).toHaveAttribute('aria-expanded', 'false')
   await expect(flightPanel).toBeHidden()
+  await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(infoPanel).toBeVisible()
+
+  await navButton.tap()
+  await expect(infoButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(infoPanel).toBeHidden()
   await expect(navButton).toHaveAttribute('aria-expanded', 'true')
   await expect(navPanel).toBeVisible()
 
@@ -631,7 +639,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
   expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships Flight and Nav as the two available dock panels', async ({
+test('ships Flight, Info, and Nav as available dock panels', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -643,17 +651,17 @@ test('ships Flight and Nav as the two available dock panels', async ({
   await expect(dockItems).toHaveCount(5)
   await expect(dockItems).toHaveText([
     'Flight',
+    'Info',
     'Nav',
-    'Mission',
     'Ship',
     'Settings',
   ])
   await expect(page.locator('.mobile-command-dock-item:disabled')).toHaveCount(
-    3,
+    2,
   )
   await expect(
     page.locator('.mobile-command-dock-item:not(:disabled)'),
-  ).toHaveCount(2)
+  ).toHaveCount(3)
 
   const flightButton = page.locator('#mobile-command-dock-flight-button')
   await flightButton.tap()
@@ -763,16 +771,16 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
     .locator('#mobile-command-dock-flight-panel')
     .boundingBox()
   const rcsControlBounds = await page
-    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control')
+    .locator('#mobile-command-dock-flight-panel .touch-rcs-yaw-control')
     .boundingBox()
   const thrustControlBounds = await page
-    .locator('.mobile-command-dock-panel .touch-thrust-control')
+    .locator('#mobile-command-dock-flight-panel .touch-thrust-control')
     .boundingBox()
   const rcsTrackBounds = await page
-    .locator('.mobile-command-dock-panel .touch-rcs-yaw-control-track')
+    .locator('#mobile-command-dock-flight-panel .touch-rcs-yaw-control-track')
     .boundingBox()
   const thrustTrackBounds = await page
-    .locator('.mobile-command-dock-panel .touch-thrust-control-track')
+    .locator('#mobile-command-dock-flight-panel .touch-thrust-control-track')
     .boundingBox()
   expect(flightPanelBounds).not.toBeNull()
   expect(rcsControlBounds).not.toBeNull()
@@ -807,7 +815,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   )
   const trackMaterials = await page
     .locator(
-      '.mobile-command-dock-panel .touch-rcs-yaw-control-track, .mobile-command-dock-panel .touch-thrust-control-track',
+      '#mobile-command-dock-flight-panel .touch-rcs-yaw-control-track, #mobile-command-dock-flight-panel .touch-thrust-control-track',
     )
     .evaluateAll((tracks) =>
       tracks.map((track) => {

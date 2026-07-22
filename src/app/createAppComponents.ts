@@ -13,6 +13,7 @@ import {
   createHudPresentation,
   type TouchControlAvailability,
 } from '../presentation/hudPresentation'
+import { createInfoHudView } from '../presentation/infoHudPresentation'
 import { createSpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import { createTrajectoryPresentation } from '../presentation/trajectoryPresentation'
 import { createRendererProfiler } from '../render/rendererProfiler'
@@ -48,6 +49,7 @@ import {
 import { RENDER_SCALE } from '../simulation/constants'
 import { type CrashMenu, createCrashMenu } from '../ui/createCrashMenu'
 import { createDesktopTargetSelector } from '../ui/createDesktopTargetSelector'
+import { createInfoHud } from '../ui/createInfoHud'
 import { createInGameControlsMenu } from '../ui/createInGameControlsMenu'
 import { createMainMenu, type MainMenu } from '../ui/createMainMenu'
 import { createScenarioLoadingOverlay } from '../ui/createScenarioLoadingOverlay'
@@ -670,6 +672,21 @@ export const createAppComponents = (options: {
     },
     onZoom: zoomCameraAroundScreenPoint,
   })
+  const infoHud = createInfoHud({
+    desktopContainer: overlayUi.desktopInfoContainer,
+    getMobileSurfaceActive: () => !desktopFinePointerMedia.matches,
+    getView: () =>
+      createInfoHudView({
+        prediction: trajectoryPresentation.getPredictionState(),
+        queries,
+        runtime: options.runtimeState,
+      }),
+    mobilePanelContainer: touchControls.infoPanelContainer,
+    mobileRailContainer: touchControls.infoRailContainer,
+    onClear: runtimeActions.clearUserInfoPins,
+    onTogglePin: runtimeActions.toggleUserInfoPin,
+    toggleMobileInfoPanel: touchControls.toggleInfoPanel,
+  })
   if (!overlayUi.targetSelectorButton || !overlayUi.targetSelectorPopover) {
     throw new Error('Desktop target selector controls are missing')
   }
@@ -789,6 +806,7 @@ export const createAppComponents = (options: {
     getStarfieldLayerDebugInfo: gameScene.starfield.getLayerDebugInfo,
     getTrailRenderedSliceCount: () => gameScene.trailRenderedSliceCount,
     inGameControlsMenu,
+    infoHud,
     overlayUi,
     physicsEngineName: options.config.physicsEngine.name,
     queries,
@@ -1023,6 +1041,16 @@ export const createAppComponents = (options: {
   })
 
   const handleKeyboardAction = (action: UIUserAction) => {
+    if (action === 'toggleInfo') {
+      infoHud.toggleSurface()
+      return
+    }
+    if (action === 'clearInfoPins') {
+      runtimeActions.clearUserInfoPins()
+      infoHud.sync()
+      return
+    }
+
     const previousCameraMode = runtimeActions.getCameraMode()
     dispatchRuntimeAction(action)
     const nextCameraMode = runtimeActions.getCameraMode()

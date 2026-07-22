@@ -1,0 +1,177 @@
+import { describe, expect, it } from 'vitest'
+
+import { createInfoHudView } from '@/presentation/infoHudPresentation'
+import type { AppRuntimeState } from '@/runtime/appRuntimeState'
+import {
+  apoapsisInfoPin,
+  createBodyInfoPin,
+  periapsisInfoPin,
+} from '@/runtime/infoPins'
+import type { TrajectoryPredictionState } from '@/runtime/trajectoryPredictionRuntime'
+import { createDefaultScenarioDirectives } from '@/scenario/scenarioDirectiveTypes'
+import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+
+const runtime: AppRuntimeState = {
+  debug: {
+    debugModeEnabled: false,
+    debugNoGravityEnabled: false,
+    debugSnapshotStatus: '',
+    fpsIndicatorEnabled: false,
+  },
+  info: {
+    userPins: [createBodyInfoPin('moon'), apoapsisInfoPin],
+  },
+  scenario: {
+    directives: {
+      ...createDefaultScenarioDirectives(),
+      infoPins: [createBodyInfoPin('earth'), periapsisInfoPin],
+    },
+    metadata: { description: 'Test', title: 'Test' },
+    session: createRuntimeScenarioSession('test'),
+  },
+  simulation: {
+    assistMode: 'off',
+    assistTargetIndex: 1,
+    assistTargetSelectionMode: 'manual',
+    coastPredictionHorizonHours: 1,
+    crashedBodyName: null,
+    state: {
+      bodies: [
+        {
+          color: '#fff',
+          id: 'earth',
+          mass: 1,
+          name: 'Earth',
+          position: { x: 0, y: 0 },
+          radius: 1_000,
+          velocity: { x: 0, y: 0 },
+        },
+        {
+          color: '#fff',
+          id: 'moon',
+          mass: 1,
+          name: 'Moon',
+          position: { x: 100_000, y: 0 },
+          radius: 1_000,
+          velocity: { x: 0, y: 0 },
+        },
+      ],
+      controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },
+      elapsed: 0,
+      spacecraft: {
+        dryMass: 1,
+        fuel: 0,
+        fuelCapacity: 0,
+        fuelMass: 0,
+        fuelUsed: 0,
+        heading: 0,
+        position: { x: 11_000, y: 0 },
+        velocity: { x: 0, y: 0 },
+      },
+    },
+    targetHeading: null,
+    targetHeadingTurn: null,
+    timeWarpIndex: 0,
+    viewportSize: 100,
+  },
+  ui: {
+    camera: { mode: 'centered', panOffset: { x: 0, y: 0 } },
+    spacecraftLabelIntroUntil: 0,
+    targetHeadingSelectionEpoch: 0,
+    touchThrustControl: {
+      engaged: false,
+      interactive: false,
+      revealed: false,
+      visible: false,
+    },
+    uiEffectEpoch: 0,
+  },
+}
+
+const prediction: TrajectoryPredictionState = {
+  absolutePredictionEnd: null,
+  absolutePredictionPoints: [],
+  predictedImpact: null,
+  predictedTargetClosestApproach: null,
+  targetId: 'moon',
+  targetRelativeAssistedPoints: [],
+  targetRelativeEventMarkers: [
+    {
+      altitude: 123_000,
+      distance: 124_000,
+      kind: 'periapsis',
+      point: { x: 0, y: 0 },
+      time: 1,
+    },
+    {
+      altitude: 456_000,
+      distance: 457_000,
+      kind: 'apoapsis',
+      point: { x: 0, y: 0 },
+      time: 2,
+    },
+  ],
+  targetRelativePredictionEnd: null,
+  targetRelativePredictionPoints: [],
+}
+
+const queries = {
+  getAssistTargetUiState: () => ({
+    activeTarget: runtime.simulation.state.bodies[1],
+    mode: 'manual' as const,
+    recommendedTarget: null,
+  }),
+}
+
+describe('createInfoHudView', () => {
+  it('presents each body once and uses physical surface distances', () => {
+    const view = createInfoHudView({ prediction, queries, runtime })
+
+    expect(view.rows.map(({ label }) => label)).toEqual([
+      'Earth',
+      'Moon',
+      'Pe',
+      'Ap',
+    ])
+    expect(view.rows.map(({ distanceLabel }) => distanceLabel)).toEqual([
+      '10 km',
+      '88 km',
+      '123 km',
+      '456 km',
+    ])
+    expect(view.rows.map(({ secondaryLabel }) => secondaryLabel)).toEqual([
+      'to spacecraft',
+      'to spacecraft',
+      'to Moon',
+      'to Moon',
+    ])
+    expect(view.pinnedRows.map(({ label }) => label)).toEqual([
+      'Earth',
+      'Moon',
+      'Pe',
+      'Ap',
+    ])
+    expect(view.rows.find(({ label }) => label === 'Earth')).toMatchObject({
+      pinned: true,
+      scenarioOwned: true,
+    })
+    expect(view.rows.find(({ label }) => label === 'Moon')).toMatchObject({
+      pinned: true,
+      scenarioOwned: false,
+    })
+    expect(view.clearAvailable).toBe(true)
+  })
+
+  it('does not present stale Pe and Ap values for another target', () => {
+    const view = createInfoHudView({
+      prediction: { ...prediction, targetId: 'earth' },
+      queries,
+      runtime,
+    })
+
+    expect(view.rows.slice(-2).map(({ distanceLabel }) => distanceLabel)).toEqual([
+      '—',
+      '—',
+    ])
+  })
+})

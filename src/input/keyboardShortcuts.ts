@@ -8,12 +8,22 @@ export type KeyboardShortcutContext = {
 type KeyboardShortcutEvent = Pick<
   KeyboardEvent,
   'code' | 'ctrlKey' | 'repeat' | 'shiftKey'
->
+> &
+  Partial<Pick<KeyboardEvent, 'altKey' | 'metaKey'>>
 
 export const getKeyboardShortcutAction = (
   event: KeyboardShortcutEvent,
   context: KeyboardShortcutContext,
 ): UIUserAction | null => {
+  if (
+    !event.repeat &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    event.code === 'KeyI'
+  ) {
+    return event.shiftKey ? 'clearInfoPins' : 'toggleInfo'
+  }
   if (event.shiftKey && event.code === 'BracketRight') {
     return event.repeat ? null : 'increaseCoastHorizon'
   }

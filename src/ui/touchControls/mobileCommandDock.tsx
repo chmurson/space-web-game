@@ -8,7 +8,7 @@ import {
 import { addTapSafeButtonHandler } from '../tapSafeButtonHandler'
 import './mobileCommandDock.css'
 
-export type MobileCommandDockPanel = 'flight' | 'nav'
+export type MobileCommandDockPanel = 'flight' | 'info' | 'nav'
 type MobileCommandDockTutorialFocus = 'burn' | 'warp' | null
 
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
@@ -27,10 +27,6 @@ type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
 }
 
 const unavailableDockItems = [
-  {
-    iconPath: 'M6 21V4m0 1h10l-2.5 3L16 11H6',
-    label: 'Mission',
-  },
   {
     iconPath: 'm12 3-5 5v8l5 5 5-5V8l-5-5ZM7 12h10',
     label: 'Ship',
@@ -70,6 +66,7 @@ const MobileCommandDockSurface = ({
   tutorialFocused,
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
+  const infoOpen = openPanel === 'info'
 
   return (
     <section
@@ -80,6 +77,7 @@ const MobileCommandDockSurface = ({
       data-tutorial-focused={tutorialFocused ?? 'none'}
       ref={rootRef}
     >
+      <div class="mobile-command-dock-info-rail-host" />
       <section
         aria-hidden={openPanel !== 'flight'}
         aria-labelledby="mobile-command-dock-flight-button"
@@ -88,6 +86,15 @@ const MobileCommandDockSurface = ({
         id="mobile-command-dock-flight-panel"
       >
         <div class="mobile-command-dock-panel-controls-host" />
+      </section>
+      <section
+        aria-hidden={!infoOpen}
+        aria-labelledby="mobile-command-dock-info-button"
+        class="mobile-command-dock-panel mobile-command-dock-info-panel"
+        hidden={!infoOpen}
+        id="mobile-command-dock-info-panel"
+      >
+        <div class="mobile-command-dock-info-panel-host" />
       </section>
 
       <section
@@ -179,6 +186,29 @@ const MobileCommandDockSurface = ({
             <path d="M12 20V4M6.5 9.5 12 4l5.5 5.5" />
           </svg>
           <span>Flight</span>
+        </button>
+        <button
+          aria-controls="mobile-command-dock-info-panel"
+          aria-expanded={infoOpen}
+          aria-keyshortcuts="I"
+          aria-label={getPanelButtonLabel({
+            available: true,
+            label: 'Info',
+            open: infoOpen,
+          })}
+          class="mobile-command-dock-item"
+          id="mobile-command-dock-info-button"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="mobile-command-dock-item-icon"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M12 10.5v6M12 7.5v.2" />
+          </svg>
+          <span>Info</span>
         </button>
         <button
           aria-controls="mobile-command-dock-nav-panel"
@@ -307,6 +337,12 @@ export const createMobileCommandDock = (options: {
   const syncViewportBottomInset = () => {
     const nextViewportBottomInset =
       surface.element.getBoundingClientRect().height
+    if (nextViewportBottomInset > 0) {
+      options.app.style.setProperty(
+        '--mobile-command-dock-hud-height',
+        `${Math.ceil(nextViewportBottomInset)}px`,
+      )
+    }
     if (viewportBottomInset === nextViewportBottomInset) {
       return
     }
@@ -373,7 +409,22 @@ export const createMobileCommandDock = (options: {
   const navButton = surface.element.querySelector<HTMLButtonElement>(
     '#mobile-command-dock-nav-button',
   )
-  if (!flightButton || !navButton) {
+  const infoButton = surface.element.querySelector<HTMLButtonElement>(
+    '#mobile-command-dock-info-button',
+  )
+  const infoPanelContainer = surface.element.querySelector<HTMLElement>(
+    '.mobile-command-dock-info-panel-host',
+  )
+  const infoRailContainer = surface.element.querySelector<HTMLElement>(
+    '.mobile-command-dock-info-rail-host',
+  )
+  if (
+    !flightButton ||
+    !infoButton ||
+    !navButton ||
+    !infoPanelContainer ||
+    !infoRailContainer
+  ) {
     throw new Error('Mobile command dock rendered without panel buttons')
   }
 
@@ -395,6 +446,9 @@ export const createMobileCommandDock = (options: {
   addTapSafeButtonHandler(flightButton, () => {
     setOpenPanel(openPanel === 'flight' ? null : 'flight')
   })
+  addTapSafeButtonHandler(infoButton, () => {
+    setOpenPanel(openPanel === 'info' ? null : 'info')
+  })
   addTapSafeButtonHandler(navButton, () => {
     setOpenPanel(openPanel === 'nav' ? null : 'nav')
   })
@@ -406,12 +460,19 @@ export const createMobileCommandDock = (options: {
 
     const closingPanel = openPanel
     setOpenPanel(null)
-    const button = closingPanel === 'flight' ? flightButton : navButton
+    let button = navButton
+    if (closingPanel === 'flight') {
+      button = flightButton
+    } else if (closingPanel === 'info') {
+      button = infoButton
+    }
     button.focus()
   })
 
   return {
     element: surface.element,
+    infoPanelContainer,
+    infoRailContainer,
     isPanelOpen: (panel: MobileCommandDockPanel) => openPanel === panel,
     rcsYawContainer,
     setControlAvailability(nextAvailability: {
@@ -475,6 +536,7 @@ export const createMobileCommandDock = (options: {
     },
     syncUi: syncCameraState,
     thrustContainer,
+    toggleInfoPanel: () => setOpenPanel(openPanel === 'info' ? null : 'info'),
     timeWarpContainer,
   }
 }
