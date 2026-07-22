@@ -137,6 +137,15 @@
 
   .mobile-command-dock-nav-panel {
     display: grid;
+    /* biome-ignore format: Stylelint requires operators to start continuation lines. */
+    max-height: calc(
+      100dvh
+      - var(--mobile-command-dock-safe-bottom)
+      - var(--mobile-command-dock-item-height)
+      - 32px
+    );
+    overflow-y: auto;
+    overscroll-behavior: contain;
     gap: 12px;
     padding: var(--mobile-command-dock-panel-padding);
     border: 1px solid var(--ui-glass-panel-border);
@@ -147,6 +156,8 @@
       var(--ui-glass-panel-shadow);
     backdrop-filter: var(--ui-glass-panel-blur);
     pointer-events: auto;
+    scrollbar-width: thin;
+    touch-action: pan-y;
   }
 
   .mobile-command-dock-nav-panel[hidden] {
@@ -169,6 +180,35 @@
     gap: 7px;
   }
 
+  .mobile-command-dock-nav-guidance {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mobile-command-dock-nav-target,
+  .mobile-command-dock-nav-trajectory {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 7px;
+    border-radius: 12px;
+  }
+
+  .mobile-command-dock-nav-target[hidden],
+  .mobile-command-dock-nav-trajectory[hidden] {
+    display: none;
+  }
+
+  .mobile-command-dock-nav-guidance:not(
+      :has(.mobile-command-dock-nav-target:not([hidden]))
+    ) {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
   .mobile-command-dock-nav-heading {
     display: flex;
     min-width: 0;
@@ -183,9 +223,32 @@
     text-transform: uppercase;
   }
 
+  .mobile-command-dock-nav-heading-detail {
+    color: rgba(203, 213, 225, 0.58);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
   .mobile-command-dock-time-warp-host,
   .mobile-command-dock-time-warp-control {
     min-width: 0;
+  }
+
+  .mobile-command-dock-target-control,
+  .mobile-command-dock-trajectory-control {
+    min-width: 0;
+  }
+
+  .mobile-command-dock-target-control .touch-target-control {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .mobile-command-dock-trajectory-control .touch-step-selector {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    z-index: auto;
   }
 
   .mobile-command-dock-camera-controls {
@@ -349,6 +412,21 @@
       0 0 24px rgba(251, 191, 36, 0.2);
   }
 
+  .mobile-command-dock[data-tutorial-focused="target"]
+    .mobile-command-dock-nav-target,
+  .mobile-command-dock[data-tutorial-focused="trajectory"]
+    .mobile-command-dock-nav-trajectory {
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.3),
+      0 0 24px rgba(251, 191, 36, 0.2);
+  }
+
+  .mobile-command-dock-item[data-target-recommended="true"]
+    .mobile-command-dock-item-icon {
+    color: #7dd3fc;
+    filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.46));
+  }
+
   #app[data-mobile-command-dock="true"] {
     --mobile-command-dock-hud-height: 66px;
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -359,7 +437,7 @@
   }
 
   #app[data-mobile-command-dock-panel="nav"] {
-    --mobile-command-dock-hud-height: 260px;
+    --mobile-command-dock-hud-height: 440px;
   }
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     /* biome-ignore format: Stylelint requires operators to start continuation lines. */
@@ -392,6 +470,13 @@
       + var(--touch-edge-reveal-stack-offset)
       + var(--mobile-command-dock-hud-height)
     );
+  }
+}
+
+@media (max-width: 350px) and (hover: none),
+  (max-width: 350px) and (pointer: coarse) {
+  .mobile-command-dock-nav-heading-detail {
+    display: none;
   }
 }
 

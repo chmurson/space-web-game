@@ -1,8 +1,6 @@
 import type {
   DesktopEdgePanSpeed,
   OrbitPointDisplaySettings,
-  TouchControlSide,
-  TouchTrajectoryControlState,
 } from '../userSettingsStorage'
 import {
   type UiSettingsDialogPane,
@@ -63,17 +61,11 @@ export const createUiSettingsDialog = (options: {
   getMobileManeuverStartByDrag: () => boolean
   getOrbitPointDisplay: () => OrbitPointDisplaySettings
   getTouchControlsVisible?: () => boolean
-  getTouchTargetControlAvailable?: () => boolean
-  getTouchTargetControlSide: () => TouchControlSide
-  getTouchTrajectoryControlAvailable?: () => boolean
-  getTouchTrajectoryControlSide: () => TouchTrajectoryControlState
   onDesktopEdgePanEnabledChange(enabled: boolean): void
   onDesktopEdgePanSpeedChange(speed: DesktopEdgePanSpeed): void
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onOpenChange?: (open: boolean) => void
-  onTouchTargetControlSideChange(side: TouchControlSide): void
-  onTouchTrajectoryControlSideChange(side: TouchTrajectoryControlState): void
 }): UiSettingsDialog => {
   const dialogId = `app-dialog-${++nextUiSettingsDialogId}`
   const touchControlsVisibleMedia = window.matchMedia(touchControlsVisibleQuery)
@@ -123,12 +115,6 @@ export const createUiSettingsDialog = (options: {
       touchControlsVisible:
         options.getTouchControlsVisible?.() ??
         touchControlsVisibleMedia.matches,
-      touchTargetControlAvailable:
-        options.getTouchTargetControlAvailable?.() ?? true,
-      touchTargetControlSide: options.getTouchTargetControlSide(),
-      touchTrajectoryControlAvailable:
-        options.getTouchTrajectoryControlAvailable?.() ?? true,
-      touchTrajectoryControlSide: options.getTouchTrajectoryControlSide(),
       onBackToMainSettings: () => {
         activePane = 'main'
         syncState()
@@ -156,14 +142,6 @@ export const createUiSettingsDialog = (options: {
       },
       onOrbitPointDisplayChange: (settings) => {
         options.onOrbitPointDisplayChange(settings)
-        syncState()
-      },
-      onTouchTargetControlSideChange: (side) => {
-        options.onTouchTargetControlSideChange(side)
-        syncState()
-      },
-      onTouchTrajectoryControlSideChange: (side) => {
-        options.onTouchTrajectoryControlSideChange(side)
         syncState()
       },
     })

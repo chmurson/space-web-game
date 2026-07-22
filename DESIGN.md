@@ -131,12 +131,6 @@ components:
     typography: "{typography.telemetry}"
     rounded: "{rounded.xl}"
     padding: "11px 14px"
-  touch-edge-tab:
-    backgroundColor: "{colors.surface-control}"
-    textColor: "{colors.text-primary}"
-    typography: "{typography.label-caps}"
-    rounded: "{rounded.lg}"
-    size: "34px 84px"
   touch-selector:
     backgroundColor: "{colors.surface-panel}"
     textColor: "{colors.text-subtle}"
@@ -223,7 +217,7 @@ The playable canvas owns the full viewport. DOM UI layers sit above it with fixe
 - Keep the top bar fixed to the top safe area. It contains the top menu and telemetry strip.
 - Keep bottom notices and replay pills centered in `.bottom-pill-area`, above the bottom safe area and touch controls.
 - Keep the in-game controls menu near the lower left by default, using the bottom and left safe-area variables in `src/ui/overlayUI/overlayUIStyles.css`.
-- Mobile navigation uses the bottom command dock for Flight, Info, and Nav. Target and Trajectory retain edge-reveal tabs until their planned dock migration; all mobile controls must preserve the center playfield.
+- Mobile navigation uses the bottom command dock for Flight, Info, and Nav. All gameplay controls live in those panels; no gameplay command requires an edge reveal. Mobile controls must preserve the center playfield.
 - The mobile command dock sits above the bottom safe area and reserves space for bottom HUD notices. Its open Flight, Info, or Nav panel stays non-modal, with pointer handling limited to dock-owned controls while the surrounding touch playfield remains interactive. Only one panel can be open at a time.
 - Info is a compact telemetry surface, not a second navigation system. Desktop uses a top-bar pill with an anchored popover and a persistent top rail while the popover is closed. Mobile uses the Info dock panel and a safe-area-aware rail immediately above the dock.
 - Info rows show every scenario body once, followed by `Pe` and `Ap`; do not add separate spacecraft or active-target rows. Body values are spacecraft-to-body physical surface distances and show `to spacecraft` beneath the value. `Pe` and `Ap` values are physical altitudes over the active target, label that target beneath the value, and show an unavailable dash when current prediction data does not match that target. Keep pinned rail pills compact and omit these secondary labels there.
@@ -259,7 +253,6 @@ The current shape language is compact glass UI with rounded controls:
 - Scenario modal prompts use `8px`; coach prompts and many popovers use `14px`.
 - Menu and crash/dialog panels use `14px` to `16px`.
 - Touch-control panels use `rounded.touch-control` (`15px`), which matches `--touch-control-radius` in `src/style.css`.
-- Edge tabs are rounded only on the exposed side.
 
 Keep shapes stable across hover, active, disabled, and focused states. Hover or focus should not resize the component.
 
@@ -273,9 +266,9 @@ Keep shapes stable across hover, active, disabled, and focused states. Hover or 
 
 **Scenario prompts:** Modal prompts explain mission starts, restarts, and blocking states. Coach prompts are compact, anchored, and non-blocking except for explicit tutorial focus flows. Use emphasis spans for concepts, numbers, and constraints instead of adding new color systems.
 
-**Touch controls:** Preserve edge-reveal behavior, safe-area offsets, large hit areas, and tutorial focus affordances. Touch-control panels should use shared glass panel values with local accent colors for thrust, time warp, target, and trajectory semantics.
+**Touch controls:** Preserve safe-area offsets, large hit areas, panel-owned scrolling, and tutorial focus affordances. Touch-control panels should use shared glass panel values with local accent colors for thrust, time warp, target, and trajectory semantics. Touches, drags, and scrolling that begin inside a command panel remain owned by that panel and must not reach playfield camera or maneuver input.
 
-**Mobile command dock:** Mobile touch gameplay uses the compact five-item dock with standard safe-area spacing and subtle selected-state emphasis. Flight, Info, and Nav are enabled; Ship and Settings remain visible but disabled until their panels have real content. At most one panel is open, selecting the active item collapses it, and selecting another enabled item switches directly. Flight keeps its non-modal, label-free floating layout with analog RCS yaw toward the left safe-area edge and Main Thrust toward the right. Info uses the same row and pin-management surface as desktop. Nav uses one concrete glass panel: Time Warp is first and visually dominant, with a compact full-width horizontal selector where left is faster and right is slower. The selector itself communicates the current rate; duplicate heading values and visible helper/status copy are omitted, while policy feedback remains available to assistive technology. Camera controls follow Time Warp in Nav on mobile, while fine-pointer desktop keeps them in the shared in-game Controls popover: `Follow` chooses `Spacecraft` or `Target`, and the compact `Recenter` action clears the player's pan offset. Changing Follow preserves the relative pan offset, just like a target change. Neutral framing always centers the followed object within the current playable viewport above the dock and its open panel; drag and edge pan add a relative offset without introducing a player-visible lock mode. Closing, switching, interaction disable, blur, or control unavailability clears the outgoing owned gesture. Tutorial burn focus opens Flight; tutorial warp focus opens Nav. Warp no longer has edge-reveal tabs or a presented side preference. Target and Trajectory retain their edge-reveal surfaces until their planned migration.
+**Mobile command dock:** Mobile touch gameplay uses the compact five-item dock with standard safe-area spacing and subtle selected-state emphasis. Flight, Info, and Nav are enabled; Ship and Settings remain visible but disabled until their panels have real content. At most one panel is open, selecting the active item collapses it, and selecting another enabled item switches directly. Flight keeps its non-modal, label-free floating layout with analog RCS yaw toward the left safe-area edge and Main Thrust toward the right. Info uses the same row and pin-management surface as desktop. Nav uses one concrete, vertically scrollable glass panel. Time Warp is first and visually dominant, with a compact full-width horizontal selector where left is faster and right is slower. The selector itself communicates the current rate; duplicate heading values and visible helper/status copy are omitted, while policy feedback remains available to assistive technology. Camera controls follow Time Warp on mobile, while fine-pointer desktop keeps them in the shared in-game Controls popover: `Follow` chooses `Spacecraft` or `Target`, and the compact `Recenter` action clears the player's pan offset. Target and Trajectory share the final Nav row: Target takes the flexible column with its automatic mode and body rows, while Trajectory keeps its compact vertical prediction-horizon selector. Target selection and automatic return keep Nav open; recommendation, manual, and forced states retain their existing cyan/status semantics. Scenario availability hides only the unavailable Target or Trajectory section and leaves Nav plus unrelated controls stable. Target and Trajectory placement preferences are no longer shown or applied; legacy persisted values remain inert pending storage cleanup. Changing Follow preserves the relative pan offset, just like a target change. Neutral framing always centers the followed object within the current playable viewport above the dock and its open panel; drag and edge pan add a relative offset without introducing a player-visible lock mode. Closing, switching, Escape, interaction disable, blur, or control unavailability clears the outgoing owned gesture. Tutorial burn focus opens Flight; tutorial warp, Target, and Trajectory focus opens Nav and highlights the relevant control.
 
 **Target and offscreen indicators:** Keep labels small, wrapped on mobile, and attached to the playfield. Use cyan as the default navigational cue and avoid pointer-event capture.
 
@@ -312,7 +305,7 @@ Checked for issue #83:
 - `src/ui/components/*Surface*.tsx` and `src/ui/components/MenuSurfacePrimitives.tsx`: Preact menu/dialog component contracts, copy, action variants, ARIA roles, segmented controls, switches, steppers.
 - `src/ui/overlayUI/overlayUIStyles.css`: top HUD, bottom pill area, in-game controls menu, notices, responsive layout, safe-area variables.
 - `src/ui/scenario-prompts/scenario-prompts.css`: modal prompts, coach prompts, focus prompt layers, action buttons, mobile prompt layout.
-- `src/ui/touchControls/*.css` and `src/ui/touchControls/*/*.css`: edge reveal, thrust, time warp feedback, step selectors, target selectors, safe areas, touch sizing, tutorial focus, reduced-motion handling.
+- `src/ui/touchControls/*.css` and `src/ui/touchControls/*/*.css`: command dock, thrust, time warp feedback, step selectors, target selectors, safe areas, touch sizing, tutorial focus, reduced-motion handling.
 - `docs/gui-screenshot-tests.md` and `tests/gui/mobileHudScreenshot.spec.ts`: mobile GUI screenshot workflow and currently covered states.
 
 Mismatch and follow-up:

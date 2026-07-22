@@ -365,9 +365,11 @@ describe('scenarioPrompts', () => {
       title: 'This Is Your Trajectory',
     })
     expect(resolveScenarioPrompts(runtime, 'mobile').active).toMatchObject({
+      anchor: 'trajectory-control',
+      focusedTouchControl: 'trajectory',
       kind: 'coach',
       id: 'intro-trajectory',
-      layout: 'floating',
+      layout: 'anchored',
       pausesGameplay: false,
       title: 'This Is Your Trajectory',
     })

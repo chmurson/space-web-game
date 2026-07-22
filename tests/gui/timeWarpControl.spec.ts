@@ -95,8 +95,6 @@ test('routes the retained horizontal Time Warp control to shared state', async (
       getTimeWarpPreview: (action) => getTimeWarpPreviews(action, 1)[0],
       getTimeWarpPreviews,
       getTrajectoryHorizonPreviews: () => [],
-      initialTargetControlSide: 'left',
-      initialTrajectoryControlSide: 'hidden',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({

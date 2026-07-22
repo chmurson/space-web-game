@@ -1,24 +1,4 @@
-import type { ComponentChildren } from 'preact'
-import type {
-  OrbitPointDisplaySettings,
-  TouchControlSide,
-  TouchTrajectoryControlState,
-} from '../../userSettingsStorage'
-
-type SegmentedControlOption<TValue extends string> = {
-  label: string
-  value: TValue
-}
-
-const sideOptions = [
-  { label: 'Left', value: 'left' },
-  { label: 'Right', value: 'right' },
-] satisfies SegmentedControlOption<TouchControlSide>[]
-
-const trajectoryOptions = [
-  ...sideOptions,
-  { label: 'Hidden', value: 'hidden' },
-] satisfies SegmentedControlOption<TouchTrajectoryControlState>[]
+import type { OrbitPointDisplaySettings } from '../../userSettingsStorage'
 
 const joinClassNames = (...classNames: Array<string | false | undefined>) =>
   classNames.filter(Boolean).join(' ')
@@ -41,126 +21,19 @@ const getOrbitPointDisplaySummary = (settings: OrbitPointDisplaySettings) => {
   ].join(', ')
 }
 
-type SpacecraftControlSettingsVisibility = {
-  mobileManeuverStart: boolean
-  targetSide: boolean
-  trajectorySide: boolean
-}
-
 const desktopSpacecraftControlsSummary = 'Keyboard and mouse active'
-
-const getVisibleSpacecraftControlSettings = ({
-  touchControlsVisible,
-  touchTargetControlAvailable,
-  touchTrajectoryControlAvailable,
-}: {
-  touchControlsVisible: boolean
-  touchTargetControlAvailable: boolean
-  touchTrajectoryControlAvailable: boolean
-}): SpacecraftControlSettingsVisibility => ({
-  mobileManeuverStart: touchControlsVisible,
-  targetSide: touchControlsVisible && touchTargetControlAvailable,
-  trajectorySide: touchControlsVisible && touchTrajectoryControlAvailable,
-})
 
 const getSpacecraftControlsSummary = ({
   mobileManeuverStartByDrag,
   touchControlsVisible,
-  touchTargetControlAvailable,
-  touchTargetControlSide,
-  touchTrajectoryControlAvailable,
-  touchTrajectoryControlSide,
 }: {
   mobileManeuverStartByDrag: boolean
   touchControlsVisible: boolean
-  touchTargetControlAvailable: boolean
-  touchTargetControlSide: TouchControlSide
-  touchTrajectoryControlAvailable: boolean
-  touchTrajectoryControlSide: TouchTrajectoryControlState
 }) => {
-  const visibleSettings = getVisibleSpacecraftControlSettings({
-    touchControlsVisible,
-    touchTargetControlAvailable,
-    touchTrajectoryControlAvailable,
-  })
-  const summaryParts: string[] = []
-
-  if (visibleSettings.targetSide) {
-    summaryParts.push(`target ${touchTargetControlSide}`)
-  }
-  if (visibleSettings.trajectorySide) {
-    summaryParts.push(`trajectory ${touchTrajectoryControlSide}`)
-  }
-  if (visibleSettings.mobileManeuverStart) {
-    summaryParts.push(`maneuver ${mobileManeuverStartByDrag ? 'drag' : 'tap'}`)
-  }
-
-  return summaryParts.length > 0
-    ? summaryParts.join(', ')
+  return touchControlsVisible
+    ? `maneuver ${mobileManeuverStartByDrag ? 'drag' : 'tap'}`
     : desktopSpacecraftControlsSummary
 }
-
-const hasVisibleControlSideSettings = (
-  settings: SpacecraftControlSettingsVisibility,
-) => settings.targetSide || settings.trajectorySide
-
-const UiSettingsSegmentedControl = <TValue extends string>({
-  ariaLabel,
-  onChange,
-  options,
-  value,
-}: {
-  ariaLabel: string
-  onChange(value: TValue): void
-  options: SegmentedControlOption<TValue>[]
-  value: TValue
-}) => {
-  if (!options.some((option) => option.value === value)) {
-    throw new Error(
-      `Invalid segmented control value "${value}". Expected one of: ${options
-        .map((option) => option.value)
-        .join(', ')}`,
-    )
-  }
-
-  return (
-    // biome-ignore lint/a11y/useSemanticElements: Preserve the existing segmented-control role/group semantics.
-    <div class="segmented-control" role="group" aria-label={ariaLabel}>
-      {options.map((option) => {
-        const selected = option.value === value
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            class={joinClassNames(
-              'segmented-control-option',
-              selected && 'segmented-control-option-selected',
-            )}
-            data-segmented-control-value={option.value}
-            aria-pressed={selected}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-const UiSettingsRow = ({
-  children,
-  label,
-}: {
-  children: ComponentChildren
-  label: string
-}) => (
-  <div class="app-dialog-setting">
-    <span class="app-dialog-setting-name">{label}</span>
-    {children}
-  </div>
-)
 
 const UiSettingsNavigationRow = ({
   label,
@@ -239,10 +112,6 @@ export type UiSettingsDialogSurfaceProps = {
   open: boolean
   rootRef(element: HTMLElement | null): void
   touchControlsVisible: boolean
-  touchTargetControlAvailable: boolean
-  touchTargetControlSide: TouchControlSide
-  touchTrajectoryControlAvailable: boolean
-  touchTrajectoryControlSide: TouchTrajectoryControlState
   onBackToMainSettings(): void
   onDecreaseDesktopEdgePanSpeed(): void
   onDesktopEdgePanEnabledChange(enabled: boolean): void
@@ -251,8 +120,6 @@ export type UiSettingsDialogSurfaceProps = {
   onOpenOrbitPointDisplaySettings(): void
   onOpenSpacecraftControlsSettings(): void
   onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
-  onTouchTargetControlSideChange(side: TouchControlSide): void
-  onTouchTrajectoryControlSideChange(side: TouchTrajectoryControlState): void
 }
 
 export const UiSettingsDialogSurface = ({
@@ -269,10 +136,6 @@ export const UiSettingsDialogSurface = ({
   open,
   rootRef,
   touchControlsVisible,
-  touchTargetControlAvailable,
-  touchTargetControlSide,
-  touchTrajectoryControlAvailable,
-  touchTrajectoryControlSide,
   onBackToMainSettings,
   onDecreaseDesktopEdgePanSpeed,
   onDesktopEdgePanEnabledChange,
@@ -281,8 +144,6 @@ export const UiSettingsDialogSurface = ({
   onOpenOrbitPointDisplaySettings,
   onOpenSpacecraftControlsSettings,
   onOrbitPointDisplayChange,
-  onTouchTargetControlSideChange,
-  onTouchTrajectoryControlSideChange,
 }: UiSettingsDialogSurfaceProps) => {
   const titleId =
     activePane === 'orbitPointDisplay'
@@ -297,17 +158,7 @@ export const UiSettingsDialogSurface = ({
   const orbitLabelsDisabled = !orbitPointDisplay.markersVisible
   const orbitFieldsDisabled =
     !orbitPointDisplay.markersVisible || !orbitPointDisplay.labelsVisible
-  const visibleSpacecraftControlSettings = getVisibleSpacecraftControlSettings({
-    touchControlsVisible,
-    touchTargetControlAvailable,
-    touchTrajectoryControlAvailable,
-  })
-  const spacecraftControlSideSettingsVisible = hasVisibleControlSideSettings(
-    visibleSpacecraftControlSettings,
-  )
-  const spacecraftSettingsVisible =
-    spacecraftControlSideSettingsVisible ||
-    visibleSpacecraftControlSettings.mobileManeuverStart
+  const spacecraftSettingsVisible = touchControlsVisible
 
   const mainPanel = (
     <>
@@ -336,10 +187,6 @@ export const UiSettingsDialogSurface = ({
             summary={getSpacecraftControlsSummary({
               mobileManeuverStartByDrag,
               touchControlsVisible,
-              touchTargetControlAvailable,
-              touchTargetControlSide,
-              touchTrajectoryControlAvailable,
-              touchTrajectoryControlSide,
             })}
           />
           <UiSettingsNavigationRow
@@ -381,38 +228,7 @@ export const UiSettingsDialogSurface = ({
       </header>
 
       <div class="app-dialog-body">
-        {spacecraftControlSideSettingsVisible ? (
-          /* biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern. */
-          <div
-            class="app-dialog-setting-group"
-            role="group"
-            aria-label="Control sides"
-          >
-            <span class="app-dialog-setting-group-label">Control sides</span>
-            {visibleSpacecraftControlSettings.targetSide ? (
-              <UiSettingsRow label="Target side">
-                <UiSettingsSegmentedControl
-                  ariaLabel="Target control side"
-                  onChange={onTouchTargetControlSideChange}
-                  options={sideOptions}
-                  value={touchTargetControlSide}
-                />
-              </UiSettingsRow>
-            ) : null}
-            {visibleSpacecraftControlSettings.trajectorySide ? (
-              <UiSettingsRow label="Trajectory side">
-                <UiSettingsSegmentedControl
-                  ariaLabel="Trajectory control side"
-                  onChange={onTouchTrajectoryControlSideChange}
-                  options={trajectoryOptions}
-                  value={touchTrajectoryControlSide}
-                />
-              </UiSettingsRow>
-            ) : null}
-          </div>
-        ) : null}
-
-        {visibleSpacecraftControlSettings.mobileManeuverStart ? (
+        {touchControlsVisible ? (
           /* biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern. */
           <div
             class="app-dialog-setting-group"

@@ -42,11 +42,6 @@ type TargetSelectorControls = {
   syncUi(): void
 }
 
-export type TouchControlAvailability = {
-  target: boolean
-  trajectory: boolean
-}
-
 const targetStatusLabels: Record<AssistTargetSelectionSource, string> = {
   auto: 'tracking target',
   forced: 'locked target',
@@ -186,7 +181,6 @@ export const createHudPresentation = (options: {
   targetRecommendationNotice?: {
     sync(targetUiState: AssistTargetUiState): void
   }
-  onTouchControlAvailabilityChange?(visibility: TouchControlAvailability): void
   timeWarps: number[]
   touchControls?: TouchControls
   trajectoryPresentation: TrajectoryPresentation
@@ -491,10 +485,6 @@ export const createHudPresentation = (options: {
         finiteFuel && spacecraft.fuel <= 0 && !crashed,
       )
       syncTransientNotice()
-      options.onTouchControlAvailabilityChange?.({
-        target: showTargetControl,
-        trajectory: showTrajectoryControl,
-      })
       options.touchControls?.setFlightControlsVisible(showThrustControl)
       options.touchControls?.setTimeWarpControlVisible(showTimePill)
       options.touchControls?.setTargetControlVisible(showTargetControl)

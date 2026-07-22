@@ -8,10 +8,7 @@ import {
 } from '../input/pointerCameraInput'
 import type { UIUserAction } from '../input/uiUserActions'
 import { createBodyPresentation } from '../presentation/bodyPresentation'
-import {
-  createHudPresentation,
-  type TouchControlAvailability,
-} from '../presentation/hudPresentation'
+import { createHudPresentation } from '../presentation/hudPresentation'
 import { createInfoHudView } from '../presentation/infoHudPresentation'
 import { createSpacecraftPresentation } from '../presentation/spacecraftPresentation'
 import { createTrajectoryPresentation } from '../presentation/trajectoryPresentation'
@@ -71,8 +68,6 @@ import {
   type DesktopEdgePanSpeed,
   type OrbitPointDisplaySettings,
   resolveOrbitPointDisplaySettings,
-  type TouchControlSide,
-  type TouchTrajectoryControlState,
   updateUserSettings,
 } from '../userSettingsStorage'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
@@ -363,19 +358,6 @@ export const createAppComponents = (options: {
     updateUserSettings,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
-  let touchTargetControlSide: TouchControlSide =
-    options.config.userSettings.touchTargetControlSide
-  let touchTrajectoryControlSide: TouchTrajectoryControlState =
-    options.config.userSettings.touchTrajectoryControlSide
-  let touchControlAvailability: TouchControlAvailability = {
-    target: true,
-    trajectory: true,
-  }
-  const isSameTouchControlAvailability = (
-    nextVisibility: TouchControlAvailability,
-  ) =>
-    touchControlAvailability.target === nextVisibility.target &&
-    touchControlAvailability.trajectory === nextVisibility.trajectory
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
   let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
@@ -481,8 +463,6 @@ export const createAppComponents = (options: {
         timeWarps: options.config.controls.timeWarps,
       })
     },
-    initialTargetControlSide: touchTargetControlSide,
-    initialTrajectoryControlSide: touchTrajectoryControlSide,
     keyboardInput,
     getCameraCanRecenter: runtimeActions.canRecenterCamera,
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
@@ -590,11 +570,6 @@ export const createAppComponents = (options: {
     getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
-    getTouchTargetControlAvailable: () => touchControlAvailability.target,
-    getTouchTargetControlSide: () => touchTargetControlSide,
-    getTouchTrajectoryControlAvailable: () =>
-      touchControlAvailability.trajectory,
-    getTouchTrajectoryControlSide: () => touchTrajectoryControlSide,
     onOrbitPointDisplayChange: (settings) => {
       userOrbitPointDisplaySettings = { ...settings }
       updateUserSettings({ orbitPointDisplay: userOrbitPointDisplaySettings })
@@ -616,16 +591,6 @@ export const createAppComponents = (options: {
     onMobileManeuverStartByDragChange: (startByDrag) => {
       mobileManeuverStartByDrag = startByDrag
       updateUserSettings({ mobileManeuverStartByDrag: startByDrag })
-    },
-    onTouchTargetControlSideChange: (side) => {
-      touchTargetControlSide = side
-      touchControls.setTargetControlSide(side)
-      updateUserSettings({ touchTargetControlSide: side })
-    },
-    onTouchTrajectoryControlSideChange: (side) => {
-      touchTrajectoryControlSide = side
-      touchControls.setTrajectoryControlSide(side)
-      updateUserSettings({ touchTrajectoryControlSide: side })
     },
   })
 
@@ -667,16 +632,6 @@ export const createAppComponents = (options: {
     runtime: options.runtimeState,
     desktopTargetSelector,
     targetRecommendationNotice: targetRecommendationNotice ?? undefined,
-    onTouchControlAvailabilityChange: (visibility) => {
-      if (isSameTouchControlAvailability(visibility)) {
-        return
-      }
-
-      touchControlAvailability = visibility
-      if (uiSettingsOpen) {
-        uiSettingsDialog.syncState()
-      }
-    },
     timeWarps: options.config.controls.timeWarps,
     touchControls,
     trajectoryPresentation,

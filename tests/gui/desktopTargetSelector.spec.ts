@@ -67,7 +67,7 @@ test('opens the desktop target selector from the target telemetry button and T s
   await expect(selector).toBeHidden()
 })
 
-test('keeps the desktop target selector entry point hidden on mobile width', async ({
+test('uses Nav instead of the desktop selector or an edge entry on mobile', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -76,7 +76,11 @@ test('keeps the desktop target selector entry point hidden on mobile width', asy
   await expect(
     page.getByRole('button', { name: 'Select target (T)' }),
   ).toBeHidden()
+  await expect(page.locator('#touch-target-reveal')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Open Nav panel' }).click()
   await expect(
-    page.getByRole('button', { name: /Reveal target body selector/ }),
+    page
+      .getByRole('region', { name: 'Target' })
+      .getByLabel('Target body selector'),
   ).toBeVisible()
 })

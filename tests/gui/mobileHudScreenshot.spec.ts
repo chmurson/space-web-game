@@ -1918,18 +1918,16 @@ test('keeps the in-game controls menu adapter state and actions', async ({
     const cameraFollowOptionsInitial = getCameraFollowOptions()
     const recenterButtonInitial = getActionButton('recenterCamera')
     const recenterDisabledInitial = recenterButtonInitial?.disabled
-    const recenterAriaLabelInitial = recenterButtonInitial?.getAttribute(
-      'aria-label',
-    )
+    const recenterAriaLabelInitial =
+      recenterButtonInitial?.getAttribute('aria-label')
     const coastHorizonInitial = getCoastHorizon()
 
     cameraCanRecenter = true
     menu.syncState()
     const recenterButtonAfterPan = getActionButton('recenterCamera')
     const recenterDisabledAfterPan = recenterButtonAfterPan?.disabled
-    const recenterPressableAfterPan = recenterButtonAfterPan?.classList.contains(
-      'ui-pressable-strong',
-    )
+    const recenterPressableAfterPan =
+      recenterButtonAfterPan?.classList.contains('ui-pressable-strong')
     recenterButtonAfterPan?.click()
 
     getCameraFollowOption('target')?.click()
@@ -2270,8 +2268,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const beforeButton = document.createElement('button')
     const events: string[] = []
     const openEvents: boolean[] = []
-    let targetSide: 'left' | 'right' = 'right'
-    let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     let desktopEdgePanEnabled = false
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
@@ -2295,8 +2291,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       getDesktopEdgePanVisible: () => true,
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
-      getTouchTargetControlSide: () => targetSide,
-      getTouchTrajectoryControlSide: () => trajectorySide,
       onOrbitPointDisplayChange: (settings: typeof orbitPointDisplay) => {
         orbitEvents.push(
           `markers:${settings.markersVisible};labels:${settings.labelsVisible};center:${settings.centerDistanceVisible};name:${settings.pointNameVisible}`,
@@ -2316,31 +2310,11 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         events.push(`maneuver:${startByDrag}`)
         mobileManeuverStartByDrag = startByDrag
       },
-      onTouchTargetControlSideChange: (side: 'left' | 'right') => {
-        events.push(`target:${side}`)
-        targetSide = side
-      },
-      onTouchTrajectoryControlSideChange: (
-        side: 'left' | 'right' | 'hidden',
-      ) => {
-        events.push(`trajectory:${side}`)
-        trajectorySide = side
-      },
     })
     const getCloseButton = () =>
       dialog.element.querySelector(
         '.app-dialog-close',
       ) as HTMLButtonElement | null
-    const getControlButton = (ariaLabel: string, value: string) =>
-      dialog.element.querySelector(
-        `[aria-label="${ariaLabel}"] [data-segmented-control-value="${value}"]`,
-      ) as HTMLButtonElement | null
-    const getSelectedValue = (ariaLabel: string) =>
-      dialog.element
-        .querySelector(
-          `[aria-label="${ariaLabel}"] .segmented-control-option-selected`,
-        )
-        ?.getAttribute('data-segmented-control-value')
     const getButtonByText = (text: string): HTMLButtonElement | undefined =>
       (
         Array.from(
@@ -2394,10 +2368,8 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         '.app-dialog-setting-group-label',
       ) as NodeListOf<HTMLElement>,
     ).map((label) => label.textContent)
-    const selectedAfterOpen = {
-      target: getSelectedValue('Target control side'),
-      trajectory: getSelectedValue('Trajectory control side'),
-    }
+    const controlSidesPresent =
+      dialog.element.querySelector('[aria-label="Control sides"]') !== null
     const maneuverSwitchInitial = getButtonByText(
       'Starts by drag or tap',
     )?.getAttribute('aria-checked')
@@ -2420,13 +2392,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const edgePanSpeedAfterIncrease = getEdgePanSpeed()
     const edgePanSpeedIncreaseDisabledAfterIncrease =
       getEdgePanSpeedButton('increase')?.disabled
-    getControlButton('Target control side', 'left')?.click()
-    getControlButton('Trajectory control side', 'right')?.click()
     dialog.syncState()
-    const selectedAfterChanges = {
-      target: getSelectedValue('Target control side'),
-      trajectory: getSelectedValue('Trajectory control side'),
-    }
     const maneuverSwitchAfter = getButtonByText(
       'Starts by drag or tap',
     )?.getAttribute('aria-checked')
@@ -2517,11 +2483,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const hiddenAfterEscape = dialog.element.hidden
     const focusRestoredAfterEscape = document.activeElement === beforeButton
 
-    targetSide = 'left'
+    mobileManeuverStartByDrag = true
     beforeButton.focus()
     dialog.open()
     getButtonByText('Spacecraft controls settings')?.click()
-    const targetSyncedOnOpen = getSelectedValue('Target control side')
+    const maneuverSyncedOnOpen = getButtonByText(
+      'Starts by drag or tap',
+    )?.getAttribute('aria-checked')
     dialog.element
       .querySelector('.app-dialog-backdrop')
       ?.dispatchEvent(
@@ -2567,6 +2535,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       hiddenTriggerWasActiveBeforeOpen,
       centerDistanceAfter,
       centerDistanceInitial,
+      controlSidesPresent,
       altitudeDisabledWhenLabelsOff,
       altitudeDisabledWhenMarkersOff,
       centerDisabledWhenLabelsOff,
@@ -2607,36 +2576,24 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       pointNameDisabledWhenLabelsOff,
       pointNameDisabledWhenMarkersOff,
       role,
-      selectedAfterChanges,
-      selectedAfterOpen,
       spacecraftControlGroup,
       spacecraftControlGroups,
       spacecraftFocusAfterOpen,
-      spacecraftSummaryAfterChangesIncludesTargetLeft:
-        spacecraftSummaryAfterChanges?.includes('target left'),
       spacecraftSummaryAfterChangesIncludesManeuverTap:
         spacecraftSummaryAfterChanges?.includes('maneuver tap'),
-      spacecraftSummaryInitialIncludesTrajectoryHidden:
-        spacecraftSummaryInitial?.includes('trajectory hidden'),
       spacecraftSummaryInitialIncludesManeuverDrag:
         spacecraftSummaryInitial?.includes('maneuver drag'),
       spacecraftTitleAfterOpen,
       titleAfterSpacecraftBack,
       titleAfterOrbitBack,
-      targetSyncedOnOpen,
+      maneuverSyncedOnOpen,
     }
   })
 
   expect(result).toEqual({
     activeAfterOpen: true,
     className: 'app-dialog ui-settings-dialog',
-    events: [
-      'maneuver:false',
-      'edgePan:true',
-      'edgePanSpeed:fast',
-      'target:left',
-      'trajectory:right',
-    ],
+    events: ['maneuver:false', 'edgePan:true', 'edgePanSpeed:fast'],
     focusAfterBackwardTrap: true,
     focusAfterForwardTrap: true,
     focusRestoredAfterBackdrop: true,
@@ -2649,6 +2606,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     hiddenTriggerWasActiveBeforeOpen: true,
     centerDistanceAfter: 'true',
     centerDistanceInitial: 'false',
+    controlSidesPresent: false,
     altitudeDisabledWhenLabelsOff: true,
     altitudeDisabledWhenMarkersOff: true,
     centerDisabledWhenLabelsOff: true,
@@ -2700,25 +2658,15 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     pointNameDisabledWhenLabelsOff: true,
     pointNameDisabledWhenMarkersOff: true,
     role: 'dialog',
-    selectedAfterChanges: {
-      target: 'left',
-      trajectory: 'right',
-    },
-    selectedAfterOpen: {
-      target: 'right',
-      trajectory: 'hidden',
-    },
-    spacecraftControlGroup: 'Control sides',
-    spacecraftControlGroups: ['Control sides', 'Maneuvers', 'Camera'],
+    spacecraftControlGroup: 'Maneuvers',
+    spacecraftControlGroups: ['Maneuvers', 'Camera'],
     spacecraftFocusAfterOpen: true,
-    spacecraftSummaryAfterChangesIncludesTargetLeft: true,
     spacecraftSummaryAfterChangesIncludesManeuverTap: true,
-    spacecraftSummaryInitialIncludesTrajectoryHidden: true,
     spacecraftSummaryInitialIncludesManeuverDrag: true,
     spacecraftTitleAfterOpen: 'Spacecraft controls settings',
     titleAfterSpacecraftBack: 'UI settings',
     titleAfterOrbitBack: 'UI settings',
-    targetSyncedOnOpen: 'left',
+    maneuverSyncedOnOpen: 'true',
   })
 })
 
@@ -2734,10 +2682,8 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
     const app = document.createElement('div')
     const events: string[] = []
     let touchControlsVisible = false
-    let targetControlAvailable = true
-    const trajectoryControlAvailable = true
-    let targetSide: 'left' | 'right' = 'right'
-    let trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
+    const targetSide: 'left' | 'right' = 'right'
+    const trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     const warpSide: 'left' | 'right' = 'right'
     let desktopEdgePanEnabled = false
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
@@ -2760,10 +2706,6 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchControlsVisible: () => touchControlsVisible,
-      getTouchTargetControlAvailable: () => targetControlAvailable,
-      getTouchTargetControlSide: () => targetSide,
-      getTouchTrajectoryControlAvailable: () => trajectoryControlAvailable,
-      getTouchTrajectoryControlSide: () => trajectorySide,
       onDesktopEdgePanEnabledChange: (enabled: boolean) => {
         events.push(`edgePan:${enabled}`)
         desktopEdgePanEnabled = enabled
@@ -2780,16 +2722,6 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
         events.push('orbit')
       },
       onOpenChange: () => {},
-      onTouchTargetControlSideChange: (side: 'left' | 'right') => {
-        events.push(`target:${side}`)
-        targetSide = side
-      },
-      onTouchTrajectoryControlSideChange: (
-        side: 'left' | 'right' | 'hidden',
-      ) => {
-        events.push(`trajectory:${side}`)
-        trajectorySide = side
-      },
     })
 
     const getButtonByText = (text: string): HTMLButtonElement | undefined =>
@@ -2819,7 +2751,6 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
     )
     const mobileManeuverSwitch = getButtonByText('Starts by drag or tap')
 
-    targetControlAvailable = false
     dialog.syncState()
     getButtonByText('Back')?.click()
     const partiallyHiddenSummary = getSummaryText()
@@ -2858,21 +2789,21 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
   expect(result.desktopPaneText).not.toContain('Burn side')
   expect(result.desktopPaneText).not.toContain('Starts by drag or tap')
 
-  expect(result.mobileControlSideGroupVisible).toBe(true)
+  expect(result.mobileControlSideGroupVisible).toBe(false)
   expect(result.mobileManeuverSwitchVisible).toBe(true)
   expect(result.mobilePaneText).not.toContain('Burn side')
   expect(result.mobilePaneText).not.toContain('Warp side')
-  expect(result.mobilePaneText).toContain('Target side')
-  expect(result.mobilePaneText).toContain('Trajectory side')
+  expect(result.mobilePaneText).not.toContain('Target side')
+  expect(result.mobilePaneText).not.toContain('Trajectory side')
   expect(result.mobilePaneText).toContain('Starts by drag or tap')
 
   expect(result.partiallyHiddenSummary).not.toContain('Burn left')
-  expect(result.partiallyHiddenSummary).toContain('trajectory hidden')
+  expect(result.partiallyHiddenSummary).not.toContain('trajectory hidden')
   expect(result.partiallyHiddenSummary).toContain('maneuver drag')
   expect(result.partiallyHiddenSummary).not.toContain('warp right')
   expect(result.partiallyHiddenSummary).not.toContain('target right')
   expect(result.partiallyHiddenPaneText).not.toContain('Burn side')
-  expect(result.partiallyHiddenPaneText).toContain('Trajectory side')
+  expect(result.partiallyHiddenPaneText).not.toContain('Trajectory side')
   expect(result.partiallyHiddenPaneText).not.toContain('Warp side')
   expect(result.partiallyHiddenPaneText).not.toContain('Target side')
   expect(result.events).toEqual([])
@@ -2969,8 +2900,6 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
         markersVisible: true,
         pointNameVisible: true,
       }),
-      getTouchTargetControlSide: () => 'left',
-      getTouchTrajectoryControlSide: () => 'hidden',
       onDesktopEdgePanEnabledChange: (enabled: boolean) => {
         desktopEdgePanEnabled = enabled
       },
@@ -2979,8 +2908,6 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
       },
       onMobileManeuverStartByDragChange: () => {},
       onOrbitPointDisplayChange: () => {},
-      onTouchTargetControlSideChange: () => {},
-      onTouchTrajectoryControlSideChange: () => {},
     })
 
     dialog.open()
@@ -3069,9 +2996,15 @@ test('captures wide in-game controls keyboard hints', async ({
       controlsDialog.getByText('Time warp', { exact: true }),
     ).toBeVisible()
     await expect(page.getByText('Burn latch')).toBeVisible()
-    await expect(page.getByText('Horizon', { exact: true })).toBeVisible()
+    await expect(
+      page
+        .getByLabel('In-game controls', { exact: true })
+        .getByText('Horizon', { exact: true }),
+    ).toBeVisible()
     await expect(page.getByText('Toggle Info', { exact: true })).toBeVisible()
-    await expect(page.getByText('Clear Info pins', { exact: true })).toBeVisible()
+    await expect(
+      page.getByText('Clear Info pins', { exact: true }),
+    ).toBeVisible()
     await expect(
       controlsDialog.getByRole('group', { name: 'Follow' }),
     ).toBeVisible()
@@ -3155,10 +3088,13 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   await expect(
     page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
   ).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Control sides' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Control sides' })).toHaveCount(
+    0,
+  )
   await expect(page.getByRole('group', { name: 'Maneuvers' })).toBeVisible()
   await expect(page.getByText('Burn side')).toHaveCount(0)
-  await expect(page.getByText('Trajectory side')).toBeVisible()
+  await expect(page.getByText('Target side')).toHaveCount(0)
+  await expect(page.getByText('Trajectory side')).toHaveCount(0)
   await expect(page.getByText('Starts by drag or tap')).toBeVisible()
   await expect(page.getByText('Starts by drag', { exact: true })).toBeVisible()
   await expect(page.getByText('Turn on scrolling by edge pan')).toHaveCount(0)
@@ -3292,23 +3228,19 @@ test('captures the mobile Time Warp control in Nav', async ({
   )
 })
 
-test('captures the mobile trajectory horizon touch control after reveal', async ({
+test('captures the mobile trajectory horizon control in Nav', async ({
   page,
 }, testInfo) => {
-  await startReachMoonMission(page, 'touchTrajectorySide=right')
+  await startReachMoonMission(page, 'touchTrajectorySide=hidden')
 
-  await page
-    .getByRole('button', {
-      name: 'Reveal trajectory prediction horizon control',
-    })
-    .click()
-  const trajectoryReveal = page.locator('#touch-trajectory-horizon-reveal')
-  await expect(trajectoryReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await page.getByRole('button', { name: 'Open Nav panel' }).click()
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
   await expect(
-    trajectoryReveal.getByLabel('Trajectory prediction horizon control', {
+    navPanel.getByLabel('Trajectory prediction horizon control', {
       exact: true,
     }),
   ).toBeVisible()
+  await expect(page.locator('#touch-trajectory-horizon-reveal')).toHaveCount(0)
 
   await attachMobileScreenshot(
     page,
@@ -3317,21 +3249,39 @@ test('captures the mobile trajectory horizon touch control after reveal', async 
   )
 })
 
-test('captures the mobile target selector side panel after reveal', async ({
+test('captures automatic and manual-recommended Target states in Nav', async ({
   page,
 }, testInfo) => {
-  await startReachMoonMission(page)
+  await startReachMoonMission(page, 'touchTargetSide=right')
 
-  await page
-    .getByRole('button', { name: /Reveal target body selector/ })
-    .click()
-  const targetReveal = page.locator('#touch-target-reveal')
-  await expect(targetReveal).toHaveClass(/touch-edge-reveal-control-open/)
+  await page.getByRole('button', { name: 'Open Nav panel' }).click()
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const targetControl = navPanel.getByLabel('Target body selector', {
+    exact: true,
+  })
+  await expect(targetControl).toBeVisible()
+  await expect(page.locator('#touch-target-reveal')).toHaveCount(0)
+
+  await attachMobileScreenshot(page, testInfo, 'mobile-target-selector-auto')
+
+  await targetControl.getByRole('button', { name: /^Moon,/ }).click()
+  await expect(navPanel).toBeVisible()
   await expect(
-    targetReveal.getByLabel('Target body selector', { exact: true }),
+    targetControl.getByRole('button', { name: /^Moon,.*pinned target/ }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /target recommended/ }),
+  ).toBeVisible()
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-target-selector-manual-recommended',
+  )
 
-  await attachMobileScreenshot(page, testInfo, 'mobile-target-selector')
+  await targetControl
+    .getByRole('switch', { name: /Automatic targeting off/ })
+    .click()
+  await expect(navPanel).toBeVisible()
 })
 
 test('captures the mobile thrust touch control in Flight', async ({

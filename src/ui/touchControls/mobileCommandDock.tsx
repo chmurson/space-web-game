@@ -9,7 +9,12 @@ import { addTapSafeButtonHandler } from '../tapSafeButtonHandler'
 import './mobileCommandDock.css'
 
 export type MobileCommandDockPanel = 'flight' | 'info' | 'nav'
-type MobileCommandDockTutorialFocus = 'burn' | 'warp' | null
+type MobileCommandDockTutorialFocus =
+  | 'burn'
+  | 'target'
+  | 'trajectory'
+  | 'warp'
+  | null
 
 type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
   cameraCanRecenter: boolean
@@ -17,10 +22,13 @@ type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
   cameraFollow: CameraFollowSubject
   controlsAvailable: {
     rcsYaw: boolean
+    target: boolean
     thrust: boolean
     timeWarp: boolean
+    trajectory: boolean
   }
   openPanel: MobileCommandDockPanel | null
+  targetRecommendationName: string | null
   timeWarpReason: TimeWarpFeedbackReason | null
   timeWarpStatus: string
   timeWarpStatusTone: 'available' | 'capped'
@@ -62,6 +70,7 @@ const MobileCommandDockSurface = ({
   controlsAvailable,
   openPanel,
   rootRef,
+  targetRecommendationName,
   timeWarpReason,
   timeWarpStatus,
   timeWarpStatusTone,
@@ -69,8 +78,15 @@ const MobileCommandDockSurface = ({
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
   const infoOpen = openPanel === 'info'
-  const cameraRecenterDisabled =
-    cameraControlsLocked || !cameraCanRecenter
+  let navButtonLabel = getPanelButtonLabel({
+    available: true,
+    label: 'Nav',
+    open: openPanel === 'nav',
+  })
+  if (targetRecommendationName) {
+    navButtonLabel += `; ${targetRecommendationName} target recommended`
+  }
+  const cameraRecenterDisabled = cameraControlsLocked || !cameraCanRecenter
   let cameraRecenterAriaLabel = 'Camera already centered on followed subject'
   if (cameraControlsLocked) {
     cameraRecenterAriaLabel =
@@ -183,6 +199,36 @@ const MobileCommandDockSurface = ({
             </button>
           </div>
         </div>
+        <div class="mobile-command-dock-nav-guidance">
+          <section
+            aria-label="Target"
+            class="mobile-command-dock-nav-target"
+            data-available={String(controlsAvailable.target)}
+            data-recommended={String(targetRecommendationName !== null)}
+            hidden={!controlsAvailable.target}
+            tabIndex={-1}
+          >
+            <div class="mobile-command-dock-nav-heading">
+              <span>Target</span>
+            </div>
+            <div class="mobile-command-dock-target-control-host" />
+          </section>
+          <section
+            aria-label="Trajectory"
+            class="mobile-command-dock-nav-trajectory"
+            data-available={String(controlsAvailable.trajectory)}
+            hidden={!controlsAvailable.trajectory}
+            tabIndex={-1}
+          >
+            <div class="mobile-command-dock-nav-heading">
+              <span>Trajectory</span>
+              <span class="mobile-command-dock-nav-heading-detail">
+                Horizon
+              </span>
+            </div>
+            <div class="mobile-command-dock-trajectory-control-host" />
+          </section>
+        </div>
       </section>
 
       <nav aria-label="Mobile commands" class="mobile-command-dock-bar">
@@ -234,12 +280,9 @@ const MobileCommandDockSurface = ({
         <button
           aria-controls="mobile-command-dock-nav-panel"
           aria-expanded={openPanel === 'nav'}
-          aria-label={getPanelButtonLabel({
-            available: true,
-            label: 'Nav',
-            open: openPanel === 'nav',
-          })}
+          aria-label={navButtonLabel}
           class="mobile-command-dock-item"
+          data-target-recommended={String(targetRecommendationName !== null)}
           id="mobile-command-dock-nav-button"
           type="button"
         >
@@ -309,13 +352,20 @@ export const createMobileCommandDock = (options: {
   flightControlsElement.append(rcsYawGroup, thrustGroup)
   const timeWarpContainer = document.createElement('div')
   timeWarpContainer.className = 'mobile-command-dock-time-warp-control'
+  const targetContainer = document.createElement('div')
+  targetContainer.className = 'mobile-command-dock-target-control'
+  const trajectoryContainer = document.createElement('div')
+  trajectoryContainer.className = 'mobile-command-dock-trajectory-control'
 
   let controlsAvailable = {
     rcsYaw: true,
+    target: true,
     thrust: true,
     timeWarp: true,
+    trajectory: true,
   }
   let openPanel: MobileCommandDockPanel | null = null
+  let targetRecommendationName: string | null = null
   let timeWarpReason: TimeWarpFeedbackReason | null = null
   let timeWarpStatus = ''
   let timeWarpStatusTone: 'available' | 'capped' = 'available'
@@ -342,7 +392,18 @@ export const createMobileCommandDock = (options: {
     const timeWarpHost = surface.element.querySelector<HTMLElement>(
       '.mobile-command-dock-time-warp-host',
     )
-    if (!flightControlsHost || !timeWarpHost) {
+    const targetHost = surface.element.querySelector<HTMLElement>(
+      '.mobile-command-dock-target-control-host',
+    )
+    const trajectoryHost = surface.element.querySelector<HTMLElement>(
+      '.mobile-command-dock-trajectory-control-host',
+    )
+    if (
+      !flightControlsHost ||
+      !timeWarpHost ||
+      !targetHost ||
+      !trajectoryHost
+    ) {
       throw new Error('Mobile command dock rendered without control hosts')
     }
     if (flightControlsElement.parentElement !== flightControlsHost) {
@@ -350,6 +411,12 @@ export const createMobileCommandDock = (options: {
     }
     if (timeWarpContainer.parentElement !== timeWarpHost) {
       timeWarpHost.appendChild(timeWarpContainer)
+    }
+    if (targetContainer.parentElement !== targetHost) {
+      targetHost.appendChild(targetContainer)
+    }
+    if (trajectoryContainer.parentElement !== trajectoryHost) {
+      trajectoryHost.appendChild(trajectoryContainer)
     }
     rcsYawGroup.hidden = !controlsAvailable.rcsYaw
     thrustGroup.hidden = !controlsAvailable.thrust
@@ -380,6 +447,7 @@ export const createMobileCommandDock = (options: {
       cameraFollow: options.getCameraFollow(),
       controlsAvailable,
       openPanel,
+      targetRecommendationName,
       timeWarpReason,
       timeWarpStatus,
       timeWarpStatusTone,
@@ -492,13 +560,17 @@ export const createMobileCommandDock = (options: {
     rcsYawContainer,
     setControlAvailability(nextAvailability: {
       rcsYaw: boolean
+      target: boolean
       thrust: boolean
       timeWarp: boolean
+      trajectory: boolean
     }) {
       if (
         controlsAvailable.rcsYaw === nextAvailability.rcsYaw &&
+        controlsAvailable.target === nextAvailability.target &&
         controlsAvailable.thrust === nextAvailability.thrust &&
-        controlsAvailable.timeWarp === nextAvailability.timeWarp
+        controlsAvailable.timeWarp === nextAvailability.timeWarp &&
+        controlsAvailable.trajectory === nextAvailability.trajectory
       ) {
         return
       }
@@ -513,6 +585,14 @@ export const createMobileCommandDock = (options: {
         return
       }
       if (tutorialFocused === 'warp' && controlsAvailable.timeWarp) {
+        setOpenPanel('nav')
+        return
+      }
+      if (tutorialFocused === 'target' && controlsAvailable.target) {
+        setOpenPanel('nav')
+        return
+      }
+      if (tutorialFocused === 'trajectory' && controlsAvailable.trajectory) {
         setOpenPanel('nav')
         return
       }
@@ -538,6 +618,14 @@ export const createMobileCommandDock = (options: {
       timeWarpStatusTone = nextState.tone
       renderState()
     },
+    setTargetRecommendation(recommendedTargetName: string | null) {
+      if (targetRecommendationName === recommendedTargetName) {
+        return
+      }
+
+      targetRecommendationName = recommendedTargetName
+      renderState()
+    },
     setTutorialFocused(focused: MobileCommandDockTutorialFocus) {
       tutorialFocused = focused
       if (focused === 'burn' && isFlightAvailable()) {
@@ -548,10 +636,20 @@ export const createMobileCommandDock = (options: {
         setOpenPanel('nav')
         return
       }
+      if (focused === 'target' && controlsAvailable.target) {
+        setOpenPanel('nav')
+        return
+      }
+      if (focused === 'trajectory' && controlsAvailable.trajectory) {
+        setOpenPanel('nav')
+        return
+      }
       renderState()
     },
+    targetContainer,
     thrustContainer,
     toggleInfoPanel: () => setOpenPanel(openPanel === 'info' ? null : 'info'),
     timeWarpContainer,
+    trajectoryContainer,
   }
 }

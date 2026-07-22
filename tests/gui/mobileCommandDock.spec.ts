@@ -292,7 +292,7 @@ test('recenters target framing above Nav using the current playable viewport', a
   })
 })
 
-test('keeps Time Warp and camera controls together in Nav', async ({
+test('keeps Time Warp, camera, Target, and Trajectory controls together in Nav', async ({
   page,
 }) => {
   await page.goto('/')
@@ -332,18 +332,28 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     const tutorialFocusWhileAlreadyOpen = dock.element.dataset.tutorialFocused
     dock.setControlAvailability({
       rcsYaw: true,
+      target: true,
       thrust: true,
       timeWarp: false,
+      trajectory: true,
     })
     dock.setControlAvailability({
       rcsYaw: true,
+      target: true,
       thrust: true,
       timeWarp: true,
+      trajectory: true,
     })
     const timeWarpAvailableAfterRestore = dock.element
       .querySelector('.mobile-command-dock-nav-time-warp')
       ?.getAttribute('data-available')
 
+    dock.setOpenPanel(null)
+    dock.setTutorialFocused('target')
+    const targetTutorialPanel = app.dataset.mobileCommandDockPanel
+    dock.setOpenPanel(null)
+    dock.setTutorialFocused('trajectory')
+    const trajectoryTutorialPanel = app.dataset.mobileCommandDockPanel
     dock.setOpenPanel(null)
     dock.setTutorialFocused('warp')
     const targetButton = dock.element.querySelector<HTMLButtonElement>(
@@ -356,13 +366,13 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     const recenterAriaLabelInitial = recenterButton?.getAttribute('aria-label')
     cameraCanRecenter = true
     dock.syncState()
-    const recenterButtonAfterPan = dock.element.querySelector<HTMLButtonElement>(
-      '[data-mobile-camera-action="recenter"]',
-    )
+    const recenterButtonAfterPan =
+      dock.element.querySelector<HTMLButtonElement>(
+        '[data-mobile-camera-action="recenter"]',
+      )
     const recenterDisabledAfterPan = recenterButtonAfterPan?.disabled
-    const recenterPressableAfterPan = recenterButtonAfterPan?.classList.contains(
-      'ui-pressable-strong',
-    )
+    const recenterPressableAfterPan =
+      recenterButtonAfterPan?.classList.contains('ui-pressable-strong')
     targetButton?.click()
     recenterButtonAfterPan?.click()
     cameraControlsLocked = true
@@ -388,8 +398,16 @@ test('keeps Time Warp and camera controls together in Nav', async ({
       timeWarpStatus: dock.element.querySelector(
         '.mobile-command-dock-time-warp-status',
       )?.textContent,
+      targetHostCount: dock.element.querySelectorAll(
+        '.mobile-command-dock-target-control-host',
+      ).length,
+      trajectoryHostCount: dock.element.querySelectorAll(
+        '.mobile-command-dock-trajectory-control-host',
+      ).length,
       tutorialFocus: dock.element.dataset.tutorialFocused,
       tutorialFocusWhileAlreadyOpen,
+      targetTutorialPanel,
+      trajectoryTutorialPanel,
     }
   })
 
@@ -405,6 +423,10 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     openPanel: 'nav',
     timeWarpAvailableAfterRestore: 'true',
     timeWarpStatus: '',
+    targetHostCount: 1,
+    targetTutorialPanel: 'nav',
+    trajectoryHostCount: 1,
+    trajectoryTutorialPanel: 'nav',
     tutorialFocus: 'warp',
     tutorialFocusWhileAlreadyOpen: 'warp',
   })
@@ -466,8 +488,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       }),
       getTimeWarpPreviews: () => [],
       getTrajectoryHorizonPreviews: () => [],
-      initialTargetControlSide: 'left',
-      initialTrajectoryControlSide: 'hidden',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({
@@ -706,6 +726,10 @@ test('ships Flight, Info, and Nav as available dock panels', async ({
   await expect(navPanel).toBeVisible()
   await expect(navPanel.getByLabel('Time Warp', { exact: true })).toBeVisible()
   await expect(navPanel.getByRole('group', { name: 'Follow' })).toBeVisible()
+  await expect(navPanel.getByLabel('Target body selector')).toBeVisible()
+  await expect(
+    navPanel.getByLabel('Trajectory prediction horizon control'),
+  ).toBeVisible()
   await expect(navPanel.locator('[data-camera-follow-option]')).toHaveCount(2)
   await expect(
     navPanel.getByRole('button', {
@@ -715,7 +739,9 @@ test('ships Flight, Info, and Nav as available dock panels', async ({
   await expect(navPanel.locator('[data-camera-view-option]')).toHaveCount(0)
   await expect(navPanel).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(
-    page.locator('#touch-time-warp-reveal, #touch-time-warp-prototype-reveal'),
+    page.locator(
+      '#touch-time-warp-reveal, #touch-time-warp-prototype-reveal, #touch-target-reveal, #touch-trajectory-horizon-reveal',
+    ),
   ).toHaveCount(0)
 })
 
@@ -901,6 +927,10 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
     (navPanelBounds?.y ?? 0) + (navPanelBounds?.height ?? 0),
   )
   await expect(page.locator('.mobile-command-dock-nav-camera')).toBeVisible()
+  await expect(page.locator('.mobile-command-dock-nav-target')).toBeVisible()
+  await expect(
+    page.locator('.mobile-command-dock-nav-trajectory'),
+  ).toBeVisible()
 })
 
 test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
@@ -1070,6 +1100,217 @@ test('captures normal, capped, and blocked Time Warp feedback in Nav', async ({
         key: 'w',
       }),
     )
+  })
+})
+
+test('captures Target modes and Trajectory availability states in Nav', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/')
+
+  await page.evaluate(async () => {
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    const touchControlsModulePath =
+      '/src/ui/touchControls/createTouchControls.ts'
+    const trajectoryPolicyModulePath =
+      '/src/runtime/trajectoryHorizonControlPolicy.ts'
+    const [{ createTouchControls }, trajectoryPolicy] = await Promise.all([
+      import(touchControlsModulePath) as Promise<TouchControlsModule>,
+      import(trajectoryPolicyModulePath),
+    ])
+    const earth = {
+      color: '#38BDF8',
+      id: 'earth',
+      mass: 1,
+      name: 'Earth',
+      position: { x: 0, y: 0 },
+      radius: 1,
+      velocity: { x: 0, y: 0 },
+    }
+    const moon = {
+      ...earth,
+      color: '#CBD5E1',
+      id: 'moon',
+      name: 'Moon',
+    }
+    const bodies = [earth, moon]
+    let targetState = {
+      activeTarget: earth,
+      mode: 'auto' as 'auto' | 'forced' | 'manual',
+      recommendedTarget: moon,
+    }
+    let trajectoryHorizonHours = 1
+    let maxTrajectoryHorizonHours = 4
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+    const controls = createTouchControls({
+      app,
+      automaticTargetingAvailable: true,
+      commitTimeWarp: () => {},
+      commitTrajectoryHorizon: (action) => {
+        trajectoryHorizonHours = trajectoryPolicy.getNextTrajectoryHorizonHours(
+          {
+            action,
+            currentHours: trajectoryHorizonHours,
+            maxHours: maxTrajectoryHorizonHours,
+            minHours: 0.5,
+          },
+        )
+      },
+      getAssistTargetUiState: () => targetState,
+      getCameraCanRecenter: () => false,
+      getCameraControlsLocked: () => false,
+      getCameraFollow: () => 'spacecraft',
+      getCurrentTimeWarp: () => 1,
+      getCurrentTrajectoryHorizonHours: () => trajectoryHorizonHours,
+      getInteractionsEnabled: () => true,
+      getMobileManeuverStartByDrag: () => true,
+      getSpacecraftVisible: () => true,
+      getTargetControlRows: () =>
+        bodies.map((body, index) => ({
+          body,
+          distanceMeters: (index + 1) * 1_000_000,
+          index,
+        })),
+      getTimeWarpPreview: () => ({
+        canCommit: true,
+        reason: null,
+        value: 1,
+      }),
+      getTimeWarpPreviews: () => [],
+      getTrajectoryHorizonPreviews: (action, count) =>
+        trajectoryPolicy.getTrajectoryHorizonPreviews({
+          action,
+          count,
+          currentHours: trajectoryHorizonHours,
+          maxHours: maxTrajectoryHorizonHours,
+          minHours: 0.5,
+        }),
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({
+          main: 0,
+          reverse: 0,
+          strafe: 0,
+          turn: 0,
+        }),
+        hasManualTurn: () => false,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+        setVirtualTurn: () => {},
+      },
+      onCameraFollowSelect: () => {},
+      onCameraPanGesture: () => false,
+      onCameraRecenter: () => {},
+      onReturnToAutomaticTarget: () => {
+        targetState = {
+          activeTarget: earth,
+          mode: 'auto',
+          recommendedTarget: moon,
+        }
+        return true
+      },
+      onSelectTargetIndex: (index) => {
+        targetState = {
+          activeTarget: bodies[index] ?? earth,
+          mode: 'manual',
+          recommendedTarget: earth,
+        }
+        return true
+      },
+      onTargetHeadingPlan: () => {},
+      onTargetHeadingPlanCanceled: () => {},
+      onTargetHeadingPlanCommitted: () => true,
+      onThrustControlUiStateChange: () => {},
+      onZoom: () => {},
+    })
+
+    app.addEventListener('nav-test-state', (event) => {
+      const stateName = (event as CustomEvent<string>).detail
+      if (stateName === 'forced') {
+        targetState = {
+          activeTarget: moon,
+          mode: 'forced',
+          recommendedTarget: earth,
+        }
+      } else if (stateName === 'trajectory-capped') {
+        trajectoryHorizonHours = 1
+        maxTrajectoryHorizonHours = 1
+      } else if (stateName === 'trajectory-unavailable') {
+        controls.setTrajectoryControlVisible(false)
+      }
+      controls.syncUi()
+    })
+
+    controls.element
+      .querySelector<HTMLButtonElement>('#mobile-command-dock-nav-button')
+      ?.click()
+  })
+
+  await isolateMobileControlLayer(page)
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const targetControl = navPanel.getByLabel('Target body selector')
+  const trajectoryControl = navPanel.getByLabel(
+    'Trajectory prediction horizon control',
+  )
+  await expect(navPanel).toBeVisible()
+  await expect(targetControl.getByRole('switch')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await expect(trajectoryControl).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-nav-target-auto-trajectory-normal.png'),
+  })
+
+  await targetControl.getByRole('button', { name: /^Moon,/ }).click()
+  await expect(navPanel).toBeVisible()
+  await expect(
+    page.locator('#mobile-command-dock-nav-button'),
+  ).toHaveAccessibleName(/Earth target recommended/)
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-nav-target-manual-recommended.png'),
+  })
+
+  await page.locator('#app').evaluate((app) => {
+    app.dispatchEvent(new CustomEvent('nav-test-state', { detail: 'forced' }))
+  })
+  await expect(targetControl.locator('button:not(:disabled)')).toHaveCount(0)
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-nav-target-forced.png'),
+  })
+
+  await page.locator('#app').evaluate((app) => {
+    app.dispatchEvent(
+      new CustomEvent('nav-test-state', { detail: 'trajectory-capped' }),
+    )
+  })
+  await expect(
+    trajectoryControl.locator('.touch-step-selector-value-current'),
+  ).toHaveText('1h')
+  await expect(
+    trajectoryControl.locator('.touch-step-selector-value-disabled'),
+  ).not.toHaveCount(0)
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-nav-trajectory-capped.png'),
+  })
+
+  await page.locator('#app').evaluate((app) => {
+    app.dispatchEvent(
+      new CustomEvent('nav-test-state', { detail: 'trajectory-unavailable' }),
+    )
+  })
+  await expect(trajectoryControl).toBeHidden()
+  await expect(targetControl).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-nav-trajectory-unavailable.png'),
   })
 })
 
