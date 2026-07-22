@@ -32,7 +32,7 @@ const setTimeWarp = async (page: Page, timeWarp: number) => {
   }, index)
 }
 
-test('caps manual RCS at x15m while thrust keeps the x1m cap', async ({
+test('caps manual RCS at x15s while thrust-only keeps the x1m cap', async ({
   page,
 }, testInfo: TestInfo) => {
   await startGame(page)
@@ -41,27 +41,28 @@ test('caps manual RCS at x15m while thrust keeps the x1m cap', async ({
   await page.keyboard.down('KeyD')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
-    .toBe(900)
+    .toBe(15)
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
     .toBe(1)
-  await expect(page.locator('[data-stat="time"]')).toContainText('x15m')
+  await expect(page.locator('[data-stat="time"]')).toContainText('x15s')
   await page.screenshot({
-    path: testInfo.outputPath('manual-rcs-x15m.png'),
+    path: testInfo.outputPath('manual-rcs-x15s.png'),
   })
 
   await page.keyboard.down('KeyW')
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
+    .toBe(15)
+  await expect(page.locator('[data-stat="time"]')).toContainText('x15s')
+
+  await page.keyboard.up('KeyD')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
     .toBe(60)
   await expect(page.locator('[data-stat="time"]')).toContainText('x1m')
 
   await page.keyboard.up('KeyW')
-  await expect
-    .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
-    .toBe(900)
-
-  await page.keyboard.up('KeyD')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
     .toBe(1800)

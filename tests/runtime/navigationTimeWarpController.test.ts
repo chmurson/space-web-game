@@ -70,14 +70,14 @@ describe('createNavigationTimeWarpController', () => {
   it('tracks a changing control cap without losing the original selection', () => {
     const controller = createController()
     const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
-    const rcsTimeWarpIndex = requestedTimeWarps.indexOf(900)
+    const rcsTimeWarpIndex = requestedTimeWarps.indexOf(15)
     const thrustTimeWarpIndex = requestedTimeWarps.indexOf(60)
 
     expect(
       controller.resolveFrame({
         maxTimeWarp: null,
         nowMs: 0,
-        simulationControlMaxWarp: 900,
+        simulationControlMaxWarp: 15,
         timeWarpIndex: originalTimeWarpIndex,
       }),
     ).toBe(rcsTimeWarpIndex)
@@ -93,7 +93,7 @@ describe('createNavigationTimeWarpController', () => {
       controller.resolveFrame({
         maxTimeWarp: null,
         nowMs: 200,
-        simulationControlMaxWarp: 900,
+        simulationControlMaxWarp: 15,
         timeWarpIndex: thrustTimeWarpIndex,
       }),
     ).toBe(rcsTimeWarpIndex)

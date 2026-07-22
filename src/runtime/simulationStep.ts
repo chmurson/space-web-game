@@ -80,7 +80,7 @@ export type StepSimulationFrameResult = {
 }
 
 export const defaultMaxControlWarp = 100
-const temporaryMaxRcsTurnWarp = 15 * 60
+const temporaryMaxRcsTurnWarp = 15
 
 const targetHeadingDeadZone = 0.015
 const targetHeadingTurnBaseAccelerationSeconds = 0.65
@@ -390,15 +390,16 @@ const getActiveControlMaxWarp = (
   manualRcsTurnActive: boolean,
   maxControlWarp: number,
 ) => {
-  if (controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0) {
-    return maxControlWarp
+  const linearThrustActive =
+    controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0
+
+  if (manualRcsTurnActive && controls.turn !== 0) {
+    return linearThrustActive
+      ? Math.min(maxControlWarp, temporaryMaxRcsTurnWarp)
+      : temporaryMaxRcsTurnWarp
   }
 
-  if (controls.turn === 0) {
-    return null
-  }
-
-  return manualRcsTurnActive ? temporaryMaxRcsTurnWarp : maxControlWarp
+  return linearThrustActive || controls.turn !== 0 ? maxControlWarp : null
 }
 
 export const resolveSimulationTimeWarp = (
