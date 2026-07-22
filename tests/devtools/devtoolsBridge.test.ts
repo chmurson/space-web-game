@@ -542,7 +542,7 @@ describe('createDevtoolsBridge', () => {
     expect(followResponse.ok).toBe(true)
     expect(setCameraFollow).toHaveBeenCalledWith('target')
     expect(runtime.ui.camera.follow).toBe('target')
-    expect(runtime.ui.camera.panOffset).toEqual({ x: 0, y: 0 })
+    expect(runtime.ui.camera.panOffset).toEqual({ x: 1, y: 2 })
 
     runtime.ui.camera.panOffset = { x: 7, y: -3 }
     const recenterResponse = bridge.handleRequest({

@@ -169,9 +169,8 @@ describe('createInfoHudView', () => {
       runtime,
     })
 
-    expect(view.rows.slice(-2).map(({ distanceLabel }) => distanceLabel)).toEqual([
-      '—',
-      '—',
-    ])
+    expect(
+      view.rows.slice(-2).map(({ distanceLabel }) => distanceLabel),
+    ).toEqual(['—', '—'])
   })
 })

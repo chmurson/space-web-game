@@ -45,20 +45,11 @@ type DebugScenarioSnapshotV2 = {
   runtimeScenario?: RuntimeScenarioSession
 }
 
-type DebugScenarioSnapshotV3 = {
+type DebugScenarioSnapshotV3 = Omit<DebugScenarioSnapshotV2, 'version'> & {
   version: 3
-  savedAt: string
-  assistTargetIndex?: number
-  assistTargetSelectionMode?: AssistTargetSelectionMode
   cameraFollow?: CameraFollowSubject
   cameraPanOffset?: Vec2
   cameraView?: 'free' | 'locked'
-  elapsed: number
-  viewportSize?: number
-  coastPredictionHorizonHours?: number
-  bodies: Body[]
-  spacecraft: Spacecraft
-  runtimeScenario?: RuntimeScenarioSession
   userInfoPins?: InfoPin[]
 }
 

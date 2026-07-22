@@ -69,11 +69,21 @@ test('names the centered target for desktop keyboard camera actions', async ({
   await attachScreenshot(page, testInfo, 'desktop-camera-centered-notice')
 })
 
-test('does not show camera notices for unassigned L or pointer drag', async ({
+test('does not show camera notices for modified C, unassigned L, or pointer drag', async ({
   page,
 }) => {
   await startReachMoonMission(page)
 
+  for (const shortcut of [
+    'Alt+KeyC',
+    'Control+KeyC',
+    'Meta+KeyC',
+    'Alt+Shift+KeyC',
+    'Control+Shift+KeyC',
+    'Meta+Shift+KeyC',
+  ]) {
+    await page.keyboard.press(shortcut)
+  }
   await page.keyboard.press('KeyL')
 
   const canvas = page.locator('canvas')

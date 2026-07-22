@@ -2093,6 +2093,8 @@ test('keeps the in-game controls menu adapter state and actions', async ({
       'Time warp [ / ]',
       'Horizon Shift + [ / ]',
       'Target selector T',
+      'Toggle Info I',
+      'Clear Info pins Shift + I',
       'Switch camera follow C',
       'Recenter camera Shift + C',
     ],
@@ -3047,6 +3049,19 @@ test('captures wide in-game controls keyboard hints', async ({
     await expect(
       page.getByRole('group', { name: 'Keyboard shortcuts' }),
     ).toBeVisible()
+    const controlsBounds = await controlsDialog.boundingBox()
+    expect(controlsBounds).not.toBeNull()
+    expect(controlsBounds?.y ?? -1).toBeGreaterThanOrEqual(0)
+    expect(
+      (controlsBounds?.y ?? 0) + (controlsBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(720)
+    const controlsScrollMetrics = await controlsDialog.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }))
+    expect(controlsScrollMetrics.scrollHeight).toBeGreaterThan(
+      controlsScrollMetrics.clientHeight,
+    )
     await expect(page.getByText('Normal burn')).toBeVisible()
     await expect(page.getByText('Turn', { exact: true })).toBeVisible()
     await expect(page.getByText('Precise turn', { exact: true })).toBeVisible()
@@ -3102,6 +3117,14 @@ test('captures wide in-game controls keyboard hints', async ({
         hasText: 'View',
       }),
     ).toHaveCount(0)
+    await attachMobileScreenshot(
+      page,
+      testInfo,
+      'wide-in-game-controls-menu-top',
+    )
+    await controlsDialog.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
 
     await attachMobileScreenshot(
       page,
