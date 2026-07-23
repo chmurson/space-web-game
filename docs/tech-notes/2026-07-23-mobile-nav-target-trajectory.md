@@ -25,6 +25,10 @@ Shipit state:
 - Added focused browser coverage and screenshots for automatic,
   recommended/manual, and forced Target states and normal, capped, and
   unavailable Trajectory states.
+- A visual follow-up removed the redundant `Horizon` detail from the fixed
+  70px Trajectory heading, made the vertically scrollable Nav panel explicitly
+  contain horizontal overflow, and reordered the dock to Flight, Nav, Info,
+  Ship, Settings.
 
 ## Why
 
@@ -95,11 +99,18 @@ single predictable surface without changing simulation policy.
   precise-yaw assertion: `keyboardInput.ts` now intentionally emits `-0.25`,
   while its unchanged GUI assertion still expects `-1 / 49`. The failure
   reproduces in isolation, and this branch does not change either file.
+- The horizontal-overflow and dock-order follow-up passed its focused 2/2
+  Playwright checks. At 430px the open Nav panel's `scrollWidth` equals its
+  `clientWidth`, and the test verifies vertical-only overflow plus the
+  Flight/Nav/Info/Ship/Settings DOM order. The follow-up full GUI run passed
+  every changed check and finished 82/84: the unchanged precise-yaw mismatch
+  above remained, and the unchanged timing-sensitive Time Warp screenshot
+  sampled `x4s` instead of `x4m`, including in an isolated rerun.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
   collapsed/open, recommended/manual, forced, capped, and unavailable states.
-  The controls remain legible and non-overlapping. At 320 px the redundant
-  secondary `Horizon` heading hides and Recenter stacks below Follow; at larger
-  widths Camera keeps its compact single row:
+  The controls remain legible and non-overlapping. The redundant secondary
+  `Horizon` heading is removed at all widths; at 320 px Recenter stacks below
+  Follow, while at larger widths Camera keeps its compact single row:
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-320.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-390.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-430.png`

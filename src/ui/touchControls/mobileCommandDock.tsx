@@ -237,9 +237,6 @@ const MobileCommandDockSurface = ({
             >
               <div class="mobile-command-dock-nav-heading">
                 <span>Trajectory</span>
-                <span class="mobile-command-dock-nav-heading-detail">
-                  Horizon
-                </span>
               </div>
               <div class="mobile-command-dock-trajectory-control-host" />
             </section>
@@ -321,6 +318,24 @@ const MobileCommandDockSurface = ({
           <span>Flight</span>
         </button>
         <button
+          aria-controls="mobile-command-dock-nav-panel"
+          aria-expanded={openPanel === 'nav'}
+          aria-label={navButtonLabel}
+          class="mobile-command-dock-item"
+          data-target-recommended={String(targetRecommendationName !== null)}
+          id="mobile-command-dock-nav-button"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="mobile-command-dock-item-icon"
+            viewBox="0 0 24 24"
+          >
+            <path d={navIconPath} />
+          </svg>
+          <span>Nav</span>
+        </button>
+        <button
           aria-controls="mobile-command-dock-info-panel"
           aria-expanded={infoOpen}
           aria-keyshortcuts="I"
@@ -342,24 +357,6 @@ const MobileCommandDockSurface = ({
             <path d="M12 10.5v6M12 7.5v.2" />
           </svg>
           <span>Info</span>
-        </button>
-        <button
-          aria-controls="mobile-command-dock-nav-panel"
-          aria-expanded={openPanel === 'nav'}
-          aria-label={navButtonLabel}
-          class="mobile-command-dock-item"
-          data-target-recommended={String(targetRecommendationName !== null)}
-          id="mobile-command-dock-nav-button"
-          type="button"
-        >
-          <svg
-            aria-hidden="true"
-            class="mobile-command-dock-item-icon"
-            viewBox="0 0 24 24"
-          >
-            <path d={navIconPath} />
-          </svg>
-          <span>Nav</span>
         </button>
         {unavailableDockItems.map((item) => (
           <button

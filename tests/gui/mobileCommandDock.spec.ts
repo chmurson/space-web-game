@@ -700,7 +700,7 @@ test('keeps dock touches out of camera and heading input while the playfield rem
   expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships Flight, Info, and Nav as available dock panels', async ({
+test('ships Flight, Nav, and Info as available dock panels', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -712,8 +712,8 @@ test('ships Flight, Info, and Nav as available dock panels', async ({
   await expect(dockItems).toHaveCount(5)
   await expect(dockItems).toHaveText([
     'Flight',
-    'Info',
     'Nav',
+    'Info',
     'Ship',
     'Settings',
   ])
@@ -968,9 +968,15 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
     viewport: { height: 932, width: 430 },
   })
 
-  const navPanelBounds = await page
-    .locator('#mobile-command-dock-nav-panel')
-    .boundingBox()
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const navPanelOverflow = await navPanel.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    overflowX: getComputedStyle(element).overflowX,
+    scrollWidth: element.scrollWidth,
+  }))
+  expect(navPanelOverflow.overflowX).toBe('hidden')
+  expect(navPanelOverflow.scrollWidth).toBe(navPanelOverflow.clientWidth)
+  const navPanelBounds = await navPanel.boundingBox()
   const timeWarpBounds = await page.getByLabel('Time Warp').boundingBox()
   const cameraBounds = await page
     .locator('.mobile-command-dock-nav-camera')

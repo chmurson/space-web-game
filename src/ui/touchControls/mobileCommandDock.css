@@ -144,6 +144,7 @@
       - var(--mobile-command-dock-item-height)
       - 32px
     );
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     gap: 12px;
@@ -262,12 +263,6 @@
     letter-spacing: 0.1em;
     line-height: 1;
     text-transform: uppercase;
-  }
-
-  .mobile-command-dock-nav-heading-detail {
-    color: rgba(203, 213, 225, 0.58);
-    font-size: 9px;
-    letter-spacing: 0.06em;
   }
 
   .mobile-command-dock-time-warp-host,
@@ -596,10 +591,6 @@
 
 @media (max-width: 350px) and (hover: none),
   (max-width: 350px) and (pointer: coarse) {
-  .mobile-command-dock-nav-heading-detail {
-    display: none;
-  }
-
   .mobile-command-dock-camera-controls {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
