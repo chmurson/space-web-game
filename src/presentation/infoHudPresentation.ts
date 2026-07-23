@@ -34,7 +34,11 @@ export type InfoHudEntry =
   | {
       key: 'apsides'
       kind: 'apsides'
-      rows: [InfoHudRow, InfoHudRow]
+      points: readonly [
+        Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+        Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+      ]
+      row: InfoHudRow
       secondaryLabel: string
     }
 
@@ -164,6 +168,16 @@ export const createInfoHudView = (options: {
   }
   const periapsisRow = createApsisRow('periapsis', 'Pe', periapsisInfoPin)
   const apoapsisRow = createApsisRow('apoapsis', 'Ap', apoapsisInfoPin)
+  const apsidesRow: InfoHudRow = {
+    accessibleLabel: `${periapsisRow.accessibleLabel}; ${apoapsisRow.accessibleLabel}`,
+    distanceLabel: `${periapsisRow.distanceLabel} | ${apoapsisRow.distanceLabel}`,
+    key: 'apsides',
+    label: 'Pe / Ap',
+    pin: { ...periapsisInfoPin },
+    pinned: periapsisRow.pinned || apoapsisRow.pinned,
+    scenarioOwned: periapsisRow.scenarioOwned || apoapsisRow.scenarioOwned,
+    secondaryLabel: `to ${target.name}`,
+  }
   const apsisDistances = [
     getApsisSurfaceDistance('periapsis', target.id, options.prediction),
     getApsisSurfaceDistance('apoapsis', target.id, options.prediction),
@@ -178,7 +192,20 @@ export const createInfoHudView = (options: {
       entry: {
         key: 'apsides' as const,
         kind: 'apsides' as const,
-        rows: [periapsisRow, apoapsisRow] as [InfoHudRow, InfoHudRow],
+        points: [
+          {
+            distanceLabel: periapsisRow.distanceLabel,
+            label: periapsisRow.label,
+          },
+          {
+            distanceLabel: apoapsisRow.distanceLabel,
+            label: apoapsisRow.label,
+          },
+        ] as [
+          Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+          Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+        ],
+        row: apsidesRow,
         secondaryLabel: `to ${target.name}`,
       },
       target: false,
@@ -189,14 +216,8 @@ export const createInfoHudView = (options: {
       return left.target ? -1 : 1
     }
 
-    const leftSelected =
-      left.entry.kind === 'body'
-        ? left.entry.row.pinned
-        : left.entry.rows.some((row) => row.pinned)
-    const rightSelected =
-      right.entry.kind === 'body'
-        ? right.entry.row.pinned
-        : right.entry.rows.some((row) => row.pinned)
+    const leftSelected = left.entry.row.pinned
+    const rightSelected = right.entry.row.pinned
     if (leftSelected !== rightSelected) {
       return leftSelected ? -1 : 1
     }
@@ -207,9 +228,7 @@ export const createInfoHudView = (options: {
     )
   })
   const entries = sortableEntries.map(({ entry }) => entry)
-  const rows = entries.flatMap((entry) =>
-    entry.kind === 'body' ? [entry.row] : entry.rows,
-  )
+  const rows = entries.map((entry) => entry.row)
 
   return {
     clearAvailable: options.runtime.info.userPins.length > 0,

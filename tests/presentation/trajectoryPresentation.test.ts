@@ -358,7 +358,7 @@ describe('createTrajectoryPresentation', () => {
     }
   })
 
-  it('keeps Pe/Ap marker faces visible until the marker zoom cutoff', () => {
+  it('shows both selected Pe/Ap markers until the marker zoom cutoff', () => {
     const eventMarkers: TrajectoryPredictionEventMarker[] = [
       createEventMarker({
         altitude: 400_000,
@@ -381,92 +381,55 @@ describe('createTrajectoryPresentation', () => {
     })
     close.presentation.updateVisuals()
 
-    expect(close.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      true,
-    )
     expect(close.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'none',
+    )
+    expect(close.trajectoryEventMarkerLabels.apoapsis.style.display).toBe(
+      'none',
+    )
+
+    close.runtime.info.userPins = [
+      { apsis: 'periapsis', kind: 'apsis' },
+      { apsis: 'apoapsis', kind: 'apsis' },
+    ]
+    close.presentation.updateVisuals()
+
+    expect(close.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'block',
+    )
+    expect(close.trajectoryEventMarkerLabels.apoapsis.style.display).toBe(
       'block',
     )
     expect(close.trajectoryEventMarkerLabels.periapsis.textContent).toBe('Pe')
     expect(
       close.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
-    ).toBe('Periapsis, altitude 400 km; select in Info')
-    expect(close.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
-      true,
-    )
-
-    const mid = createTestPresentation({
-      eventMarkers,
-      viewportSize: 100,
-    })
-    mid.presentation.updateVisuals()
-
-    expect(mid.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      true,
-    )
-    expect(mid.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
-      'block',
-    )
-
-    const threshold = createTestPresentation({
-      eventMarkers,
-      viewportSize: 160,
-    })
-    threshold.presentation.updateVisuals()
-    const thresholdScreenRadius =
-      threshold.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
-      (160 / 600)
+    ).toBe('Periapsis, altitude 400 km; unselect in Info')
 
     const far = createTestPresentation({
       eventMarkers,
       viewportSize: 500,
     })
+    far.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     far.presentation.updateVisuals()
-    const farScreenRadius =
-      far.gameScene.trajectoryEventMarkers.periapsis.group.scale.x / (500 / 600)
 
-    expect(far.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      true,
-    )
-    expect(far.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
-      true,
-    )
     expect(far.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
       'block',
     )
-    expect(farScreenRadius).toBeLessThan(thresholdScreenRadius)
+    expect(far.trajectoryEventMarkerLabels.apoapsis.style.display).toBe('block')
 
     const beyond = createTestPresentation({
       eventMarkers,
       viewportSize: 520,
     })
+    beyond.runtime.info.userPins = [{ apsis: 'apoapsis', kind: 'apsis' }]
     beyond.presentation.updateVisuals()
 
-    expect(
-      beyond.gameScene.trajectoryEventMarkers.periapsis.group.visible,
-    ).toBe(false)
-    expect(beyond.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
-      false,
+    expect(beyond.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'none',
     )
-
-    const viewportTwenty = createTestPresentation({
-      eventMarkers,
-      viewportSize: 20,
-    })
-    viewportTwenty.presentation.updateVisuals()
-    const maxZoom = createTestPresentation({
-      eventMarkers,
-      viewportSize: 5,
-    })
-    maxZoom.presentation.updateVisuals()
-    const viewportTwentyScreenRadius =
-      viewportTwenty.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
-      (20 / 600)
-    const maxZoomScreenRadius =
-      maxZoom.gameScene.trajectoryEventMarkers.periapsis.group.scale.x /
-      (5 / 600)
-
-    expect(maxZoomScreenRadius).toBeCloseTo(viewportTwentyScreenRadius)
+    expect(beyond.trajectoryEventMarkerLabels.apoapsis.style.display).toBe(
+      'none',
+    )
   })
 
   it('caps the crash marker screen-space diameter while preserving smaller sizes', () => {
@@ -679,11 +642,11 @@ describe('createTrajectoryPresentation', () => {
       },
       viewportSize: 50,
     })
+    hiddenMarkers.runtime.info.userPins = [
+      { apsis: 'periapsis', kind: 'apsis' },
+    ]
     hiddenMarkers.presentation.updateVisuals()
 
-    expect(
-      hiddenMarkers.gameScene.trajectoryEventMarkers.periapsis.group.visible,
-    ).toBe(false)
     expect(
       hiddenMarkers.trajectoryEventMarkerLabels.periapsis.style.display,
     ).toBe('none')
@@ -719,18 +682,13 @@ describe('createTrajectoryPresentation', () => {
       }),
       viewportSize: 50,
     })
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
 
     expect(test.gameScene.predictionLine.visible).toBe(true)
     expect(
       test.presentation.getPredictionState().targetRelativeEventMarkers,
     ).toHaveLength(2)
-    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      false,
-    )
-    expect(test.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
-      false,
-    )
     expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
       'none',
     )
@@ -754,11 +712,9 @@ describe('createTrajectoryPresentation', () => {
       }),
       viewportSize: 50,
     })
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
 
-    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      true,
-    )
     expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
       'block',
     )
@@ -779,11 +735,9 @@ describe('createTrajectoryPresentation', () => {
       scenarioSession: createRuntimeScenarioSession('earth-moon'),
       viewportSize: 50,
     })
+    test.runtime.info.userPins = [{ apsis: 'apoapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
 
-    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      true,
-    )
     expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
       'block',
     )
@@ -805,29 +759,30 @@ describe('createTrajectoryPresentation', () => {
     })
     test.presentation.updateVisuals()
 
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'none',
+    )
+
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
+    test.presentation.updateVisuals()
+
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'block',
+    )
+    expect(test.trajectoryEventMarkerLabels.apoapsis.style.display).toBe('none')
     expect(test.trajectoryEventMarkerLabels.periapsis.textContent).toBe('Pe')
     expect(test.trajectoryEventMarkerLabels.periapsis.dataset.tooltip).toBe(
       'Pe · 400 km',
     )
     expect(
       test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
-    ).toBe('Periapsis, altitude 400 km; select in Info')
-    expect(
-      test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-pressed'),
-    ).toBe('false')
-    expect(test.trajectoryEventMarkerLabels.periapsis.textContent).not.toMatch(
-      /\d|alt|center/i,
-    )
-
-    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
-    test.presentation.updateVisuals()
-
-    expect(
-      test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
     ).toBe('Periapsis, altitude 400 km; unselect in Info')
     expect(
       test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-pressed'),
     ).toBe('true')
+    expect(test.trajectoryEventMarkerLabels.periapsis.textContent).not.toMatch(
+      /\d|alt|center/i,
+    )
   })
 
   it('stabilizes Pe/Ap markers by altitude changes', () => {
@@ -844,7 +799,9 @@ describe('createTrajectoryPresentation', () => {
       eventMarkers,
       viewportSize: 50,
     })
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
+    const initialLeft = test.trajectoryEventMarkerLabels.periapsis.style.left
 
     eventMarkers[0] = createEventMarker({
       altitude: 10_000_000,
@@ -855,9 +812,9 @@ describe('createTrajectoryPresentation', () => {
     })
     test.presentation.updateVisuals()
 
-    expect(
-      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(20)
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.left).toBe(
+      initialLeft,
+    )
     expect(test.trajectoryEventMarkerLabels.periapsis.textContent).toBe('Pe')
 
     eventMarkers[0] = createEventMarker({
@@ -869,9 +826,9 @@ describe('createTrajectoryPresentation', () => {
     })
     test.presentation.updateVisuals()
 
-    expect(
-      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(20.7)
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.left).not.toBe(
+      initialLeft,
+    )
   })
 
   it('resets stale stabilized markers when a marker kind disappears', () => {
@@ -888,7 +845,9 @@ describe('createTrajectoryPresentation', () => {
       eventMarkers,
       viewportSize: 50,
     })
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
+    const initialLeft = test.trajectoryEventMarkerLabels.periapsis.style.left
 
     eventMarkers.splice(
       0,
@@ -903,8 +862,8 @@ describe('createTrajectoryPresentation', () => {
     )
     test.presentation.updateVisuals()
 
-    expect(test.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
-      false,
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'none',
     )
 
     eventMarkers.splice(
@@ -920,9 +879,9 @@ describe('createTrajectoryPresentation', () => {
     )
     test.presentation.updateVisuals()
 
-    expect(
-      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(20.3)
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.left).not.toBe(
+      initialLeft,
+    )
   })
 
   it('resets stale stabilized markers when the event marker target changes', () => {
@@ -939,7 +898,9 @@ describe('createTrajectoryPresentation', () => {
       eventMarkers,
       viewportSize: 50,
     })
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
+    const initialLeft = test.trajectoryEventMarkerLabels.periapsis.style.left
 
     eventMarkers[0] = createEventMarker({
       altitude: 10_000_000,
@@ -951,9 +912,9 @@ describe('createTrajectoryPresentation', () => {
     test.target.id = 'moon'
     test.presentation.updateVisuals()
 
-    expect(
-      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(20.3)
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.left).not.toBe(
+      initialLeft,
+    )
   })
 
   it('resets stale stabilized markers when the scenario session changes', () => {
@@ -970,7 +931,9 @@ describe('createTrajectoryPresentation', () => {
       eventMarkers,
       viewportSize: 50,
     })
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
+    const initialLeft = test.trajectoryEventMarkerLabels.periapsis.style.left
 
     eventMarkers[0] = createEventMarker({
       altitude: 10_000_000,
@@ -982,8 +945,8 @@ describe('createTrajectoryPresentation', () => {
     test.runtime.scenario.session = createRuntimeScenarioSession('test')
     test.presentation.updateVisuals()
 
-    expect(
-      test.gameScene.trajectoryEventMarkers.periapsis.group.position.x,
-    ).toBeCloseTo(20.3)
+    expect(test.trajectoryEventMarkerLabels.periapsis.style.left).not.toBe(
+      initialLeft,
+    )
   })
 })

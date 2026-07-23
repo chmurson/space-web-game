@@ -130,19 +130,16 @@ describe('createInfoHudView', () => {
     expect(view.rows.map(({ label }) => label)).toEqual([
       'Moon',
       'Earth',
-      'Pe',
-      'Ap',
+      'Pe / Ap',
     ])
     expect(view.rows.map(({ distanceLabel }) => distanceLabel)).toEqual([
       '88 km',
       '10 km',
-      '123 km',
-      '456 km',
+      '123 km | 456 km',
     ])
     expect(view.rows.map(({ secondaryLabel }) => secondaryLabel)).toEqual([
       'to spacecraft',
       'to spacecraft',
-      'to Moon',
       'to Moon',
     ])
     expect(view.entries.map(({ key }) => key)).toEqual([
@@ -152,8 +149,8 @@ describe('createInfoHudView', () => {
     ])
     expect(
       view.rows.filter(({ pinned }) => pinned).map(({ label }) => label),
-    ).toEqual(['Moon', 'Earth', 'Pe', 'Ap'])
-    expect(view.selectedCount).toBe(4)
+    ).toEqual(['Moon', 'Earth', 'Pe / Ap'])
+    expect(view.selectedCount).toBe(3)
     expect(view.rows.find(({ label }) => label === 'Earth')).toMatchObject({
       pinned: true,
       scenarioOwned: true,
@@ -161,6 +158,18 @@ describe('createInfoHudView', () => {
     expect(view.rows.find(({ label }) => label === 'Moon')).toMatchObject({
       pinned: true,
       scenarioOwned: false,
+    })
+    expect(view.rows.find(({ key }) => key === 'apsides')).toMatchObject({
+      pinned: true,
+      scenarioOwned: true,
+    })
+    expect(
+      view.entries.find((entry) => entry.kind === 'apsides'),
+    ).toMatchObject({
+      points: [
+        { distanceLabel: '123 km', label: 'Pe' },
+        { distanceLabel: '456 km', label: 'Ap' },
+      ],
     })
     expect(view.clearAvailable).toBe(true)
   })
@@ -211,7 +220,12 @@ describe('createInfoHudView', () => {
     })
 
     expect(
-      view.rows.slice(-2).map(({ distanceLabel }) => distanceLabel),
-    ).toEqual(['—', '—'])
+      view.entries.find((entry) => entry.kind === 'apsides'),
+    ).toMatchObject({
+      points: [
+        { distanceLabel: '—', label: 'Pe' },
+        { distanceLabel: '—', label: 'Ap' },
+      ],
+    })
   })
 })

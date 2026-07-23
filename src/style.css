@@ -2549,18 +2549,19 @@ button.app-dialog-setting {
   --trajectory-event-marker-border: rgba(224, 242, 254, 0.9);
   --trajectory-event-marker-fill: rgba(34, 211, 238, 0.84);
   --trajectory-event-marker-glow: rgba(56, 189, 248, 0.72);
+
   position: fixed;
   display: grid;
-  width: 30px;
-  height: 26px;
-  padding: 0 0 4px;
+  width: 15px;
+  height: 13px;
+  padding: 0 0 2px;
   border: 0;
   background: transparent;
   color: #082f49;
   appearance: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 10px;
+  font-size: 6px;
   font-weight: 900;
   isolation: isolate;
   line-height: 1;
@@ -2578,7 +2579,7 @@ button.app-dialog-setting {
   inset: 0;
   border: 1px solid var(--trajectory-event-marker-border);
   background: var(--trajectory-event-marker-fill);
-  box-shadow: 0 0 8px var(--trajectory-event-marker-glow);
+  box-shadow: 0 0 4px var(--trajectory-event-marker-glow);
   clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
   content: "";
 }
@@ -2613,13 +2614,6 @@ button.app-dialog-setting {
   left: auto;
 }
 
-#app .trajectory-event-label-apoapsis {
-  --trajectory-event-marker-border: rgba(254, 243, 199, 0.92);
-  --trajectory-event-marker-fill: rgba(245, 158, 11, 0.86);
-  --trajectory-event-marker-glow: rgba(245, 158, 11, 0.68);
-  color: #431407;
-}
-
 #app .trajectory-event-label:hover::before {
   border-color: #f0f9ff;
 }
@@ -2648,10 +2642,10 @@ button.app-dialog-setting {
   }
 
   #app .trajectory-event-label {
-    width: 27px;
-    height: 24px;
-    padding-bottom: 4px;
-    font-size: 9px;
+    width: 14px;
+    height: 12px;
+    padding-bottom: 2px;
+    font-size: 6px;
   }
 
   #app .trajectory-event-label::after {

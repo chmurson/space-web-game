@@ -139,6 +139,42 @@ test('connects desktop canvas navigation labels, pins, and physical offscreen di
   }
 })
 
+test('uses ordinary small-body label rules for an unselected target', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    baseURL: testInfo.project.use.baseURL as string,
+    colorScheme: 'dark',
+    hasTouch: false,
+    isMobile: false,
+    reducedMotion: 'reduce',
+    viewport: { height: 720, width: 1024 },
+  })
+  const page = await context.newPage()
+
+  try {
+    await page.goto('/?scenario=earth-moon')
+    await waitForGame(page)
+
+    const targetLabel = page.locator('.body-label[data-info-pin="body:earth"]')
+    await expect(targetLabel).toBeHidden()
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await page.locator('canvas').dispatchEvent('wheel', { deltaY: 500 })
+      if (await targetLabel.isVisible()) {
+        break
+      }
+    }
+
+    await expect(targetLabel).toBeVisible()
+    await expect(targetLabel).toHaveText('Earth')
+    await expect(targetLabel).toHaveAttribute('aria-pressed', 'false')
+    await expect(targetLabel).not.toHaveClass(/body-label-distance-context/)
+  } finally {
+    await context.close()
+  }
+})
+
 test('gates mobile target and apsis tooltips on Info selection', async ({
   browser,
 }, testInfo) => {
@@ -169,26 +205,25 @@ test('gates mobile target and apsis tooltips on Info selection', async ({
     await expect(activeTargetLabel).toBeVisible()
     await expect(activeTargetLabel).toHaveText(/^Earth · /)
 
+    const periapsisLabel = page.locator('.trajectory-event-label-periapsis')
+    const apoapsisLabel = page.locator('.trajectory-event-label-apoapsis')
+    await expect(periapsisLabel).toBeHidden()
+    await expect(apoapsisLabel).toBeHidden()
+
+    await infoButton.tap()
+    const apsidesRow = infoPanel.locator('[data-info-pin="apsides"]')
+    await apsidesRow.tap()
+    await expect(apsidesRow).toHaveAttribute('aria-checked', 'true')
+    await infoButton.tap()
+
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const periapsisLabel = page.locator('.trajectory-event-label-periapsis')
       if (await periapsisLabel.isVisible()) {
         break
       }
       await page.locator('canvas').dispatchEvent('wheel', { deltaY: -500 })
     }
-    const periapsisLabel = page.locator('.trajectory-event-label-periapsis')
     await expect(periapsisLabel).toBeVisible()
     await expect(periapsisLabel).toHaveText('Pe')
-    await expect(periapsisLabel).toHaveAttribute('aria-pressed', 'false')
-    expect(
-      await periapsisLabel.evaluate(
-        (element) => getComputedStyle(element, '::after').display,
-      ),
-    ).toBe('none')
-
-    await infoButton.tap()
-    await infoPanel.locator('[data-info-pin="periapsis"]').tap()
-    await infoButton.tap()
     await expect(periapsisLabel).toHaveAttribute('aria-pressed', 'true')
     expect(
       await periapsisLabel.evaluate(
@@ -199,6 +234,26 @@ test('gates mobile target and apsis tooltips on Info selection', async ({
       'data-tooltip',
       /^Pe · \d+(?:\.\d+)? (?:km|Mm)$/,
     )
+    const markerStyles = await Promise.all(
+      [periapsisLabel, apoapsisLabel].map((label) =>
+        label.evaluate((element) => {
+          const elementStyle = getComputedStyle(element)
+          const markerStyle = getComputedStyle(element, '::before')
+          return {
+            backgroundColor: markerStyle.backgroundColor,
+            height: elementStyle.height,
+            width: elementStyle.width,
+          }
+        }),
+      ),
+    )
+    expect(markerStyles[0].backgroundColor).toBe(
+      markerStyles[1].backgroundColor,
+    )
+    expect(markerStyles).toEqual([
+      expect.objectContaining({ height: '12px', width: '14px' }),
+      expect.objectContaining({ height: '12px', width: '14px' }),
+    ])
     const visibleOrbitLabels = page.locator('.trajectory-event-label:visible')
     const orbitLabelTexts = await visibleOrbitLabels.allTextContents()
     expect(orbitLabelTexts.every((text) => /^(?:Pe|Ap)$/.test(text))).toBe(true)
@@ -208,6 +263,12 @@ test('gates mobile target and apsis tooltips on Info selection', async ({
       testInfo,
       'mobile-canvas-navigation-active-target',
     )
+
+    await periapsisLabel.dispatchEvent('click')
+    await expect(periapsisLabel).toBeHidden()
+    await expect(apoapsisLabel).toBeHidden()
+    await infoButton.tap()
+    await expect(apsidesRow).toHaveAttribute('aria-checked', 'false')
   } finally {
     await context.close()
   }

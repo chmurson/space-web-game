@@ -254,11 +254,7 @@ export const updateBodyLabels = (options: {
     setClassEnabled(label, 'body-label-pinned', pinned)
     setAttributeValue(label, 'aria-pressed', pinned ? 'true' : 'false')
 
-    if (
-      !isVisible ||
-      (!!distanceContext && !pinned) ||
-      (apparentRadius > labelRadiusThreshold && !distanceContext && !pinned)
-    ) {
+    if (!isVisible || (apparentRadius > labelRadiusThreshold && !pinned)) {
       setDisplay(label, 'none')
       continue
     }

@@ -31,16 +31,8 @@ const createCamera = () => {
   return camera
 }
 
-const createMarker = (x: number, visible = true) => {
-  const group = new THREE.Group()
-  group.position.set(x, 0, 0)
-  group.visible = visible
-  group.updateMatrixWorld()
-  return { group }
-}
-
 describe('createCanvasInfoPinPicker', () => {
-  it('prioritizes visible Pe/Ap hit targets and raycasts visible bodies', () => {
+  it('raycasts visible bodies', () => {
     const bodyMesh = new THREE.Mesh(new THREE.SphereGeometry(0.25))
     bodyMesh.visible = true
     bodyMesh.updateMatrixWorld()
@@ -48,19 +40,10 @@ describe('createCanvasInfoPinPicker', () => {
       gameScene: {
         bodyMeshes: new Map([['earth', bodyMesh]]),
         camera: createCamera(),
-        trajectoryEventMarkers: {
-          apoapsis: createMarker(-0.6, false),
-          periapsis: createMarker(0.6),
-        },
       },
-      markerHitRadiusPixels: 18,
       rendererElement: new FakeCanvas() as unknown as HTMLCanvasElement,
     })
 
-    expect(picker(160, 100)).toEqual({
-      apsis: 'periapsis',
-      kind: 'apsis',
-    })
     expect(picker(100, 100)).toEqual({ bodyId: 'earth', kind: 'body' })
     expect(picker(10, 10)).toBeNull()
   })
@@ -72,10 +55,6 @@ describe('createCanvasInfoPinPicker', () => {
       gameScene: {
         bodyMeshes: new Map([['earth', hiddenBody]]),
         camera: createCamera(),
-        trajectoryEventMarkers: {
-          apoapsis: createMarker(0, false),
-          periapsis: createMarker(0, false),
-        },
       },
       rendererElement: new FakeCanvas() as unknown as HTMLCanvasElement,
     })

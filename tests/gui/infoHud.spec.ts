@@ -49,7 +49,7 @@ test('desktop Info keeps selections in one persistent popover', async ({
     await page.keyboard.press('KeyI')
     await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
     await expect(popover).toBeVisible()
-    await expect(popover.getByRole('switch')).toHaveCount(4)
+    await expect(popover.getByRole('switch')).toHaveCount(3)
     await expect(popover.locator('.target-body-sphere')).toHaveCount(2)
     await expect(
       popover.locator('[data-info-pin^="body:"] .info-hud-row-secondary'),
@@ -76,7 +76,7 @@ test('desktop Info keeps selections in one persistent popover', async ({
     await selectAllButton.click()
     await expect(selectAllButton).toBeDisabled()
     await expect(page.locator('.info-hud-rail')).toHaveCount(0)
-    await expect(infoButton.locator('[aria-label="4 selected"]')).toBeVisible()
+    await expect(infoButton.locator('[aria-label="3 selected"]')).toBeVisible()
 
     await page.keyboard.press('KeyI')
     await expect(popover).toBeHidden()
@@ -103,7 +103,7 @@ test('mobile Info panel keeps selection inside the dock surface', async ({
   await infoButton.tap()
   await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
   await expect(infoPanel).toBeVisible()
-  await expect(infoPanel.getByRole('switch')).toHaveCount(4)
+  await expect(infoPanel.getByRole('switch')).toHaveCount(3)
   await expect(
     infoPanel.locator('[data-info-pin^="body:"] .info-hud-row-secondary'),
   ).toHaveText(['to spacecraft', 'to spacecraft'])
@@ -143,22 +143,15 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
 
     let targetName = 'Earth'
     const getView = () => {
-      const periapsisRow = {
-        accessibleLabel: `Pe, altitude over ${targetName} —`,
-        distanceLabel: '—',
-        key: 'periapsis',
-        label: 'Pe',
+      const apsidesRow = {
+        accessibleLabel: `Pe, altitude over ${targetName} —; Ap, altitude over ${targetName} —`,
+        distanceLabel: '— | —',
+        key: 'apsides',
+        label: 'Pe / Ap',
         pin: { apsis: 'periapsis', kind: 'apsis' } as const,
         pinned: false,
         scenarioOwned: false,
         secondaryLabel: `to ${targetName}`,
-      }
-      const apoapsisRow = {
-        ...periapsisRow,
-        accessibleLabel: `Ap, altitude over ${targetName} —`,
-        key: 'apoapsis',
-        label: 'Ap',
-        pin: { apsis: 'apoapsis', kind: 'apsis' } as const,
       }
 
       return {
@@ -167,14 +160,15 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
           {
             key: 'apsides' as const,
             kind: 'apsides' as const,
-            rows: [periapsisRow, apoapsisRow] as [
-              typeof periapsisRow,
-              typeof apoapsisRow,
-            ],
+            points: [
+              { distanceLabel: '—', label: 'Pe' },
+              { distanceLabel: '—', label: 'Ap' },
+            ] as const,
+            row: apsidesRow,
             secondaryLabel: `to ${targetName}`,
           },
         ],
-        rows: [periapsisRow, apoapsisRow],
+        rows: [apsidesRow],
         selectedCount: 0,
       }
     }
@@ -189,7 +183,7 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
     })
     const readRow = () => {
       const row = mobilePanelContainer.querySelector(
-        '[data-info-pin="periapsis"]',
+        '[data-info-pin="apsides"]',
       )
       return {
         accessibleLabel: row?.getAttribute('aria-label'),
@@ -210,11 +204,13 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
 
   expect(result).toEqual({
     after: {
-      accessibleLabel: 'Pe, altitude over Moon —, not selected',
+      accessibleLabel:
+        'Pe, altitude over Moon —; Ap, altitude over Moon —, not selected',
       secondaryLabel: 'to Moon',
     },
     before: {
-      accessibleLabel: 'Pe, altitude over Earth —, not selected',
+      accessibleLabel:
+        'Pe, altitude over Earth —; Ap, altitude over Earth —, not selected',
       secondaryLabel: 'to Earth',
     },
   })

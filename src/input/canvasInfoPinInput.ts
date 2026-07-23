@@ -10,76 +10,24 @@ import {
 import type { GameSceneRefs } from '../scene/createGameScene'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 
-type CanvasInfoPinScene = Pick<
-  GameSceneRefs,
-  'bodyMeshes' | 'camera' | 'trajectoryEventMarkers'
->
+type CanvasInfoPinScene = Pick<GameSceneRefs, 'bodyMeshes' | 'camera'>
 
 const apsisPinByKind = {
   apoapsis: apoapsisInfoPin,
   periapsis: periapsisInfoPin,
 } satisfies Record<TrajectoryPredictionEventMarkerKind, InfoPin>
 
-const isProjectedIntoViewport = (position: THREE.Vector3) =>
-  position.x >= -1 &&
-  position.x <= 1 &&
-  position.y >= -1 &&
-  position.y <= 1 &&
-  position.z > -1 &&
-  position.z < 1
-
 export const createCanvasInfoPinPicker = (options: {
   gameScene: CanvasInfoPinScene
-  markerHitRadiusPixels?: number
   rendererElement: HTMLCanvasElement
 }) => {
-  const markerHitRadiusPixels = options.markerHitRadiusPixels ?? 18
   const pointerNdc = new THREE.Vector2()
-  const markerWorldPosition = new THREE.Vector3()
   const raycaster = new THREE.Raycaster()
 
   return (clientX: number, clientY: number): InfoPin | null => {
     const bounds = options.rendererElement.getBoundingClientRect()
     if (bounds.width <= 0 || bounds.height <= 0) {
       return null
-    }
-
-    let closestMarker:
-      | {
-          distancePixels: number
-          pin: InfoPin
-        }
-      | undefined
-    for (const [kind, marker] of Object.entries(
-      options.gameScene.trajectoryEventMarkers,
-    )) {
-      if (!marker.group.visible) {
-        continue
-      }
-
-      marker.group.getWorldPosition(markerWorldPosition)
-      markerWorldPosition.project(options.gameScene.camera)
-      if (!isProjectedIntoViewport(markerWorldPosition)) {
-        continue
-      }
-
-      const markerX =
-        bounds.left + (markerWorldPosition.x * 0.5 + 0.5) * bounds.width
-      const markerY =
-        bounds.top + (-markerWorldPosition.y * 0.5 + 0.5) * bounds.height
-      const distancePixels = Math.hypot(clientX - markerX, clientY - markerY)
-      if (
-        distancePixels <= markerHitRadiusPixels &&
-        (!closestMarker || distancePixels < closestMarker.distancePixels)
-      ) {
-        closestMarker = {
-          distancePixels,
-          pin: apsisPinByKind[kind as TrajectoryPredictionEventMarkerKind],
-        }
-      }
-    }
-    if (closestMarker) {
-      return closestMarker.pin
     }
 
     pointerNdc.set(

@@ -7,11 +7,11 @@ Dependency: [#274](https://github.com/chmurson/space-web-game/issues/274)
 ## What changed
 
 - Canvas body labels and `Pe`/`Ap` labels are real button targets that toggle the existing Info pin state from #274.
-- Direct canvas hits on visible bodies and apsis marker glyphs use the same pin action. A successful stationary primary hit is consumed before maneuver planning; empty-canvas taps, drags, pans, and touch planning keep their existing behavior.
-- The active target is intentionally tooltip-free while unselected. Selecting it shows a stable name plus physical spacecraft-to-surface distance and enables the emphasized target offscreen treatment; unselected targets use the ordinary hollow arrow.
+- Direct canvas hits on visible bodies and activation of the DOM apsis markers use the same pin action. A successful stationary primary body hit is consumed before maneuver planning; empty-canvas taps, drags, pans, and touch planning keep their existing behavior.
+- An unselected active target follows the ordinary small-body, name-only label rule. Selecting it shows a stable name plus physical spacecraft-to-surface distance and enables the emphasized target offscreen treatment; unselected targets use the ordinary hollow arrow.
 - Selected offscreen bodies show name plus physical spacecraft-to-surface distance. Other bodies use unlabeled hollow arrows, while the spacecraft uses the highest-priority solid named indicator without a numeric distance.
-- Periapsis and apoapsis use cyan and amber inverted-house markers with `Pe`/`Ap` inside. Selecting either Info point reveals its separate altitude tooltip; the marker face stays numeric-free.
-- Info no longer renders separate desktop or mobile pin rails. It groups Pe and Ap into one independently selectable row, reuses Target body glyphs, and orders entries as target, selected, then nearest to the target body.
+- Periapsis and apoapsis use one cyan DOM inverted-house marker each with `Pe`/`Ap` inside. The duplicate Three.js marker shape is removed. Both remain hidden until the combined Info row is selected, then expose their separate altitude tooltips while the marker faces stay numeric-free.
+- Info no longer renders separate desktop or mobile pin rails. It groups Pe and Ap into one atomic selectable row, reuses Target body glyphs, and orders entries as target, selected, then nearest to the target body.
 - The desktop Info popover ignores outside clicks and closes only through its own toggle, the `I` shortcut, or Escape.
 - Orbit-point settings and persisted overrides now expose only marker visibility. Legacy label and distance preferences are ignored during migration.
 
@@ -21,7 +21,7 @@ The previous playfield repeated several camera-relative and orbit values that al
 
 ## Ownership and key files
 
-- `src/input/canvasInfoPinInput.ts` owns body/marker picking and DOM label activation. It delegates to `runtimeActions.toggleUserInfoPin` and does not own pin state.
+- `src/input/canvasInfoPinInput.ts` owns body picking and DOM label activation. It delegates to `runtimeActions.toggleUserInfoPin` and does not own pin state.
 - `src/input/pointerCameraInput.ts` owns the tap-consumption boundary that protects empty-canvas camera and maneuver gestures.
 - `src/presentation/bodyPresentation.ts` and its scoped helpers own selection-gated body labels and offscreen hierarchy.
 - `src/presentation/trajectoryPresentation.ts` owns the compact apsis marker/label presentation and reads the combined Info pin state.
@@ -34,21 +34,22 @@ The centralized pin declarations, scenario-owned immutability, player persistenc
 ## Decisions
 
 - Body pin identity remains stable across target changes. `Pe` and `Ap` continue to follow the active target-relative prediction.
-- Removing the target reveal timer is deliberate: selection is now the sole disclosure rule for the target world tooltip.
-- Pe and Ap remain separate runtime selections even though Info presents them in one row, so either tooltip can be disclosed independently.
+- Target-specific distance disclosure remains selection-driven; while unselected, the target falls back to the ordinary name-only body-label rule.
+- Pe and Ap remain compatible with the existing runtime pin schema, but the user action treats them as one atomic selection and partial legacy state renders as both selected.
 - Body entry ordering uses target-body surface separation while displayed body values remain spacecraft-to-body surface distance.
-- Marker hit testing runs before body raycasting so a small apsis glyph near a body remains independently actionable.
+- The DOM marker is the sole visible apsis hit target, avoiding a duplicate Three.js shape and redundant canvas hit-test path.
 - Scenario-owned pins still consume matching canvas activation even when the centralized toggle declines mutation. This avoids leaking a meaningful object tap into maneuver planning.
 - No new settings, pin state, dependencies, or exported testing-only APIs were introduced.
 
 ## Validation
 
 - `npm run build`: passed, including config validation, TypeScript, and release Vite build.
-- Focused owner-follow-up Vitest coverage: 5 files and 44 tests passed for Info ordering/grouping, body labels, offscreen hierarchy, and trajectory marker selection.
+- Focused second-follow-up Vitest coverage: 4 files and 53 tests passed for atomic Pe/Ap selection, Info grouping, body-only canvas picking, and trajectory marker disclosure.
 - Product Vitest suite: 65 files and 634 tests passed.
 - Automation claim suite: 16 tests passed.
-- Focused Playwright owner-follow-up coverage: 6 tests passed for desktop/mobile Info, target/offscreen behavior, and selection-gated apsis tooltips; the updated selected-target recenter case also passed independently.
-- `npm run test:gui -- --retries=1`: all 84 Playwright tests passed without needing a retry on the final run. This includes desktop/mobile navigation interaction, camera and maneuver gesture regressions, selected-target recentering, marker-only settings, and screenshot coverage.
+- `npm test`: product and claim suites passed; one unrelated workflow-prompt assertion remains because the branch and `origin/main` use equivalent automation-reaction wording instead of the test's exact sentence.
+- Focused Playwright coverage passed for combined Pe/Ap selection, target generic-label fallback, selected-only orbit markers, and direct marker activation.
+- `npm run test:gui -- --retries=1`: all 85 Playwright tests passed without needing a retry on the final run. This includes desktop/mobile navigation interaction, camera and maneuver gesture regressions, selected-target recentering, marker-only settings, and screenshot coverage.
 - Targeted Biome check passed with only three unchanged `!important` warnings in `src/style.css`; `git diff --check` passed.
 
 ## Visual inspection
@@ -59,8 +60,9 @@ The centralized pin declarations, scenario-owned immutability, player persistenc
 - Desktop selected offscreen hierarchy: `tmp/playwright-results/canvasNavigationInfo-conne-3e200-hysical-offscreen-distances-mobile-chromium/desktop-canvas-navigation-selected-offscreen.png`
 - Mobile selected-target framing above Nav: `tmp/playwright-results/mobileCommandDock-recenter-73104-e-current-playable-viewport-mobile-chromium/mobile-command-dock-locked-target-390.png`
 
-All five captures were inspected at original resolution. Desktop and mobile Info showed no separate rail, one combined Pe/Ap row, reused body glyphs, and the target-first ordering. The selected Earth tooltip included physical distance, the selected Pe tooltip appeared beside its distance-free inverted-house marker, and the desktop offscreen capture preserved the selected-target, selected-body, and spacecraft hierarchy without crowding the playfield.
+The first four captures were inspected at original resolution for this follow-up. Desktop and mobile Info showed no separate rail, one combined Pe/Ap row, reused body glyphs, and the target-first ordering. The selected Earth tooltip included physical distance, the selected Pe tooltip appeared beside its smaller cyan, distance-free inverted-house marker, and the desktop offscreen capture preserved the selected-target, selected-body, and spacecraft hierarchy without crowding the playfield.
 
 ## Follow-ups and known gaps
 
 - The existing release bundle-size warning remains unchanged.
+- The unrelated workflow-prompt exact-wording assertion described above remains outside this UI-focused PR follow-up.

@@ -372,7 +372,6 @@ export const createAppComponents = (options: {
   })
   const pickCanvasInfoPin = createCanvasInfoPinPicker({
     gameScene,
-    markerHitRadiusPixels: desktopFinePointerMedia.matches ? 18 : 24,
     rendererElement: renderer.domElement,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}

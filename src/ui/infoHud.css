@@ -19,7 +19,7 @@
   padding: 0;
   border: 0;
   margin: -1px;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   overflow: hidden;
   white-space: nowrap;
 }
@@ -150,6 +150,7 @@
 .info-hud-row-distance {
   align-self: end;
 }
+
 .info-hud-row-secondary {
   overflow: hidden;
   color: rgba(203, 213, 225, 0.62);
@@ -160,36 +161,24 @@
   transform: translateY(-1.5px);
 }
 
-.info-hud-apsis-row {
-  gap: 3px;
+.info-hud-apsis-group {
   margin: 0;
+  padding: 0;
+  border: 0;
   min-inline-size: 0;
 }
 
-.info-hud-apsis-point {
+.info-hud-apsis-row {
+  width: 100%;
+  gap: 4px;
+}
+
+.info-hud-apsis-values {
   display: inline-flex;
   min-width: 0;
-  min-height: 26px;
+  flex: 1 1 auto;
   align-items: center;
   gap: 4px;
-  padding: 3px 5px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  touch-action: manipulation;
-}
-
-.info-hud-apsis-point[aria-checked="true"] {
-  border-color: rgba(56, 189, 248, 0.36);
-  background: rgba(14, 116, 144, 0.2);
-  color: #e0f2fe;
-}
-
-.info-hud-apsis-point:disabled {
-  cursor: default;
 }
 
 .info-hud-apsis-divider {
@@ -218,7 +207,6 @@
 .info-hud-clear:focus-visible,
 .info-hud-select-all:focus-visible,
 .info-hud-row:focus-visible,
-.info-hud-apsis-point:focus-visible,
 .desktop-info-pill:focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.88);
   outline-offset: 2px;
@@ -283,8 +271,7 @@
   .desktop-info-pill:hover,
   .info-hud-clear:hover:not(:disabled),
   .info-hud-select-all:hover:not(:disabled),
-  .info-hud-row:hover:not(:disabled),
-  .info-hud-apsis-point:hover:not(:disabled) {
+  .info-hud-row:hover:not(:disabled) {
     border-color: rgba(103, 232, 249, 0.48);
     background: rgba(15, 23, 42, 0.66);
   }
@@ -318,8 +305,7 @@
 @media (prefers-reduced-motion: reduce) {
   .desktop-info-pill,
   .info-hud-clear,
-  .info-hud-row,
-  .info-hud-apsis-point {
+  .info-hud-row {
     transition: none;
   }
 }

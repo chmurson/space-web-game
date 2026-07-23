@@ -104,53 +104,63 @@ const InfoRow = (options: {
   )
 }
 
-const ApsisPoint = (options: {
+const ApsisInfoRow = (options: {
+  entry: Extract<InfoHudEntry, { kind: 'apsides' }>
   onTogglePin(pin: InfoPin): void
-  row: InfoHudRow
 }) => {
-  const { row } = options
+  const { row } = options.entry
+  const [periapsis, apoapsis] = options.entry.points
   let ownershipLabel = row.pinned ? 'selected' : 'not selected'
   if (row.scenarioOwned) {
     ownershipLabel = 'selected by scenario'
   }
 
   return (
-    <TapSafeButton
-      aria-checked={row.pinned}
-      aria-label={`${row.accessibleLabel}, ${ownershipLabel}`}
-      class="info-hud-apsis-point ui-pressable"
-      data-info-pin={row.key}
-      data-scenario-owned={String(row.scenarioOwned)}
-      disabled={row.scenarioOwned}
-      onActivate={() => options.onTogglePin(row.pin)}
-      role="switch"
-      type="button"
-    >
-      <span>{row.label}</span>
-      <span aria-hidden="true" class="info-hud-row-separator">
-        ·
-      </span>
-      <span class="info-hud-row-distance">{row.distanceLabel}</span>
-    </TapSafeButton>
+    <fieldset class="info-hud-apsis-group" data-info-row="apsides">
+      <legend class="info-hud-visually-hidden">Orbit points</legend>
+      <TapSafeButton
+        aria-checked={row.pinned}
+        aria-label={`${row.accessibleLabel}, ${ownershipLabel}`}
+        class="info-hud-row info-hud-apsis-row ui-pressable"
+        data-info-pin={row.key}
+        data-scenario-owned={String(row.scenarioOwned)}
+        disabled={row.scenarioOwned}
+        onActivate={() => options.onTogglePin(row.pin)}
+        role="switch"
+        type="button"
+      >
+        <span class="info-hud-apsis-values">
+          <span>
+            <span>{periapsis.label}</span>
+            <span aria-hidden="true" class="info-hud-row-separator">
+              {' '}
+              ·{' '}
+            </span>
+            <span class="info-hud-row-distance">{periapsis.distanceLabel}</span>
+          </span>
+          <span aria-hidden="true" class="info-hud-apsis-divider">
+            |
+          </span>
+          <span>
+            <span>{apoapsis.label}</span>
+            <span aria-hidden="true" class="info-hud-row-separator">
+              {' '}
+              ·{' '}
+            </span>
+            <span class="info-hud-row-distance">{apoapsis.distanceLabel}</span>
+          </span>
+        </span>
+        <span aria-hidden="true" class="info-hud-row-secondary">
+          {options.entry.secondaryLabel}
+        </span>
+        {row.scenarioOwned ? (
+          <span class="info-hud-scenario-badge">Scenario</span>
+        ) : null}
+        <PinStatus row={row} />
+      </TapSafeButton>
+    </fieldset>
   )
 }
-
-const ApsisInfoRow = (options: {
-  entry: Extract<InfoHudEntry, { kind: 'apsides' }>
-  onTogglePin(pin: InfoPin): void
-}) => (
-  <fieldset class="info-hud-row info-hud-apsis-row" data-info-row="apsides">
-    <legend class="info-hud-visually-hidden">Orbit points</legend>
-    <ApsisPoint onTogglePin={options.onTogglePin} row={options.entry.rows[0]} />
-    <span aria-hidden="true" class="info-hud-apsis-divider">
-      |
-    </span>
-    <ApsisPoint onTogglePin={options.onTogglePin} row={options.entry.rows[1]} />
-    <span aria-hidden="true" class="info-hud-row-secondary">
-      {options.entry.secondaryLabel}
-    </span>
-  </fieldset>
-)
 
 const InfoPanelContent = (options: {
   onClear(): void
