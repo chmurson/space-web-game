@@ -765,6 +765,7 @@ export const createTrajectoryPredictionRuntime = (
   let farCoalescingLastSkipStage: TrajectoryPredictionFarCoalescingSkipStage | null =
     null
   let predictionInputHadActiveThrust = false
+  let predictionInputHadActiveTurn = false
   let predictionInputAllowLoopTrim: boolean | null = null
   let predictionInputKeyParts: PredictionInputKeyParts | null = null
   let predictionDiagnosticEvents: TrajectoryPredictionDiagnosticEvent[] = []
@@ -823,8 +824,13 @@ export const createTrajectoryPredictionRuntime = (
     options: RefreshTrajectoryPredictionOptions,
     reason: TrajectoryPredictionRefreshReason,
     activeThrustEnded: boolean,
+    activeTurnEnded: boolean,
   ): number | null | false => {
-    if (activeThrustEnded || forcesFarPredictionRefresh(reason)) {
+    if (
+      activeThrustEnded ||
+      activeTurnEnded ||
+      forcesFarPredictionRefresh(reason)
+    ) {
       return null
     }
     if (isActiveThrustControl(options.state.controls)) {
@@ -1652,6 +1658,10 @@ export const createTrajectoryPredictionRuntime = (
       previousInputKeyParts !== null &&
       predictionInputHadActiveThrust &&
       !isActiveThrustControl(options.state.controls)
+    const activeTurnEnded =
+      previousInputKeyParts !== null &&
+      predictionInputHadActiveTurn &&
+      options.state.controls.turn === 0
     const semanticInputChanged =
       previousInputKeyParts !== null &&
       createFarPredictionSemanticInputKey(
@@ -1728,6 +1738,7 @@ export const createTrajectoryPredictionRuntime = (
         options,
         reason,
         activeThrustEnded,
+        activeTurnEnded,
       )
 
     if (!splitPredictionHorizon) {
@@ -1759,6 +1770,7 @@ export const createTrajectoryPredictionRuntime = (
     predictionInputHadActiveThrust = isActiveThrustControl(
       options.state.controls,
     )
+    predictionInputHadActiveTurn = options.state.controls.turn !== 0
     predictionInputAllowLoopTrim = allowLoopTrim
     nearPredictionTier = nearTier
     applyPredictionTier({

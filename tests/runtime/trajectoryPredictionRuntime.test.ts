@@ -1541,6 +1541,56 @@ describe('createTrajectoryPredictionRuntime', () => {
     expect(predictionRuntime.getRemainingUsableCoverageSeconds()).toBe(1_100)
   })
 
+  it('rebuilds accepted coverage when manual turning returns to idle', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      nearSource: 'accepted-window',
+      remainingUsableCoverageSeconds: 1_200,
+    })
+
+    setState({
+      ...state(),
+      controls: { ...state().controls, turn: 1 },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      nearSource: 'synchronous',
+      remainingUsableCoverageSeconds: 600,
+    })
+
+    setState({
+      ...state(),
+      controls: idleControls(),
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      nearSource: 'synchronous',
+      remainingUsableCoverageSeconds: 600,
+    })
+
+    farWorker.completeRequest(0, 1)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      nearSource: 'accepted-window',
+      remainingUsableCoverageSeconds: 1_200,
+    })
+  })
+
   it('invalidates accepted coverage and calculates near synchronously on target change', () => {
     const {
       engineStep,

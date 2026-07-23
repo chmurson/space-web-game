@@ -60,13 +60,12 @@ test('caps controls and restores the prediction-limited warp request', async ({
     path: testInfo.outputPath('manual-rcs-x15s.png'),
   })
 
-  await page.keyboard.down('KeyW')
+  await page.keyboard.up('KeyD')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
-    .toBe(60)
-  await expect(page.locator('[data-stat="time"]')).toContainText('x1m')
+    .toBe(240)
 
-  await page.keyboard.up('KeyD')
+  await page.keyboard.down('KeyW')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
     .toBe(60)

@@ -15,6 +15,12 @@ When a temporary coverage cap relaxes after a compatible worker baseline is
 accepted, the requested warp returns automatically. A warp selection made while
 capped replaces the saved request.
 
+The PR follow-up also makes manual-turn release request a fresh long-horizon
+baseline. Starting a turn still invalidates incompatible accepted coverage and
+uses the active-control cap, but returning to idle no longer leaves the runtime
+on the synchronous 600-second fallback and its derived x1m limit. Thrust is no
+longer required to rebuild the selected one-hour trajectory coverage.
+
 ## Why
 
 High time warp could previously consume an accepted trajectory window faster
@@ -62,6 +68,9 @@ worker request frequency.
 - Existing active-control and scenario limits retain priority when they are the
   strictest constraint. The existing 320 ms control-release settle remains;
   coverage-only restoration is immediate.
+- Ending an active manual turn forces the same immediate far-prediction request
+  used when active thrust ends. The turn itself does not retain incompatible
+  coverage or bypass the x15s RCS safety cap.
 - Devtools time-warp writes now use the same runtime action/controller path so
   they cannot bypass requested/effective tracking.
 
@@ -86,6 +95,12 @@ worker request frequency.
   remained 2/3 because current `main` lacks its expected rocket-reaction policy;
   that unchanged repository-policy mismatch is outside issue #286.
 - `git diff --check` passed.
+- PR follow-up validation added a runtime regression for rebuilding accepted
+  coverage after turn release and extended the RCS browser case to restore x4m
+  without thrust. Biome passed on the three touched executable/test files,
+  Vitest passed 65 files and 649 tests, the release build passed, and the
+  focused Playwright case passed. Its x15s mobile screenshot was visually
+  inspected without clipping or overlap.
 
 ## Follow-ups and known gaps
 
