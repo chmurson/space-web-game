@@ -558,6 +558,9 @@ export const createMobileCommandDock = (options: {
   const targetButton = surface.element.querySelector<HTMLButtonElement>(
     '#mobile-command-dock-target-button',
   )
+  const targetPopup = surface.element.querySelector<HTMLElement>(
+    '#mobile-command-dock-target-popup',
+  )
   const infoPanelContainer = surface.element.querySelector<HTMLElement>(
     '.mobile-command-dock-info-panel-host',
   )
@@ -569,6 +572,7 @@ export const createMobileCommandDock = (options: {
     !infoButton ||
     !navButton ||
     !targetButton ||
+    !targetPopup ||
     !infoPanelContainer ||
     !infoRailContainer
   ) {
@@ -611,6 +615,24 @@ export const createMobileCommandDock = (options: {
     targetPopupOpen = !targetPopupOpen
     renderState()
   })
+
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (
+        !targetPopupOpen ||
+        !(event.target instanceof Node) ||
+        targetButton.contains(event.target) ||
+        targetPopup.contains(event.target)
+      ) {
+        return
+      }
+
+      targetPopupOpen = false
+      renderState()
+    },
+    { capture: true },
+  )
 
   document.addEventListener('keydown', (event) => {
     if (!openPanel || event.key !== 'Escape') {

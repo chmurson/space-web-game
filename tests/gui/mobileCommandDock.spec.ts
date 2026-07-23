@@ -162,6 +162,43 @@ test('keeps one panel open, collapses the active panel, and closes with Escape',
   await expect(navButton).toBeFocused()
 })
 
+test('dismisses the Target popup on outside mouse and touch input', async ({
+  page,
+}) => {
+  await page.goto('/?scenario=earth-moon')
+  await waitForGame(page)
+
+  const navButton = page.locator('#mobile-command-dock-nav-button')
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const targetButton = page.locator('#mobile-command-dock-target-button')
+  const targetPopup = page.locator('#mobile-command-dock-target-popup')
+
+  await navButton.tap()
+  await targetButton.tap()
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(targetPopup).toBeVisible()
+
+  await targetPopup.dispatchEvent('pointerdown', {
+    bubbles: true,
+    pointerType: 'touch',
+  })
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'true')
+
+  await page.touchscreen.tap(10, 100)
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(targetPopup).toBeHidden()
+  await expect(navButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(navPanel).toBeVisible()
+
+  await targetButton.tap()
+  await expect(targetPopup).toBeVisible()
+  await page.mouse.click(10, 100)
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(targetPopup).toBeHidden()
+  await expect(navButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(navPanel).toBeVisible()
+})
+
 test('switches camera Follow and recenters from the mobile Nav panel', async ({
   page,
 }) => {

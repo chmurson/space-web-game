@@ -29,6 +29,9 @@ Shipit state:
   70px Trajectory heading, made the vertically scrollable Nav panel explicitly
   contain horizontal overflow, and reordered the dock to Flight, Nav, Info,
   Ship, Settings.
+- A later interaction follow-up made outside mouse or touch input dismiss only
+  the Target popup. Nav remains open, and pointer input inside the popup still
+  preserves it across target commits.
 
 ## Why
 
@@ -106,6 +109,11 @@ single predictable surface without changing simulation policy.
   every changed check and finished 82/84: the unchanged precise-yaw mismatch
   above remained, and the unchanged timing-sensitive Time Warp screenshot
   sampled `x4s` instead of `x4m`, including in an isolated rerun.
+- The outside-dismiss follow-up passed focused mouse/touch and popup-persistence
+  coverage 2/2. Its full GUI run passed every changed check and finished 84/85;
+  the only failure was the unchanged current-main precise-yaw assertion above.
+  Release build, 65 Vitest files / 649 tests, 16 claim tests, targeted Biome,
+  and diff checks passed.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
   collapsed/open, recommended/manual, forced, capped, and unavailable states.
   The controls remain legible and non-overlapping. The redundant secondary
