@@ -41,32 +41,75 @@ const attachScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('names the centered target for desktop keyboard camera actions', async ({
+test('distinguishes desktop camera following and centering actions', async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000)
   await startReachMoonMission(page)
 
   const notice = page.locator('.hud-notice-transient')
   await page.keyboard.press('KeyC')
   await expect(notice).toBeVisible()
   await expect(notice.locator('.hud-notice-title')).toHaveText(
-    'Camera centered',
+    'Camera following',
   )
-  await expect(notice.locator('.hud-notice-body')).toHaveText('Earth')
+  await expect(notice.locator('.hud-notice-body')).toHaveText(
+    'Current target · Earth',
+  )
 
   await page.keyboard.press('KeyC')
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera following',
+  )
   await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
 
   await page.keyboard.press('Shift+KeyC')
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera centered',
+  )
   await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
+
+  await page.keyboard.press('KeyC')
+  const targetSelectorButton = page.getByRole('button', {
+    name: 'Select target (T)',
+  })
+  await targetSelectorButton.click()
+  const targetSelector = page.locator('.desktop-target-selector-popover')
+  await targetSelector.getByRole('button', { name: /Moon/ }).click()
+
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera following',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText(
+    'Current target · Moon',
+  )
   await expect
     .poll(async () =>
-      notice.locator('.hud-notice-title').evaluate((element) =>
-        Math.ceil(element.scrollWidth - element.clientWidth),
-      ),
+      notice
+        .locator('.hud-notice-title')
+        .evaluate((element) =>
+          Math.ceil(element.scrollWidth - element.clientWidth),
+        ),
     )
     .toBe(0)
-  await attachScreenshot(page, testInfo, 'desktop-camera-centered-notice')
+  await attachScreenshot(page, testInfo, 'desktop-camera-following-target')
+
+  await page.keyboard.press('Shift+KeyC')
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera centered',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText(
+    'Current target · Moon',
+  )
+  await attachScreenshot(page, testInfo, 'desktop-camera-centered-target')
+
+  await page.keyboard.press('KeyC')
+  await targetSelectorButton.click()
+  await targetSelector.getByRole('button', { name: /Earth/ }).click()
+  await expect(notice.locator('.hud-notice-title')).toHaveText(
+    'Camera following',
+  )
+  await expect(notice.locator('.hud-notice-body')).toHaveText('Spacecraft')
 })
 
 test('does not show camera notices for modified C, unassigned L, or pointer drag', async ({

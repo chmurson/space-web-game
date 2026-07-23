@@ -399,7 +399,40 @@ export const createAppComponents = (options: {
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
-  let cameraKeyboardNoticeSequence = 0
+  let cameraNoticeSequence = 0
+  const showDesktopCameraNotice = (
+    title: 'Camera centered' | 'Camera following',
+  ) => {
+    if (!desktopFinePointerMedia.matches) {
+      return
+    }
+
+    let body = 'Spacecraft'
+    if (runtimeActions.getCameraFollow() === 'target') {
+      const targetName = queries.getAssistTargetUiState().activeTarget.name
+      body = `Current target · ${targetName}`
+    }
+
+    cameraNoticeSequence += 1
+    options.runtimeState.ui.transientNotice = {
+      body,
+      id: `camera-notice-${cameraNoticeSequence}`,
+      title,
+    }
+  }
+  const commitDesktopTargetChange = (commit: () => boolean) => {
+    const previousTargetId = queries.getAssistTargetUiState().activeTarget.id
+    if (!commit()) {
+      return false
+    }
+
+    const targetChanged =
+      queries.getAssistTargetUiState().activeTarget.id !== previousTargetId
+    if (targetChanged) {
+      showDesktopCameraNotice('Camera following')
+    }
+    return true
+  }
   const getTargetControlRows = () =>
     options.runtimeState.simulation.state.bodies.map((body, index) => ({
       body,
@@ -554,9 +587,14 @@ export const createAppComponents = (options: {
     button: overlayUi.targetSelectorButton,
     getRows: getTargetControlRows,
     getTargetState: queries.getAssistTargetUiState,
-    onReturnToAutomaticTarget:
-      runtimeActions.returnToAutomaticAssistTargetSelection,
-    onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
+    onReturnToAutomaticTarget: () =>
+      commitDesktopTargetChange(
+        runtimeActions.returnToAutomaticAssistTargetSelection,
+      ),
+    onSelectTargetIndex: (index) =>
+      commitDesktopTargetChange(() =>
+        runtimeActions.selectAssistTargetIndex(index),
+      ),
     onStateChange: () => {
       syncTargetRecommendationState()
       touchControls.syncUi()
@@ -913,24 +951,15 @@ export const createAppComponents = (options: {
     const cameraControlsLocked = runtimeActions.getCameraControlsLocked()
     dispatchRuntimeAction(action)
 
-    if (
-      !cameraShortcut ||
-      cameraControlsLocked ||
-      !desktopFinePointerMedia.matches
-    ) {
+    if (!cameraShortcut || cameraControlsLocked) {
       return
     }
 
-    const centeredTargetName =
-      runtimeActions.getCameraFollow() === 'target'
-        ? queries.getAssistTargetUiState().activeTarget.name
-        : 'Spacecraft'
-    cameraKeyboardNoticeSequence += 1
-    options.runtimeState.ui.transientNotice = {
-      body: centeredTargetName,
-      id: `camera-centered-${cameraKeyboardNoticeSequence}`,
-      title: 'Camera centered',
+    if (action === 'toggleCameraFollow') {
+      showDesktopCameraNotice('Camera following')
+      return
     }
+    showDesktopCameraNotice('Camera centered')
   }
 
   bindKeyboardShortcuts({
