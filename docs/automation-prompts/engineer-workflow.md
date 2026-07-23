@@ -19,10 +19,6 @@ Orchestrator boundary:
 - GitHub writes must be delegated to a worker after acquiring the matching task claim, except the orchestrator owns PR comment tracking reactions and local tracking metadata after acquiring the same claim.
 - If the worker sub-agent is unavailable or cannot get implementation permissions, stop and report the blocker.
 
-GitHub access:
-
-- Prefer the authenticated `gh` CLI for GitHub reads and writes. Use the Codex GitHub integration only as a fallback when the required operation is unavailable through `gh`.
-
 Task claims:
 - Do not use a run-wide lock. Use task-scoped claims only.
 - Claim helper syntax is `npm run claim:task -- acquire|heartbeat|verify|release --kind pr|issue --id <id>`.
