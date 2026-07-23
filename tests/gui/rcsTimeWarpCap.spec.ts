@@ -32,11 +32,21 @@ const setTimeWarp = async (page: Page, timeWarp: number) => {
   }, index)
 }
 
-test('caps manual RCS at x15s while thrust-only keeps the x1m cap', async ({
+test('caps controls and restores the prediction-limited warp request', async ({
   page,
 }, testInfo: TestInfo) => {
   await startGame(page)
+  await expect
+    .poll(
+      async () =>
+        (await getSnapshot(page))?.simulation.trajectoryPrediction.nearSource,
+    )
+    .toBe('accepted-window')
   await setTimeWarp(page, 1800)
+
+  await expect
+    .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
+    .toBe(240)
 
   await page.keyboard.down('KeyD')
   await expect
@@ -50,13 +60,12 @@ test('caps manual RCS at x15s while thrust-only keeps the x1m cap', async ({
     path: testInfo.outputPath('manual-rcs-x15s.png'),
   })
 
-  await page.keyboard.down('KeyW')
+  await page.keyboard.up('KeyD')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
-    .toBe(60)
-  await expect(page.locator('[data-stat="time"]')).toContainText('x1m')
+    .toBe(240)
 
-  await page.keyboard.up('KeyD')
+  await page.keyboard.down('KeyW')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
     .toBe(60)
@@ -65,5 +74,12 @@ test('caps manual RCS at x15s while thrust-only keeps the x1m cap', async ({
   await page.keyboard.up('KeyW')
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
+    .toBe(240)
+  await expect
+    .poll(
+      async () =>
+        (await getSnapshot(page))?.simulation.timeWarpConstraint
+          .requestedTimeWarp,
+    )
     .toBe(1800)
 })

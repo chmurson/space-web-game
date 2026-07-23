@@ -265,6 +265,8 @@ export const createAppComponents = (options: {
       trajectoryPredictionRuntime.getState().absolutePredictionEnd,
     getPredictedTrajectoryPoints: () =>
       trajectoryPredictionRuntime.getState().absolutePredictionPoints,
+    hasCompleteAutoTargetPrediction:
+      trajectoryPredictionRuntime.hasCompletePredictionForCurrentTarget,
     maxPredictionLoopRevolutions:
       options.config.trajectory.maxPredictionLoopRevolutions,
     predictionSampling: options.config.trajectory.predictionSampling,
@@ -441,6 +443,8 @@ export const createAppComponents = (options: {
         state: options.runtimeState.simulation.state,
         targetHeading: options.runtimeState.simulation.targetHeading,
         timeWarps: options.config.controls.timeWarps,
+        usablePredictionCoverageSeconds:
+          trajectoryPredictionRuntime.getRemainingUsableCoverageSeconds(),
       })
     },
     getTimeWarpPreviews: (action, count) => {
@@ -461,6 +465,8 @@ export const createAppComponents = (options: {
         state: options.runtimeState.simulation.state,
         targetHeading: options.runtimeState.simulation.targetHeading,
         timeWarps: options.config.controls.timeWarps,
+        usablePredictionCoverageSeconds:
+          trajectoryPredictionRuntime.getRemainingUsableCoverageSeconds(),
       })
     },
     keyboardInput,
@@ -622,6 +628,7 @@ export const createAppComponents = (options: {
   const hudPresentation = createHudPresentation({
     defaultViewport: options.config.camera.defaultViewport,
     getStarfieldLayerDebugInfo: gameScene.starfield.getLayerDebugInfo,
+    getTimeWarpDiagnostics: navigationTimeWarpController.getDiagnostics,
     getTrailRenderedSliceCount: () => gameScene.trailRenderedSliceCount,
     inGameControlsMenu,
     infoHud,
@@ -832,6 +839,7 @@ export const createAppComponents = (options: {
     getAssistTarget: queries.getAssistTarget,
     getTrajectoryPredictionDiagnostics: () =>
       trajectoryPredictionRuntime.getDiagnostics(),
+    getTimeWarpDiagnostics: navigationTimeWarpController.getDiagnostics,
     maxPredictionLoopRevolutions:
       options.config.trajectory.maxPredictionLoopRevolutions,
     predictionSampling: options.config.trajectory.predictionSampling,

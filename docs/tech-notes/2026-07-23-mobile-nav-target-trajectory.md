@@ -75,8 +75,9 @@ single predictable surface without changing simulation policy.
   `git diff --check` passed.
 - `npm run build` passed, including config validation, TypeScript compilation,
   and the release Vite build. The existing large-chunk advisory remains.
-- All 64 Vitest files / 627 product tests and all 16 automation-claim tests
-  passed.
+- Before the final `main` merge, all 64 Vitest files / 627 product tests and
+  all 16 automation-claim tests passed. After merging current `main`, the
+  expanded product suite passed all 65 files / 649 tests.
 - `npm run test:gui` completed one full 84/84 pass during the follow-up. After
   the final responsive-only Camera adjustment, the full rerun passed 83/84:
   every changed Nav/Target/Trajectory check passed, while the unchanged
@@ -89,6 +90,11 @@ single predictable surface without changing simulation policy.
   availability, dock/canvas input isolation, every required Trajectory
   cancellation boundary, Settings cleanup, tutorial routing, and unchanged
   desktop behavior.
+- After merging current `main`, the final full GUI run again passed every
+  changed check and finished 83/84. The only failure is current-main's
+  precise-yaw assertion: `keyboardInput.ts` now intentionally emits `-0.25`,
+  while its unchanged GUI assertion still expects `-1 / 49`. The failure
+  reproduces in isolation, and this branch does not change either file.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
   collapsed/open, recommended/manual, forced, capped, and unavailable states.
   The controls remain legible and non-overlapping. At 320 px the redundant

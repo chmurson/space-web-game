@@ -145,6 +145,19 @@ const createDebugPanelInput = (
     surfaceDistance: 4_000,
   },
   targetName: 'Moon',
+  timeWarpDiagnostics: {
+    constraintReason: 'prediction-coverage',
+    effectiveTimeWarp: 14_400,
+    effectiveTimeWarpIndex: 14,
+    predictionCoverageLimit: {
+      maxTimeWarp: 14_400,
+      maxTimeWarpIndex: 14,
+      rawMaxTimeWarp: 17_280,
+      remainingCoverageSeconds: 48 * 60 * 60,
+    },
+    requestedTimeWarp: 54_000,
+    requestedTimeWarpIndex: 16,
+  },
   trailDetail: {
     captureSampleDistanceMeters: 250_000,
     label: 'close',
@@ -194,6 +207,12 @@ describe('getDebugPanelLines', () => {
   it('shows trajectory prediction refresh metrics in debug text', () => {
     expect(getDebugPanelLines(createDebugPanelInput())).toContain(
       'prediction step: 1m | integrate max 8s | refresh target-change 3.5ms (2/s) | geometry 1.3ms | pts 12/10/8 | events 2',
+    )
+  })
+
+  it('shows requested and effective warp with coverage and constraint reason', () => {
+    expect(getDebugPanelLines(createDebugPanelInput())).toContain(
+      'time warp: requested x15h | effective x4h | coverage 2d => cap x4h | constraint prediction-coverage',
     )
   })
 

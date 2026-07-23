@@ -32,6 +32,7 @@ describe('getTimeWarpControlStatus', () => {
     ['control-limit', 'Active-control cap reached'],
     ['global-max', 'Maximum rate reached'],
     ['global-min', 'Minimum rate reached'],
+    ['prediction-coverage', 'Prediction coverage cap reached'],
     ['scenario-limit', 'Scenario cap reached'],
     ['thrust-active', 'Main thrust blocks faster rates'],
     ['turning', 'Turning blocks faster rates'],

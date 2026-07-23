@@ -133,11 +133,13 @@ export const createRuntimeActions = (options: {
   }
 
   const selectTimeWarpIndex = (timeWarpIndex: number) => {
-    options.runtime.simulation.timeWarpIndex =
+    const selectedTimeWarpIndex =
       options.navigationTimeWarpController.selectTimeWarpIndex({
         maxTimeWarp: options.runtime.scenario.directives.maxTimeWarp,
         timeWarpIndex,
       })
+    options.runtime.simulation.timeWarpIndex = selectedTimeWarpIndex
+    return selectedTimeWarpIndex
   }
   const setTimeWarp = (warp: number) => {
     const timeWarpIndex = options.timeWarps.reduce(
@@ -640,6 +642,7 @@ export const createRuntimeActions = (options: {
     recoverScenarioAfterCrash,
     reopenScenarioPrompt,
     selectAssistTargetIndex,
+    selectTimeWarpIndex,
     startFreeRoam: scenarioRuntimeController.startFreeRoam,
     startReachMoon: scenarioRuntimeController.startReachMoon,
     startTutorial: scenarioRuntimeController.startTutorial,

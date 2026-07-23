@@ -6,6 +6,7 @@ import type {
   AssistTargetUiState,
   GameQueries,
 } from '../runtime/gameQueries'
+import type { NavigationTimeWarpDiagnostics } from '../runtime/navigationTimeWarpController'
 import { emptyTrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
 import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
@@ -93,6 +94,7 @@ const createDebugStateCopyPayload = (options: {
   runtime: AppRuntimeState
   target: Body
   targetMetrics: ReturnType<GameQueries['getCaptureMetrics']>
+  timeWarpDiagnostics: NavigationTimeWarpDiagnostics
   timeWarp: number
   trail: {
     captureSampleDistanceMeters: number
@@ -150,6 +152,7 @@ const createDebugStateCopyPayload = (options: {
     targetHeading: options.runtime.simulation.targetHeading,
     targetHeadingTurn: options.runtime.simulation.targetHeadingTurn,
     timeWarp: options.timeWarp,
+    timeWarpConstraint: options.timeWarpDiagnostics,
     timeWarpIndex: options.runtime.simulation.timeWarpIndex,
     viewportSize: options.runtime.simulation.viewportSize,
   },
@@ -181,6 +184,7 @@ export const createHudPresentation = (options: {
   targetRecommendationNotice?: {
     sync(targetUiState: AssistTargetUiState): void
   }
+  getTimeWarpDiagnostics?(): NavigationTimeWarpDiagnostics
   timeWarps: number[]
   touchControls?: TouchControls
   trajectoryPresentation: TrajectoryPresentation
@@ -645,6 +649,14 @@ export const createHudPresentation = (options: {
           renderSampleDistanceMeters: trailDetail.renderSampleDistanceMeters,
           targetBound,
         }
+        const timeWarpDiagnostics = options.getTimeWarpDiagnostics?.() ?? {
+          constraintReason: null,
+          effectiveTimeWarp: null,
+          effectiveTimeWarpIndex: null,
+          predictionCoverageLimit: null,
+          requestedTimeWarp: null,
+          requestedTimeWarpIndex: null,
+        }
         options.overlayUi.debugPanel.setText(
           getDebugPanelLines({
             assistMode: options.runtime.simulation.assistMode,
@@ -667,6 +679,7 @@ export const createHudPresentation = (options: {
               predictionState.predictedTargetClosestApproach,
             targetMetrics,
             targetName: target.name,
+            timeWarpDiagnostics,
             trailDetail: {
               ...trailDetail,
               renderFrame: trailDebugState.renderFrame,
@@ -684,6 +697,7 @@ export const createHudPresentation = (options: {
             runtime: options.runtime,
             target,
             targetMetrics,
+            timeWarpDiagnostics,
             timeWarp:
               options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
             trail: trailDebugState,
@@ -710,6 +724,7 @@ export const createHudPresentation = (options: {
           trail: {
             ...trailDebugState,
           },
+          timeWarp: timeWarpDiagnostics,
           viewport: {
             size: viewportSize,
             zoom,

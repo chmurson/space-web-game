@@ -21,6 +21,7 @@ const resolveFrame = (
     navigationActive: boolean
     nowMs: number
     timeWarpIndex: number
+    usablePredictionCoverageSeconds?: number
   },
 ) =>
   controller.resolveFrame({
@@ -28,6 +29,7 @@ const resolveFrame = (
     nowMs: options.nowMs,
     simulationControlMaxWarp: options.navigationActive ? maxControlWarp : null,
     timeWarpIndex: options.timeWarpIndex,
+    usablePredictionCoverageSeconds: options.usablePredictionCoverageSeconds,
   })
 
 describe('createNavigationTimeWarpController', () => {
@@ -304,5 +306,69 @@ describe('createNavigationTimeWarpController', () => {
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(scenarioMaximumTimeWarpIndex)
+  })
+
+  it('restores the requested warp immediately when compatible coverage returns', () => {
+    const controller = createController()
+    const requestedIndex = requestedTimeWarps.indexOf(54_000)
+    const limitedIndex = requestedTimeWarps.indexOf(14_400)
+
+    expect(
+      resolveFrame(controller, {
+        navigationActive: false,
+        nowMs: 0,
+        timeWarpIndex: requestedIndex,
+        usablePredictionCoverageSeconds: 48 * 60 * 60,
+      }),
+    ).toBe(limitedIndex)
+    expect(controller.getDiagnostics()).toMatchObject({
+      constraintReason: 'prediction-coverage',
+      effectiveTimeWarp: 14_400,
+      predictionCoverageLimit: {
+        maxTimeWarp: 14_400,
+        remainingCoverageSeconds: 48 * 60 * 60,
+      },
+      requestedTimeWarp: 54_000,
+    })
+
+    expect(
+      resolveFrame(controller, {
+        navigationActive: false,
+        nowMs: 16,
+        timeWarpIndex: limitedIndex,
+        usablePredictionCoverageSeconds: 192 * 60 * 60,
+      }),
+    ).toBe(requestedIndex)
+  })
+
+  it('uses a selection made while coverage-capped as the new request', () => {
+    const controller = createController()
+    const originalIndex = requestedTimeWarps.indexOf(54_000)
+    const coverageLimitedIndex = requestedTimeWarps.indexOf(480)
+    const replacementIndex = requestedTimeWarps.indexOf(900)
+
+    expect(
+      resolveFrame(controller, {
+        navigationActive: false,
+        nowMs: 0,
+        timeWarpIndex: originalIndex,
+        usablePredictionCoverageSeconds: 2 * 60 * 60,
+      }),
+    ).toBe(coverageLimitedIndex)
+    expect(
+      controller.selectTimeWarpIndex({
+        maxTimeWarp: null,
+        timeWarpIndex: replacementIndex,
+      }),
+    ).toBe(coverageLimitedIndex)
+
+    expect(
+      resolveFrame(controller, {
+        navigationActive: false,
+        nowMs: 16,
+        timeWarpIndex: coverageLimitedIndex,
+        usablePredictionCoverageSeconds: 192 * 60 * 60,
+      }),
+    ).toBe(replacementIndex)
   })
 })

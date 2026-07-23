@@ -98,12 +98,12 @@ describe('createKeyboardInput', () => {
     }
   })
 
-  it('shapes quarter-travel input while either Shift key is held', () => {
+  it('turns at quarter power while either Shift key is held', () => {
     const keyboardInput = createKeyboardInput()
 
     keyboardInput.press('KeyA')
     keyboardInput.press('ShiftLeft')
-    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-1 / 49)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(-0.25)
 
     keyboardInput.release('ShiftLeft')
     expect(keyboardInput.getManualControls().turn).toBe(-1)
@@ -111,7 +111,7 @@ describe('createKeyboardInput', () => {
     keyboardInput.release('KeyA')
     keyboardInput.press('ShiftRight')
     keyboardInput.press('KeyD')
-    expect(keyboardInput.getManualControls().turn).toBeCloseTo(1 / 49)
+    expect(keyboardInput.getManualControls().turn).toBeCloseTo(0.25)
 
     keyboardInput.clear()
     expect(keyboardInput.getManualControls().turn).toBe(0)

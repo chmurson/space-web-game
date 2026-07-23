@@ -1,6 +1,5 @@
 import { type AssistMode, shouldCircularizeBurn } from '../assist/orbitalAssist'
 import type { KeyboardInput } from '../input/keyboardInput'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import { idleControls } from '../simulation/state'
 import type {
   Body,
@@ -18,6 +17,12 @@ import {
 } from '../simulation/vector'
 import type { GameQueries } from './gameQueries'
 import type { NavigationTimeWarpController } from './navigationTimeWarpController'
+import {
+  resolveTimeWarpConstraints,
+  type TimeWarpConstraintReason,
+} from './timeWarpConstraints'
+
+export type { TimeWarpConstraintReason } from './timeWarpConstraints'
 
 type SimulationStepQueries = Pick<
   GameQueries,
@@ -50,8 +55,6 @@ type ResolvedSimulationControlsWithInputState = ResolvedSimulationControls & {
   manualRcsTurnActive: boolean
 }
 
-export type TimeWarpConstraintReason = 'scenario-limit' | 'active-controls'
-
 export type StepSimulationFrameOptions = SimulationStepQueries & {
   assistMode: AssistMode
   autopilotRotationRate: number
@@ -68,6 +71,7 @@ export type StepSimulationFrameOptions = SimulationStepQueries & {
   targetHeadingTurn?: TargetHeadingTurn | null
   timeWarpIndex: number
   timeWarps: number[]
+  usablePredictionCoverageSeconds?: number | null
 }
 
 export type StepSimulationFrameResult = {
@@ -393,12 +397,12 @@ const getActiveControlMaxWarp = (
   const linearThrustActive =
     controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0
 
-  if (linearThrustActive) {
-    return maxControlWarp
-  }
-
   if (manualRcsTurnActive && controls.turn !== 0) {
     return temporaryMaxRcsTurnWarp
+  }
+
+  if (linearThrustActive) {
+    return maxControlWarp
   }
 
   return controls.turn !== 0 ? maxControlWarp : null
@@ -410,9 +414,13 @@ export const resolveSimulationTimeWarp = (
     maxTimeWarp: number | null
     timeWarpIndex: number
     timeWarps: number[]
+    usablePredictionCoverageSeconds?: number | null
   },
 ): {
   activeControlMaxWarp: number | null
+  predictionCoverageLimit: ReturnType<
+    typeof resolveTimeWarpConstraints
+  >['predictionCoverageLimit']
   reason: TimeWarpConstraintReason | null
   simulationControls: ResolvedSimulationControls
   timeWarpIndex: number
@@ -424,29 +432,20 @@ export const resolveSimulationTimeWarp = (
     manualRcsTurnActive,
     options.maxControlWarp,
   )
-  const scenarioConstrainedTimeWarpIndex = getConstrainedTimeWarpIndex(
-    options.timeWarpIndex,
-    options.timeWarps,
-    options.maxTimeWarp,
-  )
-  const controlConstrainedTimeWarpIndex = getConstrainedTimeWarpIndex(
-    scenarioConstrainedTimeWarpIndex,
-    options.timeWarps,
-    activeControlMaxWarp,
-  )
-  let reason: TimeWarpConstraintReason | null = null
-
-  if (controlConstrainedTimeWarpIndex !== scenarioConstrainedTimeWarpIndex) {
-    reason = 'active-controls'
-  } else if (scenarioConstrainedTimeWarpIndex !== options.timeWarpIndex) {
-    reason = 'scenario-limit'
-  }
+  const constraintResolution = resolveTimeWarpConstraints({
+    maxTimeWarp: options.maxTimeWarp,
+    simulationControlMaxWarp: activeControlMaxWarp,
+    timeWarpIndex: options.timeWarpIndex,
+    timeWarps: options.timeWarps,
+    usablePredictionCoverageSeconds: options.usablePredictionCoverageSeconds,
+  })
 
   return {
     activeControlMaxWarp,
-    reason,
+    predictionCoverageLimit: constraintResolution.predictionCoverageLimit,
+    reason: constraintResolution.reason,
     simulationControls,
-    timeWarpIndex: controlConstrainedTimeWarpIndex,
+    timeWarpIndex: constraintResolution.timeWarpIndex,
   }
 }
 
@@ -514,6 +513,7 @@ export const stepSimulationFrame = (
     targetHeadingTurn,
     timeWarpIndex: options.timeWarpIndex,
     timeWarps: options.timeWarps,
+    usablePredictionCoverageSeconds: options.usablePredictionCoverageSeconds,
   })
 
   assistMode = resolvedTimeWarp.simulationControls.assistMode
@@ -525,6 +525,8 @@ export const stepSimulationFrame = (
         nowMs: options.nowMs ?? performance.now(),
         simulationControlMaxWarp: resolvedTimeWarp.activeControlMaxWarp,
         timeWarpIndex: options.timeWarpIndex,
+        usablePredictionCoverageSeconds:
+          options.usablePredictionCoverageSeconds,
       })
     : resolvedTimeWarp.timeWarpIndex
   const timeWarp = options.timeWarps[timeWarpIndex] ?? 1
