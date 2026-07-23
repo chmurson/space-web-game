@@ -547,7 +547,6 @@ export const createAppComponents = (options: {
         runtime: options.runtimeState,
       }),
     mobilePanelContainer: touchControls.infoPanelContainer,
-    mobileRailContainer: touchControls.infoRailContainer,
     onClear: runtimeActions.clearUserInfoPins,
     onTogglePin: runtimeActions.toggleUserInfoPin,
     toggleMobileInfoPanel: touchControls.toggleInfoPanel,

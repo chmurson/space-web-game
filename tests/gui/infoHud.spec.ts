@@ -20,7 +20,7 @@ const captureScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('desktop Info popover manages player pins and leaves the rail persistent', async ({
+test('desktop Info keeps selections in one persistent popover', async ({
   browser,
 }, testInfo) => {
   const context = await browser.newContext({
@@ -50,12 +50,13 @@ test('desktop Info popover manages player pins and leaves the rail persistent', 
     await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
     await expect(popover).toBeVisible()
     await expect(popover.getByRole('switch')).toHaveCount(4)
+    await expect(popover.locator('.target-body-sphere')).toHaveCount(2)
     await expect(
       popover.locator('[data-info-pin^="body:"] .info-hud-row-secondary'),
     ).toHaveText(['to spacecraft', 'to spacecraft'])
-    await expect(
-      popover.locator('[data-info-pin="periapsis"] .info-hud-row-secondary'),
-    ).toHaveText(/^to (Earth|Moon)$/)
+    await expect(popover.locator('[data-info-row="apsides"]')).toContainText(
+      /Pe\s*·\s*.+\|\s*Ap\s*·\s*.+to (Earth|Moon)/,
+    )
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'false')
     await expect(earthPinStatus).toHaveText('○')
     const selectAllButton = popover.getByRole('button', {
@@ -68,29 +69,26 @@ test('desktop Info popover manages player pins and leaves the rail persistent', 
     await expect(earthPinStatus).toHaveText('●')
     await captureScreenshot(page, testInfo, 'desktop-info-popover-pinned')
 
+    await page.mouse.click(24, 260)
+    await expect(popover).toBeVisible()
+    await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
+
     await selectAllButton.click()
     await expect(selectAllButton).toBeDisabled()
-    await expect(
-      page.locator('.desktop-info-rail [data-info-pin]'),
-    ).toHaveCount(4)
+    await expect(page.locator('.info-hud-rail')).toHaveCount(0)
+    await expect(infoButton.locator('[aria-label="4 selected"]')).toBeVisible()
 
     await page.keyboard.press('KeyI')
     await expect(popover).toBeHidden()
-    await expect(
-      page.locator('.desktop-info-rail [data-info-pin="body:earth"]'),
-    ).toBeVisible()
-    await expect(
-      page.locator('.desktop-info-rail .info-hud-row-secondary'),
-    ).toHaveCount(0)
 
     await page.keyboard.press('Shift+KeyI')
-    await expect(page.locator('.desktop-info-rail')).toBeHidden()
+    await expect(infoButton.locator('[aria-label$="selected"]')).toHaveCount(0)
   } finally {
     await context.close()
   }
 })
 
-test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', async ({
+test('mobile Info panel keeps selection inside the dock surface', async ({
   page,
 }, testInfo) => {
   await page.goto('/?scenario=earth-moon')
@@ -101,10 +99,7 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
   const infoPanel = page.locator('#mobile-command-dock-info-panel')
   const flightButton = page.locator('#mobile-command-dock-flight-button')
   const flightPanel = page.locator('#mobile-command-dock-flight-panel')
-  const railHost = page.locator('.mobile-command-dock-info-rail-host')
-
   await expect(infoButton).toHaveAttribute('aria-expanded', 'false')
-  await expect(railHost).toHaveCSS('margin-bottom', '0px')
   await infoButton.tap()
   await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
   await expect(infoPanel).toBeVisible()
@@ -115,35 +110,21 @@ test('mobile Info panel is one-open-at-a-time and keeps pins above the dock', as
   await expect(dock).toHaveAttribute('data-open-panel', 'info')
 
   await infoPanel.locator('[data-info-pin="body:earth"]').tap()
-  const railCard = page.locator(
-    '.mobile-info-rail [data-info-pin="body:earth"]',
-  )
-  await expect(railCard).toBeVisible()
   await expect(
-    page.locator('.mobile-info-rail .info-hud-row-secondary'),
-  ).toHaveCount(0)
-  await expect(railHost).toHaveCSS('margin-bottom', '8px')
-
-  const [railBounds, dockBounds] = await Promise.all([
-    railCard.boundingBox(),
-    page.locator('.mobile-command-dock-bar').boundingBox(),
-  ])
-  expect(railBounds).not.toBeNull()
-  expect(dockBounds).not.toBeNull()
-  expect((railBounds?.y ?? 0) + (railBounds?.height ?? 0)).toBeLessThanOrEqual(
-    dockBounds?.y ?? 0,
+    infoPanel.locator('[data-info-pin="body:earth"]'),
+  ).toHaveAttribute('aria-checked', 'true')
+  await expect(page.locator('.mobile-command-dock-info-rail-host')).toHaveCount(
+    0,
   )
-  await captureScreenshot(page, testInfo, 'mobile-info-panel-pinned')
+  await captureScreenshot(page, testInfo, 'mobile-info-panel-selected')
 
   await flightButton.tap()
   await expect(infoPanel).toBeHidden()
   await expect(flightPanel).toBeVisible()
   await expect(dock).toHaveAttribute('data-open-panel', 'flight')
-  await expect(railCard).toBeVisible()
 
   await page.keyboard.press('Shift+KeyI')
-  await expect(page.locator('.mobile-info-rail')).toBeHidden()
-  await expect(railHost).toHaveCSS('margin-bottom', '0px')
+  await expect(page.locator('.info-hud-rail')).toHaveCount(0)
 })
 
 test('refreshes target context when unavailable apsis values stay unchanged', async ({
@@ -157,46 +138,64 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
     const host = document.createElement('div')
     const desktopContainer = document.createElement('div')
     const mobilePanelContainer = document.createElement('div')
-    const mobileRailContainer = document.createElement('div')
-    host.append(desktopContainer, mobilePanelContainer, mobileRailContainer)
+    host.append(desktopContainer, mobilePanelContainer)
     document.body.append(host)
 
     let targetName = 'Earth'
-    const getView = () => ({
-      clearAvailable: false,
-      pinnedRows: [],
-      rows: [
-        {
-          accessibleLabel: `Pe, surface distance from ${targetName} —`,
-          distanceLabel: '—',
-          key: 'periapsis',
-          label: 'Pe',
-          pin: { apsis: 'periapsis', kind: 'apsis' } as const,
-          pinned: false,
-          scenarioOwned: false,
-          secondaryLabel: `to ${targetName}`,
-        },
-      ],
-    })
+    const getView = () => {
+      const periapsisRow = {
+        accessibleLabel: `Pe, altitude over ${targetName} —`,
+        distanceLabel: '—',
+        key: 'periapsis',
+        label: 'Pe',
+        pin: { apsis: 'periapsis', kind: 'apsis' } as const,
+        pinned: false,
+        scenarioOwned: false,
+        secondaryLabel: `to ${targetName}`,
+      }
+      const apoapsisRow = {
+        ...periapsisRow,
+        accessibleLabel: `Ap, altitude over ${targetName} —`,
+        key: 'apoapsis',
+        label: 'Ap',
+        pin: { apsis: 'apoapsis', kind: 'apsis' } as const,
+      }
+
+      return {
+        clearAvailable: false,
+        entries: [
+          {
+            key: 'apsides' as const,
+            kind: 'apsides' as const,
+            rows: [periapsisRow, apoapsisRow] as [
+              typeof periapsisRow,
+              typeof apoapsisRow,
+            ],
+            secondaryLabel: `to ${targetName}`,
+          },
+        ],
+        rows: [periapsisRow, apoapsisRow],
+        selectedCount: 0,
+      }
+    }
     const infoHud = createInfoHud({
       desktopContainer,
       getMobileSurfaceActive: () => false,
       getView,
       mobilePanelContainer,
-      mobileRailContainer,
       onClear: () => undefined,
       onTogglePin: () => undefined,
       toggleMobileInfoPanel: () => undefined,
     })
     const readRow = () => {
-      const row = mobilePanelContainer.querySelector('.info-hud-row')
+      const row = mobilePanelContainer.querySelector(
+        '[data-info-pin="periapsis"]',
+      )
       return {
         accessibleLabel: row?.getAttribute('aria-label'),
-        railLabelCount: mobileRailContainer.querySelectorAll(
-          '.info-hud-row-secondary',
-        ).length,
-        secondaryLabel: row?.querySelector('.info-hud-row-secondary')
-          ?.textContent,
+        secondaryLabel: mobilePanelContainer.querySelector(
+          '.info-hud-apsis-row > .info-hud-row-secondary',
+        )?.textContent,
       }
     }
 
@@ -211,13 +210,11 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
 
   expect(result).toEqual({
     after: {
-      accessibleLabel: 'Pe, surface distance from Moon —, not pinned',
-      railLabelCount: 0,
+      accessibleLabel: 'Pe, altitude over Moon —, not selected',
       secondaryLabel: 'to Moon',
     },
     before: {
-      accessibleLabel: 'Pe, surface distance from Earth —, not pinned',
-      railLabelCount: 0,
+      accessibleLabel: 'Pe, altitude over Earth —, not selected',
       secondaryLabel: 'to Earth',
     },
   })
@@ -244,7 +241,5 @@ test('scenario-owned pins are exposed as checked, immutable switches', async ({
   await expect(moonSwitch).toBeDisabled()
   await expect(moonSwitch).toContainText('Scenario')
   await expect(moonSwitch.locator('.info-hud-pin-status')).toHaveText('◆')
-  await expect(
-    page.locator('.mobile-info-rail [data-info-pin="body:moon"]'),
-  ).toBeDisabled()
+  await expect(page.locator('.info-hud-rail')).toHaveCount(0)
 })

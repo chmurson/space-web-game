@@ -190,13 +190,19 @@ test('switches camera Follow and recenters from the mobile Nav panel', async ({
   await expect(target).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('recenters target framing above Nav using the current playable viewport', async ({
+test('recenters selected target framing above Nav using the current playable viewport', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
   await page.goto('/?scenario=earth-moon&devtools=1')
   await waitForGame(page)
   await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
+  const infoButton = page.locator('#mobile-command-dock-info-button')
+  await infoButton.tap()
+  await page
+    .locator('#mobile-command-dock-info-panel [data-info-pin="body:earth"]')
+    .tap()
+  await infoButton.tap()
   await page.evaluate(() => {
     const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
       follow: 'target',

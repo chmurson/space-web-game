@@ -5,7 +5,6 @@ import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import type { BodyDistanceContext } from './bodyDistanceContext'
-import { createActiveTargetLabelVisibility } from './bodyPresentation/activeTargetLabelVisibility'
 import { updateBodyLabels } from './bodyPresentation/updateBodyLabels'
 import { updateOffscreenIndicators } from './bodyPresentation/updateOffscreenIndicators'
 import {
@@ -50,8 +49,6 @@ export const createBodyPresentation = (options: {
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
 }) => {
-  const isActiveTargetFullLabelVisible = createActiveTargetLabelVisibility()
-
   return {
     updateVisuals: (state: {
       bodies: Body[]
@@ -59,7 +56,6 @@ export const createBodyPresentation = (options: {
       elapsed: number
       hiddenBodyIds: string[]
       infoPins: readonly InfoPin[]
-      nowMs: number
       spacecraftPosition: Vec2
       viewportSize: number
     }) => {
@@ -74,10 +70,6 @@ export const createBodyPresentation = (options: {
         gameScene: options.gameScene,
       })
       const nextActiveTargetId = state.distanceContext?.bodyId ?? null
-      const activeTargetFullLabelVisible = isActiveTargetFullLabelVisible(
-        nextActiveTargetId,
-        state.nowMs,
-      )
       const pinnedBodyIds = new Set(
         state.infoPins.flatMap((pin) =>
           pin.kind === 'body' ? [pin.bodyId] : [],
@@ -92,7 +84,6 @@ export const createBodyPresentation = (options: {
         targetBodyId: nextActiveTargetId,
       })
       updateBodyLabels({
-        activeTargetFullLabelVisible,
         bodies: visibleBodies,
         distanceContext: state.distanceContext ?? null,
         gameScene: options.gameScene,

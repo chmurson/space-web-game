@@ -32,64 +32,12 @@ test('connects desktop canvas navigation labels, pins, and physical offscreen di
     await page.goto('/?scenario=earth-moon&devtools=1')
     await waitForGame(page)
 
-    const activeTargetLabel = page.locator('.body-label-active-target')
-    await expect(activeTargetLabel).toBeVisible()
-    await expect(activeTargetLabel).toHaveText(/^Earth · /)
-    await expect(activeTargetLabel).toHaveAttribute(
-      'aria-label',
-      /^Earth, altitude .+; pin in Info$/,
-    )
-
-    await page.waitForTimeout(3_050)
-    await expect(activeTargetLabel).toHaveText(/^\d+(?:\.\d+)? (?:km|Mm)$/)
-    await expect(activeTargetLabel).toHaveAttribute(
-      'aria-label',
-      /^Earth, altitude /,
-    )
-
-    const targetSelectorButton = page.getByRole('button', {
-      name: 'Select target (T)',
-    })
-    const targetSelectorPopover = page.locator(
-      '.desktop-target-selector-popover',
-    )
-    await page.evaluate(() => {
-      const bridge = window.__SPACE_WEB_GAME_DEVTOOLS__
-      const followResponse = bridge?.handleRequest({
-        follow: 'target',
-        type: 'set-camera-follow',
-      })
-      const recenterResponse = bridge?.handleRequest({
-        type: 'recenter-camera',
-      })
-      if (!followResponse?.ok || !recenterResponse?.ok) {
-        throw new Error('Failed to follow and recenter the active target')
-      }
-    })
-    await targetSelectorButton.click()
-    await targetSelectorPopover.getByRole('button', { name: /Moon/ }).click()
-    await expect(activeTargetLabel).toHaveText(/^Moon · /)
-    await targetSelectorButton.click()
-    await targetSelectorPopover.getByRole('button', { name: /Earth/ }).click()
-    await expect(activeTargetLabel).toHaveText(/^Earth · /)
-
-    await activeTargetLabel.click()
-    await expect(activeTargetLabel).toHaveAttribute('aria-pressed', 'true')
-    await activeTargetLabel.click()
-    await expect(activeTargetLabel).toHaveAttribute('aria-pressed', 'false')
-
-    const activeTargetBounds = await activeTargetLabel.boundingBox()
-    expect(activeTargetBounds).not.toBeNull()
-    if (!activeTargetBounds) {
-      throw new Error('Active target label has no bounds')
-    }
-    await page.mouse.click(
-      activeTargetBounds.x - 10,
-      activeTargetBounds.y + activeTargetBounds.height * 0.5,
-    )
-    await expect(activeTargetLabel).toHaveAttribute('aria-pressed', 'true')
-
+    const earthLabel = page.locator('.body-label[data-info-pin="body:earth"]')
+    await expect(earthLabel).toBeHidden()
     await page.keyboard.press('KeyI')
+    const infoButton = page.getByRole('button', {
+      name: 'Toggle Info panel (I)',
+    })
     const infoPopover = page.locator('#desktop-info-popover')
     await expect(infoPopover).toBeVisible()
     const earthRow = infoPopover.locator('[data-info-pin="body:earth"]')
@@ -98,16 +46,29 @@ test('connects desktop canvas navigation labels, pins, and physical offscreen di
       (await earthRow.locator('.info-hud-row-distance').textContent()) ?? ''
     const moonDistance =
       (await moonRow.locator('.info-hud-row-distance').textContent()) ?? ''
-    await moonRow.click()
-    await expect(moonRow).toHaveAttribute('aria-checked', 'true')
-    await page.keyboard.press('KeyI')
+
+    await earthRow.click()
+    await expect(earthLabel).toBeVisible()
+    await expect(earthLabel).toHaveText(/^Earth · /)
+    await expect(earthLabel).toHaveAttribute(
+      'aria-label',
+      /^Earth, altitude .+; unpin in Info$/,
+    )
+    await page.waitForTimeout(3_050)
+    await expect(earthLabel).toHaveText(/^Earth · /)
+
+    await earthLabel.dispatchEvent('click')
+    await expect(earthLabel).toBeHidden()
+    await expect(infoPopover).toBeVisible()
+    await expect(earthRow).toHaveAttribute('aria-checked', 'false')
+    await infoButton.click()
 
     const canvas = page.locator('canvas')
     await expect(canvas).toBeVisible()
     for (let attempt = 0; attempt < 4; attempt += 1) {
       if (
         await page
-          .locator('.offscreen-indicator-spacecraft')
+          .locator('[data-offscreen-target="__spacecraft__"]')
           .evaluate((element) => getComputedStyle(element).display !== 'none')
           .catch(() => false)
       ) {
@@ -130,6 +91,21 @@ test('connects desktop canvas navigation labels, pins, and physical offscreen di
     await expect(spacecraftIndicator.locator('.label')).toHaveText('Spacecraft')
     await expect(spacecraftIndicator.locator('.label')).not.toHaveText(/\d/)
     await expect(earthIndicator).toHaveClass(
+      /offscreen-indicator-unpinned-body/,
+    )
+    await expect(earthIndicator).not.toHaveClass(
+      /offscreen-indicator-active-target/,
+    )
+    await expect(earthIndicator.locator('.label')).toHaveText('')
+    await expect(earthIndicator.locator('.pointer')).toHaveCSS('fill', 'none')
+    await expect(moonIndicator).toHaveClass(/offscreen-indicator-unpinned-body/)
+
+    await infoButton.click()
+    await earthRow.click()
+    await moonRow.click()
+    await infoButton.click()
+
+    await expect(earthIndicator).toHaveClass(
       /offscreen-indicator-active-target/,
     )
     await expect(earthIndicator.locator('.label')).toHaveText(
@@ -143,10 +119,18 @@ test('connects desktop canvas navigation labels, pins, and physical offscreen di
     await captureScreenshot(
       page,
       testInfo,
-      'desktop-canvas-navigation-offscreen-pins',
+      'desktop-canvas-navigation-selected-offscreen',
     )
 
-    await page.keyboard.press('Shift+KeyI')
+    await infoButton.click()
+    await infoPopover.getByRole('button', { name: 'Clear' }).click()
+    await infoButton.click()
+    await expect(earthIndicator).toHaveClass(
+      /offscreen-indicator-unpinned-body/,
+    )
+    await expect(earthIndicator).not.toHaveClass(
+      /offscreen-indicator-active-target/,
+    )
     await expect(moonIndicator).toHaveClass(/offscreen-indicator-unpinned-body/)
     await expect(moonIndicator.locator('.label')).toHaveText('')
     await expect(moonIndicator.locator('.pointer')).toHaveCSS('fill', 'none')
@@ -155,7 +139,7 @@ test('connects desktop canvas navigation labels, pins, and physical offscreen di
   }
 })
 
-test('keeps mobile target labels tappable without exposing numeric Pe/Ap canvas labels', async ({
+test('gates mobile target and apsis tooltips on Info selection', async ({
   browser,
 }, testInfo) => {
   const context = await browser.newContext({
@@ -173,11 +157,17 @@ test('keeps mobile target labels tappable without exposing numeric Pe/Ap canvas 
     await page.goto('/?scenario=earth-moon&devtools=1')
     await waitForGame(page)
 
-    const activeTargetLabel = page.locator('.body-label-active-target')
+    const activeTargetLabel = page.locator(
+      '.body-label[data-info-pin="body:earth"]',
+    )
+    const infoButton = page.locator('#mobile-command-dock-info-button')
+    const infoPanel = page.locator('#mobile-command-dock-info-panel')
+    await expect(activeTargetLabel).toBeHidden()
+    await infoButton.tap()
+    await infoPanel.locator('[data-info-pin="body:earth"]').tap()
+    await infoButton.tap()
     await expect(activeTargetLabel).toBeVisible()
     await expect(activeTargetLabel).toHaveText(/^Earth · /)
-    await activeTargetLabel.dispatchEvent('click')
-    await expect(activeTargetLabel).toHaveAttribute('aria-pressed', 'true')
 
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const periapsisLabel = page.locator('.trajectory-event-label-periapsis')
@@ -189,8 +179,26 @@ test('keeps mobile target labels tappable without exposing numeric Pe/Ap canvas 
     const periapsisLabel = page.locator('.trajectory-event-label-periapsis')
     await expect(periapsisLabel).toBeVisible()
     await expect(periapsisLabel).toHaveText('Pe')
-    await periapsisLabel.dispatchEvent('click')
+    await expect(periapsisLabel).toHaveAttribute('aria-pressed', 'false')
+    expect(
+      await periapsisLabel.evaluate(
+        (element) => getComputedStyle(element, '::after').display,
+      ),
+    ).toBe('none')
+
+    await infoButton.tap()
+    await infoPanel.locator('[data-info-pin="periapsis"]').tap()
+    await infoButton.tap()
     await expect(periapsisLabel).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      await periapsisLabel.evaluate(
+        (element) => getComputedStyle(element, '::after').display,
+      ),
+    ).toBe('block')
+    await expect(periapsisLabel).toHaveAttribute(
+      'data-tooltip',
+      /^Pe · \d+(?:\.\d+)? (?:km|Mm)$/,
+    )
     const visibleOrbitLabels = page.locator('.trajectory-event-label:visible')
     const orbitLabelTexts = await visibleOrbitLabels.allTextContents()
     expect(orbitLabelTexts.every((text) => /^(?:Pe|Ap)$/.test(text))).toBe(true)

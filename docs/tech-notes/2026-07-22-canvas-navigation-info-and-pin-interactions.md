@@ -8,9 +8,11 @@ Dependency: [#274](https://github.com/chmurson/space-web-game/issues/274)
 
 - Canvas body labels and `Pe`/`Ap` labels are real button targets that toggle the existing Info pin state from #274.
 - Direct canvas hits on visible bodies and apsis marker glyphs use the same pin action. A successful stationary primary hit is consumed before maneuver planning; empty-canvas taps, drags, pans, and touch planning keep their existing behavior.
-- The active target shows name plus physical spacecraft-to-surface distance for three seconds after a target change, then distance only. Its accessible name remains complete.
-- Offscreen active or pinned bodies show name plus physical spacecraft-to-surface distance. Other bodies use unlabeled hollow arrows, while the spacecraft uses the highest-priority solid named indicator without a numeric distance.
-- Periapsis and apoapsis use distinct cyan and amber glyphs with only short `Pe`/`Ap` world labels. Their numeric target-surface altitudes remain in Info.
+- The active target is intentionally tooltip-free while unselected. Selecting it shows a stable name plus physical spacecraft-to-surface distance and enables the emphasized target offscreen treatment; unselected targets use the ordinary hollow arrow.
+- Selected offscreen bodies show name plus physical spacecraft-to-surface distance. Other bodies use unlabeled hollow arrows, while the spacecraft uses the highest-priority solid named indicator without a numeric distance.
+- Periapsis and apoapsis use cyan and amber inverted-house markers with `Pe`/`Ap` inside. Selecting either Info point reveals its separate altitude tooltip; the marker face stays numeric-free.
+- Info no longer renders separate desktop or mobile pin rails. It groups Pe and Ap into one independently selectable row, reuses Target body glyphs, and orders entries as target, selected, then nearest to the target body.
+- The desktop Info popover ignores outside clicks and closes only through its own toggle, the `I` shortcut, or Escape.
 - Orbit-point settings and persisted overrides now expose only marker visibility. Legacy label and distance preferences are ignored during migration.
 
 ## Why
@@ -21,17 +23,20 @@ The previous playfield repeated several camera-relative and orbit values that al
 
 - `src/input/canvasInfoPinInput.ts` owns body/marker picking and DOM label activation. It delegates to `runtimeActions.toggleUserInfoPin` and does not own pin state.
 - `src/input/pointerCameraInput.ts` owns the tap-consumption boundary that protects empty-canvas camera and maneuver gestures.
-- `src/presentation/bodyPresentation.ts` and its scoped helpers own target-label timing, visible body labels, and offscreen hierarchy.
+- `src/presentation/bodyPresentation.ts` and its scoped helpers own selection-gated body labels and offscreen hierarchy.
 - `src/presentation/trajectoryPresentation.ts` owns the compact apsis marker/label presentation and reads the combined Info pin state.
+- `src/presentation/infoHudPresentation.ts` owns Info grouping and target-relative row ordering; `src/ui/createInfoHud.tsx` owns the single desktop/mobile selection surface.
 - `src/presentation/bodyDistanceContext.ts` owns the shared physical body-surface distance calculation used by both Info and canvas presentation.
 - `src/userSettingsStorage.ts` and `src/ui/components/UiSettingsDialogSurface.tsx` own marker-only settings storage and controls.
 
-The centralized pin declarations, scenario-owned immutability, player persistence, Clear behavior, and Info rail remain owned by the #274 runtime and UI modules.
+The centralized pin declarations, scenario-owned immutability, player persistence, and Clear behavior remain owned by the #274 runtime modules. The rail presentation introduced there is intentionally removed by the owner-review follow-up.
 
 ## Decisions
 
 - Body pin identity remains stable across target changes. `Pe` and `Ap` continue to follow the active target-relative prediction.
-- The three-second reveal resets only when the active target identity changes, not on ordinary presentation updates.
+- Removing the target reveal timer is deliberate: selection is now the sole disclosure rule for the target world tooltip.
+- Pe and Ap remain separate runtime selections even though Info presents them in one row, so either tooltip can be disclosed independently.
+- Body entry ordering uses target-body surface separation while displayed body values remain spacecraft-to-body surface distance.
 - Marker hit testing runs before body raycasting so a small apsis glyph near a body remains independently actionable.
 - Scenario-owned pins still consume matching canvas activation even when the centralized toggle declines mutation. This avoids leaking a meaningful object tap into maneuver planning.
 - No new settings, pin state, dependencies, or exported testing-only APIs were introduced.
@@ -39,23 +44,23 @@ The centralized pin declarations, scenario-owned immutability, player persistenc
 ## Validation
 
 - `npm run build`: passed, including config validation, TypeScript, and release Vite build.
-- Focused Vitest coverage: 8 files and 59 tests passed for picking, pointer ownership, target timing, distance calculation, trajectory labels, settings migration, and initial runtime state.
-- Product Vitest suite: 66 files and 635 tests passed.
+- Focused owner-follow-up Vitest coverage: 5 files and 44 tests passed for Info ordering/grouping, body labels, offscreen hierarchy, and trajectory marker selection.
+- Product Vitest suite: 65 files and 634 tests passed.
 - Automation claim suite: 16 tests passed.
-- `npm test` still exits in the unchanged automation workflow prompt test because `origin/main` lacks the asserted rocket-policy sentence; 2 of its 3 tests pass. No `scripts/` or `docs/automation-prompts/` files changed in this work.
-- Focused Playwright navigation coverage: 2 tests passed on desktop and mobile.
-- `npm run test:gui -- --retries=1`: all 84 Playwright tests passed without needing a retry. This includes desktop/mobile navigation interaction, camera and maneuver gesture regressions, target recentering, marker-only settings, and screenshot coverage.
+- Focused Playwright owner-follow-up coverage: 6 tests passed for desktop/mobile Info, target/offscreen behavior, and selection-gated apsis tooltips; the updated selected-target recenter case also passed independently.
+- `npm run test:gui -- --retries=1`: all 84 Playwright tests passed without needing a retry on the final run. This includes desktop/mobile navigation interaction, camera and maneuver gesture regressions, selected-target recentering, marker-only settings, and screenshot coverage.
 - Targeted Biome check passed with only three unchanged `!important` warnings in `src/style.css`; `git diff --check` passed.
 
 ## Visual inspection
 
-- Desktop offscreen hierarchy: `tmp/playwright-results/canvasNavigationInfo-conne-3e200-hysical-offscreen-distances-mobile-chromium/desktop-canvas-navigation-offscreen-pins.png`
-- Mobile target and apsis labels: `tmp/playwright-results/canvasNavigationInfo-keeps-70864-numeric-Pe-Ap-canvas-labels-mobile-chromium/mobile-canvas-navigation-active-target.png`
-- Mobile marker-only settings: `tmp/playwright-results/mobileHudScreenshot-captur-c8a0e-pened-from-in-game-controls-mobile-chromium/mobile-orbit-point-display-dialog.png`
+- Desktop single-surface Info: `tmp/playwright-results/infoHud-desktop-Info-keeps-85b4d-s-in-one-persistent-popover-mobile-chromium/desktop-info-popover-pinned.png`
+- Mobile single-surface Info: `tmp/playwright-results/infoHud-mobile-Info-panel--00394-ion-inside-the-dock-surface-mobile-chromium/mobile-info-panel-selected.png`
+- Mobile selected target and apsis tooltip: `tmp/playwright-results/canvasNavigationInfo-gates-dc655--tooltips-on-Info-selection-mobile-chromium/mobile-canvas-navigation-active-target.png`
+- Desktop selected offscreen hierarchy: `tmp/playwright-results/canvasNavigationInfo-conne-3e200-hysical-offscreen-distances-mobile-chromium/desktop-canvas-navigation-selected-offscreen.png`
+- Mobile selected-target framing above Nav: `tmp/playwright-results/mobileCommandDock-recenter-73104-e-current-playable-viewport-mobile-chromium/mobile-command-dock-locked-target-390.png`
 
-All three captures were inspected at original resolution. Desktop showed active Earth and pinned Moon physical distances plus the prioritized spacecraft label. Mobile showed the full active-target label, compact `Pe`, a pinned rail, and an unlabeled hollow offscreen body arrow without crowding the playable center. The settings capture showed one enabled marker-visibility switch and no legacy label-content controls.
+All five captures were inspected at original resolution. Desktop and mobile Info showed no separate rail, one combined Pe/Ap row, reused body glyphs, and the target-first ordering. The selected Earth tooltip included physical distance, the selected Pe tooltip appeared beside its distance-free inverted-house marker, and the desktop offscreen capture preserved the selected-target, selected-body, and spacecraft hierarchy without crowding the playfield.
 
 ## Follow-ups and known gaps
 
-- The in-app Browser control backend was unavailable in this run, so interaction and visual verification used the repository's Playwright setup and inspected screenshot artifacts instead.
 - The existing release bundle-size warning remains unchanged.

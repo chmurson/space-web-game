@@ -190,7 +190,6 @@ const getBodyLabelBounds = (options: {
 }
 
 export const updateBodyLabels = (options: {
-  activeTargetFullLabelVisible: boolean
   bodies: Body[]
   distanceContext: BodyDistanceContext | null
   gameScene: GameSceneRefs
@@ -250,13 +249,15 @@ export const updateBodyLabels = (options: {
         ? options.distanceContext
         : null
     const pinned = options.pinnedBodyIds.has(body.id)
-    setClassEnabled(label, 'body-label-active-target', !!distanceContext)
+    const selectedTarget = !!distanceContext && pinned
+    setClassEnabled(label, 'body-label-active-target', selectedTarget)
     setClassEnabled(label, 'body-label-pinned', pinned)
     setAttributeValue(label, 'aria-pressed', pinned ? 'true' : 'false')
 
     if (
       !isVisible ||
-      (apparentRadius > labelRadiusThreshold && !distanceContext)
+      (!!distanceContext && !pinned) ||
+      (apparentRadius > labelRadiusThreshold && !distanceContext && !pinned)
     ) {
       setDisplay(label, 'none')
       continue
@@ -269,17 +270,16 @@ export const updateBodyLabels = (options: {
       screenX > viewportWidth * 0.22 &&
       screenX < viewportWidth * 0.78
     let labelText = body.name
-    if (distanceContext) {
-      labelText = options.activeTargetFullLabelVisible
-        ? distanceContext.tooltipLabel
-        : distanceContext.altitudeLabel
+    if (selectedTarget && distanceContext) {
+      labelText = distanceContext.tooltipLabel
     }
     const labelState = {
-      accessibleLabel: distanceContext
-        ? distanceContext.accessibleLabel
-        : body.name,
-      activeTarget: !!distanceContext,
-      hasDistanceContext: !!distanceContext,
+      accessibleLabel:
+        selectedTarget && distanceContext
+          ? distanceContext.accessibleLabel
+          : body.name,
+      activeTarget: selectedTarget,
+      hasDistanceContext: selectedTarget,
       pinned,
       text: labelText,
       wrap: shouldWrapLabel,

@@ -442,12 +442,47 @@ const createPredictionMarkerCircle = (fillOpacity = 0.5) => {
 const createTrajectoryEventMarker = (
   kind: TrajectoryPredictionEventMarkerKind,
 ): TrajectoryEventMarkerVisual => {
-  const marker = createPredictionMarkerCircle(0.72)
-  marker.fill.material.color.set(kind === 'periapsis' ? '#67e8f9' : '#f59e0b')
-  marker.group.visible = false
+  const color = kind === 'periapsis' ? '#67e8f9' : '#f59e0b'
+  const shape = new THREE.Shape()
+  shape.moveTo(0, 0)
+  shape.lineTo(-0.92, 0.42)
+  shape.lineTo(-0.92, 1.18)
+  shape.lineTo(0.92, 1.18)
+  shape.lineTo(0.92, 0.42)
+  shape.closePath()
+  const geometry = new THREE.ShapeGeometry(shape)
+  const group = new THREE.Group()
+  const backing = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({
+      color: '#05070d',
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  )
+  const fill = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({
+      color,
+      opacity: 0.74,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  )
+  backing.renderOrder = 10
+  backing.scale.setScalar(1.18)
+  fill.renderOrder = 11
+  group.add(backing, fill)
+  group.renderOrder = 10
+  group.visible = false
 
   return {
-    group: marker.group,
+    group,
   }
 }
 

@@ -1,5 +1,4 @@
-.desktop-info-hud,
-.mobile-info-rail {
+.desktop-info-hud {
   display: none;
 }
 
@@ -11,6 +10,18 @@
   display: grid;
   min-width: 0;
   gap: 10px;
+}
+
+.info-hud-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  margin: -1px;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .info-hud-panel-header {
@@ -96,6 +107,11 @@
   color: #e0f2fe;
 }
 
+.info-hud-row > .target-body-sphere {
+  width: 14px;
+  height: 14px;
+}
+
 .info-hud-row:disabled {
   cursor: default;
   opacity: 1;
@@ -141,7 +157,43 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   align-self: end;
-  transform:translateY(-1.5px)
+  transform: translateY(-1.5px);
+}
+
+.info-hud-apsis-row {
+  gap: 3px;
+  margin: 0;
+  min-inline-size: 0;
+}
+
+.info-hud-apsis-point {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 26px;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  touch-action: manipulation;
+}
+
+.info-hud-apsis-point[aria-checked="true"] {
+  border-color: rgba(56, 189, 248, 0.36);
+  background: rgba(14, 116, 144, 0.2);
+  color: #e0f2fe;
+}
+
+.info-hud-apsis-point:disabled {
+  cursor: default;
+}
+
+.info-hud-apsis-divider {
+  color: rgba(148, 163, 184, 0.46);
 }
 
 .info-hud-scenario-badge {
@@ -166,63 +218,10 @@
 .info-hud-clear:focus-visible,
 .info-hud-select-all:focus-visible,
 .info-hud-row:focus-visible,
-.info-hud-rail-card:focus-visible,
+.info-hud-apsis-point:focus-visible,
 .desktop-info-pill:focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.88);
   outline-offset: 2px;
-}
-
-.info-hud-rail {
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: none;
-}
-
-.info-hud-rail::-webkit-scrollbar {
-  display: none;
-}
-
-.info-hud-rail[hidden] {
-  display: none;
-}
-
-.info-hud-rail-card {
-  display: inline-flex;
-  min-height: 30px;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 8px;
-  border: 1px solid var(--ui-glass-control-border);
-  border-radius: 999px;
-  background: var(--ui-glass-control-bg);
-  color: rgba(226, 232, 240, 0.92);
-  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.22);
-  backdrop-filter: var(--ui-glass-control-blur);
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  touch-action: manipulation;
-  white-space: nowrap;
-}
-
-.info-hud-rail-card:disabled {
-  cursor: default;
-  opacity: 1;
-}
-
-.info-hud-rail-card strong {
-  color: #bae6fd;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.info-hud-rail-lock {
-  margin-left: 2px;
-  color: #7dd3fc;
-  font-size: 8px;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -281,43 +280,17 @@
     display: none;
   }
 
-  .desktop-info-rail {
-    position: fixed;
-    top: 52px;
-    right: 12px;
-    display: flex;
-    max-width: min(620px, calc(100vw - 24px));
-    padding: 2px 0 4px;
-    pointer-events: auto;
-  }
-
-  .desktop-info-hud-open .desktop-info-rail {
-    display: none;
-  }
-
   .desktop-info-pill:hover,
   .info-hud-clear:hover:not(:disabled),
   .info-hud-select-all:hover:not(:disabled),
   .info-hud-row:hover:not(:disabled),
-  .info-hud-rail-card:hover:not(:disabled) {
+  .info-hud-apsis-point:hover:not(:disabled) {
     border-color: rgba(103, 232, 249, 0.48);
     background: rgba(15, 23, 42, 0.66);
   }
 }
 
 @media (hover: none), (pointer: coarse) {
-  .mobile-info-rail {
-    box-sizing: border-box;
-    display: flex;
-    width: min(100%, 520px);
-    padding: 0 2px;
-    pointer-events: auto;
-  }
-
-  .mobile-info-rail[hidden] {
-    display: none;
-  }
-
   .mobile-command-dock-info-panel {
     padding: 12px;
     border: 1px solid var(--ui-glass-panel-border);
@@ -346,7 +319,7 @@
   .desktop-info-pill,
   .info-hud-clear,
   .info-hud-row,
-  .info-hud-rail-card {
+  .info-hud-apsis-point {
     transition: none;
   }
 }

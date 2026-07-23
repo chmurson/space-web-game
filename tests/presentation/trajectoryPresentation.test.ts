@@ -25,6 +25,10 @@ const setWindowSize = (innerWidth: number, innerHeight: number) => {
 }
 
 class FakeTrajectoryEventLabel {
+  readonly classList = {
+    toggle: () => undefined,
+  }
+  readonly dataset: Record<string, string> = {}
   readonly style: Record<string, string> = {}
   private readonly attributes = new Map<string, string>()
   textContent = ''
@@ -354,7 +358,7 @@ describe('createTrajectoryPresentation', () => {
     }
   })
 
-  it('gates Pe/Ap marker dots and labels by zoom', () => {
+  it('keeps Pe/Ap marker faces visible until the marker zoom cutoff', () => {
     const eventMarkers: TrajectoryPredictionEventMarker[] = [
       createEventMarker({
         altitude: 400_000,
@@ -386,7 +390,7 @@ describe('createTrajectoryPresentation', () => {
     expect(close.trajectoryEventMarkerLabels.periapsis.textContent).toBe('Pe')
     expect(
       close.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
-    ).toBe('Periapsis; pin in Info')
+    ).toBe('Periapsis, altitude 400 km; select in Info')
     expect(close.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
       true,
     )
@@ -400,7 +404,9 @@ describe('createTrajectoryPresentation', () => {
     expect(mid.gameScene.trajectoryEventMarkers.periapsis.group.visible).toBe(
       true,
     )
-    expect(mid.trajectoryEventMarkerLabels.periapsis.style.display).toBe('none')
+    expect(mid.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'block',
+    )
 
     const threshold = createTestPresentation({
       eventMarkers,
@@ -425,7 +431,9 @@ describe('createTrajectoryPresentation', () => {
     expect(far.gameScene.trajectoryEventMarkers.apoapsis.group.visible).toBe(
       true,
     )
-    expect(far.trajectoryEventMarkerLabels.periapsis.style.display).toBe('none')
+    expect(far.trajectoryEventMarkerLabels.periapsis.style.display).toBe(
+      'block',
+    )
     expect(farScreenRadius).toBeLessThan(thresholdScreenRadius)
 
     const beyond = createTestPresentation({
@@ -781,7 +789,7 @@ describe('createTrajectoryPresentation', () => {
     )
   })
 
-  it('keeps Pe/Ap world labels short and numeric-free', () => {
+  it('keeps Pe/Ap markers numeric-free and gates altitude tooltips on selection', () => {
     const eventMarkers = [
       createEventMarker({
         altitude: 400_000,
@@ -795,16 +803,31 @@ describe('createTrajectoryPresentation', () => {
       eventMarkers,
       viewportSize: 50,
     })
-    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
     test.presentation.updateVisuals()
 
     expect(test.trajectoryEventMarkerLabels.periapsis.textContent).toBe('Pe')
+    expect(test.trajectoryEventMarkerLabels.periapsis.dataset.tooltip).toBe(
+      'Pe · 400 km',
+    )
     expect(
       test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
-    ).toBe('Periapsis; unpin in Info')
+    ).toBe('Periapsis, altitude 400 km; select in Info')
+    expect(
+      test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-pressed'),
+    ).toBe('false')
     expect(test.trajectoryEventMarkerLabels.periapsis.textContent).not.toMatch(
       /\d|alt|center/i,
     )
+
+    test.runtime.info.userPins = [{ apsis: 'periapsis', kind: 'apsis' }]
+    test.presentation.updateVisuals()
+
+    expect(
+      test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
+    ).toBe('Periapsis, altitude 400 km; unselect in Info')
+    expect(
+      test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-pressed'),
+    ).toBe('true')
   })
 
   it('stabilizes Pe/Ap markers by altitude changes', () => {

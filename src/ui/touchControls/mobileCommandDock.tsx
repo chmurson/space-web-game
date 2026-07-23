@@ -69,8 +69,7 @@ const MobileCommandDockSurface = ({
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
   const infoOpen = openPanel === 'info'
-  const cameraRecenterDisabled =
-    cameraControlsLocked || !cameraCanRecenter
+  const cameraRecenterDisabled = cameraControlsLocked || !cameraCanRecenter
   let cameraRecenterAriaLabel = 'Camera already centered on followed subject'
   if (cameraControlsLocked) {
     cameraRecenterAriaLabel =
@@ -89,7 +88,6 @@ const MobileCommandDockSurface = ({
       data-tutorial-focused={tutorialFocused ?? 'none'}
       ref={rootRef}
     >
-      <div class="mobile-command-dock-info-rail-host" />
       <section
         aria-hidden={openPanel !== 'flight'}
         aria-labelledby="mobile-command-dock-flight-button"
@@ -422,16 +420,7 @@ export const createMobileCommandDock = (options: {
   const infoPanelContainer = surface.element.querySelector<HTMLElement>(
     '.mobile-command-dock-info-panel-host',
   )
-  const infoRailContainer = surface.element.querySelector<HTMLElement>(
-    '.mobile-command-dock-info-rail-host',
-  )
-  if (
-    !flightButton ||
-    !infoButton ||
-    !navButton ||
-    !infoPanelContainer ||
-    !infoRailContainer
-  ) {
+  if (!flightButton || !infoButton || !navButton || !infoPanelContainer) {
     throw new Error('Mobile command dock rendered without panel buttons')
   }
 
@@ -487,7 +476,6 @@ export const createMobileCommandDock = (options: {
   return {
     element: surface.element,
     infoPanelContainer,
-    infoRailContainer,
     isPanelOpen: (panel: MobileCommandDockPanel) => openPanel === panel,
     rcsYawContainer,
     setControlAvailability(nextAvailability: {

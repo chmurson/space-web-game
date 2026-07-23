@@ -26,16 +26,14 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
+import { formatDistance } from '../ui/formatters'
 import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
 const trajectoryEventMarkerFullSizeMaxViewportSize = 160
 const trajectoryEventMarkerMaxViewportSize = 500
 const trajectoryEventMarkerMaxScreenViewportSize = 20
-const trajectoryEventMarkerLabelMaxViewportSize = 70
 const trajectoryEventMarkerLift = 0.22
-const trajectoryEventMarkerLabelOffsetX = 10
-const trajectoryEventMarkerLabelOffsetY = 10
 const trajectoryEventMarkerLabelViewportPadding = 8
 const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.025
 const predictionEndMarkerMaxScreenDiameter = 11
@@ -547,9 +545,13 @@ const getStabilizedTrajectoryEventMarkers = (options: {
 const getTrajectoryEventMarkerText = (
   eventMarker: TrajectoryPredictionEventMarker,
 ) => {
+  const distanceLabel = formatDistance(Math.max(0, eventMarker.altitude))
+  const shortLabel = trajectoryEventMarkerShortLabels[eventMarker.kind]
+
   return {
-    accessibleLabel: trajectoryEventMarkerAccessibleNames[eventMarker.kind],
-    text: trajectoryEventMarkerShortLabels[eventMarker.kind],
+    accessibleLabel: `${trajectoryEventMarkerAccessibleNames[eventMarker.kind]}, altitude ${distanceLabel}`,
+    text: shortLabel,
+    tooltip: `${shortLabel} · ${distanceLabel}`,
   }
 }
 
@@ -579,30 +581,35 @@ const updateTrajectoryEventMarkerLabel = (options: {
   const markerText = getTrajectoryEventMarkerText(options.eventMarker)
 
   options.label.textContent = markerText.text
+  options.label.dataset.tooltip = markerText.tooltip
   options.label.title = markerText.accessibleLabel
   options.label.setAttribute(
     'aria-label',
-    `${markerText.accessibleLabel}; ${options.pinned ? 'unpin' : 'pin'} in Info`,
+    `${markerText.accessibleLabel}; ${
+      options.pinned ? 'unselect' : 'select'
+    } in Info`,
   )
   options.label.setAttribute('aria-pressed', options.pinned ? 'true' : 'false')
   options.label.setAttribute('aria-hidden', 'false')
+  options.label.classList.toggle(
+    'trajectory-event-label-tooltip-left',
+    screenX > window.innerWidth * 0.65,
+  )
   options.label.style.display = 'block'
   options.label.style.visibility = 'hidden'
 
   const bounds = options.label.getBoundingClientRect()
   const labelX = THREE.MathUtils.clamp(
-    screenX + trajectoryEventMarkerLabelOffsetX,
-    trajectoryEventMarkerLabelViewportPadding,
+    screenX,
+    trajectoryEventMarkerLabelViewportPadding + bounds.width * 0.5,
     window.innerWidth -
-      bounds.width -
-      trajectoryEventMarkerLabelViewportPadding,
+      trajectoryEventMarkerLabelViewportPadding -
+      bounds.width * 0.5,
   )
   const labelY = THREE.MathUtils.clamp(
-    screenY - bounds.height - trajectoryEventMarkerLabelOffsetY,
-    trajectoryEventMarkerLabelViewportPadding,
-    window.innerHeight -
-      bounds.height -
-      trajectoryEventMarkerLabelViewportPadding,
+    screenY,
+    trajectoryEventMarkerLabelViewportPadding + bounds.height,
+    window.innerHeight - trajectoryEventMarkerLabelViewportPadding,
   )
 
   options.label.style.left = `${labelX}px`
@@ -664,8 +671,6 @@ const updateTrajectoryEventMarkers = (options: {
     ) *
     (options.viewportSize / markerScaleViewportSize) *
     distantViewportScale
-  const labelVisible =
-    options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
   const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()
 
   for (const eventMarker of eventMarkers) {
@@ -692,17 +697,13 @@ const updateTrajectoryEventMarkers = (options: {
     marker.group.scale.setScalar(markerRadius)
     marker.group.visible = true
 
-    if (labelVisible) {
-      updateTrajectoryEventMarkerLabel({
-        camera: options.gameScene.camera,
-        eventMarker,
-        label,
-        pinned: options.pinnedEventMarkerKinds.has(eventMarker.kind),
-        position,
-      })
-    } else {
-      hideTrajectoryEventMarkerLabel(label)
-    }
+    updateTrajectoryEventMarkerLabel({
+      camera: options.gameScene.camera,
+      eventMarker,
+      label,
+      pinned: options.pinnedEventMarkerKinds.has(eventMarker.kind),
+      position,
+    })
 
     visibleKinds.add(eventMarker.kind)
   }

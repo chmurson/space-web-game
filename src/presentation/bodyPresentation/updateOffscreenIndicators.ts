@@ -437,11 +437,12 @@ export const updateOffscreenIndicators = (options: {
       target.kind === 'body' && target.id === options.targetBodyId
     const pinnedBody =
       target.kind === 'body' && options.pinnedBodyIds.has(target.id)
-    const unlabeledBody = target.kind === 'body' && !activeTarget && !pinnedBody
+    const targetedBody = activeTarget && pinnedBody
+    const unlabeledBody = target.kind === 'body' && !pinnedBody
     let visualState = 'spacecraft'
     if (unlabeledBody) {
       visualState = 'unpinned'
-    } else if (activeTarget) {
+    } else if (targetedBody) {
       visualState = 'active-target'
     } else if (pinnedBody) {
       visualState = 'pinned'
@@ -458,7 +459,7 @@ export const updateOffscreenIndicators = (options: {
 
     indicator.classList.toggle(
       'offscreen-indicator-active-target',
-      activeTarget,
+      targetedBody,
     )
     indicator.classList.toggle('offscreen-indicator-pinned', pinnedBody)
     indicator.classList.toggle(
@@ -572,7 +573,7 @@ export const updateOffscreenIndicators = (options: {
     let priority = 3
     if (target.kind === 'spacecraft') {
       priority = 0
-    } else if (activeTarget) {
+    } else if (targetedBody) {
       priority = 1
     } else if (pinnedBody) {
       priority = 2

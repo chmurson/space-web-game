@@ -2493,8 +2493,7 @@ button.app-dialog-setting {
   font-weight: 700;
 }
 
-#app .body-label,
-#app .trajectory-event-label {
+#app .body-label {
   position: fixed;
   padding: 2px 5px;
   border: 1px solid var(--ui-glass-control-border);
@@ -2512,13 +2511,11 @@ button.app-dialog-setting {
   z-index: var(--z-in-game-floating-elements);
 }
 
-#app .body-label:hover,
-#app .trajectory-event-label:hover {
+#app .body-label:hover {
   border-color: rgba(125, 211, 252, 0.62);
 }
 
-#app .body-label:focus-visible,
-#app .trajectory-event-label:focus-visible {
+#app .body-label:focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.86);
   outline-offset: 2px;
 }
@@ -2539,8 +2536,7 @@ button.app-dialog-setting {
   font-weight: 700;
 }
 
-#app .body-label-distance-context,
-#app .trajectory-event-label {
+#app .body-label-distance-context {
   max-width: min(220px, calc(100vw - 16px));
   padding: 3px 6px;
   font-size: 11px;
@@ -2549,24 +2545,119 @@ button.app-dialog-setting {
   white-space: normal;
 }
 
+#app .trajectory-event-label {
+  --trajectory-event-marker-border: rgba(224, 242, 254, 0.9);
+  --trajectory-event-marker-fill: rgba(34, 211, 238, 0.84);
+  --trajectory-event-marker-glow: rgba(56, 189, 248, 0.72);
+  position: fixed;
+  display: grid;
+  width: 30px;
+  height: 26px;
+  padding: 0 0 4px;
+  border: 0;
+  background: transparent;
+  color: #082f49;
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  isolation: isolate;
+  line-height: 1;
+  place-items: center;
+  pointer-events: auto;
+  text-shadow: 0 1px 0 rgba(240, 249, 255, 0.42);
+  touch-action: manipulation;
+  transform: translate(-50%, -100%);
+  z-index: var(--z-in-game-floating-elements);
+}
+
+#app .trajectory-event-label::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border: 1px solid var(--trajectory-event-marker-border);
+  background: var(--trajectory-event-marker-fill);
+  box-shadow: 0 0 8px var(--trajectory-event-marker-glow);
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+  content: "";
+}
+
+#app .trajectory-event-label::after {
+  position: absolute;
+  top: 2px;
+  left: calc(100% + 6px);
+  display: none;
+  width: max-content;
+  max-width: min(180px, calc(100vw - 64px));
+  padding: 3px 6px;
+  border: 1px solid var(--ui-glass-control-border);
+  border-radius: 4px;
+  background: var(--ui-glass-label-bg);
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.32);
+  color: #dbeafe;
+  content: attr(data-tooltip);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+#app .trajectory-event-label[aria-pressed="true"]::after {
+  display: block;
+}
+
+#app .trajectory-event-label-tooltip-left::after {
+  right: calc(100% + 6px);
+  left: auto;
+}
+
+#app .trajectory-event-label-apoapsis {
+  --trajectory-event-marker-border: rgba(254, 243, 199, 0.92);
+  --trajectory-event-marker-fill: rgba(245, 158, 11, 0.86);
+  --trajectory-event-marker-glow: rgba(245, 158, 11, 0.68);
+  color: #431407;
+}
+
+#app .trajectory-event-label:hover::before {
+  border-color: #f0f9ff;
+}
+
+#app .trajectory-event-label:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.86);
+  outline-offset: 2px;
+}
+
 @media (hover: none), (pointer: coarse) {
   #app .touch-controls {
     display: block;
   }
 
-  #app .body-label,
-  #app .trajectory-event-label {
+  #app .body-label {
     padding: 2px 4px;
     border-radius: 3px;
     font-size: 9px;
     line-height: 1.1;
   }
 
-  #app .body-label-distance-context,
-  #app .trajectory-event-label {
+  #app .body-label-distance-context {
     max-width: min(164px, calc(100vw - 24px));
     padding: 2px 5px;
     font-size: 9.5px;
+  }
+
+  #app .trajectory-event-label {
+    width: 27px;
+    height: 24px;
+    padding-bottom: 4px;
+    font-size: 9px;
+  }
+
+  #app .trajectory-event-label::after {
+    max-width: min(132px, calc(100vw - 54px));
+    padding: 2px 5px;
+    font-size: 9px;
   }
 
   .body-label-mobile-wrap {

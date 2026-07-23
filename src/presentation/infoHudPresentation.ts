@@ -24,10 +24,25 @@ export type InfoHudRow = {
   secondaryLabel: string
 }
 
+export type InfoHudEntry =
+  | {
+      bodyColor: string
+      key: string
+      kind: 'body'
+      row: InfoHudRow
+    }
+  | {
+      key: 'apsides'
+      kind: 'apsides'
+      rows: [InfoHudRow, InfoHudRow]
+      secondaryLabel: string
+    }
+
 export type InfoHudView = {
   clearAvailable: boolean
-  pinnedRows: InfoHudRow[]
+  entries: InfoHudEntry[]
   rows: InfoHudRow[]
+  selectedCount: number
 }
 
 const unavailableDistanceLabel = '—'
@@ -50,6 +65,25 @@ const getApsisSurfaceDistance = (
     prediction.targetRelativeEventMarkers.find(
       (eventMarker) => eventMarker.kind === kind,
     )?.altitude ?? null
+  )
+}
+
+const getBodyDistanceFromTargetMeters = (
+  body: AppRuntimeState['simulation']['state']['bodies'][number],
+  target: AppRuntimeState['simulation']['state']['bodies'][number],
+) => {
+  if (body.id === target.id) {
+    return 0
+  }
+
+  return Math.max(
+    0,
+    Math.hypot(
+      body.position.x - target.position.x,
+      body.position.y - target.position.y,
+    ) -
+      body.radius -
+      target.radius,
   )
 }
 
@@ -85,14 +119,14 @@ export const createInfoHudView = (options: {
   runtime: AppRuntimeState
 }): InfoHudView => {
   const target = options.queries.getAssistTargetUiState().activeTarget
-  const bodyRows = options.runtime.simulation.state.bodies.map((body) => {
+  const bodyEntries = options.runtime.simulation.state.bodies.map((body) => {
     const distanceLabel = formatSurfaceDistance(
       getBodySurfaceDistanceMeters(
         body,
         options.runtime.simulation.state.spacecraft.position,
       ),
     )
-    return createRow({
+    const row = createRow({
       accessibleLabel: `${body.name}, surface distance ${distanceLabel}`,
       distanceLabel,
       label: body.name,
@@ -100,6 +134,16 @@ export const createInfoHudView = (options: {
       runtime: options.runtime,
       secondaryLabel: 'to spacecraft',
     })
+    return {
+      distanceFromTargetMeters: getBodyDistanceFromTargetMeters(body, target),
+      entry: {
+        bodyColor: body.color,
+        key: row.key,
+        kind: 'body' as const,
+        row,
+      },
+      target: body.id === target.id,
+    }
   })
   const createApsisRow = (
     kind: TrajectoryPredictionEventMarkerKind,
@@ -110,7 +154,7 @@ export const createInfoHudView = (options: {
       getApsisSurfaceDistance(kind, target.id, options.prediction),
     )
     return createRow({
-      accessibleLabel: `${label}, surface distance from ${target.name} ${distanceLabel}`,
+      accessibleLabel: `${label}, altitude over ${target.name} ${distanceLabel}`,
       distanceLabel,
       label,
       pin,
@@ -118,14 +162,59 @@ export const createInfoHudView = (options: {
       secondaryLabel: `to ${target.name}`,
     })
   }
-  const rows = [
-    ...bodyRows,
-    createApsisRow('periapsis', 'Pe', periapsisInfoPin),
-    createApsisRow('apoapsis', 'Ap', apoapsisInfoPin),
+  const periapsisRow = createApsisRow('periapsis', 'Pe', periapsisInfoPin)
+  const apoapsisRow = createApsisRow('apoapsis', 'Ap', apoapsisInfoPin)
+  const apsisDistances = [
+    getApsisSurfaceDistance('periapsis', target.id, options.prediction),
+    getApsisSurfaceDistance('apoapsis', target.id, options.prediction),
+  ].filter((distance): distance is number => distance !== null)
+  const sortableEntries = [
+    ...bodyEntries,
+    {
+      distanceFromTargetMeters:
+        apsisDistances.length > 0
+          ? Math.min(...apsisDistances)
+          : Number.POSITIVE_INFINITY,
+      entry: {
+        key: 'apsides' as const,
+        kind: 'apsides' as const,
+        rows: [periapsisRow, apoapsisRow] as [InfoHudRow, InfoHudRow],
+        secondaryLabel: `to ${target.name}`,
+      },
+      target: false,
+    },
   ]
+  sortableEntries.sort((left, right) => {
+    if (left.target !== right.target) {
+      return left.target ? -1 : 1
+    }
+
+    const leftSelected =
+      left.entry.kind === 'body'
+        ? left.entry.row.pinned
+        : left.entry.rows.some((row) => row.pinned)
+    const rightSelected =
+      right.entry.kind === 'body'
+        ? right.entry.row.pinned
+        : right.entry.rows.some((row) => row.pinned)
+    if (leftSelected !== rightSelected) {
+      return leftSelected ? -1 : 1
+    }
+
+    return (
+      left.distanceFromTargetMeters - right.distanceFromTargetMeters ||
+      left.entry.key.localeCompare(right.entry.key)
+    )
+  })
+  const entries = sortableEntries.map(({ entry }) => entry)
+  const rows = entries.flatMap((entry) =>
+    entry.kind === 'body' ? [entry.row] : entry.rows,
+  )
+
   return {
     clearAvailable: options.runtime.info.userPins.length > 0,
-    pinnedRows: rows.filter((row) => row.pinned),
+    entries,
     rows,
+    selectedCount: rows.filter((row) => row.pinned).length,
   }
 }

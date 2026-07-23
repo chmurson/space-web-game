@@ -119,14 +119,6 @@
     pointer-events: none;
   }
 
-  .mobile-command-dock-info-rail-host:has(.info-hud-rail:not([hidden])) {
-    box-sizing: border-box;
-    display: flex;
-    width: min(100%, 520px);
-    margin-bottom: 8px;
-    pointer-events: auto;
-  }
-
   .mobile-command-dock-panel[hidden] {
     display: none;
   }

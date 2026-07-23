@@ -128,14 +128,14 @@ describe('createInfoHudView', () => {
     const view = createInfoHudView({ prediction, queries, runtime })
 
     expect(view.rows.map(({ label }) => label)).toEqual([
-      'Earth',
       'Moon',
+      'Earth',
       'Pe',
       'Ap',
     ])
     expect(view.rows.map(({ distanceLabel }) => distanceLabel)).toEqual([
-      '10 km',
       '88 km',
+      '10 km',
       '123 km',
       '456 km',
     ])
@@ -145,12 +145,15 @@ describe('createInfoHudView', () => {
       'to Moon',
       'to Moon',
     ])
-    expect(view.pinnedRows.map(({ label }) => label)).toEqual([
-      'Earth',
-      'Moon',
-      'Pe',
-      'Ap',
+    expect(view.entries.map(({ key }) => key)).toEqual([
+      'body:moon',
+      'body:earth',
+      'apsides',
     ])
+    expect(
+      view.rows.filter(({ pinned }) => pinned).map(({ label }) => label),
+    ).toEqual(['Moon', 'Earth', 'Pe', 'Ap'])
+    expect(view.selectedCount).toBe(4)
     expect(view.rows.find(({ label }) => label === 'Earth')).toMatchObject({
       pinned: true,
       scenarioOwned: true,
@@ -160,6 +163,44 @@ describe('createInfoHudView', () => {
       scenarioOwned: false,
     })
     expect(view.clearAvailable).toBe(true)
+  })
+
+  it('orders target, selected entries, then remaining entries by target distance', () => {
+    const orderedRuntime = structuredClone(runtime)
+    orderedRuntime.scenario.directives.infoPins = []
+    orderedRuntime.info.userPins = [createBodyInfoPin('earth')]
+    orderedRuntime.simulation.state.bodies.push({
+      color: '#f59e0b',
+      id: 'station',
+      mass: 1,
+      name: 'Station',
+      position: { x: 130_000, y: 0 },
+      radius: 1_000,
+      velocity: { x: 0, y: 0 },
+    })
+
+    const view = createInfoHudView({
+      prediction,
+      queries: {
+        getAssistTargetUiState: () => ({
+          activeTarget: orderedRuntime.simulation.state.bodies[1],
+          mode: 'manual' as const,
+          recommendedTarget: null,
+        }),
+      },
+      runtime: orderedRuntime,
+    })
+
+    expect(view.entries.map(({ key }) => key)).toEqual([
+      'body:moon',
+      'body:earth',
+      'body:station',
+      'apsides',
+    ])
+    expect(view.entries[0]).toMatchObject({
+      bodyColor: '#fff',
+      kind: 'body',
+    })
   })
 
   it('does not present stale Pe and Ap values for another target', () => {
