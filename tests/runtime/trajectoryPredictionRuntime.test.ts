@@ -1496,6 +1496,101 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
+  it('keeps accepted usable coverage while replacement far work is active', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+    predictionRuntime.setFarCoalescingMinIntervalOverrideSeconds(0)
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+
+    setState({
+      ...state(),
+      elapsed: 50,
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 5_010, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    setState({
+      ...state(),
+      elapsed: 100,
+      spacecraft: {
+        ...state().spacecraft,
+        position: { x: 10_010, y: 0 },
+      },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      nearFallbackReason: null,
+      nearSource: 'accepted-window',
+      predictionAnchorElapsed: 0,
+      remainingUsableCoverageSeconds: 1_100,
+    })
+    expect(predictionRuntime.getRemainingUsableCoverageSeconds()).toBe(1_100)
+  })
+
+  it('rebuilds accepted coverage when manual turning returns to idle', () => {
+    const {
+      farWorker,
+      getOptions,
+      predictionRuntime,
+      setPredictionConfig,
+      setState,
+      state,
+    } = createRuntimeHarness()
+    setPredictionConfig(createLongHorizonPredictionConfig())
+
+    predictionRuntime.refresh(getOptions())
+    farWorker.completeRequest(0, 0)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      nearSource: 'accepted-window',
+      remainingUsableCoverageSeconds: 1_200,
+    })
+
+    setState({
+      ...state(),
+      controls: { ...state().controls, turn: 1 },
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      nearSource: 'synchronous',
+      remainingUsableCoverageSeconds: 600,
+    })
+
+    setState({
+      ...state(),
+      controls: idleControls(),
+    })
+    expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
+    expect(farWorker.clients[0]?.requests).toHaveLength(2)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: true,
+      nearSource: 'synchronous',
+      remainingUsableCoverageSeconds: 600,
+    })
+
+    farWorker.completeRequest(0, 1)
+    expect(predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      nearSource: 'accepted-window',
+      remainingUsableCoverageSeconds: 1_200,
+    })
+  })
+
   it('invalidates accepted coverage and calculates near synchronously on target change', () => {
     const {
       engineStep,
@@ -1529,7 +1624,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       nearSource: 'synchronous',
       predictionAnchorElapsed: null,
       refreshReason: 'target-change',
-      remainingUsableCoverageSeconds: 0,
+      remainingUsableCoverageSeconds: 600,
       retainedFarPointCount: 0,
       retainedNearPointCount: 0,
     })
@@ -1623,7 +1718,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       nearSource: 'synchronous',
       predictionAnchorElapsed: null,
       refreshReason: 'orbit-policy-change',
-      remainingUsableCoverageSeconds: 0,
+      remainingUsableCoverageSeconds: 600,
     })
   })
 
@@ -1659,7 +1754,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       nearFallbackReason: 'coverage-exhausted',
       nearSource: 'synchronous',
       predictionAnchorElapsed: null,
-      remainingUsableCoverageSeconds: 0,
+      remainingUsableCoverageSeconds: 1_200,
       retainedFarPointCount: 0,
       retainedNearPointCount: 0,
     })
@@ -1710,7 +1805,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       nearFallbackReason: 'state-diverged',
       nearSource: 'synchronous',
       predictionAnchorElapsed: null,
-      remainingUsableCoverageSeconds: 0,
+      remainingUsableCoverageSeconds: 1_200,
     })
 
     const divergenceStepCount = engineStep.mock.calls.length
@@ -2000,7 +2095,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       pendingFar: false,
       predictionAnchorElapsed: null,
       refreshReason: 'target-change',
-      remainingUsableCoverageSeconds: 0,
+      remainingUsableCoverageSeconds: 600,
     })
     expect(predictionRuntime.getDiagnostics().events.at(-1)).toMatchObject({
       event: 'refresh',
@@ -2039,7 +2134,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       farVisible: 'none',
       nearSource: 'synchronous',
       predictionAnchorElapsed: null,
-      remainingUsableCoverageSeconds: 0,
+      remainingUsableCoverageSeconds: 600,
     })
   })
 

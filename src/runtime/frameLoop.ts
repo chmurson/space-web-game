@@ -192,6 +192,7 @@ export const createFrameLoop = (options: {
       options.runtime.simulation.state.spacecraft.heading
 
     if (!gameplayPaused) {
+      options.trajectoryPresentation.maybeRefreshPrediction(0)
       const simulationStep = stepSimulationFrame({
         assistMode: options.runtime.simulation.assistMode,
         autopilotRotationRate: options.autopilotRotationRate,
@@ -213,6 +214,8 @@ export const createFrameLoop = (options: {
         targetHeadingTurn: options.runtime.simulation.targetHeadingTurn ?? null,
         timeWarpIndex: options.runtime.simulation.timeWarpIndex,
         timeWarps: options.timeWarps,
+        usablePredictionCoverageSeconds:
+          options.trajectoryPresentation.getRemainingUsableCoverageSeconds(),
       })
       applySimulationFrameResult(options.runtime, simulationStep)
     }

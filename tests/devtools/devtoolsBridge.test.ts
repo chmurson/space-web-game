@@ -12,6 +12,7 @@ import type {
   TrajectoryPredictionDiagnosticEvent,
   TrajectoryPredictionDiagnostics,
 } from '@/runtime/trajectoryPredictionRuntime'
+import { getConstrainedTimeWarpIndex } from '@/scenario/scenarioDirectives'
 import {
   type CameraFollowSubject,
   createDefaultScenarioDirectives,
@@ -25,6 +26,20 @@ const predictionSampling = {
   stepOptionsSeconds: [30, 60],
   targetMaxSteps: 1200,
 }
+
+const getTimeWarpDiagnostics = () => ({
+  constraintReason: 'prediction-coverage' as const,
+  effectiveTimeWarp: 30,
+  effectiveTimeWarpIndex: 2,
+  predictionCoverageLimit: {
+    maxTimeWarp: 30,
+    maxTimeWarpIndex: 2,
+    rawMaxTimeWarp: 42,
+    remainingCoverageSeconds: 420,
+  },
+  requestedTimeWarp: 60,
+  requestedTimeWarpIndex: 3,
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -273,10 +288,23 @@ const createBridgeHarness = (
     getAssistTarget,
     getTrajectoryPredictionDiagnostics: () =>
       createTrajectoryPredictionDiagnostics(),
+    getTimeWarpDiagnostics,
     runtime,
     maxPredictionLoopRevolutions: 2.5,
     predictionSampling,
-    runtimeActions: { recenterCamera, setCameraFollow },
+    runtimeActions: {
+      recenterCamera,
+      selectTimeWarpIndex: vi.fn((index: number) => {
+        const constrainedIndex = getConstrainedTimeWarpIndex(
+          index,
+          timeWarps,
+          runtime.scenario.directives.maxTimeWarp,
+        )
+        runtime.simulation.timeWarpIndex = constrainedIndex
+        return constrainedIndex
+      }),
+      setCameraFollow,
+    },
     setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds: vi.fn(
       (value) => {
         farCoalescingOverrideSeconds = value
@@ -336,6 +364,7 @@ describe('createDevtoolsSnapshot', () => {
             visiblePointCount: 10,
           },
         ]),
+      getTimeWarpDiagnostics,
       timeWarps,
     })
 
@@ -359,6 +388,9 @@ describe('createDevtoolsSnapshot', () => {
     })
     expect(snapshot.simulation.assistTargetIndex).toBe(1)
     expect(snapshot.simulation.timeWarp).toBe(30)
+    expect(snapshot.simulation.timeWarpConstraint).toEqual(
+      getTimeWarpDiagnostics(),
+    )
     expect(snapshot.simulation.predictionSampling).toMatchObject({
       currentMaxIntegrationStepSeconds: 8,
       currentStepSeconds: 60,
