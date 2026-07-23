@@ -249,6 +249,7 @@ const createQueries = (runtime: AppRuntimeState) =>
     autopilotRotationRate: 0.1,
     getPredictedTrajectoryEnd: () => null,
     getPredictedTrajectoryPoints: () => [],
+    hasCompleteAutoTargetPrediction: () => true,
     maxPredictionLoopRevolutions: 2.5,
     predictionSampling,
     runtime,

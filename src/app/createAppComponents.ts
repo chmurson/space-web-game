@@ -270,6 +270,8 @@ export const createAppComponents = (options: {
       trajectoryPredictionRuntime.getState().absolutePredictionEnd,
     getPredictedTrajectoryPoints: () =>
       trajectoryPredictionRuntime.getState().absolutePredictionPoints,
+    hasCompleteAutoTargetPrediction:
+      trajectoryPredictionRuntime.hasCompletePredictionForCurrentTarget,
     maxPredictionLoopRevolutions:
       options.config.trajectory.maxPredictionLoopRevolutions,
     predictionSampling: options.config.trajectory.predictionSampling,

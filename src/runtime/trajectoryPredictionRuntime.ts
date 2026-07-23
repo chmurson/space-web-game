@@ -1834,6 +1834,9 @@ export const createTrajectoryPredictionRuntime = (
     getRemainingUsableCoverageSeconds: () =>
       predictionDiagnostics.remainingUsableCoverageSeconds,
     getState: () => predictionState,
+    hasCompletePredictionForCurrentTarget: () =>
+      !predictionDiagnostics.splitHorizon ||
+      farPredictionTier?.targetId === predictionState.targetId,
     maybeRefresh: (
       realDt: number,
       options: RefreshTrajectoryPredictionOptions,

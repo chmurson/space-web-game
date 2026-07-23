@@ -152,10 +152,10 @@ describe('stepSimulationFrame', () => {
     },
     {
       controls: { main: 1, reverse: 0, strafe: 0, turn: 1 },
-      expectedMaxWarp: 100,
+      expectedMaxWarp: 15,
       expectedReason: 'active-controls' as const,
-      expectedWarp: 60,
-      name: 'keeps thrust at the x1m cap during simultaneous RCS turning',
+      expectedWarp: 15,
+      name: 'uses the x15s cap during simultaneous thrust and RCS turning',
     },
     {
       controls: { main: 0, reverse: 0, strafe: 0, turn: 0 },

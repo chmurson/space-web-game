@@ -397,12 +397,12 @@ const getActiveControlMaxWarp = (
   const linearThrustActive =
     controls.main !== 0 || controls.reverse !== 0 || controls.strafe !== 0
 
-  if (linearThrustActive) {
-    return maxControlWarp
-  }
-
   if (manualRcsTurnActive && controls.turn !== 0) {
     return temporaryMaxRcsTurnWarp
+  }
+
+  if (linearThrustActive) {
+    return maxControlWarp
   }
 
   return controls.turn !== 0 ? maxControlWarp : null
