@@ -279,6 +279,7 @@ const createPredictionRuntime = (
       targetRelativePredictionEnd: { x: 20, y: 0 },
       targetRelativePredictionPoints: predictionPoints,
     }),
+    hasCompletePredictionForCurrentTarget: () => true,
     maybeRefresh: () => false,
     recordGeometryUpdate: () => {},
     refresh: () => {},

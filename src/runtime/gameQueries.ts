@@ -1,15 +1,15 @@
 import {
-  getAssistTargetDecisionForState,
   type AssistTargetDebugInfo,
+  getAssistTargetDecisionForState,
 } from '../assist/assistTarget'
 import {
+  type CaptureMetrics,
+  type CircularizePlan,
   getAssistPredictionControlsForState,
   getAutopilotTurnForHeading,
   getCaptureMetricsForState,
   getCircularizePlanForState,
   shouldCaptureBurnForMetrics,
-  type CaptureMetrics,
-  type CircularizePlan,
 } from '../assist/orbitalAssist'
 import {
   getTrajectoryPredictionConfig,
@@ -54,6 +54,7 @@ export const createGameQueries = (options: {
   autopilotRotationRate: number
   getPredictedTrajectoryEnd(): Vec2 | null
   getPredictedTrajectoryPoints(): Vec2[]
+  hasCompleteAutoTargetPrediction(): boolean
   maxPredictionLoopRevolutions: number
   predictionSampling: TrajectoryPredictionSamplingConfig
   runtime: AppRuntimeState
@@ -73,6 +74,19 @@ export const createGameQueries = (options: {
 
   const getAutoTargetDecision = () => {
     const decision = getTargetDecision(true)
+    const currentTarget = options.runtime.simulation.state.bodies.find(
+      (body) => body.id === currentAutoTargetId,
+    )
+    if (currentTarget && !options.hasCompleteAutoTargetPrediction()) {
+      return {
+        debug: {
+          ...decision.debug,
+          selectedBodyId: currentTarget.id,
+        },
+        target: currentTarget,
+      }
+    }
+
     currentAutoTargetId = decision.target.id
     return decision
   }
