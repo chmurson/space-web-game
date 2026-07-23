@@ -1521,6 +1521,9 @@ describe('createTrajectoryPredictionRuntime', () => {
     expect(predictionRuntime.maybeRefresh(0, getOptions())).toBe(true)
 
     expect(engineStep.mock.calls.length).toBeGreaterThan(acceptedStepCount)
+    expect(predictionRuntime.hasCompletePredictionForCurrentTarget()).toBe(
+      false,
+    )
     expect(predictionRuntime.getDiagnostics()).toMatchObject({
       nearFallbackReason: 'semantic-change',
       nearSource: 'synchronous',
@@ -1530,6 +1533,9 @@ describe('createTrajectoryPredictionRuntime', () => {
       retainedFarPointCount: 0,
       retainedNearPointCount: 0,
     })
+
+    farWorker.completeRequest(0, 1)
+    expect(predictionRuntime.hasCompletePredictionForCurrentTarget()).toBe(true)
   })
 
   it('reuses accepted near coverage across passive body-position drift', () => {

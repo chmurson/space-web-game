@@ -112,6 +112,7 @@ describe('createGameQueries', () => {
         createPredictedTrajectoryEnd(8_000_000, 0),
       getPredictedTrajectoryPoints: () =>
         createPredictedTrajectoryPoints([0, 0], [4_000_000, 0], [8_000_000, 0]),
+      hasCompleteAutoTargetPrediction: () => true,
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
         maxIntegrationStepSeconds: 10,
@@ -154,6 +155,7 @@ describe('createGameQueries', () => {
         runtime.simulation.state.spacecraft.position.x >= 140
           ? createPredictedTrajectoryPoints([160, 0], [240, 60], [320, 0])
           : createPredictedTrajectoryPoints([0, 0], [20, 40], [40, 0]),
+      hasCompleteAutoTargetPrediction: () => true,
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
         maxIntegrationStepSeconds: 10,
@@ -175,6 +177,62 @@ describe('createGameQueries', () => {
     expect(queries.getAssistTarget().id).toBe('moon')
   })
 
+  it('holds the auto target while its complete trajectory is rebuilding', () => {
+    const runtime = createRuntime(
+      [
+        createBody({ id: 'earth', name: 'Earth', position: { x: 0, y: 0 } }),
+        createBody({ id: 'moon', name: 'Moon', position: { x: 300, y: 0 } }),
+      ],
+      48,
+    )
+    let predictionComplete = false
+    let predictionPoints = createPredictedTrajectoryPoints(
+      [50, 0],
+      [60, 0],
+      [70, 0],
+    )
+
+    const queries = createGameQueries({
+      autoSelectNearestSurface: true,
+      autoSelectConfig: {
+        switchRangeMultiplier: 1.2,
+      },
+      autopilotRotationRate: 0.1,
+      getPredictedTrajectoryEnd: () => predictionPoints.at(-1) ?? null,
+      getPredictedTrajectoryPoints: () => predictionPoints,
+      hasCompleteAutoTargetPrediction: () => predictionComplete,
+      maxPredictionLoopRevolutions: 2,
+      predictionSampling: {
+        maxIntegrationStepSeconds: 10,
+        refreshInterval: 0.25,
+        stepOptionsSeconds: [10, 60, 300],
+        targetMaxSteps: 100,
+      },
+      runtime,
+    })
+
+    expect(queries.getAssistTarget().id).toBe('earth')
+
+    predictionComplete = true
+    predictionPoints = createPredictedTrajectoryPoints(
+      [50, 0],
+      [200, 0],
+      [300, 0],
+    )
+    expect(queries.getAssistTarget().id).toBe('moon')
+
+    predictionComplete = false
+    predictionPoints = createPredictedTrajectoryPoints(
+      [50, 0],
+      [60, 0],
+      [70, 0],
+    )
+    expect(queries.getAssistTarget().id).toBe('moon')
+
+    predictionComplete = true
+    expect(queries.getAssistTarget().id).toBe('earth')
+  })
+
   it('wraps the selected assist target index when auto-discovery is disabled', () => {
     const runtime = createRuntime(
       [
@@ -194,6 +252,7 @@ describe('createGameQueries', () => {
       autopilotRotationRate: 0.1,
       getPredictedTrajectoryEnd: () => null,
       getPredictedTrajectoryPoints: () => [],
+      hasCompleteAutoTargetPrediction: () => true,
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
         maxIntegrationStepSeconds: 10,
@@ -236,6 +295,7 @@ describe('createGameQueries', () => {
         createPredictedTrajectoryEnd(8_000_000, 0),
       getPredictedTrajectoryPoints: () =>
         createPredictedTrajectoryPoints([0, 0], [4_000_000, 0], [8_000_000, 0]),
+      hasCompleteAutoTargetPrediction: () => true,
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
         maxIntegrationStepSeconds: 10,
@@ -266,6 +326,7 @@ describe('createGameQueries', () => {
       autopilotRotationRate: 0.1,
       getPredictedTrajectoryEnd: () => null,
       getPredictedTrajectoryPoints: () => [],
+      hasCompleteAutoTargetPrediction: () => true,
       maxPredictionLoopRevolutions: 3,
       predictionSampling: {
         maxIntegrationStepSeconds: 10,
@@ -305,6 +366,7 @@ describe('createGameQueries', () => {
       autopilotRotationRate: 0.1,
       getPredictedTrajectoryEnd: () => null,
       getPredictedTrajectoryPoints: () => [],
+      hasCompleteAutoTargetPrediction: () => true,
       maxPredictionLoopRevolutions: 2,
       predictionSampling: {
         maxIntegrationStepSeconds: 10,
