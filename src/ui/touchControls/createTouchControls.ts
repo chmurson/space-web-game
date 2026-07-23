@@ -208,6 +208,7 @@ export const createTouchControls = (options: {
     getCameraCanRecenter: options.getCameraCanRecenter,
     getCameraControlsLocked: options.getCameraControlsLocked,
     getCameraFollow: options.getCameraFollow,
+    getTargetState: options.getAssistTargetUiState,
     onCameraFollowSelect: options.onCameraFollowSelect,
     onCameraRecenter: options.onCameraRecenter,
     onViewportBottomInsetChange:
@@ -224,7 +225,6 @@ export const createTouchControls = (options: {
   let targetHeadingPlanActive = false
   let flightControlsVisible = true
   let timeWarpControlVisible = true
-  let syncTargetRecommendationCue = () => {}
 
   const syncMainThrust = (engaged: boolean) => {
     options.keyboardInput.setVirtualKey('main', engaged)
@@ -273,7 +273,7 @@ export const createTouchControls = (options: {
     onReturnToAutomaticTarget: options.onReturnToAutomaticTarget,
     onSelectTargetIndex: options.onSelectTargetIndex,
     onStateChange: () => {
-      syncTargetRecommendationCue()
+      mobileCommandDock.syncState()
       options.onTargetStateChange?.()
     },
   })
@@ -316,16 +316,6 @@ export const createTouchControls = (options: {
     }
 
     mobileCommandDock.setTutorialFocused(target)
-  }
-
-  syncTargetRecommendationCue = () => {
-    const targetState = options.getAssistTargetUiState()
-    const recommendedTarget = targetState.recommendedTarget
-    const hasRecommendation =
-      targetState.mode === 'manual' && recommendedTarget !== null
-    mobileCommandDock.setTargetRecommendation(
-      hasRecommendation && recommendedTarget ? recommendedTarget.name : null,
-    )
   }
 
   const clearActiveSession = () => {
@@ -1296,7 +1286,7 @@ export const createTouchControls = (options: {
       }
 
       timeWarpControl.syncUi()
-      syncTargetRecommendationCue()
+      mobileCommandDock.syncState()
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()
       rcsYawControl.syncUi()
@@ -1381,7 +1371,6 @@ export const createTouchControls = (options: {
   timeWarpControl.syncUi()
   mobileCommandDock.syncState()
   syncTimeWarpDockState()
-  syncTargetRecommendationCue()
   targetControl.syncUi()
   syncMobileCommandDockAvailability()
   trajectoryHorizonControl.syncUi()
@@ -1392,7 +1381,6 @@ export const createTouchControls = (options: {
     timeWarpControl.syncUi()
     mobileCommandDock.syncState()
     syncTimeWarpDockState()
-    syncTargetRecommendationCue()
     targetControl.syncUi()
     trajectoryHorizonControl.syncUi()
     rcsYawControl.syncUi()
@@ -1407,15 +1395,14 @@ export const createTouchControls = (options: {
         return
       }
 
-      mobileCommandDock.setOpenPanel('nav')
-      syncTargetRecommendationCue()
       targetControl.syncUi()
+      mobileCommandDock.openTargetPopup()
       const focusTarget =
         targetControl.element.querySelector<HTMLElement>(
           'button:not([disabled])',
         ) ??
         mobileCommandDock.element.querySelector<HTMLElement>(
-          '.mobile-command-dock-nav-target',
+          '#mobile-command-dock-target-button',
         )
       focusTarget?.focus()
     },
@@ -1436,7 +1423,6 @@ export const createTouchControls = (options: {
       timeWarpControl.syncUi()
       mobileCommandDock.syncState()
       syncTimeWarpDockState()
-      syncTargetRecommendationCue()
       targetControl.syncUi()
       trajectoryHorizonControl.syncUi()
       thrustControl.syncUi()

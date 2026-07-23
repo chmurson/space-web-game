@@ -78,9 +78,12 @@ test('uses Nav instead of the desktop selector or an edge entry on mobile', asyn
   ).toBeHidden()
   await expect(page.locator('#touch-target-reveal')).toHaveCount(0)
   await page.getByRole('button', { name: 'Open Nav panel' }).click()
-  await expect(
-    page
-      .getByRole('region', { name: 'Target' })
-      .getByLabel('Target body selector'),
-  ).toBeVisible()
+  const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const targetButton = navPanel.locator('#mobile-command-dock-target-button')
+  const targetSelector = navPanel.getByLabel('Target body selector')
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(targetSelector).toBeHidden()
+  await targetButton.click()
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(navPanel.getByLabel('Target body selector')).toBeVisible()
 })

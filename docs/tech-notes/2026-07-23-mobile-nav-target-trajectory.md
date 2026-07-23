@@ -8,8 +8,11 @@ Shipit state:
 ## What changed
 
 - Mounted the existing mobile Target selector and Trajectory horizon selector
-  in the Nav panel after Time Warp and camera controls. Target uses the wider
-  column and Trajectory keeps its compact vertical selector.
+  in the Nav panel. Time Warp and Camera now form the wide left column while
+  Trajectory stays visible in the narrow right column.
+- Added an accessible current-target button below Trajectory. It reports the
+  active body and target mode, exposes recommendation state, and toggles the
+  unchanged Target selector as a popup over the left column.
 - Removed the shipped Target and Trajectory edge wrappers and reveal tabs.
   Choosing a target or returning to automatic mode now leaves Nav open.
 - Kept both controls independently scenario-driven. Hiding Trajectory or
@@ -33,8 +36,8 @@ single predictable surface without changing simulation policy.
 ## Ownership boundaries
 
 - `src/ui/touchControls/mobileCommandDock.tsx` owns Nav layout, panel state,
-  independent Target/Trajectory visibility, stable mount hosts, recommendation
-  emphasis, and tutorial focus.
+  Target popup disclosure, independent Target/Trajectory visibility, stable
+  mount hosts, recommendation emphasis, and tutorial focus.
 - `src/ui/touchControls/createTouchControls.ts` mounts the existing controls in
   those hosts, routes target/recommendation state, and cancels Trajectory input
   when Nav ownership ends.
@@ -50,11 +53,15 @@ single predictable surface without changing simulation policy.
 
 - Reused the existing selector implementations and runtime actions; the dock
   only provides their stable home and does not duplicate control policy.
+- Kept the current-target toggle in the right column while its popup overlays
+  the wide left column. The button remains reachable for closing the popup and
+  Trajectory remains usable in both Target disclosure states.
 - Made the Nav body vertically scrollable on compact portrait screens while
   preserving gesture ownership for the embedded horizontal and vertical step
   selectors.
-- Kept Nav open after Target commits so automatic/manual/forced transitions do
-  not unexpectedly dismiss adjacent navigation controls.
+- Kept Nav and the Target popup open after Target commits so
+  automatic/manual/forced transitions do not unexpectedly dismiss adjacent
+  navigation controls.
 - Cancelled Trajectory gestures on close, panel switch, Escape, interaction
   disable, blur, and scenario unavailability. A cancelled drag never commits a
   partially selected horizon.
@@ -64,27 +71,34 @@ single predictable surface without changing simulation policy.
 
 ## Validation performed
 
-- Targeted Biome checks passed for all touched source and test files.
+- Targeted Biome checks passed for all touched source and test files, and
+  `git diff --check` passed.
 - `npm run build` passed, including config validation, TypeScript compilation,
   and the release Vite build. The existing large-chunk advisory remains.
 - All 64 Vitest files / 627 product tests and all 16 automation-claim tests
-  passed. `npm test` still exits nonzero in the unchanged automation-workflow
-  suite because `origin/main` lacks the exact rocket-policy sentence asserted
-  by `scripts/engineerWorkflowPrompt.test.mjs`; this issue does not modify that
-  workflow and did not add reactions.
-- `npm run test:gui` passed all 84 Playwright checks. Focused coverage verifies
-  Nav mounting and stability, Target commits without panel dismissal,
-  independent availability, dock/canvas input isolation, every required
-  Trajectory cancellation boundary, Settings cleanup, tutorial routing, and
-  unchanged desktop behavior.
+  passed.
+- `npm run test:gui` completed one full 84/84 pass during the follow-up. After
+  the final responsive-only Camera adjustment, the full rerun passed 83/84:
+  every changed Nav/Target/Trajectory check passed, while the unchanged
+  timing-sensitive Time Warp fling check sampled transient `x2m` where it
+  expects `x1m`. That check also passed once in an isolated rerun during this
+  task, confirming a timing variance rather than changed Time Warp behavior.
+  Focused final coverage verifies right-column Trajectory placement,
+  target-popup disclosure and accessible state, current-target updates,
+  compact-width geometry, Target commits without panel dismissal, independent
+  availability, dock/canvas input isolation, every required Trajectory
+  cancellation boundary, Settings cleanup, tutorial routing, and unchanged
+  desktop behavior.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
-  automatic, recommended/manual, forced, capped, and unavailable states. The
-  controls remain legible and non-overlapping; at 320 px the redundant
-  secondary `Horizon` heading hides so `Automatic` stays fully readable:
+  collapsed/open, recommended/manual, forced, capped, and unavailable states.
+  The controls remain legible and non-overlapping. At 320 px the redundant
+  secondary `Horizon` heading hides and Recenter stacks below Follow; at larger
+  widths Camera keeps its compact single row:
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-320.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-390.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-430.png`
-  - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-target-auto-trajectory-normal.png`
+  - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-target-popup-closed.png`
+  - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-target-popup-open.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-target-manual-recommended.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-target-forced.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-trajectory-capped.png`

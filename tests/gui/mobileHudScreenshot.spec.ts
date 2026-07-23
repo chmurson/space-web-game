@@ -3256,9 +3256,13 @@ test('captures automatic and manual-recommended Target states in Nav', async ({
 
   await page.getByRole('button', { name: 'Open Nav panel' }).click()
   const navPanel = page.locator('#mobile-command-dock-nav-panel')
+  const targetButton = navPanel.locator('#mobile-command-dock-target-button')
   const targetControl = navPanel.getByLabel('Target body selector', {
     exact: true,
   })
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'false')
+  await targetButton.click()
+  await expect(targetButton).toHaveAttribute('aria-expanded', 'true')
   await expect(targetControl).toBeVisible()
   await expect(page.locator('#touch-target-reveal')).toHaveCount(0)
 
@@ -3269,9 +3273,10 @@ test('captures automatic and manual-recommended Target states in Nav', async ({
   await expect(
     targetControl.getByRole('button', { name: /^Moon,.*pinned target/ }),
   ).toBeVisible()
+  await expect(targetButton).toHaveAccessibleName(/Earth target recommended/)
   await expect(
-    page.getByRole('button', { name: /target recommended/ }),
-  ).toBeVisible()
+    page.locator('#mobile-command-dock-nav-button'),
+  ).toHaveAccessibleName(/Earth target recommended/)
   await attachMobileScreenshot(
     page,
     testInfo,

@@ -180,15 +180,44 @@
     gap: 7px;
   }
 
-  .mobile-command-dock-nav-guidance {
+  .mobile-command-dock-nav-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "main side";
+    grid-template-columns: minmax(0, 1fr) 70px;
     align-items: stretch;
     gap: 8px;
     min-width: 0;
   }
 
-  .mobile-command-dock-nav-target,
+  .mobile-command-dock-nav-main {
+    display: grid;
+    grid-area: main;
+    min-width: 0;
+    align-content: start;
+    gap: 12px;
+  }
+
+  .mobile-command-dock-nav-side {
+    display: grid;
+    grid-area: side;
+    grid-template-rows: minmax(0, 1fr) auto;
+    width: 70px;
+    min-width: 0;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .mobile-command-dock-nav-layout:not(
+      :has(.mobile-command-dock-nav-side > :not([hidden]))
+    ) {
+    grid-template-areas: "main";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-command-dock-nav-side:not(:has(> :not([hidden]))) {
+    display: none;
+  }
+
   .mobile-command-dock-nav-trajectory {
     display: grid;
     min-width: 0;
@@ -197,16 +226,28 @@
     border-radius: 12px;
   }
 
+  .mobile-command-dock-nav-target {
+    min-width: 0;
+    align-self: end;
+    border-radius: 12px;
+  }
+
   .mobile-command-dock-nav-target[hidden],
   .mobile-command-dock-nav-trajectory[hidden] {
     display: none;
   }
 
-  .mobile-command-dock-nav-guidance:not(
-      :has(.mobile-command-dock-nav-target:not([hidden]))
-    ) {
-    grid-template-columns: 1fr;
-    justify-items: center;
+  .mobile-command-dock-target-popup {
+    z-index: 1;
+    grid-area: main;
+    min-width: 0;
+    align-self: end;
+    border-radius: var(--touch-control-radius);
+    pointer-events: auto;
+  }
+
+  .mobile-command-dock-target-popup[hidden] {
+    display: none;
   }
 
   .mobile-command-dock-nav-heading {
@@ -242,6 +283,84 @@
   .mobile-command-dock-target-control .touch-target-control {
     box-sizing: border-box;
     width: 100%;
+  }
+
+  .mobile-command-dock-target-button {
+    display: grid;
+    width: 100%;
+    min-height: 46px;
+    gap: 5px;
+    padding: 7px 6px;
+    border: 1px solid var(--ui-glass-control-border);
+    border-radius: 11px;
+    background: var(--ui-glass-control-bg);
+    color: rgba(240, 249, 255, 0.92);
+    font: inherit;
+    text-align: left;
+    touch-action: manipulation;
+  }
+
+  .mobile-command-dock-target-button-label {
+    display: flex;
+    overflow: hidden;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    color: rgba(203, 213, 225, 0.68);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .mobile-command-dock-target-button-value {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .mobile-command-dock-target-sphere {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(224, 242, 254, 0.5);
+    border-radius: 50%;
+    box-shadow:
+      inset -3px -3px 5px rgba(2, 6, 23, 0.34),
+      0 0 6px rgba(125, 211, 252, 0.22);
+  }
+
+  .mobile-command-dock-target-name {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-command-dock-target-chevron {
+    flex: 0 0 auto;
+    color: rgba(125, 211, 252, 0.8);
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .mobile-command-dock-target-button[aria-expanded="true"],
+  .mobile-command-dock-target-button[data-target-recommended="true"] {
+    border-color: rgba(56, 189, 248, 0.5);
+    background: rgba(14, 116, 144, 0.2);
+  }
+
+  .mobile-command-dock-target-button:focus-visible {
+    outline: 2px solid rgba(125, 211, 252, 0.86);
+    outline-offset: 2px;
   }
 
   .mobile-command-dock-trajectory-control .touch-step-selector {
@@ -414,6 +533,8 @@
 
   .mobile-command-dock[data-tutorial-focused="target"]
     .mobile-command-dock-nav-target,
+  .mobile-command-dock[data-tutorial-focused="target"]
+    .mobile-command-dock-target-popup,
   .mobile-command-dock[data-tutorial-focused="trajectory"]
     .mobile-command-dock-nav-trajectory {
     box-shadow:
@@ -477,6 +598,16 @@
   (max-width: 350px) and (pointer: coarse) {
   .mobile-command-dock-nav-heading-detail {
     display: none;
+  }
+
+  .mobile-command-dock-camera-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .mobile-command-dock-camera-recenter {
+    width: 100%;
+    min-height: 36px;
   }
 }
 

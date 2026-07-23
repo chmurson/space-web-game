@@ -1,3 +1,4 @@
+import type { AssistTargetUiState } from '../../runtime/gameQueries'
 import type { TimeWarpFeedbackReason } from '../../runtime/timeWarpFeedbackPolicy'
 import type { CameraFollowSubject } from '../../scenario/scenarioDirectiveTypes'
 import { cameraFollowOptions } from '../cameraControlActions'
@@ -28,7 +29,8 @@ type MobileCommandDockSurfaceProps = SurfaceRootRefProps & {
     trajectory: boolean
   }
   openPanel: MobileCommandDockPanel | null
-  targetRecommendationName: string | null
+  targetPopupOpen: boolean
+  targetState: AssistTargetUiState
   timeWarpReason: TimeWarpFeedbackReason | null
   timeWarpStatus: string
   timeWarpStatusTone: 'available' | 'capped'
@@ -63,6 +65,16 @@ const getPanelButtonLabel = (options: {
     : `Open ${options.label} panel`
 }
 
+const getTargetModeLabel = (mode: AssistTargetUiState['mode']) => {
+  if (mode === 'auto') {
+    return 'automatic targeting'
+  }
+  if (mode === 'manual') {
+    return 'pinned target'
+  }
+  return 'locked target'
+}
+
 const MobileCommandDockSurface = ({
   cameraCanRecenter,
   cameraControlsLocked,
@@ -70,7 +82,8 @@ const MobileCommandDockSurface = ({
   controlsAvailable,
   openPanel,
   rootRef,
-  targetRecommendationName,
+  targetPopupOpen,
+  targetState,
   timeWarpReason,
   timeWarpStatus,
   timeWarpStatusTone,
@@ -78,6 +91,18 @@ const MobileCommandDockSurface = ({
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
   const infoOpen = openPanel === 'info'
+  const targetRecommendationName =
+    targetState.mode === 'manual'
+      ? (targetState.recommendedTarget?.name ?? null)
+      : null
+  const targetPopupVisible = controlsAvailable.target && targetPopupOpen
+  const targetModeLabel = getTargetModeLabel(targetState.mode)
+  let targetButtonLabel = `${
+    targetPopupVisible ? 'Close' : 'Open'
+  } Target selector, current target ${targetState.activeTarget.name}, ${targetModeLabel}`
+  if (targetRecommendationName) {
+    targetButtonLabel += `; ${targetRecommendationName} target recommended`
+  }
   let navButtonLabel = getPanelButtonLabel({
     available: true,
     label: 'Nav',
@@ -132,102 +157,143 @@ const MobileCommandDockSurface = ({
         hidden={openPanel !== 'nav'}
         id="mobile-command-dock-nav-panel"
       >
-        <div
-          class="mobile-command-dock-nav-time-warp"
-          data-available={String(controlsAvailable.timeWarp)}
-          data-reason={timeWarpReason ?? 'none'}
-          hidden={!controlsAvailable.timeWarp}
-        >
-          <div class="mobile-command-dock-nav-heading">
-            <span>Time Warp</span>
-          </div>
-          <div class="mobile-command-dock-time-warp-host" />
-          <p
-            aria-live="polite"
-            class="mobile-command-dock-time-warp-status mobile-command-dock-visually-hidden"
-            data-tone={timeWarpStatusTone}
-          >
-            {timeWarpStatus}
-          </p>
-        </div>
-        <div
-          class="mobile-command-dock-nav-camera"
-          data-camera-controls-locked={String(cameraControlsLocked)}
-        >
-          <div class="mobile-command-dock-nav-heading">
-            <span>Camera</span>
-          </div>
-          <div class="mobile-command-dock-camera-controls">
-            <fieldset
-              aria-label="Follow"
-              class="mobile-command-dock-camera-options"
+        <div class="mobile-command-dock-nav-layout">
+          <div class="mobile-command-dock-nav-main">
+            <div
+              class="mobile-command-dock-nav-time-warp"
+              data-available={String(controlsAvailable.timeWarp)}
+              data-reason={timeWarpReason ?? 'none'}
+              hidden={!controlsAvailable.timeWarp}
             >
-              {cameraFollowOptions.map((option) => {
-                const selected = option.follow === cameraFollow
+              <div class="mobile-command-dock-nav-heading">
+                <span>Time Warp</span>
+              </div>
+              <div class="mobile-command-dock-time-warp-host" />
+              <p
+                aria-live="polite"
+                class="mobile-command-dock-time-warp-status mobile-command-dock-visually-hidden"
+                data-tone={timeWarpStatusTone}
+              >
+                {timeWarpStatus}
+              </p>
+            </div>
+            <div
+              class="mobile-command-dock-nav-camera"
+              data-camera-controls-locked={String(cameraControlsLocked)}
+            >
+              <div class="mobile-command-dock-nav-heading">
+                <span>Camera</span>
+              </div>
+              <div class="mobile-command-dock-camera-controls">
+                <fieldset
+                  aria-label="Follow"
+                  class="mobile-command-dock-camera-options"
+                >
+                  {cameraFollowOptions.map((option) => {
+                    const selected = option.follow === cameraFollow
 
-                return (
-                  <button
-                    aria-label={
-                      cameraControlsLocked
-                        ? `Camera controls unavailable: Follow ${option.label}`
-                        : `Follow ${option.label}`
-                    }
-                    aria-pressed={selected}
-                    class={
-                      selected
-                        ? 'mobile-command-dock-camera-option mobile-command-dock-camera-option-selected'
-                        : 'mobile-command-dock-camera-option'
-                    }
-                    data-camera-follow-option={option.follow}
-                    disabled={cameraControlsLocked}
-                    key={option.follow}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                )
-              })}
-            </fieldset>
-            <button
-              aria-label={cameraRecenterAriaLabel}
-              class="mobile-command-dock-camera-recenter ui-pressable-strong"
-              data-mobile-camera-action="recenter"
-              disabled={cameraRecenterDisabled}
-              type="button"
-            >
-              Recenter
-            </button>
+                    return (
+                      <button
+                        aria-label={
+                          cameraControlsLocked
+                            ? `Camera controls unavailable: Follow ${option.label}`
+                            : `Follow ${option.label}`
+                        }
+                        aria-pressed={selected}
+                        class={
+                          selected
+                            ? 'mobile-command-dock-camera-option mobile-command-dock-camera-option-selected'
+                            : 'mobile-command-dock-camera-option'
+                        }
+                        data-camera-follow-option={option.follow}
+                        disabled={cameraControlsLocked}
+                        key={option.follow}
+                        type="button"
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </fieldset>
+                <button
+                  aria-label={cameraRecenterAriaLabel}
+                  class="mobile-command-dock-camera-recenter ui-pressable-strong"
+                  data-mobile-camera-action="recenter"
+                  disabled={cameraRecenterDisabled}
+                  type="button"
+                >
+                  Recenter
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="mobile-command-dock-nav-guidance">
-          <section
-            aria-label="Target"
-            class="mobile-command-dock-nav-target"
-            data-available={String(controlsAvailable.target)}
-            data-recommended={String(targetRecommendationName !== null)}
-            hidden={!controlsAvailable.target}
-            tabIndex={-1}
+          <div class="mobile-command-dock-nav-side">
+            <section
+              aria-label="Trajectory"
+              class="mobile-command-dock-nav-trajectory"
+              data-available={String(controlsAvailable.trajectory)}
+              hidden={!controlsAvailable.trajectory}
+              tabIndex={-1}
+            >
+              <div class="mobile-command-dock-nav-heading">
+                <span>Trajectory</span>
+                <span class="mobile-command-dock-nav-heading-detail">
+                  Horizon
+                </span>
+              </div>
+              <div class="mobile-command-dock-trajectory-control-host" />
+            </section>
+            <section
+              aria-label="Target"
+              class="mobile-command-dock-nav-target"
+              data-available={String(controlsAvailable.target)}
+              data-recommended={String(targetRecommendationName !== null)}
+              hidden={!controlsAvailable.target}
+              tabIndex={-1}
+            >
+              <button
+                aria-controls="mobile-command-dock-target-popup"
+                aria-expanded={targetPopupVisible}
+                aria-label={targetButtonLabel}
+                class="mobile-command-dock-target-button ui-pressable-strong"
+                data-target-recommended={String(
+                  targetRecommendationName !== null,
+                )}
+                id="mobile-command-dock-target-button"
+                type="button"
+              >
+                <span class="mobile-command-dock-target-button-label">
+                  <span>Target</span>
+                  <span
+                    aria-hidden="true"
+                    class="mobile-command-dock-target-chevron"
+                  >
+                    {targetPopupVisible ? '▴' : '▾'}
+                  </span>
+                </span>
+                <span class="mobile-command-dock-target-button-value">
+                  <span
+                    aria-hidden="true"
+                    class="mobile-command-dock-target-sphere"
+                    style={{
+                      backgroundColor: targetState.activeTarget.color,
+                    }}
+                  />
+                  <span class="mobile-command-dock-target-name">
+                    {targetState.activeTarget.name}
+                  </span>
+                </span>
+              </button>
+            </section>
+          </div>
+          <div
+            aria-hidden={!targetPopupVisible}
+            class="mobile-command-dock-target-popup"
+            hidden={!targetPopupVisible}
+            id="mobile-command-dock-target-popup"
           >
-            <div class="mobile-command-dock-nav-heading">
-              <span>Target</span>
-            </div>
             <div class="mobile-command-dock-target-control-host" />
-          </section>
-          <section
-            aria-label="Trajectory"
-            class="mobile-command-dock-nav-trajectory"
-            data-available={String(controlsAvailable.trajectory)}
-            hidden={!controlsAvailable.trajectory}
-            tabIndex={-1}
-          >
-            <div class="mobile-command-dock-nav-heading">
-              <span>Trajectory</span>
-              <span class="mobile-command-dock-nav-heading-detail">
-                Horizon
-              </span>
-            </div>
-            <div class="mobile-command-dock-trajectory-control-host" />
-          </section>
+          </div>
         </div>
       </section>
 
@@ -325,6 +391,7 @@ export const createMobileCommandDock = (options: {
   getCameraCanRecenter(): boolean
   getCameraControlsLocked(): boolean
   getCameraFollow(): CameraFollowSubject
+  getTargetState(): AssistTargetUiState
   onCameraFollowSelect(follow: CameraFollowSubject): void
   onCameraRecenter(): void
   onViewportBottomInsetChange?(bottomInset: number): void
@@ -365,7 +432,7 @@ export const createMobileCommandDock = (options: {
     trajectory: true,
   }
   let openPanel: MobileCommandDockPanel | null = null
-  let targetRecommendationName: string | null = null
+  let targetPopupOpen = false
   let timeWarpReason: TimeWarpFeedbackReason | null = null
   let timeWarpStatus = ''
   let timeWarpStatusTone: 'available' | 'capped' = 'available'
@@ -447,7 +514,8 @@ export const createMobileCommandDock = (options: {
       cameraFollow: options.getCameraFollow(),
       controlsAvailable,
       openPanel,
-      targetRecommendationName,
+      targetPopupOpen,
+      targetState: options.getTargetState(),
       timeWarpReason,
       timeWarpStatus,
       timeWarpStatusTone,
@@ -463,6 +531,9 @@ export const createMobileCommandDock = (options: {
   const setOpenPanel = (nextPanel: MobileCommandDockPanel | null) => {
     const allowedPanel =
       nextPanel === 'flight' && !isFlightAvailable() ? null : nextPanel
+    if (allowedPanel !== 'nav') {
+      targetPopupOpen = false
+    }
     if (openPanel !== allowedPanel) {
       const previousPanel = openPanel
       openPanel = allowedPanel
@@ -487,6 +558,9 @@ export const createMobileCommandDock = (options: {
   const infoButton = surface.element.querySelector<HTMLButtonElement>(
     '#mobile-command-dock-info-button',
   )
+  const targetButton = surface.element.querySelector<HTMLButtonElement>(
+    '#mobile-command-dock-target-button',
+  )
   const infoPanelContainer = surface.element.querySelector<HTMLElement>(
     '.mobile-command-dock-info-panel-host',
   )
@@ -497,6 +571,7 @@ export const createMobileCommandDock = (options: {
     !flightButton ||
     !infoButton ||
     !navButton ||
+    !targetButton ||
     !infoPanelContainer ||
     !infoRailContainer
   ) {
@@ -534,6 +609,10 @@ export const createMobileCommandDock = (options: {
   })
   addTapSafeButtonHandler(navButton, () => {
     setOpenPanel(openPanel === 'nav' ? null : 'nav')
+  })
+  addTapSafeButtonHandler(targetButton, () => {
+    targetPopupOpen = !targetPopupOpen
+    renderState()
   })
 
   document.addEventListener('keydown', (event) => {
@@ -576,6 +655,9 @@ export const createMobileCommandDock = (options: {
       }
 
       controlsAvailable = { ...nextAvailability }
+      if (!controlsAvailable.target) {
+        targetPopupOpen = false
+      }
       if (!isFlightAvailable() && openPanel === 'flight') {
         setOpenPanel(null)
         return
@@ -589,6 +671,7 @@ export const createMobileCommandDock = (options: {
         return
       }
       if (tutorialFocused === 'target' && controlsAvailable.target) {
+        targetPopupOpen = true
         setOpenPanel('nav')
         return
       }
@@ -618,13 +701,13 @@ export const createMobileCommandDock = (options: {
       timeWarpStatusTone = nextState.tone
       renderState()
     },
-    setTargetRecommendation(recommendedTargetName: string | null) {
-      if (targetRecommendationName === recommendedTargetName) {
+    openTargetPopup() {
+      if (!controlsAvailable.target) {
         return
       }
 
-      targetRecommendationName = recommendedTargetName
-      renderState()
+      targetPopupOpen = true
+      setOpenPanel('nav')
     },
     setTutorialFocused(focused: MobileCommandDockTutorialFocus) {
       tutorialFocused = focused
@@ -637,6 +720,7 @@ export const createMobileCommandDock = (options: {
         return
       }
       if (focused === 'target' && controlsAvailable.target) {
+        targetPopupOpen = true
         setOpenPanel('nav')
         return
       }
