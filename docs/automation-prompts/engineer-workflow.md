@@ -19,6 +19,10 @@ Orchestrator boundary:
 - GitHub writes must be delegated to a worker after acquiring the matching task claim, except the orchestrator owns PR comment tracking reactions and local tracking metadata after acquiring the same claim.
 - If the worker sub-agent is unavailable or cannot get implementation permissions, stop and report the blocker.
 
+GitHub access:
+
+- Prefer the authenticated `gh` CLI for GitHub reads and writes. Use the Codex GitHub integration only as a fallback when the required operation is unavailable through `gh`.
+
 Task claims:
 - Do not use a run-wide lock. Use task-scoped claims only.
 - Claim helper syntax is `npm run claim:task -- acquire|heartbeat|verify|release --kind pr|issue --id <id>`.
@@ -143,5 +147,9 @@ Report back with files changed, commit hash, push status, validation, screenshot
 10. After delegation, keep the orchestrator task unfinished while the worker is active. Wait for a terminal result or create a continuation/wakeup handoff that preserves the claim and reconciliation state; the scheduler/runtime must resume this same task on worker completion.
 11. After a terminal worker result, re-fetch every triggering comment from its original source, compare `updatedAt` and body hash, and independently map every request item. Add `rocket` and mark only matching sidecars `addressed` when the comment is unchanged, every extracted request/checklist item is independently mapped to `addressed` or evidenced `not_applicable`, and no item remains `not_addressed`; otherwise add no `rocket` and record stale/partial/blocker/failure evidence. Release the claim only after all sidecars are reconciled or intentional abandonment is recorded.
 12. Perform conservative cleanup only when safety is unambiguous.
-13. Update automation memory with concise outcome and current run time only after delegated-worker reconciliation and claim release.
+13. Update automation memory with the current run time and outcome only after delegated-worker reconciliation and claim release. Preserve the existing memory with an atomic read/modify/write update:
+    - Read the existing memory before writing and retain durable, generic guidance, recurring failure modes, path or permission notes, and other facts useful across runs.
+    - Keep run-specific details in a compact `Recent runs` section. Compress stale details into one or two high-level sentences, or remove them when they are no longer useful.
+    - Never truncate, recreate, or replace memory wholesale with only the latest run summary; preserve prior content unless intentionally compressing it under this policy.
+    - Preserve active delegated-worker, claim, and continuation handoff state, including the next reconciliation action, rather than recording the run as complete.
 14. Final report: start with the current run-completion timestamp in ISO 8601 format (including timezone), then report freshness, task claim outcome, per-PR issue-comment/review-comment inventory counts or failures, selected issue/PR, branch/worktree/PR, whether context was reused, worker used, validation, deploy/preview URL if applicable, comments/labels, cleanup, scheduler-side limitations, and blockers. Include a brief plain-language summary of what changed and why it matters. If the summary is omitted, obtain human approval, record the approval and reason in transient Shipit state, and mention the omission in the final report.
