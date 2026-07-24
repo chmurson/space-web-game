@@ -240,6 +240,8 @@ Z-index ownership lives in `src/style.css`:
 - `--z-overlay-modal`, `--z-overlay-modal-menu`, and `--z-overlay-dialog` for prompts, menus, and dialogs.
 - Tutorial focus layers use the dedicated `--z-tutorial-*` tokens.
 
+This scale is a global stacking invariant, not a component preference: every in-game DOM cue, including body tooltips, orbit markers, offscreen markings, heading cues, and spacecraft icons, must resolve at or below `--z-in-game-floating-elements`. Every HUD surface must resolve at or above `--z-overlay-floating`, whether it is desktop or mobile. Never raise an in-game cue into the overlay range to recover pointer input; fix the intervening stacking context instead. The full-viewport `.touch-controls` element is an absolutely positioned input shell, not a visual HUD surface, so it stays at `z-index: auto` and must not create a stacking context; its visible dock, panels, tabs, and controls own the overlay tokens and can stack above world cues without being trapped in a lower parent context.
+
 ## Elevation & Depth
 
 Depth comes from translucent glass, blur, thin borders, and restrained glow. Avoid opaque cards that fight the space scene.

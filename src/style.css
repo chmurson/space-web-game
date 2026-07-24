@@ -11,7 +11,11 @@
 }
 
 :root {
-  /* base z-index values */
+  /*
+   * Global stacking contract: in-game DOM ends below overlay DOM.
+   * Keep every in-game cue at or below --z-in-game-floating-elements and
+   * every HUD surface at or above --z-overlay-floating.
+   */
   --z-in-game-elements: 10;
   --z-in-game-floating-elements: 15;
   --z-overlay-floating: 20;
@@ -22,7 +26,7 @@
   --z-overlay-dialog: 510;
 
   /* specific z-index values */
-  --z-coach-prompt: calc(var(--z-overlay-floating) - 1);
+  --z-coach-prompt: var(--z-overlay-floating);
   --z-tutorial-focus-backdrop: calc(var(--z-overlay-modal) - 3);
   --z-tutorial-focus-layer: calc(var(--z-overlay-modal) - 2);
   --z-tutorial-focus-prompt: calc(var(--z-overlay-modal) - 1);
@@ -1911,9 +1915,10 @@ button.app-dialog-setting {
 
 .touch-controls {
   display: none;
-  position: fixed;
+  /* Avoid trapping HUD descendants below direct-child in-game cues. */
+  position: absolute;
   inset: 0;
-  z-index: var(--z-overlay-floating);
+  z-index: auto;
   pointer-events: auto;
   touch-action: none;
 }
@@ -2573,11 +2578,6 @@ button.app-dialog-setting {
 @media (hover: none), (pointer: coarse) {
   #app .touch-controls {
     display: block;
-  }
-
-  #app .body-label,
-  #app .trajectory-event-label {
-    z-index: calc(var(--z-overlay-floating) + 1);
   }
 
   #app .body-label {

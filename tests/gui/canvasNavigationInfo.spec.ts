@@ -35,6 +35,106 @@ const expectReceivesPointerEvents = async (locator: Locator) => {
   expect(receivesPointerEvents).toBe(true)
 }
 
+const expectInGameDomBelowMobileHud = async (page: Page) => {
+  const layers = await page.evaluate(() => {
+    const readZIndex = (selector: string) => {
+      const element = document.querySelector<HTMLElement>(selector)
+      if (!element) {
+        throw new Error(`Missing layer probe element: ${selector}`)
+      }
+
+      const zIndex = Number.parseInt(getComputedStyle(element).zIndex, 10)
+      if (!Number.isFinite(zIndex)) {
+        throw new Error(`Non-numeric z-index for layer probe: ${selector}`)
+      }
+
+      return { selector, zIndex }
+    }
+
+    const inGame = [
+      '.spacecraft-callout',
+      '.spacecraft-icon-thrust',
+      '.heading-target-overlay',
+      '.rcs-actual-turn-overlay',
+      '.heading-target-dot',
+      '.offscreen-indicator',
+      '.body-label',
+      '.trajectory-event-label',
+    ].map(readZIndex)
+    const hud = [
+      '.top-bar',
+      '.bottom-pill-area',
+      '.in-game-controls-menu',
+      '.mobile-info-rail',
+      '.mobile-command-dock',
+      '.touch-edge-reveal-control',
+      '.scenario-prompt-backdrop',
+      '.debug-panel',
+    ].map(readZIndex)
+    const touchInputShell =
+      document.querySelector<HTMLElement>('.touch-controls')
+    if (!touchInputShell) {
+      throw new Error('Missing touch input shell')
+    }
+
+    return {
+      hud,
+      inGame,
+      touchInputShellPosition: getComputedStyle(touchInputShell).position,
+      touchInputShellZIndex: getComputedStyle(touchInputShell).zIndex,
+    }
+  })
+
+  expect(layers.touchInputShellPosition).toBe('absolute')
+  expect(layers.touchInputShellZIndex).toBe('auto')
+  expect(Math.max(...layers.inGame.map(({ zIndex }) => zIndex))).toBeLessThan(
+    Math.min(...layers.hud.map(({ zIndex }) => zIndex)),
+  )
+}
+
+const expectHudWinsMarkerOverlap = async (page: Page) => {
+  const overlap = await page.evaluate(() => {
+    const marker = document.querySelector<HTMLElement>(
+      '.trajectory-event-label-periapsis',
+    )
+    const hud = document.querySelector<HTMLElement>(
+      '.mobile-info-rail .info-hud-rail-card',
+    )
+    if (!marker || !hud) {
+      throw new Error('Missing marker or HUD overlap probe')
+    }
+
+    const originalStyle = marker.getAttribute('style')
+    const hudBounds = hud.getBoundingClientRect()
+    const x = hudBounds.left + hudBounds.width / 2
+    const y = hudBounds.top + hudBounds.height / 2
+    marker.style.setProperty('display', 'grid', 'important')
+    marker.style.setProperty('left', `${x}px`, 'important')
+    marker.style.setProperty('top', `${y}px`, 'important')
+    marker.style.setProperty('transform', 'translate(-50%, -50%)', 'important')
+
+    const topElement = document.elementFromPoint(x, y)
+    const hudWins = topElement !== null && hud.contains(topElement)
+    const topElementDescription =
+      topElement instanceof HTMLElement
+        ? `${topElement.tagName.toLowerCase()}.${topElement.className}`
+        : (topElement?.nodeName ?? 'none')
+
+    if (originalStyle === null) {
+      marker.removeAttribute('style')
+    } else {
+      marker.setAttribute('style', originalStyle)
+    }
+
+    return { hudWins, topElementDescription }
+  })
+
+  expect(
+    overlap.hudWins,
+    `Expected mobile HUD above forced Pe marker; top element was ${overlap.topElementDescription}`,
+  ).toBe(true)
+}
+
 test('keeps selected distances in the rail while offscreen arrows stay unlabeled', async ({
   browser,
 }, testInfo) => {
@@ -263,6 +363,8 @@ test('shows selected Pe and Ap as label-only markers with one mobile readout', a
       .allTextContents()
     expect(orbitLabelTexts.length).toBeGreaterThan(0)
     expect(orbitLabelTexts.every((text) => /^(?:Pe|Ap)$/.test(text))).toBe(true)
+    await expectInGameDomBelowMobileHud(page)
+    await expectHudWinsMarkerOverlap(page)
 
     await captureScreenshot(
       page,

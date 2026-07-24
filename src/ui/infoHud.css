@@ -345,12 +345,8 @@
     display: flex;
     box-sizing: border-box;
     max-width: min(240px, calc(100vw - 24px));
-    /* biome-ignore format: Stylelint requires operators to start continuation lines. */
-    max-height: calc(
-      100dvh
-      - max(60px, calc(env(safe-area-inset-top, 0px) + 52px))
-      - max(72px, calc(env(safe-area-inset-bottom, 0px) + 64px))
-    );
+    /* biome-ignore format: Stylelint disallows line breaks around subtraction operators. */
+    max-height: calc(100dvh - max(60px, calc(env(safe-area-inset-top, 0px) + 52px)) - max(72px, calc(env(safe-area-inset-bottom, 0px) + 64px)));
     align-items: flex-end;
     flex-direction: column;
     overflow-x: hidden;

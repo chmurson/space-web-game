@@ -37,8 +37,14 @@ Pull request: [#289](https://github.com/chmurson/space-web-game/pull/289)
   rail as occupied HUD space. Desktop rail bounds shrink-wrap their visible
   cards until the safe-area-aware maximum height, so empty space below a short
   rail does not become a canvas blocker.
+- Mobile in-game DOM cues now remain in the shared in-game z-index range below
+  every HUD surface. The full-viewport touch input shell no longer forms a
+  normal stacking context; its visible dock, panels, and tabs retain their HUD
+  tokens, so selected `Pe`/`Ap` markers cannot paint over the Info rail or other
+  controls.
 - `DESIGN.md` now describes the restored readouts and the separation between
-  target state, Info selection, and canvas visibility.
+  target state, Info selection, canvas visibility, and the global world/HUD
+  stacking invariant.
 
 ## Why
 
@@ -115,6 +121,13 @@ tooltips, or edge indicators.
   available canvas marker while the combined readout still shows both fields.
 - Existing direct body/label/marker selection and empty-canvas gesture
   boundaries were not changed.
+- The absolutely positioned touch input shell keeps its full-viewport hit area
+  at `z-index: auto` without creating a stacking context. This leaves
+  empty-playfield touch routing intact while allowing direct-child in-game
+  controls to sit above the transparent input plane and visible HUD descendants
+  to participate in the root HUD stacking range.
+- The in-game/HUD separation stays centralized in the existing root z-index
+  tokens. No component-specific z-index or new layer abstraction was added.
 
 ## Validation
 
@@ -153,6 +166,19 @@ tooltips, or edge indicators.
   7 relevant Info/canvas GUI tests, targeted Biome checks, single-row and
   geometry assertions, and original-resolution desktop/mobile screenshot
   inspection passed.
+- Z-index follow-up: the focused mobile canvas-navigation test verifies every
+  current in-game DOM root is below every current HUD root, the transparent
+  touch shell does not create a normal stacking context, a forced `Pe`/Info
+  readout overlap resolves to the HUD, and the marker remains directly
+  tappable at its ordinary playfield position. All 3 focused
+  canvas-navigation GUI tests passed.
+- Full GUI follow-up: 84 of 85 tests passed. The only failure was the unchanged
+  mobile target-framing test, whose three-second body-label visibility window
+  expired during its later geometry read; the same timeout moved between the
+  open and recentered reads across focused retries. All stacking, marker input,
+  empty-playfield touch, camera drag, dock, and touch-shell tests passed.
+- Exact Stylelint 17.14.0 with `stylelint-scss` 7.2.0 passed both operator
+  newline rules for `src/ui/infoHud.css`.
 - Targeted Biome checks passed with only the three unchanged
   `noImportantStyles` warnings in `src/style.css`; `git diff --check` passed.
 - `npm test` reaches the pre-existing automation workflow prompt mismatch
