@@ -45,8 +45,7 @@ export const InGameControlsMenuSurface = ({
   const cameraFollowLabelId = `${menuId}-camera-follow`
   const trajectorySectionLabelId = `${menuId}-trajectory`
   const cameraFollowDescription = getCameraFollowDescription(cameraFollow)
-  const cameraRecenterDisabled =
-    cameraControlsLocked || !cameraCanRecenter
+  const cameraRecenterDisabled = cameraControlsLocked || !cameraCanRecenter
   let cameraRecenterAriaLabel = 'Camera already centered on followed subject'
   if (cameraControlsLocked) {
     cameraRecenterAriaLabel =
@@ -158,51 +157,55 @@ export const InGameControlsMenuSurface = ({
           <span>UI settings</span>
         </button>
 
-        <div
-          class="in-game-controls-menu-heading"
-          id={trajectorySectionLabelId}
-        >
-          Trajectory
-        </div>
-        {/* biome-ignore lint/a11y/useSemanticElements: Preserve the existing role=group adapter contract. */}
-        <div
-          class="menu-stepper in-game-controls-menu-stepper"
-          role="group"
-          aria-labelledby={trajectorySectionLabelId}
-        >
-          <div class="menu-stepper-copy">
-            <span class="menu-stepper-name">Prediction horizon</span>
-            <span
-              class="menu-stepper-value"
-              data-in-game-coast-horizon=""
-              aria-live="polite"
+        {cameraControlsVisible ? (
+          <>
+            <div
+              class="in-game-controls-menu-heading"
+              id={trajectorySectionLabelId}
             >
-              {coastHorizonLabel}
-            </span>
-          </div>
-          <div class="menu-stepper-controls">
-            <button
-              type="button"
-              class="menu-stepper-button"
-              data-in-game-action="decreaseCoastHorizon"
-              aria-label="Decrease prediction horizon"
-              disabled={decreaseCoastHorizonDisabled}
-              onClick={onDecreaseCoastHorizon}
+              Trajectory
+            </div>
+            {/* biome-ignore lint/a11y/useSemanticElements: Preserve the existing role=group adapter contract. */}
+            <div
+              class="menu-stepper in-game-controls-menu-stepper"
+              role="group"
+              aria-labelledby={trajectorySectionLabelId}
             >
-              −
-            </button>
-            <button
-              type="button"
-              class="menu-stepper-button"
-              data-in-game-action="increaseCoastHorizon"
-              aria-label="Increase prediction horizon"
-              disabled={increaseCoastHorizonDisabled}
-              onClick={onIncreaseCoastHorizon}
-            >
-              +
-            </button>
-          </div>
-        </div>
+              <div class="menu-stepper-copy">
+                <span class="menu-stepper-name">Prediction horizon</span>
+                <span
+                  class="menu-stepper-value"
+                  data-in-game-coast-horizon=""
+                  aria-live="polite"
+                >
+                  {coastHorizonLabel}
+                </span>
+              </div>
+              <div class="menu-stepper-controls">
+                <button
+                  type="button"
+                  class="menu-stepper-button"
+                  data-in-game-action="decreaseCoastHorizon"
+                  aria-label="Decrease prediction horizon"
+                  disabled={decreaseCoastHorizonDisabled}
+                  onClick={onDecreaseCoastHorizon}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  class="menu-stepper-button"
+                  data-in-game-action="increaseCoastHorizon"
+                  aria-label="Increase prediction horizon"
+                  disabled={increaseCoastHorizonDisabled}
+                  onClick={onIncreaseCoastHorizon}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
 
         <fieldset class="in-game-controls-menu-keyboard-hints">
           <legend class="in-game-controls-menu-keyboard-legend">

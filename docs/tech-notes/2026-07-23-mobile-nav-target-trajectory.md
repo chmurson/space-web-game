@@ -32,6 +32,9 @@ Shipit state:
 - A later interaction follow-up made outside mouse or touch input dismiss only
   the Target popup. Nav remains open, and pointer input inside the popup still
   preserves it across target commits.
+- A mobile settings follow-up removed the duplicate Trajectory prediction
+  horizon from the coarse-pointer in-game Controls popover. Fine-pointer
+  desktop keeps the existing Trajectory control and actions there.
 
 ## Why
 
@@ -55,6 +58,9 @@ single predictable surface without changing simulation policy.
   Nav section does not move, hide, or disable the other.
 - Settings no longer present or consume side placement. Storage and query
   parsing retain the legacy fields only for the coordinated cleanup in #244.
+- `src/ui/components/InGameControlsMenuSurface.tsx` reuses its existing
+  fine-pointer navigation-control boundary for both Camera and Trajectory, so
+  mobile has one Trajectory entry in Nav while desktop behavior stays intact.
 
 ## Decisions
 
@@ -75,6 +81,8 @@ single predictable surface without changing simulation policy.
 - Removed only shipped Target/Trajectory edge UI in this issue. Shared legacy
   edge types, query parameters, and persisted fields remain for #244 to delete
   atomically.
+- Reused the menu's existing Camera visibility boundary instead of adding a
+  second input-mode query or another Trajectory visibility API.
 
 ## Validation performed
 
@@ -114,6 +122,12 @@ single predictable surface without changing simulation policy.
   the only failure was the unchanged current-main precise-yaw assertion above.
   Release build, 65 Vitest files / 649 tests, 16 claim tests, targeted Biome,
   and diff checks passed.
+- The mobile menu follow-up passed targeted Biome and the release build.
+  Focused in-game menu, desktop-adapter, and touch-zoom checks passed 3/3.
+  The final full GUI run passed 84/85, including every changed and dependent
+  test; only the unchanged precise-yaw assertion above failed. A live
+  coarse-pointer browser check found one UI settings action and zero Camera,
+  Trajectory, or prediction-horizon controls in the open in-game menu.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
   collapsed/open, recommended/manual, forced, capped, and unavailable states.
   The controls remain legible and non-overlapping. The redundant secondary
@@ -128,6 +142,10 @@ single predictable surface without changing simulation policy.
   - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-target-forced.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-trajectory-capped.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f40a9--availability-states-in-Nav-mobile-chromium/mobile-nav-trajectory-unavailable.png`
+- Visually inspected the regenerated 390 px in-game Controls screenshot after
+  the mobile menu follow-up. It contains the UI settings action without the
+  duplicate Trajectory section:
+  - `tmp/playwright-results/mobileHudScreenshot-keeps--0165f-f-the-in-game-controls-menu-mobile-chromium/mobile-in-game-controls-menu.png`
 
 ## Follow-ups and known gaps
 

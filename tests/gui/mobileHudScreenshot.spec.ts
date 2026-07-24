@@ -2835,7 +2835,7 @@ test('captures the mobile top menu open over gameplay HUD', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-snapshot-save')
 })
 
-test('keeps mobile camera controls in Nav instead of the in-game controls menu', async ({
+test('keeps mobile navigation controls in Nav instead of the in-game controls menu', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -2843,7 +2843,10 @@ test('keeps mobile camera controls in Nav instead of the in-game controls menu',
   await page.getByRole('button', { name: 'Open in-game controls' }).click()
   const controlsDialog = page.getByRole('dialog', { name: 'In-game controls' })
   await expect(controlsDialog).toBeVisible()
-  await expect(controlsDialog.getByText('Prediction horizon')).toBeVisible()
+  await expect(controlsDialog.getByText('Prediction horizon')).toHaveCount(0)
+  await expect(
+    controlsDialog.getByText('Trajectory', { exact: true }),
+  ).toHaveCount(0)
   await expect(
     controlsDialog.getByRole('group', { name: 'Follow' }),
   ).toHaveCount(0)

@@ -98,10 +98,10 @@ test('prevents rapid repeated button taps while preserving button activation', a
 
   const result = await page.evaluate(() => {
     const button = document.querySelector<HTMLButtonElement>(
-      '[data-in-game-action="increaseCoastHorizon"]',
+      '.in-game-controls-menu-button',
     )
     if (!button || button.disabled) {
-      throw new Error('Missing enabled prediction-horizon increase button')
+      throw new Error('Missing enabled in-game controls button')
     }
 
     let clickCount = 0
