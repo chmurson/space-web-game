@@ -214,7 +214,7 @@ test('shows selected Pe and Ap as label-only markers with one mobile readout', a
     const apsidesRow = infoPanel.locator('[data-info-pin="apsides"]')
     await apsidesRow.tap()
     await expect(apsidesRow).toHaveAttribute('aria-checked', 'true')
-    await expect(rail).toBeHidden()
+    await expect(rail).toBeVisible()
     await infoButton.tap()
 
     await expect(rail).toBeVisible()

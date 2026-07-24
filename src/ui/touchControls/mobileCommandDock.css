@@ -123,11 +123,6 @@
     display: contents;
   }
 
-  .mobile-command-dock[data-open-panel="info"]
-    .mobile-command-dock-info-rail-host {
-    display: none;
-  }
-
   .mobile-command-dock-panel[hidden] {
     display: none;
   }

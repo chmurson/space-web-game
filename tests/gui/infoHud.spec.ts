@@ -34,7 +34,7 @@ test('desktop Info creates persistent readouts while its popover is closed', asy
   const page = await context.newPage()
 
   try {
-    await page.goto('/?scenario=earth-moon')
+    await page.goto('/?scenario=earth-moon&devtools=1')
     await waitForGame(page)
 
     const infoButton = page.getByRole('button', {
@@ -53,6 +53,13 @@ test('desktop Info creates persistent readouts while its popover is closed', asy
     await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
     await expect(popover).toBeVisible()
     await expect(popover.getByRole('switch')).toHaveCount(3)
+    const targetRow = popover.locator('.info-hud-target-row-locked')
+    await expect(targetRow).toHaveCount(1)
+    await expect(popover.locator('.info-hud-target-row-context')).toHaveCount(0)
+    await expect(popover.locator('.info-hud-target-row-telemetry')).toHaveCount(
+      0,
+    )
+    await expect(popover.locator('[data-target-row-preview]')).toHaveCount(0)
     await expect(popover.locator('.target-body-sphere')).toHaveCount(2)
     await expect(
       popover.locator('[data-info-pin^="body:"] .info-hud-row-secondary'),
@@ -69,7 +76,8 @@ test('desktop Info creates persistent readouts while its popover is closed', asy
     await expect(earthSwitch.locator('.info-hud-target-badge')).toHaveCount(0)
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
     await expect(earthSwitch).toBeDisabled()
-    await expect(earthPinStatus).toHaveText('●')
+    await expect(earthPinStatus).toHaveCount(0)
+    await expect(targetRow.locator('.info-hud-pin-status')).toHaveCount(0)
     await expect(infoButton.locator('[role="status"]')).toHaveCount(0)
     await expect(
       popover.getByRole('button', { name: 'Select all' }),
@@ -89,7 +97,11 @@ test('desktop Info creates persistent readouts while its popover is closed', asy
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'false')
     await expect(earthSwitch).toBeEnabled()
     await expect(earthPinStatus).toHaveText('○')
-    await captureScreenshot(page, testInfo, 'desktop-info-manual-target-icon')
+    await captureScreenshot(
+      page,
+      testInfo,
+      'desktop-info-target-row-locked-manual',
+    )
 
     await targetSelectorButton.click()
     await targetSelector
@@ -105,7 +117,7 @@ test('desktop Info creates persistent readouts while its popover is closed', asy
     await moonSwitch.click()
     await apsidesSwitch.click()
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
-    await expect(earthPinStatus).toHaveText('●')
+    await expect(earthPinStatus).toHaveCount(0)
     await expect(rail).toBeHidden()
     await captureScreenshot(page, testInfo, 'desktop-info-popover-selected')
 
@@ -259,6 +271,8 @@ test('mobile Info keeps compact readouts at the top right', async ({
   await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
   await expect(infoPanel).toBeVisible()
   await expect(infoPanel.getByRole('switch')).toHaveCount(3)
+  await expect(infoPanel.locator('.info-hud-target-row-locked')).toHaveCount(1)
+  await expect(infoPanel.locator('[data-target-row-preview]')).toHaveCount(0)
   await expect(
     infoPanel.locator('[data-info-pin^="body:"] .info-hud-row-secondary'),
   ).toHaveText(['to spacecraft', 'to spacecraft'])
@@ -267,10 +281,23 @@ test('mobile Info keeps compact readouts at the top right', async ({
   const earthSwitch = infoPanel.locator('[data-info-pin="body:earth"]')
   await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
   await expect(earthSwitch).toBeDisabled()
-  await expect(earthSwitch.locator('.info-hud-pin-status')).toHaveText('●')
+  await expect(earthSwitch.locator('.info-hud-pin-status')).toHaveCount(0)
   await infoPanel.locator('[data-info-pin="apsides"]').tap()
-  await expect(rail).toBeHidden()
-  await captureScreenshot(page, testInfo, 'mobile-info-panel-selected')
+  await expect(rail).toBeVisible()
+  await expect(rail.locator('.info-hud-rail-card')).toHaveCount(1)
+  const openPanelRailBounds = await rail.boundingBox()
+  const openInfoPanelBounds = await infoPanel.boundingBox()
+  if (!openPanelRailBounds || !openInfoPanelBounds) {
+    throw new Error('Mobile Info rail or open panel is missing')
+  }
+  expect(
+    openPanelRailBounds.y + openPanelRailBounds.height,
+  ).toBeLessThanOrEqual(openInfoPanelBounds.y)
+  await captureScreenshot(
+    page,
+    testInfo,
+    'mobile-info-panel-selected-with-readout',
+  )
 
   await infoButton.tap()
   await expect(infoPanel).toBeHidden()
@@ -446,7 +473,7 @@ test('scenario-owned pins are exposed as checked, immutable switches', async ({
   await expect(moonSwitch).toContainText('Scenario')
   await expect(moonSwitch.locator('.info-hud-pin-status')).toHaveText('◆')
   const rail = page.locator('.mobile-info-rail')
-  await expect(rail).toBeHidden()
+  await expect(rail).toBeVisible()
 
   await page.locator('#mobile-command-dock-info-button').tap()
   const moonReadout = rail.locator('[data-info-pin="body:moon"]')

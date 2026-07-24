@@ -116,6 +116,14 @@
   opacity: 1;
 }
 
+.info-hud-row.info-hud-target-row-locked {
+  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(14, 116, 144, 0.16);
+  box-shadow:
+    inset 3px 0 0 rgba(56, 189, 248, 0.68),
+    inset 0 -5px 12px rgba(2, 6, 23, 0.22);
+}
+
 .info-hud-row-copy {
   display: flex;
   min-width: 0;
@@ -129,6 +137,10 @@
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.info-hud-target-row .info-hud-row-label {
+  color: #f0f9ff;
 }
 
 .info-hud-row-separator,

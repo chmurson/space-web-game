@@ -6,20 +6,22 @@ Pull request: [#289](https://github.com/chmurson/space-web-game/pull/289)
 
 ## What changed
 
-- Selected Info rows once again produce live persistent readouts while Info is
-  closed. Desktop uses a bounded, vertically scrollable right rail; mobile uses
-  a bounded, vertically scrollable top-right rail below the safe-area-aware
-  telemetry. The visible readouts reuse the top telemetry pill surface, size,
-  and typography; mobile lets the interaction wrapper hug the natural pill
-  height for a compact stack. The desktop Info button is text-only because the
-  rail itself communicates the selected entries.
+- Selected Info rows once again produce live persistent readouts. Desktop uses
+  a bounded, vertically scrollable right rail while its popover is closed;
+  mobile keeps a bounded, vertically scrollable top-right rail visible even
+  while Info is open. The rail sits below the safe-area-aware telemetry. The
+  visible readouts reuse the top telemetry pill surface, size, and typography;
+  mobile lets the interaction wrapper hug the natural pill height for a compact
+  stack. The desktop Info button is text-only because the rail itself
+  communicates the selected entries.
 - The Info panel presents the first row as an always-selected, immutable active
   target. Its status icon reuses the Target pill/selector glyph and follows
-  automatic, pinned, or locked target mode. The derived selection is omitted
-  from persistent readouts because the top Target pill already
-  exposes its telemetry. `Select all` is removed; `Clear`, `Shift+I`, stored
-  player ownership, scenario ownership, and combined Pe/Ap selection continue
-  to use the existing pin model.
+  automatic, pinned, or locked target mode. The row omits the player-pin dot
+  and uses the chosen recessed fixed-cyan selected treatment. The derived
+  selection is omitted from persistent readouts because the top Target pill
+  already exposes its telemetry. `Select all` is removed; `Clear`, `Shift+I`,
+  stored player ownership, scenario ownership, and combined Pe/Ap selection
+  continue to use the existing pin model.
 - Body labels now contain only the body name. They appear for three seconds
   after viewport entry and remain visible for small bodies using 6px entry and
   8px exit apparent-radius thresholds. Selection and targeting do not alter
@@ -53,10 +55,10 @@ tooltips, or edge indicators.
 - `src/presentation/infoHudPresentation.ts` owns target-first ordering,
   live physical values, and accessible distance context.
 - `src/ui/createInfoHud.tsx` and `src/ui/infoHud.css` own the shared Info rows,
-  dynamic target-status affordance, desktop/mobile readouts, ownership
-  controls, and panel-open suppression.
+  dynamic target-status affordance, final recessed target-row treatment,
+  desktop/mobile readouts, and ownership controls.
 - `src/ui/touchControls/mobileCommandDock.tsx` owns the mobile rail host and
-  Info-open suppression; the fixed rail no longer reserves dock layout space.
+  panel composition; the fixed rail no longer reserves dock layout space.
 - `src/presentation/bodyPresentation/bodyLabelVisibility.ts` owns the
   per-body viewport-entry timer and apparent-size hysteresis.
 - `src/presentation/bodyPresentation/updateBodyLabels.ts` owns name-only label
@@ -76,6 +78,11 @@ tooltips, or edge indicators.
 - The active-target row derives checked/disabled presentation without adding
   an Info pin. If the target changes, the previous body falls back to its
   stored player/scenario selection and the new target becomes derived-selected.
+- The active-target row uses the recessed locked treatment selected after an
+  in-place comparison. The temporary devtools duplicates and rejected
+  target-context/telemetry CSS were removed once the choice was made.
+- The final treatment keeps a cyan accent and the live target-mode glyph, but
+  omits the player selection dot that made the immutable row look deselectable.
 - Persistent readouts are derived directly from the ordered Info view. A
   player-owned readout invokes the existing toggle action; a scenario-owned
   readout is disabled and visibly identified.
@@ -92,7 +99,8 @@ tooltips, or edge indicators.
   dock host avoids a second portal or readout state path.
 - The user-tuned mobile rail starts at
   `max(48px, safe-area-inset-top + 52px)`, keeps the shared `6px` item gap,
-  and uses natural-height interaction wrappers.
+  uses natural-height interaction wrappers, and remains visible while the
+  bottom Info panel is open.
 - Desktop uses `max-height` rather than simultaneous `top` and `bottom`
   constraints. This retains scrolling for a long rail without stretching a
   short rail's collision rectangle to the bottom of the viewport.
@@ -141,6 +149,10 @@ tooltips, or edge indicators.
 - Desktop rail-boundary follow-up: TypeScript, all 7 relevant Info/canvas GUI
   tests, a shrink-wrap regression assertion, targeted Biome checks, and
   original-resolution rail/offscreen screenshot inspection passed.
+- Final target-row and mobile Info-open rail follow-up: the release build, all
+  7 relevant Info/canvas GUI tests, targeted Biome checks, single-row and
+  geometry assertions, and original-resolution desktop/mobile screenshot
+  inspection passed.
 - Targeted Biome checks passed with only the three unchanged
   `noImportantStyles` warnings in `src/style.css`; `git diff --check` passed.
 - `npm test` reaches the pre-existing automation workflow prompt mismatch
@@ -152,8 +164,9 @@ tooltips, or edge indicators.
 
 The following generated PNGs were inspected at original resolution:
 
-- Desktop Info with the amber manual-target icon:
-  `tmp/playwright-results/infoHud-desktop-Info-creat-7d4ca-while-its-popover-is-closed-mobile-chromium/desktop-info-manual-target-icon.png`
+- Desktop Info with the chosen recessed target row and amber manual-target
+  icon:
+  `tmp/playwright-results/infoHud-desktop-Info-creat-7d4ca-while-its-popover-is-closed-mobile-chromium/desktop-info-target-row-locked-manual.png`
 - Desktop Info open, with the dynamic target-status icon and no duplicate rail:
   `tmp/playwright-results/infoHud-desktop-Info-creat-7d4ca-while-its-popover-is-closed-mobile-chromium/desktop-info-popover-selected.png`
 - Desktop closed Info with the right-side readout rail:
@@ -161,8 +174,8 @@ The following generated PNGs were inspected at original resolution:
 - Desktop selected readouts with unlabeled hollow body arrows and a solid
   unlabeled spacecraft arrow:
   `tmp/playwright-results/canvasNavigationInfo-keeps-be378-creen-arrows-stay-unlabeled-mobile-chromium/desktop-selected-readouts-unlabeled-offscreen.png`
-- Mobile Info open with the rail suppressed:
-  `tmp/playwright-results/infoHud-mobile-Info-keeps-compact-readouts-at-the-top-right-mobile-chromium/mobile-info-panel-selected.png`
+- Mobile Info open with its selected Pe/Ap readout still visible:
+  `tmp/playwright-results/infoHud-mobile-Info-keeps-compact-readouts-at-the-top-right-mobile-chromium/mobile-info-panel-selected-with-readout.png`
 - Mobile vertical readouts at the top right:
   `tmp/playwright-results/infoHud-mobile-Info-keeps-compact-readouts-at-the-top-right-mobile-chromium/mobile-info-readout-rail.png`
 - Mobile scenario-owned Moon readout with its body sphere:
@@ -173,10 +186,11 @@ The following generated PNGs were inspected at original resolution:
 
 The captures match the intended hierarchy: the active-target row stays selected
 as the target changes, its icon follows the shared automatic/manual status
-language, and its distance is not duplicated in the rail. Other numeric
-distance disclosure stays inside Info/readouts, the center playfield remains
-open, rails do not overlap the tested controls or navigation cues, and
-Info-open states do not duplicate the selected values.
+language, and its distance is not duplicated in the rail. The chosen recessed
+cyan treatment remains visibly distinct from selectable rows without a pin
+dot. Other numeric distance disclosure stays inside Info/readouts, the center
+playfield remains open, and rails do not overlap the tested controls or
+navigation cues.
 
 The regenerated desktop and mobile rail captures also confirm that visible
 readouts now match the top telemetry pills without their former card border or
@@ -204,6 +218,9 @@ vertical whitespace.
 The latest desktop captures confirm the rail ends immediately below its last
 readout. Canvas labels and indicators can therefore use the rest of the right
 edge while long readout sets still scroll within the safe viewport height.
+
+The latest mobile open-panel capture confirms the top-right Pe/Ap readout and
+bottom Info panel remain simultaneously visible without overlap.
 
 ## Follow-ups and known gaps
 

@@ -89,12 +89,15 @@ const InfoRow = (options: {
   const targetLabel = options.targetMode
     ? `, active target, ${getTargetStatusLabel(options.targetMode)}`
     : ''
+  const targetClass = target
+    ? ' info-hud-target-row info-hud-target-row-locked'
+    : ''
 
   return (
     <TapSafeButton
       aria-checked={selected}
       aria-label={`${row.accessibleLabel}${targetLabel}, ${ownershipLabel}`}
-      class="info-hud-row ui-pressable"
+      class={`info-hud-row ui-pressable${targetClass}`}
       data-info-pin={row.key}
       data-scenario-owned={String(row.scenarioOwned)}
       disabled={target || row.scenarioOwned}
@@ -132,7 +135,7 @@ const InfoRow = (options: {
       {row.scenarioOwned ? (
         <span class="info-hud-scenario-badge">Scenario</span>
       ) : null}
-      <PinStatus row={row} selected={selected} />
+      {target ? null : <PinStatus row={row} selected={selected} />}
     </TapSafeButton>
   )
 }
