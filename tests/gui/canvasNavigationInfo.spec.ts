@@ -1,4 +1,10 @@
-import { expect, type Page, type TestInfo, test } from '@playwright/test'
+import {
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+  test,
+} from '@playwright/test'
 
 const waitForGame = async (page: Page) => {
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
@@ -13,6 +19,20 @@ const captureScreenshot = async (
   const screenshot = await page.screenshot({ animations: 'disabled', path })
   await testInfo.attach(name, { contentType: 'image/png', path })
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
+}
+
+const expectReceivesPointerEvents = async (locator: Locator) => {
+  // World-space labels move every frame, so verify hit-testing explicitly
+  // before skipping Playwright's stability wait.
+  const receivesPointerEvents = await locator.evaluate((element) => {
+    const bounds = element.getBoundingClientRect()
+    const target = document.elementFromPoint(
+      bounds.x + bounds.width * 0.5,
+      bounds.y + bounds.height * 0.5,
+    )
+    return target === element || (target !== null && element.contains(target))
+  })
+  expect(receivesPointerEvents).toBe(true)
 }
 
 test('keeps selected distances in the rail while offscreen arrows stay unlabeled', async ({
@@ -175,7 +195,8 @@ test('uses viewport-entry timing and small-body size independently of selection'
     }
     await expect(earthLabel).toBeVisible()
     await expect(earthLabel).toHaveText('Earth')
-    await earthLabel.dispatchEvent('click')
+    await expectReceivesPointerEvents(earthLabel)
+    await earthLabel.click({ force: true })
     await expect(
       page.locator('.desktop-info-rail [data-info-pin="body:earth"]'),
     ).toHaveCount(0)
@@ -249,7 +270,8 @@ test('shows selected Pe and Ap as label-only markers with one mobile readout', a
       'mobile-selected-apsides-readout-and-markers',
     )
 
-    await periapsisLabel.dispatchEvent('click')
+    await expectReceivesPointerEvents(periapsisLabel)
+    await periapsisLabel.tap({ force: true })
     await expect(periapsisLabel).toBeHidden()
     await expect(apoapsisLabel).toBeHidden()
     await expect(rail).toBeHidden()

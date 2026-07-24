@@ -2575,6 +2575,11 @@ button.app-dialog-setting {
     display: block;
   }
 
+  #app .body-label,
+  #app .trajectory-event-label {
+    z-index: calc(var(--z-overlay-floating) + 1);
+  }
+
   #app .body-label {
     padding: 2px 4px;
     border-radius: 3px;
