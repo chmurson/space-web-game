@@ -287,8 +287,16 @@ const tutorialOnboardingPromptDefinitions: Record<
     id: 'intro-trajectory',
     title: 'This Is Your Trajectory',
     shortLabel: 'This Is Your Trajectory',
-    description: [
-      'This line predicts your path from ',
+    description: ({ inputMode }) => [
+      ...(inputMode === 'mobile'
+        ? [
+            'Open ',
+            { text: 'Nav', tone: 'concept' as const },
+            '. The ',
+            { text: 'Trajectory horizon', tone: 'concept' as const },
+            ' controls how far ahead this line predicts your path from ',
+          ]
+        : ['This line predicts your path from ']),
       { text: 'speed and gravity', tone: 'concept' },
       '. Use it to tell whether your ',
       { text: 'burn', tone: 'concept' },
@@ -299,7 +307,15 @@ const tutorialOnboardingPromptDefinitions: Record<
       ' for the Earth-Moon setup, but treat it as guidance: trajectory shape matters, and too much speed makes Moon capture harder.',
     ],
     buttons: [],
-    presentation: { kind: 'coach', anchor: 'trajectory', layout: 'floating' },
+    presentation: {
+      kind: 'coach',
+      anchor: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'trajectory-control' : 'trajectory',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'trajectory' : undefined,
+      layout: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'anchored' : 'floating',
+    },
   },
   'intro-complete': {
     id: 'intro-complete',

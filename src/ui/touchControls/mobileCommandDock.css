@@ -133,6 +133,16 @@
 
   .mobile-command-dock-nav-panel {
     display: grid;
+    /* biome-ignore format: Stylelint requires operators to start continuation lines. */
+    max-height: calc(
+      100dvh
+      - var(--mobile-command-dock-safe-bottom)
+      - var(--mobile-command-dock-item-height)
+      - 32px
+    );
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     gap: 12px;
     padding: var(--mobile-command-dock-panel-padding);
     border: 1px solid var(--ui-glass-panel-border);
@@ -143,6 +153,8 @@
       var(--ui-glass-panel-shadow);
     backdrop-filter: var(--ui-glass-panel-blur);
     pointer-events: auto;
+    scrollbar-width: thin;
+    touch-action: pan-y;
   }
 
   .mobile-command-dock-nav-panel[hidden] {
@@ -165,6 +177,76 @@
     gap: 7px;
   }
 
+  .mobile-command-dock-nav-layout {
+    display: grid;
+    grid-template-areas: "main side";
+    grid-template-columns: minmax(0, 1fr) 70px;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mobile-command-dock-nav-main {
+    display: grid;
+    grid-area: main;
+    min-width: 0;
+    align-content: start;
+    gap: 12px;
+  }
+
+  .mobile-command-dock-nav-side {
+    display: grid;
+    grid-area: side;
+    grid-template-rows: minmax(0, 1fr) auto;
+    width: 70px;
+    min-width: 0;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .mobile-command-dock-nav-layout:not(
+      :has(.mobile-command-dock-nav-side > :not([hidden]))
+    ) {
+    grid-template-areas: "main";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobile-command-dock-nav-side:not(:has(> :not([hidden]))) {
+    display: none;
+  }
+
+  .mobile-command-dock-nav-trajectory {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 7px;
+    border-radius: 12px;
+  }
+
+  .mobile-command-dock-nav-target {
+    min-width: 0;
+    align-self: end;
+    border-radius: 12px;
+  }
+
+  .mobile-command-dock-nav-target[hidden],
+  .mobile-command-dock-nav-trajectory[hidden] {
+    display: none;
+  }
+
+  .mobile-command-dock-target-popup {
+    z-index: 1;
+    grid-area: main;
+    min-width: 0;
+    align-self: end;
+    border-radius: var(--touch-control-radius);
+    pointer-events: auto;
+  }
+
+  .mobile-command-dock-target-popup[hidden] {
+    display: none;
+  }
+
   .mobile-command-dock-nav-heading {
     display: flex;
     min-width: 0;
@@ -184,11 +266,106 @@
     min-width: 0;
   }
 
+  .mobile-command-dock-target-control,
+  .mobile-command-dock-trajectory-control {
+    min-width: 0;
+  }
+
+  .mobile-command-dock-target-control .touch-target-control {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .mobile-command-dock-target-button {
+    display: grid;
+    width: 100%;
+    min-height: 46px;
+    gap: 5px;
+    padding: 7px 6px;
+    border: 1px solid var(--ui-glass-control-border);
+    border-radius: 11px;
+    background: var(--ui-glass-control-bg);
+    color: rgba(240, 249, 255, 0.92);
+    font: inherit;
+    text-align: left;
+    touch-action: manipulation;
+  }
+
+  .mobile-command-dock-target-button-label {
+    display: flex;
+    overflow: hidden;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    color: rgba(203, 213, 225, 0.68);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .mobile-command-dock-target-button-value {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .mobile-command-dock-target-sphere {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(224, 242, 254, 0.5);
+    border-radius: 50%;
+    box-shadow:
+      inset -3px -3px 5px rgba(2, 6, 23, 0.34),
+      0 0 6px rgba(125, 211, 252, 0.22);
+  }
+
+  .mobile-command-dock-target-name {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-command-dock-target-chevron {
+    flex: 0 0 auto;
+    color: rgba(125, 211, 252, 0.8);
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .mobile-command-dock-target-button[aria-expanded="true"],
+  .mobile-command-dock-target-button[data-target-recommended="true"] {
+    border-color: rgba(56, 189, 248, 0.5);
+    background: rgba(14, 116, 144, 0.2);
+  }
+
+  .mobile-command-dock-target-button:focus-visible {
+    outline: 2px solid rgba(125, 211, 252, 0.86);
+    outline-offset: 2px;
+  }
+
+  .mobile-command-dock-trajectory-control .touch-step-selector {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    z-index: auto;
+  }
+
   .mobile-command-dock-camera-controls {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
   }
 
@@ -345,6 +522,23 @@
       0 0 24px rgba(251, 191, 36, 0.2);
   }
 
+  .mobile-command-dock[data-tutorial-focused="target"]
+    .mobile-command-dock-nav-target,
+  .mobile-command-dock[data-tutorial-focused="target"]
+    .mobile-command-dock-target-popup,
+  .mobile-command-dock[data-tutorial-focused="trajectory"]
+    .mobile-command-dock-nav-trajectory {
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.3),
+      0 0 24px rgba(251, 191, 36, 0.2);
+  }
+
+  .mobile-command-dock-item[data-target-recommended="true"]
+    .mobile-command-dock-item-icon {
+    color: #7dd3fc;
+    filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.46));
+  }
+
   #app[data-mobile-command-dock="true"] {
     --mobile-command-dock-hud-height: 66px;
     --mobile-command-dock-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -355,7 +549,7 @@
   }
 
   #app[data-mobile-command-dock-panel="nav"] {
-    --mobile-command-dock-hud-height: 260px;
+    --mobile-command-dock-hud-height: 440px;
   }
   #app[data-mobile-command-dock="true"] .bottom-pill-area {
     /* biome-ignore format: Stylelint requires operators to start continuation lines. */

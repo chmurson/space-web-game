@@ -81,6 +81,18 @@ const getAnchorElement = (
       ? refs.trajectoryAnchorElement
       : null
   }
+  if (anchor === 'trajectory-control') {
+    const control = document.querySelector<HTMLElement>(
+      '.mobile-command-dock-trajectory-control .touch-step-selector-trajectory',
+    )
+    if (control && hasVisibleRect(control)) {
+      return control
+    }
+    return (
+      document.querySelector<HTMLElement>('#mobile-command-dock-nav-button') ??
+      control
+    )
+  }
   if (anchor === 'speed-pill') {
     return getTelemetryPillElement('speed')
   }

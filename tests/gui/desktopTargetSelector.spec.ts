@@ -166,7 +166,7 @@ test.describe('touch/coarse target selector', () => {
     viewport: { width: 390, height: 844 },
   })
 
-  test('keeps the desktop entry point hidden and touch target control visible', async ({
+  test('uses Nav instead of the desktop selector or an edge entry', async ({
     page,
   }) => {
     await startEarthMoonGame(page)
@@ -174,9 +174,15 @@ test.describe('touch/coarse target selector', () => {
     await expect(
       page.getByRole('button', { name: 'Select target (T)' }),
     ).toBeHidden()
-    await expect(page.locator('.touch-controls')).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: /Reveal target body selector/ }),
-    ).toBeVisible()
+    await expect(page.locator('#touch-target-reveal')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Open Nav panel' }).click()
+    const navPanel = page.locator('#mobile-command-dock-nav-panel')
+    const targetButton = navPanel.locator('#mobile-command-dock-target-button')
+    const targetSelector = navPanel.getByLabel('Target body selector')
+    await expect(targetButton).toHaveAttribute('aria-expanded', 'false')
+    await expect(targetSelector).toBeHidden()
+    await targetButton.click()
+    await expect(targetButton).toHaveAttribute('aria-expanded', 'true')
+    await expect(targetSelector).toBeVisible()
   })
 })

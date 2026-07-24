@@ -7,13 +7,18 @@ export type ScenarioPromptAnchor =
   | 'thrust-pill'
   | 'thrust-control'
   | 'trajectory'
+  | 'trajectory-control'
 
 export type ScenarioHudFocusTarget =
   | 'time-warp-pill'
   | 'speed-pill'
   | 'thrust-pill'
 export type ScenarioTouchHintTarget = 'thrust-zone'
-export type ScenarioTouchControlFocusTarget = 'burn' | 'trajectory' | 'warp'
+export type ScenarioTouchControlFocusTarget =
+  | 'burn'
+  | 'target'
+  | 'trajectory'
+  | 'warp'
 export type ScenarioCoachPromptLayout =
   | 'anchored'
   | 'bottom'

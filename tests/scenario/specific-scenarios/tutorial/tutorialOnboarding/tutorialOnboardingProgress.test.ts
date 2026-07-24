@@ -235,10 +235,15 @@ describe('tutorialOnboardingProgress', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-trajectory', 'mobile'),
     ).toMatchObject({
-      layout: 'floating',
+      anchor: 'trajectory-control',
+      focusedTouchControl: 'trajectory',
+      layout: 'anchored',
       pausesGameplay: false,
       title: 'This Is Your Trajectory',
     })
+    expect(getOnboardingDescription('intro-trajectory', 'mobile')).toBe(
+      'Open Nav. The Trajectory horizon controls how far ahead this line predicts your path from speed and gravity. Use it to tell whether your burn is moving you away from Earth. Aim near 10 km/s for the Earth-Moon setup, but treat it as guidance: trajectory shape matters, and too much speed makes Moon capture harder.',
+    )
     expect(
       getTutorialOnboardingPromptContent('intro-complete', 'desktop'),
     ).toMatchObject({

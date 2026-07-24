@@ -56,8 +56,6 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
       }),
       getTimeWarpPreviews: () => [],
       getTrajectoryHorizonPreviews: () => [],
-      initialTargetControlSide: 'left',
-      initialTrajectoryControlSide: 'hidden',
       keyboardInput: {
         clear: () => {
           virtualTurns.push(0)

@@ -4,6 +4,10 @@ Issue: [#239](https://github.com/chmurson/space-web-game/issues/239)
 
 Review follow-up: [PR #278](https://github.com/chmurson/space-web-game/pull/278)
 
+Nav follow-up: [issue #276](https://github.com/chmurson/space-web-game/issues/276)
+completed the Target and Trajectory migration documented in
+`2026-07-23-mobile-nav-target-trajectory.md`.
+
 Shipit state: `.codex/shipit-workflows/agent/issue-239-mobile-nav.md`
 
 ## What changed
@@ -31,7 +35,9 @@ Shipit state: `.codex/shipit-workflows/agent/issue-239-mobile-nav.md`
   persisted configuration field harmlessly ignored for issue #244.
 - Updated tutorial focus and copy to open Nav and direct the player to drag
   Time Warp left, without referring to an edge tab.
-- Kept Target and Trajectory on their existing edge reveals for issue #276.
+- At issue #239 completion, kept Target and Trajectory on their existing edge
+  reveals for issue #276; that follow-up has since moved both controls into
+  Nav and removed their shipped edge wrappers and tabs.
 
 ## Why
 
@@ -98,10 +104,11 @@ migration boundary.
   panel.
 - Deleted the now-unreachable swipe-feedback implementation and tests instead
   of retaining a second dormant interaction.
-- Preserved the legacy Warp-side config/query/storage shape for #244 and the
-  shared edge-reveal implementation for #276.
+- Preserved the legacy Warp-side config/query/storage shape for #244. The
+  subsequent #276 follow-up also leaves legacy Target/Trajectory side fields
+  inert for the same final storage cleanup.
 
-## Validation performed
+## Validation performed for issue #239
 
 - Targeted Biome checks passed for the follow-up source, CSS, test, and design
   files. The repository does not install Stylelint locally, so its exact CLI
@@ -142,9 +149,9 @@ migration boundary.
 
 ## Follow-ups and known gaps
 
-- Issue [#276](https://github.com/chmurson/space-web-game/issues/276) owns the
-  later Target and Trajectory dock migration and their reveal cleanup.
+- Issue [#276](https://github.com/chmurson/space-web-game/issues/276) completed
+  the later Target and Trajectory dock migration and shipped reveal cleanup.
 - Issue [#244](https://github.com/chmurson/space-web-game/issues/244) owns final
   deletion of legacy touch-side types, query parsing, and persisted fields.
-- Mission, Ship, Settings, notification work, and shared edge-reveal deletion
-  remain outside issue #239.
+- Mission, Ship, Settings, notification work, and final legacy edge-reveal
+  infrastructure deletion remain outside issue #239 and #276.

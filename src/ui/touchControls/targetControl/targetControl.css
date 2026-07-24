@@ -1,7 +1,3 @@
-.touch-target-reveal-dock {
-  width: min(252px, calc(100vw - 76px));
-}
-
 .touch-target-control {
   display: grid;
   width: min(252px, calc(100vw - 76px));

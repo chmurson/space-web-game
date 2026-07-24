@@ -55,8 +55,6 @@ test('starts mobile panning on the first touch movement', async ({ page }) => {
       }),
       getTimeWarpPreviews: () => [],
       getTrajectoryHorizonPreviews: () => [],
-      initialTargetControlSide: 'left',
-      initialTrajectoryControlSide: 'hidden',
       keyboardInput: {
         clear: () => {},
         getManualControls: () => ({
@@ -378,8 +376,6 @@ test('keeps mobile touch camera panning offscreen while preserving visible headi
         }),
         getTimeWarpPreviews: () => [],
         getTrajectoryHorizonPreviews: () => [],
-        initialTargetControlSide: 'left',
-        initialTrajectoryControlSide: 'hidden',
         keyboardInput: {
           clear: () => {},
           getManualControls: () => ({

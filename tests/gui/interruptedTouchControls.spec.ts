@@ -95,8 +95,6 @@ test('hands interrupted control gestures to the newest touch', async ({
         getTimeWarpPreview: (action) => getTimeWarpPreviews(action, 1)[0],
         getTimeWarpPreviews,
         getTrajectoryHorizonPreviews: () => [],
-        initialTargetControlSide: 'left',
-        initialTrajectoryControlSide: 'hidden',
         keyboardInput: {
           clear: () => {},
           getManualControls: () => ({
@@ -196,6 +194,7 @@ test('hands interrupted control gestures to the newest touch', async ({
         openFlightPanel: () => flightButton.click(),
         openNavPanel: () => navButton.click(),
         remove: () => app.remove(),
+        setFlightControlsVisible: controls.setFlightControlsVisible,
         thrustControl,
         timeWarpControl,
       }
@@ -300,8 +299,10 @@ test('hands interrupted control gestures to the newest touch', async ({
     const thrustEngaged = timeWarpToThrust.getThrustEngagementCount() > 0
     const timeWarpAfterFlightSwitch = timeWarpToThrust.getTimeWarp()
     const thrustLatchedAfterRelease = timeWarpToThrust.getThrustEngaged()
-    timeWarpToThrust.closeFlightPanel()
-    const thrustAfterPanelClose = timeWarpToThrust.getThrustEngaged()
+    timeWarpToThrust.openNavPanel()
+    const thrustAfterPanelSwitch = timeWarpToThrust.getThrustEngaged()
+    timeWarpToThrust.setFlightControlsVisible(false)
+    const thrustAfterUnavailable = timeWarpToThrust.getThrustEngaged()
     timeWarpToThrust.remove()
 
     const closedThrustGesture = createHarness()
@@ -395,7 +396,8 @@ test('hands interrupted control gestures to the newest touch', async ({
       lateClosedMoveReengagedThrust,
       thrustAfterActivePanelClose,
       thrustAfterLateClosedMove,
-      thrustAfterPanelClose,
+      thrustAfterPanelSwitch,
+      thrustAfterUnavailable,
       thrustBeforeActivePanelClose,
       thrustEngaged,
       thrustLatchedAfterRelease,
@@ -407,12 +409,212 @@ test('hands interrupted control gestures to the newest touch', async ({
     postThrustTimeWarpValue: 30,
     successiveTimeWarpValue: 30,
     lateClosedMoveReengagedThrust: false,
-    thrustAfterActivePanelClose: false,
-    thrustAfterLateClosedMove: false,
-    thrustAfterPanelClose: false,
+    thrustAfterActivePanelClose: true,
+    thrustAfterLateClosedMove: true,
+    thrustAfterPanelSwitch: true,
+    thrustAfterUnavailable: false,
     thrustBeforeActivePanelClose: true,
     thrustEngaged: true,
     thrustLatchedAfterRelease: true,
     timeWarpAfterFlightSwitch: 10,
+  })
+})
+
+test('cancels Nav trajectory gestures across every ownership boundary', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+
+  const result = await page.evaluate(async () => {
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing app root')
+    }
+
+    const touchControlsModulePath =
+      '/src/ui/touchControls/createTouchControls.ts'
+    const trajectoryPolicyModulePath =
+      '/src/runtime/trajectoryHorizonControlPolicy.ts'
+    const [{ createTouchControls }, trajectoryPolicy] = await Promise.all([
+      import(touchControlsModulePath) as Promise<TouchControlsModule>,
+      import(trajectoryPolicyModulePath),
+    ])
+    const body = {
+      color: '#38BDF8',
+      id: 'earth',
+      mass: 1,
+      name: 'Earth',
+      position: { x: 0, y: 0 },
+      radius: 1,
+      velocity: { x: 0, y: 0 },
+    }
+    let interactionsEnabled = true
+    let trajectoryHorizonHours = 1
+    let trajectoryCommitCount = 0
+
+    app.replaceChildren()
+    app.classList.remove('app-main-menu', 'app-crashed')
+    const controls = createTouchControls({
+      app,
+      automaticTargetingAvailable: true,
+      commitTimeWarp: () => {},
+      commitTrajectoryHorizon: (action) => {
+        trajectoryCommitCount += 1
+        trajectoryHorizonHours = trajectoryPolicy.getNextTrajectoryHorizonHours(
+          {
+            action,
+            currentHours: trajectoryHorizonHours,
+            maxHours: 4,
+            minHours: 0.5,
+          },
+        )
+      },
+      getAssistTargetUiState: () => ({
+        activeTarget: body,
+        mode: 'auto',
+        recommendedTarget: null,
+      }),
+      getCameraCanRecenter: () => false,
+      getCameraControlsLocked: () => false,
+      getCameraFollow: () => 'spacecraft',
+      getCurrentTimeWarp: () => 1,
+      getCurrentTrajectoryHorizonHours: () => trajectoryHorizonHours,
+      getInteractionsEnabled: () => interactionsEnabled,
+      getMobileManeuverStartByDrag: () => true,
+      getSpacecraftVisible: () => true,
+      getTargetControlRows: () => [],
+      getTimeWarpPreview: () => ({
+        canCommit: true,
+        reason: null,
+        value: 1,
+      }),
+      getTimeWarpPreviews: () => [],
+      getTrajectoryHorizonPreviews: (action, count) =>
+        trajectoryPolicy.getTrajectoryHorizonPreviews({
+          action,
+          count,
+          currentHours: trajectoryHorizonHours,
+          maxHours: 4,
+          minHours: 0.5,
+        }),
+      keyboardInput: {
+        clear: () => {},
+        getManualControls: () => ({
+          main: 0,
+          reverse: 0,
+          strafe: 0,
+          turn: 0,
+        }),
+        hasManualTurn: () => false,
+        press: () => {},
+        release: () => {},
+        setVirtualKey: () => {},
+        setVirtualTurn: () => {},
+      },
+      onCameraFollowSelect: () => {},
+      onCameraPanGesture: () => false,
+      onCameraRecenter: () => {},
+      onReturnToAutomaticTarget: () => true,
+      onSelectTargetIndex: () => true,
+      onTargetHeadingPlan: () => {},
+      onTargetHeadingPlanCanceled: () => {},
+      onTargetHeadingPlanCommitted: () => true,
+      onThrustControlUiStateChange: () => {},
+      onZoom: () => {},
+    })
+    const navButton = controls.element.querySelector<HTMLButtonElement>(
+      '#mobile-command-dock-nav-button',
+    )
+    const flightButton = controls.element.querySelector<HTMLButtonElement>(
+      '#mobile-command-dock-flight-button',
+    )
+    const trajectoryControl = controls.element.querySelector<HTMLElement>(
+      '[aria-label="Trajectory prediction horizon control"]',
+    )
+    if (!navButton || !flightButton || !trajectoryControl) {
+      throw new Error('Missing trajectory cancellation controls')
+    }
+
+    const beginTrajectoryGesture = () => {
+      if (navButton.getAttribute('aria-expanded') !== 'true') {
+        navButton.click()
+      }
+      const rect = trajectoryControl.getBoundingClientRect()
+      const x = rect.left + rect.width / 2
+      const y = rect.top + rect.height / 2
+      trajectoryControl.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          button: 0,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+        }),
+      )
+      window.dispatchEvent(
+        new MouseEvent('mousemove', {
+          bubbles: true,
+          clientX: x,
+          clientY: y - 12,
+        }),
+      )
+      return trajectoryControl.classList.contains(
+        'touch-step-selector-dragging',
+      )
+    }
+    const captureCanceled = () => ({
+      commitCount: trajectoryCommitCount,
+      dragging: trajectoryControl.classList.contains(
+        'touch-step-selector-dragging',
+      ),
+    })
+    const states: Record<
+      string,
+      { beganDragging: boolean; commitCount: number; dragging: boolean }
+    > = {}
+
+    let beganDragging = beginTrajectoryGesture()
+    navButton.click()
+    states.close = { beganDragging, ...captureCanceled() }
+
+    beganDragging = beginTrajectoryGesture()
+    flightButton.click()
+    states.switch = { beganDragging, ...captureCanceled() }
+
+    beganDragging = beginTrajectoryGesture()
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }),
+    )
+    states.escape = { beganDragging, ...captureCanceled() }
+
+    beganDragging = beginTrajectoryGesture()
+    interactionsEnabled = false
+    controls.syncUi()
+    states.interactionDisable = { beganDragging, ...captureCanceled() }
+    interactionsEnabled = true
+
+    beganDragging = beginTrajectoryGesture()
+    window.dispatchEvent(new Event('blur'))
+    states.blur = { beganDragging, ...captureCanceled() }
+
+    beganDragging = beginTrajectoryGesture()
+    controls.setTrajectoryControlVisible(false)
+    states.unavailable = { beganDragging, ...captureCanceled() }
+
+    return states
+  })
+
+  expect(result).toEqual({
+    blur: { beganDragging: true, commitCount: 0, dragging: false },
+    close: { beganDragging: true, commitCount: 0, dragging: false },
+    escape: { beganDragging: true, commitCount: 0, dragging: false },
+    interactionDisable: {
+      beganDragging: true,
+      commitCount: 0,
+      dragging: false,
+    },
+    switch: { beganDragging: true, commitCount: 0, dragging: false },
+    unavailable: { beganDragging: true, commitCount: 0, dragging: false },
   })
 })
