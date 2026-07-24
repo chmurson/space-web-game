@@ -136,6 +136,7 @@ const createHarness = (
     onTargetHeadingPlanCanceled,
     onTargetHeadingPlanCommitted,
     onZoom,
+    windowTarget,
     setCameraControlsLocked: (locked: boolean) => {
       cameraControlsLocked = locked
     },
@@ -152,7 +153,7 @@ describe('bindPointerCameraInput browser zoom isolation', () => {
     for (const modifier of ['ctrlKey', 'metaKey'] as const) {
       const event = createBrowserZoomWheelEvent(modifier)
 
-      harness.canvas.dispatchEvent(event)
+      harness.windowTarget.dispatchEvent(event)
 
       expect(event.defaultPrevented).toBe(false)
     }
