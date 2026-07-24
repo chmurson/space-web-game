@@ -593,7 +593,7 @@ export const bindPointerCameraInput = (
   options.windowTarget.addEventListener(
     'wheel',
     (event) => {
-      if (!options.getInteractionsEnabled()) {
+      if (event.ctrlKey || event.metaKey || !options.getInteractionsEnabled()) {
         return
       }
 

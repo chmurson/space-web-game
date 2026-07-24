@@ -24,7 +24,7 @@ const turnLeftKeys = ['KeyA', 'ArrowLeft']
 const turnRightKeys = ['KeyD', 'ArrowRight']
 const preciseTurnModifierKeys = ['ShiftLeft', 'ShiftRight']
 const mainThrustLatchDoubleTapMs = 300
-const preciseTurnTravel = 0.25
+const preciseTurnPower = 0.25
 const rcsTurnDeadZone = 1 / 8
 const rcsTurnExponent = 2
 
@@ -75,7 +75,7 @@ export const createKeyboardInput = (): KeyboardInput => {
 
   const getKeyboardTurn = () => {
     const power = hasAny(pressedKeys, preciseTurnModifierKeys)
-      ? preciseTurnTravel
+      ? rcsTurnDeadZone + (1 - rcsTurnDeadZone) * Math.sqrt(preciseTurnPower)
       : 1
 
     return (

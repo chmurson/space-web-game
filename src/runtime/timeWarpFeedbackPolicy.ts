@@ -1,12 +1,12 @@
 import type { AssistMode } from '../assist/orbitalAssist'
 import type { KeyboardInput } from '../input/keyboardInput'
+import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import type { SimulationState } from '../simulation/types'
+import type { GameQueries } from './gameQueries'
 import {
   resolveSimulationTimeWarp,
   type TimeWarpConstraintReason,
 } from './simulationStep'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
-import type { GameQueries } from './gameQueries'
 
 type TimeWarpFeedbackQueries = Pick<
   GameQueries,
@@ -23,6 +23,7 @@ export type TimeWarpFeedbackReason =
   | 'control-limit'
   | 'global-max'
   | 'global-min'
+  | 'prediction-coverage'
   | 'scenario-limit'
   | 'thrust-active'
   | 'turning'
@@ -45,6 +46,7 @@ export type TimeWarpFeedbackPolicyOptions = TimeWarpFeedbackQueries & {
   state: SimulationState
   targetHeading: number | null
   timeWarps: number[]
+  usablePredictionCoverageSeconds?: number | null
 }
 
 type ResolvedTimeWarpFeedbackPreview = TimeWarpFeedbackPreview & {
@@ -64,6 +66,10 @@ const normalizeConstraintReason = (params: {
 
   if (params.resolvedReason === 'scenario-limit') {
     return 'scenario-limit'
+  }
+
+  if (params.resolvedReason === 'prediction-coverage') {
+    return 'prediction-coverage'
   }
 
   if (params.resolvedReason !== 'active-controls') {
@@ -109,6 +115,7 @@ const resolveTimeWarpFeedbackPreview = (
     targetHeading: options.targetHeading,
     timeWarpIndex: requestedIndex,
     timeWarps: options.timeWarps,
+    usablePredictionCoverageSeconds: options.usablePredictionCoverageSeconds,
   })
 
   return {

@@ -1,4 +1,8 @@
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
+import {
+  getPredictionCoverageTimeWarpLimit,
+  resolveTimeWarpConstraints,
+  type TimeWarpConstraintReason,
+} from './timeWarpConstraints'
 
 export const navigationTimeWarpRestoreDelayMs = 320
 
@@ -13,14 +17,33 @@ export const createNavigationTimeWarpController = (options: {
 }) => {
   let headingPlanActive = false
   let simulationControlMaxWarp: number | null = null
-  let restoreTimeWarpIndex: number | null = null
+  let usablePredictionCoverageSeconds: number | null = null
+  let requestedTimeWarpIndex: number | null = null
   let navigationStoppedAtMs: number | null = null
+  let lastEffectiveTimeWarpIndex: number | null = null
+  let lastConstraintReason: TimeWarpConstraintReason | null = null
 
-  const constrainTimeWarpIndex = ({
+  const resolveConstraints = ({
     maxTimeWarp,
     timeWarpIndex,
   }: TimeWarpSelectionOptions) =>
-    getConstrainedTimeWarpIndex(timeWarpIndex, options.timeWarps, maxTimeWarp)
+    resolveTimeWarpConstraints({
+      maxTimeWarp,
+      simulationControlMaxWarp: getActiveControlMaxWarp(),
+      timeWarpIndex,
+      timeWarps: options.timeWarps,
+      usablePredictionCoverageSeconds,
+    })
+
+  const constrainRequestedTimeWarpIndex = (
+    selection: TimeWarpSelectionOptions,
+  ) =>
+    resolveTimeWarpConstraints({
+      maxTimeWarp: selection.maxTimeWarp,
+      simulationControlMaxWarp: null,
+      timeWarpIndex: selection.timeWarpIndex,
+      timeWarps: options.timeWarps,
+    }).timeWarpIndex
 
   const getActiveControlMaxWarp = () => {
     if (headingPlanActive && simulationControlMaxWarp !== null) {
@@ -34,35 +57,32 @@ export const createNavigationTimeWarpController = (options: {
     return simulationControlMaxWarp
   }
 
-  const capTimeWarpIndex = (timeWarpIndex: number) =>
-    getConstrainedTimeWarpIndex(
-      timeWarpIndex,
-      options.timeWarps,
-      getActiveControlMaxWarp(),
-    )
-
   const navigationActive = () => getActiveControlMaxWarp() !== null
 
-  const preserveTimeWarpForNavigation = (timeWarpIndex: number) => {
-    if (
-      restoreTimeWarpIndex === null &&
-      capTimeWarpIndex(timeWarpIndex) !== timeWarpIndex
-    ) {
-      restoreTimeWarpIndex = timeWarpIndex
-    }
+  const syncRequestedTimeWarpIndex = (selection: TimeWarpSelectionOptions) => {
+    requestedTimeWarpIndex = constrainRequestedTimeWarpIndex({
+      maxTimeWarp: selection.maxTimeWarp,
+      timeWarpIndex: requestedTimeWarpIndex ?? selection.timeWarpIndex,
+    })
+    return requestedTimeWarpIndex
   }
 
   const beginNavigation = (selection: TimeWarpSelectionOptions) => {
-    const constrainedTimeWarpIndex = constrainTimeWarpIndex(selection)
-    preserveTimeWarpForNavigation(constrainedTimeWarpIndex)
+    const requestedIndex = syncRequestedTimeWarpIndex(selection)
     navigationStoppedAtMs = null
-    return capTimeWarpIndex(restoreTimeWarpIndex ?? constrainedTimeWarpIndex)
+    const resolution = resolveConstraints({
+      maxTimeWarp: selection.maxTimeWarp,
+      timeWarpIndex: requestedIndex,
+    })
+    lastConstraintReason = resolution.reason
+    lastEffectiveTimeWarpIndex = resolution.timeWarpIndex
+    return resolution.timeWarpIndex
   }
 
   const markNavigationStopped = (nowMs: number) => {
     if (
       !navigationActive() &&
-      restoreTimeWarpIndex !== null &&
+      requestedTimeWarpIndex !== null &&
       navigationStoppedAtMs === null
     ) {
       navigationStoppedAtMs = nowMs
@@ -72,8 +92,36 @@ export const createNavigationTimeWarpController = (options: {
   const reset = () => {
     headingPlanActive = false
     simulationControlMaxWarp = null
-    restoreTimeWarpIndex = null
+    usablePredictionCoverageSeconds = null
+    requestedTimeWarpIndex = null
     navigationStoppedAtMs = null
+    lastEffectiveTimeWarpIndex = null
+    lastConstraintReason = null
+  }
+
+  const getDiagnostics = () => {
+    const predictionCoverageLimit =
+      usablePredictionCoverageSeconds === null
+        ? null
+        : getPredictionCoverageTimeWarpLimit(
+            usablePredictionCoverageSeconds,
+            options.timeWarps,
+          )
+
+    return {
+      constraintReason: lastConstraintReason,
+      effectiveTimeWarp:
+        lastEffectiveTimeWarpIndex === null
+          ? null
+          : (options.timeWarps[lastEffectiveTimeWarpIndex] ?? 1),
+      effectiveTimeWarpIndex: lastEffectiveTimeWarpIndex,
+      predictionCoverageLimit,
+      requestedTimeWarp:
+        requestedTimeWarpIndex === null
+          ? null
+          : (options.timeWarps[requestedTimeWarpIndex] ?? 1),
+      requestedTimeWarpIndex,
+    }
   }
 
   return {
@@ -90,54 +138,73 @@ export const createNavigationTimeWarpController = (options: {
       selection: TimeWarpSelectionOptions & {
         nowMs: number
         simulationControlMaxWarp: number | null
+        usablePredictionCoverageSeconds?: number | null
       },
     ) => {
+      const navigationWasActive = navigationActive()
       simulationControlMaxWarp = selection.simulationControlMaxWarp
-      const constrainedTimeWarpIndex = constrainTimeWarpIndex(selection)
-      if (restoreTimeWarpIndex !== null) {
-        restoreTimeWarpIndex = constrainTimeWarpIndex({
-          maxTimeWarp: selection.maxTimeWarp,
-          timeWarpIndex: restoreTimeWarpIndex,
-        })
-      }
+      usablePredictionCoverageSeconds =
+        selection.usablePredictionCoverageSeconds ?? null
+      const requestedIndex = syncRequestedTimeWarpIndex(selection)
 
       if (navigationActive()) {
         return beginNavigation({
           maxTimeWarp: selection.maxTimeWarp,
-          timeWarpIndex: constrainedTimeWarpIndex,
+          timeWarpIndex: requestedIndex,
         })
       }
 
-      markNavigationStopped(selection.nowMs)
+      if (navigationWasActive) {
+        markNavigationStopped(selection.nowMs)
+      }
       if (
-        restoreTimeWarpIndex === null ||
         navigationStoppedAtMs === null ||
         selection.nowMs - navigationStoppedAtMs <
           navigationTimeWarpRestoreDelayMs
       ) {
-        return constrainedTimeWarpIndex
+        const resolution = resolveConstraints({
+          maxTimeWarp: selection.maxTimeWarp,
+          timeWarpIndex:
+            navigationStoppedAtMs === null
+              ? requestedIndex
+              : selection.timeWarpIndex,
+        })
+        lastConstraintReason =
+          navigationStoppedAtMs === null
+            ? resolution.reason
+            : (resolution.reason ?? 'active-controls')
+        lastEffectiveTimeWarpIndex = resolution.timeWarpIndex
+        return resolution.timeWarpIndex
       }
 
-      const restoredTimeWarpIndex = restoreTimeWarpIndex
-      restoreTimeWarpIndex = null
       navigationStoppedAtMs = null
-      return restoredTimeWarpIndex
+      const resolution = resolveConstraints({
+        maxTimeWarp: selection.maxTimeWarp,
+        timeWarpIndex: requestedIndex,
+      })
+      lastConstraintReason = resolution.reason
+      lastEffectiveTimeWarpIndex = resolution.timeWarpIndex
+      return resolution.timeWarpIndex
     },
     selectTimeWarpIndex: (selection: TimeWarpSelectionOptions) => {
-      restoreTimeWarpIndex = null
       navigationStoppedAtMs = null
-      const constrainedTimeWarpIndex = constrainTimeWarpIndex(selection)
-
-      if (!navigationActive()) {
-        return constrainedTimeWarpIndex
-      }
-
-      preserveTimeWarpForNavigation(constrainedTimeWarpIndex)
-      return capTimeWarpIndex(constrainedTimeWarpIndex)
+      requestedTimeWarpIndex = constrainRequestedTimeWarpIndex(selection)
+      const resolution = resolveConstraints({
+        maxTimeWarp: selection.maxTimeWarp,
+        timeWarpIndex: requestedTimeWarpIndex,
+      })
+      lastConstraintReason = resolution.reason
+      lastEffectiveTimeWarpIndex = resolution.timeWarpIndex
+      return resolution.timeWarpIndex
     },
+    getDiagnostics,
   }
 }
 
 export type NavigationTimeWarpController = ReturnType<
   typeof createNavigationTimeWarpController
+>
+
+export type NavigationTimeWarpDiagnostics = ReturnType<
+  NavigationTimeWarpController['getDiagnostics']
 >

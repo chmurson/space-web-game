@@ -47,7 +47,7 @@
   --desktop-hud-overlay-scale: 1;
 }
 
-@media (min-width: 721px) and (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) {
   :root {
     --desktop-hud-overlay-scale: 1.25;
   }
@@ -1683,6 +1683,10 @@ button.app-dialog-setting {
   height: 14px;
 }
 
+.desktop-target-selector-button[hidden] {
+  display: none;
+}
+
 .desktop-target-selector-button:focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.82);
   outline-offset: 3px;
@@ -1746,12 +1750,8 @@ button.app-dialog-setting {
   }
 }
 
-@media (min-width: 721px) {
-  .desktop-target-selector-available
-    .telemetry-pill-target
-    .target-status-mark {
-    display: none;
-  }
+.desktop-target-selector-available .telemetry-pill-target .target-status-mark {
+  display: none;
 }
 
 .telemetry-pill-thrust.telemetry-pill-thrust-active {
@@ -2788,11 +2788,6 @@ button.app-dialog-setting {
   .telemetry-pill-target {
     flex-shrink: 0;
     max-width: none;
-  }
-
-  .desktop-target-selector-button,
-  .desktop-target-selector-popover {
-    display: none;
   }
 
   .telemetry-pill-target [data-stat="target"] {

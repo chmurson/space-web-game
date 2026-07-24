@@ -221,6 +221,12 @@ Copy should be direct: `Start`, `Restart`, `Exit`, `UI settings`, `Prediction ho
 The playable canvas owns the full viewport. DOM UI layers sit above it with fixed positioning, safe-area-aware offsets, and narrow max widths.
 
 - Keep the top bar fixed to the top safe area. It contains the top menu and telemetry strip.
+- Treat responsive width and input capability as separate concerns. At 720 CSS
+  pixels and below, the HUD may use its compact arrangement, shorter copy, and
+  tighter spacing, but a fine-pointer UI keeps the Normal 1.25 HUD scale and
+  desktop affordances such as the Target selector. Touch controls and
+  touch/coarse affordances remain capability-driven rather than appearing only
+  because a fine-pointer viewport became narrow.
 - Keep bottom notices and replay pills centered in `.bottom-pill-area`, above the bottom safe area and touch controls.
 - Keep the in-game controls menu near the lower left by default, using the bottom and left safe-area variables in `src/ui/overlayUI/overlayUIStyles.css`.
 - Mobile navigation uses the bottom command dock for Flight, Info, and Nav. Target and Trajectory retain edge-reveal tabs until their planned dock migration; all mobile controls must preserve the center playfield.

@@ -123,6 +123,18 @@ const createRuntime = (): AppRuntimeState => ({
   },
 })
 
+const createRendererDouble = (initialPixelRatio = 1) => {
+  let pixelRatio = initialPixelRatio
+
+  return {
+    getPixelRatio: vi.fn(() => pixelRatio),
+    setPixelRatio: vi.fn((nextPixelRatio: number) => {
+      pixelRatio = nextPixelRatio
+    }),
+    setSize: vi.fn(),
+  }
+}
+
 const createTestRuntimeActions = (
   runtime: AppRuntimeState,
   options: {
@@ -130,6 +142,7 @@ const createTestRuntimeActions = (
     createRipple?: Parameters<typeof createRuntimeActions>[0]['createRipple']
     getFollowCameraViewportBottomInset?: () => number
     navigationTimeWarpController?: NavigationTimeWarpController
+    renderer?: Parameters<typeof createRuntimeActions>[0]['renderer']
   } = {},
 ) =>
   createRuntimeActions({
@@ -161,7 +174,7 @@ const createTestRuntimeActions = (
         maxControlWarp: 100,
         timeWarps: requestedTimeWarps,
       }),
-    renderer: { setSize: () => {} },
+    renderer: options.renderer ?? createRendererDouble(),
     ripples: [],
     runtime,
     globalScenarioDirectiveLimits,
@@ -174,21 +187,24 @@ const createTestRuntimeActions = (
 const getTestGlobals = () =>
   globalThis as unknown as {
     window?: {
+      devicePixelRatio: number
       innerHeight: number
       innerWidth: number
     }
   }
 
-const setWindowSize = (width: number, height: number) => {
+const setWindowSize = (width: number, height: number, devicePixelRatio = 1) => {
   const globals = getTestGlobals()
   if (!globals.window) {
     globals.window = {
+      devicePixelRatio,
       innerHeight: height,
       innerWidth: width,
     }
     return
   }
 
+  globals.window.devicePixelRatio = devicePixelRatio
   globals.window.innerWidth = width
   globals.window.innerHeight = height
 }
@@ -1005,7 +1021,7 @@ describe('createRuntimeActions', () => {
       setWindowSize(400, 800)
       const runtime = createRuntime()
       runtime.ui.targetHeadingScreenPosition = { x: 300, y: 200 }
-      const renderer = { setSize: vi.fn() }
+      const renderer = createRendererDouble()
       const updateCameraViewSpy = vi
         .spyOn(sceneUpdates, 'updateCameraView')
         .mockImplementation(() => {})
@@ -1042,12 +1058,99 @@ describe('createRuntimeActions', () => {
       setWindowSize(800, 400)
       runtimeActions.handleResize()
 
+      expect(renderer.getPixelRatio).toHaveBeenCalledOnce()
+      expect(renderer.setPixelRatio).not.toHaveBeenCalled()
       expect(renderer.setSize).toHaveBeenCalledWith(800, 400)
       expect(updateCameraViewSpy).toHaveBeenCalledOnce()
+      expect(runtime.simulation.viewportSize).toBe(600)
       expect(runtime.ui.targetHeadingScreenPosition).toEqual({
         x: 600,
         y: 100,
       })
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('updates a changed pixel ratio before size without changing gameplay state', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+
+    try {
+      setWindowSize(800, 400, 1.5)
+      const runtime = createRuntime()
+      runtime.ui.targetHeadingScreenPosition = { x: 600, y: 100 }
+      const targetHeadingScreenPosition = runtime.ui.targetHeadingScreenPosition
+      const simulationBefore = structuredClone(runtime.simulation)
+      const renderer = createRendererDouble()
+      const updateCameraViewSpy = vi
+        .spyOn(sceneUpdates, 'updateCameraView')
+        .mockImplementation(() => {})
+      const runtimeActions = createTestRuntimeActions(runtime, { renderer })
+
+      runtimeActions.handleResize()
+
+      expect(renderer.setPixelRatio).toHaveBeenCalledOnce()
+      expect(renderer.setPixelRatio).toHaveBeenCalledWith(1.5)
+      expect(renderer.setSize).toHaveBeenCalledWith(800, 400)
+      expect(renderer.getPixelRatio.mock.invocationCallOrder[0]).toBeLessThan(
+        renderer.setPixelRatio.mock.invocationCallOrder[0] ?? 0,
+      )
+      expect(renderer.setPixelRatio.mock.invocationCallOrder[0]).toBeLessThan(
+        renderer.setSize.mock.invocationCallOrder[0] ?? 0,
+      )
+      expect(renderer.setSize.mock.invocationCallOrder[0]).toBeLessThan(
+        updateCameraViewSpy.mock.invocationCallOrder[0] ?? 0,
+      )
+      expect(updateCameraViewSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          viewportHeight: 400,
+          viewportSize: 600,
+          viewportWidth: 800,
+        }),
+      )
+      expect(runtime.simulation).toEqual(simulationBefore)
+      expect(runtime.ui.targetHeadingScreenPosition).toBe(
+        targetHeadingScreenPosition,
+      )
+    } finally {
+      if (originalWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = originalWindow
+      }
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('caps the pixel ratio at two and skips redundant updates', () => {
+    const globals = getTestGlobals()
+    const originalWindow = globals.window
+
+    try {
+      setWindowSize(640, 480, 3)
+      const runtime = createRuntime()
+      const renderer = createRendererDouble()
+      const updateCameraViewSpy = vi
+        .spyOn(sceneUpdates, 'updateCameraView')
+        .mockImplementation(() => {})
+      const runtimeActions = createTestRuntimeActions(runtime, { renderer })
+
+      runtimeActions.handleResize()
+      setWindowSize(640, 480, 4)
+      runtimeActions.handleResize()
+
+      expect(renderer.setPixelRatio).toHaveBeenCalledTimes(1)
+      expect(renderer.setPixelRatio).toHaveBeenCalledWith(2)
+      expect(renderer.setSize).toHaveBeenNthCalledWith(1, 640, 480)
+      expect(renderer.setSize).toHaveBeenNthCalledWith(2, 640, 480)
+      expect(updateCameraViewSpy).toHaveBeenCalledTimes(2)
+      expect(runtime.simulation.viewportSize).toBe(600)
     } finally {
       if (originalWindow === undefined) {
         delete globals.window

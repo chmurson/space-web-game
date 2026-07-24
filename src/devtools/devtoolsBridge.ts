@@ -14,9 +14,9 @@ import type {
   AppRuntimeDebugSlice,
   AppRuntimeState,
 } from '../runtime/appRuntimeState'
+import type { NavigationTimeWarpDiagnostics } from '../runtime/navigationTimeWarpController'
 import type { RuntimeActions } from '../runtime/runtimeActions'
 import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
-import { getConstrainedTimeWarpIndex } from '../scenario/scenarioDirectives'
 import {
   type CameraFollowSubject,
   isCameraFollowSubject,
@@ -38,10 +38,14 @@ type DevtoolsBridgeOptions = {
   getAppMode(): AppMode
   getAssistTarget(): Body
   getTrajectoryPredictionDiagnostics(): TrajectoryPredictionDiagnostics
+  getTimeWarpDiagnostics(): NavigationTimeWarpDiagnostics
   maxPredictionLoopRevolutions: number
   predictionSampling: TrajectoryPredictionSamplingConfig
   runtime: AppRuntimeState
-  runtimeActions: Pick<RuntimeActions, 'recenterCamera' | 'setCameraFollow'>
+  runtimeActions: Pick<
+    RuntimeActions,
+    'recenterCamera' | 'selectTimeWarpIndex' | 'setCameraFollow'
+  >
   setTrajectoryPredictionFarCoalescingMinIntervalOverrideSeconds(
     value: number | null,
   ): boolean
@@ -123,6 +127,7 @@ export type SpaceGameDevtoolsSnapshot = {
     spacecraft: DevtoolsSpacecraftSnapshot
     targetHeading: number | null
     timeWarp: number
+    timeWarpConstraint: NavigationTimeWarpDiagnostics
     timeWarpIndex: number
     timeWarps: number[]
     viewportSize: number
@@ -218,6 +223,7 @@ export const createDevtoolsSnapshot = (
     | 'getAppMode'
     | 'getAssistTarget'
     | 'getTrajectoryPredictionDiagnostics'
+    | 'getTimeWarpDiagnostics'
     | 'maxPredictionLoopRevolutions'
     | 'predictionSampling'
     | 'runtime'
@@ -303,6 +309,7 @@ export const createDevtoolsSnapshot = (
       spacecraft: createSpacecraftSnapshot(runtime.simulation.state.spacecraft),
       targetHeading: runtime.simulation.targetHeading,
       timeWarp: timeWarps[runtime.simulation.timeWarpIndex] ?? 1,
+      timeWarpConstraint: options.getTimeWarpDiagnostics(),
       timeWarpIndex: runtime.simulation.timeWarpIndex,
       timeWarps: [...timeWarps],
       viewportSize: runtime.simulation.viewportSize,
@@ -373,12 +380,8 @@ export const createDevtoolsBridge = (
         }
 
         const requestedIndex = request.index
-        const constrainedIndex = getConstrainedTimeWarpIndex(
-          requestedIndex,
-          options.timeWarps,
-          options.runtime.scenario.directives.maxTimeWarp,
-        )
-        options.runtime.simulation.timeWarpIndex = constrainedIndex
+        const constrainedIndex =
+          options.runtimeActions.selectTimeWarpIndex(requestedIndex)
         return ok(
           constrainedIndex === requestedIndex
             ? `time warp set to index ${constrainedIndex}`

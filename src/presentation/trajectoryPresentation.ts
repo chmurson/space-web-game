@@ -930,6 +930,8 @@ export const createTrajectoryPresentation = (options: {
     getCoachAnchorScreenPoint,
     getPredictionDiagnostics: () =>
       options.trajectoryPredictionRuntime.getDiagnostics(),
+    getRemainingUsableCoverageSeconds: () =>
+      options.trajectoryPredictionRuntime.getRemainingUsableCoverageSeconds(),
     getPredictionState: () => options.trajectoryPredictionRuntime.getState(),
     maybeRefreshPrediction: (realDt: number) => {
       const refreshed = options.trajectoryPredictionRuntime.maybeRefresh(
