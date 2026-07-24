@@ -140,10 +140,8 @@
   display: grid;
   width: min(360px, calc(100vw - 24px));
   max-height: calc(
-    100dvh -
-    var(--bottom-safe-area-inset) -
-    var(--bottom-hud-edge-gap) -
-    54px
+    100dvh - var(--bottom-safe-area-inset)
+      - var(--bottom-hud-edge-gap) - 54px
   );
   gap: 8px;
   padding: 10px;
