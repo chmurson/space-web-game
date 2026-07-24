@@ -1,11 +1,25 @@
 import type { BodyInfluence } from '../simulation/bodyInfluence'
 
-export const formatDistance = (meters: number) => {
-  if (meters >= 1_000_000) {
-    return `${Math.round(meters / 1_000_000).toLocaleString()} Mm`
+const roundToTwoSignificantDigits = (value: number) => {
+  if (value === 0 || !Number.isFinite(value)) {
+    return value
   }
 
-  return `${Math.round(meters / 1_000).toLocaleString()} km`
+  const roundingScale = 10 ** (1 - Math.floor(Math.log10(Math.abs(value))))
+  return Math.round(value * roundingScale) / roundingScale
+}
+
+const formatCosmicDistanceValue = (value: number) =>
+  roundToTwoSignificantDigits(value).toLocaleString(undefined, {
+    maximumSignificantDigits: 2,
+  })
+
+export const formatDistance = (meters: number) => {
+  if (meters >= 1_000_000) {
+    return `${formatCosmicDistanceValue(meters / 1_000_000)} Mm`
+  }
+
+  return `${formatCosmicDistanceValue(meters / 1_000)} km`
 }
 
 export const formatDuration = (seconds: number) => {

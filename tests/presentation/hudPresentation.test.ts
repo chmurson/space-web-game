@@ -1004,7 +1004,7 @@ describe('createHudPresentation', () => {
 
     expect(debugText).toContain('viewport: 25.00 | zoom: 4.0x')
     expect(debugText).toContain(
-      'trail detail: L6/7 close | slices 12 | render 417 km | capture 250 km | trail frame: target-relative Moon',
+      'trail detail: L6/7 close | slices 12 | render 420 km | capture 250 km | trail frame: target-relative Moon',
     )
     expect(debugJson?.viewport).toEqual({ size: 25, zoom: 4 })
     expect(debugJson?.starfield).toEqual([

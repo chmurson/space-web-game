@@ -318,7 +318,18 @@ const createLunarOrbitQualityNotice = (
     return null
   }
 
-  const altitudeDetail = `Ap ${formatReachMoonOrbitAltitude(best.orbitApoapsisAltitudeMeters).replace(/ km$/, '')} / Pe ${formatReachMoonOrbitAltitude(best.orbitPeriapsisAltitudeMeters)}`
+  const apoapsisAltitude = formatReachMoonOrbitAltitude(
+    best.orbitApoapsisAltitudeMeters,
+  )
+  const periapsisAltitude = formatReachMoonOrbitAltitude(
+    best.orbitPeriapsisAltitudeMeters,
+  )
+  const periapsisUnitStart = periapsisAltitude.lastIndexOf(' ')
+  const commonUnit = periapsisAltitude.slice(periapsisUnitStart)
+  const compactApoapsisAltitude = apoapsisAltitude.endsWith(commonUnit)
+    ? apoapsisAltitude.slice(0, -commonUnit.length)
+    : apoapsisAltitude
+  const altitudeDetail = `Ap ${compactApoapsisAltitude} / Pe ${periapsisAltitude}`
   let orbitShapeDetail = 'improved'
   if (nearCircular) {
     orbitShapeDetail = closeOrbit ? 'circular' : 'high'

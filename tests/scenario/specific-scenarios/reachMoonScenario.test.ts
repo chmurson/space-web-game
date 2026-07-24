@@ -390,7 +390,7 @@ describe('reachMoonScenario', () => {
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
       description:
-        'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km - near circular (25).',
+        'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2 Mm / Pe 2 Mm - near circular (25).',
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
     expect(
@@ -398,7 +398,7 @@ describe('reachMoonScenario', () => {
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km - near circular (25).',
+      'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2 Mm / Pe 2 Mm - near circular (25).',
     )
   })
 
@@ -491,7 +491,7 @@ describe('reachMoonScenario', () => {
       1_400_000,
       1_250_000,
       {
-        body: 'Ap 1,400 / Pe 1,250 km - high',
+        body: 'Ap 1.4 / Pe 1.3 Mm - high',
         title: 'Circular lunar orbit',
       },
     ],
