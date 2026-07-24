@@ -81,7 +81,10 @@ export const createRuntimeActions = (options: {
   minCoastPredictionHorizonHours: number
   minViewport: number
   navigationTimeWarpController: NavigationTimeWarpController
-  renderer: Pick<THREE.WebGLRenderer, 'setSize'>
+  renderer: Pick<
+    THREE.WebGLRenderer,
+    'getPixelRatio' | 'setPixelRatio' | 'setSize'
+  >
   ripples: Ripple[]
   runtime: AppRuntimeState
   globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
@@ -533,11 +536,15 @@ export const createRuntimeActions = (options: {
       )
     },
     handleResize: () => {
+      const nextPixelRatio = Math.min(window.devicePixelRatio, 2)
       const nextViewport = getViewportDimensions()
       const nextViewportWidth = nextViewport.width
       const nextViewportHeight = nextViewport.height
+      const viewportChanged =
+        nextViewportWidth !== lastViewportWidth ||
+        nextViewportHeight !== lastViewportHeight
 
-      if (options.runtime.ui.targetHeadingScreenPosition) {
+      if (viewportChanged && options.runtime.ui.targetHeadingScreenPosition) {
         options.runtime.ui.targetHeadingScreenPosition =
           scaleScreenPointForResize(
             options.runtime.ui.targetHeadingScreenPosition,
@@ -554,6 +561,9 @@ export const createRuntimeActions = (options: {
 
       lastViewportWidth = nextViewportWidth
       lastViewportHeight = nextViewportHeight
+      if (options.renderer.getPixelRatio() !== nextPixelRatio) {
+        options.renderer.setPixelRatio(nextPixelRatio)
+      }
       options.renderer.setSize(nextViewportWidth, nextViewportHeight)
       updateCamera()
     },
