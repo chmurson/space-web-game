@@ -139,11 +139,7 @@
   left: 0;
   display: grid;
   width: min(360px, calc(100vw - 24px));
-  max-height: calc(
-    100dvh - var(--bottom-safe-area-inset)
-    - var(--bottom-hud-edge-gap)
-    - 54px
-  );
+  max-height: calc(100dvh - var(--bottom-safe-area-inset) - var(--bottom-hud-edge-gap) - 54px);
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--ui-glass-panel-border);
@@ -158,7 +154,7 @@
   overscroll-behavior: contain;
 }
 
-@media (min-width: 721px) and (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) {
   .in-game-controls-menu-popover {
     /* Compensate for the 1.25 desktop HUD zoom while retaining a top gap. */
     max-height: calc(80dvh - 60px);

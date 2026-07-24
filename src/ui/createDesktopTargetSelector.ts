@@ -12,10 +12,7 @@ export type DesktopTargetSelector = {
   toggleFromShortcut(): boolean
 }
 
-const desktopTargetSelectorQuery = '(min-width: 721px)'
-
-const isDesktopTargetSelectorLayout = () =>
-  window.matchMedia(desktopTargetSelectorQuery).matches
+const desktopTargetSelectorQuery = '(hover: hover) and (pointer: fine)'
 
 export const createDesktopTargetSelector = (options: {
   automaticTargetingAvailable: boolean
@@ -27,8 +24,13 @@ export const createDesktopTargetSelector = (options: {
   onStateChange?(): void
   popover: HTMLElement
 }): DesktopTargetSelector => {
+  const desktopTargetSelectorMedia = window.matchMedia(
+    desktopTargetSelectorQuery,
+  )
   let available = true
   let open = false
+  const isSelectorAvailable = () =>
+    available && desktopTargetSelectorMedia.matches
 
   const targetControl = createTargetControl({
     automaticTargetingAvailable: options.automaticTargetingAvailable,
@@ -45,14 +47,15 @@ export const createDesktopTargetSelector = (options: {
   options.button.setAttribute('aria-controls', options.popover.id)
 
   const syncState = () => {
-    if (!isDesktopTargetSelectorLayout()) {
+    const selectorAvailable = isSelectorAvailable()
+    if (!selectorAvailable) {
       open = false
     }
 
-    options.button.hidden = !available
+    options.button.hidden = !selectorAvailable
     options.button.parentElement?.classList.toggle(
       'desktop-target-selector-available',
-      available,
+      selectorAvailable,
     )
     options.button.setAttribute('aria-expanded', String(open))
     options.button.classList.toggle('desktop-target-selector-button-open', open)
@@ -60,7 +63,7 @@ export const createDesktopTargetSelector = (options: {
   }
 
   const setOpen = (nextOpen: boolean) => {
-    open = available && isDesktopTargetSelectorLayout() && nextOpen
+    open = isSelectorAvailable() && nextOpen
     syncState()
     if (open) {
       targetControl.syncUi()
@@ -96,9 +99,7 @@ export const createDesktopTargetSelector = (options: {
     }
   })
 
-  window
-    .matchMedia(desktopTargetSelectorQuery)
-    .addEventListener('change', syncState)
+  desktopTargetSelectorMedia.addEventListener('change', syncState)
   syncState()
 
   return {
@@ -120,7 +121,7 @@ export const createDesktopTargetSelector = (options: {
       }
     },
     toggleFromShortcut: () => {
-      if (!available || !isDesktopTargetSelectorLayout()) {
+      if (!isSelectorAvailable()) {
         return false
       }
       setOpen(!open)
