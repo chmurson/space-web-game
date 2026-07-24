@@ -52,8 +52,21 @@ describe('engineer workflow prompt', () => {
       'pull/252#issuecomment-4980190452',
       'one sidecar record per triggering comment',
       'a reaction on one comment never acknowledges another comment',
-      'Add the automation `rocket` reaction only when all actionable items for that exact comment were addressed',
+      'Add the automation `rocket` reaction only when its `updatedAt` and body hash still match the sidecar',
       'Workers must not add these markers',
+    ])
+  })
+
+  it('persists active worker handoffs before yielding and terminal outcomes after reconciliation', async () => {
+    const prompt = await readPrompt()
+
+    assertContainsAll(prompt, [
+      'before yielding while the worker is active',
+      'active delegated-worker, claim, and continuation/wakeup handoff state',
+      'including the next reconciliation action',
+      'reconcile the worker result rather than mark the run complete',
+      'Only after delegated-worker reconciliation and claim release',
+      'current run time and terminal outcome',
     ])
   })
 })
