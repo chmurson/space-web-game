@@ -64,13 +64,10 @@ describe('createBodyDistanceContext', () => {
     })
 
     expect(distanceContext).toMatchObject({
-      accessibleLabel: 'Earth, altitude 400 km',
       altitudeLabel: '400 km',
       bodyId: 'earth',
       detailAccessibleLabel: 'altitude 400 km',
-      tooltipLabel: 'Earth · 400 km',
     })
-    expect(distanceContext.tooltipLabel).not.toMatch(/\b(?:Ap|Pe)\b/)
   })
 
   it('formats megameter altitude context', () => {
@@ -88,10 +85,8 @@ describe('createBodyDistanceContext', () => {
         targetMetrics,
       }),
     ).toMatchObject({
-      accessibleLabel: 'Earth, altitude 84 Mm',
       altitudeLabel: '84 Mm',
       detailAccessibleLabel: 'altitude 84 Mm',
-      tooltipLabel: 'Earth · 84 Mm',
     })
   })
 })

@@ -88,6 +88,7 @@ const MobileCommandDockSurface = ({
       data-tutorial-focused={tutorialFocused ?? 'none'}
       ref={rootRef}
     >
+      <div class="mobile-command-dock-info-rail-host" />
       <section
         aria-hidden={openPanel !== 'flight'}
         aria-labelledby="mobile-command-dock-flight-button"
@@ -420,7 +421,16 @@ export const createMobileCommandDock = (options: {
   const infoPanelContainer = surface.element.querySelector<HTMLElement>(
     '.mobile-command-dock-info-panel-host',
   )
-  if (!flightButton || !infoButton || !navButton || !infoPanelContainer) {
+  const infoRailContainer = surface.element.querySelector<HTMLElement>(
+    '.mobile-command-dock-info-rail-host',
+  )
+  if (
+    !flightButton ||
+    !infoButton ||
+    !navButton ||
+    !infoPanelContainer ||
+    !infoRailContainer
+  ) {
     throw new Error('Mobile command dock rendered without panel buttons')
   }
 
@@ -476,6 +486,7 @@ export const createMobileCommandDock = (options: {
   return {
     element: surface.element,
     infoPanelContainer,
+    infoRailContainer,
     isPanelOpen: (panel: MobileCommandDockPanel) => openPanel === panel,
     rcsYawContainer,
     setControlAvailability(nextAvailability: {

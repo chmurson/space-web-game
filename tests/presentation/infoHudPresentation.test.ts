@@ -126,18 +126,15 @@ const queries = {
 describe('createInfoHudView', () => {
   it('presents each body once and uses physical surface distances', () => {
     const view = createInfoHudView({ prediction, queries, runtime })
+    const rows = view.entries.map((entry) => entry.row)
 
-    expect(view.rows.map(({ label }) => label)).toEqual([
-      'Moon',
-      'Earth',
-      'Pe / Ap',
-    ])
-    expect(view.rows.map(({ distanceLabel }) => distanceLabel)).toEqual([
+    expect(rows.map(({ label }) => label)).toEqual(['Moon', 'Earth', 'Pe / Ap'])
+    expect(rows.map(({ distanceLabel }) => distanceLabel)).toEqual([
       '88 km',
       '10 km',
       '123 km | 456 km',
     ])
-    expect(view.rows.map(({ secondaryLabel }) => secondaryLabel)).toEqual([
+    expect(rows.map(({ secondaryLabel }) => secondaryLabel)).toEqual([
       'to spacecraft',
       'to spacecraft',
       'to Moon',
@@ -148,18 +145,17 @@ describe('createInfoHudView', () => {
       'apsides',
     ])
     expect(
-      view.rows.filter(({ pinned }) => pinned).map(({ label }) => label),
+      rows.filter(({ pinned }) => pinned).map(({ label }) => label),
     ).toEqual(['Moon', 'Earth', 'Pe / Ap'])
-    expect(view.selectedCount).toBe(3)
-    expect(view.rows.find(({ label }) => label === 'Earth')).toMatchObject({
+    expect(rows.find(({ label }) => label === 'Earth')).toMatchObject({
       pinned: true,
       scenarioOwned: true,
     })
-    expect(view.rows.find(({ label }) => label === 'Moon')).toMatchObject({
+    expect(rows.find(({ label }) => label === 'Moon')).toMatchObject({
       pinned: true,
       scenarioOwned: false,
     })
-    expect(view.rows.find(({ key }) => key === 'apsides')).toMatchObject({
+    expect(rows.find(({ key }) => key === 'apsides')).toMatchObject({
       pinned: true,
       scenarioOwned: true,
     })
@@ -172,6 +168,7 @@ describe('createInfoHudView', () => {
       ],
     })
     expect(view.clearAvailable).toBe(true)
+    expect(view.targetMode).toBe('manual')
   })
 
   it('orders target, selected entries, then remaining entries by target distance', () => {
@@ -209,7 +206,50 @@ describe('createInfoHudView', () => {
     expect(view.entries[0]).toMatchObject({
       bodyColor: '#fff',
       kind: 'body',
+      target: true,
+      row: {
+        key: 'body:moon',
+        pinned: false,
+      },
     })
+  })
+
+  it('keeps body selections attached to identity when the target changes', () => {
+    const targetRuntime = structuredClone(runtime)
+    targetRuntime.scenario.directives.infoPins = []
+    targetRuntime.info.userPins = [createBodyInfoPin('earth')]
+    let targetIndex = 1
+    const targetQueries = {
+      getAssistTargetUiState: () => ({
+        activeTarget: targetRuntime.simulation.state.bodies[targetIndex],
+        mode: 'manual' as const,
+        recommendedTarget: null,
+      }),
+    }
+
+    const moonTargetView = createInfoHudView({
+      prediction,
+      queries: targetQueries,
+      runtime: targetRuntime,
+    })
+    targetIndex = 0
+    const earthTargetView = createInfoHudView({
+      prediction: { ...prediction, targetId: 'earth' },
+      queries: targetQueries,
+      runtime: targetRuntime,
+    })
+
+    expect(moonTargetView.entries[0]).toMatchObject({
+      key: 'body:moon',
+      target: true,
+      row: { pinned: false },
+    })
+    expect(earthTargetView.entries[0]).toMatchObject({
+      key: 'body:earth',
+      target: true,
+      row: { pinned: true },
+    })
+    expect(targetRuntime.info.userPins).toEqual([createBodyInfoPin('earth')])
   })
 
   it('does not present stale Pe and Ap values for another target', () => {

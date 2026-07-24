@@ -4,11 +4,9 @@ import type { Vec2 } from '../simulation/vector'
 import { formatDistance } from '../ui/formatters'
 
 export type BodyDistanceContext = {
-  accessibleLabel: string
   altitudeLabel: string
   bodyId: string
   detailAccessibleLabel: string
-  tooltipLabel: string
 }
 
 export const getBodySurfaceDistanceMeters = (
@@ -33,10 +31,8 @@ export const createBodyDistanceContext = (options: {
   )}`
 
   return {
-    accessibleLabel: `${options.target.name}, ${accessibleLabel}`,
     altitudeLabel,
     bodyId: options.target.id,
     detailAccessibleLabel: accessibleLabel,
-    tooltipLabel: `${options.target.name} · ${altitudeLabel}`,
   }
 }

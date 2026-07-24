@@ -301,6 +301,7 @@ export const createFrameLoop = (options: {
         ...options.runtime.scenario.directives.infoPins,
         ...options.runtime.info.userPins,
       ],
+      nowMs: time,
       spacecraftPosition: options.runtime.simulation.state.spacecraft.position,
       viewportSize: options.runtime.simulation.viewportSize,
     })
@@ -383,6 +384,7 @@ export const createFrameLoop = (options: {
           ...options.runtime.scenario.directives.infoPins,
           ...options.runtime.info.userPins,
         ],
+        nowMs: performance.now(),
         spacecraftPosition:
           options.runtime.simulation.state.spacecraft.position,
         viewportSize: options.runtime.simulation.viewportSize,

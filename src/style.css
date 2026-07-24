@@ -1395,6 +1395,15 @@ button.app-dialog-setting {
   white-space: nowrap;
 }
 
+.telemetry-pill-secondary {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
 .telemetry-time-display {
   display: inline-flex;
   align-items: center;
@@ -1715,15 +1724,6 @@ button.app-dialog-setting {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.telemetry-pill-target [data-stat="target-altitude"] {
-  flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1;
-  opacity: 0.78;
-  white-space: nowrap;
 }
 
 .telemetry-pill-target [data-stat="target-altitude"]::before {
@@ -2458,7 +2458,7 @@ button.app-dialog-setting {
   transform-origin: center;
 }
 
-#app .offscreen-indicator-unpinned-body .pointer {
+#app .offscreen-indicator-body .pointer {
   fill: none;
 }
 
@@ -2469,7 +2469,7 @@ button.app-dialog-setting {
 }
 
 #app .offscreen-indicator-active-target .pointer {
-  fill: #7dd3fc;
+  fill: none;
   stroke: #7dd3fc;
   filter: drop-shadow(0 0 8px rgba(56, 189, 248, 1));
 }
@@ -2484,13 +2484,6 @@ button.app-dialog-setting {
 
 #app .offscreen-indicator-unlabeled .label {
   display: none;
-}
-
-#app .offscreen-indicator-active-target .label {
-  border-color: rgba(125, 211, 252, 0.72);
-  background: rgba(14, 116, 144, 0.84);
-  color: #f4f7fb;
-  font-weight: 700;
 }
 
 #app .body-label {
@@ -2527,22 +2520,6 @@ button.app-dialog-setting {
   font-variant-numeric: tabular-nums;
   transform: translateY(-50%);
   will-change: transform;
-}
-
-#app .body-label-active-target {
-  border-color: rgba(125, 211, 252, 0.72);
-  background: rgba(14, 116, 144, 0.74);
-  color: #f4f7fb;
-  font-weight: 700;
-}
-
-#app .body-label-distance-context {
-  max-width: min(220px, calc(100vw - 16px));
-  padding: 3px 6px;
-  font-size: 11px;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-  white-space: normal;
 }
 
 #app .trajectory-event-label {
@@ -2584,36 +2561,6 @@ button.app-dialog-setting {
   content: "";
 }
 
-#app .trajectory-event-label::after {
-  position: absolute;
-  top: 2px;
-  left: calc(100% + 6px);
-  display: none;
-  width: max-content;
-  max-width: min(180px, calc(100vw - 64px));
-  padding: 3px 6px;
-  border: 1px solid var(--ui-glass-control-border);
-  border-radius: 4px;
-  background: var(--ui-glass-label-bg);
-  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.32);
-  color: #dbeafe;
-  content: attr(data-tooltip);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.15;
-  text-shadow: none;
-  white-space: nowrap;
-}
-
-#app .trajectory-event-label[aria-pressed="true"]::after {
-  display: block;
-}
-
-#app .trajectory-event-label-tooltip-left::after {
-  right: calc(100% + 6px);
-  left: auto;
-}
-
 #app .trajectory-event-label:hover::before {
   border-color: #f0f9ff;
 }
@@ -2635,23 +2582,11 @@ button.app-dialog-setting {
     line-height: 1.1;
   }
 
-  #app .body-label-distance-context {
-    max-width: min(164px, calc(100vw - 24px));
-    padding: 2px 5px;
-    font-size: 9.5px;
-  }
-
   #app .trajectory-event-label {
     width: 14px;
     height: 12px;
     padding-bottom: 2px;
     font-size: 6px;
-  }
-
-  #app .trajectory-event-label::after {
-    max-width: min(132px, calc(100vw - 54px));
-    padding: 2px 5px;
-    font-size: 9px;
   }
 
   .body-label-mobile-wrap {
@@ -2866,7 +2801,7 @@ button.app-dialog-setting {
     white-space: nowrap;
   }
 
-  .telemetry-pill-target [data-stat="target-altitude"] {
+  .telemetry-pill-secondary {
     font-size: 10.5px;
   }
 

@@ -5,6 +5,7 @@ import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
 import type { BodyDistanceContext } from './bodyDistanceContext'
+import { createBodyLabelVisibility } from './bodyPresentation/bodyLabelVisibility'
 import { updateBodyLabels } from './bodyPresentation/updateBodyLabels'
 import { updateOffscreenIndicators } from './bodyPresentation/updateOffscreenIndicators'
 import {
@@ -49,6 +50,8 @@ export const createBodyPresentation = (options: {
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
 }) => {
+  const isBodyLabelVisible = createBodyLabelVisibility()
+
   return {
     updateVisuals: (state: {
       bodies: Body[]
@@ -56,6 +59,7 @@ export const createBodyPresentation = (options: {
       elapsed: number
       hiddenBodyIds: string[]
       infoPins: readonly InfoPin[]
+      nowMs: number
       spacecraftPosition: Vec2
       viewportSize: number
     }) => {
@@ -79,14 +83,14 @@ export const createBodyPresentation = (options: {
         bodies: visibleBodies,
         gameScene: options.gameScene,
         overlayUi: options.overlayUi,
-        pinnedBodyIds,
         spacecraftPosition: state.spacecraftPosition,
         targetBodyId: nextActiveTargetId,
       })
       updateBodyLabels({
         bodies: visibleBodies,
-        distanceContext: state.distanceContext ?? null,
         gameScene: options.gameScene,
+        isBodyLabelVisible,
+        nowMs: state.nowMs,
         overlayUi: options.overlayUi,
         pinnedBodyIds,
         viewportSize: state.viewportSize,

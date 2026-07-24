@@ -197,12 +197,6 @@ test('recenters selected target framing above Nav using the current playable vie
   await page.goto('/?scenario=earth-moon&devtools=1')
   await waitForGame(page)
   await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
-  const infoButton = page.locator('#mobile-command-dock-info-button')
-  await infoButton.tap()
-  await page
-    .locator('#mobile-command-dock-info-panel [data-info-pin="body:earth"]')
-    .tap()
-  await infoButton.tap()
   await page.evaluate(() => {
     const response = window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
       follow: 'target',
@@ -212,14 +206,15 @@ test('recenters selected target framing above Nav using the current playable vie
       throw new Error(response?.error ?? 'Devtools bridge is missing')
     }
   })
-  await page.waitForFunction(() =>
-    Array.from(document.querySelectorAll<HTMLElement>('.body-label')).some(
-      (label) => getComputedStyle(label).display !== 'none',
-    ),
-  )
+  const targetLabel = page.locator('.body-label[data-info-pin="body:earth"]')
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (await targetLabel.isVisible()) {
+      break
+    }
+    await page.locator('canvas').dispatchEvent('wheel', { deltaY: 500 })
+  }
 
   const dock = page.locator('.mobile-command-dock')
-  const targetLabel = page.locator('.body-label-active-target')
   await expect(targetLabel).toBeVisible()
   const collapsedDockBounds = await dock.boundingBox()
   const collapsedTargetBounds = await targetLabel.boundingBox()

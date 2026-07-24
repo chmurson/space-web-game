@@ -52,8 +52,22 @@ class FakeTrajectoryEventLabel {
     }
   }
 
+  removeAttribute(name: string) {
+    this.attributes.delete(name)
+  }
+
   setAttribute(name: string, value: string) {
     this.attributes.set(name, value)
+  }
+
+  toggleAttribute(name: string, force?: boolean) {
+    const enabled = force ?? !this.attributes.has(name)
+    if (enabled) {
+      this.attributes.set(name, '')
+    } else {
+      this.attributes.delete(name)
+    }
+    return enabled
   }
 }
 
@@ -403,7 +417,7 @@ describe('createTrajectoryPresentation', () => {
     expect(close.trajectoryEventMarkerLabels.periapsis.textContent).toBe('Pe')
     expect(
       close.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
-    ).toBe('Periapsis, altitude 400 km; unselect in Info')
+    ).toBe('Periapsis; unselect Pe and Ap in Info')
 
     const far = createTestPresentation({
       eventMarkers,
@@ -743,7 +757,7 @@ describe('createTrajectoryPresentation', () => {
     )
   })
 
-  it('keeps Pe/Ap markers numeric-free and gates altitude tooltips on selection', () => {
+  it('keeps selected Pe/Ap markers numeric-free without canvas tooltips', () => {
     const eventMarkers = [
       createEventMarker({
         altitude: 400_000,
@@ -772,11 +786,12 @@ describe('createTrajectoryPresentation', () => {
     expect(test.trajectoryEventMarkerLabels.apoapsis.style.display).toBe('none')
     expect(test.trajectoryEventMarkerLabels.periapsis.textContent).toBe('Pe')
     expect(test.trajectoryEventMarkerLabels.periapsis.dataset.tooltip).toBe(
-      'Pe · 400 km',
+      undefined,
     )
+    expect(test.trajectoryEventMarkerLabels.periapsis.title).toBe('')
     expect(
       test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-label'),
-    ).toBe('Periapsis, altitude 400 km; unselect in Info')
+    ).toBe('Periapsis; unselect Pe and Ap in Info')
     expect(
       test.trajectoryEventMarkerLabels.periapsis.getAttribute('aria-pressed'),
     ).toBe('true')

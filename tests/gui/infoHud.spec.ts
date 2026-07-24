@@ -20,7 +20,7 @@ const captureScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('desktop Info keeps selections in one persistent popover', async ({
+test('desktop Info creates persistent readouts while its popover is closed', async ({
   browser,
 }, testInfo) => {
   const context = await browser.newContext({
@@ -42,7 +42,10 @@ test('desktop Info keeps selections in one persistent popover', async ({
     })
     const popover = page.locator('#desktop-info-popover')
     const earthSwitch = popover.locator('[data-info-pin="body:earth"]')
+    const moonSwitch = popover.locator('[data-info-pin="body:moon"]')
+    const apsidesSwitch = popover.locator('[data-info-pin="apsides"]')
     const earthPinStatus = earthSwitch.locator('.info-hud-pin-status')
+    const rail = page.locator('.desktop-info-rail')
 
     await expect(infoButton).toBeVisible()
     await expect(infoButton).toHaveAttribute('aria-expanded', 'false')
@@ -57,38 +60,189 @@ test('desktop Info keeps selections in one persistent popover', async ({
     await expect(popover.locator('[data-info-row="apsides"]')).toContainText(
       /Pe\s*·\s*.+\|\s*Ap\s*·\s*.+to (Earth|Moon)/,
     )
-    await expect(earthSwitch).toHaveAttribute('aria-checked', 'false')
-    await expect(earthPinStatus).toHaveText('○')
-    const selectAllButton = popover.getByRole('button', {
-      name: 'Select all',
-    })
-    await expect(selectAllButton).toBeEnabled()
+    await expect(popover.locator('.info-hud-row').first()).toHaveAttribute(
+      'data-info-pin',
+      'body:earth',
+    )
+    const targetStatus = earthSwitch.locator('.target-status-mark')
+    await expect(targetStatus).toHaveClass(/target-status-mark-auto/)
+    await expect(earthSwitch.locator('.info-hud-target-badge')).toHaveCount(0)
+    await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
+    await expect(earthSwitch).toBeDisabled()
+    await expect(earthPinStatus).toHaveText('●')
+    await expect(infoButton.locator('[role="status"]')).toHaveCount(0)
+    await expect(
+      popover.getByRole('button', { name: 'Select all' }),
+    ).toHaveCount(0)
 
-    await earthSwitch.click()
+    const targetSelectorButton = page.getByRole('button', {
+      name: 'Select target (T)',
+    })
+    const targetSelector = page.locator('.desktop-target-selector-popover')
+    await targetSelectorButton.click()
+    await targetSelector.getByRole('button', { name: /^Moon,/ }).click()
+    await expect(moonSwitch).toHaveAttribute('aria-checked', 'true')
+    await expect(moonSwitch).toBeDisabled()
+    await expect(moonSwitch.locator('.target-status-mark')).toHaveClass(
+      /target-status-mark-manual/,
+    )
+    await expect(earthSwitch).toHaveAttribute('aria-checked', 'false')
+    await expect(earthSwitch).toBeEnabled()
+    await expect(earthPinStatus).toHaveText('○')
+    await captureScreenshot(page, testInfo, 'desktop-info-manual-target-icon')
+
+    await targetSelectorButton.click()
+    await targetSelector
+      .getByRole('switch', { name: /^Automatic targeting off: Earth/ })
+      .click()
+    await expect(targetStatus).toHaveClass(/target-status-mark-auto/)
+    await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
+    await expect(earthSwitch).toBeDisabled()
+    await expect(moonSwitch).toHaveAttribute('aria-checked', 'false')
+    await expect(moonSwitch).toBeEnabled()
+    await targetSelectorButton.click()
+
+    await moonSwitch.click()
+    await apsidesSwitch.click()
     await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
     await expect(earthPinStatus).toHaveText('●')
-    await captureScreenshot(page, testInfo, 'desktop-info-popover-pinned')
+    await expect(rail).toBeHidden()
+    await captureScreenshot(page, testInfo, 'desktop-info-popover-selected')
 
     await page.mouse.click(24, 260)
     await expect(popover).toBeVisible()
     await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
 
-    await selectAllButton.click()
-    await expect(selectAllButton).toBeDisabled()
-    await expect(page.locator('.info-hud-rail')).toHaveCount(0)
-    await expect(infoButton.locator('[aria-label="3 selected"]')).toBeVisible()
-
     await page.keyboard.press('KeyI')
     await expect(popover).toBeHidden()
+    await expect(rail).toBeVisible()
+    await expect(rail.locator('.info-hud-rail-card')).toHaveCount(2)
+    await expect(rail.locator('[data-info-pin="body:earth"]')).toHaveCount(0)
+    const moonReadoutSphere = rail.locator(
+      '[data-info-pin="body:moon"] .target-body-sphere',
+    )
+    await expect(moonReadoutSphere).toBeVisible()
+    await expect(
+      rail.locator('[data-info-pin="apsides"] .target-body-sphere'),
+    ).toHaveCount(0)
+    const [moonRowColor, moonReadoutColor] = await Promise.all([
+      moonSwitch
+        .locator('.target-body-sphere')
+        .evaluate((element) =>
+          getComputedStyle(element)
+            .getPropertyValue('--target-body-color')
+            .trim(),
+        ),
+      moonReadoutSphere.evaluate((element) =>
+        getComputedStyle(element)
+          .getPropertyValue('--target-body-color')
+          .trim(),
+      ),
+    ])
+    expect(moonReadoutColor).toBe(moonRowColor)
+    await expect(rail.locator('[data-info-pin="apsides"]')).toContainText(
+      /^Pe\s*·\s*.+\|\s*Ap\s*·\s*.+$/,
+    )
+    const railPill = rail.locator('.info-hud-rail-pill').first()
+    await expect(railPill).toHaveClass(/telemetry-pill/)
+    await expect(
+      rail.locator('[data-info-pin="apsides"] .info-hud-rail-distance').last(),
+    ).toHaveText('—')
+    const telemetryStyleComparison = await page.evaluate(() => {
+      const targetPill = document.querySelector('.telemetry-pill-target')
+      const railPill = document.querySelector('.info-hud-rail-pill')
+      const targetValue = targetPill?.querySelector('strong')
+      const railValue = railPill?.querySelector('strong')
+      const targetSecondary = targetPill?.querySelector(
+        '.telemetry-pill-secondary',
+      )
+      const railDistances = document.querySelectorAll(
+        '.desktop-info-rail .info-hud-rail-distance',
+      )
+      if (
+        !targetPill ||
+        !railPill ||
+        !targetValue ||
+        !railValue ||
+        !targetSecondary ||
+        railDistances.length === 0
+      ) {
+        throw new Error('Target or rail telemetry pill is missing')
+      }
+      const readPillStyle = (element: Element) => {
+        const style = getComputedStyle(element)
+        return {
+          backdropFilter: style.backdropFilter,
+          backgroundColor: style.backgroundColor,
+          borderRadius: style.borderRadius,
+          borderTopWidth: style.borderTopWidth,
+          paddingBottom: style.paddingBottom,
+          paddingLeft: style.paddingLeft,
+          paddingRight: style.paddingRight,
+          paddingTop: style.paddingTop,
+        }
+      }
+      const readValueStyle = (element: Element) => {
+        const style = getComputedStyle(element)
+        return {
+          color: style.color,
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          lineHeight: style.lineHeight,
+          opacity: style.opacity,
+          whiteSpace: style.whiteSpace,
+        }
+      }
+      const targetSecondaryStyle = JSON.stringify(
+        readValueStyle(targetSecondary),
+      )
+      return {
+        pillMatches:
+          JSON.stringify(readPillStyle(railPill)) ===
+          JSON.stringify(readPillStyle(targetPill)),
+        secondaryValuesMatch: [...railDistances].every(
+          (distance) =>
+            JSON.stringify(readValueStyle(distance)) === targetSecondaryStyle,
+        ),
+        valueMatches:
+          JSON.stringify(readValueStyle(railValue)) ===
+          JSON.stringify(readValueStyle(targetValue)),
+      }
+    })
+    expect(telemetryStyleComparison).toEqual({
+      pillMatches: true,
+      secondaryValuesMatch: true,
+      valueMatches: true,
+    })
+    await expect(rail).toHaveCSS('flex-direction', 'column')
+    await expect(rail).toHaveCSS('overflow-y', 'auto')
+    const railBounds = await rail.boundingBox()
+    const lastReadoutBounds = await rail
+      .locator('.info-hud-rail-card')
+      .last()
+      .boundingBox()
+    if (!railBounds || !lastReadoutBounds) {
+      throw new Error('Desktop Info rail or readout is missing')
+    }
+    const unusedRailHeight =
+      railBounds.y +
+      railBounds.height -
+      (lastReadoutBounds.y + lastReadoutBounds.height)
+    expect(unusedRailHeight).toBeLessThanOrEqual(6)
+    await captureScreenshot(page, testInfo, 'desktop-info-readout-rail')
 
+    await rail.locator('[data-info-pin="body:moon"]').click()
+    await expect(rail.locator('[data-info-pin="body:moon"]')).toHaveCount(0)
     await page.keyboard.press('Shift+KeyI')
-    await expect(infoButton.locator('[aria-label$="selected"]')).toHaveCount(0)
+    await expect(rail).toBeHidden()
+    await expect(infoButton.locator('[role="status"]')).toHaveCount(0)
   } finally {
     await context.close()
   }
 })
 
-test('mobile Info panel keeps selection inside the dock surface', async ({
+test('mobile Info keeps compact readouts at the top right', async ({
   page,
 }, testInfo) => {
   await page.goto('/?scenario=earth-moon')
@@ -99,6 +253,7 @@ test('mobile Info panel keeps selection inside the dock surface', async ({
   const infoPanel = page.locator('#mobile-command-dock-info-panel')
   const flightButton = page.locator('#mobile-command-dock-flight-button')
   const flightPanel = page.locator('#mobile-command-dock-flight-panel')
+  const rail = page.locator('.mobile-info-rail')
   await expect(infoButton).toHaveAttribute('aria-expanded', 'false')
   await infoButton.tap()
   await expect(infoButton).toHaveAttribute('aria-expanded', 'true')
@@ -109,22 +264,74 @@ test('mobile Info panel keeps selection inside the dock surface', async ({
   ).toHaveText(['to spacecraft', 'to spacecraft'])
   await expect(dock).toHaveAttribute('data-open-panel', 'info')
 
-  await infoPanel.locator('[data-info-pin="body:earth"]').tap()
-  await expect(
-    infoPanel.locator('[data-info-pin="body:earth"]'),
-  ).toHaveAttribute('aria-checked', 'true')
-  await expect(page.locator('.mobile-command-dock-info-rail-host')).toHaveCount(
-    0,
-  )
+  const earthSwitch = infoPanel.locator('[data-info-pin="body:earth"]')
+  await expect(earthSwitch).toHaveAttribute('aria-checked', 'true')
+  await expect(earthSwitch).toBeDisabled()
+  await expect(earthSwitch.locator('.info-hud-pin-status')).toHaveText('●')
+  await infoPanel.locator('[data-info-pin="apsides"]').tap()
+  await expect(rail).toBeHidden()
   await captureScreenshot(page, testInfo, 'mobile-info-panel-selected')
 
-  await flightButton.tap()
+  await infoButton.tap()
   await expect(infoPanel).toBeHidden()
+  await expect(rail).toBeVisible()
+  await expect(rail.locator('.info-hud-rail-card')).toHaveCount(1)
+  await expect(rail.locator('[data-info-pin="body:earth"]')).toHaveCount(0)
+  await expect(rail).toHaveCSS('flex-direction', 'column')
+  await expect(rail).toHaveCSS('overflow-y', 'auto')
+  const readoutSize = await rail
+    .locator('[data-info-pin="apsides"]')
+    .evaluate((element) => {
+      const bounds = element.getBoundingClientRect()
+      const pill = element.querySelector('.info-hud-rail-pill')
+      if (!(pill instanceof HTMLElement)) {
+        throw new Error('Mobile Info readout pill is missing')
+      }
+      return {
+        height: bounds.height,
+        pillHeight: pill.getBoundingClientRect().height,
+        width: bounds.width,
+      }
+    })
+  expect(readoutSize.height).toBeCloseTo(readoutSize.pillHeight)
+  expect(readoutSize.height).toBeLessThan(42)
+  expect(readoutSize.width).toBeGreaterThanOrEqual(42)
+  const railBounds = await rail.boundingBox()
+  const firstPillBounds = await rail
+    .locator('.info-hud-rail-pill')
+    .first()
+    .boundingBox()
+  const topBarBounds = await page.locator('.top-bar').boundingBox()
+  const viewport = page.viewportSize()
+  if (!railBounds || !firstPillBounds || !topBarBounds || !viewport) {
+    throw new Error('Mobile Info rail, pill, top bar, or viewport is missing')
+  }
+  expect(railBounds.x).toBeGreaterThan(viewport.width / 2)
+  expect(railBounds.x + railBounds.width).toBeLessThanOrEqual(
+    viewport.width - 8,
+  )
+  const topBarBottom = topBarBounds.y + topBarBounds.height
+  expect(firstPillBounds.y).toBeGreaterThanOrEqual(topBarBottom)
+  expect(firstPillBounds.y - topBarBottom).toBeLessThanOrEqual(12)
+  await captureScreenshot(page, testInfo, 'mobile-info-readout-rail')
+
+  await flightButton.tap()
   await expect(flightPanel).toBeVisible()
   await expect(dock).toHaveAttribute('data-open-panel', 'flight')
+  await expect(rail).toBeVisible()
+  const railWithFlightBounds = await rail.boundingBox()
+  const flightPanelBounds = await flightPanel.boundingBox()
+  if (!railWithFlightBounds || !flightPanelBounds) {
+    throw new Error('Mobile Info rail or Flight panel is missing')
+  }
+  expect(
+    railWithFlightBounds.y + railWithFlightBounds.height,
+  ).toBeLessThanOrEqual(flightPanelBounds.y)
 
+  await rail.locator('[data-info-pin="apsides"]').tap()
+  await expect(rail).toBeHidden()
   await page.keyboard.press('Shift+KeyI')
-  await expect(page.locator('.info-hud-rail')).toHaveCount(0)
+  await expect(rail).toBeHidden()
 })
 
 test('refreshes target context when unavailable apsis values stay unchanged', async ({
@@ -138,7 +345,8 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
     const host = document.createElement('div')
     const desktopContainer = document.createElement('div')
     const mobilePanelContainer = document.createElement('div')
-    host.append(desktopContainer, mobilePanelContainer)
+    const mobileRailContainer = document.createElement('div')
+    host.append(desktopContainer, mobilePanelContainer, mobileRailContainer)
     document.body.append(host)
 
     let targetName = 'Earth'
@@ -168,8 +376,7 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
             secondaryLabel: `to ${targetName}`,
           },
         ],
-        rows: [apsidesRow],
-        selectedCount: 0,
+        targetMode: 'manual' as const,
       }
     }
     const infoHud = createInfoHud({
@@ -177,6 +384,7 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
       getMobileSurfaceActive: () => false,
       getView,
       mobilePanelContainer,
+      mobileRailContainer,
       onClear: () => undefined,
       onTogglePin: () => undefined,
       toggleMobileInfoPanel: () => undefined,
@@ -218,7 +426,7 @@ test('refreshes target context when unavailable apsis values stay unchanged', as
 
 test('scenario-owned pins are exposed as checked, immutable switches', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto('/?scenario=reach-moon')
   await waitForGame(page)
 
@@ -237,5 +445,16 @@ test('scenario-owned pins are exposed as checked, immutable switches', async ({
   await expect(moonSwitch).toBeDisabled()
   await expect(moonSwitch).toContainText('Scenario')
   await expect(moonSwitch.locator('.info-hud-pin-status')).toHaveText('◆')
-  await expect(page.locator('.info-hud-rail')).toHaveCount(0)
+  const rail = page.locator('.mobile-info-rail')
+  await expect(rail).toBeHidden()
+
+  await page.locator('#mobile-command-dock-info-button').tap()
+  const moonReadout = rail.locator('[data-info-pin="body:moon"]')
+  await expect(rail).toBeVisible()
+  await expect(moonReadout).toBeDisabled()
+  await expect(moonReadout).toContainText('Scenario')
+  await expect(moonReadout.locator('.target-body-sphere')).toBeVisible()
+  await captureScreenshot(page, testInfo, 'mobile-scenario-body-readout')
+  await page.keyboard.press('Shift+KeyI')
+  await expect(moonReadout).toBeVisible()
 })

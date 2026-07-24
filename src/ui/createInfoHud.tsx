@@ -36,41 +36,68 @@ const TapSafeButton = ({ onActivate, ...props }: TapSafeButtonProps) => {
   return <button {...props} ref={buttonRef} />
 }
 
-const getPinStatusGlyph = (row: InfoHudRow) => {
+const getPinStatusGlyph = (row: InfoHudRow, selected: boolean) => {
   if (row.scenarioOwned) {
     return '◆'
   }
-  if (row.pinned) {
+  if (selected) {
     return '●'
   }
   return '○'
 }
 
-const PinStatus = ({ row }: { row: InfoHudRow }) => (
+const PinStatus = ({
+  row,
+  selected,
+}: {
+  row: InfoHudRow
+  selected: boolean
+}) => (
   <span aria-hidden="true" class="info-hud-pin-status">
-    {getPinStatusGlyph(row)}
+    {getPinStatusGlyph(row, selected)}
   </span>
 )
+
+const getTargetStatusLabel = (mode: NonNullable<InfoHudView['targetMode']>) => {
+  if (mode === 'auto') {
+    return 'tracking target'
+  }
+  if (mode === 'manual') {
+    return 'pinned target'
+  }
+  return 'locked target'
+}
 
 const InfoRow = (options: {
   bodyColor: string
   onTogglePin(pin: InfoPin): void
   row: InfoHudRow
+  targetMode: InfoHudView['targetMode']
 }) => {
   const { row } = options
-  let ownershipLabel = row.pinned ? 'pinned' : 'not pinned'
+  const target = options.targetMode !== null
+  const selected = target || row.pinned
+  let ownershipLabel = selected ? 'selected' : 'not selected'
   if (row.scenarioOwned) {
-    ownershipLabel = 'pinned by scenario'
+    ownershipLabel = 'selected by scenario'
   }
+  if (target) {
+    ownershipLabel = row.scenarioOwned
+      ? 'selected as active target and by scenario; cannot be changed'
+      : 'selected as active target; cannot be changed'
+  }
+  const targetLabel = options.targetMode
+    ? `, active target, ${getTargetStatusLabel(options.targetMode)}`
+    : ''
 
   return (
     <TapSafeButton
-      aria-checked={row.pinned}
-      aria-label={`${row.accessibleLabel}, ${ownershipLabel}`}
+      aria-checked={selected}
+      aria-label={`${row.accessibleLabel}${targetLabel}, ${ownershipLabel}`}
       class="info-hud-row ui-pressable"
       data-info-pin={row.key}
       data-scenario-owned={String(row.scenarioOwned)}
-      disabled={row.scenarioOwned}
+      disabled={target || row.scenarioOwned}
       onActivate={() => options.onTogglePin(row.pin)}
       role="switch"
       type="button"
@@ -96,10 +123,16 @@ const InfoRow = (options: {
           </span>
         </span>
       </span>
+      {options.targetMode ? (
+        <span
+          aria-hidden="true"
+          class={`target-status-mark target-status-mark-${options.targetMode}`}
+        />
+      ) : null}
       {row.scenarioOwned ? (
         <span class="info-hud-scenario-badge">Scenario</span>
       ) : null}
-      <PinStatus row={row} />
+      <PinStatus row={row} selected={selected} />
     </TapSafeButton>
   )
 }
@@ -156,7 +189,7 @@ const ApsisInfoRow = (options: {
         {row.scenarioOwned ? (
           <span class="info-hud-scenario-badge">Scenario</span>
         ) : null}
-        <PinStatus row={row} />
+        <PinStatus row={row} selected={row.pinned} />
       </TapSafeButton>
     </fieldset>
   )
@@ -164,7 +197,6 @@ const ApsisInfoRow = (options: {
 
 const InfoPanelContent = (options: {
   onClear(): void
-  onSelectAll(): void
   onTogglePin(pin: InfoPin): void
   titleId: string
   view: InfoHudView
@@ -173,19 +205,9 @@ const InfoPanelContent = (options: {
     <header class="info-hud-panel-header">
       <div>
         <h2 id={options.titleId}>Info</h2>
-        <p>Pin live distances</p>
+        <p>Select live distances</p>
       </div>
       <div class="info-hud-header-actions">
-        <TapSafeButton
-          class="info-hud-select-all ui-pressable-strong"
-          disabled={
-            !options.view.rows.some((row) => !row.pinned && !row.scenarioOwned)
-          }
-          onActivate={options.onSelectAll}
-          type="button"
-        >
-          Select all
-        </TapSafeButton>
         <TapSafeButton
           aria-keyshortcuts="Shift+I"
           class="info-hud-clear ui-pressable-strong"
@@ -205,6 +227,7 @@ const InfoPanelContent = (options: {
             key={entry.key}
             onTogglePin={options.onTogglePin}
             row={entry.row}
+            targetMode={entry.target ? options.view.targetMode : null}
           />
         ) : (
           <ApsisInfoRow
@@ -218,9 +241,103 @@ const InfoPanelContent = (options: {
   </div>
 )
 
+const InfoRail = (options: {
+  className: string
+  onTogglePin(pin: InfoPin): void
+  view: InfoHudView
+}) => {
+  const selectedEntries = options.view.entries.filter((entry) => {
+    if (entry.kind === 'body' && entry.target) {
+      return false
+    }
+    return entry.row.pinned
+  })
+
+  return (
+    <section
+      aria-label="Selected information"
+      class={`info-hud-rail ${options.className}`}
+      hidden={selectedEntries.length === 0}
+    >
+      {selectedEntries.map((entry) => {
+        const row = entry.row
+        return (
+          <TapSafeButton
+            aria-checked="true"
+            aria-label={
+              row.scenarioOwned
+                ? `${row.accessibleLabel}, selected by scenario; cannot be changed`
+                : `${row.accessibleLabel}; unselect in Info`
+            }
+            class="info-hud-rail-card"
+            data-info-pin={row.key}
+            data-scenario-owned={String(row.scenarioOwned)}
+            disabled={row.scenarioOwned}
+            key={entry.key}
+            onActivate={() => options.onTogglePin(row.pin)}
+            role="switch"
+            type="button"
+          >
+            <span class="info-hud-rail-pill telemetry-pill">
+              {entry.kind === 'body' ? (
+                <>
+                  <span
+                    aria-hidden="true"
+                    class="target-body-sphere"
+                    style={
+                      {
+                        '--target-body-color': entry.bodyColor,
+                      } as JSX.CSSProperties
+                    }
+                  />
+                  <span class="info-hud-rail-value">
+                    <strong>{row.label}</strong>
+                    <span aria-hidden="true" class="telemetry-pill-secondary">
+                      ·
+                    </span>
+                    <span class="info-hud-rail-distance telemetry-pill-secondary">
+                      {row.distanceLabel}
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <span class="info-hud-rail-apsides">
+                  <span class="info-hud-rail-apsis">
+                    <strong>Pe</strong>
+                    <span aria-hidden="true" class="telemetry-pill-secondary">
+                      ·
+                    </span>
+                    <span class="info-hud-rail-distance telemetry-pill-secondary">
+                      {entry.points[0].distanceLabel}
+                    </span>
+                  </span>
+                  <span aria-hidden="true" class="telemetry-pill-secondary">
+                    |
+                  </span>
+                  <span class="info-hud-rail-apsis">
+                    <strong>Ap</strong>
+                    <span aria-hidden="true" class="telemetry-pill-secondary">
+                      ·
+                    </span>
+                    <span class="info-hud-rail-distance telemetry-pill-secondary">
+                      {entry.points[1].distanceLabel}
+                    </span>
+                  </span>
+                </span>
+              )}
+              {row.scenarioOwned ? (
+                <span class="info-hud-rail-scenario">Scenario</span>
+              ) : null}
+            </span>
+          </TapSafeButton>
+        )
+      })}
+    </section>
+  )
+}
+
 const DesktopInfoHud = (options: {
   onClear(): void
-  onSelectAll(): void
   onToggleOpen(): void
   onTogglePin(pin: InfoPin): void
   open: boolean
@@ -240,14 +357,6 @@ const DesktopInfoHud = (options: {
       type="button"
     >
       Info
-      {options.view.selectedCount > 0 ? (
-        <span
-          aria-label={`${options.view.selectedCount} selected`}
-          role="status"
-        >
-          {options.view.selectedCount}
-        </span>
-      ) : null}
     </TapSafeButton>
     <section
       aria-labelledby="desktop-info-title"
@@ -258,20 +367,23 @@ const DesktopInfoHud = (options: {
     >
       <InfoPanelContent
         onClear={options.onClear}
-        onSelectAll={options.onSelectAll}
         onTogglePin={options.onTogglePin}
         titleId="desktop-info-title"
         view={options.view}
       />
     </section>
+    <InfoRail
+      className="desktop-info-rail"
+      onTogglePin={options.onTogglePin}
+      view={options.view}
+    />
   </div>
 )
 
 const emptyView: InfoHudView = {
   clearAvailable: false,
   entries: [],
-  rows: [],
-  selectedCount: 0,
+  targetMode: null,
 }
 
 export type InfoHud = {
@@ -284,6 +396,7 @@ export const createInfoHud = (options: {
   getMobileSurfaceActive(): boolean
   getView(): InfoHudView
   mobilePanelContainer: HTMLElement
+  mobileRailContainer: HTMLElement
   onClear(): void
   onTogglePin(pin: InfoPin): void
   toggleMobileInfoPanel(): void
@@ -300,14 +413,6 @@ export const createInfoHud = (options: {
     options.onClear()
     syncAfterAction()
   }
-  const selectAll = () => {
-    for (const row of view.rows) {
-      if (!row.pinned && !row.scenarioOwned) {
-        options.onTogglePin(row.pin)
-      }
-    }
-    syncAfterAction()
-  }
   const togglePin = (pin: InfoPin) => {
     options.onTogglePin(pin)
     syncAfterAction()
@@ -316,7 +421,6 @@ export const createInfoHud = (options: {
     render(
       <DesktopInfoHud
         onClear={clear}
-        onSelectAll={selectAll}
         onToggleOpen={() => setDesktopOpen(!desktopOpen)}
         onTogglePin={togglePin}
         open={desktopOpen}
@@ -327,12 +431,19 @@ export const createInfoHud = (options: {
     render(
       <InfoPanelContent
         onClear={clear}
-        onSelectAll={selectAll}
         onTogglePin={togglePin}
         titleId="mobile-command-dock-info-title"
         view={view}
       />,
       options.mobilePanelContainer,
+    )
+    render(
+      <InfoRail
+        className="mobile-info-rail"
+        onTogglePin={togglePin}
+        view={view}
+      />,
+      options.mobileRailContainer,
     )
   }
   const setDesktopOpen = (open: boolean) => {
@@ -345,15 +456,18 @@ export const createInfoHud = (options: {
   const getViewSignature = (nextView: InfoHudView) =>
     JSON.stringify({
       clearAvailable: nextView.clearAvailable,
-      entries: nextView.entries.map((entry) => entry.key),
-      rows: nextView.rows.map((row) => [
+      entries: nextView.entries.map((entry) => [
+        entry.key,
+        entry.kind === 'body' && entry.target,
+      ]),
+      rows: nextView.entries.map(({ row }) => [
         row.key,
         row.distanceLabel,
         row.secondaryLabel,
         row.pinned,
         row.scenarioOwned,
       ]),
-      selectedCount: nextView.selectedCount,
+      targetMode: nextView.targetMode,
     })
   const sync = () => {
     const nextView = options.getView()

@@ -3,7 +3,6 @@ import type { GameSceneRefs } from '../../scene/createGameScene'
 import { RENDER_SCALE } from '../../simulation/constants'
 import type { Body } from '../../simulation/types'
 import type { Vec2 } from '../../simulation/vector'
-import { formatDistance } from '../../ui/formatters'
 import {
   type OverlayUiRefs,
   spacecraftOffscreenIndicatorId,
@@ -219,6 +218,7 @@ const offscreenIndicatorBlockerSelectors = [
   '.touch-controls-tutorial-hint',
   '.mobile-command-dock-bar',
   '.mobile-command-dock-panel',
+  '.info-hud-rail',
 ]
 
 const getVisibleOffscreenIndicatorBlockerRects = (
@@ -328,7 +328,6 @@ export const updateOffscreenIndicators = (options: {
   bodies: Body[]
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
-  pinnedBodyIds: ReadonlySet<string>
   spacecraftPosition: Vec2
   targetBodyId: string | null
 }) => {
@@ -435,42 +434,29 @@ export const updateOffscreenIndicators = (options: {
         : 0
     const activeTarget =
       target.kind === 'body' && target.id === options.targetBodyId
-    const pinnedBody =
-      target.kind === 'body' && options.pinnedBodyIds.has(target.id)
-    const targetedBody = activeTarget && pinnedBody
-    const unlabeledBody = target.kind === 'body' && !pinnedBody
+    const bodyTarget = target.kind === 'body'
     let visualState = 'spacecraft'
-    if (unlabeledBody) {
-      visualState = 'unpinned'
-    } else if (targetedBody) {
+    if (activeTarget) {
       visualState = 'active-target'
-    } else if (pinnedBody) {
-      visualState = 'pinned'
+    } else if (bodyTarget) {
+      visualState = 'body'
     }
-    let labelText = 'Spacecraft'
+    const labelText = ''
     let accessibleLabel = 'Spacecraft, off screen'
     if (target.kind === 'body') {
-      const distanceLabel = formatDistance(bodySurfaceDistance)
-      accessibleLabel = unlabeledBody
-        ? `${target.name}, off screen`
-        : `${target.name}, surface distance ${distanceLabel}`
-      labelText = unlabeledBody ? '' : `${target.name} · ${distanceLabel}`
+      accessibleLabel = `${target.name}, off screen`
     }
 
     indicator.classList.toggle(
       'offscreen-indicator-active-target',
-      targetedBody,
+      activeTarget,
     )
-    indicator.classList.toggle('offscreen-indicator-pinned', pinnedBody)
-    indicator.classList.toggle(
-      'offscreen-indicator-unpinned-body',
-      unlabeledBody,
-    )
+    indicator.classList.toggle('offscreen-indicator-body', bodyTarget)
     indicator.classList.toggle(
       'offscreen-indicator-spacecraft',
       target.kind === 'spacecraft',
     )
-    indicator.classList.toggle('offscreen-indicator-unlabeled', unlabeledBody)
+    indicator.classList.add('offscreen-indicator-unlabeled')
     indicator.setAttribute('aria-label', accessibleLabel)
     indicator.setAttribute('role', 'img')
     const previousPlacement = getPreviousOffscreenIndicatorPlacement(indicator)
@@ -573,9 +559,9 @@ export const updateOffscreenIndicators = (options: {
     let priority = 3
     if (target.kind === 'spacecraft') {
       priority = 0
-    } else if (targetedBody) {
+    } else if (activeTarget) {
       priority = 1
-    } else if (pinnedBody) {
+    } else if (bodyTarget) {
       priority = 2
     }
 

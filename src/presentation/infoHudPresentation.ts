@@ -1,6 +1,9 @@
 import type { TrajectoryPredictionEventMarkerKind } from '../prediction/trajectoryPrediction'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import type { GameQueries } from '../runtime/gameQueries'
+import type {
+  AssistTargetSelectionSource,
+  GameQueries,
+} from '../runtime/gameQueries'
 import {
   apoapsisInfoPin,
   createBodyInfoPin,
@@ -30,6 +33,7 @@ export type InfoHudEntry =
       key: string
       kind: 'body'
       row: InfoHudRow
+      target: boolean
     }
   | {
       key: 'apsides'
@@ -45,8 +49,7 @@ export type InfoHudEntry =
 export type InfoHudView = {
   clearAvailable: boolean
   entries: InfoHudEntry[]
-  rows: InfoHudRow[]
-  selectedCount: number
+  targetMode: AssistTargetSelectionSource | null
 }
 
 const unavailableDistanceLabel = '—'
@@ -122,7 +125,8 @@ export const createInfoHudView = (options: {
   queries: Pick<GameQueries, 'getAssistTargetUiState'>
   runtime: AppRuntimeState
 }): InfoHudView => {
-  const target = options.queries.getAssistTargetUiState().activeTarget
+  const targetState = options.queries.getAssistTargetUiState()
+  const target = targetState.activeTarget
   const bodyEntries = options.runtime.simulation.state.bodies.map((body) => {
     const distanceLabel = formatSurfaceDistance(
       getBodySurfaceDistanceMeters(
@@ -131,7 +135,7 @@ export const createInfoHudView = (options: {
       ),
     )
     const row = createRow({
-      accessibleLabel: `${body.name}, surface distance ${distanceLabel}`,
+      accessibleLabel: `${body.name}, surface distance from spacecraft ${distanceLabel}`,
       distanceLabel,
       label: body.name,
       pin: createBodyInfoPin(body.id),
@@ -145,6 +149,7 @@ export const createInfoHudView = (options: {
         key: row.key,
         kind: 'body' as const,
         row,
+        target: body.id === target.id,
       },
       target: body.id === target.id,
     }
@@ -228,12 +233,10 @@ export const createInfoHudView = (options: {
     )
   })
   const entries = sortableEntries.map(({ entry }) => entry)
-  const rows = entries.map((entry) => entry.row)
 
   return {
     clearAvailable: options.runtime.info.userPins.length > 0,
     entries,
-    rows,
-    selectedCount: rows.filter((row) => row.pinned).length,
+    targetMode: targetState.mode,
   }
 }
