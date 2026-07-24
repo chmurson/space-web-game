@@ -367,9 +367,9 @@
 
   .mobile-command-dock-camera-controls {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
   }
 
@@ -586,19 +586,6 @@
       + var(--touch-edge-reveal-stack-offset)
       + var(--mobile-command-dock-hud-height)
     );
-  }
-}
-
-@media (max-width: 350px) and (hover: none),
-  (max-width: 350px) and (pointer: coarse) {
-  .mobile-command-dock-camera-controls {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-  }
-
-  .mobile-command-dock-camera-recenter {
-    width: 100%;
-    min-height: 36px;
   }
 }
 

@@ -1057,7 +1057,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
   ).toBeVisible()
 })
 
-test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
+test('captures active RCS and keeps hit-tested Main Thrust latched across Flight handoff', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
@@ -1148,10 +1148,14 @@ test('captures active RCS and hit-tested Main Thrust inside Flight', async ({
     path: testInfo.outputPath('mobile-command-dock-main-thrust-active-390.png'),
   })
 
-  await page.locator('#mobile-command-dock-flight-button').tap()
-  await expect(page.locator('.touch-thrust-control')).not.toHaveClass(
+  await page.locator('#mobile-command-dock-nav-button').tap()
+  await expect(page.locator('.touch-thrust-control')).toHaveClass(
     /touch-thrust-control-on/,
   )
+  await expect(page.locator('#mobile-command-dock-nav-panel')).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath('mobile-command-dock-nav-thrust-active-390.png'),
+  })
 })
 
 test('captures normal, capped, and blocked Time Warp feedback in Nav', async ({

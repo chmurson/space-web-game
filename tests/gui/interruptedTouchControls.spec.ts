@@ -194,6 +194,7 @@ test('hands interrupted control gestures to the newest touch', async ({
         openFlightPanel: () => flightButton.click(),
         openNavPanel: () => navButton.click(),
         remove: () => app.remove(),
+        setFlightControlsVisible: controls.setFlightControlsVisible,
         thrustControl,
         timeWarpControl,
       }
@@ -298,8 +299,10 @@ test('hands interrupted control gestures to the newest touch', async ({
     const thrustEngaged = timeWarpToThrust.getThrustEngagementCount() > 0
     const timeWarpAfterFlightSwitch = timeWarpToThrust.getTimeWarp()
     const thrustLatchedAfterRelease = timeWarpToThrust.getThrustEngaged()
-    timeWarpToThrust.closeFlightPanel()
-    const thrustAfterPanelClose = timeWarpToThrust.getThrustEngaged()
+    timeWarpToThrust.openNavPanel()
+    const thrustAfterPanelSwitch = timeWarpToThrust.getThrustEngaged()
+    timeWarpToThrust.setFlightControlsVisible(false)
+    const thrustAfterUnavailable = timeWarpToThrust.getThrustEngaged()
     timeWarpToThrust.remove()
 
     const closedThrustGesture = createHarness()
@@ -393,7 +396,8 @@ test('hands interrupted control gestures to the newest touch', async ({
       lateClosedMoveReengagedThrust,
       thrustAfterActivePanelClose,
       thrustAfterLateClosedMove,
-      thrustAfterPanelClose,
+      thrustAfterPanelSwitch,
+      thrustAfterUnavailable,
       thrustBeforeActivePanelClose,
       thrustEngaged,
       thrustLatchedAfterRelease,
@@ -405,9 +409,10 @@ test('hands interrupted control gestures to the newest touch', async ({
     postThrustTimeWarpValue: 30,
     successiveTimeWarpValue: 30,
     lateClosedMoveReengagedThrust: false,
-    thrustAfterActivePanelClose: false,
-    thrustAfterLateClosedMove: false,
-    thrustAfterPanelClose: false,
+    thrustAfterActivePanelClose: true,
+    thrustAfterLateClosedMove: true,
+    thrustAfterPanelSwitch: true,
+    thrustAfterUnavailable: false,
     thrustBeforeActivePanelClose: true,
     thrustEngaged: true,
     thrustLatchedAfterRelease: true,

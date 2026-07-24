@@ -27,14 +27,19 @@ Shipit state:
   unavailable Trajectory states.
 - A visual follow-up removed the redundant `Horizon` detail from the fixed
   70px Trajectory heading, made the vertically scrollable Nav panel explicitly
-  contain horizontal overflow, and reordered the dock to Flight, Nav, Info,
-  Ship, Settings.
+  contain horizontal overflow, stacked Camera's full-width `Recenter` action
+  below `Follow` at every mobile width, and reordered the dock to Flight, Nav,
+  Info, Ship, Settings.
 - A later interaction follow-up made outside mouse or touch input dismiss only
   the Target popup. Nav remains open, and pointer input inside the popup still
   preserves it across target commits.
 - A mobile settings follow-up removed the duplicate Trajectory prediction
   horizon from the coarse-pointer in-game Controls popover. Fine-pointer
   desktop keeps the existing Trajectory control and actions there.
+- A Flight handoff follow-up preserves a deliberately latched Main Thrust burn
+  while Flight is collapsed or the player uses Nav or Info. The outgoing touch
+  gesture is still released, and global input cancellation or Flight-control
+  unavailability still turns thrust off.
 
 ## Why
 
@@ -83,6 +88,9 @@ single predictable surface without changing simulation policy.
   atomically.
 - Reused the menu's existing Camera visibility boundary instead of adding a
   second input-mode query or another Trajectory visibility API.
+- Distinguished dock visibility from control availability: hiding Flight
+  releases its owned gesture without clearing the latched thrust model, while
+  blur, interaction disable, and scenario unavailability keep the full reset.
 
 ## Validation performed
 
@@ -128,11 +136,17 @@ single predictable surface without changing simulation policy.
   test; only the unchanged precise-yaw assertion above failed. A live
   coarse-pointer browser check found one UI settings action and zero Camera,
   Trajectory, or prediction-horizon controls in the open in-game menu.
+- The latched-thrust handoff passed its focused interruption and full-game dock
+  checks. The complete GUI command initially passed 83/85: its old Flight-close
+  expectation was updated for the requested behavior, while the same unrelated
+  precise-yaw assertion above remained. The final suite with only that known
+  stale assertion excluded passed 84/84. Targeted Biome, `git diff --check`,
+  and the release build passed.
 - Visually inspected the generated 320, 390, and 430 px Nav screenshots plus
   collapsed/open, recommended/manual, forced, capped, and unavailable states.
   The controls remain legible and non-overlapping. The redundant secondary
-  `Horizon` heading is removed at all widths; at 320 px Recenter stacks below
-  Follow, while at larger widths Camera keeps its compact single row:
+  `Horizon` heading is removed at all widths, and Recenter stacks below Follow
+  consistently at 320, 390, and 430 px:
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-320.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-390.png`
   - `tmp/playwright-results/mobileCommandDock-captures-f1837-trait-widths-and-safe-areas-mobile-chromium/mobile-command-dock-nav-open-safe-area-430.png`

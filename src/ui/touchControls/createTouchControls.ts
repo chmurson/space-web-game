@@ -419,7 +419,7 @@ export const createTouchControls = (options: {
     )
   }
 
-  const clearFlightInputs = () => {
+  const releaseFlightPanelInputs = () => {
     if (activeSession.kind === 'rcs-yaw-active') {
       clearRcsYawGesture()
     } else {
@@ -431,12 +431,11 @@ export const createTouchControls = (options: {
     ) {
       clearRightZoneGesture()
     }
-    thrustControl.clearInput()
   }
 
   handleDockPanelChange = (_nextPanel, previousPanel) => {
     if (previousPanel === 'flight') {
-      clearFlightInputs()
+      releaseFlightPanelInputs()
     }
     if (previousPanel === 'nav' && activeSession.kind === 'step-selector') {
       finishStepSelectorGesture(false)
@@ -474,7 +473,8 @@ export const createTouchControls = (options: {
     clearPendingTapState()
     cancelTargetHeadingPlan()
     clearZoneGesture()
-    clearFlightInputs()
+    releaseFlightPanelInputs()
+    thrustControl.clearInput()
     clearActiveSession()
     options.keyboardInput.clear()
   }
