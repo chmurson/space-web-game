@@ -205,6 +205,41 @@ describe('getKeyboardShortcutAction', () => {
     }
   })
 
+  it('leaves browser-modified zoom combinations unreserved', () => {
+    const context = {
+      autoDiscoverStrongestInfluence: false,
+      debugModeEnabled: false,
+    }
+
+    for (const code of ['Equal', 'Minus', 'NumpadAdd', 'NumpadSubtract']) {
+      for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+        expect(
+          getKeyboardShortcutAction(
+            {
+              ...createDebugShortcutEvent(code),
+              [modifier]: true,
+              shiftKey: code === 'Equal',
+            },
+            context,
+          ),
+        ).toBeNull()
+      }
+    }
+
+    expect(
+      getKeyboardShortcutAction(
+        {
+          ...createDebugShortcutEvent('Equal'),
+          shiftKey: true,
+        },
+        context,
+      ),
+    ).toBe('zoomIn')
+    expect(
+      getKeyboardShortcutAction(createDebugShortcutEvent('Minus'), context),
+    ).toBe('zoomOut')
+  })
+
   it('maps T to target cycling when automatic target discovery is disabled', () => {
     expect(
       getKeyboardShortcutAction(createDebugShortcutEvent('KeyT'), {

@@ -20,6 +20,9 @@ Shipit state:
   query for the new DPR.
 - App-component disposal removes the currently active DPR media-query
   listener.
+- Browser-modified `+`/`-` keyboard shortcuts and Ctrl/Meta wheel gestures no
+  longer dispatch game camera zoom. Plain unmodified camera zoom controls are
+  unchanged.
 
 ## Why
 
@@ -49,19 +52,23 @@ sized.
 - DPR-only notifications still run the existing camera/material/starfield
   viewport path, but do not rescale the heading screen position when logical
   viewport dimensions are unchanged.
-- No polling, simulation viewport mutation, camera zoom adjustment, or
-  browser-zoom compensation was added.
+- No polling, simulation viewport mutation, DPR-driven camera framing, or
+  CSS/browser-zoom compensation was added.
 
 ## Validation
 
-- Focused Vitest:
-  `tests/runtime/runtimeActions.test.ts` and
-  `tests/app/bindDevicePixelRatioChanges.test.ts` — 34 tests passed.
-- Full `npm test` — 66 Vitest files with 653 tests, 16 automation-claim tests,
+- Focused Vitest for DPR synchronization and browser-zoom input ownership —
+  4 files / 62 tests passed.
+- Focused browser regression — 1 Playwright test passed, confirming modified
+  browser zoom gestures preserve game-camera viewport size while plain game
+  zoom remains available.
+- Full `npm test` — 66 Vitest files with 655 tests, 16 automation-claim tests,
   and 4 automation-workflow tests passed.
 - `npm run build` — configuration validation, TypeScript compilation, and
   release Vite build passed.
 - Changed-file Biome and `git diff --check` passed.
+- Live Chromium emulation reproduced both supplied CSS/buffer/DPR measurement
+  sets and their effective `2 ×` renderer buffer ratio.
 
 ## Follow-ups and known gaps
 
@@ -69,3 +76,23 @@ sized.
 - Automated tests model DPR media-query notifications directly. Browser and
   operating-system support determine whether a particular display transition
   emits the corresponding media-query change event.
+
+## Browser zoom clarification
+
+Human review supplied two browser-zoom measurements:
+
+- At 125% zoom, CSS `751 × 746`, buffer `1502 × 1492`, browser DPR `2.5`.
+- At 200% zoom, CSS `469 × 466`, buffer `938 × 932`, browser DPR `4`.
+
+Both buffers are exactly `2 ×` their CSS dimensions, so the renderer DPR cap
+and synchronization are working as intended. The uncapped browser DPR remains
+observable through `window.devicePixelRatio`; only the renderer's effective
+pixel ratio is capped.
+
+Browser page zoom still changes CSS-pixel viewport dimensions, physical HUD
+size, and responsive breakpoint selection. That is native browser behavior and
+is not counteracted by this runtime change. The review did reveal a separate
+input collision: browser zoom shortcuts were also reaching the game's
+unmodified `+`/`-` camera shortcuts, and browser-modified wheel gestures were
+being consumed as camera zoom. Ignoring those modified events prevents an
+additional game-camera zoom while preserving browser-owned page zoom.

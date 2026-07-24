@@ -75,6 +75,20 @@ const createPointerEvent = (
   return event
 }
 
+const createBrowserZoomWheelEvent = (modifier: 'ctrlKey' | 'metaKey') => {
+  const event = new Event('wheel', {
+    bubbles: true,
+    cancelable: true,
+  }) as WheelEvent
+
+  Object.defineProperties(event, {
+    ctrlKey: { value: modifier === 'ctrlKey' },
+    metaKey: { value: modifier === 'metaKey' },
+  })
+
+  return event
+}
+
 const createHarness = (
   options: {
     cameraControlsLocked?: boolean
@@ -92,6 +106,7 @@ const createHarness = (
   const onTargetHeadingPlan = vi.fn()
   const onTargetHeadingPlanCanceled = vi.fn()
   const onTargetHeadingPlanCommitted = vi.fn(() => true)
+  const onZoom = vi.fn()
 
   const input = bindPointerCameraInput({
     camera: createCamera(),
@@ -107,7 +122,7 @@ const createHarness = (
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
     onTargetHeadingPlanCommitted,
-    onZoom: () => {},
+    onZoom,
     renderScale: 1,
     rendererElement: canvas as unknown as HTMLCanvasElement,
     windowTarget: windowTarget as unknown as Window,
@@ -120,6 +135,7 @@ const createHarness = (
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
     onTargetHeadingPlanCommitted,
+    onZoom,
     setCameraControlsLocked: (locked: boolean) => {
       cameraControlsLocked = locked
     },
@@ -128,6 +144,22 @@ const createHarness = (
     },
   }
 }
+
+describe('bindPointerCameraInput browser zoom isolation', () => {
+  it('leaves browser-modified wheel gestures to the browser', () => {
+    const harness = createHarness()
+
+    for (const modifier of ['ctrlKey', 'metaKey'] as const) {
+      const event = createBrowserZoomWheelEvent(modifier)
+
+      harness.canvas.dispatchEvent(event)
+
+      expect(event.defaultPrevented).toBe(false)
+    }
+
+    expect(harness.onZoom).not.toHaveBeenCalled()
+  })
+})
 
 describe('bindPointerCameraInput target heading planning', () => {
   it('does not start target-heading planning from a mouse click', () => {
