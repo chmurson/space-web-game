@@ -10,11 +10,7 @@ import {
 const storageKey = 'space-web-game.userSettings.v1'
 
 const defaultOrbitPointDisplay = {
-  altitudeVisible: true,
-  centerDistanceVisible: false,
-  labelsVisible: true,
   markersVisible: true,
-  pointNameVisible: true,
 }
 
 const createWindowWithStorage = () => {
@@ -66,11 +62,7 @@ describe('userSettingsStorage', () => {
       desktopEdgePanSpeed: 'fast',
       debugModeEnabled: true,
       orbitPointDisplay: {
-        altitudeVisible: false,
-        centerDistanceVisible: true,
-        labelsVisible: false,
         markersVisible: false,
-        pointNameVisible: false,
       },
       mobileManeuverStartByDrag: false,
       touchBurnControlSide: 'left',
@@ -85,11 +77,7 @@ describe('userSettingsStorage', () => {
       debugModeEnabled: true,
       mobileManeuverStartByDrag: false,
       orbitPointDisplay: {
-        altitudeVisible: false,
-        centerDistanceVisible: true,
-        labelsVisible: false,
         markersVisible: false,
-        pointNameVisible: false,
       },
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
@@ -165,7 +153,7 @@ describe('userSettingsStorage', () => {
     })
   })
 
-  it('fills missing orbit point display fields from defaults', () => {
+  it('migrates legacy orbit label fields to marker visibility only', () => {
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
@@ -173,6 +161,8 @@ describe('userSettingsStorage', () => {
         orbitPointDisplay: {
           centerDistanceVisible: true,
           labelsVisible: false,
+          markersVisible: false,
+          pointNameVisible: false,
         },
       }),
     )
@@ -182,11 +172,7 @@ describe('userSettingsStorage', () => {
       desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
       mobileManeuverStartByDrag: true,
-      orbitPointDisplay: {
-        ...defaultOrbitPointDisplay,
-        centerDistanceVisible: true,
-        labelsVisible: false,
-      },
+      orbitPointDisplay: { markersVisible: false },
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -225,12 +211,9 @@ describe('userSettingsStorage', () => {
   it('resolves scenario orbit point display overrides over user settings', () => {
     expect(
       resolveOrbitPointDisplaySettings(defaultOrbitPointDisplay, {
-        centerDistanceVisible: true,
         markersVisible: false,
       }),
     ).toEqual({
-      ...defaultOrbitPointDisplay,
-      centerDistanceVisible: true,
       markersVisible: false,
     })
 

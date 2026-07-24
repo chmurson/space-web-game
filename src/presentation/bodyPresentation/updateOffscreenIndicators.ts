@@ -3,12 +3,12 @@ import type { GameSceneRefs } from '../../scene/createGameScene'
 import { RENDER_SCALE } from '../../simulation/constants'
 import type { Body } from '../../simulation/types'
 import type { Vec2 } from '../../simulation/vector'
-import { formatDistance } from '../../ui/formatters'
 import {
   type OverlayUiRefs,
   spacecraftOffscreenIndicatorId,
 } from '../../ui/overlayUI/createOverlayUi'
 import { createMeasuredFunction } from '../../utils/measuredFunction'
+import { getBodySurfaceDistanceMeters } from '../bodyDistanceContext'
 import {
   type OffscreenIndicatorArrowSide,
   type OffscreenIndicatorEdge,
@@ -86,11 +86,13 @@ const getIndicatorPartRefs = (indicator: HTMLElement): IndicatorPartRefs => {
 const getIndicatorBoundsCacheKey = (options: {
   labelText: string
   stacked: boolean
+  visualState: string
   viewportHeight: number
   viewportWidth: number
 }) =>
   [
     options.stacked ? 'stacked' : 'inline',
+    options.visualState,
     options.viewportWidth,
     options.viewportHeight,
     options.labelText,
@@ -154,12 +156,14 @@ const getIndicatorBounds = (options: {
   labelText: string
   measurementLabel: string
   stacked: boolean
+  visualState: string
   viewportHeight: number
   viewportWidth: number
 }): IndicatorBounds => {
   const cacheKey = getIndicatorBoundsCacheKey({
     labelText: options.labelText,
     stacked: options.stacked,
+    visualState: options.visualState,
     viewportHeight: options.viewportHeight,
     viewportWidth: options.viewportWidth,
   })
@@ -214,6 +218,7 @@ const offscreenIndicatorBlockerSelectors = [
   '.touch-controls-tutorial-hint',
   '.mobile-command-dock-bar',
   '.mobile-command-dock-panel',
+  '.info-hud-rail',
 ]
 
 const getVisibleOffscreenIndicatorBlockerRects = (
@@ -302,25 +307,34 @@ const getPreviousOffscreenIndicatorArrowSide = (
     ? indicator.dataset.offscreenIndicatorArrowSide
     : undefined
 
-type OffscreenIndicatorTarget = {
-  id: string
-  lift: number
-  name: string
-  position: Vec2
-}
+type OffscreenIndicatorTarget =
+  | {
+      body: Body
+      id: string
+      kind: 'body'
+      lift: number
+      name: string
+      position: Vec2
+    }
+  | {
+      id: string
+      kind: 'spacecraft'
+      lift: number
+      name: 'Spacecraft'
+      position: Vec2
+    }
 
 export const updateOffscreenIndicators = (options: {
   bodies: Body[]
   gameScene: GameSceneRefs
   overlayUi: OverlayUiRefs
   spacecraftPosition: Vec2
-  viewportSize: number
+  targetBodyId: string | null
 }) => {
   const edgePadding = 12
   const blockerPadding = 6
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
-  const screenCenterX = viewportWidth * 0.5
   const mobileViewport = window.matchMedia(
     '(hover: none), (pointer: coarse)',
   ).matches
@@ -357,19 +371,20 @@ export const updateOffscreenIndicators = (options: {
     viewportHeight,
     viewportWidth,
   )
-  const metersPerPixel =
-    options.viewportSize / Math.max(viewportHeight, 1) / RENDER_SCALE
   const targets: OffscreenIndicatorTarget[] = [
     ...options.bodies.map((body) => ({
+      body,
       id: body.id,
+      kind: 'body' as const,
       lift: body.radius * RENDER_SCALE,
       name: body.name,
       position: body.position,
     })),
     {
       id: spacecraftOffscreenIndicatorId,
+      kind: 'spacecraft',
       lift: 1.2,
-      name: 'Spacecraft',
+      name: 'Spacecraft' as const,
       position: options.spacecraftPosition,
     },
   ]
@@ -413,24 +428,39 @@ export const updateOffscreenIndicators = (options: {
     const projectedX = (position.x * 0.5 + 0.5) * viewportWidth
     const projectedY = (-position.y * 0.5 + 0.5) * viewportHeight
     const { label, pointer } = getIndicatorPartRefs(indicator)
+    const bodySurfaceDistance =
+      target.kind === 'body'
+        ? getBodySurfaceDistanceMeters(target.body, options.spacecraftPosition)
+        : 0
+    const activeTarget =
+      target.kind === 'body' && target.id === options.targetBodyId
+    const bodyTarget = target.kind === 'body'
+    let visualState = 'spacecraft'
+    if (activeTarget) {
+      visualState = 'active-target'
+    } else if (bodyTarget) {
+      visualState = 'body'
+    }
+    const labelText = ''
+    let accessibleLabel = 'Spacecraft, off screen'
+    if (target.kind === 'body') {
+      accessibleLabel = `${target.name}, off screen`
+    }
+
+    indicator.classList.toggle(
+      'offscreen-indicator-active-target',
+      activeTarget,
+    )
+    indicator.classList.toggle('offscreen-indicator-body', bodyTarget)
+    indicator.classList.toggle(
+      'offscreen-indicator-spacecraft',
+      target.kind === 'spacecraft',
+    )
+    indicator.classList.add('offscreen-indicator-unlabeled')
+    indicator.setAttribute('aria-label', accessibleLabel)
+    indicator.setAttribute('role', 'img')
     const previousPlacement = getPreviousOffscreenIndicatorPlacement(indicator)
     const previousArrowSide = getPreviousOffscreenIndicatorArrowSide(indicator)
-    const provisionalPlacement = previousPlacement ?? {
-      edge: 'right' as const,
-      x: screenCenterX,
-      y: viewportHeight * 0.5,
-    }
-    const provisionalVector = resolveOffscreenIndicatorVector({
-      placement: provisionalPlacement,
-      projectedX,
-      projectedY,
-      viewportHeight,
-      viewportWidth,
-    })
-    const provisionalLabelText = `${target.name} ${formatDistance(
-      provisionalVector.distancePixels * metersPerPixel,
-    )}`
-
     indicator.style.display = 'flex'
     indicator.style.visibility = 'hidden'
     indicator.classList.remove('offscreen-indicator-mobile-stack')
@@ -450,6 +480,7 @@ export const updateOffscreenIndicators = (options: {
         viewportWidth,
       })
     const shouldStackPlacement = (placement: OffscreenIndicatorPlacement) =>
+      labelText.length > 0 &&
       mobileViewport &&
       portraitViewport &&
       placement.y > viewportHeight * 0.2 &&
@@ -457,9 +488,10 @@ export const updateOffscreenIndicators = (options: {
     const unstackedBounds = getIndicatorBounds({
       indicator,
       label,
-      labelText: provisionalLabelText,
+      labelText,
       measurementLabel: `${target.id}:initial`,
       stacked: false,
+      visualState,
       viewportHeight,
       viewportWidth,
     })
@@ -473,9 +505,10 @@ export const updateOffscreenIndicators = (options: {
       const stackedBounds = getIndicatorBounds({
         indicator,
         label,
-        labelText: provisionalLabelText,
+        labelText,
         measurementLabel: `${target.id}:stacked`,
         stacked: true,
+        visualState,
         viewportHeight,
         viewportWidth,
       })
@@ -517,19 +550,25 @@ export const updateOffscreenIndicators = (options: {
       viewportHeight,
       viewportWidth,
     })
-    const distance = vector.distancePixels * metersPerPixel
-    const finalLabelText = `${target.name} ${formatDistance(distance)}`
-
     if (pointer) {
       pointer.style.transform = `rotate(${vector.direction + Math.PI / 2}rad)`
     }
-    setLabelText(label, finalLabelText)
+    setLabelText(label, labelText)
 
     indicator.style.visibility = 'visible'
+    let priority = 3
+    if (target.kind === 'spacecraft') {
+      priority = 0
+    } else if (activeTarget) {
+      priority = 1
+    } else if (bodyTarget) {
+      priority = 2
+    }
+
     visibleIndicators.push({
-      distance,
+      distance: bodySurfaceDistance,
       indicator,
-      priority: target.id === spacecraftOffscreenIndicatorId ? 0 : 1,
+      priority,
       rect: getPlacedIndicatorRect(placement, placementBounds),
     })
   }

@@ -300,6 +300,11 @@ export const createFrameLoop = (options: {
       distanceContext,
       elapsed: options.runtime.simulation.state.elapsed,
       hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
+      infoPins: [
+        ...options.runtime.scenario.directives.infoPins,
+        ...options.runtime.info.userPins,
+      ],
+      nowMs: time,
       spacecraftPosition: options.runtime.simulation.state.spacecraft.position,
       viewportSize: options.runtime.simulation.viewportSize,
     })
@@ -378,6 +383,11 @@ export const createFrameLoop = (options: {
         distanceContext,
         elapsed: options.runtime.simulation.state.elapsed,
         hiddenBodyIds: options.runtime.scenario.directives.hiddenBodyIds,
+        infoPins: [
+          ...options.runtime.scenario.directives.infoPins,
+          ...options.runtime.info.userPins,
+        ],
+        nowMs: performance.now(),
         spacecraftPosition:
           options.runtime.simulation.state.spacecraft.position,
         viewportSize: options.runtime.simulation.viewportSize,

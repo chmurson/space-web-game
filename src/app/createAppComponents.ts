@@ -1,6 +1,10 @@
 import * as THREE from 'three'
 import { installDevtoolsBridge } from '../devtools/devtoolsBridge'
 import { bindKeyboardShortcuts } from '../input/bindKeyboardShortcuts'
+import {
+  bindCanvasInfoPinLabels,
+  createCanvasInfoPinPicker,
+} from '../input/canvasInfoPinInput'
 import { createKeyboardInput } from '../input/keyboardInput'
 import {
   bindPointerCameraInput,
@@ -70,6 +74,7 @@ import {
   resolveOrbitPointDisplaySettings,
   updateUserSettings,
 } from '../userSettingsStorage'
+import { bindDevicePixelRatioChanges } from './bindDevicePixelRatioChanges'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
 
 type AppRuntimeCoordinator = {
@@ -95,6 +100,7 @@ export type AppComponents = {
   mainMenu: MainMenu
   topMenu: TopMenu
   crashMenu: CrashMenu
+  dispose(): void
   initialize(): void
   start(): void
 }
@@ -189,8 +195,6 @@ export const createAppComponents = (options: {
 }): AppComponents => {
   const desktopFinePointerMedia = window.matchMedia(desktopFinePointerQuery)
   const renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setClearColor(0x05070d)
   options.app.appendChild(renderer.domElement)
   const scenarioLoadingOverlay = createScenarioLoadingOverlay({
@@ -359,6 +363,19 @@ export const createAppComponents = (options: {
     timeWarps: options.config.controls.timeWarps,
     updateUserSettings,
   })
+  runtimeActions.handleResize()
+  const disposeDevicePixelRatioChanges = bindDevicePixelRatioChanges({
+    onChange: runtimeActions.handleResize,
+    windowTarget: window,
+  })
+  bindCanvasInfoPinLabels({
+    onTogglePin: runtimeActions.toggleUserInfoPin,
+    overlayUi,
+  })
+  const pickCanvasInfoPin = createCanvasInfoPinPicker({
+    gameScene,
+    rendererElement: renderer.domElement,
+  })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
@@ -381,7 +398,40 @@ export const createAppComponents = (options: {
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
-  let cameraKeyboardNoticeSequence = 0
+  let cameraNoticeSequence = 0
+  const showDesktopCameraNotice = (
+    title: 'Camera centered' | 'Camera following',
+  ) => {
+    if (!desktopFinePointerMedia.matches) {
+      return
+    }
+
+    let body = 'Spacecraft'
+    if (runtimeActions.getCameraFollow() === 'target') {
+      const targetName = queries.getAssistTargetUiState().activeTarget.name
+      body = `Current target · ${targetName}`
+    }
+
+    cameraNoticeSequence += 1
+    options.runtimeState.ui.transientNotice = {
+      body,
+      id: `camera-notice-${cameraNoticeSequence}`,
+      title,
+    }
+  }
+  const commitDesktopTargetChange = (commit: () => boolean) => {
+    const previousTargetId = queries.getAssistTargetUiState().activeTarget.id
+    if (!commit()) {
+      return false
+    }
+
+    const targetChanged =
+      queries.getAssistTargetUiState().activeTarget.id !== previousTargetId
+    if (targetChanged) {
+      showDesktopCameraNotice('Camera following')
+    }
+    return true
+  }
   const getTargetControlRows = () =>
     options.runtimeState.simulation.state.bodies.map((body, index) => ({
       body,
@@ -534,9 +584,14 @@ export const createAppComponents = (options: {
     button: overlayUi.targetSelectorButton,
     getRows: getTargetControlRows,
     getTargetState: queries.getAssistTargetUiState,
-    onReturnToAutomaticTarget:
-      runtimeActions.returnToAutomaticAssistTargetSelection,
-    onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
+    onReturnToAutomaticTarget: () =>
+      commitDesktopTargetChange(
+        runtimeActions.returnToAutomaticAssistTargetSelection,
+      ),
+    onSelectTargetIndex: (index) =>
+      commitDesktopTargetChange(() =>
+        runtimeActions.selectAssistTargetIndex(index),
+      ),
     onStateChange: () => {
       syncTargetRecommendationState()
       touchControls.syncUi()
@@ -662,6 +717,15 @@ export const createAppComponents = (options: {
     getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
     onCameraPan: runtimeActions.panCamera,
+    onPrimaryTap: (clientX, clientY) => {
+      const pin = pickCanvasInfoPin(clientX, clientY)
+      if (!pin) {
+        return false
+      }
+
+      runtimeActions.toggleUserInfoPin(pin)
+      return true
+    },
     onResize: runtimeActions.handleResize,
     onTargetHeadingPlan: (heading, selection) => {
       runtimeActions.planTargetHeading({
@@ -868,24 +932,15 @@ export const createAppComponents = (options: {
     const cameraControlsLocked = runtimeActions.getCameraControlsLocked()
     dispatchRuntimeAction(action)
 
-    if (
-      !cameraShortcut ||
-      cameraControlsLocked ||
-      !desktopFinePointerMedia.matches
-    ) {
+    if (!cameraShortcut || cameraControlsLocked) {
       return
     }
 
-    const centeredTargetName =
-      runtimeActions.getCameraFollow() === 'target'
-        ? queries.getAssistTargetUiState().activeTarget.name
-        : 'Spacecraft'
-    cameraKeyboardNoticeSequence += 1
-    options.runtimeState.ui.transientNotice = {
-      body: centeredTargetName,
-      id: `camera-centered-${cameraKeyboardNoticeSequence}`,
-      title: 'Camera centered',
+    if (action === 'toggleCameraFollow') {
+      showDesktopCameraNotice('Camera following')
+      return
     }
+    showDesktopCameraNotice('Camera centered')
   }
 
   bindKeyboardShortcuts({
@@ -998,6 +1053,7 @@ export const createAppComponents = (options: {
     mainMenu,
     topMenu,
     crashMenu,
+    dispose: disposeDevicePixelRatioChanges,
     initialize: coordinator.initialize,
     start: () => {
       frameLoop.start()

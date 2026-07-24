@@ -1,24 +1,7 @@
 import type { OrbitPointDisplaySettings } from '../../userSettingsStorage'
 
-const joinClassNames = (...classNames: Array<string | false | undefined>) =>
-  classNames.filter(Boolean).join(' ')
-
 const getOrbitPointDisplaySummary = (settings: OrbitPointDisplaySettings) => {
-  if (!settings.markersVisible) {
-    return 'Markers off'
-  }
-
-  if (!settings.labelsVisible) {
-    return 'Markers on, labels off'
-  }
-
-  return [
-    'Markers on',
-    'labels on',
-    `altitude ${settings.altitudeVisible ? 'on' : 'off'}`,
-    `center ${settings.centerDistanceVisible ? 'on' : 'off'}`,
-    `name ${settings.pointNameVisible ? 'on' : 'off'}`,
-  ].join(', ')
+  return settings.markersVisible ? 'Markers on' : 'Markers off'
 }
 
 const desktopSpacecraftControlsSummary = 'Keyboard and mouse active'
@@ -155,9 +138,6 @@ export const UiSettingsDialogSurface = ({
     key: keyof OrbitPointDisplaySettings,
     value: boolean,
   ) => onOrbitPointDisplayChange({ ...orbitPointDisplay, [key]: value })
-  const orbitLabelsDisabled = !orbitPointDisplay.markersVisible
-  const orbitFieldsDisabled =
-    !orbitPointDisplay.markersVisible || !orbitPointDisplay.labelsVisible
   const spacecraftSettingsVisible = touchControlsVisible
 
   const mainPanel = (
@@ -362,51 +342,6 @@ export const UiSettingsDialogSurface = ({
               updateOrbitPointDisplay('markersVisible', checked)
             }
           />
-          <UiSettingsSwitch
-            checked={orbitPointDisplay.labelsVisible}
-            disabled={orbitLabelsDisabled}
-            label="Show marker labels"
-            onChange={(checked) =>
-              updateOrbitPointDisplay('labelsVisible', checked)
-            }
-          />
-          {/* biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern. */}
-          <div
-            class={joinClassNames(
-              'app-dialog-setting-group',
-              orbitFieldsDisabled && 'app-dialog-setting-group-disabled',
-            )}
-            role="group"
-            aria-label="Marker label contents"
-          >
-            <span class="app-dialog-setting-group-label">
-              Marker label contents
-            </span>
-            <UiSettingsSwitch
-              checked={orbitPointDisplay.pointNameVisible}
-              disabled={orbitFieldsDisabled}
-              label="Show point name"
-              onChange={(checked) =>
-                updateOrbitPointDisplay('pointNameVisible', checked)
-              }
-            />
-            <UiSettingsSwitch
-              checked={orbitPointDisplay.altitudeVisible}
-              disabled={orbitFieldsDisabled}
-              label="Show altitude"
-              onChange={(checked) =>
-                updateOrbitPointDisplay('altitudeVisible', checked)
-              }
-            />
-            <UiSettingsSwitch
-              checked={orbitPointDisplay.centerDistanceVisible}
-              disabled={orbitFieldsDisabled}
-              label="Show center distance"
-              onChange={(checked) =>
-                updateOrbitPointDisplay('centerDistanceVisible', checked)
-              }
-            />
-          </div>
         </div>
       </div>
     </>

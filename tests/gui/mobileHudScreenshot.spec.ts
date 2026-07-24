@@ -2272,11 +2272,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
     let orbitPointDisplay = {
-      altitudeVisible: true,
-      centerDistanceVisible: false,
-      labelsVisible: true,
       markersVisible: true,
-      pointNameVisible: true,
     }
     const orbitEvents: string[] = []
 
@@ -2292,9 +2288,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       onOrbitPointDisplayChange: (settings: typeof orbitPointDisplay) => {
-        orbitEvents.push(
-          `markers:${settings.markersVisible};labels:${settings.labelsVisible};center:${settings.centerDistanceVisible};name:${settings.pointNameVisible}`,
-        )
+        orbitEvents.push(`markers:${settings.markersVisible}`)
         orbitPointDisplay = settings
       },
       onOpenChange: (open: boolean) => openEvents.push(open),
@@ -2368,8 +2362,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         '.app-dialog-setting-group-label',
       ) as NodeListOf<HTMLElement>,
     ).map((label) => label.textContent)
-    const controlSidesPresent =
-      dialog.element.querySelector('[aria-label="Control sides"]') !== null
     const maneuverSwitchInitial = getButtonByText(
       'Starts by drag or tap',
     )?.getAttribute('aria-checked')
@@ -2424,45 +2416,11 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         dialog.element.querySelectorAll('.app-dialog-switch'),
       ) as HTMLButtonElement[]
     ).map((button) => button.textContent?.trim())
-    const orbitLabelGroup = dialog.element.querySelector(
-      '.app-dialog-setting-group-label',
-    )?.textContent
-    const centerDistanceInitial = getButtonByText(
-      'Show center distance',
-    )?.getAttribute('aria-checked')
-    getButtonByText('Show center distance')?.click()
-    getButtonByText('Show point name')?.click()
-    const centerDistanceAfter = getButtonByText(
-      'Show center distance',
-    )?.getAttribute('aria-checked')
-    const pointNameAfter =
-      getButtonByText('Show point name')?.getAttribute('aria-checked')
-    getButtonByText('Show marker labels')?.click()
-    const labelSwitchDisabledWhenLabelsOff =
-      getButtonByText('Show marker labels')?.disabled
-    const altitudeDisabledWhenLabelsOff =
-      getButtonByText('Show altitude')?.disabled
-    const centerDisabledWhenLabelsOff = getButtonByText(
-      'Show center distance',
-    )?.disabled
-    const pointNameDisabledWhenLabelsOff =
-      getButtonByText('Show point name')?.disabled
-    getButtonByText('Show center distance')?.click()
-    const eventCountAfterDisabledCenterClick = orbitEvents.length
-    getButtonByText('Show marker labels')?.click()
-    getButtonByText('Show closest/farthest markers')?.click()
-    const markerSwitchDisabledWhenMarkersOff = getButtonByText(
-      'Show closest/farthest markers',
-    )?.disabled
-    const labelSwitchDisabledWhenMarkersOff =
-      getButtonByText('Show marker labels')?.disabled
-    const altitudeDisabledWhenMarkersOff =
-      getButtonByText('Show altitude')?.disabled
-    const centerDisabledWhenMarkersOff = getButtonByText(
-      'Show center distance',
-    )?.disabled
-    const pointNameDisabledWhenMarkersOff =
-      getButtonByText('Show point name')?.disabled
+    const markerSwitch = getButtonByText('Show closest/farthest markers')
+    const markerSwitchInitial = markerSwitch?.getAttribute('aria-checked')
+    markerSwitch?.click()
+    const markerSwitchAfterOff = markerSwitch?.getAttribute('aria-checked')
+    const markerSwitchDisabledWhenOff = markerSwitch?.disabled
     getButtonByText('Show closest/farthest markers')?.click()
     getButtonByText('Back')?.click()
     const titleAfterOrbitBack =
@@ -2533,13 +2491,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       hiddenAfterCloseButton,
       hiddenAfterEscape,
       hiddenTriggerWasActiveBeforeOpen,
-      centerDistanceAfter,
-      centerDistanceInitial,
-      controlSidesPresent,
-      altitudeDisabledWhenLabelsOff,
-      altitudeDisabledWhenMarkersOff,
-      centerDisabledWhenLabelsOff,
-      centerDisabledWhenMarkersOff,
       edgePanSwitchAfter,
       edgePanSwitchAfterText,
       edgePanSwitchInitial,
@@ -2549,32 +2500,21 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       edgePanSpeedDecreaseDisabledAfterToggle,
       edgePanSpeedHiddenInitial,
       edgePanSpeedIncreaseDisabledAfterIncrease,
-      eventCountAfterDisabledCenterClick,
-      labelSwitchDisabledWhenLabelsOff,
-      labelSwitchDisabledWhenMarkersOff,
       maneuverSwitchAfter,
       maneuverSwitchAfterText,
       maneuverSwitchInitial,
       maneuverSwitchInitialText,
-      markerSwitchDisabledWhenMarkersOff,
+      markerSwitchAfterOff,
+      markerSwitchDisabledWhenOff,
+      markerSwitchInitial,
       openAfterOpen,
       openEvents,
       orbitEvents,
       orbitFocusAfterOpen,
-      orbitSummaryAfterChangesIncludesCenterOn:
-        orbitSummaryAfterChanges?.includes('center on'),
-      orbitSummaryAfterChangesIncludesNameOff:
-        orbitSummaryAfterChanges?.includes('name off'),
-      orbitSummaryInitialIncludesCenterOff:
-        orbitSummaryInitial?.includes('center off'),
-      orbitSummaryInitialIncludesNameOn:
-        orbitSummaryInitial?.includes('name on'),
-      orbitLabelGroup,
+      orbitSummaryAfterChanges,
+      orbitSummaryInitial,
       orbitSwitchOrder,
       orbitTitleAfterOpen,
-      pointNameAfter,
-      pointNameDisabledWhenLabelsOff,
-      pointNameDisabledWhenMarkersOff,
       role,
       spacecraftControlGroup,
       spacecraftControlGroups,
@@ -2604,13 +2544,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     hiddenAfterCloseButton: true,
     hiddenAfterEscape: true,
     hiddenTriggerWasActiveBeforeOpen: true,
-    centerDistanceAfter: 'true',
-    centerDistanceInitial: 'false',
-    controlSidesPresent: false,
-    altitudeDisabledWhenLabelsOff: true,
-    altitudeDisabledWhenMarkersOff: true,
-    centerDisabledWhenLabelsOff: true,
-    centerDisabledWhenMarkersOff: true,
     edgePanSwitchAfter: 'true',
     edgePanSwitchAfterText:
       'Turn on scrolling by edge panScrolling by edge pan',
@@ -2622,41 +2555,21 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     edgePanSpeedDecreaseDisabledAfterToggle: false,
     edgePanSpeedHiddenInitial: true,
     edgePanSpeedIncreaseDisabledAfterIncrease: true,
-    eventCountAfterDisabledCenterClick: 3,
-    labelSwitchDisabledWhenLabelsOff: false,
-    labelSwitchDisabledWhenMarkersOff: true,
     maneuverSwitchAfter: 'false',
     maneuverSwitchAfterText: 'Starts by drag or tapStarts by tap',
     maneuverSwitchInitial: 'true',
     maneuverSwitchInitialText: 'Starts by drag or tapStarts by drag',
-    markerSwitchDisabledWhenMarkersOff: false,
+    markerSwitchAfterOff: 'false',
+    markerSwitchDisabledWhenOff: false,
+    markerSwitchInitial: 'true',
     openAfterOpen: true,
     openEvents: [true, false, true, false, true, false, true, false],
-    orbitEvents: [
-      'markers:true;labels:true;center:true;name:true',
-      'markers:true;labels:true;center:true;name:false',
-      'markers:true;labels:false;center:true;name:false',
-      'markers:true;labels:true;center:true;name:false',
-      'markers:false;labels:true;center:true;name:false',
-      'markers:true;labels:true;center:true;name:false',
-    ],
+    orbitEvents: ['markers:false', 'markers:true'],
     orbitFocusAfterOpen: true,
-    orbitSummaryAfterChangesIncludesCenterOn: true,
-    orbitSummaryAfterChangesIncludesNameOff: true,
-    orbitSummaryInitialIncludesCenterOff: true,
-    orbitSummaryInitialIncludesNameOn: true,
-    orbitLabelGroup: 'Marker label contents',
-    orbitSwitchOrder: [
-      'Show closest/farthest markers',
-      'Show marker labels',
-      'Show point name',
-      'Show altitude',
-      'Show center distance',
-    ],
+    orbitSummaryAfterChanges: 'Orbit point displayMarkers on>',
+    orbitSummaryInitial: 'Orbit point displayMarkers on>',
+    orbitSwitchOrder: ['Show closest/farthest markers'],
     orbitTitleAfterOpen: 'Orbit point display',
-    pointNameAfter: 'false',
-    pointNameDisabledWhenLabelsOff: true,
-    pointNameDisabledWhenMarkersOff: true,
     role: 'dialog',
     spacecraftControlGroup: 'Maneuvers',
     spacecraftControlGroups: ['Maneuvers', 'Camera'],
@@ -2689,11 +2602,7 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
     const orbitPointDisplay = {
-      altitudeVisible: true,
-      centerDistanceVisible: true,
-      labelsVisible: true,
       markersVisible: true,
-      pointNameVisible: true,
     }
 
     document.body.append(app)
@@ -2897,11 +2806,7 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
       getDesktopEdgePanVisible: () => true,
       getMobileManeuverStartByDrag: () => true,
       getOrbitPointDisplay: () => ({
-        altitudeVisible: true,
-        centerDistanceVisible: false,
-        labelsVisible: true,
         markersVisible: true,
-        pointNameVisible: true,
       }),
       onDesktopEdgePanEnabledChange: (enabled: boolean) => {
         desktopEdgePanEnabled = enabled
@@ -3112,16 +3017,16 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
   await expect(page.getByRole('dialog', { name: 'UI settings' })).toBeVisible()
 
   await page.getByRole('button', { name: /Orbit point display/ }).click()
+  const orbitPointDialog = page.getByRole('dialog', {
+    name: 'Orbit point display',
+  })
+  await expect(orbitPointDialog).toBeVisible()
   await expect(
-    page.getByRole('dialog', { name: 'Orbit point display' }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('switch', { name: 'Show altitude' }),
+    orbitPointDialog.getByRole('switch', {
+      name: 'Show closest/farthest markers',
+    }),
   ).toHaveAttribute('aria-checked', 'true')
-  await expect(
-    page.getByRole('switch', { name: 'Show center distance' }),
-  ).toHaveAttribute('aria-checked', 'false')
-  await expect(page.getByText('Marker label contents')).toBeVisible()
+  await expect(orbitPointDialog.getByRole('switch')).toHaveCount(1)
 
   await attachMobileScreenshot(
     page,
@@ -3129,36 +3034,15 @@ test('captures the mobile UI settings dialog opened from in-game controls', asyn
     'mobile-orbit-point-display-dialog',
   )
 
-  await page.getByRole('switch', { name: 'Show marker labels' }).click()
-  await expect(
-    page.getByRole('switch', { name: 'Show marker labels' }),
-  ).toBeEnabled()
-  await expect(
-    page.getByRole('switch', { name: 'Show altitude' }),
-  ).toBeDisabled()
-  await expect(
-    page.getByRole('switch', { name: 'Show center distance' }),
-  ).toBeDisabled()
-
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'mobile-orbit-point-display-labels-disabled-dialog',
-  )
-
-  await page.getByRole('switch', { name: 'Show marker labels' }).click()
-  await page
+  await orbitPointDialog
     .getByRole('switch', { name: 'Show closest/farthest markers' })
     .click()
   await expect(
-    page.getByRole('switch', { name: 'Show closest/farthest markers' }),
+    orbitPointDialog.getByRole('switch', {
+      name: 'Show closest/farthest markers',
+    }),
   ).toBeEnabled()
-  await expect(
-    page.getByRole('switch', { name: 'Show marker labels' }),
-  ).toBeDisabled()
-  await expect(
-    page.getByRole('switch', { name: 'Show altitude' }),
-  ).toBeDisabled()
+  await expect(orbitPointDialog.getByRole('switch')).toHaveCount(1)
 
   await attachMobileScreenshot(
     page,

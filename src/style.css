@@ -11,7 +11,11 @@
 }
 
 :root {
-  /* base z-index values */
+  /*
+   * Global stacking contract: in-game DOM ends below overlay DOM.
+   * Keep every in-game cue at or below --z-in-game-floating-elements and
+   * every HUD surface at or above --z-overlay-floating.
+   */
   --z-in-game-elements: 10;
   --z-in-game-floating-elements: 15;
   --z-overlay-floating: 20;
@@ -22,7 +26,7 @@
   --z-overlay-dialog: 510;
 
   /* specific z-index values */
-  --z-coach-prompt: calc(var(--z-overlay-floating) - 1);
+  --z-coach-prompt: var(--z-overlay-floating);
   --z-tutorial-focus-backdrop: calc(var(--z-overlay-modal) - 3);
   --z-tutorial-focus-layer: calc(var(--z-overlay-modal) - 2);
   --z-tutorial-focus-prompt: calc(var(--z-overlay-modal) - 1);
@@ -43,7 +47,7 @@
   --desktop-hud-overlay-scale: 1;
 }
 
-@media (min-width: 721px) and (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine) {
   :root {
     --desktop-hud-overlay-scale: 1.25;
   }
@@ -1395,6 +1399,15 @@ button.app-dialog-setting {
   white-space: nowrap;
 }
 
+.telemetry-pill-secondary {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
 .telemetry-time-display {
   display: inline-flex;
   align-items: center;
@@ -1670,6 +1683,10 @@ button.app-dialog-setting {
   height: 14px;
 }
 
+.desktop-target-selector-button[hidden] {
+  display: none;
+}
+
 .desktop-target-selector-button:focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.82);
   outline-offset: 3px;
@@ -1717,15 +1734,6 @@ button.app-dialog-setting {
   text-overflow: ellipsis;
 }
 
-.telemetry-pill-target [data-stat="target-altitude"] {
-  flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1;
-  opacity: 0.78;
-  white-space: nowrap;
-}
-
 .telemetry-pill-target [data-stat="target-altitude"]::before {
   margin-right: 4px;
   content: "·";
@@ -1742,12 +1750,8 @@ button.app-dialog-setting {
   }
 }
 
-@media (min-width: 721px) {
-  .desktop-target-selector-available
-    .telemetry-pill-target
-    .target-status-mark {
-    display: none;
-  }
+.desktop-target-selector-available .telemetry-pill-target .target-status-mark {
+  display: none;
 }
 
 .telemetry-pill-thrust.telemetry-pill-thrust-active {
@@ -1911,9 +1915,10 @@ button.app-dialog-setting {
 
 .touch-controls {
   display: none;
-  position: fixed;
+  /* Avoid trapping HUD descendants below direct-child in-game cues. */
+  position: absolute;
   inset: 0;
-  z-index: var(--z-overlay-floating);
+  z-index: auto;
   pointer-events: auto;
   touch-action: none;
 }
@@ -2447,12 +2452,31 @@ button.app-dialog-setting {
 }
 
 .offscreen-indicator .pointer {
-  width: 0;
-  height: 0;
-  border-right: 5px solid transparent;
-  border-bottom: 10px solid #38bdf8;
-  border-left: 5px solid transparent;
+  width: 12px;
+  height: 12px;
+  overflow: visible;
+  fill: #38bdf8;
+  stroke: #38bdf8;
+  stroke-linejoin: round;
+  stroke-width: 1.4px;
   filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.9));
+  transform-origin: center;
+}
+
+#app .offscreen-indicator-body .pointer {
+  fill: none;
+}
+
+#app .offscreen-indicator-spacecraft .pointer {
+  fill: #f4f7fb;
+  stroke: #f4f7fb;
+  filter: drop-shadow(0 0 6px rgba(244, 247, 251, 0.92));
+}
+
+#app .offscreen-indicator-active-target .pointer {
+  fill: none;
+  stroke: #7dd3fc;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 1));
 }
 
 #app .offscreen-indicator .label {
@@ -2463,8 +2487,11 @@ button.app-dialog-setting {
   white-space: nowrap;
 }
 
-#app .body-label,
-#app .trajectory-event-label {
+#app .offscreen-indicator-unlabeled .label {
+  display: none;
+}
+
+#app .body-label {
   position: fixed;
   padding: 2px 5px;
   border: 1px solid var(--ui-glass-control-border);
@@ -2472,10 +2499,23 @@ button.app-dialog-setting {
   background: var(--ui-glass-label-bg);
   color: #dbeafe;
   font-size: 10px;
-  pointer-events: none;
+  appearance: none;
+  font-family: inherit;
+  line-height: inherit;
+  pointer-events: auto;
+  touch-action: manipulation;
   transform: translateY(-50%);
   white-space: nowrap;
   z-index: var(--z-in-game-floating-elements);
+}
+
+#app .body-label:hover {
+  border-color: rgba(125, 211, 252, 0.62);
+}
+
+#app .body-label:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.86);
+  outline-offset: 2px;
 }
 
 #app .body-label {
@@ -2487,14 +2527,52 @@ button.app-dialog-setting {
   will-change: transform;
 }
 
-#app .body-label-distance-context,
 #app .trajectory-event-label {
-  max-width: min(220px, calc(100vw - 16px));
-  padding: 3px 6px;
-  font-size: 11px;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-  white-space: normal;
+  --trajectory-event-marker-border: rgba(224, 242, 254, 0.9);
+  --trajectory-event-marker-fill: rgba(34, 211, 238, 0.84);
+  --trajectory-event-marker-glow: rgba(56, 189, 248, 0.72);
+
+  position: fixed;
+  display: grid;
+  width: 15px;
+  height: 13px;
+  padding: 0 0 2px;
+  border: 0;
+  background: transparent;
+  color: #082f49;
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 6px;
+  font-weight: 900;
+  isolation: isolate;
+  line-height: 1;
+  place-items: center;
+  pointer-events: auto;
+  text-shadow: 0 1px 0 rgba(240, 249, 255, 0.42);
+  touch-action: manipulation;
+  transform: translate(-50%, -100%);
+  z-index: var(--z-in-game-floating-elements);
+}
+
+#app .trajectory-event-label::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border: 1px solid var(--trajectory-event-marker-border);
+  background: var(--trajectory-event-marker-fill);
+  box-shadow: 0 0 4px var(--trajectory-event-marker-glow);
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+  content: "";
+}
+
+#app .trajectory-event-label:hover::before {
+  border-color: #f0f9ff;
+}
+
+#app .trajectory-event-label:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.86);
+  outline-offset: 2px;
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -2502,19 +2580,18 @@ button.app-dialog-setting {
     display: block;
   }
 
-  #app .body-label,
-  #app .trajectory-event-label {
+  #app .body-label {
     padding: 2px 4px;
     border-radius: 3px;
     font-size: 9px;
     line-height: 1.1;
   }
 
-  #app .body-label-distance-context,
   #app .trajectory-event-label {
-    max-width: min(164px, calc(100vw - 24px));
-    padding: 2px 5px;
-    font-size: 9.5px;
+    width: 14px;
+    height: 12px;
+    padding-bottom: 2px;
+    font-size: 6px;
   }
 
   .body-label-mobile-wrap {
@@ -2713,11 +2790,6 @@ button.app-dialog-setting {
     max-width: none;
   }
 
-  .desktop-target-selector-button,
-  .desktop-target-selector-popover {
-    display: none;
-  }
-
   .telemetry-pill-target [data-stat="target"] {
     position: absolute;
     width: 1px;
@@ -2729,7 +2801,7 @@ button.app-dialog-setting {
     white-space: nowrap;
   }
 
-  .telemetry-pill-target [data-stat="target-altitude"] {
+  .telemetry-pill-secondary {
     font-size: 10.5px;
   }
 

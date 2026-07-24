@@ -21,17 +21,11 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
-import { formatDistance } from '../ui/formatters'
 import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 
-const trajectoryEventMarkerFullSizeMaxViewportSize = 160
 const trajectoryEventMarkerMaxViewportSize = 500
-const trajectoryEventMarkerMaxScreenViewportSize = 20
-const trajectoryEventMarkerLabelMaxViewportSize = 70
 const trajectoryEventMarkerLift = 0.22
-const trajectoryEventMarkerLabelOffsetX = 10
-const trajectoryEventMarkerLabelOffsetY = 10
 const trajectoryEventMarkerLabelViewportPadding = 8
 const trajectoryEventMarkerUpdateAltitudeRatioThreshold = 0.025
 const predictionEndMarkerMaxScreenDiameter = 11
@@ -70,15 +64,8 @@ const hideTrajectoryEventMarkerLabels = (
   }
 }
 
-const hideTrajectoryEventMarkers = (
-  gameScene: GameSceneRefs,
-  labels: TrajectoryEventMarkerLabelRefs,
-) => {
-  for (const marker of Object.values(gameScene.trajectoryEventMarkers)) {
-    marker.group.visible = false
-  }
+const hideTrajectoryEventMarkers = (labels: TrajectoryEventMarkerLabelRefs) =>
   hideTrajectoryEventMarkerLabels(labels)
-}
 
 const hideTrajectoryVisuals = (
   gameScene: GameSceneRefs,
@@ -92,7 +79,7 @@ const hideTrajectoryVisuals = (
   gameScene.predictionEndMarker.visible = false
   gameScene.predictionLine.visible = false
   gameScene.predictionStaleFarLine.visible = false
-  hideTrajectoryEventMarkers(gameScene, labels)
+  hideTrajectoryEventMarkers(labels)
 }
 
 const updateInertialPredictionVisual = (options: {
@@ -267,7 +254,9 @@ const updateTargetRelativePredictionVisuals = (options: {
   debugModeEnabled: boolean
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
+  apsidesScenarioOwned: boolean
   orbitPointDisplaySettings: OrbitPointDisplaySettings
+  pinnedEventMarkerKinds: ReadonlySet<TrajectoryPredictionEventMarkerKind>
   predictedImpact: { bodyName: string; time: number } | null
   stabilizedEventMarkers: Map<
     TrajectoryPredictionEventMarkerKind,
@@ -392,10 +381,11 @@ const updateTargetRelativePredictionVisuals = (options: {
     eventMarkers: options.targetRelativeEventMarkers,
     eventMarkerLabels: options.eventMarkerLabels,
     gameScene: options.gameScene,
+    apsidesScenarioOwned: options.apsidesScenarioOwned,
     orbitPointDisplaySettings: options.orbitPointDisplaySettings,
+    pinnedEventMarkerKinds: options.pinnedEventMarkerKinds,
     stabilizedEventMarkers: options.stabilizedEventMarkers,
     target: options.target,
-    viewportHeight: options.viewportHeight,
     viewportSize: options.viewportSize,
   })
 
@@ -540,49 +530,20 @@ const getStabilizedTrajectoryEventMarkers = (options: {
 
 const getTrajectoryEventMarkerText = (
   eventMarker: TrajectoryPredictionEventMarker,
-  settings: OrbitPointDisplaySettings,
 ) => {
-  const distanceLabel = formatDistance(Math.max(0, eventMarker.distance))
-  const altitudeLabel = formatDistance(Math.max(0, eventMarker.altitude))
-  const textParts: string[] = []
-  const accessibleDetails: string[] = []
-
-  if (settings.pointNameVisible) {
-    textParts.push(trajectoryEventMarkerShortLabels[eventMarker.kind])
-  }
-
-  if (settings.altitudeVisible) {
-    textParts.push(`alt ${altitudeLabel}`)
-    accessibleDetails.push(`altitude ${altitudeLabel}`)
-  }
-
-  if (settings.centerDistanceVisible) {
-    textParts.push(`center ${distanceLabel}`)
-    accessibleDetails.push(`center distance ${distanceLabel}`)
-  }
-
-  if (textParts.length === 0) {
-    return null
-  }
-
-  const name = settings.pointNameVisible
-    ? trajectoryEventMarkerAccessibleNames[eventMarker.kind]
-    : 'Orbit point'
+  const shortLabel = trajectoryEventMarkerShortLabels[eventMarker.kind]
 
   return {
-    accessibleLabel:
-      accessibleDetails.length > 0
-        ? `${name}: ${accessibleDetails.join(', ')}`
-        : name,
-    text: textParts.join(' · '),
+    accessibleLabel: trajectoryEventMarkerAccessibleNames[eventMarker.kind],
+    text: shortLabel,
   }
 }
 
 const updateTrajectoryEventMarkerLabel = (options: {
+  apsidesScenarioOwned: boolean
   camera: THREE.Camera
   eventMarker: TrajectoryPredictionEventMarker
   label: HTMLElement
-  orbitPointDisplaySettings: OrbitPointDisplaySettings
   position: THREE.Vector3
 }) => {
   const projectedPosition = options.position.clone().project(options.camera)
@@ -601,36 +562,77 @@ const updateTrajectoryEventMarkerLabel = (options: {
 
   const screenX = (projectedPosition.x * 0.5 + 0.5) * window.innerWidth
   const screenY = (-projectedPosition.y * 0.5 + 0.5) * window.innerHeight
-  const markerText = getTrajectoryEventMarkerText(
-    options.eventMarker,
-    options.orbitPointDisplaySettings,
-  )
-  if (!markerText) {
-    hideTrajectoryEventMarkerLabel(options.label)
-    return
-  }
+  const markerText = getTrajectoryEventMarkerText(options.eventMarker)
 
   options.label.textContent = markerText.text
-  options.label.title = markerText.accessibleLabel
-  options.label.setAttribute('aria-label', markerText.accessibleLabel)
+  delete options.label.dataset.tooltip
+  options.label.removeAttribute('title')
+  options.label.setAttribute(
+    'aria-label',
+    options.apsidesScenarioOwned
+      ? `${markerText.accessibleLabel}; selected by scenario`
+      : `${markerText.accessibleLabel}; unselect Pe and Ap in Info`,
+  )
+  options.label.setAttribute('aria-pressed', 'true')
   options.label.setAttribute('aria-hidden', 'false')
+  options.label.toggleAttribute('disabled', options.apsidesScenarioOwned)
   options.label.style.display = 'block'
   options.label.style.visibility = 'hidden'
 
   const bounds = options.label.getBoundingClientRect()
-  const labelX = THREE.MathUtils.clamp(
-    screenX + trajectoryEventMarkerLabelOffsetX,
-    trajectoryEventMarkerLabelViewportPadding,
+  const minimumLabelX =
+    trajectoryEventMarkerLabelViewportPadding + bounds.width * 0.5
+  const minimumLabelY =
+    trajectoryEventMarkerLabelViewportPadding + bounds.height
+  let maximumLabelX =
     window.innerWidth -
-      bounds.width -
-      trajectoryEventMarkerLabelViewportPadding,
+    trajectoryEventMarkerLabelViewportPadding -
+    bounds.width * 0.5
+  let maximumLabelY =
+    window.innerHeight - trajectoryEventMarkerLabelViewportPadding
+  const infoRails =
+    typeof document === 'undefined'
+      ? []
+      : document.querySelectorAll<HTMLElement>('.info-hud-rail')
+  for (const rail of infoRails) {
+    const railBounds = rail.getBoundingClientRect()
+    if (railBounds.width <= 0 || railBounds.height <= 0) {
+      continue
+    }
+
+    const alignedWithRightRail =
+      railBounds.left > window.innerWidth * 0.5 &&
+      screenY >= railBounds.top - trajectoryEventMarkerLabelViewportPadding &&
+      screenY <= railBounds.bottom + trajectoryEventMarkerLabelViewportPadding
+    if (alignedWithRightRail) {
+      maximumLabelX = Math.min(
+        maximumLabelX,
+        railBounds.left -
+          trajectoryEventMarkerLabelViewportPadding -
+          bounds.width * 0.5,
+      )
+    }
+
+    const alignedWithBottomRail =
+      railBounds.top > window.innerHeight * 0.5 &&
+      screenX >= railBounds.left - trajectoryEventMarkerLabelViewportPadding &&
+      screenX <= railBounds.right + trajectoryEventMarkerLabelViewportPadding
+    if (alignedWithBottomRail) {
+      maximumLabelY = Math.min(
+        maximumLabelY,
+        railBounds.top - trajectoryEventMarkerLabelViewportPadding,
+      )
+    }
+  }
+  const labelX = THREE.MathUtils.clamp(
+    screenX,
+    minimumLabelX,
+    Math.max(minimumLabelX, maximumLabelX),
   )
   const labelY = THREE.MathUtils.clamp(
-    screenY - bounds.height - trajectoryEventMarkerLabelOffsetY,
-    trajectoryEventMarkerLabelViewportPadding,
-    window.innerHeight -
-      bounds.height -
-      trajectoryEventMarkerLabelViewportPadding,
+    screenY,
+    minimumLabelY,
+    Math.max(minimumLabelY, maximumLabelY),
   )
 
   options.label.style.left = `${labelX}px`
@@ -639,72 +641,52 @@ const updateTrajectoryEventMarkerLabel = (options: {
 }
 
 const updateTrajectoryEventMarkers = (options: {
+  apsidesScenarioOwned: boolean
   eventMarkers: TrajectoryPredictionEventMarker[]
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
   orbitPointDisplaySettings: OrbitPointDisplaySettings
+  pinnedEventMarkerKinds: ReadonlySet<TrajectoryPredictionEventMarkerKind>
   stabilizedEventMarkers: Map<
     TrajectoryPredictionEventMarkerKind,
     TrajectoryPredictionEventMarker
   >
   target: Body
-  viewportHeight: number
   viewportSize: number
 }) => {
   if (!options.orbitPointDisplaySettings.markersVisible) {
     options.stabilizedEventMarkers.clear()
-    hideTrajectoryEventMarkers(options.gameScene, options.eventMarkerLabels)
+    hideTrajectoryEventMarkers(options.eventMarkerLabels)
     return
   }
 
-  if (options.eventMarkers.length === 0) {
+  const selectedEventMarkers = options.eventMarkers.filter((eventMarker) =>
+    options.pinnedEventMarkerKinds.has(eventMarker.kind),
+  )
+  if (selectedEventMarkers.length === 0) {
     options.stabilizedEventMarkers.clear()
-    hideTrajectoryEventMarkers(options.gameScene, options.eventMarkerLabels)
+    hideTrajectoryEventMarkers(options.eventMarkerLabels)
     return
   }
 
   if (options.viewportSize > trajectoryEventMarkerMaxViewportSize) {
-    hideTrajectoryEventMarkers(options.gameScene, options.eventMarkerLabels)
+    hideTrajectoryEventMarkers(options.eventMarkerLabels)
     return
   }
 
   const eventMarkers = getStabilizedTrajectoryEventMarkers({
-    eventMarkers: options.eventMarkers,
+    eventMarkers: selectedEventMarkers,
     stabilizedEventMarkers: options.stabilizedEventMarkers,
   })
-  const markerScaleViewportSize = Math.max(
-    options.viewportSize,
-    trajectoryEventMarkerMaxScreenViewportSize,
-  )
-  const distantViewportScale =
-    options.viewportSize > trajectoryEventMarkerFullSizeMaxViewportSize
-      ? Math.sqrt(
-          trajectoryEventMarkerFullSizeMaxViewportSize / options.viewportSize,
-        )
-      : 1
-  const markerRadius =
-    Math.max(
-      options.gameScene.predictionEndMarkerRadius * 0.72,
-      options.gameScene.predictionEndMarkerMinScreenRadius *
-        0.72 *
-        (markerScaleViewportSize / Math.max(options.viewportHeight, 1)),
-    ) *
-    (options.viewportSize / markerScaleViewportSize) *
-    distantViewportScale
-  const labelVisible =
-    options.orbitPointDisplaySettings.labelsVisible &&
-    options.viewportSize <= trajectoryEventMarkerLabelMaxViewportSize
   const visibleKinds = new Set<TrajectoryPredictionEventMarker['kind']>()
 
   for (const eventMarker of eventMarkers) {
-    const marker = options.gameScene.trajectoryEventMarkers[eventMarker.kind]
     const label = options.eventMarkerLabels[eventMarker.kind]
 
     if (
       !Number.isFinite(eventMarker.point.x) ||
       !Number.isFinite(eventMarker.point.y)
     ) {
-      marker.group.visible = false
       hideTrajectoryEventMarkerLabel(label)
       continue
     }
@@ -715,31 +697,19 @@ const updateTrajectoryEventMarkers = (options: {
       trajectoryEventMarkerLift,
     )
 
-    marker.group.position.copy(position)
-    marker.group.quaternion.copy(options.gameScene.camera.quaternion)
-    marker.group.scale.setScalar(markerRadius)
-    marker.group.visible = true
-
-    if (labelVisible) {
-      updateTrajectoryEventMarkerLabel({
-        camera: options.gameScene.camera,
-        eventMarker,
-        label,
-        orbitPointDisplaySettings: options.orbitPointDisplaySettings,
-        position,
-      })
-    } else {
-      hideTrajectoryEventMarkerLabel(label)
-    }
+    updateTrajectoryEventMarkerLabel({
+      apsidesScenarioOwned: options.apsidesScenarioOwned,
+      camera: options.gameScene.camera,
+      eventMarker,
+      label,
+      position,
+    })
 
     visibleKinds.add(eventMarker.kind)
   }
 
-  for (const [kind, marker] of Object.entries(
-    options.gameScene.trajectoryEventMarkers,
-  )) {
+  for (const kind of Object.keys(options.eventMarkerLabels)) {
     if (!visibleKinds.has(kind as TrajectoryPredictionEventMarker['kind'])) {
-      marker.group.visible = false
       hideTrajectoryEventMarkerLabel(
         options.eventMarkerLabels[
           kind as TrajectoryPredictionEventMarker['kind']
@@ -838,6 +808,21 @@ const getEffectiveOrbitPointDisplaySettings = (
   return {
     ...settings,
     markersVisible: false,
+  }
+}
+
+const getApsidesSelectionState = (runtime: AppRuntimeState) => {
+  const scenarioOwned = runtime.scenario.directives.infoPins.some(
+    (pin) => pin.kind === 'apsis',
+  )
+  const selected =
+    scenarioOwned || runtime.info.userPins.some((pin) => pin.kind === 'apsis')
+
+  return {
+    pinnedEventMarkerKinds: selected
+      ? new Set<TrajectoryPredictionEventMarkerKind>(['periapsis', 'apoapsis'])
+      : new Set<TrajectoryPredictionEventMarkerKind>(),
+    scenarioOwned,
   }
 }
 
@@ -1017,7 +1002,9 @@ export const createTrajectoryPresentation = (options: {
       }
 
       const geometryUpdateStartMs = performance.now()
+      const apsidesSelection = getApsidesSelectionState(options.runtime)
       updateTargetRelativePredictionVisuals({
+        apsidesScenarioOwned: apsidesSelection.scenarioOwned,
         coastPredictionHorizonSeconds:
           options.queries.getCoastPredictionHorizonSeconds(),
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
@@ -1027,6 +1014,7 @@ export const createTrajectoryPresentation = (options: {
           options.runtime,
           options.getOrbitPointDisplaySettings(),
         ),
+        pinnedEventMarkerKinds: apsidesSelection.pinnedEventMarkerKinds,
         predictedImpact: predictionTargetMatches
           ? predictionState.predictedImpact
           : null,

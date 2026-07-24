@@ -222,7 +222,7 @@ export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
             }}
           />
           <span
-            class="target-altitude"
+            class="target-altitude telemetry-pill-secondary"
             data-stat="target-altitude"
             ref={(element) => {
               refs.statTargetAltitude = element
