@@ -81,10 +81,16 @@ export const getKeyboardShortcutAction = (
   if (!event.repeat && context.debugModeEnabled && event.code === 'Digit7') {
     return 'loadDebugSnapshot'
   }
-  if (event.code === 'Equal' || event.code === 'NumpadAdd') {
+  if (
+    !cameraShortcutHasBrowserModifier &&
+    (event.code === 'Equal' || event.code === 'NumpadAdd')
+  ) {
     return 'zoomIn'
   }
-  if (event.code === 'Minus' || event.code === 'NumpadSubtract') {
+  if (
+    !cameraShortcutHasBrowserModifier &&
+    (event.code === 'Minus' || event.code === 'NumpadSubtract')
+  ) {
     return 'zoomOut'
   }
   if (event.code === 'Enter' || event.code === 'Space') {

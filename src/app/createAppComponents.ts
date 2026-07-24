@@ -75,6 +75,7 @@ import {
   type TouchTrajectoryControlState,
   updateUserSettings,
 } from '../userSettingsStorage'
+import { bindDevicePixelRatioChanges } from './bindDevicePixelRatioChanges'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
 
 type AppRuntimeCoordinator = {
@@ -100,6 +101,7 @@ export type AppComponents = {
   mainMenu: MainMenu
   topMenu: TopMenu
   crashMenu: CrashMenu
+  dispose(): void
   initialize(): void
   start(): void
 }
@@ -194,8 +196,6 @@ export const createAppComponents = (options: {
 }): AppComponents => {
   const desktopFinePointerMedia = window.matchMedia(desktopFinePointerQuery)
   const renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setClearColor(0x05070d)
   options.app.appendChild(renderer.domElement)
   const scenarioLoadingOverlay = createScenarioLoadingOverlay({
@@ -363,6 +363,11 @@ export const createAppComponents = (options: {
     runtimeScenarioOptions: options.config.runtimeScenarioOptions,
     timeWarps: options.config.controls.timeWarps,
     updateUserSettings,
+  })
+  runtimeActions.handleResize()
+  const disposeDevicePixelRatioChanges = bindDevicePixelRatioChanges({
+    onChange: runtimeActions.handleResize,
+    windowTarget: window,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
   let touchTargetControlSide: TouchControlSide =
@@ -1072,6 +1077,7 @@ export const createAppComponents = (options: {
     mainMenu,
     topMenu,
     crashMenu,
+    dispose: disposeDevicePixelRatioChanges,
     initialize: coordinator.initialize,
     start: () => {
       frameLoop.start()

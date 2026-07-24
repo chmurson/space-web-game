@@ -1,7 +1,7 @@
+import { loadScenarioAssets } from '../render/scenarioAssets'
 import { createAppComponents } from './createAppComponents'
 import { createAppConfigContext } from './createAppConfigContext'
 import { createInitialAppRuntimeState } from './createInitialAppRuntimeState'
-import { loadScenarioAssets } from '../render/scenarioAssets'
 
 const removeBootScreen = () => {
   const bootScreen = document.querySelector<HTMLElement>('[data-boot-screen]')
@@ -32,4 +32,5 @@ export const createGameApp = async (app: HTMLDivElement) => {
   components.initialize()
   components.start()
   removeBootScreen()
+  return { dispose: components.dispose }
 }
