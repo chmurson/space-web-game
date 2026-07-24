@@ -69,8 +69,7 @@ const MobileCommandDockSurface = ({
 }: MobileCommandDockSurfaceProps) => {
   const flightAvailable = controlsAvailable.rcsYaw || controlsAvailable.thrust
   const infoOpen = openPanel === 'info'
-  const cameraRecenterDisabled =
-    cameraControlsLocked || !cameraCanRecenter
+  const cameraRecenterDisabled = cameraControlsLocked || !cameraCanRecenter
   let cameraRecenterAriaLabel = 'Camera already centered on followed subject'
   if (cameraControlsLocked) {
     cameraRecenterAriaLabel =

@@ -22,7 +22,13 @@ import type { AppRuntimeState, TargetHeadingPlan } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
 import type { AssistTargetUiState } from './gameQueries'
 import type { GameHighLevelActionsMediator } from './highLevelActions/gameHighLevelActionDispatcher'
-import { type InfoPin, includesInfoPin, toggleInfoPin } from './infoPins'
+import {
+  apoapsisInfoPin,
+  type InfoPin,
+  includesInfoPin,
+  periapsisInfoPin,
+  toggleInfoPin,
+} from './infoPins'
 import type { NavigationTimeWarpController } from './navigationTimeWarpController'
 import {
   clearTransientScenarioRuntimeState,
@@ -374,12 +380,39 @@ export const createRuntimeActions = (options: {
   }
 
   const toggleUserInfoPin = (pin: InfoPin) => {
+    if (pin.kind === 'apsis') {
+      const apsisPins = [periapsisInfoPin, apoapsisInfoPin]
+      if (
+        apsisPins.some((apsisPin) =>
+          includesInfoPin(
+            options.runtime.scenario.directives.infoPins,
+            apsisPin,
+          ),
+        )
+      ) {
+        return false
+      }
+
+      const apsidesSelected = apsisPins.some((apsisPin) =>
+        includesInfoPin(options.runtime.info.userPins, apsisPin),
+      )
+      options.runtime.info.userPins = apsidesSelected
+        ? options.runtime.info.userPins.filter(
+            (candidate) => candidate.kind !== 'apsis',
+          )
+        : [
+            ...options.runtime.info.userPins,
+            { ...periapsisInfoPin },
+            { ...apoapsisInfoPin },
+          ]
+      return true
+    }
+
     if (
       includesInfoPin(options.runtime.scenario.directives.infoPins, pin) ||
-      (pin.kind === 'body' &&
-        !options.runtime.simulation.state.bodies.some(
-          (body) => body.id === pin.bodyId,
-        ))
+      !options.runtime.simulation.state.bodies.some(
+        (body) => body.id === pin.bodyId,
+      )
     ) {
       return false
     }

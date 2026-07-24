@@ -1,17 +1,20 @@
 import type { TrajectoryPredictionEventMarkerKind } from '../prediction/trajectoryPrediction'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
-import type { GameQueries } from '../runtime/gameQueries'
+import type {
+  AssistTargetSelectionSource,
+  GameQueries,
+} from '../runtime/gameQueries'
 import {
   apoapsisInfoPin,
   createBodyInfoPin,
   getInfoPinKey,
-  includesInfoPin,
   type InfoPin,
+  includesInfoPin,
   periapsisInfoPin,
 } from '../runtime/infoPins'
 import type { TrajectoryPredictionState } from '../runtime/trajectoryPredictionRuntime'
-import type { Body } from '../simulation/types'
 import { formatDistance } from '../ui/formatters'
+import { getBodySurfaceDistanceMeters } from './bodyDistanceContext'
 
 export type InfoHudRow = {
   accessibleLabel: string
@@ -24,10 +27,29 @@ export type InfoHudRow = {
   secondaryLabel: string
 }
 
+export type InfoHudEntry =
+  | {
+      bodyColor: string
+      key: string
+      kind: 'body'
+      row: InfoHudRow
+      target: boolean
+    }
+  | {
+      key: 'apsides'
+      kind: 'apsides'
+      points: readonly [
+        Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+        Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+      ]
+      row: InfoHudRow
+      secondaryLabel: string
+    }
+
 export type InfoHudView = {
   clearAvailable: boolean
-  pinnedRows: InfoHudRow[]
-  rows: InfoHudRow[]
+  entries: InfoHudEntry[]
+  targetMode: AssistTargetSelectionSource | null
 }
 
 const unavailableDistanceLabel = '—'
@@ -36,16 +58,6 @@ const formatSurfaceDistance = (meters: number | null) =>
   meters !== null && Number.isFinite(meters)
     ? formatDistance(Math.max(0, meters))
     : unavailableDistanceLabel
-
-const getBodySurfaceDistance = (body: Body, runtime: AppRuntimeState) => {
-  const spacecraft = runtime.simulation.state.spacecraft
-  return (
-    Math.hypot(
-      spacecraft.position.x - body.position.x,
-      spacecraft.position.y - body.position.y,
-    ) - body.radius
-  )
-}
 
 const getApsisSurfaceDistance = (
   kind: TrajectoryPredictionEventMarkerKind,
@@ -60,6 +72,25 @@ const getApsisSurfaceDistance = (
     prediction.targetRelativeEventMarkers.find(
       (eventMarker) => eventMarker.kind === kind,
     )?.altitude ?? null
+  )
+}
+
+const getBodyDistanceFromTargetMeters = (
+  body: AppRuntimeState['simulation']['state']['bodies'][number],
+  target: AppRuntimeState['simulation']['state']['bodies'][number],
+) => {
+  if (body.id === target.id) {
+    return 0
+  }
+
+  return Math.max(
+    0,
+    Math.hypot(
+      body.position.x - target.position.x,
+      body.position.y - target.position.y,
+    ) -
+      body.radius -
+      target.radius,
   )
 }
 
@@ -94,19 +125,34 @@ export const createInfoHudView = (options: {
   queries: Pick<GameQueries, 'getAssistTargetUiState'>
   runtime: AppRuntimeState
 }): InfoHudView => {
-  const target = options.queries.getAssistTargetUiState().activeTarget
-  const bodyRows = options.runtime.simulation.state.bodies.map((body) => {
+  const targetState = options.queries.getAssistTargetUiState()
+  const target = targetState.activeTarget
+  const bodyEntries = options.runtime.simulation.state.bodies.map((body) => {
     const distanceLabel = formatSurfaceDistance(
-      getBodySurfaceDistance(body, options.runtime),
+      getBodySurfaceDistanceMeters(
+        body,
+        options.runtime.simulation.state.spacecraft.position,
+      ),
     )
-    return createRow({
-      accessibleLabel: `${body.name}, surface distance ${distanceLabel}`,
+    const row = createRow({
+      accessibleLabel: `${body.name}, surface distance from spacecraft ${distanceLabel}`,
       distanceLabel,
       label: body.name,
       pin: createBodyInfoPin(body.id),
       runtime: options.runtime,
       secondaryLabel: 'to spacecraft',
     })
+    return {
+      distanceFromTargetMeters: getBodyDistanceFromTargetMeters(body, target),
+      entry: {
+        bodyColor: body.color,
+        key: row.key,
+        kind: 'body' as const,
+        row,
+        target: body.id === target.id,
+      },
+      target: body.id === target.id,
+    }
   })
   const createApsisRow = (
     kind: TrajectoryPredictionEventMarkerKind,
@@ -117,7 +163,7 @@ export const createInfoHudView = (options: {
       getApsisSurfaceDistance(kind, target.id, options.prediction),
     )
     return createRow({
-      accessibleLabel: `${label}, surface distance from ${target.name} ${distanceLabel}`,
+      accessibleLabel: `${label}, altitude over ${target.name} ${distanceLabel}`,
       distanceLabel,
       label,
       pin,
@@ -125,14 +171,72 @@ export const createInfoHudView = (options: {
       secondaryLabel: `to ${target.name}`,
     })
   }
-  const rows = [
-    ...bodyRows,
-    createApsisRow('periapsis', 'Pe', periapsisInfoPin),
-    createApsisRow('apoapsis', 'Ap', apoapsisInfoPin),
+  const periapsisRow = createApsisRow('periapsis', 'Pe', periapsisInfoPin)
+  const apoapsisRow = createApsisRow('apoapsis', 'Ap', apoapsisInfoPin)
+  const apsidesRow: InfoHudRow = {
+    accessibleLabel: `${periapsisRow.accessibleLabel}; ${apoapsisRow.accessibleLabel}`,
+    distanceLabel: `${periapsisRow.distanceLabel} | ${apoapsisRow.distanceLabel}`,
+    key: 'apsides',
+    label: 'Pe / Ap',
+    pin: { ...periapsisInfoPin },
+    pinned: periapsisRow.pinned || apoapsisRow.pinned,
+    scenarioOwned: periapsisRow.scenarioOwned || apoapsisRow.scenarioOwned,
+    secondaryLabel: `to ${target.name}`,
+  }
+  const apsisDistances = [
+    getApsisSurfaceDistance('periapsis', target.id, options.prediction),
+    getApsisSurfaceDistance('apoapsis', target.id, options.prediction),
+  ].filter((distance): distance is number => distance !== null)
+  const sortableEntries = [
+    ...bodyEntries,
+    {
+      distanceFromTargetMeters:
+        apsisDistances.length > 0
+          ? Math.min(...apsisDistances)
+          : Number.POSITIVE_INFINITY,
+      entry: {
+        key: 'apsides' as const,
+        kind: 'apsides' as const,
+        points: [
+          {
+            distanceLabel: periapsisRow.distanceLabel,
+            label: periapsisRow.label,
+          },
+          {
+            distanceLabel: apoapsisRow.distanceLabel,
+            label: apoapsisRow.label,
+          },
+        ] as [
+          Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+          Pick<InfoHudRow, 'distanceLabel' | 'label'>,
+        ],
+        row: apsidesRow,
+        secondaryLabel: `to ${target.name}`,
+      },
+      target: false,
+    },
   ]
+  sortableEntries.sort((left, right) => {
+    if (left.target !== right.target) {
+      return left.target ? -1 : 1
+    }
+
+    const leftSelected = left.entry.row.pinned
+    const rightSelected = right.entry.row.pinned
+    if (leftSelected !== rightSelected) {
+      return leftSelected ? -1 : 1
+    }
+
+    return (
+      left.distanceFromTargetMeters - right.distanceFromTargetMeters ||
+      left.entry.key.localeCompare(right.entry.key)
+    )
+  })
+  const entries = sortableEntries.map(({ entry }) => entry)
+
   return {
     clearAvailable: options.runtime.info.userPins.length > 0,
-    pinnedRows: rows.filter((row) => row.pinned),
-    rows,
+    entries,
+    targetMode: targetState.mode,
   }
 }

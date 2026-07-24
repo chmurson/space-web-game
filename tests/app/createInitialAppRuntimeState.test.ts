@@ -38,11 +38,7 @@ const createConfig = (
     debugModeEnabled: false,
     mobileManeuverStartByDrag: true,
     orbitPointDisplay: {
-      altitudeVisible: true,
-      centerDistanceVisible: false,
-      labelsVisible: true,
       markersVisible: true,
-      pointNameVisible: true,
     },
     touchBurnControlSide: 'right',
     touchTargetControlSide: 'left',

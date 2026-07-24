@@ -5,7 +5,6 @@ import { RENDER_SCALE } from '../../simulation/constants'
 import type { Body } from '../../simulation/types'
 import type { OverlayUiRefs } from '../../ui/overlayUI/createOverlayUi'
 import { createMeasuredFunction } from '../../utils/measuredFunction'
-import type { BodyDistanceContext } from '../bodyDistanceContext'
 
 declare global {
   interface Window {
@@ -19,8 +18,7 @@ type BodyLabelBounds = {
 }
 
 type BodyLabelState = {
-  accessibleLabel: string
-  hasDistanceContext: boolean
+  pinned: boolean
   text: string
   wrap: boolean
 }
@@ -91,31 +89,21 @@ const setTransform = (element: HTMLElement, transform: string) => {
 
 const applyBodyLabelState = (label: HTMLElement, state: BodyLabelState) => {
   setTextContent(label, state.text)
-
-  if (label.title !== state.accessibleLabel) {
-    label.title = state.accessibleLabel
+  if (label.hasAttribute('title')) {
+    label.removeAttribute('title')
   }
 
-  setAttributeValue(label, 'aria-label', state.accessibleLabel)
-  setClassEnabled(
+  setAttributeValue(
     label,
-    'body-label-distance-context',
-    state.hasDistanceContext,
+    'aria-label',
+    `${state.text}; ${state.pinned ? 'unselect' : 'select'} in Info`,
   )
+  setAttributeValue(label, 'aria-pressed', state.pinned ? 'true' : 'false')
   setClassEnabled(label, 'body-label-mobile-wrap', state.wrap)
   setFixedOrigin(label)
 }
 
-const getBodyLabelBoundsTextKey = (options: {
-  hasDistanceContext: boolean
-  text: string
-}) =>
-  options.hasDistanceContext
-    ? options.text.replaceAll(/\d/g, '#')
-    : options.text
-
 const getBodyLabelBoundsCacheKey = (options: {
-  hasDistanceContext: boolean
   text: string
   viewportHeight: number
   viewportWidth: number
@@ -124,9 +112,8 @@ const getBodyLabelBoundsCacheKey = (options: {
   [
     options.viewportWidth,
     options.viewportHeight,
-    options.hasDistanceContext ? 'distance' : 'name',
     options.wrap ? 'wrap' : 'nowrap',
-    getBodyLabelBoundsTextKey(options),
+    options.text,
   ].join('|')
 
 const getCachedBodyLabelBounds = (
@@ -180,14 +167,25 @@ const getBodyLabelBounds = (options: {
   return bounds
 }
 
+const getVisibleInfoRailBounds = () =>
+  Array.from(document.querySelectorAll<HTMLElement>('.info-hud-rail'))
+    .map((rail) => rail.getBoundingClientRect())
+    .filter((bounds) => bounds.width > 0 && bounds.height > 0)
+
 export const updateBodyLabels = (options: {
   bodies: Body[]
-  distanceContext: BodyDistanceContext | null
   gameScene: GameSceneRefs
+  isBodyLabelVisible(options: {
+    apparentRadiusPx: number
+    bodyId: string
+    nowMs: number
+    onscreen: boolean
+  }): boolean
+  nowMs: number
   overlayUi: OverlayUiRefs
+  pinnedBodyIds: ReadonlySet<string>
   viewportSize: number
 }) => {
-  const labelRadiusThreshold = 24
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
   const pixelsPerRenderUnit = viewportHeight / options.viewportSize
@@ -195,6 +193,7 @@ export const updateBodyLabels = (options: {
     '(hover: none), (pointer: coarse)',
   ).matches
   const activeBodyIds = new Set(options.bodies.map((body) => body.id))
+  const infoRailBounds = getVisibleInfoRailBounds()
   let reservedTop: number | undefined
 
   const getReservedTop = () => {
@@ -234,14 +233,14 @@ export const updateBodyLabels = (options: {
       position.z > -1 &&
       position.z < 1
 
-    const distanceContext =
-      options.distanceContext?.bodyId === body.id
-        ? options.distanceContext
-        : null
-
+    const pinned = options.pinnedBodyIds.has(body.id)
     if (
-      !isVisible ||
-      (apparentRadius > labelRadiusThreshold && !distanceContext)
+      !options.isBodyLabelVisible({
+        apparentRadiusPx: apparentRadius,
+        bodyId: body.id,
+        nowMs: options.nowMs,
+        onscreen: isVisible,
+      })
     ) {
       setDisplay(label, 'none')
       continue
@@ -254,15 +253,11 @@ export const updateBodyLabels = (options: {
       screenX > viewportWidth * 0.22 &&
       screenX < viewportWidth * 0.78
     const labelState = {
-      accessibleLabel: distanceContext
-        ? distanceContext.accessibleLabel
-        : body.name,
-      hasDistanceContext: !!distanceContext,
-      text: distanceContext ? distanceContext.tooltipLabel : body.name,
+      pinned,
+      text: body.name,
       wrap: shouldWrapLabel,
     }
     const cacheKey = getBodyLabelBoundsCacheKey({
-      hasDistanceContext: labelState.hasDistanceContext,
       text: labelState.text,
       viewportHeight,
       viewportWidth,
@@ -275,15 +270,41 @@ export const updateBodyLabels = (options: {
       label,
       measurementLabel: body.id,
     })
+    let maximumLabelX = viewportWidth - bounds.width - 8
+    let maximumLabelY = viewportHeight - bounds.height * 0.5 - 8
+    for (const railBounds of infoRailBounds) {
+      const alignedWithRightRail =
+        railBounds.left > viewportWidth * 0.5 &&
+        screenY >= railBounds.top - 8 &&
+        screenY <= railBounds.bottom + 8
+      if (alignedWithRightRail) {
+        maximumLabelX = Math.min(
+          maximumLabelX,
+          railBounds.left - bounds.width - 8,
+        )
+      }
+
+      const alignedWithBottomRail =
+        railBounds.top > viewportHeight * 0.5 &&
+        screenX >= railBounds.left - 8 &&
+        screenX <= railBounds.right + 8
+      if (alignedWithBottomRail) {
+        maximumLabelY = Math.min(
+          maximumLabelY,
+          railBounds.top - bounds.height * 0.5 - 8,
+        )
+      }
+    }
+    const minimumLabelY = getReservedTop() + bounds.height * 0.5
     const labelX = THREE.MathUtils.clamp(
       screenX + 10,
       8,
-      viewportWidth - bounds.width - 8,
+      Math.max(8, maximumLabelX),
     )
     const labelY = THREE.MathUtils.clamp(
       screenY,
-      getReservedTop() + bounds.height * 0.5,
-      viewportHeight - bounds.height * 0.5 - 8,
+      minimumLabelY,
+      Math.max(minimumLabelY, maximumLabelY),
     )
 
     setDisplay(label, 'block')
@@ -296,6 +317,12 @@ export const updateBodyLabels = (options: {
 
   for (const [bodyId, label] of options.overlayUi.bodyLabels.entries()) {
     if (!activeBodyIds.has(bodyId)) {
+      options.isBodyLabelVisible({
+        apparentRadiusPx: Number.POSITIVE_INFINITY,
+        bodyId,
+        nowMs: options.nowMs,
+        onscreen: false,
+      })
       setDisplay(label, 'none')
     }
   }

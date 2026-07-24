@@ -190,7 +190,7 @@ test('switches camera Follow and recenters from the mobile Nav panel', async ({
   await expect(target).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('recenters target framing above Nav using the current playable viewport', async ({
+test('recenters selected target framing above Nav using the current playable viewport', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
@@ -206,14 +206,15 @@ test('recenters target framing above Nav using the current playable viewport', a
       throw new Error(response?.error ?? 'Devtools bridge is missing')
     }
   })
-  await page.waitForFunction(() =>
-    Array.from(document.querySelectorAll<HTMLElement>('.body-label')).some(
-      (label) => getComputedStyle(label).display !== 'none',
-    ),
-  )
+  const targetLabel = page.locator('.body-label[data-info-pin="body:earth"]')
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (await targetLabel.isVisible()) {
+      break
+    }
+    await page.locator('canvas').dispatchEvent('wheel', { deltaY: 500 })
+  }
 
   const dock = page.locator('.mobile-command-dock')
-  const targetLabel = page.locator('.body-label').filter({ hasText: 'Earth' })
   await expect(targetLabel).toBeVisible()
   const collapsedDockBounds = await dock.boundingBox()
   const collapsedTargetBounds = await targetLabel.boundingBox()
@@ -356,13 +357,13 @@ test('keeps Time Warp and camera controls together in Nav', async ({
     const recenterAriaLabelInitial = recenterButton?.getAttribute('aria-label')
     cameraCanRecenter = true
     dock.syncState()
-    const recenterButtonAfterPan = dock.element.querySelector<HTMLButtonElement>(
-      '[data-mobile-camera-action="recenter"]',
-    )
+    const recenterButtonAfterPan =
+      dock.element.querySelector<HTMLButtonElement>(
+        '[data-mobile-camera-action="recenter"]',
+      )
     const recenterDisabledAfterPan = recenterButtonAfterPan?.disabled
-    const recenterPressableAfterPan = recenterButtonAfterPan?.classList.contains(
-      'ui-pressable-strong',
-    )
+    const recenterPressableAfterPan =
+      recenterButtonAfterPan?.classList.contains('ui-pressable-strong')
     targetButton?.click()
     recenterButtonAfterPan?.click()
     cameraControlsLocked = true

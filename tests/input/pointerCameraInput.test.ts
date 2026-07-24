@@ -94,6 +94,7 @@ const createHarness = (
     cameraControlsLocked?: boolean
     edgePanSpeedPixelsPerSecond?: number
     edgeScrollEnabled?: boolean
+    primaryTapHandled?: boolean
   } = {},
 ) => {
   const canvas = new FakeCanvas()
@@ -103,6 +104,7 @@ const createHarness = (
   const onCameraPan = vi.fn<(delta: { x: number; y: number }) => boolean>(
     () => true,
   )
+  const onPrimaryTap = vi.fn(() => options.primaryTapHandled ?? false)
   const onTargetHeadingPlan = vi.fn()
   const onTargetHeadingPlanCanceled = vi.fn()
   const onTargetHeadingPlanCommitted = vi.fn(() => true)
@@ -118,6 +120,7 @@ const createHarness = (
     getSpacecraftPosition: () => ({ x: 0, y: 0 }),
     getSpacecraftVisible: () => true,
     onCameraPan,
+    onPrimaryTap,
     onResize: () => {},
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
@@ -132,6 +135,7 @@ const createHarness = (
     canvas,
     input,
     onCameraPan,
+    onPrimaryTap,
     onTargetHeadingPlan,
     onTargetHeadingPlanCanceled,
     onTargetHeadingPlanCommitted,
@@ -223,6 +227,44 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(harness.onTargetHeadingPlan).toHaveBeenCalledTimes(2)
     expect(harness.onTargetHeadingPlanCommitted).toHaveBeenCalledTimes(1)
     expect(harness.onTargetHeadingPlanCanceled).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it('consumes a handled touch tap before target-heading planning', () => {
+    const harness = createHarness({ primaryTapHandled: true })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        clientX: 100,
+        clientY: 100,
+        pointerType: 'touch',
+      }),
+    )
+    const pointerUp = createPointerEvent('pointerup', {
+      clientX: 100,
+      clientY: 100,
+      pointerType: 'touch',
+    })
+    harness.canvas.dispatchEvent(pointerUp)
+
+    expect(harness.onPrimaryTap).toHaveBeenCalledWith(100, 100)
+    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
+    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
+    expect(pointerUp.defaultPrevented).toBe(true)
+  })
+
+  it('offers stationary primary mouse clicks to canvas interactions', () => {
+    const harness = createHarness({ primaryTapHandled: true })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', { clientX: 90, clientY: 110 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', { clientX: 90, clientY: 110 }),
+    )
+
+    expect(harness.onPrimaryTap).toHaveBeenCalledWith(90, 110)
+    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
@@ -394,6 +436,7 @@ describe('bindPointerCameraInput target heading planning', () => {
     expect(harness.onCameraPan).toHaveBeenCalled()
     expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
     expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
+    expect(harness.onPrimaryTap).not.toHaveBeenCalled()
   })
 })
 

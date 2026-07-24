@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { getCaptureMetricsForState } from '@/assist/orbitalAssist'
-import { createBodyDistanceContext } from '@/presentation/bodyDistanceContext'
+import {
+  createBodyDistanceContext,
+  getBodySurfaceDistanceMeters,
+} from '@/presentation/bodyDistanceContext'
 import { EARTH_MASS, EARTH_RADIUS, G } from '@/simulation/constants'
 import type { Body, SimulationState, Spacecraft } from '@/simulation/types'
 
@@ -38,6 +41,16 @@ const createState = (spacecraft: Spacecraft): SimulationState => ({
 })
 
 describe('createBodyDistanceContext', () => {
+  it('measures physical spacecraft-to-surface distance and clamps interiors', () => {
+    expect(
+      getBodySurfaceDistanceMeters(earth, {
+        x: EARTH_RADIUS + 84_000_000,
+        y: 0,
+      }),
+    ).toBe(84_000_000)
+    expect(getBodySurfaceDistanceMeters(earth, { x: 0, y: 0 })).toBe(0)
+  })
+
   it('formats body name and altitude context', () => {
     const spacecraft = createSpacecraft()
     const targetMetrics = getCaptureMetricsForState(
@@ -51,13 +64,10 @@ describe('createBodyDistanceContext', () => {
     })
 
     expect(distanceContext).toMatchObject({
-      accessibleLabel: 'Earth, altitude 400 km',
       altitudeLabel: '400 km',
       bodyId: 'earth',
       detailAccessibleLabel: 'altitude 400 km',
-      tooltipLabel: 'Earth · 400 km',
     })
-    expect(distanceContext.tooltipLabel).not.toMatch(/\b(?:Ap|Pe)\b/)
   })
 
   it('formats megameter altitude context', () => {
@@ -75,10 +85,8 @@ describe('createBodyDistanceContext', () => {
         targetMetrics,
       }),
     ).toMatchObject({
-      accessibleLabel: 'Earth, altitude 84 Mm',
       altitudeLabel: '84 Mm',
       detailAccessibleLabel: 'altitude 84 Mm',
-      tooltipLabel: 'Earth · 84 Mm',
     })
   })
 })

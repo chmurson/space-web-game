@@ -4,7 +4,6 @@ import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 
 import type { GameConfig } from '../config/types'
-import type { TrajectoryPredictionEventMarkerKind } from '../prediction/trajectoryPrediction'
 import type { ScenarioAssets } from '../render/scenarioAssets'
 import {
   resolveScenarioRenderConfig,
@@ -271,10 +270,6 @@ export type ScreenSpaceDashPattern = {
   material: LineMaterial | THREE.LineDashedMaterial
 }
 
-export type TrajectoryEventMarkerVisual = {
-  group: THREE.Group
-}
-
 export type GameSceneRefs = {
   assistedPredictionGeometry: LineGeometry
   assistedPredictionLine: Line2
@@ -323,10 +318,6 @@ export type GameSceneRefs = {
   trail: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
   trailPoints: SpacecraftTrailPoint[]
   trailRenderedSliceCount: number
-  trajectoryEventMarkers: Record<
-    TrajectoryPredictionEventMarkerKind,
-    TrajectoryEventMarkerVisual
-  >
   visualSunDirection: THREE.Vector3
 }
 
@@ -437,17 +428,6 @@ const createPredictionMarkerCircle = (fillOpacity = 0.5) => {
   group.add(backing, fill)
   group.renderOrder = 10
   return { fill, group }
-}
-
-const createTrajectoryEventMarker = (
-  _kind: TrajectoryPredictionEventMarkerKind,
-): TrajectoryEventMarkerVisual => {
-  const marker = createPredictionMarkerCircle(0.72)
-  marker.group.visible = false
-
-  return {
-    group: marker.group,
-  }
 }
 
 export const createGameScene = (
@@ -683,18 +663,6 @@ export const createGameScene = (
   const predictionEndMarker = predictionEndMarkerCircle.group
   const predictionEndMarkerFill = predictionEndMarkerCircle.fill
   scene.add(predictionEndMarker)
-  const trajectoryEventMarkers = {
-    apoapsis: createTrajectoryEventMarker('apoapsis'),
-    periapsis: createTrajectoryEventMarker('periapsis'),
-  } satisfies Record<
-    TrajectoryPredictionEventMarkerKind,
-    TrajectoryEventMarkerVisual
-  >
-
-  for (const marker of Object.values(trajectoryEventMarkers)) {
-    scene.add(marker.group)
-  }
-
   return {
     assistedPredictionGeometry,
     assistedPredictionLine,
@@ -737,7 +705,6 @@ export const createGameScene = (
     trail,
     trailPoints,
     trailRenderedSliceCount: 0,
-    trajectoryEventMarkers,
     visualSunDirection,
   }
 }

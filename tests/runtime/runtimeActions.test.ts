@@ -230,8 +230,12 @@ describe('createRuntimeActions', () => {
     expect(runtimeActions.toggleUserInfoPin(apoapsisInfoPin)).toBe(true)
     expect(runtime.info.userPins).toEqual([
       createBodyInfoPin('earth'),
+      periapsisInfoPin,
       apoapsisInfoPin,
     ])
+    expect(runtimeActions.toggleUserInfoPin(periapsisInfoPin)).toBe(true)
+    expect(runtime.info.userPins).toEqual([createBodyInfoPin('earth')])
+    expect(runtimeActions.toggleUserInfoPin(periapsisInfoPin)).toBe(true)
     expect(runtimeActions.toggleUserInfoPin(createBodyInfoPin('moon'))).toBe(
       false,
     )
