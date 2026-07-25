@@ -78,6 +78,8 @@ export type OverlayUiRefs = {
   targetStatus: HTMLElement | null
   statTargetSpeed: HTMLElement | null
   statTime: HTMLElement | null
+  statTimeElapsed: HTMLElement | null
+  statTimeWarp: HTMLElement | null
   timeIcon: SVGSVGElement | null
   timeIconHand: SVGLineElement | null
   trajectoryEventMarkerLabels: Record<
@@ -104,6 +106,8 @@ const createEmptyTelemetryRefs = (): TelemetryStripRefs => ({
   statTargetAltitude: null,
   statThrust: null,
   statTime: null,
+  statTimeElapsed: null,
+  statTimeWarp: null,
   targetCluster: null,
   targetPill: null,
   targetSelectorButton: null,
@@ -363,6 +367,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     targetStatus: hudTelemetry.telemetryRefs.targetStatus,
     statTargetSpeed: null,
     statTime: hudTelemetry.telemetryRefs.statTime,
+    statTimeElapsed: hudTelemetry.telemetryRefs.statTimeElapsed,
+    statTimeWarp: hudTelemetry.telemetryRefs.statTimeWarp,
     timeIcon: hudTelemetry.telemetryRefs.timeIcon,
     timeIconHand: hudTelemetry.telemetryRefs.timeIconHand,
     trajectoryEventMarkerLabels,

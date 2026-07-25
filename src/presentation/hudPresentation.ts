@@ -498,10 +498,15 @@ export const createHudPresentation = (options: {
       if (options.overlayUi.statEngine) {
         options.overlayUi.statEngine.textContent = options.physicsEngineName
       }
-      if (options.overlayUi.statTime) {
-        options.overlayUi.statTime.textContent = `${formatCompactElapsed(options.runtime.simulation.state.elapsed)} · ${formatTimeWarpLabel(
+      if (options.overlayUi.statTimeElapsed) {
+        options.overlayUi.statTimeElapsed.textContent = formatCompactElapsed(
+          options.runtime.simulation.state.elapsed,
+        )
+      }
+      if (options.overlayUi.statTimeWarp) {
+        options.overlayUi.statTimeWarp.textContent = formatTimeWarpLabel(
           options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
-        )}`
+        )
       }
       if (options.overlayUi.timeIcon) {
         const maxWarpIndex = Math.max(0, options.timeWarps.length - 1)

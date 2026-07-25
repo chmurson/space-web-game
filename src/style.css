@@ -1414,6 +1414,12 @@ button.app-dialog-setting {
   gap: 6px;
 }
 
+.telemetry-time-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .telemetry-speed-display {
   display: inline-flex;
   align-items: center;

@@ -43,15 +43,17 @@ export const formatCompactElapsed = (seconds: number) => {
   const days = Math.floor(roundedSeconds / 86_400)
   const hours = Math.floor((roundedSeconds % 86_400) / 3_600)
   const minutes = Math.floor((roundedSeconds % 3_600) / 60)
+  const paddedHours = hours.toString().padStart(2, '0')
+  const paddedMinutes = minutes.toString().padStart(2, '0')
 
   if (days > 0) {
-    return `${days}d${hours}h`
+    return `${days}d${paddedHours}h`
   }
   if (hours > 0) {
-    return `${hours}h${minutes}m`
+    return `${paddedHours}h${paddedMinutes}m`
   }
   if (minutes > 0) {
-    return `${minutes}m`
+    return `${paddedMinutes}m`
   }
 
   return `${roundedSeconds}s`
