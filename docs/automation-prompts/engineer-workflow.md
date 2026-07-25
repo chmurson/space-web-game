@@ -118,7 +118,7 @@ Worker runtime configuration (provided by the automation launcher, not inferred 
 Model: <resolved external model>
 Thinking/reasoning effort: <resolved external thinking value>
 
-The launcher must stop before creating this worker if either value is missing or unverifiable. Do not substitute a default or fallback model.
+The launcher supplied these resolved values unchanged.
 
 Task: <issue/PR URL and exact requested action>.
 Worktree/branch: <existing or task-scoped worktree path>, branch `<branch>`. Reuse this context; do not work in the orchestrator checkout.
