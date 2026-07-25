@@ -86,7 +86,6 @@ const createRuntime = (): AppRuntimeState => ({
       panOffset: { x: 0, y: 0 },
     },
     spacecraftLabelIntroUntil: 0,
-    targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
       engaged: false,
       interactive: false,
@@ -120,7 +119,6 @@ describe('runtimeStateTransitions', () => {
             description: 'Menu background description',
             title: 'Menu background',
           },
-          orbitPointDisplay: { markersVisible: false },
           session: createRuntimeScenarioSession('menu-background', {
             cameraFollowBodyId: 'earth',
             cameraFollowOffsetX: 4_000_000,
@@ -152,9 +150,6 @@ describe('runtimeStateTransitions', () => {
       description: 'Menu background description',
       title: 'Menu background',
     })
-    expect(runtime.scenario.orbitPointDisplay).toEqual({
-      markersVisible: false,
-    })
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.ui.uiEffectEpoch).toBe(1)
     expect(runtime.simulation.assistMode).toBe('off')
@@ -169,7 +164,6 @@ describe('runtimeStateTransitions', () => {
 
   it('applies scenario load assist target state after transient cleanup', () => {
     const runtime = createRuntime()
-    runtime.scenario.orbitPointDisplay = { markersVisible: false }
 
     applyScenarioLoadTransition(
       runtime,
@@ -206,7 +200,6 @@ describe('runtimeStateTransitions', () => {
 
     expect(runtime.simulation.assistTargetIndex).toBe(1)
     expect(runtime.simulation.assistTargetSelectionMode).toBe('manual')
-    expect(runtime.scenario.orbitPointDisplay).toBeUndefined()
   })
 
   it('always syncs directives for checkpoint restores', () => {
@@ -224,7 +217,6 @@ describe('runtimeStateTransitions', () => {
           lastSampleAtMs: 1_000,
           stepStartHeading: runtime.simulation.state.spacecraft.heading,
           stepStartTouchThrustControlEngaged: false,
-          stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },
       },
@@ -342,7 +334,6 @@ describe('runtimeStateTransitions', () => {
           lastSampleAtMs: performance.now() - 1_100,
           stepStartHeading: runtime.simulation.state.spacecraft.heading,
           stepStartTouchThrustControlEngaged: true,
-          stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
         },
       },

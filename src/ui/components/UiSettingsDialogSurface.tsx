@@ -1,22 +1,3 @@
-import type { OrbitPointDisplaySettings } from '../../userSettingsStorage'
-
-const getOrbitPointDisplaySummary = (settings: OrbitPointDisplaySettings) => {
-  return settings.markersVisible ? 'Markers on' : 'Markers off'
-}
-
-const desktopSpacecraftControlsSummary = 'Keyboard and mouse active'
-
-const getSpacecraftControlsSummary = ({
-  mobileManeuverStartByDrag,
-  touchControlsVisible,
-}: {
-  mobileManeuverStartByDrag: boolean
-  touchControlsVisible: boolean
-}) => {
-  return touchControlsVisible
-    ? `maneuver ${mobileManeuverStartByDrag ? 'drag' : 'tap'}`
-    : desktopSpacecraftControlsSummary
-}
 
 const UiSettingsNavigationRow = ({
   label,
@@ -76,10 +57,7 @@ const UiSettingsSwitch = ({
   </button>
 )
 
-export type UiSettingsDialogPane =
-  | 'main'
-  | 'orbitPointDisplay'
-  | 'spacecraftControls'
+export type UiSettingsDialogPane = 'main' | 'camera'
 
 export type UiSettingsDialogSurfaceProps = {
   activePane: UiSettingsDialogPane
@@ -90,19 +68,13 @@ export type UiSettingsDialogSurfaceProps = {
   desktopEdgePanVisible: boolean
   dialogId: string
   increaseDesktopEdgePanSpeedDisabled: boolean
-  mobileManeuverStartByDrag: boolean
-  orbitPointDisplay: OrbitPointDisplaySettings
   open: boolean
   rootRef(element: HTMLElement | null): void
-  touchControlsVisible: boolean
   onBackToMainSettings(): void
   onDecreaseDesktopEdgePanSpeed(): void
   onDesktopEdgePanEnabledChange(enabled: boolean): void
   onIncreaseDesktopEdgePanSpeed(): void
-  onMobileManeuverStartByDragChange(startByDrag: boolean): void
-  onOpenOrbitPointDisplaySettings(): void
-  onOpenSpacecraftControlsSettings(): void
-  onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
+  onOpenCameraSettings(): void
 }
 
 export const UiSettingsDialogSurface = ({
@@ -114,31 +86,18 @@ export const UiSettingsDialogSurface = ({
   desktopEdgePanVisible,
   dialogId,
   increaseDesktopEdgePanSpeedDisabled,
-  mobileManeuverStartByDrag,
-  orbitPointDisplay,
   open,
   rootRef,
-  touchControlsVisible,
   onBackToMainSettings,
   onDecreaseDesktopEdgePanSpeed,
   onDesktopEdgePanEnabledChange,
   onIncreaseDesktopEdgePanSpeed,
-  onMobileManeuverStartByDragChange,
-  onOpenOrbitPointDisplaySettings,
-  onOpenSpacecraftControlsSettings,
-  onOrbitPointDisplayChange,
+  onOpenCameraSettings,
 }: UiSettingsDialogSurfaceProps) => {
   const titleId =
-    activePane === 'orbitPointDisplay'
-      ? `${dialogId}-orbit-point-display-title`
-      : activePane === 'spacecraftControls'
-        ? `${dialogId}-spacecraft-controls-title`
-        : `${dialogId}-title`
-  const updateOrbitPointDisplay = (
-    key: keyof OrbitPointDisplaySettings,
-    value: boolean,
-  ) => onOrbitPointDisplayChange({ ...orbitPointDisplay, [key]: value })
-  const spacecraftSettingsVisible = touchControlsVisible
+    activePane === 'camera' ? `${dialogId}-camera-title` : `${dialogId}-title`
+
+
 
   const mainPanel = (
     <>
@@ -162,30 +121,23 @@ export const UiSettingsDialogSurface = ({
       <div class="app-dialog-body">
         <div class="app-dialog-setting-list">
           <UiSettingsNavigationRow
-            label="Spacecraft controls settings"
-            onClick={onOpenSpacecraftControlsSettings}
-            summary={getSpacecraftControlsSummary({
-              mobileManeuverStartByDrag,
-              touchControlsVisible,
-            })}
+            label="Camera settings"
+            onClick={onOpenCameraSettings}
+            summary="Camera preferences"
           />
-          <UiSettingsNavigationRow
-            label="Orbit point display"
-            onClick={onOpenOrbitPointDisplaySettings}
-            summary={getOrbitPointDisplaySummary(orbitPointDisplay)}
-          />
+
         </div>
       </div>
     </>
   )
 
-  const spacecraftControlsPanel = (
+  const cameraSettingsPanel = (
     <>
       <header class="app-dialog-header">
         <div>
           <div class="app-dialog-kicker">Controls</div>
           <h2 id={titleId} class="app-dialog-title">
-            Spacecraft controls settings
+            Camera settings
           </h2>
         </div>
         <div class="app-dialog-header-actions">
@@ -199,7 +151,7 @@ export const UiSettingsDialogSurface = ({
           <button
             type="button"
             class="app-dialog-button app-dialog-close"
-            aria-label="Close spacecraft controls settings"
+            aria-label="Close camera settings"
             data-dialog-close="true"
           >
             Close
@@ -208,25 +160,6 @@ export const UiSettingsDialogSurface = ({
       </header>
 
       <div class="app-dialog-body">
-        {touchControlsVisible ? (
-          /* biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern. */
-          <div
-            class="app-dialog-setting-group"
-            role="group"
-            aria-label="Maneuvers"
-          >
-            <span class="app-dialog-setting-group-label">Maneuvers</span>
-            <UiSettingsSwitch
-              checked={mobileManeuverStartByDrag}
-              label="Starts by drag or tap"
-              summary={
-                mobileManeuverStartByDrag ? 'Starts by drag' : 'Starts by tap'
-              }
-              onChange={onMobileManeuverStartByDragChange}
-            />
-          </div>
-        ) : null}
-
         {desktopEdgePanVisible ? (
           // biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern.
           <div
@@ -288,64 +221,10 @@ export const UiSettingsDialogSurface = ({
             ) : null}
           </div>
         ) : null}
-
-        {spacecraftSettingsVisible ? null : (
-          <div class="app-dialog-setting">
-            <span class="app-dialog-setting-copy">
-              <span class="app-dialog-setting-name">
-                {desktopSpacecraftControlsSummary}
-              </span>
-              <span class="app-dialog-setting-summary">
-                Touch controls are hidden in this mode.
-              </span>
-            </span>
-          </div>
-        )}
       </div>
     </>
   )
 
-  const orbitPointDisplayPanel = (
-    <>
-      <header class="app-dialog-header">
-        <div>
-          <div class="app-dialog-kicker">Display</div>
-          <h2 id={titleId} class="app-dialog-title">
-            Orbit point display
-          </h2>
-        </div>
-        <div class="app-dialog-header-actions">
-          <button
-            type="button"
-            class="app-dialog-button"
-            onClick={onBackToMainSettings}
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            class="app-dialog-button app-dialog-close"
-            aria-label="Close orbit point display settings"
-            data-dialog-close="true"
-          >
-            Close
-          </button>
-        </div>
-      </header>
-
-      <div class="app-dialog-body">
-        <div class="app-dialog-setting-list">
-          <UiSettingsSwitch
-            checked={orbitPointDisplay.markersVisible}
-            label="Show closest/farthest markers"
-            onChange={(checked) =>
-              updateOrbitPointDisplay('markersVisible', checked)
-            }
-          />
-        </div>
-      </div>
-    </>
-  )
 
   return (
     <div class="app-dialog ui-settings-dialog" hidden={!open} ref={rootRef}>
@@ -357,11 +236,7 @@ export const UiSettingsDialogSurface = ({
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        {activePane === 'orbitPointDisplay'
-          ? orbitPointDisplayPanel
-          : activePane === 'spacecraftControls'
-            ? spacecraftControlsPanel
-            : mainPanel}
+        {activePane === 'camera' ? cameraSettingsPanel : mainPanel}
       </section>
     </div>
   )

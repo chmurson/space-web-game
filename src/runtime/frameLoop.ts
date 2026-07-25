@@ -93,37 +93,6 @@ export const createFrameLoop = (options: {
     }
   }
 
-  const getTargetHeadingVisuals = () => {
-    const targetHeadingPlan = options.runtime.ui.targetHeadingPlan
-    const committedTargetHeading =
-      targetHeadingPlan && options.runtime.simulation.targetHeading !== null
-        ? options.runtime.simulation.targetHeading
-        : null
-
-    return {
-      committedTargetHeading,
-      committedTargetHeadingScreenPosition:
-        committedTargetHeading !== null
-          ? (options.runtime.ui.targetHeadingScreenPosition ?? null)
-          : null,
-      committedTargetHeadingWorldPosition:
-        committedTargetHeading !== null
-          ? (options.runtime.ui.targetHeadingWorldPosition ?? null)
-          : null,
-      targetHeading:
-        targetHeadingPlan?.heading ?? options.runtime.simulation.targetHeading,
-      targetHeadingScreenPosition:
-        targetHeadingPlan?.screenPosition ??
-        options.runtime.ui.targetHeadingScreenPosition ??
-        null,
-      targetHeadingWorldPosition:
-        targetHeadingPlan?.worldPosition ??
-        options.runtime.ui.targetHeadingWorldPosition ??
-        null,
-      targetHeadingPlanActive: targetHeadingPlan !== null,
-    }
-  }
-
   const recordFpsFrameSample = (nowMs: number, cpuMs: number) => {
     fpsFrameSamples.push({
       atMs: nowMs,
@@ -318,7 +287,6 @@ export const createFrameLoop = (options: {
       rcsActualTurnFeedback: options.runtime.ui.rcsActualTurnFeedback ?? null,
       trailTarget,
       trimTrailAroundTarget,
-      ...getTargetHeadingVisuals(),
       viewportSize: options.runtime.simulation.viewportSize,
     })
 
@@ -403,7 +371,6 @@ export const createFrameLoop = (options: {
         rcsActualTurnFeedback: options.runtime.ui.rcsActualTurnFeedback ?? null,
         trailTarget,
         trimTrailAroundTarget: trailTargetMetrics.specificEnergy < 0,
-        ...getTargetHeadingVisuals(),
         viewportSize: options.runtime.simulation.viewportSize,
       })
       const fpsMeterVisible = isFpsMeterVisible()

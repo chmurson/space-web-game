@@ -276,9 +276,9 @@ test('preserves touch target selector semantics and activation behavior', async 
     automaticDisabled: false,
     rootAriaLabel: 'Target body selector',
     rowAriaLabels: [
-      'Earth, 1 Mm, tracking target',
-      'Moon, 2 Mm, tracking target',
-      'Mars, 3 Mm',
+      'Earth, 1.0 Mm, tracking target',
+      'Moon, 2.0 Mm, tracking target',
+      'Mars, 3.0 Mm',
     ],
     rowClassNames: [
       'touch-target-control-row touch-target-control-row-active',
@@ -298,9 +298,9 @@ test('preserves touch target selector semantics and activation behavior', async 
     automaticAriaChecked: 'false',
     automaticAriaLabel: 'Automatic targeting off: Moon',
     rowAriaLabels: [
-      'Earth, 1 Mm, pinned target',
-      'Moon, 2 Mm, tracking target',
-      'Mars, 3 Mm',
+      'Earth, 1.0 Mm, pinned target',
+      'Moon, 2.0 Mm, tracking target',
+      'Mars, 3.0 Mm',
     ],
   })
   expect(result.afterReturnToAutomatic).toMatchObject({
@@ -311,18 +311,18 @@ test('preserves touch target selector semantics and activation behavior', async 
     automaticAriaChecked: 'false',
     automaticAriaLabel: 'Automatic targeting off: Moon',
     rowAriaLabels: [
-      'Earth, 1 Mm',
-      'Moon, 2 Mm, tracking target',
-      'Mars, 3 Mm, pinned target',
+      'Earth, 1.0 Mm',
+      'Moon, 2.0 Mm, tracking target',
+      'Mars, 3.0 Mm, pinned target',
     ],
   })
   expect(result.forced).toMatchObject({
     automaticAriaChecked: 'false',
     automaticDisabled: true,
     rowAriaLabels: [
-      'Earth, 1 Mm',
-      'Moon, 2 Mm, tracking target',
-      'Mars, 3 Mm, locked target',
+      'Earth, 1.0 Mm',
+      'Moon, 2.0 Mm, tracking target',
+      'Mars, 3.0 Mm, locked target',
     ],
     rowDisabledStates: [true, true, true],
   })

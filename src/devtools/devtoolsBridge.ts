@@ -80,9 +80,6 @@ export type SpaceGameDevtoolsSnapshot = {
   camera: {
     follow: CameraFollowSubject
     panOffset: DevtoolsVec2
-    targetHeadingScreenPosition: DevtoolsVec2 | null
-    targetHeadingSelectionEpoch: number
-    targetHeadingWorldPosition: DevtoolsVec2 | null
   }
   debug: AppRuntimeDebugSlice
   protocolVersion: 2
@@ -253,13 +250,6 @@ export const createDevtoolsSnapshot = (
     camera: {
       follow: runtime.ui.camera.follow,
       panOffset: cloneVec2(runtime.ui.camera.panOffset),
-      targetHeadingScreenPosition: runtime.ui.targetHeadingScreenPosition
-        ? cloneVec2(runtime.ui.targetHeadingScreenPosition)
-        : null,
-      targetHeadingSelectionEpoch: runtime.ui.targetHeadingSelectionEpoch,
-      targetHeadingWorldPosition: runtime.ui.targetHeadingWorldPosition
-        ? cloneVec2(runtime.ui.targetHeadingWorldPosition)
-        : null,
     },
     debug: { ...runtime.debug },
     protocolVersion: 2,

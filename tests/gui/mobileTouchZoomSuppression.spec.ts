@@ -97,12 +97,15 @@ test('prevents rapid repeated button taps while preserving button activation', a
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
   const result = await page.evaluate(() => {
-    const button = document.querySelector<HTMLButtonElement>(
-      '.in-game-controls-menu-button',
-    )
-    if (!button || button.disabled) {
-      throw new Error('Missing enabled in-game controls button')
+    const app = document.querySelector<HTMLElement>('#app')
+    if (!app) {
+      throw new Error('Missing guarded app')
     }
+
+    const button = document.createElement('button')
+    button.className = 'in-game-controls-menu-button'
+    button.type = 'button'
+    app.appendChild(button)
 
     let clickCount = 0
     let nextTouchIdentifier = 1
@@ -313,7 +316,6 @@ test('covers all DOM game surfaces with one top-level guard', async ({
     const selectors = {
       bottomHud: '[data-visible="false"][role="status"]',
       crashMenu: '[data-crash-menu-action="restart"]',
-      inGameControls: '[data-in-game-action="openUiSettings"]',
       mainMenu: '[data-main-menu-view="main"]',
       scenarioLoading: '[data-visible="false"] > [role="status"]',
       scenarioPrompt: '[data-prompt-mode="modal"]',
@@ -342,7 +344,6 @@ test('covers all DOM game surfaces with one top-level guard', async ({
   expect(result.surfacesInsideGuard).toEqual({
     bottomHud: true,
     crashMenu: true,
-    inGameControls: true,
     mainMenu: true,
     scenarioLoading: true,
     scenarioPrompt: true,

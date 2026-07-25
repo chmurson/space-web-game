@@ -16,7 +16,7 @@ export type ScenarioHudFocusTarget =
 export type ScenarioTouchHintTarget = 'thrust-zone'
 export type ScenarioTouchControlFocusTarget =
   | 'burn'
-  | 'target'
+  | 'rcs'
   | 'trajectory'
   | 'warp'
 export type ScenarioCoachPromptLayout =

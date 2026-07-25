@@ -14,7 +14,6 @@ import type {
   Spacecraft,
 } from './simulation/types'
 import type { Vec2 } from './simulation/vector'
-import type { OrbitPointDisplaySettingOverrides } from './userSettingsStorage'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
 const recentDebugSnapshotsStorageKey =
@@ -79,7 +78,6 @@ export type RuntimeScenario = Scenario & {
   cameraPanOffset?: Vec2
   coastPredictionHorizonHours?: number
   elapsed?: number
-  orbitPointDisplay?: OrbitPointDisplaySettingOverrides
   scenarioSession?: RuntimeScenarioSession
   userInfoPins?: InfoPin[]
   viewportSize?: number

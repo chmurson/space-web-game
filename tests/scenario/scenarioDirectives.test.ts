@@ -70,7 +70,6 @@ const createRuntime = (): AppRuntimeState => ({
       panOffset: { x: 0, y: 0 },
     },
     spacecraftLabelIntroUntil: 0,
-    targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
       engaged: false,
       interactive: false,
@@ -270,7 +269,6 @@ describe('scenarioDirectives', () => {
           lastSampleHeading: 0,
           lastSampleAtMs: 0,
           stepStartHeading: 0,
-          stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 1,
           stepStartTouchThrustControlEngaged: false,
         },
@@ -313,7 +311,6 @@ describe('scenarioDirectives', () => {
           lastSampleHeading: 0,
           lastSampleAtMs: 0,
           stepStartHeading: 0,
-          stepStartTargetHeadingSelectionEpoch: 0,
           stepStartTimeWarpMultiplier: 30,
           stepStartTouchThrustControlEngaged: false,
         },

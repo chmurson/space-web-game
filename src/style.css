@@ -2285,16 +2285,6 @@ button.app-dialog-setting {
   z-index: var(--z-in-game-elements);
 }
 
-.heading-target-overlay {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  z-index: var(--z-in-game-elements);
-}
-
 .rcs-actual-turn-overlay {
   position: fixed;
   inset: 0;
@@ -2305,32 +2295,6 @@ button.app-dialog-setting {
   z-index: var(--z-in-game-elements);
 }
 
-.heading-target-line {
-  stroke: rgba(125, 211, 252, 0.3);
-  stroke-width: 1;
-  stroke-dasharray: 3 9;
-  stroke-linecap: round;
-}
-
-.heading-target-overlay-planning .heading-target-line {
-  stroke: rgba(56, 189, 248, 0.9);
-  stroke-width: 1.5;
-  stroke-dasharray: 5 7;
-  animation: heading-target-planning-dash 900ms linear infinite;
-}
-
-.heading-committed-target-line {
-  stroke: rgba(125, 211, 252, 0.18);
-  stroke-width: 1;
-  stroke-dasharray: 3 9;
-  stroke-linecap: round;
-}
-
-.heading-target-turn-slice {
-  fill: rgba(56, 189, 248, 0.18);
-  stroke: none;
-}
-
 .rcs-actual-turn-slices {
   filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.42));
 }
@@ -2338,65 +2302,6 @@ button.app-dialog-setting {
 .rcs-actual-turn-slice {
   fill: rgba(56, 189, 248, 0.28);
   stroke: none;
-}
-
-.heading-target-overlay-planning .heading-target-turn-slice {
-  fill: rgba(56, 189, 248, 0.3);
-  animation: heading-target-planning-slice 1200ms ease-in-out infinite;
-}
-
-.heading-target-dot {
-  position: fixed;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(186, 230, 253, 0.72);
-  opacity: 0.68;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  z-index: var(--z-in-game-floating-elements);
-}
-
-.heading-target-dot-planning {
-  width: 16px;
-  height: 16px;
-  border: 1px solid rgba(56, 189, 248, 0.92);
-  background: rgba(56, 189, 248, 0.14);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.52);
-  opacity: 0.9;
-  animation: heading-target-planning-reticle 1200ms ease-in-out infinite;
-}
-
-.heading-target-dot-planning::after {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(186, 230, 253, 0.94);
-  content: "";
-  transform: translate(-50%, -50%);
-}
-
-@keyframes heading-target-planning-dash {
-  to {
-    stroke-dashoffset: -12;
-  }
-}
-
-@keyframes heading-target-planning-slice {
-  50% {
-    fill: rgba(125, 211, 252, 0.38);
-  }
-}
-
-@keyframes heading-target-planning-reticle {
-  50% {
-    border-color: rgba(125, 211, 252, 1);
-    box-shadow: 0 0 18px rgba(56, 189, 248, 0.7);
-    transform: translate(-50%, -50%) scale(1.08);
-  }
 }
 
 .spacecraft-callout span {
@@ -2647,10 +2552,7 @@ button.app-dialog-setting {
     animation: none;
   }
 
-  .heading-target-overlay-planning .heading-target-line,
-  .heading-target-overlay-planning .heading-target-turn-slice,
-  .rcs-actual-turn-slice,
-  .heading-target-dot-planning {
+  .rcs-actual-turn-slice {
     animation: none;
   }
 }
@@ -2898,8 +2800,6 @@ button.app-dialog-setting {
 #app.app-main-menu .scenario-prompt-backdrop,
 #app.app-main-menu .crash-menu,
 #app.app-main-menu .spacecraft-icon-thrust,
-#app.app-main-menu .heading-target-dot,
-#app.app-main-menu .heading-target-overlay,
 #app.app-main-menu .rcs-actual-turn-overlay,
 #app.app-main-menu .offscreen-indicator,
 #app.app-main-menu .body-label,
@@ -2919,8 +2819,6 @@ button.app-dialog-setting {
 #app.app-crashed .scenario-prompt-backdrop,
 #app.app-crashed .bottom-pill-area,
 #app.app-crashed .spacecraft-icon-thrust,
-#app.app-crashed .heading-target-dot,
-#app.app-crashed .heading-target-overlay,
 #app.app-crashed .rcs-actual-turn-overlay,
 #app.app-crashed .offscreen-indicator,
 #app.app-crashed .body-label,

@@ -46,8 +46,6 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
-      getMobileManeuverStartByDrag: () => true,
-      getSpacecraftVisible: () => true,
       getTargetControlRows: () => [],
       getTimeWarpPreview: () => ({
         canCommit: true,
@@ -79,9 +77,6 @@ test('wires docked RCS yaw to analog drag, release, and Flight close reset', asy
       onCameraRecenter: () => {},
       onReturnToAutomaticTarget: () => true,
       onSelectTargetIndex: () => true,
-      onTargetHeadingPlan: () => {},
-      onTargetHeadingPlanCanceled: () => {},
-      onTargetHeadingPlanCommitted: () => true,
       onTargetStateChange: () => {},
       onThrustControlUiStateChange: () => {},
       onZoom: () => {},
