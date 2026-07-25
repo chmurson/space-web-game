@@ -41,6 +41,9 @@ describe('createAppConfigContext', () => {
   it('uses configured default touch control settings without stored settings', () => {
     expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
     expect(
+      createAppConfigContext().trajectory.defaultCoastPredictionHorizonHours,
+    ).toBe(48)
+    expect(
       createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
     ).toBe(48)
     expect(createAppConfigContext().userSettings).toMatchObject({

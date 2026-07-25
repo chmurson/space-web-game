@@ -18,7 +18,7 @@ controls:
 
 trajectory:
   horizon:
-    defaultHours: 1
+    defaultHours: 48
     minHours: 0.5
     defaultMaxHours: 48
     maxHours: 3072

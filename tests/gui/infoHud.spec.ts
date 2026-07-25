@@ -159,7 +159,7 @@ test('desktop Info creates persistent readouts while its popover is closed', asy
     await expect(railPill).toHaveClass(/telemetry-pill/)
     await expect(
       rail.locator('[data-info-pin="apsides"] .info-hud-rail-distance').last(),
-    ).toHaveText('—')
+    ).toHaveText(/^\d+ km$/)
     const telemetryStyleComparison = await page.evaluate(() => {
       const targetPill = document.querySelector('.telemetry-pill-target')
       const railPill = document.querySelector('.info-hud-rail-pill')
