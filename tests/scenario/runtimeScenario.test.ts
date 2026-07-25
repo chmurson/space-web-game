@@ -14,7 +14,7 @@ import {
 } from '@/scenario/runtimeScenario'
 
 const options: RuntimeScenarioOptions = {
-  defaultCoastPredictionHorizonHours: 1,
+  defaultCoastPredictionHorizonHours: 48,
   defaultViewportSize: 200,
   maxCoastPredictionHorizonHours: 48,
   maxViewportSize: 800,
@@ -105,9 +105,34 @@ describe('createRuntimeScenarioState', () => {
       options,
     )
 
-    expect(runtimeScenario.coastPredictionHorizonHours).toBe(1)
+    expect(runtimeScenario.coastPredictionHorizonHours).toBe(48)
     expect(runtimeScenario.viewportSize).toBe(200)
     expect(runtimeScenario.state.elapsed).toBe(0)
+  })
+
+  it('prefers a scenario-defined horizon over the configured default', () => {
+    const runtimeScenario = createRuntimeScenarioState(
+      {
+        id: 'test',
+        name: 'Test',
+        description: 'Test scenario',
+        coastPredictionHorizonHours: 12,
+        bodies: [],
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
+      },
+      options,
+    )
+
+    expect(runtimeScenario.coastPredictionHorizonHours).toBe(12)
   })
 
   it('uses scenario-defined starting Follow and pan offset when present', () => {

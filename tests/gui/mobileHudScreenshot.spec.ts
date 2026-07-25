@@ -3127,6 +3127,11 @@ test('captures the mobile trajectory horizon control in Nav', async ({
       exact: true,
     }),
   ).toBeVisible()
+  await expect(
+    navPanel.locator(
+      '.touch-step-selector-trajectory .touch-step-selector-value-current',
+    ),
+  ).toHaveText('2d')
   await expect(page.locator('#touch-trajectory-horizon-reveal')).toHaveCount(0)
 
   await attachMobileScreenshot(
