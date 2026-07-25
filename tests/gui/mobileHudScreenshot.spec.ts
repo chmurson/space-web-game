@@ -7,7 +7,11 @@ import {
 } from '@playwright/test'
 import type { UIUserAction } from '../../src/input/uiUserActions'
 import type { ReachMoonHighscorePendingRun } from '../../src/ui/components/MainMenuSurface'
-import type { DesktopEdgePanSpeed } from '../../src/userSettingsStorage'
+import type {
+  DesktopCameraPanMode,
+  DesktopEdgePanSpeed,
+  DesktopWheelPanSpeed,
+} from '../../src/userSettingsStorage'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -2268,8 +2272,9 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const beforeButton = document.createElement('button')
     const events: string[] = []
     const openEvents: boolean[] = []
-    let desktopEdgePanEnabled = false
+    let desktopCameraPanMode: DesktopCameraPanMode = 'wheel'
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+    let desktopWheelPanSpeed: DesktopWheelPanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
     let orbitPointDisplay = {
       markersVisible: true,
@@ -2282,9 +2287,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     const dialog = createUiSettingsDialog({
       app,
-      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopCameraPanMode: () => desktopCameraPanMode,
+      getDesktopCameraPanVisible: () => true,
       getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-      getDesktopEdgePanVisible: () => true,
+      getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       onOrbitPointDisplayChange: (settings: typeof orbitPointDisplay) => {
@@ -2292,13 +2298,17 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         orbitPointDisplay = settings
       },
       onOpenChange: (open: boolean) => openEvents.push(open),
-      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
-        events.push(`edgePan:${enabled}`)
-        desktopEdgePanEnabled = enabled
+      onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
+        events.push(`panMode:${mode}`)
+        desktopCameraPanMode = mode
       },
       onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
         events.push(`edgePanSpeed:${speed}`)
         desktopEdgePanSpeed = speed
+      },
+      onDesktopWheelPanSpeedChange: (speed: DesktopWheelPanSpeed) => {
+        events.push(`wheelPanSpeed:${speed}`)
+        desktopWheelPanSpeed = speed
       },
       onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
         events.push(`maneuver:${startByDrag}`)
@@ -2315,12 +2325,19 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
           (dialog.element as HTMLElement).querySelectorAll('button'),
         ) as HTMLButtonElement[]
       ).find((button) => button.textContent?.includes(text))
-    const getEdgePanSpeed = () =>
-      dialog.element.querySelector('[data-ui-settings-edge-pan-speed]')
-        ?.textContent
-    const getEdgePanSpeedButton = (action: string) =>
+    const getPanModeRadio = (mode: DesktopCameraPanMode) =>
       dialog.element.querySelector(
-        `[data-ui-settings-edge-pan-speed-action="${action}"]`,
+        `input[type="radio"][value="${mode}"]`,
+      ) as HTMLInputElement | null
+    const getPanSpeed = (setting: 'edge' | 'wheel') =>
+      dialog.element.querySelector(`[data-ui-settings-pan-speed="${setting}"]`)
+        ?.textContent
+    const getPanSpeedButton = (
+      setting: 'edge' | 'wheel',
+      action: 'decrease' | 'increase',
+    ) =>
+      dialog.element.querySelector(
+        `[data-ui-settings-pan-speed-action="${setting}-${action}"]`,
       ) as HTMLButtonElement | null
     const getFocusableButtons = (): HTMLButtonElement[] =>
       Array.from(
@@ -2369,21 +2386,52 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       'Starts by drag or tap',
     )?.textContent
     getButtonByText('Starts by drag or tap')?.click()
-    const edgePanSwitchInitial = getButtonByText(
-      'Turn on scrolling by edge pan',
-    )?.getAttribute('aria-checked')
-    const edgePanSwitchInitialText = getButtonByText(
-      'Turn on scrolling by edge pan',
-    )?.textContent
-    const edgePanSpeedHiddenInitial = getEdgePanSpeed() === undefined
-    getButtonByText('Turn on scrolling by edge pan')?.click()
-    const edgePanSpeedAfterToggle = getEdgePanSpeed()
-    const edgePanSpeedDecreaseDisabledAfterToggle =
-      getEdgePanSpeedButton('decrease')?.disabled
-    getEdgePanSpeedButton('increase')?.click()
-    const edgePanSpeedAfterIncrease = getEdgePanSpeed()
-    const edgePanSpeedIncreaseDisabledAfterIncrease =
-      getEdgePanSpeedButton('increase')?.disabled
+    const panCameraGroup = (dialog.element as HTMLElement).querySelector(
+      '.app-dialog-radio-group',
+    ) as HTMLFieldSetElement | null
+    const panCameraGroupLabel =
+      panCameraGroup?.querySelector('legend')?.textContent
+    const panModeRadioLabels = Array.from(
+      (dialog.element as HTMLElement).querySelectorAll(
+        '.app-dialog-radio-input',
+      ) as NodeListOf<HTMLInputElement>,
+    ).map((input) => input.closest('label')?.textContent)
+    const panModeRadioNames = Array.from(
+      (dialog.element as HTMLElement).querySelectorAll(
+        '.app-dialog-radio-input',
+      ) as NodeListOf<HTMLInputElement>,
+    ).map((input) => input.name)
+    const wheelModeCheckedInitial = getPanModeRadio('wheel')?.checked
+    const wheelPanSpeedInitial = getPanSpeed('wheel')
+    const edgePanSpeedHiddenInitial = getPanSpeed('edge') === undefined
+
+    getPanModeRadio('edge')?.click()
+    const edgeModeCheckedAfterSelect = getPanModeRadio('edge')?.checked
+    const wheelPanSpeedHiddenForEdge = getPanSpeed('wheel') === undefined
+    const edgePanSpeedAfterSelect = getPanSpeed('edge')
+    const edgePanSpeedDecreaseDisabledAfterSelect = getPanSpeedButton(
+      'edge',
+      'decrease',
+    )?.disabled
+    getPanSpeedButton('edge', 'increase')?.click()
+    const edgePanSpeedAfterIncrease = getPanSpeed('edge')
+    const edgePanSpeedIncreaseDisabledAfterIncrease = getPanSpeedButton(
+      'edge',
+      'increase',
+    )?.disabled
+
+    getPanModeRadio('drag')?.click()
+    const panSpeedsHiddenForDrag =
+      getPanSpeed('edge') === undefined && getPanSpeed('wheel') === undefined
+
+    getPanModeRadio('wheel')?.click()
+    const wheelPanSpeedAfterReselect = getPanSpeed('wheel')
+    getPanSpeedButton('wheel', 'increase')?.click()
+    const wheelPanSpeedAfterIncrease = getPanSpeed('wheel')
+    const wheelPanSpeedIncreaseDisabledAfterIncrease = getPanSpeedButton(
+      'wheel',
+      'increase',
+    )?.disabled
     dialog.syncState()
     const maneuverSwitchAfter = getButtonByText(
       'Starts by drag or tap',
@@ -2391,12 +2439,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     const maneuverSwitchAfterText = getButtonByText(
       'Starts by drag or tap',
     )?.textContent
-    const edgePanSwitchAfter = getButtonByText(
-      'Turn on scrolling by edge pan',
-    )?.getAttribute('aria-checked')
-    const edgePanSwitchAfterText = getButtonByText(
-      'Turn on scrolling by edge pan',
-    )?.textContent
+    const wheelModeCheckedAfterSync = getPanModeRadio('wheel')?.checked
     getButtonByText('Back')?.click()
     const titleAfterSpacecraftBack =
       dialog.element.querySelector('.app-dialog-title')?.textContent
@@ -2491,13 +2534,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       hiddenAfterCloseButton,
       hiddenAfterEscape,
       hiddenTriggerWasActiveBeforeOpen,
-      edgePanSwitchAfter,
-      edgePanSwitchAfterText,
-      edgePanSwitchInitial,
-      edgePanSwitchInitialText,
+      edgeModeCheckedAfterSelect,
       edgePanSpeedAfterIncrease,
-      edgePanSpeedAfterToggle,
-      edgePanSpeedDecreaseDisabledAfterToggle,
+      edgePanSpeedAfterSelect,
+      edgePanSpeedDecreaseDisabledAfterSelect,
       edgePanSpeedHiddenInitial,
       edgePanSpeedIncreaseDisabledAfterIncrease,
       maneuverSwitchAfter,
@@ -2515,6 +2555,12 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       orbitSummaryInitial,
       orbitSwitchOrder,
       orbitTitleAfterOpen,
+      panCameraGroupLabel,
+      panCameraGroupTagName: panCameraGroup?.tagName,
+      panModeRadioLabelCount: panModeRadioLabels.length,
+      panModeRadioLabels,
+      panModeRadioNameCount: new Set(panModeRadioNames).size,
+      panSpeedsHiddenForDrag,
       role,
       spacecraftControlGroup,
       spacecraftControlGroups,
@@ -2527,13 +2573,27 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       titleAfterSpacecraftBack,
       titleAfterOrbitBack,
       maneuverSyncedOnOpen,
+      wheelModeCheckedAfterSync,
+      wheelModeCheckedInitial,
+      wheelPanSpeedAfterIncrease,
+      wheelPanSpeedAfterReselect,
+      wheelPanSpeedHiddenForEdge,
+      wheelPanSpeedIncreaseDisabledAfterIncrease,
+      wheelPanSpeedInitial,
     }
   })
 
   expect(result).toEqual({
     activeAfterOpen: true,
     className: 'app-dialog ui-settings-dialog',
-    events: ['maneuver:false', 'edgePan:true', 'edgePanSpeed:fast'],
+    events: [
+      'maneuver:false',
+      'panMode:edge',
+      'edgePanSpeed:fast',
+      'panMode:drag',
+      'panMode:wheel',
+      'wheelPanSpeed:fast',
+    ],
     focusAfterBackwardTrap: true,
     focusAfterForwardTrap: true,
     focusRestoredAfterBackdrop: true,
@@ -2544,15 +2604,10 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     hiddenAfterCloseButton: true,
     hiddenAfterEscape: true,
     hiddenTriggerWasActiveBeforeOpen: true,
-    edgePanSwitchAfter: 'true',
-    edgePanSwitchAfterText:
-      'Turn on scrolling by edge panScrolling by edge pan',
-    edgePanSwitchInitial: 'false',
-    edgePanSwitchInitialText:
-      'Turn on scrolling by edge panScrolling by dragging',
+    edgeModeCheckedAfterSelect: true,
     edgePanSpeedAfterIncrease: 'Fast',
-    edgePanSpeedAfterToggle: 'Normal',
-    edgePanSpeedDecreaseDisabledAfterToggle: false,
+    edgePanSpeedAfterSelect: 'Normal',
+    edgePanSpeedDecreaseDisabledAfterSelect: false,
     edgePanSpeedHiddenInitial: true,
     edgePanSpeedIncreaseDisabledAfterIncrease: true,
     maneuverSwitchAfter: 'false',
@@ -2570,6 +2625,16 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     orbitSummaryInitial: 'Orbit point displayMarkers on>',
     orbitSwitchOrder: ['Show closest/farthest markers'],
     orbitTitleAfterOpen: 'Orbit point display',
+    panCameraGroupLabel: 'Pan camera',
+    panCameraGroupTagName: 'FIELDSET',
+    panModeRadioLabelCount: 3,
+    panModeRadioLabels: [
+      'Wheel / trackpadScroll to pan · Ctrl/Cmd + scroll to zoom',
+      'Mouse dragClick and drag to pan · Scroll to zoom',
+      'Screen edgeMove the pointer to an edge · Scroll to zoom',
+    ],
+    panModeRadioNameCount: 1,
+    panSpeedsHiddenForDrag: true,
     role: 'dialog',
     spacecraftControlGroup: 'Maneuvers',
     spacecraftControlGroups: ['Maneuvers', 'Camera'],
@@ -2580,6 +2645,13 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     titleAfterSpacecraftBack: 'UI settings',
     titleAfterOrbitBack: 'UI settings',
     maneuverSyncedOnOpen: 'true',
+    wheelModeCheckedAfterSync: true,
+    wheelModeCheckedInitial: true,
+    wheelPanSpeedAfterIncrease: 'Fast',
+    wheelPanSpeedAfterReselect: 'Normal',
+    wheelPanSpeedHiddenForEdge: true,
+    wheelPanSpeedIncreaseDisabledAfterIncrease: true,
+    wheelPanSpeedInitial: 'Normal',
   })
 })
 
@@ -2598,8 +2670,9 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
     const targetSide: 'left' | 'right' = 'right'
     const trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
     const warpSide: 'left' | 'right' = 'right'
-    let desktopEdgePanEnabled = false
+    let desktopCameraPanMode: DesktopCameraPanMode = 'wheel'
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+    let desktopWheelPanSpeed: DesktopWheelPanSpeed = 'normal'
     let mobileManeuverStartByDrag = true
     const orbitPointDisplay = {
       markersVisible: true,
@@ -2609,19 +2682,24 @@ test('hides desktop-only irrelevant spacecraft settings without resetting saved 
 
     const dialog = createUiSettingsDialog({
       app,
-      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopCameraPanMode: () => desktopCameraPanMode,
+      getDesktopCameraPanVisible: () => false,
       getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-      getDesktopEdgePanVisible: () => false,
+      getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
       getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
       getOrbitPointDisplay: () => orbitPointDisplay,
       getTouchControlsVisible: () => touchControlsVisible,
-      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
-        events.push(`edgePan:${enabled}`)
-        desktopEdgePanEnabled = enabled
+      onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
+        events.push(`panMode:${mode}`)
+        desktopCameraPanMode = mode
       },
       onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
         events.push(`edgePanSpeed:${speed}`)
         desktopEdgePanSpeed = speed
+      },
+      onDesktopWheelPanSpeedChange: (speed: DesktopWheelPanSpeed) => {
+        events.push(`wheelPanSpeed:${speed}`)
+        desktopWheelPanSpeed = speed
       },
       onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
         events.push(`maneuver:${startByDrag}`)
@@ -2772,7 +2850,7 @@ test('keeps mobile navigation controls in Nav instead of the in-game controls me
   await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
 })
 
-test('captures the desktop edge pan toggle and speed in UI settings', async ({
+test('captures desktop camera pan modes and conditional speeds in UI settings', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 480, height: 720 })
@@ -2789,8 +2867,9 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
     const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
     const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
     const app = document.querySelector<HTMLElement>('#app')
-    let desktopEdgePanEnabled = false
+    let desktopCameraPanMode: DesktopCameraPanMode = 'wheel'
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+    let desktopWheelPanSpeed: DesktopWheelPanSpeed = 'normal'
 
     if (!app) {
       throw new Error('Missing app root')
@@ -2801,18 +2880,23 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
 
     const dialog = createUiSettingsDialog({
       app,
-      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopCameraPanMode: () => desktopCameraPanMode,
+      getDesktopCameraPanVisible: () => true,
       getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-      getDesktopEdgePanVisible: () => true,
+      getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
       getMobileManeuverStartByDrag: () => true,
       getOrbitPointDisplay: () => ({
         markersVisible: true,
       }),
-      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
-        desktopEdgePanEnabled = enabled
+      getTouchControlsVisible: () => false,
+      onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
+        desktopCameraPanMode = mode
       },
       onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
         desktopEdgePanSpeed = speed
+      },
+      onDesktopWheelPanSpeedChange: (speed: DesktopWheelPanSpeed) => {
+        desktopWheelPanSpeed = speed
       },
       onMobileManeuverStartByDragChange: () => {},
       onOrbitPointDisplayChange: () => {},
@@ -2832,28 +2916,72 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
   await expect(
     page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
   ).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Camera' })).toBeVisible()
-  await expect(page.getByText('Turn on scrolling by edge pan')).toBeVisible()
   await expect(
-    page.getByText('Scrolling by dragging', { exact: true }),
+    page.getByRole('group', { name: 'Camera', exact: true }),
+  ).toBeVisible()
+  const panCameraGroup = page.getByRole('group', { name: 'Pan camera' })
+  const wheelRadio = panCameraGroup.getByRole('radio', {
+    name: /^Wheel \/ trackpad/,
+  })
+  const dragRadio = panCameraGroup.getByRole('radio', {
+    name: /^Mouse drag/,
+  })
+  const edgeRadio = panCameraGroup.getByRole('radio', {
+    name: /^Screen edge/,
+  })
+
+  await expect(panCameraGroup.getByRole('radio')).toHaveCount(3)
+  await expect(wheelRadio).toBeChecked()
+  await expect(
+    page.getByText('Scroll to pan · Ctrl/Cmd + scroll to zoom'),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Click and drag to pan · Scroll to zoom'),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Move the pointer to an edge · Scroll to zoom'),
   ).toBeVisible()
   await expect(page.getByText('Edge pan speed')).toHaveCount(0)
-
-  await page
-    .getByRole('switch', { name: /Turn on scrolling by edge pan/ })
-    .click()
-  await expect(
-    page.getByText('Scrolling by edge pan', { exact: true }),
-  ).toBeVisible()
-  await expect(page.getByText('Edge pan speed')).toBeVisible()
-  await expect(page.locator('[data-ui-settings-edge-pan-speed]')).toHaveText(
+  await expect(page.getByText('Wheel / trackpad pan speed')).toBeVisible()
+  await expect(page.locator('[data-ui-settings-pan-speed="wheel"]')).toHaveText(
     'Normal',
   )
 
+  await wheelRadio.press('ArrowRight')
+  await expect(dragRadio).toBeChecked()
+  await expect(page.getByText('Edge pan speed')).toHaveCount(0)
+  await expect(page.getByText('Wheel / trackpad pan speed')).toHaveCount(0)
+
+  await dragRadio.press('ArrowRight')
+  await expect(edgeRadio).toBeChecked()
+  await expect(page.getByText('Edge pan speed')).toBeVisible()
+  await expect(page.getByText('Wheel / trackpad pan speed')).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Decrease edge pan speed' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Increase edge pan speed' }),
+  ).toBeVisible()
+
+  await wheelRadio.check()
   await attachMobileScreenshot(
     page,
     testInfo,
-    'desktop-edge-pan-toggle-settings',
+    'desktop-camera-pan-wheel-settings',
+  )
+
+  await edgeRadio.check()
+  const edgeSpeedBounds = await page
+    .getByRole('group', { name: 'Edge pan speed' })
+    .boundingBox()
+  expect(edgeSpeedBounds).not.toBeNull()
+  expect(
+    (edgeSpeedBounds?.y ?? 0) + (edgeSpeedBounds?.height ?? 0),
+  ).toBeLessThan(720)
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-camera-pan-edge-settings',
   )
 })
 

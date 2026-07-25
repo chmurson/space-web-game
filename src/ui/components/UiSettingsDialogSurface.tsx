@@ -1,4 +1,7 @@
-import type { OrbitPointDisplaySettings } from '../../userSettingsStorage'
+import type {
+  DesktopCameraPanMode,
+  OrbitPointDisplaySettings,
+} from '../../userSettingsStorage'
 
 const getOrbitPointDisplaySummary = (settings: OrbitPointDisplaySettings) => {
   return settings.markersVisible ? 'Markers on' : 'Markers off'
@@ -76,6 +79,95 @@ const UiSettingsSwitch = ({
   </button>
 )
 
+const UiSettingsRadioOption = ({
+  checked,
+  description,
+  groupName,
+  label,
+  onChange,
+  value,
+}: {
+  checked: boolean
+  description: string
+  groupName: string
+  label: string
+  onChange(): void
+  value: DesktopCameraPanMode
+}) => (
+  <label class="app-dialog-setting app-dialog-radio-option">
+    <span class="app-dialog-setting-copy">
+      <span class="app-dialog-setting-name">{label}</span>
+      <span class="app-dialog-setting-summary">{description}</span>
+    </span>
+    <input
+      type="radio"
+      class="app-dialog-radio-input"
+      name={groupName}
+      value={value}
+      checked={checked}
+      onChange={onChange}
+    />
+  </label>
+)
+
+const UiSettingsPanSpeedStepper = ({
+  decreaseDisabled,
+  increaseDisabled,
+  label,
+  onDecrease,
+  onIncrease,
+  setting,
+  speedLabel,
+}: {
+  decreaseDisabled: boolean
+  increaseDisabled: boolean
+  label: string
+  onDecrease(): void
+  onIncrease(): void
+  setting: 'edge' | 'wheel'
+  speedLabel: string
+}) => (
+  // biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern.
+  <div
+    class="app-dialog-setting app-dialog-stepper"
+    role="group"
+    aria-label={label}
+  >
+    <span class="app-dialog-setting-copy">
+      <span class="app-dialog-setting-name">{label}</span>
+      <span
+        class="app-dialog-setting-summary"
+        data-ui-settings-pan-speed={setting}
+        aria-live="polite"
+      >
+        {speedLabel}
+      </span>
+    </span>
+    <span class="app-dialog-stepper-controls">
+      <button
+        type="button"
+        class="app-dialog-button app-dialog-stepper-button"
+        data-ui-settings-pan-speed-action={`${setting}-decrease`}
+        aria-label={`Decrease ${label.toLowerCase()}`}
+        disabled={decreaseDisabled}
+        onClick={onDecrease}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        class="app-dialog-button app-dialog-stepper-button"
+        data-ui-settings-pan-speed-action={`${setting}-increase`}
+        aria-label={`Increase ${label.toLowerCase()}`}
+        disabled={increaseDisabled}
+        onClick={onIncrease}
+      >
+        +
+      </button>
+    </span>
+  </div>
+)
+
 export type UiSettingsDialogPane =
   | 'main'
   | 'orbitPointDisplay'
@@ -84,21 +176,27 @@ export type UiSettingsDialogPane =
 export type UiSettingsDialogSurfaceProps = {
   activePane: UiSettingsDialogPane
   decreaseDesktopEdgePanSpeedDisabled: boolean
-  desktopEdgePanEnabled: boolean
+  decreaseDesktopWheelPanSpeedDisabled: boolean
+  desktopCameraPanMode: DesktopCameraPanMode
+  desktopCameraPanVisible: boolean
   desktopEdgePanSpeedLabel: string
   desktopEdgePanSpeedVisible: boolean
-  desktopEdgePanVisible: boolean
+  desktopWheelPanSpeedLabel: string
+  desktopWheelPanSpeedVisible: boolean
   dialogId: string
   increaseDesktopEdgePanSpeedDisabled: boolean
+  increaseDesktopWheelPanSpeedDisabled: boolean
   mobileManeuverStartByDrag: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
   open: boolean
   rootRef(element: HTMLElement | null): void
   touchControlsVisible: boolean
   onBackToMainSettings(): void
+  onDesktopCameraPanModeChange(mode: DesktopCameraPanMode): void
   onDecreaseDesktopEdgePanSpeed(): void
-  onDesktopEdgePanEnabledChange(enabled: boolean): void
+  onDecreaseDesktopWheelPanSpeed(): void
   onIncreaseDesktopEdgePanSpeed(): void
+  onIncreaseDesktopWheelPanSpeed(): void
   onMobileManeuverStartByDragChange(startByDrag: boolean): void
   onOpenOrbitPointDisplaySettings(): void
   onOpenSpacecraftControlsSettings(): void
@@ -108,21 +206,27 @@ export type UiSettingsDialogSurfaceProps = {
 export const UiSettingsDialogSurface = ({
   activePane,
   decreaseDesktopEdgePanSpeedDisabled,
-  desktopEdgePanEnabled,
+  decreaseDesktopWheelPanSpeedDisabled,
+  desktopCameraPanMode,
+  desktopCameraPanVisible,
   desktopEdgePanSpeedLabel,
   desktopEdgePanSpeedVisible,
-  desktopEdgePanVisible,
+  desktopWheelPanSpeedLabel,
+  desktopWheelPanSpeedVisible,
   dialogId,
   increaseDesktopEdgePanSpeedDisabled,
+  increaseDesktopWheelPanSpeedDisabled,
   mobileManeuverStartByDrag,
   orbitPointDisplay,
   open,
   rootRef,
   touchControlsVisible,
   onBackToMainSettings,
+  onDesktopCameraPanModeChange,
   onDecreaseDesktopEdgePanSpeed,
-  onDesktopEdgePanEnabledChange,
+  onDecreaseDesktopWheelPanSpeed,
   onIncreaseDesktopEdgePanSpeed,
+  onIncreaseDesktopWheelPanSpeed,
   onMobileManeuverStartByDragChange,
   onOpenOrbitPointDisplaySettings,
   onOpenSpacecraftControlsSettings,
@@ -134,6 +238,7 @@ export const UiSettingsDialogSurface = ({
       : activePane === 'spacecraftControls'
         ? `${dialogId}-spacecraft-controls-title`
         : `${dialogId}-title`
+  const desktopCameraPanModeGroupName = `${dialogId}-desktop-camera-pan-mode`
   const updateOrbitPointDisplay = (
     key: keyof OrbitPointDisplaySettings,
     value: boolean,
@@ -227,7 +332,7 @@ export const UiSettingsDialogSurface = ({
           </div>
         ) : null}
 
-        {desktopEdgePanVisible ? (
+        {desktopCameraPanVisible ? (
           // biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern.
           <div
             class="app-dialog-setting-group"
@@ -235,56 +340,54 @@ export const UiSettingsDialogSurface = ({
             aria-label="Camera"
           >
             <span class="app-dialog-setting-group-label">Camera</span>
-            <UiSettingsSwitch
-              checked={desktopEdgePanEnabled}
-              label="Turn on scrolling by edge pan"
-              summary={
-                desktopEdgePanEnabled
-                  ? 'Scrolling by edge pan'
-                  : 'Scrolling by dragging'
-              }
-              onChange={onDesktopEdgePanEnabledChange}
-            />
+            <fieldset class="app-dialog-radio-group">
+              <legend class="app-dialog-setting-name">Pan camera</legend>
+              <UiSettingsRadioOption
+                checked={desktopCameraPanMode === 'wheel'}
+                description="Scroll to pan · Ctrl/Cmd + scroll to zoom"
+                groupName={desktopCameraPanModeGroupName}
+                label="Wheel / trackpad"
+                value="wheel"
+                onChange={() => onDesktopCameraPanModeChange('wheel')}
+              />
+              <UiSettingsRadioOption
+                checked={desktopCameraPanMode === 'drag'}
+                description="Click and drag to pan · Scroll to zoom"
+                groupName={desktopCameraPanModeGroupName}
+                label="Mouse drag"
+                value="drag"
+                onChange={() => onDesktopCameraPanModeChange('drag')}
+              />
+              <UiSettingsRadioOption
+                checked={desktopCameraPanMode === 'edge'}
+                description="Move the pointer to an edge · Scroll to zoom"
+                groupName={desktopCameraPanModeGroupName}
+                label="Screen edge"
+                value="edge"
+                onChange={() => onDesktopCameraPanModeChange('edge')}
+              />
+            </fieldset>
+            {desktopWheelPanSpeedVisible ? (
+              <UiSettingsPanSpeedStepper
+                decreaseDisabled={decreaseDesktopWheelPanSpeedDisabled}
+                increaseDisabled={increaseDesktopWheelPanSpeedDisabled}
+                label="Wheel / trackpad pan speed"
+                setting="wheel"
+                speedLabel={desktopWheelPanSpeedLabel}
+                onDecrease={onDecreaseDesktopWheelPanSpeed}
+                onIncrease={onIncreaseDesktopWheelPanSpeed}
+              />
+            ) : null}
             {desktopEdgePanSpeedVisible ? (
-              // biome-ignore lint/a11y/useSemanticElements: Preserve the existing styled dialog group pattern.
-              <div
-                class="app-dialog-setting app-dialog-stepper"
-                role="group"
-                aria-label="Edge pan speed"
-              >
-                <span class="app-dialog-setting-copy">
-                  <span class="app-dialog-setting-name">Edge pan speed</span>
-                  <span
-                    class="app-dialog-setting-summary"
-                    data-ui-settings-edge-pan-speed=""
-                    aria-live="polite"
-                  >
-                    {desktopEdgePanSpeedLabel}
-                  </span>
-                </span>
-                <span class="app-dialog-stepper-controls">
-                  <button
-                    type="button"
-                    class="app-dialog-button app-dialog-stepper-button"
-                    data-ui-settings-edge-pan-speed-action="decrease"
-                    aria-label="Decrease edge pan speed"
-                    disabled={decreaseDesktopEdgePanSpeedDisabled}
-                    onClick={onDecreaseDesktopEdgePanSpeed}
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    class="app-dialog-button app-dialog-stepper-button"
-                    data-ui-settings-edge-pan-speed-action="increase"
-                    aria-label="Increase edge pan speed"
-                    disabled={increaseDesktopEdgePanSpeedDisabled}
-                    onClick={onIncreaseDesktopEdgePanSpeed}
-                  >
-                    +
-                  </button>
-                </span>
-              </div>
+              <UiSettingsPanSpeedStepper
+                decreaseDisabled={decreaseDesktopEdgePanSpeedDisabled}
+                increaseDisabled={increaseDesktopEdgePanSpeedDisabled}
+                label="Edge pan speed"
+                setting="edge"
+                speedLabel={desktopEdgePanSpeedLabel}
+                onDecrease={onDecreaseDesktopEdgePanSpeed}
+                onIncrease={onIncreaseDesktopEdgePanSpeed}
+              />
             ) : null}
           </div>
         ) : null}

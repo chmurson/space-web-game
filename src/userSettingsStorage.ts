@@ -8,8 +8,9 @@ export type OrbitPointDisplaySettingOverrides =
   Partial<OrbitPointDisplaySettings>
 
 export type UserSettings = {
-  desktopEdgePanEnabled: boolean
+  desktopCameraPanMode: DesktopCameraPanMode
   desktopEdgePanSpeed: DesktopEdgePanSpeed
+  desktopWheelPanSpeed: DesktopWheelPanSpeed
   debugModeEnabled: boolean
   mobileManeuverStartByDrag: boolean
   orbitPointDisplay: OrbitPointDisplaySettings
@@ -19,7 +20,9 @@ export type UserSettings = {
   touchWarpControlSide: TouchControlSide
 }
 
+export type DesktopCameraPanMode = 'wheel' | 'drag' | 'edge'
 export type DesktopEdgePanSpeed = 'slow' | 'normal' | 'fast'
+export type DesktopWheelPanSpeed = DesktopEdgePanSpeed
 export type TouchControlSide = 'left' | 'right'
 export type TouchTrajectoryControlState = TouchControlSide | 'hidden'
 
@@ -29,8 +32,9 @@ const createDefaultOrbitPointDisplaySettings =
   })
 
 const createDefaultUserSettings = (): UserSettings => ({
-  desktopEdgePanEnabled: false,
+  desktopCameraPanMode: 'wheel',
   desktopEdgePanSpeed: 'normal',
+  desktopWheelPanSpeed: 'normal',
   debugModeEnabled: false,
   mobileManeuverStartByDrag: true,
   orbitPointDisplay: createDefaultOrbitPointDisplaySettings(),
@@ -50,9 +54,12 @@ const parseTouchTrajectoryControlState = (
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSide(value)
 
-const parseDesktopEdgePanSpeed = (
+const parseDesktopCameraPanMode = (
   value: unknown,
-): DesktopEdgePanSpeed | null =>
+): DesktopCameraPanMode | null =>
+  value === 'wheel' || value === 'drag' || value === 'edge' ? value : null
+
+const parseDesktopPanSpeed = (value: unknown): DesktopEdgePanSpeed | null =>
   value === 'slow' || value === 'normal' || value === 'fast' ? value : null
 
 const parseBooleanSetting = (value: unknown, fallback: boolean) =>
@@ -86,13 +93,15 @@ const parseUserSettings = (value: unknown): UserSettings => {
       .touchControlSide,
   )
   return {
-    desktopEdgePanEnabled: parseBooleanSetting(
-      settings.desktopEdgePanEnabled,
-      defaultUserSettings.desktopEdgePanEnabled,
-    ),
+    desktopCameraPanMode:
+      parseDesktopCameraPanMode(settings.desktopCameraPanMode) ??
+      defaultUserSettings.desktopCameraPanMode,
     desktopEdgePanSpeed:
-      parseDesktopEdgePanSpeed(settings.desktopEdgePanSpeed) ??
+      parseDesktopPanSpeed(settings.desktopEdgePanSpeed) ??
       defaultUserSettings.desktopEdgePanSpeed,
+    desktopWheelPanSpeed:
+      parseDesktopPanSpeed(settings.desktopWheelPanSpeed) ??
+      defaultUserSettings.desktopWheelPanSpeed,
     debugModeEnabled:
       typeof settings.debugModeEnabled === 'boolean'
         ? settings.debugModeEnabled

@@ -379,8 +379,9 @@ export const createAppComponents = (options: {
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
   let mobileManeuverStartByDrag =
     options.config.userSettings.mobileManeuverStartByDrag
-  let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
+  let desktopCameraPanMode = options.config.userSettings.desktopCameraPanMode
   let desktopEdgePanSpeed = options.config.userSettings.desktopEdgePanSpeed
+  let desktopWheelPanSpeed = options.config.userSettings.desktopWheelPanSpeed
   const targetHeadingPlanLifecycleHandlers = {
     onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
     onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
@@ -626,9 +627,10 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
-    getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+    getDesktopCameraPanMode: () => desktopCameraPanMode,
+    getDesktopCameraPanVisible: () => desktopFinePointerMedia.matches,
     getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-    getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
+    getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
     getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
     getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
     onOrbitPointDisplayChange: (settings) => {
@@ -641,13 +643,17 @@ export const createAppComponents = (options: {
         keyboardInput.clear()
       }
     },
-    onDesktopEdgePanEnabledChange: (enabled) => {
-      desktopEdgePanEnabled = enabled
-      updateUserSettings({ desktopEdgePanEnabled: enabled })
+    onDesktopCameraPanModeChange: (mode) => {
+      desktopCameraPanMode = mode
+      updateUserSettings({ desktopCameraPanMode: mode })
     },
     onDesktopEdgePanSpeedChange: (speed) => {
       desktopEdgePanSpeed = speed
       updateUserSettings({ desktopEdgePanSpeed: speed })
+    },
+    onDesktopWheelPanSpeedChange: (speed) => {
+      desktopWheelPanSpeed = speed
+      updateUserSettings({ desktopWheelPanSpeed: speed })
     },
     onMobileManeuverStartByDragChange: (startByDrag) => {
       mobileManeuverStartByDrag = startByDrag
@@ -704,7 +710,7 @@ export const createAppComponents = (options: {
       desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
     getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
     getEdgeScrollEnabled: () =>
-      desktopEdgePanEnabled &&
+      desktopCameraPanMode === 'edge' &&
       desktopFinePointerMedia.matches &&
       !topMenu.isOpen() &&
       !inGameControlsMenu.isOpen() &&
