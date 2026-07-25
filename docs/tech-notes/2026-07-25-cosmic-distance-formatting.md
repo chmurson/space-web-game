@@ -13,6 +13,8 @@ Shipit state:
   values to two significant digits.
 - Significant-digit boundaries use explicit `Math.round` behavior before
   locale-aware number rendering.
+- Single-digit values retain a trailing locale-aware zero so the displayed
+  value still communicates two significant digits.
 - Reach-the-Moon orbit-altitude text delegates to the shared distance
   formatter instead of maintaining a kilometer-only implementation.
 - Reach-the-Moon notices keep their compact shared-unit form when apoapsis and
@@ -45,17 +47,17 @@ values could also show more precision than was useful to the player.
   significant digits apply consistently to both units.
 - The rounding helper remains private to the formatter module. No test-only or
   generalized measurement API was added.
-- Native locale formatting remains responsible for separators and suppressing
-  unnecessary trailing zeroes.
+- Native locale formatting remains responsible for separators and retains the
+  second significant digit for single-digit values.
 - Speed formatting, static authored examples, and the standalone devtools
   formatter remain unchanged.
 
 ## Validation
 
-- Focused Vitest — 3 files and 72 tests passed, covering formatter values,
+- Focused Vitest — 3 files and 73 tests passed, covering formatter values,
   rounding boundaries, the unit threshold, Reach-the-Moon score text, and
   Reach-the-Moon scenario notices.
-- Full `npm test` — 69 Vitest files with 676 tests, 16 automation-claim tests,
+- Full `npm test` — 69 Vitest files with 677 tests, 16 automation-claim tests,
   and 4 automation-workflow tests passed.
 - `npm run build` — configuration validation, TypeScript compilation, and the
   release Vite build passed.

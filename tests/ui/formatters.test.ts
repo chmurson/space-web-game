@@ -28,7 +28,18 @@ describe('formatDistance', () => {
 
   it('keeps the kilometer-to-megameter threshold and locale separators', () => {
     expect(formatDistance(999_999)).toBe(`${(1_000).toLocaleString()} km`)
-    expect(formatDistance(1_000_000)).toBe('1 Mm')
+    expect(formatDistance(1_000_000)).toBe(
+      `${(1).toLocaleString(undefined, { minimumSignificantDigits: 2 })} Mm`,
+    )
+  })
+
+  it('keeps two significant digits for single-digit values', () => {
+    const oneWithTwoSignificantDigits = (1).toLocaleString(undefined, {
+      minimumSignificantDigits: 2,
+    })
+
+    expect(formatDistance(1_000)).toBe(`${oneWithTwoSignificantDigits} km`)
+    expect(formatDistance(1_000_000)).toBe(`${oneWithTwoSignificantDigits} Mm`)
   })
 
   it('keeps useful fractional significant digits without trailing zeroes', () => {

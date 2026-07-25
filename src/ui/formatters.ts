@@ -11,6 +11,7 @@ const roundToTwoSignificantDigits = (value: number) => {
 
 const formatCosmicDistanceValue = (value: number) =>
   roundToTwoSignificantDigits(value).toLocaleString(undefined, {
+    minimumSignificantDigits: 2,
     maximumSignificantDigits: 2,
   })
 
