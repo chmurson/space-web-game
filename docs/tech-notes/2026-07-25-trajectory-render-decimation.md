@@ -21,7 +21,7 @@ Shipit state:
 
 ## Why
 
-Long accepted predictions can contain many more points than are visually useful
+Long-accepted predictions can contain many more points than are visually useful
 when the camera shows an orbit or the wider Earth-Moon system. Uploading every
 point to `LineGeometry` adds avoidable geometry work even though adjacent
 vertices may be only a few screen pixels apart. Decimating at the presentation
