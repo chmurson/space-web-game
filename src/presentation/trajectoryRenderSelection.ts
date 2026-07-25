@@ -1,8 +1,10 @@
 import type { TrajectoryPredictionFarVisibility } from '../runtime/trajectoryPredictionRuntime'
+import { RENDER_SCALE } from '../simulation/constants'
 import { length, sub, type Vec2 } from '../simulation/vector'
 import { getViewportMinSampleDistanceMeters } from './viewportSampling'
 
 const retainedStaleFarMaxBridgeSegmentMultiplier = 3
+const trajectoryRenderMaxChordErrorPixels = 0.25
 
 const trajectoryRenderDensityStops = [
   { minSampleDistanceMeters: 50_000, viewportSize: 5 },
@@ -16,6 +18,24 @@ const trajectoryRenderDensityStops = [
 ] as const
 
 const dot = (a: Vec2, b: Vec2) => a.x * b.x + a.y * b.y
+
+const getPointToChordDistance = (
+  point: Vec2,
+  chordStart: Vec2,
+  chordEnd: Vec2,
+) => {
+  const chord = sub(chordEnd, chordStart)
+  const chordLength = length(chord)
+  if (chordLength <= 0) {
+    return length(sub(point, chordStart))
+  }
+
+  return (
+    Math.abs(
+      (point.x - chordStart.x) * chord.y - (point.y - chordStart.y) * chord.x,
+    ) / chordLength
+  )
+}
 
 const getRetainedStaleFarPointIndices = (
   points: readonly Vec2[],
@@ -117,14 +137,106 @@ const selectPointIndicesByDistance = (options: {
   return selectedPointIndices
 }
 
+const refinePointIndicesByChordError = (options: {
+  maxChordErrorMeters: number
+  pointIndices: readonly number[]
+  points: readonly Vec2[]
+  selectedPointIndices: readonly number[]
+}): number[] => {
+  if (options.selectedPointIndices.length < 2) {
+    return [...options.selectedPointIndices]
+  }
+
+  const selectedPointIndices: number[] = []
+  const sourceOffsetByPointIndex = new Map(
+    options.pointIndices.map((pointIndex, offset) => [pointIndex, offset]),
+  )
+  const pendingChords: Array<{ endOffset: number; startOffset: number }> = []
+
+  for (
+    let selectedOffset = options.selectedPointIndices.length - 1;
+    selectedOffset > 0;
+    selectedOffset -= 1
+  ) {
+    const startOffset = sourceOffsetByPointIndex.get(
+      options.selectedPointIndices[selectedOffset - 1],
+    )
+    const endOffset = sourceOffsetByPointIndex.get(
+      options.selectedPointIndices[selectedOffset],
+    )
+    if (startOffset !== undefined && endOffset !== undefined) {
+      pendingChords.push({ endOffset, startOffset })
+    }
+  }
+
+  while (pendingChords.length > 0) {
+    const chord = pendingChords.pop()
+    if (!chord) {
+      continue
+    }
+
+    const startPointIndex = options.pointIndices[chord.startOffset]
+    const endPointIndex = options.pointIndices[chord.endOffset]
+    let maximumError = 0
+    let maximumErrorOffset: number | null = null
+
+    for (
+      let offset = chord.startOffset + 1;
+      offset < chord.endOffset;
+      offset += 1
+    ) {
+      const error = getPointToChordDistance(
+        options.points[options.pointIndices[offset]],
+        options.points[startPointIndex],
+        options.points[endPointIndex],
+      )
+      if (error > maximumError) {
+        maximumError = error
+        maximumErrorOffset = offset
+      }
+    }
+
+    if (
+      maximumErrorOffset !== null &&
+      maximumError > options.maxChordErrorMeters
+    ) {
+      pendingChords.push({
+        endOffset: chord.endOffset,
+        startOffset: maximumErrorOffset,
+      })
+      pendingChords.push({
+        endOffset: maximumErrorOffset,
+        startOffset: chord.startOffset,
+      })
+      continue
+    }
+
+    selectedPointIndices.push(startPointIndex)
+  }
+
+  const lastPointIndex = options.selectedPointIndices.at(-1)
+  if (lastPointIndex !== undefined) {
+    selectedPointIndices.push(lastPointIndex)
+  }
+  return selectedPointIndices
+}
+
 export const getTrajectoryRenderSampleDistanceMeters = (viewportSize: number) =>
   getViewportMinSampleDistanceMeters(viewportSize, trajectoryRenderDensityStops)
+
+export const getTrajectoryRenderMaxChordErrorMeters = (options: {
+  viewportHeight: number
+  viewportSize: number
+}) =>
+  (options.viewportSize / Math.max(options.viewportHeight, 1) / RENDER_SCALE) *
+  trajectoryRenderMaxChordErrorPixels
 
 export const selectTrajectoryRenderGeometry = (options: {
   farVisible: TrajectoryPredictionFarVisibility
   mandatoryPointIndices?: readonly number[]
   nearPointCount: number
   points: readonly Vec2[]
+  viewportHeight?: number
   viewportSize: number
 }) => {
   const sourcePointCount = options.points.length
@@ -138,6 +250,10 @@ export const selectTrajectoryRenderGeometry = (options: {
   const minSampleDistanceMeters = getTrajectoryRenderSampleDistanceMeters(
     options.viewportSize,
   )
+  const maxChordErrorMeters = getTrajectoryRenderMaxChordErrorMeters({
+    viewportHeight: options.viewportHeight ?? 1,
+    viewportSize: options.viewportSize,
+  })
   const splitRetainedFar =
     options.farVisible === 'retained-stale' &&
     options.nearPointCount > 0 &&
@@ -172,17 +288,27 @@ export const selectTrajectoryRenderGeometry = (options: {
     mandatoryPointIndices.add(staleFarStartIndex)
   }
 
-  const visiblePointIndices = selectPointIndicesByDistance({
-    mandatoryPointIndices,
-    minSampleDistanceMeters,
+  const visiblePointIndices = refinePointIndicesByChordError({
+    maxChordErrorMeters,
     pointIndices: visibleSourcePointIndices,
     points: options.points,
+    selectedPointIndices: selectPointIndicesByDistance({
+      mandatoryPointIndices,
+      minSampleDistanceMeters,
+      pointIndices: visibleSourcePointIndices,
+      points: options.points,
+    }),
   })
-  const staleFarPointIndices = selectPointIndicesByDistance({
-    mandatoryPointIndices,
-    minSampleDistanceMeters,
+  const staleFarPointIndices = refinePointIndicesByChordError({
+    maxChordErrorMeters,
     pointIndices: staleFarSourcePointIndices,
     points: options.points,
+    selectedPointIndices: selectPointIndicesByDistance({
+      mandatoryPointIndices,
+      minSampleDistanceMeters,
+      pointIndices: staleFarSourcePointIndices,
+      points: options.points,
+    }),
   })
 
   return {

@@ -145,6 +145,19 @@ const createDebugPanelInput = (
     surfaceDistance: 4_000,
   },
   targetName: 'Moon',
+  trajectoryRenderDiagnostics: {
+    assisted: {
+      selectedPointCount: 3,
+      sourcePointCount: 8,
+    },
+    coast: {
+      selectedPointCount: 4,
+      sourcePointCount: 10,
+      staleSelectedPointCount: 1,
+    },
+    maxChordErrorMeters: 250,
+    minSampleDistanceMeters: 500_000,
+  },
   timeWarpDiagnostics: {
     constraintReason: 'prediction-coverage',
     effectiveTimeWarp: 14_400,
@@ -208,6 +221,20 @@ describe('getDebugPanelLines', () => {
     expect(getDebugPanelLines(createDebugPanelInput())).toContain(
       'prediction step: 1m | integrate max 8s | refresh target-change 3.5ms (2/s) | geometry 1.3ms | pts 12/10/8 | events 2',
     )
+  })
+
+  it('shows trajectory source-to-selected render counts and spacing', () => {
+    expect(getDebugPanelLines(createDebugPanelInput())).toContain(
+      'trajectory render: coast 10 → 4 (40.0%; stale 1) | assisted 8 → 3 (37.5%) | total 18 → 7 (38.9%) | min sample 500 km | chord error max 250 m',
+    )
+  })
+
+  it('identifies render diagnostics that are not yet available', () => {
+    expect(
+      getDebugPanelLines(
+        createDebugPanelInput({ trajectoryRenderDiagnostics: null }),
+      ),
+    ).toContain('trajectory render: awaiting debug geometry update')
   })
 
   it('shows requested and effective warp with coverage and constraint reason', () => {

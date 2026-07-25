@@ -18,6 +18,13 @@ Shipit state:
 - Zoom changes rerun presentation selection against the complete accepted
   prediction, so useful detail returns without refreshing or recalculating
   physics.
+- The in-game debug panel now reports coast and assisted source-to-selected
+  render-point counts, stale-line selections, total retention, and the current
+  minimum world-space sample distance for manual density tuning.
+- Added a screen-derived chord-error guard that retains intermediate source
+  points before a straight rendered segment visibly cuts across a tight curve.
+- Cached selected source indices until the prediction arrays, tier state,
+  impact-gradient boundary, viewport size, or viewport height changes.
 
 ## Why
 
@@ -38,6 +45,13 @@ and all simulation decisions intact.
   displacement from the last retained point. This keeps curved paths from
   becoming eligible for a large shortcut merely because they bend back toward
   an earlier point.
+- The chord-error guard measures source-path deviation from a candidate
+  rendered chord and allows at most 0.25 screen pixels of deviation. It is
+  particularly important for tight circular or high-curvature arcs, where
+  distance-only selection can otherwise reveal a polygonal silhouette.
+- Cached selection shares the same complete source arrays and required-point
+  rules as uncached selection; only the selected index lists are reused between
+  unchanged visual inputs.
 - Retained stale-far trimming and bridge eligibility are evaluated against the
   complete source path before density selection. Sparse geometry therefore
   cannot make an implausible stale seam appear bridgeable.
@@ -45,6 +59,10 @@ and all simulation decisions intact.
   combined-path fade from every accepted coast point, then selects matching
   colors by source index. Debug near/far colors keep the same source-tier
   ownership.
+- Render diagnostics are collected only while the in-game debug panel is
+  enabled and reuse cached selection lengths. Normal gameplay does not allocate
+  diagnostic data for this reporting; its selected-index cache still prevents
+  repeated selection work between unchanged visual inputs.
 - Impact-gradient geometry remains at its existing short 18-point maximum. Its
   first and last points are unchanged, and the gradient start is mandatory in
   the underlying prediction line so the visual transition remains continuous.
@@ -78,10 +96,15 @@ and all simulation decisions intact.
   the shipped control reports `-0.25`. The failing spec files are unchanged by
   this work.
 - A live browser pass reported no console warnings or errors.
+- Focused diagnostics coverage passed: debug-panel formatting includes coast,
+  assisted, stale, total, spacing, and chord-error values; trajectory and HUD
+  presentation tests remain green.
+- Selector coverage verifies that a tight curved arc retains more source points
+  than an equal-length straight path at the same viewport and source density.
 
 ## Follow-ups and known gaps
 
 - No predictor or integration tuning is included; those remain separate
   performance concerns.
-- This change does not widen runtime diagnostics solely to publish rendered
-  point counts; tests assert the selected source indices directly.
+- Diagnostics are debug-panel-only; the DevTools extension does not yet expose
+  an equivalent trajectory render readout.

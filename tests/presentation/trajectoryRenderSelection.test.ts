@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  getTrajectoryRenderMaxChordErrorMeters,
   getTrajectoryRenderSampleDistanceMeters,
   selectTrajectoryRenderGeometry,
 } from '@/presentation/trajectoryRenderSelection'
@@ -10,6 +11,49 @@ const createLinearPoints = (count: number, spacingMeters: number) =>
     x: index * spacingMeters,
     y: 0,
   }))
+
+const createArcPoints = (
+  count: number,
+  radiusMeters: number,
+  arcRadians: number,
+) =>
+  Array.from({ length: count }, (_, index) => {
+    const angle = (arcRadians * index) / (count - 1)
+    return {
+      x: Math.cos(angle) * radiusMeters,
+      y: Math.sin(angle) * radiusMeters,
+    }
+  })
+
+const getMaximumChordErrorMeters = (
+  points: ReadonlyArray<{ x: number; y: number }>,
+  selectedPointIndices: readonly number[],
+) => {
+  let maximumError = 0
+
+  for (let segment = 1; segment < selectedPointIndices.length; segment += 1) {
+    const startIndex = selectedPointIndices[segment - 1]
+    const endIndex = selectedPointIndices[segment]
+    const start = points[startIndex]
+    const end = points[endIndex]
+    const chordX = end.x - start.x
+    const chordY = end.y - start.y
+    const chordLength = Math.hypot(chordX, chordY)
+
+    for (let index = startIndex + 1; index < endIndex; index += 1) {
+      const point = points[index]
+      const error =
+        chordLength === 0
+          ? Math.hypot(point.x - start.x, point.y - start.y)
+          : Math.abs(
+              (point.x - start.x) * chordY - (point.y - start.y) * chordX,
+            ) / chordLength
+      maximumError = Math.max(maximumError, error)
+    }
+  }
+
+  return maximumError
+}
 
 describe('trajectoryRenderSelection', () => {
   it('reduces line density as the viewport expands', () => {
@@ -37,6 +81,41 @@ describe('trajectoryRenderSelection', () => {
       close.visiblePointIndices.length,
     )
     expect(points).toHaveLength(41)
+  })
+
+  it('retains extra points for a tight curved arc at the same path spacing', () => {
+    const radiusMeters = 1_000_000
+    const arcPoints = createArcPoints(121, radiusMeters, Math.PI * 1.5)
+    const arcLengthMeters = radiusMeters * Math.PI * 1.5
+    const linearPoints = createLinearPoints(121, arcLengthMeters / 120)
+    const selectionOptions = {
+      farVisible: 'none' as const,
+      nearPointCount: 0,
+      viewportHeight: 600,
+      viewportSize: 100,
+    }
+
+    const curved = selectTrajectoryRenderGeometry({
+      ...selectionOptions,
+      mandatoryPointIndices: [60],
+      points: arcPoints,
+    })
+    const linear = selectTrajectoryRenderGeometry({
+      ...selectionOptions,
+      points: linearPoints,
+    })
+
+    expect(curved.visiblePointIndices.length).toBeGreaterThan(
+      linear.visiblePointIndices.length,
+    )
+    expect(curved.visiblePointIndices).toEqual(
+      expect.arrayContaining([0, 60, arcPoints.length - 1]),
+    )
+    expect(
+      getMaximumChordErrorMeters(arcPoints, curved.visiblePointIndices),
+    ).toBeLessThanOrEqual(
+      getTrajectoryRenderMaxChordErrorMeters(selectionOptions),
+    )
   })
 
   it('keeps endpoints and explicit mandatory source points', () => {

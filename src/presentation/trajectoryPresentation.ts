@@ -23,7 +23,11 @@ import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, type Vec2 } from '../simulation/vector'
 import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
-import { selectTrajectoryRenderGeometry } from './trajectoryRenderSelection'
+import {
+  getTrajectoryRenderMaxChordErrorMeters,
+  getTrajectoryRenderSampleDistanceMeters,
+  selectTrajectoryRenderGeometry,
+} from './trajectoryRenderSelection'
 
 const trajectoryEventMarkerMaxViewportSize = 500
 const trajectoryEventMarkerLift = 0.22
@@ -39,6 +43,97 @@ type TrajectoryEventMarkerLabelRefs = Record<
   TrajectoryPredictionEventMarkerKind,
   HTMLElement
 >
+
+export type TrajectoryRenderDiagnostics = {
+  assisted: {
+    selectedPointCount: number
+    sourcePointCount: number
+  }
+  coast: {
+    selectedPointCount: number
+    sourcePointCount: number
+    staleSelectedPointCount: number
+  }
+  maxChordErrorMeters: number
+  minSampleDistanceMeters: number
+}
+
+type TrajectoryRenderSelections = {
+  assisted: ReturnType<typeof selectTrajectoryRenderGeometry>
+  coast: ReturnType<typeof selectTrajectoryRenderGeometry>
+  maxChordErrorMeters: number
+  minSampleDistanceMeters: number
+}
+
+const createTrajectoryRenderSelectionCache = () => {
+  let previous: {
+    assistedPoints: readonly Vec2[]
+    coastPoints: readonly Vec2[]
+    farVisible: TrajectoryPredictionFarVisibility
+    impactGradientStartIndex: number | null
+    nearPointCount: number
+    result: TrajectoryRenderSelections
+    viewportHeight: number
+    viewportSize: number
+  } | null = null
+
+  return (options: {
+    assistedPoints: readonly Vec2[]
+    coastPoints: readonly Vec2[]
+    farVisible: TrajectoryPredictionFarVisibility
+    impactGradientStartIndex: number | null
+    nearPointCount: number
+    viewportHeight: number
+    viewportSize: number
+  }): TrajectoryRenderSelections => {
+    if (
+      previous &&
+      previous.assistedPoints === options.assistedPoints &&
+      previous.coastPoints === options.coastPoints &&
+      previous.farVisible === options.farVisible &&
+      previous.impactGradientStartIndex === options.impactGradientStartIndex &&
+      previous.nearPointCount === options.nearPointCount &&
+      previous.viewportHeight === options.viewportHeight &&
+      previous.viewportSize === options.viewportSize
+    ) {
+      return previous.result
+    }
+
+    const minSampleDistanceMeters = getTrajectoryRenderSampleDistanceMeters(
+      options.viewportSize,
+    )
+    const maxChordErrorMeters = getTrajectoryRenderMaxChordErrorMeters({
+      viewportHeight: options.viewportHeight,
+      viewportSize: options.viewportSize,
+    })
+    const coast = selectTrajectoryRenderGeometry({
+      farVisible: options.farVisible,
+      mandatoryPointIndices:
+        options.impactGradientStartIndex === null
+          ? []
+          : [options.impactGradientStartIndex],
+      nearPointCount: options.nearPointCount,
+      points: options.coastPoints,
+      viewportHeight: options.viewportHeight,
+      viewportSize: options.viewportSize,
+    })
+    const assisted = selectTrajectoryRenderGeometry({
+      farVisible: 'none',
+      nearPointCount: 0,
+      points: options.assistedPoints,
+      viewportHeight: options.viewportHeight,
+      viewportSize: options.viewportSize,
+    })
+    const result = {
+      assisted,
+      coast,
+      maxChordErrorMeters,
+      minSampleDistanceMeters,
+    }
+    previous = { ...options, result }
+    return result
+  }
+}
 
 const trajectoryEventMarkerShortLabels = {
   apoapsis: 'Ap',
@@ -211,6 +306,8 @@ const updateTargetRelativePredictionVisuals = (options: {
   targetRelativeNearPointCount: number
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
+  onRenderDiagnostics?(diagnostics: TrajectoryRenderDiagnostics): void
+  selectRenderGeometry: ReturnType<typeof createTrajectoryRenderSelectionCache>
   viewportHeight: number
   viewportSize: number
 }) => {
@@ -255,14 +352,16 @@ const updateTargetRelativePredictionVisuals = (options: {
         options.targetRelativeFarVisible,
       )
     : predictionFadeColors
-  const predictionSelection = selectTrajectoryRenderGeometry({
+  const renderSelections = options.selectRenderGeometry({
+    assistedPoints: options.targetRelativeAssistedPoints,
+    coastPoints: options.targetRelativePredictionPoints,
     farVisible: options.targetRelativeFarVisible,
-    mandatoryPointIndices:
-      impactGradientStartIndex === null ? [] : [impactGradientStartIndex],
+    impactGradientStartIndex,
     nearPointCount: options.targetRelativeNearPointCount,
-    points: options.targetRelativePredictionPoints,
+    viewportHeight: options.viewportHeight,
     viewportSize: options.viewportSize,
   })
+  const predictionSelection = renderSelections.coast
   const visiblePredictionPoints = selectPredictionPoints(
     options.targetRelativePredictionPoints,
     predictionSelection.visiblePointIndices,
@@ -279,16 +378,28 @@ const updateTargetRelativePredictionVisuals = (options: {
     predictionColors,
     predictionSelection.staleFarPointIndices,
   )
-  const assistedPredictionSelection = selectTrajectoryRenderGeometry({
-    farVisible: 'none',
-    nearPointCount: 0,
-    points: options.targetRelativeAssistedPoints,
-    viewportSize: options.viewportSize,
-  })
+  const assistedPredictionSelection = renderSelections.assisted
   const assistedPredictionPoints = selectPredictionPoints(
     options.targetRelativeAssistedPoints,
     assistedPredictionSelection.visiblePointIndices,
   )
+
+  options.onRenderDiagnostics?.({
+    assisted: {
+      selectedPointCount:
+        assistedPredictionSelection.visiblePointIndices.length,
+      sourcePointCount: options.targetRelativeAssistedPoints.length,
+    },
+    coast: {
+      selectedPointCount:
+        predictionSelection.visiblePointIndices.length +
+        predictionSelection.staleFarPointIndices.length,
+      sourcePointCount: options.targetRelativePredictionPoints.length,
+      staleSelectedPointCount: predictionSelection.staleFarPointIndices.length,
+    },
+    maxChordErrorMeters: renderSelections.maxChordErrorMeters,
+    minSampleDistanceMeters: renderSelections.minSampleDistanceMeters,
+  })
 
   applyTargetRelativePredictionLine(
     options.gameScene,
@@ -784,6 +895,8 @@ export const createTrajectoryPresentation = (options: {
     | AppRuntimeState['scenario']['session']
     | null = null
   let stabilizedTrajectoryEventMarkerTargetId: string | null = null
+  let renderDiagnostics: TrajectoryRenderDiagnostics | null = null
+  const selectRenderGeometry = createTrajectoryRenderSelectionCache()
 
   const syncInertialPredictionVisual = () => {
     updateInertialPredictionVisual({
@@ -869,6 +982,7 @@ export const createTrajectoryPresentation = (options: {
     getCoachAnchorScreenPoint,
     getPredictionDiagnostics: () =>
       options.trajectoryPredictionRuntime.getDiagnostics(),
+    getRenderDiagnostics: () => renderDiagnostics,
     getRemainingUsableCoverageSeconds: () =>
       options.trajectoryPredictionRuntime.getRemainingUsableCoverageSeconds(),
     getPredictionState: () => options.trajectoryPredictionRuntime.getState(),
@@ -906,6 +1020,7 @@ export const createTrajectoryPresentation = (options: {
           options.gameScene,
           options.trajectoryEventMarkerLabels,
         )
+        renderDiagnostics = null
         return
       }
 
@@ -977,6 +1092,12 @@ export const createTrajectoryPresentation = (options: {
         targetRelativePredictionPoints: predictionTargetMatches
           ? predictionState.targetRelativePredictionPoints
           : [],
+        onRenderDiagnostics: options.runtime.debug.debugModeEnabled
+          ? (diagnostics) => {
+              renderDiagnostics = diagnostics
+            }
+          : undefined,
+        selectRenderGeometry,
         viewportHeight: window.innerHeight,
         viewportSize: options.runtime.simulation.viewportSize,
       })
