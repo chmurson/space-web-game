@@ -1,6 +1,6 @@
 # Cosmic-distance formatting
 
-Date: 2026-07-25
+Date: 2026-07-24
 
 Issue: [#304](https://github.com/chmurson/space-web-game/issues/304)
 

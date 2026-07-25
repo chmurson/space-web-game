@@ -491,7 +491,7 @@ describe('reachMoonScenario', () => {
       1_400_000,
       1_250_000,
       {
-        body: 'Ap 1.4 / Pe 1.3 Mm - high',
+        body: `Ap ${(1.4).toLocaleString()} / Pe ${(1.3).toLocaleString()} Mm - high`,
         title: 'Circular lunar orbit',
       },
     ],

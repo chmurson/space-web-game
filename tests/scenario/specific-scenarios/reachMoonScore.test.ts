@@ -218,12 +218,16 @@ describe('reachMoonScore', () => {
           lunarOrbitEccentricity: 0.007,
         },
       ),
-    ).toBe(`Ap 1.2 Mm / Pe ${(1_000).toLocaleString()} km - very elongated`)
+    ).toBe(
+      `Ap ${(1.2).toLocaleString()} Mm / Pe ${(1_000).toLocaleString()} km - very elongated`,
+    )
   })
 
   it('uses shared cosmic-distance formatting for lunar orbit altitudes', () => {
     expect(formatReachMoonOrbitAltitude(135_000)).toBe('140 km')
-    expect(formatReachMoonOrbitAltitude(1_180_000)).toBe('1.2 Mm')
+    expect(formatReachMoonOrbitAltitude(1_180_000)).toBe(
+      `${(1.2).toLocaleString()} Mm`,
+    )
   })
 
   it.each([

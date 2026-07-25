@@ -22,8 +22,8 @@ describe('formatDistance', () => {
   it('uses Math.round behavior at two-significant-digit boundaries', () => {
     expect(formatDistance(114_999)).toBe('110 km')
     expect(formatDistance(115_000)).toBe('120 km')
-    expect(formatDistance(1_149_999)).toBe('1.1 Mm')
-    expect(formatDistance(1_150_000)).toBe('1.2 Mm')
+    expect(formatDistance(1_149_999)).toBe(`${(1.1).toLocaleString()} Mm`)
+    expect(formatDistance(1_150_000)).toBe(`${(1.2).toLocaleString()} Mm`)
   })
 
   it('keeps the kilometer-to-megameter threshold and locale separators', () => {
@@ -32,10 +32,10 @@ describe('formatDistance', () => {
   })
 
   it('keeps useful fractional significant digits without trailing zeroes', () => {
-    expect(formatDistance(1_140)).toBe('1.1 km')
-    expect(formatDistance(1_180)).toBe('1.2 km')
-    expect(formatDistance(1_140_000)).toBe('1.1 Mm')
-    expect(formatDistance(1_180_000)).toBe('1.2 Mm')
+    expect(formatDistance(1_140)).toBe(`${(1.1).toLocaleString()} km`)
+    expect(formatDistance(1_180)).toBe(`${(1.2).toLocaleString()} km`)
+    expect(formatDistance(1_140_000)).toBe(`${(1.1).toLocaleString()} Mm`)
+    expect(formatDistance(1_180_000)).toBe(`${(1.2).toLocaleString()} Mm`)
   })
 })
 
