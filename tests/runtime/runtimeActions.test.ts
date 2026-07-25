@@ -106,7 +106,6 @@ const createRuntime = (): AppRuntimeState => ({
       panOffset: { x: 0, y: 0 },
     },
     spacecraftLabelIntroUntil: 0,
-    targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
       engaged: false,
       interactive: false,
@@ -139,18 +138,15 @@ const createTestRuntimeActions = (
   runtime: AppRuntimeState,
   options: {
     autoSelectNearestSurface?: boolean
-    createRipple?: Parameters<typeof createRuntimeActions>[0]['createRipple']
     getFollowCameraViewportBottomInset?: () => number
     navigationTimeWarpController?: NavigationTimeWarpController
     renderer?: Parameters<typeof createRuntimeActions>[0]['renderer']
   } = {},
 ) =>
   createRuntimeActions({
-    app: {} as HTMLDivElement,
     autoSelectNearestSurface: options.autoSelectNearestSurface ?? true,
     cameraDistance: 700,
     cameraElevation: 1,
-    createRipple: options.createRipple ?? (() => {}),
     gameScene: { trailPoints: [] } as never,
     getAssistTargetUiState: () => ({
       activeTarget:
@@ -171,11 +167,9 @@ const createTestRuntimeActions = (
     navigationTimeWarpController:
       options.navigationTimeWarpController ??
       createNavigationTimeWarpController({
-        maxControlWarp: 100,
         timeWarps: requestedTimeWarps,
       }),
     renderer: options.renderer ?? createRendererDouble(),
-    ripples: [],
     runtime,
     globalScenarioDirectiveLimits,
     runtimeScenarioOptions,
@@ -695,73 +689,9 @@ describe('createRuntimeActions', () => {
     }
   })
 
-  it('stores a world-space target heading anchor for camera-relative feedback', () => {
-    const runtime = createRuntime()
-    const runtimeActions = createTestRuntimeActions(runtime)
-
-    runtimeActions.setTargetHeading(1.2, 300, 200, { x: 12, y: 34 })
-
-    expect(runtime.simulation.targetHeading).toBe(1.2)
-    expect(runtime.ui.targetHeadingScreenPosition).toEqual({ x: 300, y: 200 })
-    expect(runtime.ui.targetHeadingWorldPosition).toEqual({ x: 12, y: 34 })
-    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(1)
-    expect(runtime.simulation.assistMode).toBe('off')
-  })
-
-  it('shows a planned target heading without committing the turn until confirmation', () => {
-    const runtime = createRuntime()
-    const createRipple = vi.fn()
-    const runtimeActions = createTestRuntimeActions(runtime, { createRipple })
-
-    runtime.simulation.targetHeading = null
-    runtime.simulation.assistMode = 'capture'
-    runtime.simulation.timeWarpIndex = requestedTimeWarps.indexOf(3600)
-    runtimeActions.planTargetHeading({
-      heading: 1.2,
-      screenPosition: { x: 300, y: 200 },
-      worldPosition: { x: 12, y: 34 },
-    })
-
-    expect(runtime.simulation.targetHeading).toBeNull()
-    expect(runtime.simulation.timeWarpIndex).toBe(
-      requestedTimeWarps.indexOf(60),
-    )
-    expect(runtime.ui.targetHeadingPlan).toEqual({
-      heading: 1.2,
-      screenPosition: { x: 300, y: 200 },
-      worldPosition: { x: 12, y: 34 },
-    })
-    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(0)
-
-    expect(runtimeActions.commitTargetHeadingPlan()).toBe(true)
-
-    expect(runtime.simulation.targetHeading).toBe(1.2)
-    expect(runtime.ui.targetHeadingPlan).toBeNull()
-    expect(runtime.ui.targetHeadingScreenPosition).toEqual({ x: 300, y: 200 })
-    expect(runtime.ui.targetHeadingWorldPosition).toEqual({ x: 12, y: 34 })
-    expect(runtime.ui.targetHeadingSelectionEpoch).toBe(1)
-    expect(runtime.simulation.assistMode).toBe('off')
-    expect(createRipple).not.toHaveBeenCalled()
-  })
-
-  it('keeps slower time warp unchanged when planning a target heading', () => {
-    const runtime = createRuntime()
-    const runtimeActions = createTestRuntimeActions(runtime)
-
-    runtime.simulation.timeWarpIndex = 1
-    runtimeActions.planTargetHeading({
-      heading: 1.2,
-      screenPosition: { x: 300, y: 200 },
-      worldPosition: { x: 12, y: 34 },
-    })
-
-    expect(runtime.simulation.timeWarpIndex).toBe(1)
-  })
-
   it('uses a time-warp action during navigation as the new restore target', () => {
     const runtime = createRuntime()
     const navigationTimeWarpController = createNavigationTimeWarpController({
-      maxControlWarp: 100,
       timeWarps: requestedTimeWarps,
     })
     const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
@@ -795,23 +725,6 @@ describe('createRuntimeActions', () => {
         timeWarpIndex: runtime.simulation.timeWarpIndex,
       }),
     ).toBe(replacementTimeWarpIndex)
-  })
-
-  it('clears a planned target heading when cycling assist mode', () => {
-    const runtime = createRuntime()
-    const runtimeActions = createTestRuntimeActions(runtime)
-
-    runtimeActions.planTargetHeading({
-      heading: 1.2,
-      screenPosition: { x: 300, y: 200 },
-      worldPosition: { x: 12, y: 34 },
-    })
-
-    runtimeActions.handleUIUserAction('cycleAssistMode')
-
-    expect(runtime.simulation.targetHeading).toBeNull()
-    expect(runtime.simulation.targetHeadingTurn).toBeNull()
-    expect(runtime.ui.targetHeadingPlan).toBeNull()
   })
 
   it('updates the reset target when free roam starts', () => {
@@ -984,7 +897,6 @@ describe('createRuntimeActions', () => {
             lastSampleAtMs: 1_000,
             stepStartHeading: runtime.simulation.state.spacecraft.heading,
             stepStartTouchThrustControlEngaged: false,
-            stepStartTargetHeadingSelectionEpoch: 0,
             stepStartTimeWarpMultiplier: 1,
           },
         },
@@ -1013,47 +925,18 @@ describe('createRuntimeActions', () => {
     )
   })
 
-  it('rescales the heading target screen position on resize', () => {
+  it('resizes the renderer and camera to the new viewport', () => {
     const globals = getTestGlobals()
     const originalWindow = globals.window
 
     try {
       setWindowSize(400, 800)
       const runtime = createRuntime()
-      runtime.ui.targetHeadingScreenPosition = { x: 300, y: 200 }
       const renderer = createRendererDouble()
       const updateCameraViewSpy = vi
         .spyOn(sceneUpdates, 'updateCameraView')
         .mockImplementation(() => {})
-      const runtimeActions = createRuntimeActions({
-        app: {} as HTMLDivElement,
-        autoSelectNearestSurface: true,
-        cameraDistance: 700,
-        cameraElevation: 1,
-        createRipple: () => {},
-        gameScene: { trailPoints: [] } as never,
-        getAssistTargetUiState: () => ({
-          activeTarget: getRequiredBody(runtime, 0),
-          mode: 'manual',
-          recommendedTarget: null,
-        }),
-        maxCoastPredictionHorizonHours: 48,
-        maxViewport: EARTH_MOON_VIEWPORT_SIZE,
-        minCoastPredictionHorizonHours: 0.5,
-        minViewport: EARTH_VIEWPORT_SIZE,
-        navigationTimeWarpController: createNavigationTimeWarpController({
-          maxControlWarp: 100,
-          timeWarps: requestedTimeWarps,
-        }),
-        renderer,
-        ripples: [],
-        runtime,
-        globalScenarioDirectiveLimits,
-        runtimeScenarioOptions,
-        timeWarps: requestedTimeWarps,
-        updateUserSettings: () => {},
-        gameHighLevelActions: new GameHighLevelActionsMediator(),
-      })
+      const runtimeActions = createTestRuntimeActions(runtime, { renderer })
 
       setWindowSize(800, 400)
       runtimeActions.handleResize()
@@ -1063,10 +946,6 @@ describe('createRuntimeActions', () => {
       expect(renderer.setSize).toHaveBeenCalledWith(800, 400)
       expect(updateCameraViewSpy).toHaveBeenCalledOnce()
       expect(runtime.simulation.viewportSize).toBe(600)
-      expect(runtime.ui.targetHeadingScreenPosition).toEqual({
-        x: 600,
-        y: 100,
-      })
     } finally {
       if (originalWindow === undefined) {
         delete globals.window
@@ -1084,8 +963,6 @@ describe('createRuntimeActions', () => {
     try {
       setWindowSize(800, 400, 1.5)
       const runtime = createRuntime()
-      runtime.ui.targetHeadingScreenPosition = { x: 600, y: 100 }
-      const targetHeadingScreenPosition = runtime.ui.targetHeadingScreenPosition
       const simulationBefore = structuredClone(runtime.simulation)
       const renderer = createRendererDouble()
       const updateCameraViewSpy = vi
@@ -1115,9 +992,6 @@ describe('createRuntimeActions', () => {
         }),
       )
       expect(runtime.simulation).toEqual(simulationBefore)
-      expect(runtime.ui.targetHeadingScreenPosition).toBe(
-        targetHeadingScreenPosition,
-      )
     } finally {
       if (originalWindow === undefined) {
         delete globals.window

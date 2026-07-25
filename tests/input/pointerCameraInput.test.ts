@@ -105,9 +105,6 @@ const createHarness = (
     () => true,
   )
   const onPrimaryTap = vi.fn(() => options.primaryTapHandled ?? false)
-  const onTargetHeadingPlan = vi.fn()
-  const onTargetHeadingPlanCanceled = vi.fn()
-  const onTargetHeadingPlanCommitted = vi.fn(() => true)
   const onZoom = vi.fn()
 
   const input = bindPointerCameraInput({
@@ -117,14 +114,9 @@ const createHarness = (
     getCameraControlsLocked: () => cameraControlsLocked,
     getEdgeScrollEnabled: () => edgeScrollEnabled,
     getInteractionsEnabled: () => true,
-    getSpacecraftPosition: () => ({ x: 0, y: 0 }),
-    getSpacecraftVisible: () => true,
     onCameraPan,
     onPrimaryTap,
     onResize: () => {},
-    onTargetHeadingPlan,
-    onTargetHeadingPlanCanceled,
-    onTargetHeadingPlanCommitted,
     onZoom,
     renderScale: 1,
     rendererElement: canvas as unknown as HTMLCanvasElement,
@@ -136,9 +128,6 @@ const createHarness = (
     input,
     onCameraPan,
     onPrimaryTap,
-    onTargetHeadingPlan,
-    onTargetHeadingPlanCanceled,
-    onTargetHeadingPlanCommitted,
     onZoom,
     windowTarget,
     setCameraControlsLocked: (locked: boolean) => {
@@ -166,8 +155,8 @@ describe('bindPointerCameraInput browser zoom isolation', () => {
   })
 })
 
-describe('bindPointerCameraInput target heading planning', () => {
-  it('does not start target-heading planning from a mouse click', () => {
+describe('bindPointerCameraInput canvas interactions', () => {
+  it('offers a stationary mouse click to canvas interactions without panning', () => {
     const harness = createHarness()
 
     harness.canvas.dispatchEvent(
@@ -176,13 +165,11 @@ describe('bindPointerCameraInput target heading planning', () => {
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerup', { clientX: 100, clientY: 100 }),
     )
-    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlanCanceled).not.toHaveBeenCalled()
+    expect(harness.onPrimaryTap).toHaveBeenCalledWith(100, 100)
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
-  it('plans, updates, and commits with non-mouse pointers', () => {
+  it('offers a stationary touch tap to canvas interactions without panning', () => {
     const harness = createHarness()
 
     harness.canvas.dispatchEvent(
@@ -199,38 +186,11 @@ describe('bindPointerCameraInput target heading planning', () => {
         pointerType: 'touch',
       }),
     )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointermove', {
-        clientX: 120,
-        clientY: 100,
-        pointerId: 2,
-        pointerType: 'touch',
-      }),
-    )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerdown', {
-        clientX: 120,
-        clientY: 100,
-        pointerId: 3,
-        pointerType: 'touch',
-      }),
-    )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerup', {
-        clientX: 120,
-        clientY: 100,
-        pointerId: 3,
-        pointerType: 'touch',
-      }),
-    )
-
-    expect(harness.onTargetHeadingPlan).toHaveBeenCalledTimes(2)
-    expect(harness.onTargetHeadingPlanCommitted).toHaveBeenCalledTimes(1)
-    expect(harness.onTargetHeadingPlanCanceled).not.toHaveBeenCalled()
+    expect(harness.onPrimaryTap).toHaveBeenCalledWith(100, 100)
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
-  it('consumes a handled touch tap before target-heading planning', () => {
+  it('consumes a handled touch tap', () => {
     const harness = createHarness({ primaryTapHandled: true })
 
     harness.canvas.dispatchEvent(
@@ -248,8 +208,6 @@ describe('bindPointerCameraInput target heading planning', () => {
     harness.canvas.dispatchEvent(pointerUp)
 
     expect(harness.onPrimaryTap).toHaveBeenCalledWith(100, 100)
-    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
     expect(pointerUp.defaultPrevented).toBe(true)
   })
 
@@ -264,32 +222,16 @@ describe('bindPointerCameraInput target heading planning', () => {
     )
 
     expect(harness.onPrimaryTap).toHaveBeenCalledWith(90, 110)
-    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
-  it('updates touch preview but does not commit after a drag past tolerance', () => {
+  it('uses touch drag gestures for camera pan', () => {
     const harness = createHarness()
 
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerdown', {
         clientX: 100,
         clientY: 100,
-        pointerType: 'touch',
-      }),
-    )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerup', {
-        clientX: 100,
-        clientY: 100,
-        pointerType: 'touch',
-      }),
-    )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerdown', {
-        clientX: 100,
-        clientY: 100,
-        pointerId: 2,
         pointerType: 'touch',
       }),
     )
@@ -297,7 +239,6 @@ describe('bindPointerCameraInput target heading planning', () => {
       createPointerEvent('pointermove', {
         clientX: 140,
         clientY: 100,
-        pointerId: 2,
         pointerType: 'touch',
       }),
     )
@@ -305,56 +246,12 @@ describe('bindPointerCameraInput target heading planning', () => {
       createPointerEvent('pointerup', {
         clientX: 140,
         clientY: 100,
-        pointerId: 2,
         pointerType: 'touch',
       }),
     )
 
-    expect(harness.onTargetHeadingPlan).toHaveBeenCalledTimes(2)
-    expect(harness.onTargetHeadingPlan).toHaveBeenLastCalledWith(
-      expect.any(Number),
-      expect.objectContaining({
-        screenPosition: { x: 140, y: 100 },
-      }),
-    )
-    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlanCanceled).not.toHaveBeenCalled()
-    expect(harness.onCameraPan).not.toHaveBeenCalled()
-  })
-
-  it('cancels an active plan on right click without committing', () => {
-    const harness = createHarness()
-
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerdown', {
-        clientX: 100,
-        clientY: 100,
-        pointerType: 'touch',
-      }),
-    )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerup', {
-        clientX: 100,
-        clientY: 100,
-        pointerType: 'touch',
-      }),
-    )
-    const rightClick = createPointerEvent('pointerdown', {
-      button: 2,
-      clientX: 100,
-      clientY: 100,
-      pointerId: 2,
-    })
-    const contextMenu = new Event('contextmenu', { cancelable: true })
-
-    harness.canvas.dispatchEvent(rightClick)
-    harness.canvas.dispatchEvent(contextMenu)
-
-    expect(harness.onTargetHeadingPlan).toHaveBeenCalledTimes(1)
-    expect(harness.onTargetHeadingPlanCanceled).toHaveBeenCalledTimes(1)
-    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
-    expect(rightClick.defaultPrevented).toBe(true)
-    expect(contextMenu.defaultPrevented).toBe(true)
+    expect(harness.onCameraPan).toHaveBeenCalled()
+    expect(harness.onPrimaryTap).not.toHaveBeenCalled()
   })
 
   it('uses desktop drag gestures for camera pan when edge-scroll is disabled', () => {
@@ -371,8 +268,6 @@ describe('bindPointerCameraInput target heading planning', () => {
     )
 
     expect(harness.onCameraPan).toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
   })
 
   it('does not use desktop drag gestures while edge-scroll is enabled', () => {
@@ -391,8 +286,6 @@ describe('bindPointerCameraInput target heading planning', () => {
     )
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
   })
 
   it('starts desktop drag pan on the first movement without an unlock threshold', () => {
@@ -406,37 +299,6 @@ describe('bindPointerCameraInput target heading planning', () => {
     )
 
     expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps touch drag gestures available for camera pan before planning', () => {
-    const harness = createHarness()
-
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerdown', {
-        clientX: 100,
-        clientY: 100,
-        pointerType: 'touch',
-      }),
-    )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointermove', {
-        clientX: 130,
-        clientY: 100,
-        pointerType: 'touch',
-      }),
-    )
-    harness.canvas.dispatchEvent(
-      createPointerEvent('pointerup', {
-        clientX: 130,
-        clientY: 100,
-        pointerType: 'touch',
-      }),
-    )
-
-    expect(harness.onCameraPan).toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlan).not.toHaveBeenCalled()
-    expect(harness.onTargetHeadingPlanCommitted).not.toHaveBeenCalled()
-    expect(harness.onPrimaryTap).not.toHaveBeenCalled()
   })
 })
 

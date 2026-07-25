@@ -11,7 +11,6 @@ const maxControlTimeWarpIndex = requestedTimeWarps.indexOf(60)
 
 const createController = () =>
   createNavigationTimeWarpController({
-    maxControlWarp,
     timeWarps: requestedTimeWarps,
   })
 
@@ -117,26 +116,6 @@ describe('createNavigationTimeWarpController', () => {
     ).toBe(originalTimeWarpIndex)
   })
 
-  it('uses the lower simulation cap while a heading plan is active', () => {
-    const controller = createController()
-    const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
-    const lowerSimulationCapIndex = requestedTimeWarps.indexOf(30)
-
-    controller.resolveFrame({
-      maxTimeWarp: null,
-      nowMs: 0,
-      simulationControlMaxWarp: 30,
-      timeWarpIndex: lowerSimulationCapIndex,
-    })
-
-    expect(
-      controller.beginHeadingPlan({
-        maxTimeWarp: null,
-        timeWarpIndex: originalTimeWarpIndex,
-      }),
-    ).toBe(lowerSimulationCapIndex)
-  })
-
   it('keeps the original selection through overlapping and repeated navigation', () => {
     const controller = createController()
     const originalTimeWarpIndex = requestedTimeWarps.indexOf(3600)
@@ -177,47 +156,6 @@ describe('createNavigationTimeWarpController', () => {
       resolveFrame(controller, {
         navigationActive: false,
         nowMs: 920,
-        timeWarpIndex: cappedTimeWarpIndex,
-      }),
-    ).toBe(originalTimeWarpIndex)
-  })
-
-  it('waits for both heading-plan and simulation navigation to stop', () => {
-    const controller = createController()
-    const originalTimeWarpIndex = requestedTimeWarps.indexOf(1800)
-    const cappedTimeWarpIndex = controller.beginHeadingPlan({
-      maxTimeWarp: null,
-      timeWarpIndex: originalTimeWarpIndex,
-    })
-
-    expect(cappedTimeWarpIndex).toBe(maxControlTimeWarpIndex)
-    expect(
-      resolveFrame(controller, {
-        navigationActive: true,
-        nowMs: 100,
-        timeWarpIndex: cappedTimeWarpIndex,
-      }),
-    ).toBe(maxControlTimeWarpIndex)
-
-    controller.endHeadingPlan(200)
-    expect(
-      resolveFrame(controller, {
-        navigationActive: true,
-        nowMs: 300,
-        timeWarpIndex: cappedTimeWarpIndex,
-      }),
-    ).toBe(maxControlTimeWarpIndex)
-    expect(
-      resolveFrame(controller, {
-        navigationActive: false,
-        nowMs: 400,
-        timeWarpIndex: cappedTimeWarpIndex,
-      }),
-    ).toBe(maxControlTimeWarpIndex)
-    expect(
-      resolveFrame(controller, {
-        navigationActive: false,
-        nowMs: 720,
         timeWarpIndex: cappedTimeWarpIndex,
       }),
     ).toBe(originalTimeWarpIndex)

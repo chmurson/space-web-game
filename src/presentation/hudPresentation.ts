@@ -160,9 +160,6 @@ const createDebugStateCopyPayload = (options: {
   trail: options.trail,
   ui: {
     camera: options.runtime.ui.camera,
-    targetHeadingScreenPosition: options.runtime.ui.targetHeadingScreenPosition,
-    targetHeadingSelectionEpoch: options.runtime.ui.targetHeadingSelectionEpoch,
-    targetHeadingWorldPosition: options.runtime.ui.targetHeadingWorldPosition,
     touchThrustControl: options.runtime.ui.touchThrustControl,
     uiEffectEpoch: options.runtime.ui.uiEffectEpoch,
   },
@@ -594,7 +591,7 @@ export const createHudPresentation = (options: {
           : null,
       )
       options.touchControls?.setTutorialFocusedControl(
-        prompts.active?.kind === 'coach' && prompts.active.layout === 'anchored'
+        prompts.active?.kind === 'coach'
           ? (prompts.active.focusedTouchControl ?? null)
           : null,
       )

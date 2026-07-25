@@ -30,8 +30,6 @@ export const clearTransientScenarioRuntimeState = (
   runtime.simulation.crashedBodyName = null
   runtime.ui.rcsActualTurnFeedback = null
   runtime.ui.spacecraftLabelIntroUntil = performance.now() + 5_000
-  runtime.ui.targetHeadingScreenPosition = null
-  runtime.ui.targetHeadingWorldPosition = null
   runtime.ui.touchThrustControl = createDefaultTouchThrustControlUiState()
 }
 
@@ -45,10 +43,6 @@ export const applySimulationFrameResult = (
   runtime.simulation.targetHeading = frameResult.targetHeading
   runtime.simulation.targetHeadingTurn = frameResult.targetHeadingTurn ?? null
   runtime.simulation.timeWarpIndex = frameResult.timeWarpIndex
-  if (frameResult.targetHeading === null) {
-    runtime.ui.targetHeadingScreenPosition = null
-    runtime.ui.targetHeadingWorldPosition = null
-  }
 }
 
 export const applyScenarioLoadTransition = (
@@ -60,7 +54,6 @@ export const applyScenarioLoadTransition = (
   },
 ) => {
   runtime.scenario.metadata = transition.scenario.metadata
-  runtime.scenario.orbitPointDisplay = transition.scenario.orbitPointDisplay
   runtime.scenario.render = transition.scenario.render
   runtime.simulation.timeWarpIndex = 0
   runtime.simulation.state = transition.state

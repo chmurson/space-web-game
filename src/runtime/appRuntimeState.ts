@@ -7,7 +7,6 @@ import type { ScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
 import type { RuntimeScenarioSession } from '../scenario/scenarioSession'
 import type { SimulationState, TargetHeadingTurn } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
-import type { OrbitPointDisplaySettingOverrides } from '../userSettingsStorage'
 import type { InfoPin } from './infoPins'
 import type { RcsActualTurnFeedback } from './rcsActualTurnFeedback'
 
@@ -49,15 +48,6 @@ export type RuntimeTransientNotice = {
   title: string
 }
 
-export type TargetHeadingPlan = {
-  heading: number
-  screenPosition: {
-    x: number
-    y: number
-  }
-  worldPosition: Vec2
-}
-
 export const createDefaultTouchThrustControlUiState =
   (): TouchThrustControlUiState => ({
     engaged: false,
@@ -77,7 +67,6 @@ export const createDefaultCameraControlUiState = (
 export type AppRuntimeScenarioSlice = {
   directives: RuntimeScenarioDirectives
   metadata: RuntimeScenarioMetadata
-  orbitPointDisplay?: OrbitPointDisplaySettingOverrides
   render?: ScenarioRenderConfig
   session: RuntimeScenarioSession
 }
@@ -86,13 +75,6 @@ export type AppRuntimeUiSlice = {
   camera: CameraControlUiState
   rcsActualTurnFeedback?: RcsActualTurnFeedback | null
   spacecraftLabelIntroUntil: number
-  targetHeadingPlan?: TargetHeadingPlan | null
-  targetHeadingScreenPosition?: {
-    x: number
-    y: number
-  } | null
-  targetHeadingWorldPosition?: Vec2 | null
-  targetHeadingSelectionEpoch: number
   touchThrustControl: TouchThrustControlUiState
   transientNotice?: RuntimeTransientNotice | null
   uiEffectEpoch: number

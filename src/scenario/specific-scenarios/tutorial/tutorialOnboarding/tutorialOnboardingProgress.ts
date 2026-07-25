@@ -51,7 +51,6 @@ const createStepProgress = (
   lastSampleAtMs: nowMs,
   stepStartHeading: runtime.simulation.state.spacecraft.heading,
   stepStartTouchThrustControlEngaged: runtime.ui.touchThrustControl.engaged,
-  stepStartTargetHeadingSelectionEpoch: runtime.ui.targetHeadingSelectionEpoch,
   stepStartTimeWarpMultiplier: timeWarpMultiplier,
 })
 
@@ -332,10 +331,7 @@ export const advanceTutorialOnboarding = (
           )
     nextProgress.lastSampleHeading = heading
 
-    return runtime.ui.targetHeadingSelectionEpoch >
-      onboarding.progress.stepStartTargetHeadingSelectionEpoch &&
-      nextProgress.accumulatedHeadingChangeRadians >= requiredTurnRadians &&
-      runtime.simulation.targetHeading === null
+    return nextProgress.accumulatedHeadingChangeRadians >= requiredTurnRadians
       ? advanceToNextStep(
           runtime,
           { ...onboarding, progress: nextProgress },

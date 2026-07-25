@@ -2,16 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
   readUserSettings,
-  resolveOrbitPointDisplaySettings,
   updateUserSettings,
   writeUserSettings,
 } from '@/userSettingsStorage'
 
 const storageKey = 'space-web-game.userSettings.v1'
-
-const defaultOrbitPointDisplay = {
-  markersVisible: true,
-}
 
 const createWindowWithStorage = () => {
   const values = new Map<string, string>()
@@ -47,8 +42,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: false,
       desktopEdgePanSpeed: 'normal',
       debugModeEnabled: false,
-      mobileManeuverStartByDrag: true,
-      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -61,10 +54,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: true,
       desktopEdgePanSpeed: 'fast',
       debugModeEnabled: true,
-      orbitPointDisplay: {
-        markersVisible: false,
-      },
-      mobileManeuverStartByDrag: false,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
@@ -75,10 +64,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: true,
       desktopEdgePanSpeed: 'fast',
       debugModeEnabled: true,
-      mobileManeuverStartByDrag: false,
-      orbitPointDisplay: {
-        markersVisible: false,
-      },
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
@@ -91,8 +76,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: true,
       desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
-      mobileManeuverStartByDrag: false,
-      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -103,8 +86,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: true,
       desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
-      mobileManeuverStartByDrag: false,
-      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -122,8 +103,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: false,
       desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
-      mobileManeuverStartByDrag: true,
-      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -144,8 +123,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: false,
       desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
-      mobileManeuverStartByDrag: true,
-      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'left',
@@ -153,11 +130,12 @@ describe('userSettingsStorage', () => {
     })
   })
 
-  it('migrates legacy orbit label fields to marker visibility only', () => {
+  it('ignores removed maneuver and orbit marker preferences', () => {
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
         debugModeEnabled: true,
+        mobileManeuverStartByDrag: false,
         orbitPointDisplay: {
           centerDistanceVisible: true,
           labelsVisible: false,
@@ -171,8 +149,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: false,
       desktopEdgePanSpeed: 'normal',
       debugModeEnabled: true,
-      mobileManeuverStartByDrag: true,
-      orbitPointDisplay: { markersVisible: false },
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -185,8 +161,6 @@ describe('userSettingsStorage', () => {
       desktopEdgePanEnabled: true,
       desktopEdgePanSpeed: 'slow',
       debugModeEnabled: false,
-      mobileManeuverStartByDrag: true,
-      orbitPointDisplay: defaultOrbitPointDisplay,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -206,19 +180,5 @@ describe('userSettingsStorage', () => {
 
     expect(readUserSettings().desktopEdgePanSpeed).toBe('normal')
     expect(readUserSettings().desktopEdgePanEnabled).toBe(false)
-  })
-
-  it('resolves scenario orbit point display overrides over user settings', () => {
-    expect(
-      resolveOrbitPointDisplaySettings(defaultOrbitPointDisplay, {
-        markersVisible: false,
-      }),
-    ).toEqual({
-      markersVisible: false,
-    })
-
-    expect(resolveOrbitPointDisplaySettings(defaultOrbitPointDisplay)).toEqual(
-      defaultOrbitPointDisplay,
-    )
   })
 })
