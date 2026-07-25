@@ -55,7 +55,10 @@ test('caps controls and restores the prediction-limited warp request', async ({
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.controls.turn)
     .toBe(1)
-  await expect(page.locator('[data-stat="time"]')).toContainText('x15s')
+  await expect(page.locator('[data-stat="time-elapsed"]')).toHaveClass(
+    /telemetry-pill-secondary/,
+  )
+  await expect(page.locator('[data-stat="time-warp"]')).toHaveText('x15s')
   await page.screenshot({
     path: testInfo.outputPath('manual-rcs-x15s.png'),
   })
@@ -69,7 +72,7 @@ test('caps controls and restores the prediction-limited warp request', async ({
   await expect
     .poll(async () => (await getSnapshot(page))?.simulation.timeWarp)
     .toBe(60)
-  await expect(page.locator('[data-stat="time"]')).toContainText('x1m')
+  await expect(page.locator('[data-stat="time-warp"]')).toHaveText('x1m')
 
   await page.keyboard.up('KeyW')
   await expect

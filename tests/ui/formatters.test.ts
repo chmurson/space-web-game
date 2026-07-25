@@ -53,14 +53,16 @@ describe('formatDistance', () => {
 describe('formatCompactElapsed', () => {
   it('shows split day and hour units for long durations', () => {
     expect(formatCompactElapsed(2.5 * 24 * 3600)).toBe('2d12h')
+    expect(formatCompactElapsed(100 * 24 * 3600)).toBe('100d00h')
   })
 
-  it('shows split hour and minute units under one day', () => {
-    expect(formatCompactElapsed(2.5 * 3600)).toBe('2h30m')
+  it('zero-pads elapsed hours and minutes without truncating wider values', () => {
+    expect(formatCompactElapsed(6.5 * 3600)).toBe('06h30m')
+    expect(formatCompactElapsed(6 * 3600 + 5 * 60)).toBe('06h05m')
   })
 
   it('falls back to minutes and seconds for short durations', () => {
-    expect(formatCompactElapsed(5 * 60 + 29)).toBe('5m')
+    expect(formatCompactElapsed(5 * 60 + 29)).toBe('05m')
     expect(formatCompactElapsed(42)).toBe('42s')
   })
 })
