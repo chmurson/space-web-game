@@ -54,6 +54,16 @@ export const InGameControlsMenuSurface = ({
     cameraRecenterAriaLabel = 'Recenter followed subject'
   }
 
+  if (!cameraControlsVisible) {
+    return (
+      <section
+        class="in-game-controls-menu"
+        data-camera-follow={cameraFollow}
+        ref={rootRef}
+      />
+    )
+  }
+
   return (
     <section
       class={
@@ -148,14 +158,16 @@ export const InGameControlsMenuSurface = ({
           </div>
         ) : null}
 
-        <button
-          class="in-game-controls-menu-action"
-          type="button"
-          data-in-game-action="openUiSettings"
-          onClick={onOpenUiSettings}
-        >
-          <span>UI settings</span>
-        </button>
+        {cameraControlsVisible ? (
+          <button
+            class="in-game-controls-menu-action"
+            type="button"
+            data-in-game-action="openUiSettings"
+            onClick={onOpenUiSettings}
+          >
+            <span>UI settings</span>
+          </button>
+        ) : null}
 
         {cameraControlsVisible ? (
           <>

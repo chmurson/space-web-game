@@ -147,7 +147,7 @@ test('does not show camera notices for modified C, unassigned L, or pointer drag
   await expect(page.locator('.hud-notice-transient')).toBeHidden()
 })
 
-test('hides mobile-only spacecraft settings in desktop UI settings', async ({
+test('shows only Camera settings in desktop UI settings', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
@@ -155,36 +155,45 @@ test('hides mobile-only spacecraft settings in desktop UI settings', async ({
   await page.getByRole('button', { name: 'Open in-game controls' }).click()
   await page.getByRole('button', { name: 'UI settings' }).click()
 
-  const spacecraftSettingsButton = page.getByRole('button', {
-    name: /Spacecraft controls settings/,
+  const uiSettingsDialog = page.getByRole('dialog', { name: 'UI settings' })
+  const cameraSettingsButton = uiSettingsDialog.getByRole('button', {
+    name: 'Camera settings: Camera preferences',
   })
-  await expect(spacecraftSettingsButton).toBeVisible()
-  await expect(spacecraftSettingsButton).toHaveAccessibleName(
-    'Spacecraft controls settings: Keyboard and mouse active',
-  )
-  await expect(spacecraftSettingsButton).not.toContainText('Burn')
-  await expect(spacecraftSettingsButton).not.toContainText('warp')
-  await expect(spacecraftSettingsButton).not.toContainText('target')
-  await expect(spacecraftSettingsButton).not.toContainText('trajectory')
-  await expect(spacecraftSettingsButton).not.toContainText('maneuver')
+  await expect(uiSettingsDialog).toBeVisible()
+  await expect(cameraSettingsButton).toBeVisible()
+  await expect(
+    uiSettingsDialog.getByRole('button', {
+      name: /Spacecraft controls settings/,
+    }),
+  ).toHaveCount(0)
+  await expect(
+    uiSettingsDialog.getByRole('button', { name: /Orbit point display/ }),
+  ).toHaveCount(0)
 
-  await spacecraftSettingsButton.click()
-  const dialog = page.getByRole('dialog', {
-    name: 'Spacecraft controls settings',
-  })
+  await cameraSettingsButton.click()
+  const dialog = page.getByRole('dialog', { name: 'Camera settings' })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Keyboard and mouse active')).toBeVisible()
+  await expect(
+    dialog.getByRole('group', { name: 'Camera', exact: true }),
+  ).toBeVisible()
+  const panCameraGroup = dialog.getByRole('group', { name: 'Pan camera' })
+  await expect(panCameraGroup.getByRole('radio')).toHaveCount(3)
+  await expect(
+    panCameraGroup.getByRole('radio', {
+      name: 'Wheel / trackpad',
+      exact: true,
+    }),
+  ).toBeChecked()
+  await expect(dialog.getByText('Wheel / trackpad pan speed')).toBeVisible()
+  await expect(
+    dialog.getByRole('switch', { name: 'Turn on scrolling by edge pan' }),
+  ).toHaveCount(0)
   await expect(
     dialog.getByRole('group', { name: 'Control sides' }),
-  ).toBeHidden()
-  await expect(dialog.getByRole('group', { name: 'Maneuvers' })).toBeHidden()
-  await expect(dialog.getByText('Burn side')).toBeHidden()
-  await expect(dialog.getByText('Trajectory side')).toBeHidden()
-  await expect(dialog.getByText('Starts by drag or tap')).toBeHidden()
+  ).toHaveCount(0)
+  await expect(dialog.getByRole('group', { name: 'Maneuvers' })).toHaveCount(0)
+  await expect(dialog.getByText('Starts by drag or tap')).toHaveCount(0)
+  await expect(dialog.getByText('Show closest/farthest markers')).toHaveCount(0)
 
-  await attachScreenshot(
-    page,
-    testInfo,
-    'desktop-spacecraft-controls-settings-dialog',
-  )
+  await attachScreenshot(page, testInfo, 'desktop-camera-settings-dialog')
 })

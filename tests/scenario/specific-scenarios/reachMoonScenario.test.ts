@@ -104,7 +104,6 @@ const createRuntime = (): AppRuntimeState => {
         panOffset: runtimeScenario.cameraPanOffset,
       },
       spacecraftLabelIntroUntil: 0,
-      targetHeadingSelectionEpoch: 0,
       touchThrustControl: {
         engaged: false,
         interactive: false,

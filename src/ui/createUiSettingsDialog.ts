@@ -2,7 +2,6 @@ import type {
   DesktopCameraPanMode,
   DesktopEdgePanSpeed,
   DesktopWheelPanSpeed,
-  OrbitPointDisplaySettings,
 } from '../userSettingsStorage'
 import {
   type UiSettingsDialogPane,
@@ -49,7 +48,6 @@ const getDesktopPanSpeedStep = (speed: DesktopPanSpeed, direction: -1 | 1) => {
 
 let nextUiSettingsDialogId = 0
 let activeDialogClose: ((restoreFocus?: boolean) => void) | null = null
-const touchControlsVisibleQuery = '(hover: none), (pointer: coarse)'
 
 export const createUiSettingsDialog = (options: {
   app: HTMLElement
@@ -57,18 +55,13 @@ export const createUiSettingsDialog = (options: {
   getDesktopCameraPanVisible: () => boolean
   getDesktopEdgePanSpeed: () => DesktopEdgePanSpeed
   getDesktopWheelPanSpeed: () => DesktopWheelPanSpeed
-  getMobileManeuverStartByDrag: () => boolean
-  getOrbitPointDisplay: () => OrbitPointDisplaySettings
-  getTouchControlsVisible?: () => boolean
   onDesktopCameraPanModeChange(mode: DesktopCameraPanMode): void
   onDesktopEdgePanSpeedChange(speed: DesktopEdgePanSpeed): void
   onDesktopWheelPanSpeedChange(speed: DesktopWheelPanSpeed): void
-  onMobileManeuverStartByDragChange(startByDrag: boolean): void
-  onOrbitPointDisplayChange(settings: OrbitPointDisplaySettings): void
   onOpenChange?: (open: boolean) => void
 }): UiSettingsDialog => {
   const dialogId = `app-dialog-${++nextUiSettingsDialogId}`
-  const touchControlsVisibleMedia = window.matchMedia(touchControlsVisibleQuery)
+
   const surface = createPreactUiSurface<UiSettingsDialogRenderProps>({
     app: options.app,
     component: UiSettingsDialogSurface,
@@ -121,12 +114,7 @@ export const createUiSettingsDialog = (options: {
         desktopEdgePanSpeedIndex >= desktopPanSpeedOptions.length - 1,
       increaseDesktopWheelPanSpeedDisabled:
         desktopWheelPanSpeedIndex >= desktopPanSpeedOptions.length - 1,
-      mobileManeuverStartByDrag: options.getMobileManeuverStartByDrag(),
-      orbitPointDisplay: options.getOrbitPointDisplay(),
       open,
-      touchControlsVisible:
-        options.getTouchControlsVisible?.() ??
-        touchControlsVisibleMedia.matches,
       onBackToMainSettings: () => {
         activePane = 'main'
         syncState()
@@ -144,13 +132,8 @@ export const createUiSettingsDialog = (options: {
           options.onDesktopWheelPanSpeedChange,
           -1,
         ),
-      onOpenOrbitPointDisplaySettings: () => {
-        activePane = 'orbitPointDisplay'
-        syncState()
-        focusFirstElement()
-      },
-      onOpenSpacecraftControlsSettings: () => {
-        activePane = 'spacecraftControls'
+      onOpenCameraSettings: () => {
+        activePane = 'camera'
         syncState()
         focusFirstElement()
       },
@@ -170,14 +153,6 @@ export const createUiSettingsDialog = (options: {
           options.onDesktopWheelPanSpeedChange,
           1,
         ),
-      onMobileManeuverStartByDragChange: (startByDrag) => {
-        options.onMobileManeuverStartByDragChange(startByDrag)
-        syncState()
-      },
-      onOrbitPointDisplayChange: (settings) => {
-        options.onOrbitPointDisplayChange(settings)
-        syncState()
-      },
     })
   }
 
@@ -254,7 +229,6 @@ export const createUiSettingsDialog = (options: {
     focusFirstElement()
   }
 
-  touchControlsVisibleMedia.addEventListener('change', syncState)
   renderDialog()
   const root = surface.element
 

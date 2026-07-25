@@ -73,6 +73,9 @@ export const createInGameControlsMenu = (options: {
     cameraCanRecenter = nextCameraCanRecenter
     cameraControlsLocked = nextCameraControlsLocked
     cameraControlsVisible = nextCameraControlsVisible
+    if (!cameraControlsVisible) {
+      open = false
+    }
     cameraFollow = nextCameraFollow
     coastHorizonLabel = nextCoastHorizonLabel
     decreaseCoastHorizonDisabled = nextDecreaseCoastHorizonDisabled
@@ -125,11 +128,12 @@ export const createInGameControlsMenu = (options: {
   }
 
   const setOpen = (nextOpen: boolean) => {
-    if (open === nextOpen) {
+    const resolvedOpen = cameraControlsVisible && nextOpen
+    if (open === resolvedOpen) {
       return
     }
 
-    open = nextOpen
+    open = resolvedOpen
     syncRenderState()
     renderMenu()
   }
@@ -137,11 +141,10 @@ export const createInGameControlsMenu = (options: {
   syncRenderState()
   renderMenu()
   const root = surface.element
-  const button = root.querySelector<HTMLButtonElement>(
-    '.in-game-controls-menu-button',
-  )
-  if (!button) {
-    throw new Error('Failed to create in-game controls menu')
+  const focusMenuButton = () => {
+    root
+      .querySelector<HTMLButtonElement>('.in-game-controls-menu-button')
+      ?.focus()
   }
 
   document.addEventListener('pointerdown', (event) => {
@@ -154,7 +157,7 @@ export const createInGameControlsMenu = (options: {
     if (open && event.key === 'Escape') {
       event.preventDefault()
       setOpen(false)
-      button.focus()
+      focusMenuButton()
     }
   })
 

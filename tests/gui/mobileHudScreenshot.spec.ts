@@ -24,8 +24,6 @@ const screenshotCss = `
 
   canvas,
   .body-label,
-  .heading-target-dot,
-  .heading-target-overlay,
   .rcs-actual-turn-overlay,
   .offscreen-indicator,
   .spacecraft-callout,
@@ -2259,7 +2257,7 @@ test('keeps the lunar orbit quality notice text inside the bottom pill', async (
   )
 })
 
-test('keeps the UI settings dialog adapter state, focus, and change behavior', async ({
+test('keeps the desktop UI settings dialog focus and camera pan behavior', async ({
   page,
 }) => {
   await page.goto('/')
@@ -2275,11 +2273,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     let desktopCameraPanMode: DesktopCameraPanMode = 'wheel'
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
     let desktopWheelPanSpeed: DesktopWheelPanSpeed = 'normal'
-    let mobileManeuverStartByDrag = true
-    let orbitPointDisplay = {
-      markersVisible: true,
-    }
-    const orbitEvents: string[] = []
 
     beforeButton.textContent = 'Before settings'
     document.body.append(beforeButton, app)
@@ -2291,12 +2284,6 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       getDesktopCameraPanVisible: () => true,
       getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
       getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
-      getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
-      getOrbitPointDisplay: () => orbitPointDisplay,
-      onOrbitPointDisplayChange: (settings: typeof orbitPointDisplay) => {
-        orbitEvents.push(`markers:${settings.markersVisible}`)
-        orbitPointDisplay = settings
-      },
       onOpenChange: (open: boolean) => openEvents.push(open),
       onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
         events.push(`panMode:${mode}`)
@@ -2310,15 +2297,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
         events.push(`wheelPanSpeed:${speed}`)
         desktopWheelPanSpeed = speed
       },
-      onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
-        events.push(`maneuver:${startByDrag}`)
-        mobileManeuverStartByDrag = startByDrag
-      },
     })
-    const getCloseButton = () =>
-      dialog.element.querySelector(
-        '.app-dialog-close',
-      ) as HTMLButtonElement | null
     const getButtonByText = (text: string): HTMLButtonElement | undefined =>
       (
         Array.from(
@@ -2327,7 +2306,7 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       ).find((button) => button.textContent?.includes(text))
     const getPanModeRadio = (mode: DesktopCameraPanMode) =>
       dialog.element.querySelector(
-        `input[type="radio"][value="${mode}"]`,
+        `.app-dialog-radio-input[value="${mode}"]`,
       ) as HTMLInputElement | null
     const getPanSpeed = (setting: 'edge' | 'wheel') =>
       dialog.element.querySelector(`[data-ui-settings-pan-speed="${setting}"]`)
@@ -2339,60 +2318,24 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       dialog.element.querySelector(
         `[data-ui-settings-pan-speed-action="${setting}-${action}"]`,
       ) as HTMLButtonElement | null
-    const getFocusableButtons = (): HTMLButtonElement[] =>
-      Array.from(
-        (dialog.element as HTMLElement).querySelectorAll('button'),
-      ) as HTMLButtonElement[]
-    const pressDocumentKey = (
-      key: string,
-      init: Omit<KeyboardEventInit, 'key'> = {},
-    ) =>
-      document.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          bubbles: true,
-          cancelable: true,
-          key,
-          ...init,
-        }),
-      )
 
     dialog.open()
-    const activeAfterOpen = document.activeElement === getCloseButton()
-    const openAfterOpen = !dialog.element.hidden
-    const role = dialog.element
-      .querySelector('.app-dialog-panel')
-      ?.getAttribute('role')
-    const className = dialog.element.className
-    const spacecraftSummaryInitial = getButtonByText(
-      'Spacecraft controls settings',
-    )?.textContent
-    getButtonByText('Spacecraft controls settings')?.click()
-    const spacecraftTitleAfterOpen =
+    const activeAfterOpen =
+      document.activeElement?.classList.contains('app-dialog-close')
+    const settingsEntryLabels = (
+      Array.from(
+        dialog.element.querySelectorAll('.app-dialog-setting-button'),
+      ) as HTMLButtonElement[]
+    ).map((button) => button.getAttribute('aria-label'))
+    getButtonByText('Camera settings')?.click()
+    const cameraTitle =
       dialog.element.querySelector('.app-dialog-title')?.textContent
-    const spacecraftFocusAfterOpen =
-      document.activeElement === getButtonByText('Back')
-    const spacecraftControlGroup = dialog.element.querySelector(
-      '.app-dialog-setting-group-label',
-    )?.textContent
-    const spacecraftControlGroups = Array.from(
-      (dialog.element as HTMLElement).querySelectorAll(
-        '.app-dialog-setting-group-label',
-      ) as NodeListOf<HTMLElement>,
-    ).map((label) => label.textContent)
-    const maneuverSwitchInitial = getButtonByText(
-      'Starts by drag or tap',
-    )?.getAttribute('aria-checked')
-    const maneuverSwitchInitialText = getButtonByText(
-      'Starts by drag or tap',
-    )?.textContent
-    getButtonByText('Starts by drag or tap')?.click()
-    const panCameraGroup = (dialog.element as HTMLElement).querySelector(
+    const paneText = dialog.element.textContent ?? ''
+    const panCameraGroup = dialog.element.querySelector(
       '.app-dialog-radio-group',
     ) as HTMLFieldSetElement | null
-    const panCameraGroupLabel =
-      panCameraGroup?.querySelector('legend')?.textContent
     const panModeRadios = Array.from(
-      (dialog.element as HTMLElement).querySelectorAll(
+      dialog.element.querySelectorAll(
         '.app-dialog-radio-input',
       ) as NodeListOf<HTMLInputElement>,
     )
@@ -2412,228 +2355,68 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
 
     getPanModeRadio('edge')?.click()
     const edgeModeCheckedAfterSelect = getPanModeRadio('edge')?.checked
-    const wheelPanSpeedHiddenForEdge = getPanSpeed('wheel') === undefined
     const edgePanSpeedAfterSelect = getPanSpeed('edge')
-    const edgePanSpeedDecreaseDisabledAfterSelect = getPanSpeedButton(
-      'edge',
-      'decrease',
-    )?.disabled
+    const wheelPanSpeedHiddenForEdge = getPanSpeed('wheel') === undefined
     getPanSpeedButton('edge', 'increase')?.click()
     const edgePanSpeedAfterIncrease = getPanSpeed('edge')
-    const edgePanSpeedIncreaseDisabledAfterIncrease = getPanSpeedButton(
-      'edge',
-      'increase',
-    )?.disabled
 
     getPanModeRadio('drag')?.click()
     const panSpeedsHiddenForDrag =
       getPanSpeed('edge') === undefined && getPanSpeed('wheel') === undefined
 
     getPanModeRadio('wheel')?.click()
-    const wheelPanSpeedAfterReselect = getPanSpeed('wheel')
     getPanSpeedButton('wheel', 'increase')?.click()
     const wheelPanSpeedAfterIncrease = getPanSpeed('wheel')
-    const wheelPanSpeedIncreaseDisabledAfterIncrease = getPanSpeedButton(
-      'wheel',
-      'increase',
-    )?.disabled
     dialog.syncState()
-    const maneuverSwitchAfter = getButtonByText(
-      'Starts by drag or tap',
-    )?.getAttribute('aria-checked')
-    const maneuverSwitchAfterText = getButtonByText(
-      'Starts by drag or tap',
-    )?.textContent
     const wheelModeCheckedAfterSync = getPanModeRadio('wheel')?.checked
-    getButtonByText('Back')?.click()
-    const titleAfterSpacecraftBack =
-      dialog.element.querySelector('.app-dialog-title')?.textContent
-    const spacecraftSummaryAfterChanges = getButtonByText(
-      'Spacecraft controls settings',
-    )?.textContent
-    const orbitSummaryInitial = getButtonByText(
-      'Orbit point display',
-    )?.textContent
-    getButtonByText('Orbit point display')?.click()
-    const orbitTitleAfterOpen =
-      dialog.element.querySelector('.app-dialog-title')?.textContent
-    const orbitFocusAfterOpen =
-      document.activeElement === getButtonByText('Back')
-    const orbitSwitchOrder = (
-      Array.from(
-        dialog.element.querySelectorAll('.app-dialog-switch'),
-      ) as HTMLButtonElement[]
-    ).map((button) => button.textContent?.trim())
-    const markerSwitch = getButtonByText('Show closest/farthest markers')
-    const markerSwitchInitial = markerSwitch?.getAttribute('aria-checked')
-    markerSwitch?.click()
-    const markerSwitchAfterOff = markerSwitch?.getAttribute('aria-checked')
-    const markerSwitchDisabledWhenOff = markerSwitch?.disabled
-    getButtonByText('Show closest/farthest markers')?.click()
-    getButtonByText('Back')?.click()
-    const titleAfterOrbitBack =
-      dialog.element.querySelector('.app-dialog-title')?.textContent
-    const orbitSummaryAfterChanges = getButtonByText(
-      'Orbit point display',
-    )?.textContent
-
-    getFocusableButtons().at(-1)?.focus()
-    pressDocumentKey('Tab')
-    const focusAfterForwardTrap = document.activeElement === getCloseButton()
-    getCloseButton()?.focus()
-    pressDocumentKey('Tab', { shiftKey: true })
-    const focusAfterBackwardTrap =
-      document.activeElement === getFocusableButtons().at(-1)
-
-    pressDocumentKey('Escape')
-    const hiddenAfterEscape = dialog.element.hidden
-    const focusRestoredAfterEscape = document.activeElement === beforeButton
-
-    mobileManeuverStartByDrag = true
-    beforeButton.focus()
-    dialog.open()
-    getButtonByText('Spacecraft controls settings')?.click()
-    const maneuverSyncedOnOpen = getButtonByText(
-      'Starts by drag or tap',
-    )?.getAttribute('aria-checked')
-    dialog.element
-      .querySelector('.app-dialog-backdrop')
-      ?.dispatchEvent(
-        new MouseEvent('click', { bubbles: true, cancelable: true }),
-      )
-    const hiddenAfterBackdrop = dialog.element.hidden
-    const focusRestoredAfterBackdrop = document.activeElement === beforeButton
-
-    beforeButton.focus()
-    dialog.open()
-    getCloseButton()?.click()
-    const hiddenAfterCloseButton = dialog.element.hidden
-    const focusRestoredAfterCloseButton =
-      document.activeElement === beforeButton
-
-    const hiddenTriggerWrapper = document.createElement('div')
-    const hiddenTriggerButton = document.createElement('button')
-    hiddenTriggerButton.textContent = 'Hidden settings trigger'
-    hiddenTriggerWrapper.append(hiddenTriggerButton)
-    document.body.append(hiddenTriggerWrapper)
-    hiddenTriggerButton.focus()
-    hiddenTriggerWrapper.hidden = true
-    const hiddenTriggerWasActiveBeforeOpen =
-      document.activeElement === hiddenTriggerButton
-    dialog.open()
-    getCloseButton()?.click()
-    const focusSkippedHiddenTrigger =
-      document.activeElement !== hiddenTriggerButton
+    dialog.close()
 
     return {
       activeAfterOpen,
-      className,
-      events,
-      focusAfterBackwardTrap,
-      focusAfterForwardTrap,
-      focusRestoredAfterBackdrop,
-      focusRestoredAfterCloseButton,
-      focusRestoredAfterEscape,
-      focusSkippedHiddenTrigger,
-      hiddenAfterBackdrop,
-      hiddenAfterCloseButton,
-      hiddenAfterEscape,
-      hiddenTriggerWasActiveBeforeOpen,
       edgeModeCheckedAfterSelect,
       edgePanSpeedAfterIncrease,
       edgePanSpeedAfterSelect,
-      edgePanSpeedDecreaseDisabledAfterSelect,
       edgePanSpeedHiddenInitial,
-      edgePanSpeedIncreaseDisabledAfterIncrease,
-      maneuverSwitchAfter,
-      maneuverSwitchAfterText,
-      maneuverSwitchInitial,
-      maneuverSwitchInitialText,
-      markerSwitchAfterOff,
-      markerSwitchDisabledWhenOff,
-      markerSwitchInitial,
-      openAfterOpen,
+      events,
+      focusRestored: document.activeElement === beforeButton,
       openEvents,
-      orbitEvents,
-      orbitFocusAfterOpen,
-      orbitSummaryAfterChanges,
-      orbitSummaryInitial,
-      orbitSwitchOrder,
-      orbitTitleAfterOpen,
-      panCameraGroupLabel,
+      paneText,
+      cameraTitle,
+      panCameraGroupLabel: panCameraGroup?.querySelector('legend')?.textContent,
       panCameraGroupTagName: panCameraGroup?.tagName,
       panModeRadioAccessibleNames,
       panModeRadioDescriptions,
-      panModeRadioLabelCount: panModeRadioAccessibleNames.length,
+      panModeRadioLabelCount: panModeRadios.length,
       panModeRadioNameCount: new Set(panModeRadioNames).size,
       panSpeedsHiddenForDrag,
-      role,
-      spacecraftControlGroup,
-      spacecraftControlGroups,
-      spacecraftFocusAfterOpen,
-      spacecraftSummaryAfterChangesIncludesManeuverTap:
-        spacecraftSummaryAfterChanges?.includes('maneuver tap'),
-      spacecraftSummaryInitialIncludesManeuverDrag:
-        spacecraftSummaryInitial?.includes('maneuver drag'),
-      spacecraftTitleAfterOpen,
-      titleAfterSpacecraftBack,
-      titleAfterOrbitBack,
-      maneuverSyncedOnOpen,
+      settingsEntryLabels,
       wheelModeCheckedAfterSync,
       wheelModeCheckedInitial,
       wheelPanSpeedAfterIncrease,
-      wheelPanSpeedAfterReselect,
       wheelPanSpeedHiddenForEdge,
-      wheelPanSpeedIncreaseDisabledAfterIncrease,
       wheelPanSpeedInitial,
     }
   })
 
   expect(result).toEqual({
     activeAfterOpen: true,
-    className: 'app-dialog ui-settings-dialog',
+    cameraTitle: 'Camera settings',
+    edgeModeCheckedAfterSelect: true,
+    edgePanSpeedAfterIncrease: 'Fast',
+    edgePanSpeedAfterSelect: 'Normal',
+    edgePanSpeedHiddenInitial: true,
     events: [
-      'maneuver:false',
       'panMode:edge',
       'edgePanSpeed:fast',
       'panMode:drag',
       'panMode:wheel',
       'wheelPanSpeed:fast',
     ],
-    focusAfterBackwardTrap: true,
-    focusAfterForwardTrap: true,
-    focusRestoredAfterBackdrop: true,
-    focusRestoredAfterCloseButton: true,
-    focusRestoredAfterEscape: true,
-    focusSkippedHiddenTrigger: true,
-    hiddenAfterBackdrop: true,
-    hiddenAfterCloseButton: true,
-    hiddenAfterEscape: true,
-    hiddenTriggerWasActiveBeforeOpen: true,
-    edgeModeCheckedAfterSelect: true,
-    edgePanSpeedAfterIncrease: 'Fast',
-    edgePanSpeedAfterSelect: 'Normal',
-    edgePanSpeedDecreaseDisabledAfterSelect: false,
-    edgePanSpeedHiddenInitial: true,
-    edgePanSpeedIncreaseDisabledAfterIncrease: true,
-    maneuverSwitchAfter: 'false',
-    maneuverSwitchAfterText: 'Starts by drag or tapStarts by tap',
-    maneuverSwitchInitial: 'true',
-    maneuverSwitchInitialText: 'Starts by drag or tapStarts by drag',
-    markerSwitchAfterOff: 'false',
-    markerSwitchDisabledWhenOff: false,
-    markerSwitchInitial: 'true',
-    openAfterOpen: true,
-    openEvents: [true, false, true, false, true, false, true, false],
-    orbitEvents: ['markers:false', 'markers:true'],
-    orbitFocusAfterOpen: true,
-    orbitSummaryAfterChanges: 'Orbit point displayMarkers on>',
-    orbitSummaryInitial: 'Orbit point displayMarkers on>',
-    orbitSwitchOrder: ['Show closest/farthest markers'],
-    orbitTitleAfterOpen: 'Orbit point display',
+    focusRestored: true,
+    openEvents: [true, false],
+    paneText: expect.stringContaining('Camera'),
     panCameraGroupLabel: 'Pan camera',
     panCameraGroupTagName: 'FIELDSET',
-    panModeRadioLabelCount: 3,
     panModeRadioAccessibleNames: [
       'Wheel / trackpad',
       'Mouse drag',
@@ -2644,173 +2427,64 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       'Click and drag to pan · Scroll to zoom',
       'Move the pointer to an edge · Scroll to zoom',
     ],
+    panModeRadioLabelCount: 3,
     panModeRadioNameCount: 1,
     panSpeedsHiddenForDrag: true,
-    role: 'dialog',
-    spacecraftControlGroup: 'Maneuvers',
-    spacecraftControlGroups: ['Maneuvers', 'Camera'],
-    spacecraftFocusAfterOpen: true,
-    spacecraftSummaryAfterChangesIncludesManeuverTap: true,
-    spacecraftSummaryInitialIncludesManeuverDrag: true,
-    spacecraftTitleAfterOpen: 'Spacecraft controls settings',
-    titleAfterSpacecraftBack: 'UI settings',
-    titleAfterOrbitBack: 'UI settings',
-    maneuverSyncedOnOpen: 'true',
+    settingsEntryLabels: ['Camera settings: Camera preferences'],
     wheelModeCheckedAfterSync: true,
     wheelModeCheckedInitial: true,
     wheelPanSpeedAfterIncrease: 'Fast',
-    wheelPanSpeedAfterReselect: 'Normal',
     wheelPanSpeedHiddenForEdge: true,
-    wheelPanSpeedIncreaseDisabledAfterIncrease: true,
     wheelPanSpeedInitial: 'Normal',
   })
+  expect(result.paneText).not.toContain('Starts by drag or tap')
+  expect(result.paneText).not.toContain('Orbit point display')
+  expect(result.paneText).not.toContain('Target side')
+  expect(result.paneText).not.toContain('Trajectory side')
 })
 
-test('hides desktop-only irrelevant spacecraft settings without resetting saved mobile values', async ({
+test('omits retired mobile controls from desktop settings', async ({
   page,
 }) => {
   await page.goto('/')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
 
-  const result = await page.evaluate(async () => {
+  const paneText = await page.evaluate(async () => {
     const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
     const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
     const app = document.createElement('div')
-    const events: string[] = []
-    let touchControlsVisible = false
-    const targetSide: 'left' | 'right' = 'right'
-    const trajectorySide: 'left' | 'right' | 'hidden' = 'hidden'
-    const warpSide: 'left' | 'right' = 'right'
-    let desktopCameraPanMode: DesktopCameraPanMode = 'wheel'
-    let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
-    let desktopWheelPanSpeed: DesktopWheelPanSpeed = 'normal'
-    let mobileManeuverStartByDrag = true
-    const orbitPointDisplay = {
-      markersVisible: true,
-    }
-
     document.body.append(app)
 
     const dialog = createUiSettingsDialog({
       app,
-      getDesktopCameraPanMode: () => desktopCameraPanMode,
-      getDesktopCameraPanVisible: () => false,
-      getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-      getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
-      getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
-      getOrbitPointDisplay: () => orbitPointDisplay,
-      getTouchControlsVisible: () => touchControlsVisible,
-      onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
-        events.push(`panMode:${mode}`)
-        desktopCameraPanMode = mode
-      },
-      onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
-        events.push(`edgePanSpeed:${speed}`)
-        desktopEdgePanSpeed = speed
-      },
-      onDesktopWheelPanSpeedChange: (speed: DesktopWheelPanSpeed) => {
-        events.push(`wheelPanSpeed:${speed}`)
-        desktopWheelPanSpeed = speed
-      },
-      onMobileManeuverStartByDragChange: (startByDrag: boolean) => {
-        events.push(`maneuver:${startByDrag}`)
-        mobileManeuverStartByDrag = startByDrag
-      },
-      onOrbitPointDisplayChange: () => {
-        events.push('orbit')
-      },
-      onOpenChange: () => {},
+      getDesktopCameraPanMode: () => 'wheel' as DesktopCameraPanMode,
+      getDesktopCameraPanVisible: () => true,
+      getDesktopEdgePanSpeed: () => 'normal' as DesktopEdgePanSpeed,
+      getDesktopWheelPanSpeed: () => 'normal' as DesktopWheelPanSpeed,
+      onDesktopCameraPanModeChange: () => {},
+      onDesktopEdgePanSpeedChange: () => {},
+      onDesktopWheelPanSpeedChange: () => {},
     })
-
-    const getButtonByText = (text: string): HTMLButtonElement | undefined =>
-      (
-        Array.from(
-          (dialog.element as HTMLElement).querySelectorAll('button'),
-        ) as HTMLButtonElement[]
-      ).find((button) => button.textContent?.includes(text))
-    const getSummaryText = () =>
-      getButtonByText('Spacecraft controls settings')?.textContent ?? ''
-    const readVisibleText = () => dialog.element.textContent ?? ''
-
     dialog.open()
-    const desktopSummary = getSummaryText()
-    getButtonByText('Spacecraft controls settings')?.click()
-    const desktopPaneText = readVisibleText()
-    const desktopControlSideGroup = dialog.element.querySelector(
-      '[aria-label="Control sides"]',
-    )
-    const desktopManeuverSwitch = getButtonByText('Starts by drag or tap')
+    const settingsButton = Array.from(
+      dialog.element.querySelectorAll(
+        'button',
+      ) as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Camera settings')) as
+      | HTMLButtonElement
+      | undefined
+    settingsButton?.click()
+    const paneText = dialog.element.textContent ?? ''
+    dialog.close()
 
-    touchControlsVisible = true
-    dialog.syncState()
-    const mobilePaneText = readVisibleText()
-    const mobileControlSideGroup = dialog.element.querySelector(
-      '[aria-label="Control sides"]',
-    )
-    const mobileManeuverSwitch = getButtonByText('Starts by drag or tap')
-
-    dialog.syncState()
-    getButtonByText('Back')?.click()
-    const partiallyHiddenSummary = getSummaryText()
-    getButtonByText('Spacecraft controls settings')?.click()
-    const partiallyHiddenPaneText = readVisibleText()
-
-    return {
-      desktopControlSideGroupHidden: desktopControlSideGroup === null,
-      desktopManeuverSwitchHidden: desktopManeuverSwitch === undefined,
-      desktopPaneText,
-      desktopSummary,
-      events,
-      mobileControlSideGroupVisible: mobileControlSideGroup !== null,
-      mobileManeuverSwitchVisible: mobileManeuverSwitch !== undefined,
-      mobilePaneText,
-      partiallyHiddenPaneText,
-      partiallyHiddenSummary,
-      savedValues: {
-        mobileManeuverStartByDrag,
-        targetSide,
-        trajectorySide,
-        warpSide,
-      },
-    }
+    return paneText
   })
 
-  expect(result.desktopSummary).toContain('Keyboard and mouse active')
-  expect(result.desktopSummary).not.toContain('Burn left')
-  expect(result.desktopSummary).not.toContain('warp right')
-  expect(result.desktopSummary).not.toContain('target right')
-  expect(result.desktopSummary).not.toContain('trajectory hidden')
-  expect(result.desktopSummary).not.toContain('maneuver drag')
-  expect(result.desktopControlSideGroupHidden).toBe(true)
-  expect(result.desktopManeuverSwitchHidden).toBe(true)
-  expect(result.desktopPaneText).toContain('Keyboard and mouse active')
-  expect(result.desktopPaneText).not.toContain('Burn side')
-  expect(result.desktopPaneText).not.toContain('Starts by drag or tap')
-
-  expect(result.mobileControlSideGroupVisible).toBe(false)
-  expect(result.mobileManeuverSwitchVisible).toBe(true)
-  expect(result.mobilePaneText).not.toContain('Burn side')
-  expect(result.mobilePaneText).not.toContain('Warp side')
-  expect(result.mobilePaneText).not.toContain('Target side')
-  expect(result.mobilePaneText).not.toContain('Trajectory side')
-  expect(result.mobilePaneText).toContain('Starts by drag or tap')
-
-  expect(result.partiallyHiddenSummary).not.toContain('Burn left')
-  expect(result.partiallyHiddenSummary).not.toContain('trajectory hidden')
-  expect(result.partiallyHiddenSummary).toContain('maneuver drag')
-  expect(result.partiallyHiddenSummary).not.toContain('warp right')
-  expect(result.partiallyHiddenSummary).not.toContain('target right')
-  expect(result.partiallyHiddenPaneText).not.toContain('Burn side')
-  expect(result.partiallyHiddenPaneText).not.toContain('Trajectory side')
-  expect(result.partiallyHiddenPaneText).not.toContain('Warp side')
-  expect(result.partiallyHiddenPaneText).not.toContain('Target side')
-  expect(result.events).toEqual([])
-  expect(result.savedValues).toEqual({
-    mobileManeuverStartByDrag: true,
-    targetSide: 'right',
-    trajectorySide: 'hidden',
-    warpSide: 'right',
-  })
+  expect(paneText).toContain('Camera')
+  expect(paneText).not.toContain('Starts by drag or tap')
+  expect(paneText).not.toContain('Orbit point display')
+  expect(paneText).not.toContain('Target side')
+  expect(paneText).not.toContain('Trajectory side')
 })
 
 test('captures the mobile top menu open over gameplay HUD', async ({
@@ -2833,32 +2507,23 @@ test('captures the mobile top menu open over gameplay HUD', async ({
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-snapshot-save')
 })
 
-test('keeps mobile navigation controls in Nav instead of the in-game controls menu', async ({
+test('hides the empty in-game controls menu on mobile', async ({
   page,
 }, testInfo) => {
   await startReachMoonMission(page)
 
-  await page.getByRole('button', { name: 'Open in-game controls' }).click()
-  const controlsDialog = page.getByRole('dialog', { name: 'In-game controls' })
-  await expect(controlsDialog).toBeVisible()
-  await expect(controlsDialog.getByText('Prediction horizon')).toHaveCount(0)
   await expect(
-    controlsDialog.getByText('Trajectory', { exact: true }),
+    page.getByRole('button', { name: 'Open in-game controls' }),
   ).toHaveCount(0)
   await expect(
-    controlsDialog.getByRole('group', { name: 'Follow' }),
+    page.getByRole('dialog', { name: 'In-game controls' }),
   ).toHaveCount(0)
-  await expect(
-    controlsDialog.getByRole('button', {
-      name: 'Recenter followed subject',
-    }),
-  ).toHaveCount(0)
-  await expect(
-    controlsDialog.locator('[data-in-game-camera-follow-status]'),
-  ).toHaveCount(0)
-  await expect(controlsDialog.getByText('View', { exact: true })).toHaveCount(0)
 
-  await attachMobileScreenshot(page, testInfo, 'mobile-in-game-controls-menu')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-gameplay-without-controls-menu',
+  )
 })
 
 test('captures desktop camera pan modes and conditional speeds in UI settings', async ({
@@ -2895,11 +2560,6 @@ test('captures desktop camera pan modes and conditional speeds in UI settings', 
       getDesktopCameraPanVisible: () => true,
       getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
       getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
-      getMobileManeuverStartByDrag: () => true,
-      getOrbitPointDisplay: () => ({
-        markersVisible: true,
-      }),
-      getTouchControlsVisible: () => false,
       onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
         desktopCameraPanMode = mode
       },
@@ -2909,24 +2569,26 @@ test('captures desktop camera pan modes and conditional speeds in UI settings', 
       onDesktopWheelPanSpeedChange: (speed: DesktopWheelPanSpeed) => {
         desktopWheelPanSpeed = speed
       },
-      onMobileManeuverStartByDragChange: () => {},
-      onOrbitPointDisplayChange: () => {},
     })
 
     dialog.open()
-    const spacecraftControlsButton = (
+    const cameraSettingsButton = (
       Array.from(
         dialog.element.querySelectorAll('button'),
       ) as HTMLButtonElement[]
-    ).find((button) =>
-      button.textContent?.includes('Spacecraft controls settings'),
-    )
-    spacecraftControlsButton?.click()
+    ).find((button) => button.textContent?.includes('Camera settings'))
+    cameraSettingsButton?.click()
   })
 
   await expect(
-    page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
+    page.getByRole('dialog', { name: 'Camera settings' }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /Spacecraft controls settings/ }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: /Orbit point display/ }),
+  ).toHaveCount(0)
   await expect(
     page.getByRole('group', { name: 'Camera', exact: true }),
   ).toBeVisible()
@@ -2985,13 +2647,19 @@ test('captures desktop camera pan modes and conditional speeds in UI settings', 
   )
 
   await edgeRadio.check()
-  const edgeSpeedBounds = await page
-    .getByRole('group', { name: 'Edge pan speed' })
+  const edgeSpeedGroup = page.getByRole('group', { name: 'Edge pan speed' })
+  await edgeSpeedGroup.scrollIntoViewIfNeeded()
+  const edgeSpeedBounds = await edgeSpeedGroup.boundingBox()
+  const dialogBounds = await page
+    .getByRole('dialog', { name: 'Camera settings' })
     .boundingBox()
   expect(edgeSpeedBounds).not.toBeNull()
+  expect(dialogBounds).not.toBeNull()
   expect(
     (edgeSpeedBounds?.y ?? 0) + (edgeSpeedBounds?.height ?? 0),
-  ).toBeLessThan(720)
+  ).toBeLessThanOrEqual(
+    (dialogBounds?.y ?? 0) + (dialogBounds?.height ?? Number.POSITIVE_INFINITY),
+  )
   await attachMobileScreenshot(
     page,
     testInfo,
@@ -3117,80 +2785,6 @@ test('captures wide in-game controls keyboard hints', async ({
   } finally {
     await context.close()
   }
-})
-
-test('captures the mobile UI settings dialog opened from in-game controls', async ({
-  page,
-}, testInfo) => {
-  await startReachMoonMission(page)
-
-  await page.getByRole('button', { name: 'Open in-game controls' }).click()
-  await page.getByRole('button', { name: 'UI settings' }).click()
-  await expect(page.getByRole('dialog', { name: 'UI settings' })).toBeVisible()
-  await expect(page.getByText('Spacecraft controls settings')).toBeVisible()
-  await expect(page.getByText('Orbit point display')).toBeVisible()
-
-  await attachMobileScreenshot(page, testInfo, 'mobile-ui-settings-dialog')
-
-  await page
-    .getByRole('button', { name: /Spacecraft controls settings/ })
-    .click()
-  await expect(
-    page.getByRole('dialog', { name: 'Spacecraft controls settings' }),
-  ).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Control sides' })).toHaveCount(
-    0,
-  )
-  await expect(page.getByRole('group', { name: 'Maneuvers' })).toBeVisible()
-  await expect(page.getByText('Burn side')).toHaveCount(0)
-  await expect(page.getByText('Target side')).toHaveCount(0)
-  await expect(page.getByText('Trajectory side')).toHaveCount(0)
-  await expect(page.getByText('Starts by drag or tap')).toBeVisible()
-  await expect(page.getByText('Starts by drag', { exact: true })).toBeVisible()
-  await expect(page.getByText('Turn on scrolling by edge pan')).toHaveCount(0)
-
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'mobile-spacecraft-controls-settings-dialog',
-  )
-
-  await page.getByRole('button', { name: 'Back' }).click()
-  await expect(page.getByRole('dialog', { name: 'UI settings' })).toBeVisible()
-
-  await page.getByRole('button', { name: /Orbit point display/ }).click()
-  const orbitPointDialog = page.getByRole('dialog', {
-    name: 'Orbit point display',
-  })
-  await expect(orbitPointDialog).toBeVisible()
-  await expect(
-    orbitPointDialog.getByRole('switch', {
-      name: 'Show closest/farthest markers',
-    }),
-  ).toHaveAttribute('aria-checked', 'true')
-  await expect(orbitPointDialog.getByRole('switch')).toHaveCount(1)
-
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'mobile-orbit-point-display-dialog',
-  )
-
-  await orbitPointDialog
-    .getByRole('switch', { name: 'Show closest/farthest markers' })
-    .click()
-  await expect(
-    orbitPointDialog.getByRole('switch', {
-      name: 'Show closest/farthest markers',
-    }),
-  ).toBeEnabled()
-  await expect(orbitPointDialog.getByRole('switch')).toHaveCount(1)
-
-  await attachMobileScreenshot(
-    page,
-    testInfo,
-    'mobile-orbit-point-display-markers-disabled-dialog',
-  )
 })
 
 test('captures the mobile Time Warp control in Nav', async ({

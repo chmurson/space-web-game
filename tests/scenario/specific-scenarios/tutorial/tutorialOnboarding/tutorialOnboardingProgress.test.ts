@@ -77,7 +77,6 @@ const createRuntime = (): AppRuntimeState => ({
       panOffset: { x: 0, y: 0 },
     },
     spacecraftLabelIntroUntil: 0,
-    targetHeadingSelectionEpoch: 0,
     touchThrustControl: {
       engaged: false,
       interactive: false,
@@ -286,19 +285,23 @@ describe('tutorialOnboardingProgress', () => {
     )
   })
 
-  it('uses current copy for direct heading selection', () => {
+  it('uses current copy for direct turning', () => {
     expect(
       getTutorialOnboardingPromptContent('intro-point-and-turn', 'desktop'),
     ).toMatchObject({
       layout: 'playfield',
-      title: 'Plan A Turn',
+      title: 'Turn The Ship',
     })
     expect(getOnboardingDescription('intro-point-and-turn', 'desktop')).toBe(
-      'Click open space away from Earth to plan a turn. Move the mouse to adjust the target, then click again to start turning.',
+      'Hold A/D or Left/Right Arrow to turn the ship. Hold Shift for a precise turn.',
     )
     expect(getOnboardingDescription('intro-point-and-turn', 'mobile')).toBe(
-      'Press open space away from Earth to plan a turn. Drag to adjust the target, then release to start turning.',
+      'Open Flight, then drag RCS left or right to turn the ship.',
     )
+    expect(
+      getTutorialOnboardingPromptContent('intro-point-and-turn', 'mobile')
+        .focusedTouchControl,
+    ).toBe('rcs')
     expect(
       getTutorialOnboardingPromptContent('intro-point-and-turn', 'desktop')
         .anchor,
@@ -640,7 +643,7 @@ describe('tutorialOnboardingProgress', () => {
     ).toEqual(new Set(['scenarioInfoButton', 'targetControl']))
   })
 
-  it('uses direct heading selection, time warp, and high-warp thrust to reach trajectory explanation', () => {
+  it('uses direct turning, time warp, and high-warp thrust to reach trajectory explanation', () => {
     const runtime = createRuntime()
     let onboarding = createTutorialOnboardingState(runtime, 1_000, 1)
 
@@ -653,14 +656,8 @@ describe('tutorialOnboardingProgress', () => {
         'intro-keep-thrusting',
       ],
     }
-    runtime.ui.targetHeadingSelectionEpoch = 1
-    runtime.simulation.targetHeading = Math.PI / 2
     runtime.simulation.state.spacecraft.heading = Math.PI / 2
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)
-    expect(onboarding.activeStepId).toBe('intro-point-and-turn')
-
-    runtime.simulation.targetHeading = null
-    onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_150, 1)
     expect(onboarding.activeStepId).toBe('intro-timewarp')
 
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_200, 30)
@@ -798,7 +795,6 @@ describe('tutorialOnboardingProgress', () => {
       ],
     }
 
-    runtime.ui.targetHeadingSelectionEpoch = 1
     runtime.simulation.state.spacecraft.heading = Math.PI / 8
     runtime.simulation.targetHeading = null
     onboarding = advanceTutorialOnboarding(runtime, onboarding, 1_100, 1)

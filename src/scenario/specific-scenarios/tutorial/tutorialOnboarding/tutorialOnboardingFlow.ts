@@ -171,24 +171,31 @@ const tutorialOnboardingPromptDefinitions: Record<
   },
   'intro-point-and-turn': {
     id: 'intro-point-and-turn',
-    title: 'Plan A Turn',
-    shortLabel: 'Plan A Turn',
+    title: 'Turn The Ship',
+    shortLabel: 'Turn The Ship',
     description: ({ inputMode }) =>
       inputMode === 'mobile'
         ? [
-            { text: 'Press open space', tone: 'concept' },
-            ' away from ',
-            { text: 'Earth', tone: 'concept' },
-            ' to plan a turn. Drag to adjust the target, then release to start turning.',
+            'Open ',
+            { text: 'Flight', tone: 'concept' },
+            ', then drag ',
+            { text: 'RCS', tone: 'concept' },
+            ' left or right to turn the ship.',
           ]
         : [
-            { text: 'Click open space', tone: 'concept' },
-            ' away from ',
-            { text: 'Earth', tone: 'concept' },
-            ' to plan a turn. Move the mouse to adjust the target, then click again to start turning.',
+            'Hold ',
+            { text: 'A/D or Left/Right Arrow', tone: 'concept' },
+            ' to turn the ship. Hold ',
+            { text: 'Shift', tone: 'concept' },
+            ' for a precise turn.',
           ],
     buttons: [],
-    presentation: { kind: 'coach', layout: 'playfield' },
+    presentation: {
+      kind: 'coach',
+      focusedTouchControl: ({ inputMode }) =>
+        inputMode === 'mobile' ? 'rcs' : undefined,
+      layout: 'playfield',
+    },
   },
   'intro-timewarp': {
     id: 'intro-timewarp',

@@ -54,9 +54,7 @@ const expectInGameDomBelowMobileHud = async (page: Page) => {
     const inGame = [
       '.spacecraft-callout',
       '.spacecraft-icon-thrust',
-      '.heading-target-overlay',
       '.rcs-actual-turn-overlay',
-      '.heading-target-dot',
       '.offscreen-indicator',
       '.body-label',
       '.trajectory-event-label',
@@ -67,7 +65,6 @@ const expectInGameDomBelowMobileHud = async (page: Page) => {
       '.in-game-controls-menu',
       '.mobile-info-rail',
       '.mobile-command-dock',
-      '.touch-edge-reveal-control',
       '.scenario-prompt-backdrop',
       '.debug-panel',
     ].map(readZIndex)

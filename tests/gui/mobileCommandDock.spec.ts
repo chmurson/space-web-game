@@ -24,7 +24,6 @@ const isolateMobileControlLayer = async (page: Page) => {
       canvas,
       .body-label,
       .bottom-pill-area,
-      .heading-target-overlay,
       .in-game-controls-menu,
       .offscreen-indicator,
       .scenario-prompt-backdrop,
@@ -410,6 +409,17 @@ test('keeps Time Warp, camera, Target, and Trajectory controls together in Nav',
     dock.setTutorialFocused('trajectory')
     const trajectoryTutorialPanel = app.dataset.mobileCommandDockPanel
     dock.setOpenPanel(null)
+    dock.setTutorialFocused('rcs')
+    const rcsTutorialFocus = {
+      focus: dock.element.dataset.tutorialFocused,
+      openPanel: app.dataset.mobileCommandDockPanel,
+      shadow: getComputedStyle(
+        dock.element.querySelector<HTMLElement>(
+          '.mobile-command-dock-rcs-yaw',
+        ) as HTMLElement,
+      ).boxShadow,
+    }
+    dock.setOpenPanel(null)
     dock.setTutorialFocused('warp')
     const targetButton = dock.element.querySelector<HTMLButtonElement>(
       '[data-camera-follow-option="target"]',
@@ -448,6 +458,7 @@ test('keeps Time Warp, camera, Target, and Trajectory controls together in Nav',
       recenterDisabledAfterPan,
       recenterDisabledInitial,
       recenterPressableAfterPan,
+      rcsTutorialFocus,
       openPanel: app.dataset.mobileCommandDockPanel,
       timeWarpAvailableAfterRestore,
       timeWarpStatus: dock.element.querySelector(
@@ -476,6 +487,11 @@ test('keeps Time Warp, camera, Target, and Trajectory controls together in Nav',
     recenterDisabledInitial: true,
     recenterDisabled: true,
     recenterPressableAfterPan: true,
+    rcsTutorialFocus: {
+      focus: 'rcs',
+      openPanel: 'flight',
+      shadow: expect.not.stringMatching(/^none$/),
+    },
     openPanel: 'nav',
     timeWarpAvailableAfterRestore: 'true',
     timeWarpStatus: '',
@@ -489,7 +505,7 @@ test('keeps Time Warp, camera, Target, and Trajectory controls together in Nav',
   })
 })
 
-test('keeps dock touches out of camera and heading input while the playfield remains interactive', async ({
+test('keeps dock touches out of camera input while the playfield remains interactive', async ({
   page,
 }) => {
   await page.goto('/')
@@ -517,8 +533,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       velocity: { x: 0, y: 0 },
     }
     const cameraPans: number[] = []
-    const plannedHeadings: number[] = []
-    let startTargetHeadingByDrag = false
     const controls = createTouchControls({
       app,
       automaticTargetingAvailable: true,
@@ -535,8 +549,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => 1,
       getInteractionsEnabled: () => true,
-      getMobileManeuverStartByDrag: () => startTargetHeadingByDrag,
-      getSpacecraftVisible: () => true,
       getTargetControlRows: () => [],
       getTimeWarpPreview: () => ({
         canCommit: true,
@@ -567,11 +579,6 @@ test('keeps dock touches out of camera and heading input while the playfield rem
       onCameraRecenter: () => {},
       onReturnToAutomaticTarget: () => true,
       onSelectTargetIndex: () => true,
-      onTargetHeadingPlan: () => {
-        plannedHeadings.push(1)
-      },
-      onTargetHeadingPlanCanceled: () => {},
-      onTargetHeadingPlanCommitted: () => true,
       onThrustControlUiStateChange: () => {},
       onZoom: () => {},
     })
@@ -683,49 +690,12 @@ test('keeps dock touches out of camera and heading input while the playfield rem
     })
     const cameraPanCountAfterNavTouch = cameraPans.length
 
-    startTargetHeadingByDrag = true
-    dispatchTouch({
-      id: 33,
-      target: navPanel,
-      type: 'touchstart',
-      x: 195,
-      y: 650,
-    })
-    await new Promise((resolve) => window.setTimeout(resolve, 400))
-    const plannedHeadingCountAfterDockTouch = plannedHeadings.length
-    dispatchTouch({
-      id: 33,
-      target: navPanel,
-      type: 'touchend',
-      x: 195,
-      y: 650,
-    })
-
-    dispatchTouch({
-      id: 34,
-      target: controls.element,
-      type: 'touchstart',
-      x: 260,
-      y: 240,
-    })
-    await new Promise((resolve) => window.setTimeout(resolve, 400))
-    const plannedHeadingCountAfterPlayfieldTouch = plannedHeadings.length
-    dispatchTouch({
-      id: 34,
-      target: controls.element,
-      type: 'touchend',
-      x: 260,
-      y: 240,
-    })
-
     return {
       cameraPanCountAfterDockTouch,
       cameraPanCountAfterNavTouch,
       cameraPanCountAfterPlayfieldTouch: cameraPans.length,
       flightPanelOpen: flightButton.getAttribute('aria-expanded'),
       navPanelOpen: navButton.getAttribute('aria-expanded'),
-      plannedHeadingCountAfterDockTouch,
-      plannedHeadingCountAfterPlayfieldTouch,
     }
   })
 
@@ -734,11 +704,9 @@ test('keeps dock touches out of camera and heading input while the playfield rem
   expect(result.cameraPanCountAfterPlayfieldTouch).toBe(1)
   expect(result.flightPanelOpen).toBe('false')
   expect(result.navPanelOpen).toBe('true')
-  expect(result.plannedHeadingCountAfterDockTouch).toBe(0)
-  expect(result.plannedHeadingCountAfterPlayfieldTouch).toBeGreaterThan(0)
 })
 
-test('ships Flight, Nav, and Info as available dock panels', async ({
+test('ships Flight, Info, and Nav as available dock panels', async ({
   page,
 }) => {
   await page.goto('/?scenario=earth-moon')
@@ -747,16 +715,10 @@ test('ships Flight, Nav, and Info as available dock panels', async ({
   const dock = page.locator('.mobile-command-dock')
   const dockItems = page.locator('.mobile-command-dock-item')
   await expect(dock).toHaveAttribute('data-open', 'false')
-  await expect(dockItems).toHaveCount(5)
-  await expect(dockItems).toHaveText([
-    'Flight',
-    'Nav',
-    'Info',
-    'Ship',
-    'Settings',
-  ])
+  await expect(dockItems).toHaveCount(4)
+  await expect(dockItems).toHaveText(['Flight', 'Info', 'Nav', 'Ship'])
   await expect(page.locator('.mobile-command-dock-item:disabled')).toHaveCount(
-    2,
+    1,
   )
   await expect(
     page.locator('.mobile-command-dock-item:not(:disabled)'),
@@ -817,24 +779,12 @@ test('ships Flight, Nav, and Info as available dock panels', async ({
   ).toHaveCount(0)
 })
 
-test('keeps the in-game controls popover clear of the collapsed dock', async ({
-  page,
-}) => {
+test('hides the empty in-game controls menu on mobile', async ({ page }) => {
   await page.goto('/?scenario=earth-moon')
   await waitForGame(page)
-  await page.locator('.in-game-controls-menu-button').tap()
 
-  const popoverBounds = await page
-    .locator('.in-game-controls-menu-popover')
-    .boundingBox()
-  const dockBounds = await page
-    .locator('.mobile-command-dock-bar')
-    .boundingBox()
-  expect(popoverBounds).not.toBeNull()
-  expect(dockBounds).not.toBeNull()
-  expect(
-    (popoverBounds?.y ?? 0) + (popoverBounds?.height ?? 0),
-  ).toBeLessThanOrEqual(dockBounds?.y ?? 0)
+  await expect(page.locator('.in-game-controls-menu-button')).toHaveCount(0)
+  await expect(page.locator('.in-game-controls-menu-popover')).toHaveCount(0)
 })
 
 test('captures the shipped dock across portrait widths and safe areas', async ({
@@ -859,7 +809,7 @@ test('captures the shipped dock across portrait widths and safe areas', async ({
       }),
     )
   expect(barBounds).not.toBeNull()
-  expect(itemBounds).toHaveLength(5)
+  expect(itemBounds).toHaveLength(4)
   expect(itemBounds[0]?.left).toBeGreaterThanOrEqual(barBounds?.x ?? 0)
   expect(itemBounds.at(-1)?.right).toBeLessThanOrEqual(
     (barBounds?.x ?? 0) + (barBounds?.width ?? 0),
@@ -1299,8 +1249,6 @@ test('captures Target modes and Trajectory availability states in Nav', async ({
       getCurrentTimeWarp: () => 1,
       getCurrentTrajectoryHorizonHours: () => trajectoryHorizonHours,
       getInteractionsEnabled: () => true,
-      getMobileManeuverStartByDrag: () => true,
-      getSpacecraftVisible: () => true,
       getTargetControlRows: () =>
         bodies.map((body, index) => ({
           body,
@@ -1354,9 +1302,6 @@ test('captures Target modes and Trajectory availability states in Nav', async ({
         }
         return true
       },
-      onTargetHeadingPlan: () => {},
-      onTargetHeadingPlanCanceled: () => {},
-      onTargetHeadingPlanCommitted: () => true,
       onThrustControlUiStateChange: () => {},
       onZoom: () => {},
     })

@@ -66,12 +66,10 @@ import {
   createOverlayUi,
   type OverlayUiRefs,
 } from '../ui/overlayUI/createOverlayUi'
-import { createRipple, type Ripple } from '../ui/overlayUpdates'
+import type { Ripple } from '../ui/overlayUpdates'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
   type DesktopEdgePanSpeed,
-  type OrbitPointDisplaySettings,
-  resolveOrbitPointDisplaySettings,
   updateUserSettings,
 } from '../userSettingsStorage'
 import { bindDevicePixelRatioChanges } from './bindDevicePixelRatioChanges'
@@ -276,18 +274,9 @@ export const createAppComponents = (options: {
     predictionSampling: options.config.trajectory.predictionSampling,
     runtime: options.runtimeState,
   })
-  let userOrbitPointDisplaySettings: OrbitPointDisplaySettings = {
-    ...options.config.userSettings.orbitPointDisplay,
-  }
-  const getEffectiveOrbitPointDisplaySettings = () =>
-    resolveOrbitPointDisplaySettings(
-      userOrbitPointDisplaySettings,
-      options.runtimeState.scenario.orbitPointDisplay,
-    )
   const trajectoryPresentation = createTrajectoryPresentation({
     autopilotRotationRate: options.config.controls.autopilotRotationRate,
     gameScene,
-    getOrbitPointDisplaySettings: getEffectiveOrbitPointDisplaySettings,
     physicsEngine: options.config.physicsEngine,
     queries,
     runtime: options.runtimeState,
@@ -333,18 +322,15 @@ export const createAppComponents = (options: {
   }
   const gameHighLevelActionsMediator = new GameHighLevelActionsMediator()
   const navigationTimeWarpController = createNavigationTimeWarpController({
-    maxControlWarp: defaultMaxControlWarp,
     timeWarps: options.config.controls.timeWarps,
   })
   let followCameraViewportBottomInset = 0
   const runtimeActions = createRuntimeActions({
-    app: options.app,
     autoSelectNearestSurface:
       options.config.assistTarget.autoSelectNearestSurface,
     gameHighLevelActions: gameHighLevelActionsMediator,
     cameraDistance: options.config.camera.distance,
     cameraElevation: options.config.camera.elevation,
-    createRipple,
     gameScene,
     getAssistTargetUiState: queries.getAssistTargetUiState,
     getFollowCameraViewportBottomInset: () => followCameraViewportBottomInset,
@@ -356,7 +342,6 @@ export const createAppComponents = (options: {
     minViewport: options.config.camera.minViewport,
     navigationTimeWarpController,
     renderer,
-    ripples,
     runtime: options.runtimeState,
     globalScenarioDirectiveLimits: options.config.globalScenarioDirectiveLimits,
     runtimeScenarioOptions: options.config.runtimeScenarioOptions,
@@ -377,15 +362,9 @@ export const createAppComponents = (options: {
     rendererElement: renderer.domElement,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
-  let mobileManeuverStartByDrag =
-    options.config.userSettings.mobileManeuverStartByDrag
   let desktopCameraPanMode = options.config.userSettings.desktopCameraPanMode
   let desktopEdgePanSpeed = options.config.userSettings.desktopEdgePanSpeed
   let desktopWheelPanSpeed = options.config.userSettings.desktopWheelPanSpeed
-  const targetHeadingPlanLifecycleHandlers = {
-    onTargetHeadingPlanCanceled: runtimeActions.clearTargetHeadingPlan,
-    onTargetHeadingPlanCommitted: runtimeActions.commitTargetHeadingPlan,
-  }
   let uiSettingsOpen = false
   let crashCameraFocusedBodyName: string | null = null
   let getAppMode = () => options.config.initialAppMode
@@ -395,7 +374,6 @@ export const createAppComponents = (options: {
     getBaseGameInteractionsEnabled() &&
     options.runtimeState.simulation.crashedBodyName === null
   const getCameraInteractionsEnabled = getBaseGameInteractionsEnabled
-  let spacecraftVisibleInViewport = true
   let targetRecommendationNotice: ReturnType<
     typeof createTargetRecommendationNoticePresenter
   > | null = null
@@ -461,8 +439,6 @@ export const createAppComponents = (options: {
         options.runtimeState.simulation.timeWarpIndex
       ] ?? 1,
     getInteractionsEnabled: getGameInteractionsEnabled,
-    getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
-    getSpacecraftVisible: () => spacecraftVisibleInViewport,
     getAssistTargetUiState: queries.getAssistTargetUiState,
     getTargetControlRows,
     getTrajectoryHorizonPreviews: (action, count) =>
@@ -535,27 +511,6 @@ export const createAppComponents = (options: {
       runtimeActions.returnToAutomaticAssistTargetSelection,
     onSelectTargetIndex: runtimeActions.selectAssistTargetIndex,
     onTargetStateChange: syncTargetRecommendationState,
-    onTargetHeadingPlan: (screenX, screenY) => {
-      const worldPosition = pickWorldPointFromScreenPoint(screenX, screenY)
-
-      if (worldPosition === null) {
-        return
-      }
-
-      const spacecraftPosition =
-        options.runtimeState.simulation.state.spacecraft.position
-      const heading = Math.atan2(
-        worldPosition.y - spacecraftPosition.y,
-        worldPosition.x - spacecraftPosition.x,
-      )
-
-      runtimeActions.planTargetHeading({
-        heading,
-        screenPosition: { x: screenX, y: screenY },
-        worldPosition,
-      })
-    },
-    ...targetHeadingPlanLifecycleHandlers,
     onThrustControlUiStateChange: (state) => {
       options.runtimeState.ui.touchThrustControl = state
     },
@@ -631,12 +586,6 @@ export const createAppComponents = (options: {
     getDesktopCameraPanVisible: () => desktopFinePointerMedia.matches,
     getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
     getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
-    getMobileManeuverStartByDrag: () => mobileManeuverStartByDrag,
-    getOrbitPointDisplay: () => userOrbitPointDisplaySettings,
-    onOrbitPointDisplayChange: (settings) => {
-      userOrbitPointDisplaySettings = { ...settings }
-      updateUserSettings({ orbitPointDisplay: userOrbitPointDisplaySettings })
-    },
     onOpenChange: (open) => {
       uiSettingsOpen = open
       if (open) {
@@ -654,10 +603,6 @@ export const createAppComponents = (options: {
     onDesktopWheelPanSpeedChange: (speed) => {
       desktopWheelPanSpeed = speed
       updateUserSettings({ desktopWheelPanSpeed: speed })
-    },
-    onMobileManeuverStartByDragChange: (startByDrag) => {
-      mobileManeuverStartByDrag = startByDrag
-      updateUserSettings({ mobileManeuverStartByDrag: startByDrag })
     },
   })
 
@@ -718,10 +663,6 @@ export const createAppComponents = (options: {
       options.runtimeState.simulation.crashedBodyName === null &&
       resolveScenarioPrompts(options.runtimeState, 'desktop').active === null,
     getInteractionsEnabled: getCameraInteractionsEnabled,
-    getSpacecraftPosition: () =>
-      options.runtimeState.simulation.state.spacecraft.position,
-    getSpacecraftVisible: () => spacecraftVisibleInViewport,
-    getTargetHeadingSelectionEnabled: getGameInteractionsEnabled,
     onCameraPan: runtimeActions.panCamera,
     onPrimaryTap: (clientX, clientY) => {
       const pin = pickCanvasInfoPin(clientX, clientY)
@@ -733,14 +674,6 @@ export const createAppComponents = (options: {
       return true
     },
     onResize: runtimeActions.handleResize,
-    onTargetHeadingPlan: (heading, selection) => {
-      runtimeActions.planTargetHeading({
-        heading,
-        screenPosition: selection.screenPosition,
-        worldPosition: selection.worldPosition,
-      })
-    },
-    ...targetHeadingPlanLifecycleHandlers,
     onZoom: runtimeActions.zoomCamera,
     renderScale: RENDER_SCALE,
     rendererElement: renderer.domElement,
@@ -867,12 +800,6 @@ export const createAppComponents = (options: {
     spacecraftPresentation: createSpacecraftPresentation({
       defaultViewport: options.config.camera.defaultViewport,
       gameScene,
-      onSpacecraftVisibleChange: (visible) => {
-        spacecraftVisibleInViewport = visible
-        if (!visible) {
-          runtimeActions.clearTargetHeadingPlan()
-        }
-      },
       overlayUi,
       pointerCameraInput,
       spacecraftModelZoomThreshold:

@@ -230,7 +230,6 @@ describe('stepSimulationFrame', () => {
     let state = createRuntimeState()
     let timeWarpIndex = requestedTimeWarps.indexOf(1800)
     const navigationTimeWarpController = createNavigationTimeWarpController({
-      maxControlWarp: 100,
       timeWarps: requestedTimeWarps,
     })
     const stepAt = (nowMs: number) => {

@@ -37,10 +37,6 @@ const createConfig = (
     desktopEdgePanSpeed: 'normal',
     desktopWheelPanSpeed: 'normal',
     debugModeEnabled: false,
-    mobileManeuverStartByDrag: true,
-    orbitPointDisplay: {
-      markersVisible: true,
-    },
     touchBurnControlSide: 'right',
     touchTargetControlSide: 'left',
     touchTrajectoryControlSide: 'left',
@@ -125,9 +121,6 @@ describe('createInitialAppRuntimeState', () => {
 
     expect(runtime.scenario.session.scenarioId).toBe('menu-background')
     expect(runtime.scenario.metadata.title).toBe('Menu background')
-    expect(runtime.scenario.orbitPointDisplay).toEqual({
-      markersVisible: false,
-    })
     expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
     expect(config.controls.timeWarps[runtime.simulation.timeWarpIndex]).toBe(
       240,
@@ -159,7 +152,6 @@ describe('createInitialAppRuntimeState', () => {
 
     expect(runtime.scenario.session.scenarioId).toBe('tutorial')
     expect(runtime.scenario.metadata.title).toBe('Tutorial: Escape Earth')
-    expect(runtime.scenario.orbitPointDisplay).toBeUndefined()
     expect(runtime.info.userPins).toEqual([])
     expect(runtime.ui.camera).toEqual({
       follow: 'spacecraft',

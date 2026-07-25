@@ -6,11 +6,6 @@ export type PointerScreenPosition = {
   y: number
 }
 
-export type TargetHeadingSelection = {
-  screenPosition: PointerScreenPosition
-  worldPosition: Vec2
-}
-
 export type PointerCameraInput = {
   pointerScreenPosition: PointerScreenPosition
   updateEdgeScroll(nowMs: number, dtSeconds: number): void
@@ -22,18 +17,9 @@ export type PointerCameraInputOptions = {
   getEdgeScrollEnabled?: () => boolean
   getInteractionsEnabled: () => boolean
   getCameraControlsLocked: () => boolean
-  getSpacecraftVisible: () => boolean
-  getSpacecraftPosition: () => Vec2
-  getTargetHeadingSelectionEnabled?: () => boolean
   onCameraPan: (delta: Vec2) => boolean
   onPrimaryTap?: (clientX: number, clientY: number) => boolean
   onResize: () => void
-  onTargetHeadingPlan: (
-    heading: number,
-    selection: TargetHeadingSelection,
-  ) => void
-  onTargetHeadingPlanCanceled: () => void
-  onTargetHeadingPlanCommitted: () => boolean
   onZoom: (zoomFactor: number) => void
   renderScale: number
   rendererElement: HTMLCanvasElement
@@ -172,35 +158,6 @@ export const createScreenPointWorldPicker = (
   }
 }
 
-export const createScreenPointHeadingPicker = (
-  camera: THREE.Camera,
-  rendererElement: HTMLCanvasElement,
-  renderScale: number,
-) => {
-  const pickWorldPoint = createScreenPointWorldPicker(
-    camera,
-    rendererElement,
-    renderScale,
-  )
-
-  return (
-    clientX: number,
-    clientY: number,
-    spacecraftPosition: Vec2,
-  ): number | null => {
-    const target = pickWorldPoint(clientX, clientY)
-
-    if (!target) {
-      return null
-    }
-
-    return Math.atan2(
-      target.y - spacecraftPosition.y,
-      target.x - spacecraftPosition.x,
-    )
-  }
-}
-
 export const bindPointerCameraInput = (
   options: PointerCameraInputOptions,
 ): PointerCameraInput => {
@@ -210,12 +167,6 @@ export const bindPointerCameraInput = (
     options.rendererElement,
     options.renderScale,
   )
-  const getTargetHeadingSelectionEnabled = () =>
-    options.getSpacecraftVisible() &&
-    (options.getTargetHeadingSelectionEnabled?.() ??
-      options.getInteractionsEnabled())
-  let targetHeadingPlanActive = false
-  let suppressNextContextMenu = false
   let pointerInsideRenderer = false
   const defaultRendererCursor = options.rendererElement.style.cursor
   let activeCameraPan: {
@@ -310,7 +261,6 @@ export const bindPointerCameraInput = (
     if (
       !pointerInsideRenderer ||
       activeCameraPan !== null ||
-      targetHeadingPlanActive ||
       !options.getInteractionsEnabled() ||
       !(options.getEdgeScrollEnabled?.() ?? false)
     ) {
@@ -343,73 +293,6 @@ export const bindPointerCameraInput = (
     updatePointerPosition(event.clientX, event.clientY)
   })
 
-  const pickTargetHeadingSelection = (
-    clientX: number,
-    clientY: number,
-  ): { heading: number; selection: TargetHeadingSelection } | null => {
-    const worldPosition = pickWorldPointFromScreenPoint(clientX, clientY)
-
-    if (worldPosition === null) {
-      return null
-    }
-    const spacecraftPosition = options.getSpacecraftPosition()
-    const heading = Math.atan2(
-      worldPosition.y - spacecraftPosition.y,
-      worldPosition.x - spacecraftPosition.x,
-    )
-
-    return {
-      heading,
-      selection: {
-        screenPosition: {
-          x: clientX,
-          y: clientY,
-        },
-        worldPosition,
-      },
-    }
-  }
-
-  const updateTargetHeadingPlan = (clientX: number, clientY: number) => {
-    const target = pickTargetHeadingSelection(clientX, clientY)
-    if (!target) {
-      return false
-    }
-    options.onTargetHeadingPlan(target.heading, target.selection)
-    return true
-  }
-
-  const beginTargetHeadingPlan = (clientX: number, clientY: number) => {
-    if (!getTargetHeadingSelectionEnabled()) {
-      return false
-    }
-
-    targetHeadingPlanActive = updateTargetHeadingPlan(clientX, clientY)
-    return targetHeadingPlanActive
-  }
-
-  const cancelTargetHeadingPlan = () => {
-    if (!targetHeadingPlanActive) {
-      return
-    }
-    targetHeadingPlanActive = false
-    options.onTargetHeadingPlanCanceled()
-  }
-
-  const commitTargetHeadingPlan = () => {
-    if (!targetHeadingPlanActive) {
-      return false
-    }
-
-    targetHeadingPlanActive = false
-    if (!getTargetHeadingSelectionEnabled()) {
-      options.onTargetHeadingPlanCanceled()
-      return false
-    }
-
-    return options.onTargetHeadingPlanCommitted()
-  }
-
   const clearActiveCameraPan = (event: PointerEvent) => {
     if (activeCameraPan?.pointerId !== event.pointerId) {
       return
@@ -429,25 +312,13 @@ export const bindPointerCameraInput = (
     updatePointerPosition(event.clientX, event.clientY)
 
     if (!options.getInteractionsEnabled()) {
-      cancelTargetHeadingPlan()
       return
     }
 
     if (
       !event.isPrimary ||
-      (event.pointerType === 'mouse' &&
-        event.button !== 0 &&
-        event.button !== 2)
+      (event.pointerType === 'mouse' && event.button !== 0)
     ) {
-      return
-    }
-
-    if (event.pointerType === 'mouse' && event.button === 2) {
-      if (targetHeadingPlanActive) {
-        event.preventDefault()
-        suppressNextContextMenu = true
-        cancelTargetHeadingPlan()
-      }
       return
     }
 
@@ -471,25 +342,6 @@ export const bindPointerCameraInput = (
   options.rendererElement.addEventListener('pointermove', (event) => {
     pointerInsideRenderer = true
     updatePointerPosition(event.clientX, event.clientY)
-
-    if (targetHeadingPlanActive) {
-      if (!getTargetHeadingSelectionEnabled()) {
-        cancelTargetHeadingPlan()
-        return
-      }
-
-      if (activeCameraPan?.pointerId === event.pointerId) {
-        const totalDeltaX = event.clientX - activeCameraPan.startX
-        const totalDeltaY = event.clientY - activeCameraPan.startY
-        if (Math.hypot(totalDeltaX, totalDeltaY) >= cameraPanTapTolerancePx) {
-          activeCameraPan.hasMovedForTap = true
-        }
-      }
-
-      event.preventDefault()
-      updateTargetHeadingPlan(event.clientX, event.clientY)
-      return
-    }
 
     if (activeCameraPan?.pointerId !== event.pointerId) {
       return
@@ -550,21 +402,6 @@ export const bindPointerCameraInput = (
         options.onPrimaryTap?.(event.clientX, event.clientY)
       ) {
         event.preventDefault()
-        cancelTargetHeadingPlan()
-        return
-      }
-      if (!completedPan && event.isPrimary && event.pointerType !== 'mouse') {
-        if (!getTargetHeadingSelectionEnabled()) {
-          cancelTargetHeadingPlan()
-          return
-        }
-
-        event.preventDefault()
-        if (targetHeadingPlanActive) {
-          commitTargetHeadingPlan()
-        } else {
-          beginTargetHeadingPlan(event.clientX, event.clientY)
-        }
       }
       return
     }
@@ -580,14 +417,6 @@ export const bindPointerCameraInput = (
   options.rendererElement.addEventListener('pointerleave', () => {
     pointerInsideRenderer = false
     setEdgeScrollCursor(null)
-  })
-
-  options.rendererElement.addEventListener('contextmenu', (event) => {
-    if (!suppressNextContextMenu) {
-      return
-    }
-    suppressNextContextMenu = false
-    event.preventDefault()
   })
 
   options.windowTarget.addEventListener(

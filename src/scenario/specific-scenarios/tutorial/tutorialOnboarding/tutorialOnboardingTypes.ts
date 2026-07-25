@@ -42,7 +42,6 @@ export type TutorialOnboardingStepProgress = {
   lastSampleAtMs: number | null
   stepStartHeading: number | null
   stepStartTouchThrustControlEngaged: boolean
-  stepStartTargetHeadingSelectionEpoch: number
   stepStartTimeWarpMultiplier: number
 }
 

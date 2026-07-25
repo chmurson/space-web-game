@@ -328,9 +328,6 @@ const createRuntime = (): AppRuntimeState => ({
       panOffset: { x: 0, y: 0 },
     },
     spacecraftLabelIntroUntil: 0,
-    targetHeadingScreenPosition: null,
-    targetHeadingSelectionEpoch: 0,
-    targetHeadingWorldPosition: null,
     touchThrustControl: {
       engaged: false,
       interactive: false,
@@ -401,15 +398,6 @@ const createOverlayUi = (app: FakeElement): OverlayUiRefs => {
     fuelDepletedNotice: new FakeElement('div') as unknown as HTMLElement,
     fuelIconLevel: null,
     fuelPill: null,
-    headingTargetDot: new FakeElement('div') as unknown as HTMLElement,
-    headingCommittedTargetLine: new FakeElement(
-      'line',
-    ) as unknown as SVGLineElement,
-    headingTargetLine: new FakeElement('line') as unknown as SVGLineElement,
-    headingTargetOverlay: new FakeElement('svg') as unknown as SVGSVGElement,
-    headingTargetTurnSlice: new FakeElement(
-      'path',
-    ) as unknown as SVGPathElement,
     offscreenIndicators: new Map(),
     rcsActualTurnOverlay: new FakeElement('svg') as unknown as SVGSVGElement,
     rcsActualTurnSlices: Array.from(
@@ -589,6 +577,59 @@ describe('createHudPresentation', () => {
     expect(overlayUi.renderFpsIndicator).toHaveBeenLastCalledWith(null)
     expect(fpsIndicator.hidden).toBe(true)
     expect(fpsIndicator.textContent).toBe('')
+  })
+
+  it('forwards playfield tutorial control focus to mobile controls', async () => {
+    const { createHudPresentation } = await import(
+      '@/presentation/hudPresentation'
+    )
+    const app = new FakeElement('div')
+    app.id = 'app'
+    app.isConnected = true
+    const overlayUi = createOverlayUi(app)
+    const runtime = createRuntime()
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'tutorial',
+      { phase: 'escape-earth' },
+      {
+        activePromptId: 'intro-point-and-turn',
+        replayPromptId: null,
+      },
+    )
+    const setTutorialFocusedControl = vi.fn()
+    const touchControls = {
+      setFlightControlsVisible: vi.fn(),
+      setTargetControlVisible: vi.fn(),
+      setTimeWarpControlVisible: vi.fn(),
+      setTrajectoryControlVisible: vi.fn(),
+      setTutorialFocusedControl,
+      setTutorialHintTarget: vi.fn(),
+      syncUi: vi.fn(),
+      updateAssistMode: vi.fn(),
+    }
+    const presentation = createHudPresentation({
+      defaultViewport: 100,
+      overlayUi,
+      physicsEngineName: 'test',
+      queries: createQueries(),
+      rendererProfiler: {
+        getSmoothedGpuMs: vi.fn(() => 8),
+      } as unknown as RendererProfiler,
+      runtime,
+      timeWarps: [1],
+      touchControls: touchControls as never,
+      trajectoryPresentation: {
+        getCoachAnchorScreenPoint: () => null,
+        getPredictionState: () => ({
+          predictedImpact: null,
+          predictedTargetClosestApproach: null,
+        }),
+      } as never,
+    })
+
+    presentation.update(createMetrics())
+
+    expect(setTutorialFocusedControl).toHaveBeenLastCalledWith('rcs')
   })
 
   it('throttles debug panel content updates while the panel stays open', async () => {

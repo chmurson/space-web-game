@@ -18,6 +18,9 @@ Shipit state:
   `Pan camera` and exactly three mutually exclusive choices.
 - Kept the existing stepped `desktopEdgePanSpeed` control for edge mode and
   added the same stepped control pattern for wheel/trackpad speed.
+- After merging current `main`, kept these controls in the dedicated desktop
+  `Camera settings` pane while preserving `main`'s removal of retired mobile
+  settings and target-heading planning.
 
 ## Why
 
@@ -51,7 +54,10 @@ routing in the same change.
 - Existing left-drag input remains untouched. Existing edge panning retains its
   speed and runtime gates, with its former boolean enablement replaced only by
   `desktopCameraPanMode === 'edge'`.
-- Mobile/touch settings and gestures are unchanged.
+- The conflict resolution takes current `main` as authoritative for its
+  dedicated Camera pane and removed settings; it ports only this feature's
+  radio and speed controls onto that surface.
+- This issue does not change mobile/touch gestures.
 - The implementation follows `DESIGN.md`; no design-system divergence needed a
   design-document update.
 
@@ -60,13 +66,18 @@ routing in the same change.
 - Focused user-settings and app-context/runtime-state Vitest coverage.
 - UI adapter Playwright coverage for native radio structure, all three modes,
   independent speed stepping, conditional controls, persistence callbacks,
-  desktop/mobile visibility, and dialog focus behavior.
+  fine-pointer visibility, exclusion of retired mobile settings, and dialog
+  focus behavior.
 - Keyboard navigation coverage uses native radio `ArrowRight` behavior.
 - Desktop camera settings screenshots cover wheel and edge conditional states
   at 480 × 720 and were visually inspected for copy, selection, spacing, focus
   affordance, and viewport fit.
-- TypeScript, Biome, release build, full Vitest, and full GUI results are
-  recorded in the Shipit state before handoff.
+- Targeted Biome and diff checks pass, as do the release build, 674 product
+  tests, 16 automation-claim tests, and 4 automation-workflow tests.
+- The focused camera-pan GUI checks pass 2/2. The final full GUI run passes
+  85/86; its sole failure is the unchanged leaderboard expectation
+  `Time 7h30m` against the rendered `Time 07h30m`, which reproduces in
+  isolation and is outside this feature diff.
 
 ## Follow-up and merge boundary
 

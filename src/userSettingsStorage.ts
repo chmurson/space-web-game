@@ -1,19 +1,10 @@
 const userSettingsStorageKey = 'space-web-game.userSettings.v1'
 
-export type OrbitPointDisplaySettings = {
-  markersVisible: boolean
-}
-
-export type OrbitPointDisplaySettingOverrides =
-  Partial<OrbitPointDisplaySettings>
-
 export type UserSettings = {
   desktopCameraPanMode: DesktopCameraPanMode
   desktopEdgePanSpeed: DesktopEdgePanSpeed
   desktopWheelPanSpeed: DesktopWheelPanSpeed
   debugModeEnabled: boolean
-  mobileManeuverStartByDrag: boolean
-  orbitPointDisplay: OrbitPointDisplaySettings
   touchBurnControlSide: TouchControlSide
   touchTargetControlSide: TouchControlSide
   touchTrajectoryControlSide: TouchTrajectoryControlState
@@ -26,18 +17,11 @@ export type DesktopWheelPanSpeed = DesktopEdgePanSpeed
 export type TouchControlSide = 'left' | 'right'
 export type TouchTrajectoryControlState = TouchControlSide | 'hidden'
 
-const createDefaultOrbitPointDisplaySettings =
-  (): OrbitPointDisplaySettings => ({
-    markersVisible: true,
-  })
-
 const createDefaultUserSettings = (): UserSettings => ({
   desktopCameraPanMode: 'wheel',
   desktopEdgePanSpeed: 'normal',
   desktopWheelPanSpeed: 'normal',
   debugModeEnabled: false,
-  mobileManeuverStartByDrag: true,
-  orbitPointDisplay: createDefaultOrbitPointDisplaySettings(),
   touchBurnControlSide: 'right',
   touchTargetControlSide: 'left',
   touchTrajectoryControlSide: 'hidden',
@@ -61,26 +45,6 @@ const parseDesktopCameraPanMode = (
 
 const parseDesktopPanSpeed = (value: unknown): DesktopEdgePanSpeed | null =>
   value === 'slow' || value === 'normal' || value === 'fast' ? value : null
-
-const parseBooleanSetting = (value: unknown, fallback: boolean) =>
-  typeof value === 'boolean' ? value : fallback
-
-const parseOrbitPointDisplaySettings = (
-  value: unknown,
-): OrbitPointDisplaySettings => {
-  const defaults = defaultUserSettings.orbitPointDisplay
-  if (!value || typeof value !== 'object') {
-    return { ...defaults }
-  }
-
-  const settings = value as { markersVisible?: unknown }
-  return {
-    markersVisible: parseBooleanSetting(
-      settings.markersVisible,
-      defaults.markersVisible,
-    ),
-  }
-}
 
 const parseUserSettings = (value: unknown): UserSettings => {
   if (!value || typeof value !== 'object') {
@@ -106,13 +70,6 @@ const parseUserSettings = (value: unknown): UserSettings => {
       typeof settings.debugModeEnabled === 'boolean'
         ? settings.debugModeEnabled
         : defaultUserSettings.debugModeEnabled,
-    mobileManeuverStartByDrag: parseBooleanSetting(
-      settings.mobileManeuverStartByDrag,
-      defaultUserSettings.mobileManeuverStartByDrag,
-    ),
-    orbitPointDisplay: parseOrbitPointDisplaySettings(
-      settings.orbitPointDisplay,
-    ),
     touchBurnControlSide:
       parseTouchControlSide(settings.touchBurnControlSide) ??
       legacyTouchControlSide ??
@@ -155,11 +112,3 @@ export const updateUserSettings = (updates: Partial<UserSettings>) => {
   writeUserSettings(settings)
   return settings
 }
-
-export const resolveOrbitPointDisplaySettings = (
-  userSettings: OrbitPointDisplaySettings,
-  scenarioOverrides?: OrbitPointDisplaySettingOverrides,
-): OrbitPointDisplaySettings => ({
-  ...userSettings,
-  ...scenarioOverrides,
-})
