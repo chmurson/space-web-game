@@ -93,22 +93,29 @@ const UiSettingsRadioOption = ({
   label: string
   onChange(): void
   value: DesktopCameraPanMode
-}) => (
-  <label class="app-dialog-setting app-dialog-radio-option">
-    <span class="app-dialog-setting-copy">
-      <span class="app-dialog-setting-name">{label}</span>
-      <span class="app-dialog-setting-summary">{description}</span>
-    </span>
-    <input
-      type="radio"
-      class="app-dialog-radio-input"
-      name={groupName}
-      value={value}
-      checked={checked}
-      onChange={onChange}
-    />
-  </label>
-)
+}) => {
+  const descriptionId = `${groupName}-${value}-description`
+  return (
+    <label class="app-dialog-setting app-dialog-radio-option">
+      <span class="app-dialog-setting-copy">
+        <span class="app-dialog-setting-name">{label}</span>
+        <span id={descriptionId} class="app-dialog-setting-summary">
+          {description}
+        </span>
+      </span>
+      <input
+        type="radio"
+        class="app-dialog-radio-input"
+        name={groupName}
+        value={value}
+        aria-label={label}
+        aria-describedby={descriptionId}
+        checked={checked}
+        onChange={onChange}
+      />
+    </label>
+  )
+}
 
 const UiSettingsPanSpeedStepper = ({
   decreaseDisabled,

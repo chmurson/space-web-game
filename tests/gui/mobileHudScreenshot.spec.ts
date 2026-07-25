@@ -2391,16 +2391,21 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     ) as HTMLFieldSetElement | null
     const panCameraGroupLabel =
       panCameraGroup?.querySelector('legend')?.textContent
-    const panModeRadioLabels = Array.from(
+    const panModeRadios = Array.from(
       (dialog.element as HTMLElement).querySelectorAll(
         '.app-dialog-radio-input',
       ) as NodeListOf<HTMLInputElement>,
-    ).map((input) => input.closest('label')?.textContent)
-    const panModeRadioNames = Array.from(
-      (dialog.element as HTMLElement).querySelectorAll(
-        '.app-dialog-radio-input',
-      ) as NodeListOf<HTMLInputElement>,
-    ).map((input) => input.name)
+    )
+    const panModeRadioAccessibleNames = panModeRadios.map((input) =>
+      input.getAttribute('aria-label'),
+    )
+    const panModeRadioDescriptions = panModeRadios.map((input) => {
+      const descriptionId = input.getAttribute('aria-describedby')
+      return descriptionId
+        ? document.getElementById(descriptionId)?.textContent
+        : undefined
+    })
+    const panModeRadioNames = panModeRadios.map((input) => input.name)
     const wheelModeCheckedInitial = getPanModeRadio('wheel')?.checked
     const wheelPanSpeedInitial = getPanSpeed('wheel')
     const edgePanSpeedHiddenInitial = getPanSpeed('edge') === undefined
@@ -2557,8 +2562,9 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
       orbitTitleAfterOpen,
       panCameraGroupLabel,
       panCameraGroupTagName: panCameraGroup?.tagName,
-      panModeRadioLabelCount: panModeRadioLabels.length,
-      panModeRadioLabels,
+      panModeRadioAccessibleNames,
+      panModeRadioDescriptions,
+      panModeRadioLabelCount: panModeRadioAccessibleNames.length,
       panModeRadioNameCount: new Set(panModeRadioNames).size,
       panSpeedsHiddenForDrag,
       role,
@@ -2628,10 +2634,15 @@ test('keeps the UI settings dialog adapter state, focus, and change behavior', a
     panCameraGroupLabel: 'Pan camera',
     panCameraGroupTagName: 'FIELDSET',
     panModeRadioLabelCount: 3,
-    panModeRadioLabels: [
-      'Wheel / trackpadScroll to pan · Ctrl/Cmd + scroll to zoom',
-      'Mouse dragClick and drag to pan · Scroll to zoom',
-      'Screen edgeMove the pointer to an edge · Scroll to zoom',
+    panModeRadioAccessibleNames: [
+      'Wheel / trackpad',
+      'Mouse drag',
+      'Screen edge',
+    ],
+    panModeRadioDescriptions: [
+      'Scroll to pan · Ctrl/Cmd + scroll to zoom',
+      'Click and drag to pan · Scroll to zoom',
+      'Move the pointer to an edge · Scroll to zoom',
     ],
     panModeRadioNameCount: 1,
     panSpeedsHiddenForDrag: true,
@@ -2921,13 +2932,16 @@ test('captures desktop camera pan modes and conditional speeds in UI settings', 
   ).toBeVisible()
   const panCameraGroup = page.getByRole('group', { name: 'Pan camera' })
   const wheelRadio = panCameraGroup.getByRole('radio', {
-    name: /^Wheel \/ trackpad/,
+    name: 'Wheel / trackpad',
+    exact: true,
   })
   const dragRadio = panCameraGroup.getByRole('radio', {
-    name: /^Mouse drag/,
+    name: 'Mouse drag',
+    exact: true,
   })
   const edgeRadio = panCameraGroup.getByRole('radio', {
-    name: /^Screen edge/,
+    name: 'Screen edge',
+    exact: true,
   })
 
   await expect(panCameraGroup.getByRole('radio')).toHaveCount(3)
