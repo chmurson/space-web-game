@@ -1,10 +1,54 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatCompactElapsed,
+  formatDistance,
   formatSpeed,
   formatTimeWarpLabel,
   formatTrajectoryHorizonDuration,
 } from '@/ui/formatters'
+
+describe('formatDistance', () => {
+  it.each([
+    [114_000, '110 km'],
+    [123_000, '120 km'],
+    [135_000, '140 km'],
+    [114_000_000, '110 Mm'],
+    [123_000_000, '120 Mm'],
+    [135_000_000, '140 Mm'],
+  ])('formats %s meters with at most two significant digits', (meters, label) => {
+    expect(formatDistance(meters)).toBe(label)
+  })
+
+  it('uses Math.round behavior at two-significant-digit boundaries', () => {
+    expect(formatDistance(114_999)).toBe('110 km')
+    expect(formatDistance(115_000)).toBe('120 km')
+    expect(formatDistance(1_149_999)).toBe(`${(1.1).toLocaleString()} Mm`)
+    expect(formatDistance(1_150_000)).toBe(`${(1.2).toLocaleString()} Mm`)
+  })
+
+  it('keeps the kilometer-to-megameter threshold and locale separators', () => {
+    expect(formatDistance(999_999)).toBe(`${(1_000).toLocaleString()} km`)
+    expect(formatDistance(1_000_000)).toBe(
+      `${(1).toLocaleString(undefined, { minimumSignificantDigits: 2 })} Mm`,
+    )
+  })
+
+  it('keeps two significant digits for single-digit values', () => {
+    const oneWithTwoSignificantDigits = (1).toLocaleString(undefined, {
+      minimumSignificantDigits: 2,
+    })
+
+    expect(formatDistance(1_000)).toBe(`${oneWithTwoSignificantDigits} km`)
+    expect(formatDistance(1_000_000)).toBe(`${oneWithTwoSignificantDigits} Mm`)
+  })
+
+  it('keeps useful fractional significant digits without trailing zeroes', () => {
+    expect(formatDistance(1_140)).toBe(`${(1.1).toLocaleString()} km`)
+    expect(formatDistance(1_180)).toBe(`${(1.2).toLocaleString()} km`)
+    expect(formatDistance(1_140_000)).toBe(`${(1.1).toLocaleString()} Mm`)
+    expect(formatDistance(1_180_000)).toBe(`${(1.2).toLocaleString()} Mm`)
+  })
+})
 
 describe('formatCompactElapsed', () => {
   it('shows split day and hour units for long durations', () => {

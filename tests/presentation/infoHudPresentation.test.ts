@@ -132,7 +132,7 @@ describe('createInfoHudView', () => {
     expect(rows.map(({ distanceLabel }) => distanceLabel)).toEqual([
       '88 km',
       '10 km',
-      '123 km | 456 km',
+      '120 km | 460 km',
     ])
     expect(rows.map(({ secondaryLabel }) => secondaryLabel)).toEqual([
       'to spacecraft',
@@ -163,8 +163,8 @@ describe('createInfoHudView', () => {
       view.entries.find((entry) => entry.kind === 'apsides'),
     ).toMatchObject({
       points: [
-        { distanceLabel: '123 km', label: 'Pe' },
-        { distanceLabel: '456 km', label: 'Ap' },
+        { distanceLabel: '120 km', label: 'Pe' },
+        { distanceLabel: '460 km', label: 'Ap' },
       ],
     })
     expect(view.clearAvailable).toBe(true)

@@ -1,4 +1,5 @@
 import { MOON_RADIUS } from '../../simulation/constants'
+import { formatDistance } from '../../ui/formatters'
 
 export type ReachMoonScoreSummary = {
   baseScorePoints: number
@@ -190,7 +191,7 @@ export const formatReachMoonOrbitAltitude = (
     return 'No lunar orbit'
   }
 
-  return `${Math.round(Math.max(0, valueMeters) / 1_000).toLocaleString('en-US')} km`
+  return formatDistance(Math.max(0, valueMeters))
 }
 
 export const formatReachMoonOrbitQualityContext = (
