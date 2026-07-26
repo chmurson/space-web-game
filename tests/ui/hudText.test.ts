@@ -229,6 +229,30 @@ describe('getDebugPanelLines', () => {
     )
   })
 
+  it('shows n/a retention when a trajectory source set is empty', () => {
+    expect(
+      getDebugPanelLines(
+        createDebugPanelInput({
+          trajectoryRenderDiagnostics: {
+            assisted: {
+              selectedPointCount: 0,
+              sourcePointCount: 0,
+            },
+            coast: {
+              selectedPointCount: 4,
+              sourcePointCount: 10,
+              staleSelectedPointCount: 1,
+            },
+            maxChordErrorMeters: 250,
+            minSampleDistanceMeters: 500_000,
+          },
+        }),
+      ),
+    ).toContain(
+      'trajectory render: coast 10 → 4 (40.0%; stale 1) | assisted 0 → 0 (n/a) | total 10 → 4 (40.0%) | min sample 500 km | chord error max 250 m',
+    )
+  })
+
   it('identifies render diagnostics that are not yet available', () => {
     expect(
       getDebugPanelLines(

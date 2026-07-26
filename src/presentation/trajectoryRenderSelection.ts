@@ -63,6 +63,10 @@ const getRetainedStaleFarPointIndices = (
     x: nearDelta.x / nearSegmentDistance,
     y: nearDelta.y / nearSegmentDistance,
   }
+
+  // Trim stale-far points that project behind the final near segment's heading.
+  // Bridge the surviving seam only when its gap is at most
+  // retainedStaleFarMaxBridgeSegmentMultiplier times the larger adjacent segment.
   let startOffset = 0
 
   while (
@@ -224,6 +228,8 @@ const refinePointIndicesByChordError = (options: {
 export const getTrajectoryRenderSampleDistanceMeters = (viewportSize: number) =>
   getViewportMinSampleDistanceMeters(viewportSize, trajectoryRenderDensityStops)
 
+// Convert vertical render-units-per-pixel to meters-per-pixel before applying
+// the maximum permitted chord error in screen pixels.
 export const getTrajectoryRenderMaxChordErrorMeters = (options: {
   viewportHeight: number
   viewportSize: number
@@ -251,6 +257,8 @@ export const selectTrajectoryRenderGeometry = (options: {
     options.viewportSize,
   )
   const maxChordErrorMeters = getTrajectoryRenderMaxChordErrorMeters({
+    // One pixel intentionally yields a large threshold that effectively
+    // disables chord refinement for callers without viewport-height context.
     viewportHeight: options.viewportHeight ?? 1,
     viewportSize: options.viewportSize,
   })

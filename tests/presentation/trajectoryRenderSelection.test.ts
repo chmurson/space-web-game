@@ -170,6 +170,40 @@ describe('trajectoryRenderSelection', () => {
     expect(selection.staleFarPointIndices).toEqual([1, 4, 5])
   })
 
+  it('retains stale-far points after a zero-length final near segment', () => {
+    const selection = selectTrajectoryRenderGeometry({
+      farVisible: 'retained-stale',
+      nearPointCount: 2,
+      points: [
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 1_000_000, y: 0 },
+        { x: 2_000_000, y: 0 },
+      ],
+      viewportSize: 1_000,
+    })
+
+    expect(selection.visiblePointIndices).toEqual([0, 1])
+    expect(selection.staleFarPointIndices).toEqual([2, 3])
+  })
+
+  it('omits stale-far geometry when every point regresses behind the near segment', () => {
+    const selection = selectTrajectoryRenderGeometry({
+      farVisible: 'retained-stale',
+      nearPointCount: 2,
+      points: [
+        { x: 0, y: 0 },
+        { x: 1_000_000, y: 0 },
+        { x: 500_000, y: 0 },
+        { x: 0, y: 0 },
+      ],
+      viewportSize: 1_000,
+    })
+
+    expect(selection.visiblePointIndices).toEqual([0, 1])
+    expect(selection.staleFarPointIndices).toEqual([])
+  })
+
   it('restores deterministic detail when zooming back in', () => {
     const points = createLinearPoints(49, 250_000)
     const selectAtViewport = (viewportSize: number) =>
