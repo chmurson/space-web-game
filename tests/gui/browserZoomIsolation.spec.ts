@@ -193,3 +193,99 @@ test('routes diagonal wheel pan only while the desktop game surface owns input',
     await context.close()
   }
 })
+
+test('owns right-button fallback cursor and context menu only for accepted wheel-mode pan', async ({
+  browser,
+}, testInfo) => {
+  const { context, page } = await createDesktopPage(browser, testInfo)
+
+  try {
+    await page.goto('/?scenario=earth-moon&devtools=1')
+    await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+    const result = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas')
+      if (!canvas) {
+        throw new Error('Game canvas is missing')
+      }
+
+      const dispatchPointer = (
+        type: string,
+        options: { button: number; clientX: number; clientY: number },
+      ) =>
+        canvas.dispatchEvent(
+          new PointerEvent(type, {
+            ...options,
+            bubbles: true,
+            cancelable: true,
+            isPrimary: true,
+            pointerId: 41,
+            pointerType: 'mouse',
+          }),
+        )
+      const dispatchBodyContextMenu = () => {
+        const event = new PointerEvent('contextmenu', {
+          bubbles: true,
+          button: 2,
+          cancelable: true,
+          pointerType: 'mouse',
+        })
+        document.body.dispatchEvent(event)
+        return !event.defaultPrevented
+      }
+
+      dispatchPointer('pointerdown', {
+        button: 2,
+        clientX: 640,
+        clientY: 400,
+      })
+      const cursorWhileHeld = getComputedStyle(canvas).cursor
+      dispatchPointer('pointermove', {
+        button: 2,
+        clientX: 680,
+        clientY: 400,
+      })
+      const cursorWhilePanning = getComputedStyle(canvas).cursor
+      dispatchPointer('pointerup', {
+        button: 2,
+        clientX: 680,
+        clientY: 400,
+      })
+      const cursorAfterRelease = getComputedStyle(canvas).cursor
+      const handledDragContextMenuAllowed = dispatchBodyContextMenu()
+      const laterContextMenuAllowed = dispatchBodyContextMenu()
+
+      dispatchPointer('pointerdown', {
+        button: 2,
+        clientX: 640,
+        clientY: 400,
+      })
+      dispatchPointer('pointerup', {
+        button: 2,
+        clientX: 640,
+        clientY: 400,
+      })
+      const stationaryContextMenuAllowed = dispatchBodyContextMenu()
+
+      return {
+        cursorAfterRelease,
+        cursorWhileHeld,
+        cursorWhilePanning,
+        handledDragContextMenuAllowed,
+        laterContextMenuAllowed,
+        stationaryContextMenuAllowed,
+      }
+    })
+
+    expect(result).toEqual({
+      cursorAfterRelease: 'auto',
+      cursorWhileHeld: 'move',
+      cursorWhilePanning: 'move',
+      handledDragContextMenuAllowed: false,
+      laterContextMenuAllowed: true,
+      stationaryContextMenuAllowed: true,
+    })
+  } finally {
+    await context.close()
+  }
+})

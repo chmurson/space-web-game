@@ -175,8 +175,10 @@ export const bindPointerCameraInput = (
   )
   let pointerInsideRenderer = false
   const defaultRendererCursor = options.rendererElement.style.cursor
+  let edgeScrollCursor: string | null = null
   let activeCameraPan: {
     button: number
+    contextMenuSuppressed: boolean
     hasMovedForTap: boolean
     hasPanned: boolean
     panBehavior: 'left-drag' | 'none' | 'right-drag' | 'touch'
@@ -197,12 +199,20 @@ export const bindPointerCameraInput = (
     pointerScreenPosition.y = clientY
   }
 
-  const setEdgeScrollCursor = (cursor: string | null) => {
-    const nextCursor = cursor ?? defaultRendererCursor
+  const syncRendererCursor = () => {
+    const nextCursor =
+      activeCameraPan?.panBehavior === 'right-drag'
+        ? 'move'
+        : (edgeScrollCursor ?? defaultRendererCursor)
     if (options.rendererElement.style.cursor === nextCursor) {
       return
     }
     options.rendererElement.style.cursor = nextCursor
+  }
+
+  const setEdgeScrollCursor = (cursor: string | null) => {
+    edgeScrollCursor = cursor
+    syncRendererCursor()
   }
 
   const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
@@ -310,6 +320,7 @@ export const bindPointerCameraInput = (
     }
 
     activeCameraPan = null
+    syncRendererCursor()
 
     try {
       options.rendererElement.releasePointerCapture(event.pointerId)
@@ -317,6 +328,14 @@ export const bindPointerCameraInput = (
       // Pointer capture may already be released by the browser.
     }
   }
+
+  options.windowTarget.addEventListener(
+    'pointerdown',
+    () => {
+      suppressNextContextMenu = false
+    },
+    true,
+  )
 
   options.rendererElement.addEventListener('pointerdown', (event) => {
     pointerInsideRenderer = true
@@ -357,6 +376,7 @@ export const bindPointerCameraInput = (
 
     activeCameraPan = {
       button: event.button,
+      contextMenuSuppressed: false,
       hasMovedForTap: false,
       hasPanned: false,
       panBehavior,
@@ -366,6 +386,7 @@ export const bindPointerCameraInput = (
       startX: event.clientX,
       startY: event.clientY,
     }
+    setEdgeScrollCursor(null)
 
     try {
       options.rendererElement.setPointerCapture(event.pointerId)
@@ -443,7 +464,8 @@ export const bindPointerCameraInput = (
       const completedButton = activeCameraPan.button
       const suppressContextMenu =
         activeCameraPan.panBehavior === 'right-drag' &&
-        activeCameraPan.hasPanned
+        activeCameraPan.hasPanned &&
+        !activeCameraPan.contextMenuSuppressed
       const completedPan =
         activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned
       clearActiveCameraPan(event)
@@ -464,16 +486,30 @@ export const bindPointerCameraInput = (
     clearActiveCameraPan(event)
   })
 
-  options.rendererElement.addEventListener('contextmenu', (event) => {
-    const handledRightDrag =
-      (activeCameraPan?.panBehavior === 'right-drag' &&
-        activeCameraPan.hasPanned) ||
-      suppressNextContextMenu
-    suppressNextContextMenu = false
-    if (handledRightDrag) {
-      event.preventDefault()
-    }
-  })
+  options.windowTarget.addEventListener(
+    'contextmenu',
+    (event) => {
+      if (event.button !== 2) {
+        return
+      }
+
+      if (
+        activeCameraPan?.panBehavior === 'right-drag' &&
+        activeCameraPan.hasPanned
+      ) {
+        activeCameraPan.contextMenuSuppressed = true
+        suppressNextContextMenu = false
+        event.preventDefault()
+        return
+      }
+
+      if (suppressNextContextMenu) {
+        suppressNextContextMenu = false
+        event.preventDefault()
+      }
+    },
+    true,
+  )
 
   options.rendererElement.addEventListener('pointerenter', () => {
     pointerInsideRenderer = true

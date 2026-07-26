@@ -26,6 +26,12 @@ Shipit state:
 - A stationary or below-tolerance right click keeps the normal context menu.
   Context menu suppression occurs only after `onCameraPan` accepts a
   right-button drag.
+- Accepted right-button fallback drags suppress context-menu events at the
+  window capture boundary, including events that target another in-game DOM
+  layer instead of the renderer canvas.
+- The renderer uses the `move` cursor from accepted wheel-mode right-button
+  press until pointer up, cancellation, or interaction loss. This active-drag
+  cursor takes priority over frame-by-frame edge-cursor cleanup.
 - Wheel handling is bound to the renderer canvas instead of the whole window.
   Open menus, dialogs, controls, and scrollable UI therefore retain their native
   wheel events, while an explicit desktop interaction gate also blocks canvas
@@ -50,7 +56,8 @@ drag, edge, camera-lock, and mobile behavior intact.
 - `tests/input/pointerCameraInput.test.ts` owns focused mode, axis, speed, lock,
   touch, and context-menu boundary coverage.
 - `tests/gui/browserZoomIsolation.spec.ts` owns browser-level wheel ownership,
-  modified zoom, diagonal pan, and menu/dialog conflict coverage.
+  modified zoom, diagonal pan, right-button cursor/context-menu ownership, and
+  menu/dialog conflict coverage.
 - Existing camera GUI tests use the accepted default-wheel gestures where they
   need to reposition or zoom the camera.
 
@@ -66,6 +73,10 @@ drag, edge, camera-lock, and mobile behavior intact.
 - Right-drag context suppression follows the successful pan result rather than
   movement alone, so camera locks and rejected pans do not remove the browser
   context menu.
+- Context-menu ownership is checked at the window capture boundary because the
+  right-button gesture begins on the renderer but its menu event can target a
+  different in-game layer. A later pointer press clears any unconsumed
+  post-release suppression state so unrelated menus remain native.
 - No target-heading planning behavior or API was added.
 - No visual-system change was needed; implementation remains aligned with
   `DESIGN.md`.
@@ -75,15 +86,18 @@ drag, edge, camera-lock, and mobile behavior intact.
 - Targeted Biome checks cover every changed source, test, and note file.
 - The release build validates configuration, TypeScript, and the production
   Vite bundle.
-- Focused pointer-input Vitest covers 35 mode and boundary cases.
+- Focused pointer-input Vitest covers 37 mode and boundary cases.
 - Focused Chromium checks cover diagonal wheel pan, Ctrl/Cmd wheel zoom,
-  menu/dialog/scroll ownership, touch drag, edge pan, and default-wheel
-  updates to existing camera navigation tests.
-- Full product Vitest passes 692/692. Claim-helper tests pass 16/16 and
+  right-button cursor/context-menu ownership, menu/dialog/scroll ownership,
+  touch drag, edge pan, and default-wheel updates to existing camera navigation
+  tests.
+- Full product Vitest passes 694/694. Claim-helper tests pass 16/16 and
   automation-workflow tests pass 4/4.
-- Full Playwright passes 86/87. The sole failure is the unchanged leaderboard
+- Full Playwright passes 86/88. One failure is the unchanged leaderboard
   assertion expecting `Time 7h30m` while the rendered accessible name is
-  `Time 07h30m`; this exact mismatch predates issue #314.
+  `Time 07h30m`; this exact mismatch predates issue #314. The other was the
+  existing timing-sensitive Time Warp fling check, which passed immediately in
+  isolation.
 - The generated 480 × 720 wheel settings screenshot shows the selected mode and
   complete speed row. The edge screenshot confirms the selected radio but
   crops the lower speed row at that narrow viewport; the source UI is unchanged
@@ -92,6 +106,10 @@ drag, edge, camera-lock, and mobile behavior intact.
 - A live fine-pointer Chromium playtest confirmed two-axis camera movement from
   diagonal wheel input and unchanged camera marker styles while the paused UI
   settings dialog owned the same gesture.
+- A live fine-pointer Chromium playtest also confirmed `move` from right-button
+  press through accepted pan, original-cursor restoration on release,
+  cross-layer context-menu suppression for the handled drag, and native
+  stationary and subsequent context menus.
 
 ## Follow-up and known gaps
 

@@ -101,6 +101,13 @@ const createWheelEvent = (
   return event
 }
 
+const createContextMenuEvent = (button = 2) =>
+  createPointerEvent('contextmenu', {
+    button,
+    clientX: 100,
+    clientY: 100,
+  })
+
 const createHarness = (
   options: {
     cameraControlsLocked?: boolean
@@ -509,6 +516,7 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
         clientY: 100,
       }),
     )
+    expect(harness.canvas.style.cursor).toBe('move')
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerup', {
         button: 2,
@@ -516,10 +524,11 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
         clientY: 100,
       }),
     )
-    const contextMenu = new Event('contextmenu', { cancelable: true })
-    harness.canvas.dispatchEvent(contextMenu)
+    const contextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.canvas.style.cursor).toBe('')
     expect(contextMenu.defaultPrevented).toBe(false)
   })
 
@@ -547,14 +556,14 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
         clientY: 100,
       }),
     )
-    const contextMenu = new Event('contextmenu', { cancelable: true })
-    harness.canvas.dispatchEvent(contextMenu)
+    const contextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
     expect(contextMenu.defaultPrevented).toBe(false)
   })
 
-  it('pans at the existing drag tolerance and suppresses only that context menu', () => {
+  it('pans at the existing drag tolerance and suppresses the post-release context menu', () => {
     const harness = createHarness({ desktopCameraPanMode: 'wheel' })
 
     harness.canvas.dispatchEvent(
@@ -570,6 +579,7 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
       clientY: 100,
     })
     harness.canvas.dispatchEvent(pointerMove)
+    expect(harness.canvas.style.cursor).toBe('move')
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerup', {
         button: 2,
@@ -577,15 +587,79 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
         clientY: 100,
       }),
     )
-    const handledContextMenu = new Event('contextmenu', { cancelable: true })
-    harness.canvas.dispatchEvent(handledContextMenu)
-    const laterContextMenu = new Event('contextmenu', { cancelable: true })
-    harness.canvas.dispatchEvent(laterContextMenu)
+    const keyboardContextMenu = createContextMenuEvent(0)
+    harness.windowTarget.dispatchEvent(keyboardContextMenu)
+    const handledContextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(handledContextMenu)
+    const laterContextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(laterContextMenu)
 
     expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
     expect(pointerMove.defaultPrevented).toBe(true)
+    expect(harness.canvas.style.cursor).toBe('')
+    expect(keyboardContextMenu.defaultPrevented).toBe(false)
     expect(handledContextMenu.defaultPrevented).toBe(true)
     expect(laterContextMenu.defaultPrevented).toBe(false)
+  })
+
+  it('suppresses a window-boundary context menu during an accepted drag', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    harness.input.updateEdgeScroll(100, 0.1)
+    expect(harness.canvas.style.cursor).toBe('move')
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', {
+        button: 2,
+        clientX: 130,
+        clientY: 100,
+      }),
+    )
+    const contextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(contextMenu)
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        button: 2,
+        clientX: 130,
+        clientY: 100,
+      }),
+    )
+    const laterContextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(laterContextMenu)
+
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    expect(contextMenu.defaultPrevented).toBe(true)
+    expect(laterContextMenu.defaultPrevented).toBe(false)
+    expect(harness.canvas.style.cursor).toBe('')
+  })
+
+  it('restores the renderer cursor when a right-button fallback is canceled', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    expect(harness.canvas.style.cursor).toBe('move')
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointercancel', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+
+    expect(harness.canvas.style.cursor).toBe('')
   })
 
   it.each([
@@ -608,10 +682,11 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
         clientY: 100,
       }),
     )
-    const contextMenu = new Event('contextmenu', { cancelable: true })
-    harness.canvas.dispatchEvent(contextMenu)
+    const contextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.canvas.style.cursor).toBe('')
     expect(contextMenu.defaultPrevented).toBe(false)
   })
 
@@ -642,10 +717,11 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
         clientY: 100,
       }),
     )
-    const contextMenu = new Event('contextmenu', { cancelable: true })
-    harness.canvas.dispatchEvent(contextMenu)
+    const contextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.canvas.style.cursor).toBe('')
     expect(contextMenu.defaultPrevented).toBe(false)
   })
 })
