@@ -175,9 +175,9 @@ test('keeps selected distances in the rail while offscreen arrows stay unlabeled
         break
       }
       await page.mouse.move(760, 500)
-      await page.mouse.down()
+      await page.mouse.down({ button: 'right' })
       await page.mouse.move(120, 500, { steps: 8 })
-      await page.mouse.up()
+      await page.mouse.up({ button: 'right' })
     }
 
     const earthIndicator = page.locator('[data-offscreen-target="earth"]')
@@ -285,7 +285,9 @@ test('uses viewport-entry timing and small-body size independently of selection'
     await expect(earthLabel).toBeHidden()
 
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      await page.locator('canvas').dispatchEvent('wheel', { deltaY: 500 })
+      await page
+        .locator('canvas')
+        .dispatchEvent('wheel', { ctrlKey: true, deltaY: 500 })
       if (await earthLabel.isVisible()) {
         break
       }

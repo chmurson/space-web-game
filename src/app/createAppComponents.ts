@@ -70,6 +70,7 @@ import type { Ripple } from '../ui/overlayUpdates'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
   type DesktopEdgePanSpeed,
+  type DesktopWheelPanSpeed,
   updateUserSettings,
 } from '../userSettingsStorage'
 import { bindDevicePixelRatioChanges } from './bindDevicePixelRatioChanges'
@@ -88,6 +89,11 @@ const desktopEdgePanSpeedPixelsPerSecond: Record<DesktopEdgePanSpeed, number> =
     normal: 420,
     fast: 620,
   }
+const desktopWheelPanSpeedMultiplier: Record<DesktopWheelPanSpeed, number> = {
+  slow: 0.6,
+  normal: 1,
+  fast: 1.6,
+}
 
 export type AppComponents = {
   renderer: THREE.WebGLRenderer
@@ -651,17 +657,19 @@ export const createAppComponents = (options: {
   })
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
-    getDesktopEdgePanSpeedPixelsPerSecond: () =>
-      desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
-    getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
-    getEdgeScrollEnabled: () =>
-      desktopCameraPanMode === 'edge' &&
-      desktopFinePointerMedia.matches &&
+    getDesktopCameraInputEnabled: () => desktopFinePointerMedia.matches,
+    getDesktopCameraInteractionsEnabled: () =>
       !topMenu.isOpen() &&
       !inGameControlsMenu.isOpen() &&
       !uiSettingsOpen &&
       options.runtimeState.simulation.crashedBodyName === null &&
       resolveScenarioPrompts(options.runtimeState, 'desktop').active === null,
+    getDesktopCameraPanMode: () => desktopCameraPanMode,
+    getDesktopEdgePanSpeedPixelsPerSecond: () =>
+      desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
+    getDesktopWheelPanSpeedMultiplier: () =>
+      desktopWheelPanSpeedMultiplier[desktopWheelPanSpeed],
+    getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
     getInteractionsEnabled: getCameraInteractionsEnabled,
     onCameraPan: runtimeActions.panCamera,
     onPrimaryTap: (clientX, clientY) => {
