@@ -20,8 +20,13 @@ import { isTutorialScenarioState } from '../scenario/specific-scenarios/tutorial
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
-import { fromAngle, length, sub, type Vec2 } from '../simulation/vector'
+import { fromAngle, type Vec2 } from '../simulation/vector'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
+import {
+  getTrajectoryRenderMaxChordErrorMeters,
+  getTrajectoryRenderSampleDistanceMeters,
+  selectTrajectoryRenderGeometry,
+} from './trajectoryRenderSelection'
 
 const trajectoryEventMarkerMaxViewportSize = 500
 const trajectoryEventMarkerLift = 0.22
@@ -32,12 +37,102 @@ const predictionLineBaseColor = 0x7dd3fc
 const predictionLineDebugMaterialColor = 0xffffff
 const predictionLineDebugNearColor = new THREE.Color(0x38bdf8)
 const predictionLineDebugFarColor = new THREE.Color(0xf59e0b)
-const retainedStaleFarMaxBridgeSegmentMultiplier = 3
 
 type TrajectoryEventMarkerLabelRefs = Record<
   TrajectoryPredictionEventMarkerKind,
   HTMLElement
 >
+
+export type TrajectoryRenderDiagnostics = {
+  assisted: {
+    selectedPointCount: number
+    sourcePointCount: number
+  }
+  coast: {
+    selectedPointCount: number
+    sourcePointCount: number
+    staleSelectedPointCount: number
+  }
+  maxChordErrorMeters: number
+  minSampleDistanceMeters: number
+}
+
+type TrajectoryRenderSelections = {
+  assisted: ReturnType<typeof selectTrajectoryRenderGeometry>
+  coast: ReturnType<typeof selectTrajectoryRenderGeometry>
+  maxChordErrorMeters: number
+  minSampleDistanceMeters: number
+}
+
+const createTrajectoryRenderSelectionCache = () => {
+  let previous: {
+    assistedPoints: readonly Vec2[]
+    coastPoints: readonly Vec2[]
+    farVisible: TrajectoryPredictionFarVisibility
+    impactGradientStartIndex: number | null
+    nearPointCount: number
+    result: TrajectoryRenderSelections
+    viewportHeight: number
+    viewportSize: number
+  } | null = null
+
+  return (options: {
+    assistedPoints: readonly Vec2[]
+    coastPoints: readonly Vec2[]
+    farVisible: TrajectoryPredictionFarVisibility
+    impactGradientStartIndex: number | null
+    nearPointCount: number
+    viewportHeight: number
+    viewportSize: number
+  }): TrajectoryRenderSelections => {
+    if (
+      previous &&
+      previous.assistedPoints === options.assistedPoints &&
+      previous.coastPoints === options.coastPoints &&
+      previous.farVisible === options.farVisible &&
+      previous.impactGradientStartIndex === options.impactGradientStartIndex &&
+      previous.nearPointCount === options.nearPointCount &&
+      previous.viewportHeight === options.viewportHeight &&
+      previous.viewportSize === options.viewportSize
+    ) {
+      return previous.result
+    }
+
+    const minSampleDistanceMeters = getTrajectoryRenderSampleDistanceMeters(
+      options.viewportSize,
+    )
+    const maxChordErrorMeters = getTrajectoryRenderMaxChordErrorMeters({
+      viewportHeight: options.viewportHeight,
+      viewportSize: options.viewportSize,
+    })
+    const coast = selectTrajectoryRenderGeometry({
+      farVisible: options.farVisible,
+      mandatoryPointIndices:
+        options.impactGradientStartIndex === null
+          ? []
+          : [options.impactGradientStartIndex],
+      nearPointCount: options.nearPointCount,
+      points: options.coastPoints,
+      viewportHeight: options.viewportHeight,
+      viewportSize: options.viewportSize,
+    })
+    const assisted = selectTrajectoryRenderGeometry({
+      farVisible: 'none',
+      nearPointCount: 0,
+      points: options.assistedPoints,
+      viewportHeight: options.viewportHeight,
+      viewportSize: options.viewportSize,
+    })
+    const result = {
+      assisted,
+      coast,
+      maxChordErrorMeters,
+      minSampleDistanceMeters,
+    }
+    previous = { ...options, result }
+    return result
+  }
+}
 
 const trajectoryEventMarkerShortLabels = {
   apoapsis: 'Ap',
@@ -180,73 +275,15 @@ const getDebugPredictionTierColors = (
     return [color.r, color.g, color.b]
   })
 
-const dot = (a: Vec2, b: Vec2) => a.x * b.x + a.y * b.y
+const selectPredictionPoints = (
+  points: readonly Vec2[],
+  pointIndices: readonly number[],
+) => pointIndices.map((index) => points[index])
 
-const getRetainedStaleFarVisualSegment = (options: {
-  nearEndColor: number[]
-  nearPoints: Vec2[]
-  staleFarColors: number[]
-  staleFarPoints: Vec2[]
-}) => {
-  if (options.nearPoints.length < 2 || options.staleFarPoints.length === 0) {
-    return {
-      colors: options.staleFarColors,
-      points: options.staleFarPoints,
-    }
-  }
-
-  const nearEnd = options.nearPoints[options.nearPoints.length - 1]
-  const nearDelta = sub(
-    nearEnd,
-    options.nearPoints[options.nearPoints.length - 2],
-  )
-  const nearSegmentDistance = length(nearDelta)
-
-  if (nearSegmentDistance <= 0) {
-    return {
-      colors: options.staleFarColors,
-      points: options.staleFarPoints,
-    }
-  }
-
-  const nearDirection = {
-    x: nearDelta.x / nearSegmentDistance,
-    y: nearDelta.y / nearSegmentDistance,
-  }
-  let startIndex = 0
-
-  while (
-    startIndex < options.staleFarPoints.length &&
-    dot(sub(options.staleFarPoints[startIndex], nearEnd), nearDirection) < 0
-  ) {
-    startIndex += 1
-  }
-
-  const points = options.staleFarPoints.slice(startIndex)
-  const colors = options.staleFarColors.slice(startIndex * 3)
-  const staleStart = points[0]
-
-  if (!staleStart) {
-    return { colors, points }
-  }
-
-  const seamDelta = sub(staleStart, nearEnd)
-  const seamDistance = length(seamDelta)
-  const nextStaleSegmentDistance = points[1]
-    ? length(sub(points[1], staleStart))
-    : nearSegmentDistance
-  const maxBridgeDistance =
-    Math.max(nearSegmentDistance, nextStaleSegmentDistance) *
-    retainedStaleFarMaxBridgeSegmentMultiplier
-  const shouldBridge = seamDistance <= maxBridgeDistance
-
-  return shouldBridge
-    ? {
-        colors: [...options.nearEndColor, ...colors],
-        points: [nearEnd, ...points],
-      }
-    : { colors, points }
-}
+const selectPredictionColors = (
+  colors: readonly number[],
+  pointIndices: readonly number[],
+) => pointIndices.flatMap((index) => colors.slice(index * 3, index * 3 + 3))
 
 const updateTargetRelativePredictionVisuals = (options: {
   coastPredictionHorizonSeconds: number
@@ -267,6 +304,8 @@ const updateTargetRelativePredictionVisuals = (options: {
   targetRelativeNearPointCount: number
   targetRelativePredictionEnd: Vec2 | null
   targetRelativePredictionPoints: Vec2[]
+  onRenderDiagnostics?(diagnostics: TrajectoryRenderDiagnostics): void
+  selectRenderGeometry: ReturnType<typeof createTrajectoryRenderSelectionCache>
   viewportHeight: number
   viewportSize: number
 }) => {
@@ -277,6 +316,9 @@ const updateTargetRelativePredictionVisuals = (options: {
   const hasImpactGradient =
     Boolean(options.predictedImpact) &&
     options.targetRelativePredictionPoints.length >= 3
+  const impactGradientStartIndex = hasImpactGradient
+    ? options.targetRelativePredictionPoints.length - gradientPointCount
+    : null
   const predictionPositions: number[] = []
 
   for (const point of options.targetRelativePredictionPoints) {
@@ -301,39 +343,61 @@ const updateTargetRelativePredictionVisuals = (options: {
     predictionPositions,
     options.coastPredictionHorizonSeconds,
   )
-  const splitRetainedFar =
-    options.targetRelativeFarVisible === 'retained-stale' &&
-    options.targetRelativeNearPointCount > 0 &&
-    options.targetRelativeNearPointCount <
-      options.targetRelativePredictionPoints.length
-  const visiblePredictionPoints = splitRetainedFar
-    ? options.targetRelativePredictionPoints.slice(
-        0,
+  const predictionColors = options.debugModeEnabled
+    ? getDebugPredictionTierColors(
+        options.targetRelativePredictionPoints.length,
         options.targetRelativeNearPointCount,
+        options.targetRelativeFarVisible,
       )
-    : options.targetRelativePredictionPoints
-  const visiblePredictionColors = splitRetainedFar
-    ? predictionFadeColors.slice(0, options.targetRelativeNearPointCount * 3)
     : predictionFadeColors
-  const staleFarPredictionPoints = splitRetainedFar
-    ? options.targetRelativePredictionPoints.slice(
-        options.targetRelativeNearPointCount,
-      )
-    : []
-  const staleFarPredictionColors = splitRetainedFar
-    ? predictionFadeColors.slice(options.targetRelativeNearPointCount * 3)
-    : []
-  const staleFarVisualSegment = splitRetainedFar
-    ? getRetainedStaleFarVisualSegment({
-        nearEndColor: predictionFadeColors.slice(
-          (options.targetRelativeNearPointCount - 1) * 3,
-          options.targetRelativeNearPointCount * 3,
-        ),
-        nearPoints: visiblePredictionPoints,
-        staleFarColors: staleFarPredictionColors,
-        staleFarPoints: staleFarPredictionPoints,
-      })
-    : { colors: [], points: [] }
+  const renderSelections = options.selectRenderGeometry({
+    assistedPoints: options.targetRelativeAssistedPoints,
+    coastPoints: options.targetRelativePredictionPoints,
+    farVisible: options.targetRelativeFarVisible,
+    impactGradientStartIndex,
+    nearPointCount: options.targetRelativeNearPointCount,
+    viewportHeight: options.viewportHeight,
+    viewportSize: options.viewportSize,
+  })
+  const predictionSelection = renderSelections.coast
+  const visiblePredictionPoints = selectPredictionPoints(
+    options.targetRelativePredictionPoints,
+    predictionSelection.visiblePointIndices,
+  )
+  const visiblePredictionColors = selectPredictionColors(
+    predictionColors,
+    predictionSelection.visiblePointIndices,
+  )
+  const staleFarPredictionPoints = selectPredictionPoints(
+    options.targetRelativePredictionPoints,
+    predictionSelection.staleFarPointIndices,
+  )
+  const staleFarPredictionColors = selectPredictionColors(
+    predictionColors,
+    predictionSelection.staleFarPointIndices,
+  )
+  const assistedPredictionSelection = renderSelections.assisted
+  const assistedPredictionPoints = selectPredictionPoints(
+    options.targetRelativeAssistedPoints,
+    assistedPredictionSelection.visiblePointIndices,
+  )
+
+  options.onRenderDiagnostics?.({
+    assisted: {
+      selectedPointCount:
+        assistedPredictionSelection.visiblePointIndices.length,
+      sourcePointCount: options.targetRelativeAssistedPoints.length,
+    },
+    coast: {
+      selectedPointCount:
+        predictionSelection.visiblePointIndices.length +
+        predictionSelection.staleFarPointIndices.length,
+      sourcePointCount: options.targetRelativePredictionPoints.length,
+      staleSelectedPointCount: predictionSelection.staleFarPointIndices.length,
+    },
+    maxChordErrorMeters: renderSelections.maxChordErrorMeters,
+    minSampleDistanceMeters: renderSelections.minSampleDistanceMeters,
+  })
 
   applyTargetRelativePredictionLine(
     options.gameScene,
@@ -342,34 +406,20 @@ const updateTargetRelativePredictionVisuals = (options: {
     'predictionLine',
     0.18,
     options.target,
-    options.debugModeEnabled
-      ? getDebugPredictionTierColors(
-          visiblePredictionPoints.length,
-          options.targetRelativeNearPointCount,
-          options.targetRelativeFarVisible,
-        )
-      : visiblePredictionColors,
+    visiblePredictionColors,
   )
   applyTargetRelativePredictionLine(
     options.gameScene,
-    staleFarVisualSegment.points,
+    staleFarPredictionPoints,
     'predictionStaleFarGeometry',
     'predictionStaleFarLine',
     0.18,
     options.target,
-    !splitRetainedFar
-      ? undefined
-      : options.debugModeEnabled
-        ? getDebugPredictionTierColors(
-            staleFarVisualSegment.points.length,
-            0,
-            'retained-stale',
-          )
-        : staleFarVisualSegment.colors,
+    staleFarPredictionColors,
   )
   applyTargetRelativePredictionLine(
     options.gameScene,
-    options.targetRelativeAssistedPoints,
+    assistedPredictionPoints,
     'assistedPredictionGeometry',
     'assistedPredictionLine',
     0.2,
@@ -818,6 +868,8 @@ export const createTrajectoryPresentation = (options: {
     | AppRuntimeState['scenario']['session']
     | null = null
   let stabilizedTrajectoryEventMarkerTargetId: string | null = null
+  let renderDiagnostics: TrajectoryRenderDiagnostics | null = null
+  const selectRenderGeometry = createTrajectoryRenderSelectionCache()
 
   const syncInertialPredictionVisual = () => {
     updateInertialPredictionVisual({
@@ -903,6 +955,7 @@ export const createTrajectoryPresentation = (options: {
     getCoachAnchorScreenPoint,
     getPredictionDiagnostics: () =>
       options.trajectoryPredictionRuntime.getDiagnostics(),
+    getRenderDiagnostics: () => renderDiagnostics,
     getRemainingUsableCoverageSeconds: () =>
       options.trajectoryPredictionRuntime.getRemainingUsableCoverageSeconds(),
     getPredictionState: () => options.trajectoryPredictionRuntime.getState(),
@@ -940,6 +993,7 @@ export const createTrajectoryPresentation = (options: {
           options.gameScene,
           options.trajectoryEventMarkerLabels,
         )
+        renderDiagnostics = null
         return
       }
 
@@ -1007,6 +1061,12 @@ export const createTrajectoryPresentation = (options: {
         targetRelativePredictionPoints: predictionTargetMatches
           ? predictionState.targetRelativePredictionPoints
           : [],
+        onRenderDiagnostics: options.runtime.debug.debugModeEnabled
+          ? (diagnostics) => {
+              renderDiagnostics = diagnostics
+            }
+          : undefined,
+        selectRenderGeometry,
         viewportHeight: window.innerHeight,
         viewportSize: options.runtime.simulation.viewportSize,
       })

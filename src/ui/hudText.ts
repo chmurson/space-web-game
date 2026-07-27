@@ -11,6 +11,7 @@ import type {
   PredictedClosestApproach,
   PredictedImpact,
 } from '../prediction/trajectoryPrediction'
+import type { TrajectoryRenderDiagnostics } from '../presentation/trajectoryPresentation'
 import type { BrowserGcProbeStats } from '../runtime/browserGcProbe'
 import type { NavigationTimeWarpDiagnostics } from '../runtime/navigationTimeWarpController'
 import type { TrajectoryPredictionDiagnostics } from '../runtime/trajectoryPredictionRuntime'
@@ -104,6 +105,7 @@ export type DebugPanelTextInput = {
   targetMetrics: CaptureMetrics
   targetName: string
   timeWarpDiagnostics: NavigationTimeWarpDiagnostics
+  trajectoryRenderDiagnostics: TrajectoryRenderDiagnostics | null
   trailDetail: {
     label: string
     level: number
@@ -151,6 +153,33 @@ const getRequiredOrbitTurns = (scenarioId: string, phase: string) => {
   }
 
   return null
+}
+
+const formatRenderRetention = (
+  selectedPointCount: number,
+  sourcePointCount: number,
+) =>
+  sourcePointCount === 0
+    ? 'n/a'
+    : `${((selectedPointCount / sourcePointCount) * 100).toFixed(1)}%`
+
+const formatChordErrorDistance = (meters: number) =>
+  meters < 1_000 ? `${Math.round(meters)} m` : formatDistance(meters)
+
+const getTrajectoryRenderLine = (
+  diagnostics: TrajectoryRenderDiagnostics | null,
+) => {
+  if (!diagnostics) {
+    return 'trajectory render: awaiting debug geometry update'
+  }
+
+  const sourcePointCount =
+    diagnostics.coast.sourcePointCount + diagnostics.assisted.sourcePointCount
+  const selectedPointCount =
+    diagnostics.coast.selectedPointCount +
+    diagnostics.assisted.selectedPointCount
+
+  return `trajectory render: coast ${diagnostics.coast.sourcePointCount} → ${diagnostics.coast.selectedPointCount} (${formatRenderRetention(diagnostics.coast.selectedPointCount, diagnostics.coast.sourcePointCount)}; stale ${diagnostics.coast.staleSelectedPointCount}) | assisted ${diagnostics.assisted.sourcePointCount} → ${diagnostics.assisted.selectedPointCount} (${formatRenderRetention(diagnostics.assisted.selectedPointCount, diagnostics.assisted.sourcePointCount)}) | total ${sourcePointCount} → ${selectedPointCount} (${formatRenderRetention(selectedPointCount, sourcePointCount)}) | min sample ${formatDistance(diagnostics.minSampleDistanceMeters)} | chord error max ${formatChordErrorDistance(diagnostics.maxChordErrorMeters)}`
 }
 
 const getScenarioProgressLine = (input: DebugPanelTextInput) => {
@@ -215,6 +244,7 @@ export const getDebugPanelLines = (input: DebugPanelTextInput) => {
     `prediction step: ${formatDuration(input.predictionStepSeconds)} | integrate max ${formatDuration(input.predictionDiagnostics.integrationStepSeconds)} | refresh ${input.predictionDiagnostics.refreshReason ?? 'none'} ${input.predictionDiagnostics.predictionRefreshMs.toFixed(1)}ms (${input.predictionDiagnostics.refreshCountLastSecond}/s) | geometry ${input.predictionDiagnostics.geometryUpdateMs.toFixed(1)}ms | pts ${input.predictionDiagnostics.absolutePointCount}/${input.predictionDiagnostics.relativePointCount}/${input.predictionDiagnostics.assistedPointCount} | events ${input.predictionDiagnostics.eventMarkerCount}`,
     `snapshot: save/load${input.debugSnapshotStatus ? ` | ${input.debugSnapshotStatus}` : ''}`,
     `viewport: ${input.viewportSize.toFixed(2)} | zoom: ${input.zoom.toFixed(1)}x`,
+    getTrajectoryRenderLine(input.trajectoryRenderDiagnostics),
     `trail detail: L${input.trailDetail.level}/${input.trailDetail.levelCount} ${input.trailDetail.label} | slices ${input.trailDetail.renderedSliceCount} | render ${formatDistance(input.trailDetail.renderSampleDistanceMeters)} | capture ${formatDistance(input.trailDetail.captureSampleDistanceMeters)} | trail frame: ${trailFrame}`,
     `assist target: ${input.targetName}`,
     `gravity: ${formatBodyInfluences(input.bodyInfluences)}`,

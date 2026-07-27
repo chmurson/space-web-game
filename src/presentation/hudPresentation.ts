@@ -94,6 +94,7 @@ const createDebugStateCopyPayload = (options: {
   runtime: AppRuntimeState
   target: Body
   targetMetrics: ReturnType<GameQueries['getCaptureMetrics']>
+  trajectoryRender: ReturnType<TrajectoryPresentation['getRenderDiagnostics']>
   timeWarpDiagnostics: NavigationTimeWarpDiagnostics
   timeWarp: number
   trail: {
@@ -157,6 +158,7 @@ const createDebugStateCopyPayload = (options: {
     viewportSize: options.runtime.simulation.viewportSize,
   },
   trajectoryPrediction: options.predictionState,
+  trajectoryRender: options.trajectoryRender,
   trail: options.trail,
   ui: {
     camera: options.runtime.ui.camera,
@@ -682,6 +684,8 @@ export const createHudPresentation = (options: {
             targetMetrics,
             targetName: target.name,
             timeWarpDiagnostics,
+            trajectoryRenderDiagnostics:
+              options.trajectoryPresentation.getRenderDiagnostics?.() ?? null,
             trailDetail: {
               ...trailDetail,
               renderFrame: trailDebugState.renderFrame,
@@ -703,6 +707,8 @@ export const createHudPresentation = (options: {
             timeWarp:
               options.timeWarps[options.runtime.simulation.timeWarpIndex] ?? 1,
             trail: trailDebugState,
+            trajectoryRender:
+              options.trajectoryPresentation.getRenderDiagnostics?.() ?? null,
             viewport: {
               size: viewportSize,
               zoom,
@@ -727,6 +733,8 @@ export const createHudPresentation = (options: {
             ...trailDebugState,
           },
           timeWarp: timeWarpDiagnostics,
+          trajectoryRender:
+            options.trajectoryPresentation.getRenderDiagnostics?.() ?? null,
           viewport: {
             size: viewportSize,
             zoom,

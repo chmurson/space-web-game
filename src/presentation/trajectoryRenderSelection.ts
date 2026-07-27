@@ -1,0 +1,326 @@
+import type { TrajectoryPredictionFarVisibility } from '../runtime/trajectoryPredictionRuntime'
+import { RENDER_SCALE } from '../simulation/constants'
+import { length, sub, type Vec2 } from '../simulation/vector'
+import { getViewportMinSampleDistanceMeters } from './viewportSampling'
+
+const retainedStaleFarMaxBridgeSegmentMultiplier = 3
+const trajectoryRenderMaxChordErrorPixels = 0.25
+
+const trajectoryRenderDensityStops = [
+  { minSampleDistanceMeters: 50_000, viewportSize: 5 },
+  { minSampleDistanceMeters: 125_000, viewportSize: 15 },
+  { minSampleDistanceMeters: 500_000, viewportSize: 50 },
+  { minSampleDistanceMeters: 1_250_000, viewportSize: 100 },
+  { minSampleDistanceMeters: 3_000_000, viewportSize: 250 },
+  { minSampleDistanceMeters: 6_000_000, viewportSize: 500 },
+  { minSampleDistanceMeters: 12_000_000, viewportSize: 1_000 },
+  { minSampleDistanceMeters: 30_000_000, viewportSize: 2_500 },
+] as const
+
+const dot = (a: Vec2, b: Vec2) => a.x * b.x + a.y * b.y
+
+const getPointToChordDistance = (
+  point: Vec2,
+  chordStart: Vec2,
+  chordEnd: Vec2,
+) => {
+  const chord = sub(chordEnd, chordStart)
+  const chordLength = length(chord)
+  if (chordLength <= 0) {
+    return length(sub(point, chordStart))
+  }
+
+  return (
+    Math.abs(
+      (point.x - chordStart.x) * chord.y - (point.y - chordStart.y) * chord.x,
+    ) / chordLength
+  )
+}
+
+const getRetainedStaleFarPointIndices = (
+  points: readonly Vec2[],
+  nearPointCount: number,
+) => {
+  const staleFarPointIndices = Array.from(
+    { length: points.length - nearPointCount },
+    (_, index) => nearPointCount + index,
+  )
+
+  if (nearPointCount < 2 || staleFarPointIndices.length === 0) {
+    return staleFarPointIndices
+  }
+
+  const nearEndIndex = nearPointCount - 1
+  const nearEnd = points[nearEndIndex]
+  const nearDelta = sub(nearEnd, points[nearEndIndex - 1])
+  const nearSegmentDistance = length(nearDelta)
+
+  if (nearSegmentDistance <= 0) {
+    return staleFarPointIndices
+  }
+
+  const nearDirection = {
+    x: nearDelta.x / nearSegmentDistance,
+    y: nearDelta.y / nearSegmentDistance,
+  }
+
+  // Trim stale-far points that project behind the final near segment's heading.
+  // Bridge the surviving seam only when its gap is at most
+  // retainedStaleFarMaxBridgeSegmentMultiplier times the larger adjacent segment.
+  let startOffset = 0
+
+  while (
+    startOffset < staleFarPointIndices.length &&
+    dot(
+      sub(points[staleFarPointIndices[startOffset]], nearEnd),
+      nearDirection,
+    ) < 0
+  ) {
+    startOffset += 1
+  }
+
+  const retainedIndices = staleFarPointIndices.slice(startOffset)
+  const staleStartIndex = retainedIndices[0]
+  if (staleStartIndex === undefined) {
+    return []
+  }
+
+  const staleStart = points[staleStartIndex]
+  const seamDistance = length(sub(staleStart, nearEnd))
+  const nextStaleIndex = retainedIndices[1]
+  const nextStaleSegmentDistance =
+    nextStaleIndex === undefined
+      ? nearSegmentDistance
+      : length(sub(points[nextStaleIndex], staleStart))
+  const maxBridgeDistance =
+    Math.max(nearSegmentDistance, nextStaleSegmentDistance) *
+    retainedStaleFarMaxBridgeSegmentMultiplier
+
+  return seamDistance <= maxBridgeDistance
+    ? [nearEndIndex, ...retainedIndices]
+    : retainedIndices
+}
+
+const selectPointIndicesByDistance = (options: {
+  mandatoryPointIndices: ReadonlySet<number>
+  minSampleDistanceMeters: number
+  pointIndices: readonly number[]
+  points: readonly Vec2[]
+}) => {
+  const firstPointIndex = options.pointIndices[0]
+  if (firstPointIndex === undefined) {
+    return []
+  }
+
+  const lastPointIndex = options.pointIndices.at(-1) ?? firstPointIndex
+  if (firstPointIndex === lastPointIndex) {
+    return [firstPointIndex]
+  }
+
+  const selectedPointIndices = [firstPointIndex]
+  let distanceSinceSelection = 0
+  let previousPointIndex = firstPointIndex
+
+  for (let offset = 1; offset < options.pointIndices.length - 1; offset += 1) {
+    const pointIndex = options.pointIndices[offset]
+    distanceSinceSelection += length(
+      sub(options.points[pointIndex], options.points[previousPointIndex]),
+    )
+    previousPointIndex = pointIndex
+
+    if (
+      options.mandatoryPointIndices.has(pointIndex) ||
+      distanceSinceSelection >= options.minSampleDistanceMeters
+    ) {
+      selectedPointIndices.push(pointIndex)
+      distanceSinceSelection = 0
+    }
+  }
+
+  selectedPointIndices.push(lastPointIndex)
+  return selectedPointIndices
+}
+
+const refinePointIndicesByChordError = (options: {
+  maxChordErrorMeters: number
+  pointIndices: readonly number[]
+  points: readonly Vec2[]
+  selectedPointIndices: readonly number[]
+}): number[] => {
+  if (options.selectedPointIndices.length < 2) {
+    return [...options.selectedPointIndices]
+  }
+
+  const selectedPointIndices: number[] = []
+  const sourceOffsetByPointIndex = new Map(
+    options.pointIndices.map((pointIndex, offset) => [pointIndex, offset]),
+  )
+  const pendingChords: Array<{ endOffset: number; startOffset: number }> = []
+
+  for (
+    let selectedOffset = options.selectedPointIndices.length - 1;
+    selectedOffset > 0;
+    selectedOffset -= 1
+  ) {
+    const startOffset = sourceOffsetByPointIndex.get(
+      options.selectedPointIndices[selectedOffset - 1],
+    )
+    const endOffset = sourceOffsetByPointIndex.get(
+      options.selectedPointIndices[selectedOffset],
+    )
+    if (startOffset !== undefined && endOffset !== undefined) {
+      pendingChords.push({ endOffset, startOffset })
+    }
+  }
+
+  while (pendingChords.length > 0) {
+    const chord = pendingChords.pop()
+    if (!chord) {
+      continue
+    }
+
+    const startPointIndex = options.pointIndices[chord.startOffset]
+    const endPointIndex = options.pointIndices[chord.endOffset]
+    let maximumError = 0
+    let maximumErrorOffset: number | null = null
+
+    for (
+      let offset = chord.startOffset + 1;
+      offset < chord.endOffset;
+      offset += 1
+    ) {
+      const error = getPointToChordDistance(
+        options.points[options.pointIndices[offset]],
+        options.points[startPointIndex],
+        options.points[endPointIndex],
+      )
+      if (error > maximumError) {
+        maximumError = error
+        maximumErrorOffset = offset
+      }
+    }
+
+    if (
+      maximumErrorOffset !== null &&
+      maximumError > options.maxChordErrorMeters
+    ) {
+      pendingChords.push({
+        endOffset: chord.endOffset,
+        startOffset: maximumErrorOffset,
+      })
+      pendingChords.push({
+        endOffset: maximumErrorOffset,
+        startOffset: chord.startOffset,
+      })
+      continue
+    }
+
+    selectedPointIndices.push(startPointIndex)
+  }
+
+  const lastPointIndex = options.selectedPointIndices.at(-1)
+  if (lastPointIndex !== undefined) {
+    selectedPointIndices.push(lastPointIndex)
+  }
+  return selectedPointIndices
+}
+
+export const getTrajectoryRenderSampleDistanceMeters = (viewportSize: number) =>
+  getViewportMinSampleDistanceMeters(viewportSize, trajectoryRenderDensityStops)
+
+// Convert vertical render-units-per-pixel to meters-per-pixel before applying
+// the maximum permitted chord error in screen pixels.
+export const getTrajectoryRenderMaxChordErrorMeters = (options: {
+  viewportHeight: number
+  viewportSize: number
+}) =>
+  (options.viewportSize / Math.max(options.viewportHeight, 1) / RENDER_SCALE) *
+  trajectoryRenderMaxChordErrorPixels
+
+export const selectTrajectoryRenderGeometry = (options: {
+  farVisible: TrajectoryPredictionFarVisibility
+  mandatoryPointIndices?: readonly number[]
+  nearPointCount: number
+  points: readonly Vec2[]
+  viewportHeight?: number
+  viewportSize: number
+}) => {
+  const sourcePointCount = options.points.length
+  if (sourcePointCount === 0) {
+    return {
+      staleFarPointIndices: [],
+      visiblePointIndices: [],
+    }
+  }
+
+  const minSampleDistanceMeters = getTrajectoryRenderSampleDistanceMeters(
+    options.viewportSize,
+  )
+  const maxChordErrorMeters = getTrajectoryRenderMaxChordErrorMeters({
+    // One pixel intentionally yields a large threshold that effectively
+    // disables chord refinement for callers without viewport-height context.
+    viewportHeight: options.viewportHeight ?? 1,
+    viewportSize: options.viewportSize,
+  })
+  const splitRetainedFar =
+    options.farVisible === 'retained-stale' &&
+    options.nearPointCount > 0 &&
+    options.nearPointCount < sourcePointCount
+  const visibleSourcePointCount = splitRetainedFar
+    ? options.nearPointCount
+    : sourcePointCount
+  const visibleSourcePointIndices = Array.from(
+    { length: visibleSourcePointCount },
+    (_, index) => index,
+  )
+  const staleFarSourcePointIndices = splitRetainedFar
+    ? getRetainedStaleFarPointIndices(options.points, options.nearPointCount)
+    : []
+  const mandatoryPointIndices = new Set(
+    options.mandatoryPointIndices?.filter(
+      (index) =>
+        Number.isInteger(index) && index >= 0 && index < sourcePointCount,
+    ) ?? [],
+  )
+
+  if (options.nearPointCount > 0 && options.nearPointCount < sourcePointCount) {
+    mandatoryPointIndices.add(options.nearPointCount - 1)
+    mandatoryPointIndices.add(options.nearPointCount)
+  }
+
+  const staleFarStartIndex =
+    staleFarSourcePointIndices[0] === options.nearPointCount - 1
+      ? staleFarSourcePointIndices[1]
+      : staleFarSourcePointIndices[0]
+  if (staleFarStartIndex !== undefined) {
+    mandatoryPointIndices.add(staleFarStartIndex)
+  }
+
+  const visiblePointIndices = refinePointIndicesByChordError({
+    maxChordErrorMeters,
+    pointIndices: visibleSourcePointIndices,
+    points: options.points,
+    selectedPointIndices: selectPointIndicesByDistance({
+      mandatoryPointIndices,
+      minSampleDistanceMeters,
+      pointIndices: visibleSourcePointIndices,
+      points: options.points,
+    }),
+  })
+  const staleFarPointIndices = refinePointIndicesByChordError({
+    maxChordErrorMeters,
+    pointIndices: staleFarSourcePointIndices,
+    points: options.points,
+    selectedPointIndices: selectPointIndicesByDistance({
+      mandatoryPointIndices,
+      minSampleDistanceMeters,
+      pointIndices: staleFarSourcePointIndices,
+      points: options.points,
+    }),
+  })
+
+  return {
+    staleFarPointIndices,
+    visiblePointIndices,
+  }
+}

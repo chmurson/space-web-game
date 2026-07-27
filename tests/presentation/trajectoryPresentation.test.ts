@@ -474,6 +474,67 @@ describe('createTrajectoryPresentation', () => {
     expect(zoomedInDiameter).toBeCloseTo(viewportTwentyDiameter)
   })
 
+  it('decimates line geometry on zoom out and restores it from the same prediction', () => {
+    const predictionPoints = Array.from({ length: 49 }, (_, index) => ({
+      x: index * 250_000,
+      y: 0,
+    }))
+    const test = createTestPresentation({
+      eventMarkers: [],
+      predictionPoints,
+      viewportSize: 50,
+    })
+
+    test.presentation.updateVisuals()
+    const closeSegmentCount =
+      test.gameScene.predictionGeometry.getAttribute('instanceStart').count
+
+    test.runtime.simulation.viewportSize = 1_000
+    test.presentation.updateVisuals()
+    const systemSegmentCount =
+      test.gameScene.predictionGeometry.getAttribute('instanceStart').count
+
+    test.runtime.simulation.viewportSize = 50
+    test.presentation.updateVisuals()
+    const restoredSegmentCount =
+      test.gameScene.predictionGeometry.getAttribute('instanceStart').count
+
+    expect(closeSegmentCount).toBe(24)
+    expect(systemSegmentCount).toBe(1)
+    expect(restoredSegmentCount).toBe(closeSegmentCount)
+    expect(predictionPoints).toHaveLength(49)
+  })
+
+  it('keeps impact-gradient endpoints on the decimated prediction line', () => {
+    const test = createTestPresentation({
+      eventMarkers: [],
+      predictedImpact: { bodyName: 'Earth', time: 30 },
+      predictionPoints: Array.from({ length: 49 }, (_, index) => ({
+        x: index * 250_000,
+        y: 0,
+      })),
+      viewportSize: 1_000,
+    })
+    test.presentation.updateVisuals()
+
+    const predictionStarts =
+      test.gameScene.predictionGeometry.getAttribute('instanceStart')
+    const predictionEnds =
+      test.gameScene.predictionGeometry.getAttribute('instanceEnd')
+    const gradientStarts =
+      test.gameScene.impactGradientGeometry.getAttribute('instanceStart')
+    const gradientEnds =
+      test.gameScene.impactGradientGeometry.getAttribute('instanceEnd')
+
+    expect(predictionStarts.count).toBe(2)
+    expect(predictionEnds.getX(0)).toBeCloseTo(7.75)
+    expect(predictionEnds.getX(1)).toBeCloseTo(12)
+    expect(gradientStarts.count).toBe(17)
+    expect(gradientStarts.getX(0)).toBeCloseTo(7.75)
+    expect(gradientEnds.getX(gradientEnds.count - 1)).toBeCloseTo(12)
+    expect(test.gameScene.impactGradientLine.visible).toBe(true)
+  })
+
   it('colors near and far trajectory tiers in debug mode', () => {
     const test = createTestPresentation({
       debugModeEnabled: true,
