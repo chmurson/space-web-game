@@ -16,6 +16,8 @@ export type TrajectoryPredictionConfig = {
   stepSeconds: number
 }
 
+export type TrajectoryPredictionImplementation = 'euler' | 'kepler'
+
 export type TrajectoryPredictionSamplingConfig = {
   maxIntegrationStepSeconds: number
   refreshInterval: number

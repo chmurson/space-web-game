@@ -10,6 +10,7 @@ import {
   type FarTrajectoryPredictionReuseFallbackReason,
   sliceFarTrajectoryPredictionCoastWindow,
 } from '../prediction/farTrajectoryPrediction'
+import { computeKeplerTwoBodyTrajectoryPrediction } from '../prediction/keplerTwoBody'
 import {
   type CoastTrajectoryPredictionTerminationReason,
   computeCoastTrajectoryPrediction,
@@ -19,6 +20,7 @@ import {
   predictAssistedTrajectory,
   type TrajectoryPredictionConfig,
   type TrajectoryPredictionEventMarker,
+  type TrajectoryPredictionImplementation,
   type TrajectoryPredictionIntegrationDiagnostics,
   type TrajectoryPredictionResult,
 } from '../prediction/trajectoryPrediction'
@@ -274,6 +276,7 @@ type AcceptedCoastPredictionWindowTiers = {
 
 export type CreateTrajectoryPredictionRuntimeOptions = {
   createFarWorkerClient?: TrajectoryPredictionFarWorkerClientFactory
+  predictionImplementation?: TrajectoryPredictionImplementation
 }
 
 type CalculationTimingStats = {
@@ -749,6 +752,8 @@ const getRefreshReason = (
 export const createTrajectoryPredictionRuntime = (
   runtimeOptions: CreateTrajectoryPredictionRuntimeOptions = {},
 ) => {
+  const predictionImplementation =
+    runtimeOptions.predictionImplementation ?? 'euler'
   let acceptedCoastPredictionWindow: AcceptedCoastPredictionWindow | null = null
   let activeFarPredictionRequest: TrajectoryPredictionFarRequest | null = null
   let farPredictionTier: TrajectoryPredictionTier | null = null
@@ -962,13 +967,21 @@ export const createTrajectoryPredictionRuntime = (
     inputKey: string,
   ): TrajectoryPredictionTier => {
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
-    const coastComputation = computeCoastTrajectoryPrediction(
-      options.state,
-      options.physicsEngine,
-      target,
-      predictionConfig,
-      allowLoopTrim,
-    )
+    const coastComputation =
+      predictionImplementation === 'kepler' && isPassiveCoast(options)
+        ? computeKeplerTwoBodyTrajectoryPrediction(
+            options.state,
+            target,
+            predictionConfig,
+            allowLoopTrim,
+          )
+        : computeCoastTrajectoryPrediction(
+            options.state,
+            options.physicsEngine,
+            target,
+            predictionConfig,
+            allowLoopTrim,
+          )
 
     return {
       assistedPoints:
@@ -1124,6 +1137,7 @@ export const createTrajectoryPredictionRuntime = (
         inputKey,
         jobId,
         predictionConfig: { ...options.predictionConfig },
+        predictionImplementation,
         semanticInputKey,
         state: createFarTrajectoryPredictionStateSnapshot(options.state),
         targetId: target.id,

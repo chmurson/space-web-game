@@ -6,6 +6,7 @@ import {
   type FarTrajectoryPredictionRequestPayload,
   predictFarTrajectory,
 } from '@/prediction/farTrajectoryPrediction'
+import { sampleKeplerTwoBodyTrajectory } from '@/prediction/keplerTwoBody'
 import {
   computeCoastTrajectoryPrediction,
   getTrajectoryPredictionConfig,
@@ -37,6 +38,14 @@ const createEarthMoonState = (): SimulationState => {
   }
 }
 
+const createEarthOnlyState = (): SimulationState => {
+  const state = createEarthMoonState()
+  return {
+    ...state,
+    bodies: state.bodies.filter((body) => body.id === 'earth'),
+  }
+}
+
 const createPredictionConfig = (horizonSeconds: number) =>
   getTrajectoryPredictionConfig(horizonSeconds, productionSampling, 2.5)
 
@@ -54,6 +63,36 @@ const earthMoonTarget = (state: SimulationState): Body => {
     throw new Error('Earth-Moon benchmark state has no Earth target')
   }
   return earth
+}
+
+const earthTarget = (state: SimulationState): Body => {
+  const earth = state.bodies.find((body) => body.id === 'earth')
+  if (!earth) {
+    throw new Error('Earth-only benchmark state has no Earth target')
+  }
+  return earth
+}
+
+const benchmarkEarthOnlyNumerical = (horizonSeconds: number) => {
+  const state = createEarthOnlyState()
+  computeCoastTrajectoryPrediction(
+    state,
+    semiImplicitEuler,
+    earthTarget(state),
+    createPredictionConfig(horizonSeconds),
+    false,
+  )
+}
+
+const benchmarkEarthOnlyKepler = (horizonSeconds: number) => {
+  const state = createEarthOnlyState()
+  const config = createPredictionConfig(horizonSeconds)
+  sampleKeplerTwoBodyTrajectory(
+    earthTarget(state),
+    state.spacecraft,
+    horizonSeconds,
+    config.stepSeconds,
+  )
 }
 
 const createFarRequest = (
@@ -82,6 +121,31 @@ describe('trajectory prediction baseline', () => {
       false,
     )
   })
+
+  bench('Earth-only numerical coast: 2-hour horizon', () =>
+    benchmarkEarthOnlyNumerical(2 * 60 * 60),
+  )
+  bench('Earth-only Kepler sampled coast: 2-hour horizon', () =>
+    benchmarkEarthOnlyKepler(2 * 60 * 60),
+  )
+  bench('Earth-only numerical coast: 24-hour horizon', () =>
+    benchmarkEarthOnlyNumerical(24 * 60 * 60),
+  )
+  bench('Earth-only Kepler sampled coast: 24-hour horizon', () =>
+    benchmarkEarthOnlyKepler(24 * 60 * 60),
+  )
+  bench('Earth-only numerical coast: 2-day horizon', () =>
+    benchmarkEarthOnlyNumerical(2 * 24 * 60 * 60),
+  )
+  bench('Earth-only Kepler sampled coast: 2-day horizon', () =>
+    benchmarkEarthOnlyKepler(2 * 24 * 60 * 60),
+  )
+  bench('Earth-only numerical coast: 16-day horizon', () =>
+    benchmarkEarthOnlyNumerical(16 * 24 * 60 * 60),
+  )
+  bench('Earth-only Kepler sampled coast: 16-day horizon', () =>
+    benchmarkEarthOnlyKepler(16 * 24 * 60 * 60),
+  )
 
   bench('Earth-Moon coast: 24-hour horizon', () => {
     const state = createEarthMoonState()
