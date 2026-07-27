@@ -1,6 +1,11 @@
 import { G } from '../simulation/constants'
 import { cloneSimulationState } from '../simulation/state'
-import type { Body, SimulationState, Spacecraft } from '../simulation/types'
+import type {
+  Body,
+  PhysicsEngine,
+  SimulationState,
+  Spacecraft,
+} from '../simulation/types'
 import {
   add,
   length,
@@ -12,6 +17,8 @@ import {
 import {
   type CoastTrajectoryPredictionComputation,
   type CoastTrajectoryPredictionSample,
+  type CoastTrajectoryPredictionTerminationReason,
+  computeCoastTrajectoryPrediction,
   getCoastTrajectoryEventMarkers,
   type PredictedClosestApproach,
   type PredictedImpact,
@@ -23,14 +30,18 @@ export type KeplerTwoBodyPropagation = {
   velocity: Vec2
 }
 
-export type KeplerTwoBodyTrajectory = {
+type KeplerTwoBodyTrajectory = {
   absolutePoints: Vec2[]
   closestApproach: PredictedClosestApproach | null
   eventMarkers: ReturnType<typeof getCoastTrajectoryEventMarkers>
   impact: PredictedImpact | null
   relativePoints: Vec2[]
   sampleTimes: number[]
+  terminationReason: CoastTrajectoryPredictionTerminationReason
 }
+
+const normalizeAngle = (angle: number) =>
+  Math.atan2(Math.sin(angle), Math.cos(angle))
 
 const stumpffC = (z: number) => {
   if (z > 1e-8) {
@@ -181,11 +192,20 @@ export const propagateKeplerTwoBody = (
   }
 }
 
-export const sampleKeplerTwoBodyTrajectory = (
+export const canUseKeplerTwoBodyPrediction = (
+  state: Pick<SimulationState, 'bodies'>,
+  target: Pick<Body, 'id' | 'mass'>,
+) =>
+  target.mass > 0 &&
+  !state.bodies.some((body) => body.id !== target.id && body.mass > 0)
+
+const sampleKeplerTwoBodyTrajectory = (
   body: Body,
   spacecraft: Pick<Spacecraft, 'dryMass' | 'position' | 'velocity'>,
   horizonSeconds: number,
   sampleStepSeconds: number,
+  allowLoopTrim: boolean,
+  maxLoopRevolutions: number,
 ): KeplerTwoBodyTrajectory => {
   const absolutePoints: Vec2[] = [{ ...spacecraft.position }]
   const samples: CoastTrajectoryPredictionSample[] = []
@@ -193,6 +213,13 @@ export const sampleKeplerTwoBodyTrajectory = (
   let impact: PredictedImpact | null = null
   const relativePoints: Vec2[] = []
   const sampleTimes: number[] = []
+  const maxLoopAngularTravel = maxLoopRevolutions * Math.PI * 2
+  let angularTravel = 0
+  let previousAngle = Math.atan2(
+    spacecraft.position.y - body.position.y,
+    spacecraft.position.x - body.position.x,
+  )
+  let reachedLoopLimit = false
 
   for (
     let elapsedSeconds = Math.min(sampleStepSeconds, horizonSeconds);
@@ -228,9 +255,17 @@ export const sampleKeplerTwoBodyTrajectory = (
       point: relativePoint,
       time: elapsedSeconds,
     })
+    const angle = Math.atan2(relativePoint.y, relativePoint.x)
+    angularTravel += Math.abs(normalizeAngle(angle - previousAngle))
+    previousAngle = angle
 
     if (approach.altitude <= 0) {
       impact = { bodyName: body.name, time: elapsedSeconds }
+      break
+    }
+
+    if (allowLoopTrim && angularTravel >= maxLoopAngularTravel) {
+      reachedLoopLimit = true
       break
     }
 
@@ -239,30 +274,40 @@ export const sampleKeplerTwoBodyTrajectory = (
     }
   }
 
+  let terminationReason: CoastTrajectoryPredictionTerminationReason = 'horizon'
+  if (impact) {
+    terminationReason = 'impact'
+  } else if (reachedLoopLimit) {
+    terminationReason = 'loop-limit'
+  }
+
   return {
     absolutePoints,
     closestApproach,
     eventMarkers: getCoastTrajectoryEventMarkers(samples, {
-      includeApoapsis: false,
+      includeApoapsis: allowLoopTrim && !impact,
       targetRadius: body.radius,
     }),
     impact,
     relativePoints,
     sampleTimes,
+    terminationReason,
   }
 }
 
-export const computeKeplerTwoBodyTrajectoryPrediction = (
+const computeKeplerTwoBodyTrajectory = (
   state: SimulationState,
   target: Body,
   predictionConfig: TrajectoryPredictionConfig,
-  _allowLoopTrim: boolean,
+  allowLoopTrim: boolean,
 ): CoastTrajectoryPredictionComputation => {
   const trajectory = sampleKeplerTwoBodyTrajectory(
     target,
     state.spacecraft,
     predictionConfig.horizonSeconds,
     predictionConfig.stepSeconds,
+    allowLoopTrim,
+    predictionConfig.maxLoopRevolutions,
   )
   const predictionTime = trajectory.sampleTimes.at(-1) ?? 0
   const finalPropagation = propagateKeplerTwoBody(
@@ -311,6 +356,31 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
         },
       ]
     }),
-    terminationReason: trajectory.impact ? 'impact' : 'horizon',
+    terminationReason: trajectory.terminationReason,
+  }
+}
+
+export const computeKeplerTwoBodyTrajectoryPrediction = (
+  state: SimulationState,
+  target: Body,
+  predictionConfig: TrajectoryPredictionConfig,
+  allowLoopTrim: boolean,
+  fallbackPhysicsEngine: PhysicsEngine,
+): CoastTrajectoryPredictionComputation => {
+  try {
+    return computeKeplerTwoBodyTrajectory(
+      state,
+      target,
+      predictionConfig,
+      allowLoopTrim,
+    )
+  } catch {
+    return computeCoastTrajectoryPrediction(
+      state,
+      fallbackPhysicsEngine,
+      target,
+      predictionConfig,
+      allowLoopTrim,
+    )
   }
 }

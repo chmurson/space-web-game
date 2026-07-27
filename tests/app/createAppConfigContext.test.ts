@@ -4,14 +4,18 @@ import { createAppConfigContext } from '@/app/createAppConfigContext'
 
 const storageKey = 'space-web-game.userSettings.v1'
 
-const createWindowWithSearch = (search: string, storedSettings?: unknown) => {
+const createWindowWithSearch = (
+  search: string,
+  storedSettings?: unknown,
+  hostname = 'game.example.test',
+) => {
   const values = new Map<string, string>()
   if (storedSettings !== undefined) {
     values.set(storageKey, JSON.stringify(storedSettings))
   }
 
   return {
-    location: { search },
+    location: { hostname, search },
     localStorage: {
       getItem: (key: string) => values.get(key) ?? null,
       setItem: (key: string, value: string) => {
@@ -59,10 +63,19 @@ describe('createAppConfigContext', () => {
     })
   })
 
-  it('selects Kepler trajectory prediction only behind the exact URL override', () => {
+  it('selects Kepler trajectory prediction only for authorized developer URLs', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: createWindowWithSearch('?trajectoryPrediction=kepler'),
+    })
+
+    expect(
+      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
+    ).toBe('euler')
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?devtools=1&trajectoryPrediction=kepler'),
     })
 
     expect(
@@ -71,7 +84,20 @@ describe('createAppConfigContext', () => {
 
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
-      value: createWindowWithSearch('?trajectoryPrediction=unknown'),
+      value: createWindowWithSearch(
+        '?trajectoryPrediction=kepler',
+        undefined,
+        'localhost',
+      ),
+    })
+
+    expect(
+      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
+    ).toBe('kepler')
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?devtools=1&trajectoryPrediction=unknown'),
     })
     expect(
       createAppConfigContext().featureFlags.trajectoryPredictionImplementation,

@@ -10,7 +10,10 @@ import {
   type FarTrajectoryPredictionReuseFallbackReason,
   sliceFarTrajectoryPredictionCoastWindow,
 } from '../prediction/farTrajectoryPrediction'
-import { computeKeplerTwoBodyTrajectoryPrediction } from '../prediction/keplerTwoBody'
+import {
+  canUseKeplerTwoBodyPrediction,
+  computeKeplerTwoBodyTrajectoryPrediction,
+} from '../prediction/keplerTwoBody'
 import {
   type CoastTrajectoryPredictionTerminationReason,
   computeCoastTrajectoryPrediction,
@@ -968,12 +971,15 @@ export const createTrajectoryPredictionRuntime = (
   ): TrajectoryPredictionTier => {
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const coastComputation =
-      predictionImplementation === 'kepler' && isPassiveCoast(options)
+      predictionImplementation === 'kepler' &&
+      isPassiveCoast(options) &&
+      canUseKeplerTwoBodyPrediction(options.state, target)
         ? computeKeplerTwoBodyTrajectoryPrediction(
             options.state,
             target,
             predictionConfig,
             allowLoopTrim,
+            options.physicsEngine,
           )
         : computeCoastTrajectoryPrediction(
             options.state,
