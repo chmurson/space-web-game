@@ -40,13 +40,15 @@ moves between browsers.
   existing explicit recent-entry load path remains responsible for doing that.
 - Storage read failures stop mutations before a write, preventing an
   unavailable recent list from being replaced with a partial reconstruction.
+- Active snapshot writes treat recent-list insertion as best-effort, so a
+  recent-list read or write failure cannot block the primary active-slot write.
 
 ## Validation
 
 - Focused Biome check for the implementation and tests passed.
-- Focused Vitest snapshot suite: 22 tests passed.
+- Focused Vitest snapshot suite: 24 tests passed.
 - Release build passed, including config validation and TypeScript checking.
-- Full product Vitest suite: 70 files and 720 tests passed.
+- Full product Vitest suite: 70 files and 722 tests passed.
 - Automation claim tests: 16 passed.
 - Automation workflow tests: 4 passed.
 - `git diff --check` passed.

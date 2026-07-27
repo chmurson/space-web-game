@@ -401,7 +401,11 @@ export const writeDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
   name?: string,
 ) => {
-  insertRecentDebugScenarioSnapshot(snapshot, {}, name)
+  try {
+    insertRecentDebugScenarioSnapshot(snapshot, {}, name)
+  } catch {
+    // Recent history is auxiliary to the active snapshot slot.
+  }
   window.localStorage.setItem(debugSnapshotStorageKey, JSON.stringify(snapshot))
 }
 

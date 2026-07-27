@@ -446,6 +446,42 @@ describe('recent debug scenario snapshots', () => {
     expect(getRecentDebugScenarioSnapshots()).toEqual(before)
   })
 
+  it('persists the active snapshot when the recent-list read fails', () => {
+    vi.spyOn(window.localStorage, 'getItem').mockImplementationOnce(() => {
+      throw new Error('Recent storage unavailable')
+    })
+    const snapshot = {
+      ...snapshotBase,
+      savedAt: '2026-04-10T10:00:01.000Z',
+      elapsed: 43,
+    }
+
+    expect(() => writeDebugScenarioSnapshot(snapshot)).not.toThrow()
+    expect(readDebugScenarioSnapshot()).toEqual(snapshot)
+  })
+
+  it('persists the active snapshot when the recent-list write fails', () => {
+    const originalSetItem = window.localStorage.setItem.bind(
+      window.localStorage,
+    )
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation(
+      (key, value) => {
+        if (key === 'space-web-game.recentDebugScenarioSnapshots.v1') {
+          throw new Error('Recent storage unavailable')
+        }
+        originalSetItem(key, value)
+      },
+    )
+    const snapshot = {
+      ...snapshotBase,
+      savedAt: '2026-04-10T10:00:01.000Z',
+      elapsed: 43,
+    }
+
+    expect(() => writeDebugScenarioSnapshot(snapshot)).not.toThrow()
+    expect(readDebugScenarioSnapshot()).toEqual(snapshot)
+  })
+
   it('generates basic labels from scenario phase and elapsed time', () => {
     const snapshot = createSnapshotFromState(
       {
