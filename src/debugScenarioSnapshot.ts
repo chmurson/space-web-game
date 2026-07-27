@@ -21,42 +21,22 @@ const recentDebugSnapshotsStorageKey =
 const maxRecentDebugScenarioSnapshots = 10
 const debugScenarioSnapshotFilenamePrefix = 'space-web-game'
 
-type DebugScenarioSnapshotV1 = {
-  version: 1
-  savedAt: string
-  elapsed: number
-  viewportSize?: number
-  coastPredictionHorizonHours?: number
-  coastPredictionHorizonMultiplier?: number
-  bodies: Body[]
-  spacecraft: Spacecraft
-}
-
-type DebugScenarioSnapshotV2 = {
-  version: 2
+export type DebugScenarioSnapshot = {
+  version: 3
   savedAt: string
   assistTargetIndex?: number
   assistTargetSelectionMode?: AssistTargetSelectionMode
+  cameraFollow?: CameraFollowSubject
+  cameraPanOffset?: Vec2
+  cameraView?: 'free' | 'locked'
   elapsed: number
   viewportSize?: number
   coastPredictionHorizonHours?: number
   bodies: Body[]
   spacecraft: Spacecraft
   runtimeScenario?: RuntimeScenarioSession
-}
-
-type DebugScenarioSnapshotV3 = Omit<DebugScenarioSnapshotV2, 'version'> & {
-  version: 3
-  cameraFollow?: CameraFollowSubject
-  cameraPanOffset?: Vec2
-  cameraView?: 'free' | 'locked'
   userInfoPins?: InfoPin[]
 }
-
-export type DebugScenarioSnapshot =
-  | DebugScenarioSnapshotV1
-  | DebugScenarioSnapshotV2
-  | DebugScenarioSnapshotV3
 
 type DebugScenarioSnapshotValidationSuccess = {
   ok: true
@@ -109,40 +89,30 @@ export type RuntimeScenario = Scenario & {
   viewportSize?: number
 }
 
-const getSnapshotCoastPredictionHorizonHours = (
-  snapshot: DebugScenarioSnapshot,
-) =>
-  snapshot.coastPredictionHorizonHours ??
-  ('coastPredictionHorizonMultiplier' in snapshot &&
-  snapshot.coastPredictionHorizonMultiplier
-    ? snapshot.coastPredictionHorizonMultiplier * 4
-    : undefined)
-
 const getSnapshotScenarioSession = (
   snapshot: DebugScenarioSnapshot,
 ): RuntimeScenarioSession =>
-  snapshot.version !== 1 && snapshot.runtimeScenario
+  snapshot.runtimeScenario
     ? cloneRuntimeScenarioSession(snapshot.runtimeScenario)
     : createRuntimeScenarioSession('legacy-debug-snapshot')
 
 const getSnapshotAssistTargetIndex = (snapshot: DebugScenarioSnapshot) =>
-  snapshot.version !== 1 && Number.isInteger(snapshot.assistTargetIndex)
+  Number.isInteger(snapshot.assistTargetIndex)
     ? snapshot.assistTargetIndex
     : undefined
 
 const getSnapshotAssistTargetSelectionMode = (
   snapshot: DebugScenarioSnapshot,
 ): AssistTargetSelectionMode | undefined =>
-  snapshot.version !== 1 &&
-  (snapshot.assistTargetSelectionMode === 'auto' ||
-    snapshot.assistTargetSelectionMode === 'manual')
+  snapshot.assistTargetSelectionMode === 'auto' ||
+  snapshot.assistTargetSelectionMode === 'manual'
     ? snapshot.assistTargetSelectionMode
     : undefined
 
 const getSnapshotCameraPanOffset = (
   snapshot: DebugScenarioSnapshot,
 ): Vec2 | undefined => {
-  if (snapshot.version !== 3 || !snapshot.cameraPanOffset) {
+  if (!snapshot.cameraPanOffset) {
     return undefined
   }
   if (snapshot.cameraView === 'locked') {
@@ -157,12 +127,10 @@ const cloneDebugScenarioSnapshot = (
 ): DebugScenarioSnapshot => JSON.parse(JSON.stringify(snapshot))
 
 const getSnapshotUserInfoPins = (snapshot: DebugScenarioSnapshot): InfoPin[] =>
-  snapshot.version === 3
-    ? normalizeInfoPins(
-        snapshot.userInfoPins,
-        new Set(snapshot.bodies.map((body) => body.id)),
-      )
-    : []
+  normalizeInfoPins(
+    snapshot.userInfoPins,
+    new Set(snapshot.bodies.map((body) => body.id)),
+  )
 
 const formatElapsedLabel = (elapsed: number) => {
   if (!Number.isFinite(elapsed)) {
@@ -182,7 +150,7 @@ const formatElapsedLabel = (elapsed: number) => {
 }
 
 const getSnapshotPhaseLabel = (snapshot: DebugScenarioSnapshot) => {
-  if (snapshot.version === 1 || !snapshot.runtimeScenario) {
+  if (!snapshot.runtimeScenario) {
     return null
   }
 
@@ -263,7 +231,7 @@ export const validateDebugScenarioSnapshot = (
     return malformedSnapshot('Snapshot data must be a JSON object.')
   }
 
-  if (value.version !== 1 && value.version !== 2 && value.version !== 3) {
+  if (value.version !== 3) {
     if (typeof value.version === 'number') {
       return {
         ok: false,
@@ -343,8 +311,7 @@ export const createDebugScenarioSnapshotFilename = (
   const savedAt = Number.isNaN(parsedSavedAt.getTime())
     ? snapshot.savedAt
     : parsedSavedAt.toISOString()
-  const scenarioId =
-    snapshot.version === 1 ? '' : (snapshot.runtimeScenario?.scenarioId ?? '')
+  const scenarioId = snapshot.runtimeScenario?.scenarioId ?? ''
   const filenameParts = [
     debugScenarioSnapshotFilenamePrefix,
     sanitizeDebugScenarioSnapshotFilenamePart(scenarioId),
@@ -508,11 +475,11 @@ export const createScenarioFromSnapshot = (
   description: `Frozen debug state from ${new Date(snapshot.savedAt).toLocaleString()}.`,
   assistTargetIndex: getSnapshotAssistTargetIndex(snapshot),
   assistTargetSelectionMode: getSnapshotAssistTargetSelectionMode(snapshot),
-  cameraFollow: snapshot.version === 3 ? snapshot.cameraFollow : undefined,
+  cameraFollow: snapshot.cameraFollow,
   cameraPanOffset: getSnapshotCameraPanOffset(snapshot),
   elapsed: snapshot.elapsed,
   viewportSize: snapshot.viewportSize,
-  coastPredictionHorizonHours: getSnapshotCoastPredictionHorizonHours(snapshot),
+  coastPredictionHorizonHours: snapshot.coastPredictionHorizonHours,
   bodies: cloneBodies(snapshot.bodies),
   scenarioSession: getSnapshotScenarioSession(snapshot),
   spacecraft: cloneSpacecraft(snapshot.spacecraft),

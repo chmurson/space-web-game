@@ -23,7 +23,7 @@ import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
 import { idleControls } from '@/simulation/state'
 
 const snapshotBase = {
-  version: 1 as const,
+  version: 3 as const,
   savedAt: '2026-04-10T10:00:00.000Z',
   elapsed: 42,
   viewportSize: 320,
@@ -76,18 +76,33 @@ afterEach(() => {
 })
 
 describe('portable debug scenario snapshots', () => {
-  it.each([
-    1, 2, 3,
-  ] as const)('accepts supported snapshot version %s', (version) => {
-    const snapshot = { ...snapshotBase, version }
-
-    expect(validateDebugScenarioSnapshot(snapshot)).toEqual({
+  it('accepts the current snapshot version', () => {
+    expect(validateDebugScenarioSnapshot(snapshotBase)).toEqual({
       ok: true,
-      snapshot,
+      snapshot: snapshotBase,
     })
-    expect(parseDebugScenarioSnapshotJson(JSON.stringify(snapshot))).toEqual({
+    expect(
+      parseDebugScenarioSnapshotJson(JSON.stringify(snapshotBase)),
+    ).toEqual({
       ok: true,
-      snapshot,
+      snapshot: snapshotBase,
+    })
+  })
+
+  it.each([1, 2] as const)('rejects legacy snapshot version %s', (version) => {
+    const legacySnapshot = { ...snapshotBase, version }
+
+    expect(validateDebugScenarioSnapshot(legacySnapshot)).toEqual({
+      ok: false,
+      error: 'unsupported-version',
+      message: `Debug snapshot version ${version} is not supported.`,
+    })
+    expect(
+      parseDebugScenarioSnapshotJson(JSON.stringify(legacySnapshot)),
+    ).toEqual({
+      ok: false,
+      error: 'unsupported-version',
+      message: `Debug snapshot version ${version} is not supported.`,
     })
   })
 
@@ -212,9 +227,6 @@ describe('createScenarioFromSnapshot', () => {
         ],
       },
     )
-    if (snapshot.version !== 3) {
-      throw new Error('Expected a version 3 snapshot.')
-    }
     const scenario = createScenarioFromSnapshot(snapshot)
 
     expect(snapshot).toMatchObject({
@@ -227,32 +239,15 @@ describe('createScenarioFromSnapshot', () => {
     expect(scenario.userInfoPins).toEqual(snapshot.userInfoPins)
   })
 
-  it('migrates legacy snapshots with no player Info pins', () => {
-    expect(createScenarioFromSnapshot(snapshotBase).userInfoPins).toEqual([])
-    expect(
-      createScenarioFromSnapshot({ ...snapshotBase, version: 2 }).userInfoPins,
-    ).toEqual([])
-  })
-
   it('prefers explicit horizon hours from the snapshot', () => {
     const scenario = createScenarioFromSnapshot({
       ...snapshotBase,
       coastPredictionHorizonHours: 12,
-      coastPredictionHorizonMultiplier: 3,
     })
 
     expect(scenario.coastPredictionHorizonHours).toBe(12)
     expect(scenario.viewportSize).toBe(320)
     expect(scenario.elapsed).toBe(42)
-  })
-
-  it('falls back to legacy horizon multiplier snapshots', () => {
-    const scenario = createScenarioFromSnapshot({
-      ...snapshotBase,
-      coastPredictionHorizonMultiplier: 3,
-    })
-
-    expect(scenario.coastPredictionHorizonHours).toBe(12)
   })
 
   it('clones bodies and spacecraft so snapshot data stays immutable', () => {
@@ -308,10 +303,9 @@ describe('createScenarioFromSnapshot', () => {
     }
 
     ;(scenario.scenarioSession.state as { phase: string }).phase = 'changed'
-    expect(
-      'runtimeScenario' in snapshot &&
-        (snapshot.runtimeScenario?.state as { phase: string }).phase,
-    ).toBe('escape-earth')
+    expect((snapshot.runtimeScenario?.state as { phase: string }).phase).toBe(
+      'escape-earth',
+    )
   })
 
   it('preserves assist target selection state for current snapshots', () => {
@@ -383,19 +377,19 @@ describe('createScenarioFromSnapshot', () => {
 })
 
 describe('recent debug scenario snapshots', () => {
-  it('uses shared compatibility checks for active and recent stored snapshots', () => {
+  it('rejects legacy versions in active and recent stored snapshots', () => {
     window.localStorage.setItem(
       'space-web-game.debugScenarioSnapshot.v1',
-      JSON.stringify({ ...snapshotBase, version: 4 }),
+      JSON.stringify({ ...snapshotBase, version: 2 }),
     )
     window.localStorage.setItem(
       'space-web-game.recentDebugScenarioSnapshots.v1',
       JSON.stringify([
         {
-          id: 'unsupported-recent-entry',
-          name: 'Unsupported recent entry',
+          id: 'legacy-recent-entry',
+          name: 'Legacy recent entry',
           savedAt: snapshotBase.savedAt,
-          snapshot: { ...snapshotBase, version: 4 },
+          snapshot: { ...snapshotBase, version: 1 },
         },
       ]),
     )

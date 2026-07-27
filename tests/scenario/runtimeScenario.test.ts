@@ -196,7 +196,7 @@ describe('createRuntimeScenarioState', () => {
 
   it('loads the last or an exact recent debug snapshot from a scenario URL id', () => {
     const createSnapshot = (savedAt: string, elapsed: number) => ({
-      version: 1 as const,
+      version: 3 as const,
       savedAt,
       elapsed,
       bodies: [],
