@@ -1100,7 +1100,6 @@ const calculateFarTrajectory = (
                 state,
                 target,
                 payload.predictionConfig,
-                allowLoopTrim,
               )
             : computeCoastTrajectoryPrediction(
                 state,

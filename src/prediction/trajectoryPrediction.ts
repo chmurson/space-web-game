@@ -71,6 +71,7 @@ export type CoastTrajectoryPredictionSample = {
 }
 
 export type CoastTrajectoryPredictionTerminationReason =
+  | 'closed-orbit'
   | 'horizon'
   | 'impact'
   | 'loop-limit'

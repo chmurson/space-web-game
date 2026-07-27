@@ -25,11 +25,113 @@ export type KeplerTwoBodyPropagation = {
 
 export type KeplerTwoBodyTrajectory = {
   absolutePoints: Vec2[]
+  closedOrbit: boolean
   closestApproach: PredictedClosestApproach | null
   eventMarkers: ReturnType<typeof getCoastTrajectoryEventMarkers>
   impact: PredictedImpact | null
   relativePoints: Vec2[]
   sampleTimes: number[]
+}
+
+type KeplerTwoBodyParameters = {
+  gravitationalParameter: number
+  orbitalPeriod: number | null
+  periapsisRadius: number | null
+  radialVelocity: number
+  radius: number
+  reciprocalSemimajorAxis: number
+  relativePosition: Vec2
+  relativeVelocity: Vec2
+}
+
+const closedOrbitMinSampleCount = 128
+const closedOrbitMaxSampleCount = 1_200
+
+const getKeplerTwoBodyParameters = (
+  body: Body,
+  spacecraft: Pick<Spacecraft, 'position' | 'velocity'>,
+): KeplerTwoBodyParameters | null => {
+  if (body.mass <= 0) {
+    return null
+  }
+
+  const gravitationalParameter = G * body.mass
+  const relativePosition = sub(spacecraft.position, body.position)
+  const relativeVelocity = sub(spacecraft.velocity, body.velocity)
+  const radius = length(relativePosition)
+  if (
+    !Number.isFinite(gravitationalParameter) ||
+    gravitationalParameter <= 0 ||
+    !Number.isFinite(radius) ||
+    radius <= 0
+  ) {
+    return null
+  }
+
+  const speedSquared =
+    relativeVelocity.x * relativeVelocity.x +
+    relativeVelocity.y * relativeVelocity.y
+  const radialVelocity =
+    (relativePosition.x * relativeVelocity.x +
+      relativePosition.y * relativeVelocity.y) /
+    radius
+  const reciprocalSemimajorAxis =
+    2 / radius - speedSquared / gravitationalParameter
+  if (reciprocalSemimajorAxis <= 0) {
+    return {
+      gravitationalParameter,
+      orbitalPeriod: null,
+      periapsisRadius: null,
+      radialVelocity,
+      radius,
+      reciprocalSemimajorAxis,
+      relativePosition,
+      relativeVelocity,
+    }
+  }
+
+  const angularMomentum =
+    relativePosition.x * relativeVelocity.y -
+    relativePosition.y * relativeVelocity.x
+  const eccentricity = Math.sqrt(
+    Math.max(
+      0,
+      1 -
+        (reciprocalSemimajorAxis * angularMomentum ** 2) /
+          gravitationalParameter,
+    ),
+  )
+  const semimajorAxis = 1 / reciprocalSemimajorAxis
+
+  return {
+    gravitationalParameter,
+    orbitalPeriod:
+      (2 * Math.PI) /
+      Math.sqrt(gravitationalParameter * reciprocalSemimajorAxis ** 3),
+    periapsisRadius: semimajorAxis * (1 - eccentricity),
+    radialVelocity,
+    radius,
+    reciprocalSemimajorAxis,
+    relativePosition,
+    relativeVelocity,
+  }
+}
+
+export const getClosedKeplerTwoBodyOrbitPeriod = (
+  body: Body,
+  spacecraft: Pick<Spacecraft, 'position' | 'velocity'>,
+) => {
+  const parameters = getKeplerTwoBodyParameters(body, spacecraft)
+  if (
+    !Number.isFinite(parameters?.orbitalPeriod) ||
+    !parameters?.orbitalPeriod ||
+    parameters.periapsisRadius === null ||
+    parameters.periapsisRadius <= body.radius
+  ) {
+    return null
+  }
+
+  return parameters.orbitalPeriod
 }
 
 const stumpffC = (z: number) => {
@@ -106,7 +208,7 @@ const solveUniversalAnomaly = (
 /** Propagates a spacecraft under only one body's gravity for elapsedSeconds. */
 export const propagateKeplerTwoBody = (
   body: Body,
-  spacecraft: Pick<Spacecraft, 'dryMass' | 'position' | 'velocity'>,
+  spacecraft: Pick<Spacecraft, 'position' | 'velocity'>,
   elapsedSeconds: number,
 ): KeplerTwoBodyPropagation => {
   if (elapsedSeconds === 0) {
@@ -116,7 +218,8 @@ export const propagateKeplerTwoBody = (
     }
   }
 
-  if (body.mass <= 0) {
+  const parameters = getKeplerTwoBodyParameters(body, spacecraft)
+  if (!parameters) {
     return {
       position: add(
         spacecraft.position,
@@ -128,48 +231,38 @@ export const propagateKeplerTwoBody = (
 
   // The spacecraft mass is negligible relative to the attracting body and the
   // scenario's numerical gravity uses the body's mass as the source parameter.
-  const mu = G * body.mass
-  const relativePosition = sub(spacecraft.position, body.position)
-  const relativeVelocity = sub(spacecraft.velocity, body.velocity)
-  const radius = length(relativePosition)
-  const speedSquared =
-    relativeVelocity.x * relativeVelocity.x +
-    relativeVelocity.y * relativeVelocity.y
-  const radialVelocity =
-    (relativePosition.x * relativeVelocity.x +
-      relativePosition.y * relativeVelocity.y) /
-    radius
-  const alpha = 2 / radius - speedSquared / mu
-  const orbitalPeriod =
-    alpha > 0 ? (2 * Math.PI) / Math.sqrt(mu * alpha ** 3) : null
-  const propagationSeconds = orbitalPeriod
-    ? ((elapsedSeconds % orbitalPeriod) + orbitalPeriod) % orbitalPeriod
+  const propagationSeconds = parameters.orbitalPeriod
+    ? ((elapsedSeconds % parameters.orbitalPeriod) + parameters.orbitalPeriod) %
+      parameters.orbitalPeriod
     : elapsedSeconds
   const anomaly = solveUniversalAnomaly(
-    radius,
-    radialVelocity,
-    alpha,
-    mu,
+    parameters.radius,
+    parameters.radialVelocity,
+    parameters.reciprocalSemimajorAxis,
+    parameters.gravitationalParameter,
     propagationSeconds,
   )
   const anomalySquared = anomaly * anomaly
-  const z = alpha * anomalySquared
+  const z = parameters.reciprocalSemimajorAxis * anomalySquared
   const c = stumpffC(z)
   const s = stumpffS(z)
-  const f = 1 - (anomalySquared / radius) * c
-  const g = propagationSeconds - (anomaly ** 3 / Math.sqrt(mu)) * s
+  const f = 1 - (anomalySquared / parameters.radius) * c
+  const g =
+    propagationSeconds -
+    (anomaly ** 3 / Math.sqrt(parameters.gravitationalParameter)) * s
   const propagatedRelativePosition = add(
-    scale(relativePosition, f),
-    scale(relativeVelocity, g),
+    scale(parameters.relativePosition, f),
+    scale(parameters.relativeVelocity, g),
   )
   const propagatedRadius = length(propagatedRelativePosition)
   const fdot =
-    (Math.sqrt(mu) / (propagatedRadius * radius)) *
-    (alpha * anomaly ** 3 * s - anomaly)
+    (Math.sqrt(parameters.gravitationalParameter) /
+      (propagatedRadius * parameters.radius)) *
+    (parameters.reciprocalSemimajorAxis * anomaly ** 3 * s - anomaly)
   const gdot = 1 - (anomalySquared / propagatedRadius) * c
   const propagatedRelativeVelocity = add(
-    scale(relativePosition, fdot),
-    scale(relativeVelocity, gdot),
+    scale(parameters.relativePosition, fdot),
+    scale(parameters.relativeVelocity, gdot),
   )
 
   return {
@@ -181,9 +274,56 @@ export const propagateKeplerTwoBody = (
   }
 }
 
+const getKeplerTrajectorySampleTimes = (
+  horizonSeconds: number,
+  sampleStepSeconds: number,
+  closedOrbitPeriod: number | null,
+) => {
+  if (closedOrbitPeriod !== null) {
+    const requestedSampleCount =
+      Number.isFinite(sampleStepSeconds) && sampleStepSeconds > 0
+        ? Math.ceil(closedOrbitPeriod / sampleStepSeconds)
+        : closedOrbitMinSampleCount
+    const sampleCount = Math.min(
+      closedOrbitMaxSampleCount,
+      Math.max(closedOrbitMinSampleCount, requestedSampleCount),
+    )
+
+    return Array.from(
+      { length: sampleCount },
+      (_, index) => (closedOrbitPeriod * (index + 1)) / sampleCount,
+    )
+  }
+
+  if (
+    !Number.isFinite(horizonSeconds) ||
+    horizonSeconds <= 0 ||
+    !Number.isFinite(sampleStepSeconds) ||
+    sampleStepSeconds <= 0
+  ) {
+    return []
+  }
+
+  const sampleTimes: number[] = []
+  for (
+    let elapsedSeconds = Math.min(sampleStepSeconds, horizonSeconds);
+    elapsedSeconds <= horizonSeconds;
+    elapsedSeconds = Math.min(
+      elapsedSeconds + sampleStepSeconds,
+      horizonSeconds,
+    )
+  ) {
+    sampleTimes.push(elapsedSeconds)
+    if (elapsedSeconds === horizonSeconds) {
+      break
+    }
+  }
+  return sampleTimes
+}
+
 export const sampleKeplerTwoBodyTrajectory = (
   body: Body,
-  spacecraft: Pick<Spacecraft, 'dryMass' | 'position' | 'velocity'>,
+  spacecraft: Pick<Spacecraft, 'position' | 'velocity'>,
   horizonSeconds: number,
   sampleStepSeconds: number,
 ): KeplerTwoBodyTrajectory => {
@@ -193,15 +333,13 @@ export const sampleKeplerTwoBodyTrajectory = (
   let impact: PredictedImpact | null = null
   const relativePoints: Vec2[] = []
   const sampleTimes: number[] = []
+  const closedOrbitPeriod = getClosedKeplerTwoBodyOrbitPeriod(body, spacecraft)
 
-  for (
-    let elapsedSeconds = Math.min(sampleStepSeconds, horizonSeconds);
-    elapsedSeconds <= horizonSeconds;
-    elapsedSeconds = Math.min(
-      elapsedSeconds + sampleStepSeconds,
-      horizonSeconds,
-    )
-  ) {
+  for (const elapsedSeconds of getKeplerTrajectorySampleTimes(
+    horizonSeconds,
+    sampleStepSeconds,
+    closedOrbitPeriod,
+  )) {
     const propagated = propagateKeplerTwoBody(body, spacecraft, elapsedSeconds)
     const bodyPosition = add(
       body.position,
@@ -233,17 +371,14 @@ export const sampleKeplerTwoBodyTrajectory = (
       impact = { bodyName: body.name, time: elapsedSeconds }
       break
     }
-
-    if (elapsedSeconds === horizonSeconds) {
-      break
-    }
   }
 
   return {
     absolutePoints,
+    closedOrbit: closedOrbitPeriod !== null && !impact,
     closestApproach,
     eventMarkers: getCoastTrajectoryEventMarkers(samples, {
-      includeApoapsis: false,
+      includeApoapsis: closedOrbitPeriod !== null && !impact,
       targetRadius: body.radius,
     }),
     impact,
@@ -256,7 +391,6 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
   state: SimulationState,
   target: Body,
   predictionConfig: TrajectoryPredictionConfig,
-  _allowLoopTrim: boolean,
 ): CoastTrajectoryPredictionComputation => {
   const trajectory = sampleKeplerTwoBodyTrajectory(
     target,
@@ -274,6 +408,13 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
   finalState.elapsed += predictionTime
   finalState.spacecraft.position = finalPropagation.position
   finalState.spacecraft.velocity = finalPropagation.velocity
+  let terminationReason: CoastTrajectoryPredictionComputation['terminationReason'] =
+    'horizon'
+  if (trajectory.impact) {
+    terminationReason = 'impact'
+  } else if (trajectory.closedOrbit) {
+    terminationReason = 'closed-orbit'
+  }
 
   return {
     finalState,
@@ -311,6 +452,6 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
         },
       ]
     }),
-    terminationReason: trajectory.impact ? 'impact' : 'horizon',
+    terminationReason,
   }
 }

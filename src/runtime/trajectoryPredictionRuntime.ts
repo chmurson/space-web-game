@@ -10,7 +10,10 @@ import {
   type FarTrajectoryPredictionReuseFallbackReason,
   sliceFarTrajectoryPredictionCoastWindow,
 } from '../prediction/farTrajectoryPrediction'
-import { computeKeplerTwoBodyTrajectoryPrediction } from '../prediction/keplerTwoBody'
+import {
+  computeKeplerTwoBodyTrajectoryPrediction,
+  getClosedKeplerTwoBodyOrbitPeriod,
+} from '../prediction/keplerTwoBody'
 import {
   type CoastTrajectoryPredictionTerminationReason,
   computeCoastTrajectoryPrediction,
@@ -706,6 +709,7 @@ const getRefreshReason = (
   nextParts: PredictionInputKeyParts,
   elapsed: number,
   refreshInterval: number,
+  suppressTimedRefresh = false,
 ): TrajectoryPredictionRefreshReason | null => {
   if (!previousParts) {
     return 'initial'
@@ -746,7 +750,9 @@ const getRefreshReason = (
     return 'body-state-change'
   }
 
-  return elapsed >= refreshInterval ? 'timed-refresh' : null
+  return !suppressTimedRefresh && elapsed >= refreshInterval
+    ? 'timed-refresh'
+    : null
 }
 
 export const createTrajectoryPredictionRuntime = (
@@ -802,6 +808,21 @@ export const createTrajectoryPredictionRuntime = (
   const createFarWorkerClient =
     runtimeOptions.createFarWorkerClient ??
     createTrajectoryPredictionFarWorkerClient
+
+  const isClosedPassiveKeplerOrbit = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+  ) =>
+    predictionImplementation === 'kepler' &&
+    isPassiveCoast(options) &&
+    getClosedKeplerTwoBodyOrbitPeriod(target, options.state.spacecraft) !== null
+
+  const shouldSplitPrediction = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+  ) =>
+    shouldSplitPredictionHorizon(options.predictionConfig) &&
+    !isClosedPassiveKeplerOrbit(options, target)
 
   const getFarCoalescingMinIntervalSeconds = (
     options: RefreshTrajectoryPredictionOptions,
@@ -973,7 +994,6 @@ export const createTrajectoryPredictionRuntime = (
             options.state,
             target,
             predictionConfig,
-            allowLoopTrim,
           )
         : computeCoastTrajectoryPrediction(
             options.state,
@@ -995,7 +1015,13 @@ export const createTrajectoryPredictionRuntime = (
               options.getAssistPredictionControls,
             ).relativePoints,
       coastPrediction: coastComputation.result,
-      coverageSeconds: coastComputation.predictionTime,
+      coverageSeconds:
+        coastComputation.terminationReason === 'closed-orbit'
+          ? Math.max(
+              predictionConfig.horizonSeconds,
+              coastComputation.predictionTime,
+            )
+          : coastComputation.predictionTime,
       inputKey,
       targetId: target.id,
       terminationReason: coastComputation.terminationReason,
@@ -1410,6 +1436,7 @@ export const createTrajectoryPredictionRuntime = (
       predictionConfig: options.predictionConfig,
       reason: 'timed-refresh',
       refreshStartMs,
+      splitHorizon: shouldSplitPrediction(options, target),
       target,
       timeWarp: options.timeWarp,
     })
@@ -1448,6 +1475,7 @@ export const createTrajectoryPredictionRuntime = (
     predictionConfig: TrajectoryPredictionConfig
     reason: TrajectoryPredictionRefreshReason
     refreshStartMs: number
+    splitHorizon: boolean
     target: Body
     timeWarp: number
   }) => {
@@ -1609,7 +1637,7 @@ export const createTrajectoryPredictionRuntime = (
       retainedFarPointCount: options.nearWindow?.retainedFarPointCount ?? 0,
       retainedNearPointCount: options.nearWindow?.retainedNearPointCount ?? 0,
       sampleStepSeconds: options.predictionConfig.stepSeconds,
-      splitHorizon: shouldSplitPredictionHorizon(options.predictionConfig),
+      splitHorizon: options.splitHorizon,
       visiblePointCount: predictionState.targetRelativePredictionPoints.length,
     }
     if (options.event !== null) {
@@ -1632,7 +1660,7 @@ export const createTrajectoryPredictionRuntime = (
         pendingFarInputKeyShort,
         reason: options.reason,
         refreshIntervalSeconds: options.predictionConfig.refreshInterval,
-        splitHorizon: shouldSplitPredictionHorizon(options.predictionConfig),
+        splitHorizon: options.splitHorizon,
         visiblePointCount:
           predictionState.targetRelativePredictionPoints.length,
       })
@@ -1658,8 +1686,7 @@ export const createTrajectoryPredictionRuntime = (
       target,
       predictionConfig,
     )
-    const splitPredictionHorizon =
-      shouldSplitPredictionHorizon(predictionConfig)
+    const splitPredictionHorizon = shouldSplitPrediction(options, target)
     const nearPredictionConfig = splitPredictionHorizon
       ? createPredictionConfigWithHorizon(
           predictionConfig,
@@ -1809,6 +1836,7 @@ export const createTrajectoryPredictionRuntime = (
       predictionConfig,
       reason,
       refreshStartMs,
+      splitHorizon: splitPredictionHorizon,
       target,
       timeWarp: options.timeWarp,
     })
@@ -1877,6 +1905,9 @@ export const createTrajectoryPredictionRuntime = (
         nextInputKeyParts,
         predictionRefreshElapsed,
         options.predictionConfig.refreshInterval,
+        predictionImplementation === 'kepler' &&
+          isPassiveCoast(options) &&
+          nearPredictionTier?.terminationReason === 'closed-orbit',
       )
       const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
       const orbitPolicyChanged =
@@ -1894,7 +1925,7 @@ export const createTrajectoryPredictionRuntime = (
         refreshed = true
       } else if (
         acceptedCoastPredictionWindow &&
-        shouldSplitPredictionHorizon(options.predictionConfig)
+        shouldSplitPrediction(options, target)
       ) {
         const nearPredictionConfig = createPredictionConfigWithHorizon(
           options.predictionConfig,
@@ -1936,6 +1967,7 @@ export const createTrajectoryPredictionRuntime = (
             predictionConfig: options.predictionConfig,
             reason: predictionDiagnostics.refreshReason ?? 'timed-refresh',
             refreshStartMs: nowMs(),
+            splitHorizon: shouldSplitPrediction(options, target),
             target,
             timeWarp: options.timeWarp,
           })

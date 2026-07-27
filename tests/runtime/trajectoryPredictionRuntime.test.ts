@@ -6,12 +6,16 @@ import type {
   FarTrajectoryPredictionRequestPayload,
   FarTrajectoryPredictionResultPayload,
 } from '@/prediction/farTrajectoryPrediction'
-import type { CoastTrajectoryPredictionSample } from '@/prediction/trajectoryPrediction'
+import type {
+  CoastTrajectoryPredictionSample,
+  TrajectoryPredictionImplementation,
+} from '@/prediction/trajectoryPrediction'
 import { createTrajectoryPredictionRuntime } from '@/runtime/trajectoryPredictionRuntime'
 import type {
   TrajectoryPredictionFarWorkerClientFactory,
   TrajectoryPredictionFarWorkerClientHandlers,
 } from '@/runtime/trajectoryPredictionWorkerClient'
+import { EARTH_MASS, EARTH_RADIUS, G } from '@/simulation/constants'
 import { idleControls } from '@/simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '@/simulation/types'
 
@@ -241,7 +245,11 @@ const createFarWorkerHarness = () => {
   }
 }
 
-const createRuntimeHarness = () => {
+const createRuntimeHarness = (
+  options: {
+    predictionImplementation?: TrajectoryPredictionImplementation
+  } = {},
+) => {
   let assistMode: AssistMode = 'off'
   let predictionConfig = createPredictionConfig()
   let state = createState()
@@ -255,6 +263,7 @@ const createRuntimeHarness = () => {
   }
   const predictionRuntime = createTrajectoryPredictionRuntime({
     createFarWorkerClient: farWorker.createFarWorkerClient,
+    predictionImplementation: options.predictionImplementation,
   })
 
   const getOptions = () => ({
@@ -359,6 +368,78 @@ describe('createTrajectoryPredictionRuntime', () => {
     expect(predictionRuntime.getDiagnostics().refreshReason).toBe(
       'timed-refresh',
     )
+  })
+
+  it('keeps a closed passive Kepler orbit single-tier until its state changes', () => {
+    const harness = createRuntimeHarness({
+      predictionImplementation: 'kepler',
+    })
+    const target = {
+      ...earth,
+      mass: EARTH_MASS,
+      radius: EARTH_RADIUS,
+    }
+    const orbitRadius = EARTH_RADIUS + 400_000
+    const orbitSpeed = Math.sqrt((G * target.mass) / orbitRadius)
+    harness.setTarget(target)
+    harness.setPredictionConfig({
+      ...createLongHorizonPredictionConfig(),
+      horizonSeconds: 48 * 3_600,
+      refreshInterval: 0.4,
+      stepSeconds: 180,
+    })
+    harness.setState({
+      ...harness.state(),
+      bodies: [target],
+      spacecraft: {
+        ...harness.state().spacecraft,
+        position: { x: orbitRadius, y: 0 },
+        velocity: { x: 0, y: orbitSpeed },
+      },
+    })
+
+    harness.predictionRuntime.refresh(harness.getOptions())
+
+    expect(harness.farWorker.createFarWorkerClient).not.toHaveBeenCalled()
+    expect(
+      harness.predictionRuntime.getState().targetRelativePredictionPoints
+        .length,
+    ).toBeGreaterThanOrEqual(128)
+    expect(harness.predictionRuntime.getDiagnostics()).toMatchObject({
+      activeFar: false,
+      farVisible: 'none',
+      hasFarTier: false,
+      predictionTerminationReason: 'closed-orbit',
+      remainingUsableCoverageSeconds: 48 * 3_600,
+      splitHorizon: false,
+    })
+    const calculationCount =
+      harness.predictionRuntime.getDiagnostics().nearCalculationSampleCount
+
+    expect(
+      harness.predictionRuntime.maybeRefresh(1, harness.getOptions()),
+    ).toBe(false)
+    expect(
+      harness.predictionRuntime.getDiagnostics().nearCalculationSampleCount,
+    ).toBe(calculationCount)
+
+    harness.setState({
+      ...harness.state(),
+      spacecraft: {
+        ...harness.state().spacecraft,
+        position: { x: orbitRadius + 6_000, y: 0 },
+      },
+    })
+
+    expect(
+      harness.predictionRuntime.maybeRefresh(0, harness.getOptions()),
+    ).toBe(true)
+    expect(harness.predictionRuntime.getDiagnostics()).toMatchObject({
+      nearCalculationSampleCount: calculationCount + 1,
+      predictionTerminationReason: 'closed-orbit',
+      refreshReason: 'spacecraft-change',
+      splitHorizon: false,
+    })
   })
 
   it('reports refreshes from the last second', () => {
