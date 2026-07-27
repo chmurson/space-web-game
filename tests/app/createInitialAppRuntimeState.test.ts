@@ -33,8 +33,9 @@ const createConfig = (
     noHorizonLimit: false,
   },
   userSettings: {
-    desktopEdgePanEnabled: false,
+    desktopCameraPanMode: 'wheel',
     desktopEdgePanSpeed: 'normal',
+    desktopWheelPanSpeed: 'normal',
     debugModeEnabled: false,
     touchBurnControlSide: 'right',
     touchTargetControlSide: 'left',

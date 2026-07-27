@@ -598,8 +598,6 @@ export const createTouchControls = (options: {
     }
   }
 
-
-
   const sessionOwnsTouch = (touchId: number) => {
     switch (activeSession.kind) {
       case 'double-tap-zoom':
@@ -712,8 +710,6 @@ export const createTouchControls = (options: {
         return
       }
 
-
-
       for (const touch of Array.from(event.changedTouches)) {
         if (isTouchControlTarget) {
           continue
@@ -724,8 +720,6 @@ export const createTouchControls = (options: {
           startX: touch.clientX,
           startY: touch.clientY,
         })
-
-
 
         const isDoubleTapCandidate =
           activeSession.kind === 'none' &&
@@ -740,8 +734,6 @@ export const createTouchControls = (options: {
           startedDoubleTapZoom = true
           continue
         }
-
-
 
         if (activeSession.kind === 'none' && event.touches.length === 1) {
           beginCameraPanSession(touch)
@@ -807,7 +799,6 @@ export const createTouchControls = (options: {
       }
 
       switch (activeSession.kind) {
-
         case 'pinch': {
           const first = getTouchById(event.touches, activeSession.touchIds[0])
           const second = getTouchById(event.touches, activeSession.touchIds[1])
@@ -956,8 +947,6 @@ export const createTouchControls = (options: {
       }
 
       for (const touch of Array.from(event.changedTouches)) {
-
-
         if (
           activeSession.kind === 'camera-pan' &&
           activeSession.touchId === touch.identifier
@@ -1019,8 +1008,6 @@ export const createTouchControls = (options: {
         if (!isTap) {
           continue
         }
-
-
 
         lastTap = { time: now, x: touch.clientX, y: touch.clientY }
       }

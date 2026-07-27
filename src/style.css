@@ -1237,6 +1237,39 @@ button.app-dialog-setting {
   opacity: 0.58;
 }
 
+.app-dialog-radio-group {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  gap: 7px;
+}
+
+.app-dialog-radio-group > legend {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.app-dialog-radio-option {
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 120ms ease;
+}
+
+.app-dialog-radio-input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #38bdf8;
+}
+
+.app-dialog-radio-input:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.8);
+  outline-offset: 2px;
+}
+
 .app-dialog-setting-name {
   min-width: 0;
   color: #f0f9ff;
@@ -1351,7 +1384,8 @@ button.app-dialog-setting {
   }
 
   .app-dialog-setting-button:hover,
-  .app-dialog-switch:hover:not(:disabled) {
+  .app-dialog-switch:hover:not(:disabled),
+  .app-dialog-radio-option:hover {
     background: rgba(148, 163, 184, 0.12);
   }
 }

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 import { bindPointerCameraInput } from '@/input/pointerCameraInput'
+import type { DesktopCameraPanMode } from '@/userSettingsStorage'
 
 class FakeCanvas extends EventTarget {
   capturedPointerIds: number[] = []
@@ -75,32 +76,59 @@ const createPointerEvent = (
   return event
 }
 
-const createBrowserZoomWheelEvent = (modifier: 'ctrlKey' | 'metaKey') => {
+const createWheelEvent = (
+  init: {
+    ctrlKey?: boolean
+    deltaMode?: number
+    deltaX?: number
+    deltaY?: number
+    metaKey?: boolean
+  } = {},
+) => {
   const event = new Event('wheel', {
     bubbles: true,
     cancelable: true,
   }) as WheelEvent
 
   Object.defineProperties(event, {
-    ctrlKey: { value: modifier === 'ctrlKey' },
-    metaKey: { value: modifier === 'metaKey' },
+    ctrlKey: { value: init.ctrlKey ?? false },
+    deltaMode: { value: init.deltaMode ?? 0 },
+    deltaX: { value: init.deltaX ?? 0 },
+    deltaY: { value: init.deltaY ?? 0 },
+    metaKey: { value: init.metaKey ?? false },
   })
 
   return event
 }
 
+const createContextMenuEvent = (button = 2) =>
+  createPointerEvent('contextmenu', {
+    button,
+    clientX: 100,
+    clientY: 100,
+  })
+
 const createHarness = (
   options: {
     cameraControlsLocked?: boolean
+    desktopCameraInputEnabled?: boolean
+    desktopCameraInteractionsEnabled?: boolean
+    desktopCameraPanMode?: DesktopCameraPanMode
     edgePanSpeedPixelsPerSecond?: number
-    edgeScrollEnabled?: boolean
+    interactionsEnabled?: boolean
     primaryTapHandled?: boolean
+    wheelPanSpeedMultiplier?: number
   } = {},
 ) => {
   const canvas = new FakeCanvas()
   const windowTarget = new FakeWindow()
   let cameraControlsLocked = options.cameraControlsLocked ?? false
-  let edgeScrollEnabled = options.edgeScrollEnabled ?? false
+  let desktopCameraInputEnabled = options.desktopCameraInputEnabled ?? true
+  let desktopCameraInteractionsEnabled =
+    options.desktopCameraInteractionsEnabled ?? true
+  let desktopCameraPanMode = options.desktopCameraPanMode ?? 'drag'
+  let interactionsEnabled = options.interactionsEnabled ?? true
+  let wheelPanSpeedMultiplier = options.wheelPanSpeedMultiplier ?? 1
   const onCameraPan = vi.fn<(delta: { x: number; y: number }) => boolean>(
     () => true,
   )
@@ -109,11 +137,14 @@ const createHarness = (
 
   const input = bindPointerCameraInput({
     camera: createCamera(),
+    getDesktopCameraInputEnabled: () => desktopCameraInputEnabled,
+    getDesktopCameraInteractionsEnabled: () => desktopCameraInteractionsEnabled,
+    getDesktopCameraPanMode: () => desktopCameraPanMode,
     getDesktopEdgePanSpeedPixelsPerSecond: () =>
       options.edgePanSpeedPixelsPerSecond ?? 420,
+    getDesktopWheelPanSpeedMultiplier: () => wheelPanSpeedMultiplier,
     getCameraControlsLocked: () => cameraControlsLocked,
-    getEdgeScrollEnabled: () => edgeScrollEnabled,
-    getInteractionsEnabled: () => true,
+    getInteractionsEnabled: () => interactionsEnabled,
     onCameraPan,
     onPrimaryTap,
     onResize: () => {},
@@ -133,25 +164,215 @@ const createHarness = (
     setCameraControlsLocked: (locked: boolean) => {
       cameraControlsLocked = locked
     },
-    setEdgeScrollEnabled: (enabled: boolean) => {
-      edgeScrollEnabled = enabled
+    setDesktopCameraInputEnabled: (enabled: boolean) => {
+      desktopCameraInputEnabled = enabled
+    },
+    setDesktopCameraInteractionsEnabled: (enabled: boolean) => {
+      desktopCameraInteractionsEnabled = enabled
+    },
+    setDesktopCameraPanMode: (mode: DesktopCameraPanMode) => {
+      desktopCameraPanMode = mode
+    },
+    setInteractionsEnabled: (enabled: boolean) => {
+      interactionsEnabled = enabled
+    },
+    setWheelPanSpeedMultiplier: (multiplier: number) => {
+      wheelPanSpeedMultiplier = multiplier
     },
   }
 }
 
-describe('bindPointerCameraInput browser zoom isolation', () => {
-  it('leaves browser-modified wheel gestures to the browser', () => {
-    const harness = createHarness()
+describe('bindPointerCameraInput wheel routing', () => {
+  it.each([
+    'drag',
+    'edge',
+  ] as const)('leaves browser-modified wheel gestures to the browser in %s mode', (desktopCameraPanMode) => {
+    const harness = createHarness({ desktopCameraPanMode })
 
     for (const modifier of ['ctrlKey', 'metaKey'] as const) {
-      const event = createBrowserZoomWheelEvent(modifier)
+      const event = createWheelEvent({ [modifier]: true, deltaY: -120 })
 
-      harness.windowTarget.dispatchEvent(event)
+      harness.canvas.dispatchEvent(event)
 
       expect(event.defaultPrevented).toBe(false)
     }
 
     expect(harness.onZoom).not.toHaveBeenCalled()
+  })
+
+  it('pans both platform wheel axes diagonally in wheel mode', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+    const event = createWheelEvent({ deltaX: 20, deltaY: 30 })
+
+    harness.canvas.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(harness.onZoom).not.toHaveBeenCalled()
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    const [delta] = harness.onCameraPan.mock.calls[0] ?? []
+    expect(delta?.x).toBeGreaterThan(0)
+    expect(delta?.y).toBeGreaterThan(0)
+  })
+
+  it('applies wheel pan speed equally to both axes', () => {
+    const slow = createHarness({
+      desktopCameraPanMode: 'wheel',
+      wheelPanSpeedMultiplier: 0.6,
+    })
+    const fast = createHarness({
+      desktopCameraPanMode: 'wheel',
+      wheelPanSpeedMultiplier: 1.6,
+    })
+
+    slow.canvas.dispatchEvent(createWheelEvent({ deltaX: 10, deltaY: 10 }))
+    fast.canvas.dispatchEvent(createWheelEvent({ deltaX: 10, deltaY: 10 }))
+
+    const [slowDelta] = slow.onCameraPan.mock.calls[0] ?? []
+    const [fastDelta] = fast.onCameraPan.mock.calls[0] ?? []
+    expect(slowDelta).toBeDefined()
+    expect(fastDelta).toBeDefined()
+    if (!slowDelta || !fastDelta) {
+      throw new Error('Expected wheel pan deltas')
+    }
+
+    expect(fastDelta.x).toBeGreaterThan(slowDelta.x * 2)
+    expect(fastDelta.y).toBeGreaterThan(slowDelta.y * 2)
+  })
+
+  it('normalizes line-mode wheel deltas on both axes', () => {
+    const pixel = createHarness({ desktopCameraPanMode: 'wheel' })
+    const line = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    pixel.canvas.dispatchEvent(
+      createWheelEvent({
+        deltaMode: 0,
+        deltaX: 1,
+        deltaY: 1,
+      }),
+    )
+    line.canvas.dispatchEvent(
+      createWheelEvent({
+        deltaMode: 1,
+        deltaX: 1,
+        deltaY: 1,
+      }),
+    )
+
+    const [pixelDelta] = pixel.onCameraPan.mock.calls[0] ?? []
+    const [lineDelta] = line.onCameraPan.mock.calls[0] ?? []
+    expect(pixelDelta).toBeDefined()
+    expect(lineDelta).toBeDefined()
+    if (!pixelDelta || !lineDelta) {
+      throw new Error('Expected normalized wheel pan deltas')
+    }
+    expect(lineDelta.x).toBeGreaterThan(pixelDelta.x * 15)
+    expect(lineDelta.y).toBeGreaterThan(pixelDelta.y * 15)
+  })
+
+  it.each([
+    'ctrlKey',
+    'metaKey',
+  ] as const)('zooms and consumes %s wheel gestures in wheel mode', (modifier) => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+    const event =
+      modifier === 'ctrlKey'
+        ? createWheelEvent({ ctrlKey: true, deltaY: -120 })
+        : createWheelEvent({ deltaY: -120, metaKey: true })
+
+    harness.canvas.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(harness.onZoom).toHaveBeenCalledTimes(1)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    'ctrlKey',
+    'metaKey',
+  ] as const)('keeps the unmodified %s wheel tail in zoom until 125 ms of inactivity', (modifier) => {
+    vi.useFakeTimers()
+    try {
+      const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+      const modifiedEvent =
+        modifier === 'ctrlKey'
+          ? createWheelEvent({ ctrlKey: true, deltaY: -120 })
+          : createWheelEvent({ deltaY: -120, metaKey: true })
+      const firstTailEvent = createWheelEvent({ deltaY: -80 })
+      const continuedTailEvent = createWheelEvent({ deltaY: -40 })
+      const postIdleEvent = createWheelEvent({ deltaY: 30 })
+
+      harness.canvas.dispatchEvent(modifiedEvent)
+      vi.advanceTimersByTime(100)
+      harness.canvas.dispatchEvent(firstTailEvent)
+      vi.advanceTimersByTime(124)
+      harness.canvas.dispatchEvent(continuedTailEvent)
+      vi.advanceTimersByTime(126)
+      harness.canvas.dispatchEvent(postIdleEvent)
+
+      expect(modifiedEvent.defaultPrevented).toBe(true)
+      expect(firstTailEvent.defaultPrevented).toBe(true)
+      expect(continuedTailEvent.defaultPrevented).toBe(true)
+      expect(postIdleEvent.defaultPrevented).toBe(true)
+      expect(harness.onZoom).toHaveBeenCalledTimes(3)
+      expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it.each([
+    'drag',
+    'edge',
+  ] as const)('zooms and consumes unmodified wheel gestures in %s mode', (desktopCameraPanMode) => {
+    const harness = createHarness({ desktopCameraPanMode })
+    const event = createWheelEvent({ deltaY: 120 })
+
+    harness.canvas.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(harness.onZoom).toHaveBeenCalledTimes(1)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it('leaves wheel gestures unhandled while desktop camera interactions are gated', () => {
+    const harness = createHarness({
+      desktopCameraInteractionsEnabled: false,
+      desktopCameraPanMode: 'wheel',
+    })
+    const event = createWheelEvent({ deltaX: 20, deltaY: 30 })
+
+    harness.canvas.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.onZoom).not.toHaveBeenCalled()
+  })
+
+  it('leaves wheel pan unhandled while camera controls are locked', () => {
+    const harness = createHarness({
+      cameraControlsLocked: true,
+      desktopCameraPanMode: 'wheel',
+    })
+    const event = createWheelEvent({ deltaY: 30 })
+
+    harness.canvas.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it('preserves unmodified wheel zoom when fine-pointer modes are unavailable', () => {
+    const harness = createHarness({
+      desktopCameraInputEnabled: false,
+      desktopCameraPanMode: 'wheel',
+    })
+    const event = createWheelEvent({ deltaX: 20, deltaY: 30 })
+
+    harness.canvas.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(harness.onZoom).toHaveBeenCalledTimes(1)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 })
 
@@ -226,7 +447,7 @@ describe('bindPointerCameraInput canvas interactions', () => {
   })
 
   it('uses touch drag gestures for camera pan', () => {
-    const harness = createHarness()
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
 
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerdown', {
@@ -272,8 +493,24 @@ describe('bindPointerCameraInput canvas interactions', () => {
 
   it('does not use desktop drag gestures while edge-scroll is enabled', () => {
     const harness = createHarness({
-      edgeScrollEnabled: true,
+      desktopCameraPanMode: 'edge',
     })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', { clientX: 130, clientY: 100 }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', { clientX: 130, clientY: 100 }),
+    )
+
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it('does not use left-button drag gestures in wheel mode', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
 
     harness.canvas.dispatchEvent(
       createPointerEvent('pointerdown', { clientX: 100, clientY: 100 }),
@@ -302,11 +539,257 @@ describe('bindPointerCameraInput canvas interactions', () => {
   })
 })
 
+describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
+  it('suppresses a stationary right-click context menu', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    expect(harness.canvas.style.cursor).toBe('move')
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    const contextMenu = createContextMenuEvent()
+    harness.canvas.dispatchEvent(contextMenu)
+
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.canvas.style.cursor).toBe('')
+    expect(contextMenu.defaultPrevented).toBe(true)
+  })
+
+  it('suppresses the context menu below the existing drag tolerance', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', {
+        button: 2,
+        clientX: 107,
+        clientY: 100,
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        button: 2,
+        clientX: 107,
+        clientY: 100,
+      }),
+    )
+    const contextMenu = createContextMenuEvent()
+    harness.canvas.dispatchEvent(contextMenu)
+
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(contextMenu.defaultPrevented).toBe(true)
+  })
+
+  it('pans at the existing drag tolerance and suppresses canvas context menus', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    const pointerMove = createPointerEvent('pointermove', {
+      button: 2,
+      clientX: 108,
+      clientY: 100,
+    })
+    harness.canvas.dispatchEvent(pointerMove)
+    expect(harness.canvas.style.cursor).toBe('move')
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        button: 2,
+        clientX: 108,
+        clientY: 100,
+      }),
+    )
+    const keyboardContextMenu = createContextMenuEvent(0)
+    harness.canvas.dispatchEvent(keyboardContextMenu)
+    const handledContextMenu = createContextMenuEvent()
+    harness.canvas.dispatchEvent(handledContextMenu)
+    const bodyContextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(bodyContextMenu)
+
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    expect(pointerMove.defaultPrevented).toBe(true)
+    expect(harness.canvas.style.cursor).toBe('')
+    expect(keyboardContextMenu.defaultPrevented).toBe(false)
+    expect(handledContextMenu.defaultPrevented).toBe(true)
+    expect(bodyContextMenu.defaultPrevented).toBe(false)
+  })
+
+  it('allows window-boundary context menus during and after an accepted drag', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    harness.input.updateEdgeScroll(100, 0.1)
+    expect(harness.canvas.style.cursor).toBe('move')
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', {
+        button: 2,
+        clientX: 130,
+        clientY: 100,
+      }),
+    )
+    const contextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(contextMenu)
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        button: 2,
+        clientX: 130,
+        clientY: 100,
+      }),
+    )
+    const laterContextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(laterContextMenu)
+
+    expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+    expect(contextMenu.defaultPrevented).toBe(false)
+    expect(laterContextMenu.defaultPrevented).toBe(false)
+    expect(harness.canvas.style.cursor).toBe('')
+  })
+
+  it('restores the renderer cursor when a right-button fallback is canceled', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    expect(harness.canvas.style.cursor).toBe('move')
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointercancel', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+
+    expect(harness.canvas.style.cursor).toBe('')
+  })
+
+  it.each([
+    'drag',
+    'edge',
+  ] as const)('does not start right-button camera pan in %s mode', (desktopCameraPanMode) => {
+    const harness = createHarness({ desktopCameraPanMode })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', {
+        button: 2,
+        clientX: 130,
+        clientY: 100,
+      }),
+    )
+    const contextMenu = createContextMenuEvent()
+    harness.canvas.dispatchEvent(contextMenu)
+
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.canvas.style.cursor).toBe('')
+    expect(contextMenu.defaultPrevented).toBe(false)
+  })
+
+  it.each([
+    {
+      label: 'global interactions are disabled',
+      options: { interactionsEnabled: false },
+    },
+    {
+      label: 'desktop camera input is unavailable',
+      options: { desktopCameraInputEnabled: false },
+    },
+    {
+      label: 'desktop camera interactions are disabled',
+      options: { desktopCameraInteractionsEnabled: false },
+    },
+  ])('allows canvas context menus when $label', ({ options }) => {
+    const harness = createHarness({
+      desktopCameraPanMode: 'wheel',
+      ...options,
+    })
+    const contextMenu = createContextMenuEvent()
+
+    harness.canvas.dispatchEvent(contextMenu)
+
+    expect(contextMenu.defaultPrevented).toBe(false)
+  })
+
+  it('allows context menus when a locked camera rejects right drag', () => {
+    const harness = createHarness({
+      cameraControlsLocked: true,
+      desktopCameraPanMode: 'wheel',
+    })
+
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerdown', {
+        button: 2,
+        clientX: 100,
+        clientY: 100,
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointermove', {
+        button: 2,
+        clientX: 130,
+        clientY: 100,
+      }),
+    )
+    harness.canvas.dispatchEvent(
+      createPointerEvent('pointerup', {
+        button: 2,
+        clientX: 130,
+        clientY: 100,
+      }),
+    )
+    const contextMenu = createContextMenuEvent()
+    harness.canvas.dispatchEvent(contextMenu)
+
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+    expect(harness.canvas.style.cursor).toBe('')
+    expect(contextMenu.defaultPrevented).toBe(false)
+  })
+})
+
 describe('bindPointerCameraInput desktop edge-scroll', () => {
   it('pans from an edge immediately', () => {
     const harness = createHarness({
+      desktopCameraPanMode: 'edge',
       edgePanSpeedPixelsPerSecond: 420,
-      edgeScrollEnabled: true,
     })
 
     harness.canvas.dispatchEvent(
@@ -321,8 +804,8 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
 
   it('pans upward from the top edge', () => {
     const harness = createHarness({
+      desktopCameraPanMode: 'edge',
       edgePanSpeedPixelsPerSecond: 420,
-      edgeScrollEnabled: true,
     })
 
     harness.canvas.dispatchEvent(
@@ -338,7 +821,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
 
   it('uses a diagonal cursor near edge-scroll corners', () => {
     const harness = createHarness({
-      edgeScrollEnabled: true,
+      desktopCameraPanMode: 'edge',
     })
 
     harness.canvas.dispatchEvent(
@@ -352,12 +835,12 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
 
   it('scales edge panning with the desktop edge pan speed', () => {
     const slow = createHarness({
+      desktopCameraPanMode: 'edge',
       edgePanSpeedPixelsPerSecond: 280,
-      edgeScrollEnabled: true,
     })
     const fast = createHarness({
+      desktopCameraPanMode: 'edge',
       edgePanSpeedPixelsPerSecond: 620,
-      edgeScrollEnabled: true,
     })
 
     slow.canvas.dispatchEvent(
@@ -382,7 +865,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
 
   it('starts edge panning on the first update without dwell', () => {
     const harness = createHarness({
-      edgeScrollEnabled: true,
+      desktopCameraPanMode: 'edge',
     })
 
     harness.canvas.dispatchEvent(
@@ -395,7 +878,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
   it('does not edge pan when camera controls are locked', () => {
     const harness = createHarness({
       cameraControlsLocked: true,
-      edgeScrollEnabled: true,
+      desktopCameraPanMode: 'edge',
     })
 
     harness.canvas.dispatchEvent(
@@ -408,7 +891,7 @@ describe('bindPointerCameraInput desktop edge-scroll', () => {
 
   it('stops edge panning when the pointer leaves the edge', () => {
     const harness = createHarness({
-      edgeScrollEnabled: true,
+      desktopCameraPanMode: 'edge',
     })
 
     harness.canvas.dispatchEvent(

@@ -1,4 +1,8 @@
-import type { DesktopEdgePanSpeed } from '../userSettingsStorage'
+import type {
+  DesktopCameraPanMode,
+  DesktopEdgePanSpeed,
+  DesktopWheelPanSpeed,
+} from '../userSettingsStorage'
 import {
   type UiSettingsDialogPane,
   UiSettingsDialogSurface,
@@ -15,34 +19,30 @@ export type UiSettingsDialog = {
 
 type UiSettingsDialogRenderProps = Omit<UiSettingsDialogSurfaceProps, 'rootRef'>
 
-const desktopEdgePanSpeedOptions = [
+type DesktopPanSpeed = DesktopEdgePanSpeed | DesktopWheelPanSpeed
+
+const desktopPanSpeedOptions = [
   { label: 'Slow', value: 'slow' },
   { label: 'Normal', value: 'normal' },
   { label: 'Fast', value: 'fast' },
 ] satisfies Array<{
   label: string
-  value: DesktopEdgePanSpeed
+  value: DesktopPanSpeed
 }>
 
-const getDesktopEdgePanSpeedOptionIndex = (speed: DesktopEdgePanSpeed) =>
+const getDesktopPanSpeedOptionIndex = (speed: DesktopPanSpeed) =>
   Math.max(
     0,
-    desktopEdgePanSpeedOptions.findIndex((option) => option.value === speed),
+    desktopPanSpeedOptions.findIndex((option) => option.value === speed),
   )
 
-const getDesktopEdgePanSpeedLabel = (speed: DesktopEdgePanSpeed) =>
-  desktopEdgePanSpeedOptions[getDesktopEdgePanSpeedOptionIndex(speed)].label
+const getDesktopPanSpeedLabel = (speed: DesktopPanSpeed) =>
+  desktopPanSpeedOptions[getDesktopPanSpeedOptionIndex(speed)].label
 
-const getDesktopEdgePanSpeedStep = (
-  speed: DesktopEdgePanSpeed,
-  direction: -1 | 1,
-) => {
-  const index = getDesktopEdgePanSpeedOptionIndex(speed)
-  return desktopEdgePanSpeedOptions[
-    Math.min(
-      desktopEdgePanSpeedOptions.length - 1,
-      Math.max(0, index + direction),
-    )
+const getDesktopPanSpeedStep = (speed: DesktopPanSpeed, direction: -1 | 1) => {
+  const index = getDesktopPanSpeedOptionIndex(speed)
+  return desktopPanSpeedOptions[
+    Math.min(desktopPanSpeedOptions.length - 1, Math.max(0, index + direction))
   ].value
 }
 
@@ -51,11 +51,13 @@ let activeDialogClose: ((restoreFocus?: boolean) => void) | null = null
 
 export const createUiSettingsDialog = (options: {
   app: HTMLElement
-  getDesktopEdgePanEnabled: () => boolean
+  getDesktopCameraPanMode: () => DesktopCameraPanMode
+  getDesktopCameraPanVisible: () => boolean
   getDesktopEdgePanSpeed: () => DesktopEdgePanSpeed
-  getDesktopEdgePanVisible: () => boolean
-  onDesktopEdgePanEnabledChange(enabled: boolean): void
+  getDesktopWheelPanSpeed: () => DesktopWheelPanSpeed
+  onDesktopCameraPanModeChange(mode: DesktopCameraPanMode): void
   onDesktopEdgePanSpeedChange(speed: DesktopEdgePanSpeed): void
+  onDesktopWheelPanSpeedChange(speed: DesktopWheelPanSpeed): void
   onOpenChange?: (open: boolean) => void
 }): UiSettingsDialog => {
   const dialogId = `app-dialog-${++nextUiSettingsDialogId}`
@@ -70,54 +72,87 @@ export const createUiSettingsDialog = (options: {
   let activePane: UiSettingsDialogPane = 'main'
   let lastFocusedElement: HTMLElement | null = null
 
-  const setDesktopEdgePanSpeed = (direction: -1 | 1) => {
-    const desktopEdgePanSpeed = options.getDesktopEdgePanSpeed()
-    const nextSpeed = getDesktopEdgePanSpeedStep(desktopEdgePanSpeed, direction)
-    if (nextSpeed === desktopEdgePanSpeed) {
+  const setDesktopPanSpeed = (
+    getSpeed: () => DesktopPanSpeed,
+    onChange: (speed: DesktopPanSpeed) => void,
+    direction: -1 | 1,
+  ) => {
+    const speed = getSpeed()
+    const nextSpeed = getDesktopPanSpeedStep(speed, direction)
+    if (nextSpeed === speed) {
       return
     }
 
-    options.onDesktopEdgePanSpeedChange(nextSpeed)
+    onChange(nextSpeed)
     syncState()
   }
 
   const renderDialog = () => {
-    const desktopEdgePanEnabled = options.getDesktopEdgePanEnabled()
+    const desktopCameraPanMode = options.getDesktopCameraPanMode()
     const desktopEdgePanSpeed = options.getDesktopEdgePanSpeed()
+    const desktopWheelPanSpeed = options.getDesktopWheelPanSpeed()
     const desktopEdgePanSpeedIndex =
-      getDesktopEdgePanSpeedOptionIndex(desktopEdgePanSpeed)
-    const desktopEdgePanVisible = options.getDesktopEdgePanVisible()
+      getDesktopPanSpeedOptionIndex(desktopEdgePanSpeed)
+    const desktopWheelPanSpeedIndex =
+      getDesktopPanSpeedOptionIndex(desktopWheelPanSpeed)
+    const desktopCameraPanVisible = options.getDesktopCameraPanVisible()
 
     surface.render({
       activePane,
       decreaseDesktopEdgePanSpeedDisabled: desktopEdgePanSpeedIndex <= 0,
-      desktopEdgePanEnabled,
-      desktopEdgePanSpeedLabel:
-        getDesktopEdgePanSpeedLabel(desktopEdgePanSpeed),
+      decreaseDesktopWheelPanSpeedDisabled: desktopWheelPanSpeedIndex <= 0,
+      desktopCameraPanMode,
+      desktopCameraPanVisible,
+      desktopEdgePanSpeedLabel: getDesktopPanSpeedLabel(desktopEdgePanSpeed),
       desktopEdgePanSpeedVisible:
-        desktopEdgePanVisible && desktopEdgePanEnabled,
-      desktopEdgePanVisible,
+        desktopCameraPanVisible && desktopCameraPanMode === 'edge',
+      desktopWheelPanSpeedLabel: getDesktopPanSpeedLabel(desktopWheelPanSpeed),
+      desktopWheelPanSpeedVisible:
+        desktopCameraPanVisible && desktopCameraPanMode === 'wheel',
       dialogId,
       increaseDesktopEdgePanSpeedDisabled:
-        desktopEdgePanSpeedIndex >= desktopEdgePanSpeedOptions.length - 1,
+        desktopEdgePanSpeedIndex >= desktopPanSpeedOptions.length - 1,
+      increaseDesktopWheelPanSpeedDisabled:
+        desktopWheelPanSpeedIndex >= desktopPanSpeedOptions.length - 1,
       open,
       onBackToMainSettings: () => {
         activePane = 'main'
         syncState()
         focusFirstElement()
       },
-      onDecreaseDesktopEdgePanSpeed: () => setDesktopEdgePanSpeed(-1),
-
+      onDecreaseDesktopEdgePanSpeed: () =>
+        setDesktopPanSpeed(
+          options.getDesktopEdgePanSpeed,
+          options.onDesktopEdgePanSpeedChange,
+          -1,
+        ),
+      onDecreaseDesktopWheelPanSpeed: () =>
+        setDesktopPanSpeed(
+          options.getDesktopWheelPanSpeed,
+          options.onDesktopWheelPanSpeedChange,
+          -1,
+        ),
       onOpenCameraSettings: () => {
         activePane = 'camera'
         syncState()
         focusFirstElement()
       },
-      onDesktopEdgePanEnabledChange: (enabled) => {
-        options.onDesktopEdgePanEnabledChange(enabled)
+      onDesktopCameraPanModeChange: (mode) => {
+        options.onDesktopCameraPanModeChange(mode)
         syncState()
       },
-      onIncreaseDesktopEdgePanSpeed: () => setDesktopEdgePanSpeed(1),
+      onIncreaseDesktopEdgePanSpeed: () =>
+        setDesktopPanSpeed(
+          options.getDesktopEdgePanSpeed,
+          options.onDesktopEdgePanSpeedChange,
+          1,
+        ),
+      onIncreaseDesktopWheelPanSpeed: () =>
+        setDesktopPanSpeed(
+          options.getDesktopWheelPanSpeed,
+          options.onDesktopWheelPanSpeedChange,
+          1,
+        ),
     })
   }
 

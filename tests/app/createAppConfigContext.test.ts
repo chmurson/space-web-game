@@ -47,7 +47,8 @@ describe('createAppConfigContext', () => {
       createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
     ).toBe(48)
     expect(createAppConfigContext().userSettings).toMatchObject({
-      desktopEdgePanEnabled: false,
+      desktopCameraPanMode: 'wheel',
+      desktopWheelPanSpeed: 'normal',
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -60,7 +61,8 @@ describe('createAppConfigContext', () => {
       configurable: true,
       value: createWindowWithSearch('', {
         debugModeEnabled: false,
-        desktopEdgePanEnabled: true,
+        desktopCameraPanMode: 'edge',
+        desktopWheelPanSpeed: 'fast',
         mobileManeuverStartByDrag: false,
         orbitPointDisplay: { markersVisible: false },
         touchBurnControlSide: 'left',
@@ -71,7 +73,8 @@ describe('createAppConfigContext', () => {
     })
 
     expect(createAppConfigContext().userSettings).toMatchObject({
-      desktopEdgePanEnabled: true,
+      desktopCameraPanMode: 'edge',
+      desktopWheelPanSpeed: 'fast',
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'left',

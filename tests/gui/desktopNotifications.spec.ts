@@ -173,10 +173,21 @@ test('shows only Camera settings in desktop UI settings', async ({
   await cameraSettingsButton.click()
   const dialog = page.getByRole('dialog', { name: 'Camera settings' })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('group', { name: 'Camera' })).toBeVisible()
+  await expect(
+    dialog.getByRole('group', { name: 'Camera', exact: true }),
+  ).toBeVisible()
+  const panCameraGroup = dialog.getByRole('group', { name: 'Pan camera' })
+  await expect(panCameraGroup.getByRole('radio')).toHaveCount(3)
+  await expect(
+    panCameraGroup.getByRole('radio', {
+      name: 'Wheel / trackpad',
+      exact: true,
+    }),
+  ).toBeChecked()
+  await expect(dialog.getByText('Wheel / trackpad pan speed')).toBeVisible()
   await expect(
     dialog.getByRole('switch', { name: 'Turn on scrolling by edge pan' }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await expect(
     dialog.getByRole('group', { name: 'Control sides' }),
   ).toHaveCount(0)

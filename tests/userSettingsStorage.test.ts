@@ -39,8 +39,9 @@ describe('userSettingsStorage', () => {
 
   it('defaults touch controls to their configured sides', () => {
     expect(readUserSettings()).toEqual({
-      desktopEdgePanEnabled: false,
+      desktopCameraPanMode: 'wheel',
       desktopEdgePanSpeed: 'normal',
+      desktopWheelPanSpeed: 'normal',
       debugModeEnabled: false,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -51,8 +52,9 @@ describe('userSettingsStorage', () => {
 
   it('persists the selected touch control sides and trajectory hidden state', () => {
     writeUserSettings({
-      desktopEdgePanEnabled: true,
+      desktopCameraPanMode: 'edge',
       desktopEdgePanSpeed: 'fast',
+      desktopWheelPanSpeed: 'slow',
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
@@ -61,8 +63,9 @@ describe('userSettingsStorage', () => {
     })
 
     expect(readUserSettings()).toEqual({
-      desktopEdgePanEnabled: true,
+      desktopCameraPanMode: 'edge',
       desktopEdgePanSpeed: 'fast',
+      desktopWheelPanSpeed: 'slow',
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
@@ -73,8 +76,9 @@ describe('userSettingsStorage', () => {
 
   it('keeps existing settings when updating one touch control side', () => {
     writeUserSettings({
-      desktopEdgePanEnabled: true,
+      desktopCameraPanMode: 'drag',
       desktopEdgePanSpeed: 'normal',
+      desktopWheelPanSpeed: 'fast',
       debugModeEnabled: true,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -83,8 +87,9 @@ describe('userSettingsStorage', () => {
     })
 
     expect(updateUserSettings({ touchBurnControlSide: 'left' })).toEqual({
-      desktopEdgePanEnabled: true,
+      desktopCameraPanMode: 'drag',
       desktopEdgePanSpeed: 'normal',
+      desktopWheelPanSpeed: 'fast',
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
@@ -100,8 +105,9 @@ describe('userSettingsStorage', () => {
     )
 
     expect(readUserSettings()).toEqual({
-      desktopEdgePanEnabled: false,
+      desktopCameraPanMode: 'wheel',
       desktopEdgePanSpeed: 'normal',
+      desktopWheelPanSpeed: 'normal',
       debugModeEnabled: true,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -120,8 +126,9 @@ describe('userSettingsStorage', () => {
     )
 
     expect(readUserSettings()).toEqual({
-      desktopEdgePanEnabled: false,
+      desktopCameraPanMode: 'wheel',
       desktopEdgePanSpeed: 'normal',
+      desktopWheelPanSpeed: 'normal',
       debugModeEnabled: true,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'left',
@@ -146,8 +153,9 @@ describe('userSettingsStorage', () => {
     )
 
     expect(readUserSettings()).toEqual({
-      desktopEdgePanEnabled: false,
+      desktopCameraPanMode: 'wheel',
       desktopEdgePanSpeed: 'normal',
+      desktopWheelPanSpeed: 'normal',
       debugModeEnabled: true,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -156,10 +164,42 @@ describe('userSettingsStorage', () => {
     })
   })
 
-  it('persists edge pan speed and falls back for invalid values', () => {
+  it.each([
+    'wheel',
+    'drag',
+    'edge',
+  ] as const)('persists the %s desktop camera pan mode', (desktopCameraPanMode) => {
+    expect(
+      updateUserSettings({ desktopCameraPanMode }).desktopCameraPanMode,
+    ).toBe(desktopCameraPanMode)
+    expect(readUserSettings().desktopCameraPanMode).toBe(desktopCameraPanMode)
+  })
+
+  it('defaults missing and legacy desktop camera pan settings to wheel without migrating the boolean', () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ desktopEdgePanEnabled: true }),
+    )
+
+    const settings = readUserSettings()
+    expect(settings.desktopCameraPanMode).toBe('wheel')
+    expect(settings).not.toHaveProperty('desktopEdgePanEnabled')
+  })
+
+  it('falls back to wheel for an invalid desktop camera pan mode', () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ desktopCameraPanMode: 'orbit' }),
+    )
+
+    expect(readUserSettings().desktopCameraPanMode).toBe('wheel')
+  })
+
+  it('persists edge and wheel pan speeds independently and rejects invalid values', () => {
     writeUserSettings({
-      desktopEdgePanEnabled: true,
+      desktopCameraPanMode: 'edge',
       desktopEdgePanSpeed: 'slow',
+      desktopWheelPanSpeed: 'fast',
       debugModeEnabled: false,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
@@ -168,17 +208,17 @@ describe('userSettingsStorage', () => {
     })
 
     expect(readUserSettings().desktopEdgePanSpeed).toBe('slow')
-    expect(readUserSettings().desktopEdgePanEnabled).toBe(true)
+    expect(readUserSettings().desktopWheelPanSpeed).toBe('fast')
 
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
-        desktopEdgePanEnabled: 'yes',
         desktopEdgePanSpeed: 'warp',
+        desktopWheelPanSpeed: 'warp',
       }),
     )
 
     expect(readUserSettings().desktopEdgePanSpeed).toBe('normal')
-    expect(readUserSettings().desktopEdgePanEnabled).toBe(false)
+    expect(readUserSettings().desktopWheelPanSpeed).toBe('normal')
   })
 })
