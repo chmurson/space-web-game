@@ -255,7 +255,10 @@ export const createAppComponents = (options: {
       }
     }
   }
-  const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime()
+  const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime({
+    predictionImplementation:
+      options.config.featureFlags.trajectoryPredictionImplementation,
+  })
   const ripples: Ripple[] = []
   const overlayUi = createOverlayUi({
     app: options.app,
@@ -790,6 +793,8 @@ export const createAppComponents = (options: {
     gameScene,
     hudPresentation,
     autopilotRotationRate: options.config.controls.autopilotRotationRate,
+    predictionImplementation:
+      options.config.featureFlags.trajectoryPredictionImplementation,
     getFpsMeterVisible: () =>
       options.runtimeState.debug.fpsIndicatorEnabled &&
       getAppMode() === 'game' &&

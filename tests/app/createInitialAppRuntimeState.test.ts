@@ -31,6 +31,7 @@ const createConfig = (
   requestedScenarioId: 'tutorial',
   featureFlags: {
     noHorizonLimit: false,
+    trajectoryPredictionImplementation: 'euler',
   },
   userSettings: {
     desktopCameraPanMode: 'wheel',

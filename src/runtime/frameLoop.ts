@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import type { KeyboardInput } from '../input/keyboardInput'
 import type { PointerCameraInput } from '../input/pointerCameraInput'
+import type { TrajectoryPredictionImplementation } from '../prediction/trajectoryPrediction'
 import { createBodyDistanceContext } from '../presentation/bodyDistanceContext'
 import type { BodyPresentation } from '../presentation/bodyPresentation'
 import type { HudPresentation } from '../presentation/hudPresentation'
@@ -52,6 +53,7 @@ export const createFrameLoop = (options: {
   bodyPresentation: BodyPresentation
   spacecraftPresentation: SpacecraftPresentation
   autopilotRotationRate: number
+  predictionImplementation: TrajectoryPredictionImplementation
   timeWarps: number[]
   touchControls?: boolean
   trajectoryPresentation: TrajectoryPresentation
@@ -59,8 +61,11 @@ export const createFrameLoop = (options: {
   let lastTime = performance.now()
   let meterFps = 60
   let smoothedCpuMs = 0
-  const scenarioTrajectoryPredictionRuntime =
-    createTrajectoryPredictionRuntime()
+  const scenarioTrajectoryPredictionRuntime = createTrajectoryPredictionRuntime(
+    {
+      predictionImplementation: options.predictionImplementation,
+    },
+  )
   let scenarioTrajectoryPredictionHorizonHours: number | null = null
   let scenarioTrajectoryPredictionInitialized = false
   const browserGcProbe = createBrowserGcProbe()

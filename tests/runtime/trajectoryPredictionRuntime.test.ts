@@ -580,6 +580,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       'inputKey',
       'jobId',
       'predictionConfig',
+      'predictionImplementation',
       'semanticInputKey',
       'state',
       'targetId',
