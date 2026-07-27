@@ -19,7 +19,10 @@ import {
   validateDebugScenarioSnapshot,
   writeDebugScenarioSnapshot,
 } from '@/debugScenarioSnapshot'
-import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
+import {
+  createRuntimeScenarioCheckpoint,
+  createRuntimeScenarioSession,
+} from '@/scenario/scenarioSession'
 import { idleControls } from '@/simulation/state'
 
 const snapshotBase = {
@@ -129,6 +132,166 @@ describe('portable debug scenario snapshots', () => {
       ok: false,
       error: 'malformed-snapshot',
       message: 'Snapshot data must include a valid spacecraft.',
+    })
+  })
+
+  it.each([
+    [
+      'assistTargetIndex',
+      { assistTargetIndex: 1.5 },
+      'Snapshot data must include a valid assistTargetIndex when present.',
+    ],
+    [
+      'assistTargetSelectionMode',
+      { assistTargetSelectionMode: 'automatic' },
+      'Snapshot data must include a valid assistTargetSelectionMode when present.',
+    ],
+    [
+      'cameraFollow',
+      { cameraFollow: 'earth' },
+      'Snapshot data must include a valid cameraFollow when present.',
+    ],
+    [
+      'cameraPanOffset',
+      { cameraPanOffset: { x: 1 } },
+      'Snapshot data must include a valid cameraPanOffset when present.',
+    ],
+    [
+      'cameraView',
+      { cameraView: 'centered' },
+      'Snapshot data must include a valid cameraView when present.',
+    ],
+    [
+      'viewportSize',
+      { viewportSize: 'wide' },
+      'Snapshot data must include a finite viewportSize when present.',
+    ],
+    [
+      'coastPredictionHorizonHours',
+      { coastPredictionHorizonHours: Number.NaN },
+      'Snapshot data must include finite coastPredictionHorizonHours when present.',
+    ],
+    [
+      'runtimeScenario',
+      { runtimeScenario: 3 },
+      'Snapshot data must include a valid runtimeScenario when present.',
+    ],
+    [
+      'userInfoPins',
+      { userInfoPins: [{ kind: 'body' }] },
+      'Snapshot data must include valid userInfoPins when present.',
+    ],
+  ])('rejects malformed optional %s data', (_field, override, message) => {
+    expect(
+      validateDebugScenarioSnapshot({ ...snapshotBase, ...override }),
+    ).toEqual({
+      ok: false,
+      error: 'malformed-snapshot',
+      message,
+    })
+  })
+
+  it.each([
+    'checkpoint',
+    'completed',
+    'promptUi',
+    'scenarioId',
+    'state',
+  ])('rejects a runtime scenario missing required %s data', (field) => {
+    const runtimeScenario: Record<string, unknown> = {
+      ...createRuntimeScenarioSession('tutorial', {
+        phase: 'escape-earth',
+      }),
+    }
+    delete runtimeScenario[field]
+
+    expect(
+      validateDebugScenarioSnapshot({
+        ...snapshotBase,
+        runtimeScenario,
+      }),
+    ).toEqual({
+      ok: false,
+      error: 'malformed-snapshot',
+      message:
+        'Snapshot data must include a valid runtimeScenario when present.',
+    })
+  })
+
+  it.each([
+    {
+      ...createRuntimeScenarioSession('tutorial'),
+      promptUi: { activePromptId: 1, replayPromptId: null },
+    },
+    {
+      ...createRuntimeScenarioSession('tutorial'),
+      state: { phase: undefined },
+    },
+    {
+      ...createRuntimeScenarioSession('tutorial'),
+      state: new Date('2026-07-28T00:00:00.000Z'),
+    },
+    {
+      ...createRuntimeScenarioSession('tutorial'),
+      checkpoint: {},
+    },
+  ])('rejects malformed nested runtime scenario data', (runtimeScenario) => {
+    expect(
+      validateDebugScenarioSnapshot({
+        ...snapshotBase,
+        runtimeScenario,
+      }),
+    ).toEqual({
+      ok: false,
+      error: 'malformed-snapshot',
+      message:
+        'Snapshot data must include a valid runtimeScenario when present.',
+    })
+  })
+
+  it('rejects cyclic runtime scenario state without throwing', () => {
+    const state: Record<string, unknown> = {}
+    state.self = state
+
+    expect(
+      validateDebugScenarioSnapshot({
+        ...snapshotBase,
+        runtimeScenario: {
+          ...createRuntimeScenarioSession('tutorial'),
+          state,
+        },
+      }),
+    ).toEqual({
+      ok: false,
+      error: 'malformed-snapshot',
+      message:
+        'Snapshot data must include a valid runtimeScenario when present.',
+    })
+  })
+
+  it('accepts a complete runtime scenario checkpoint', () => {
+    const runtimeScenario = createRuntimeScenarioSession('tutorial', {
+      phase: 'escape-earth',
+    })
+    runtimeScenario.checkpoint = createRuntimeScenarioCheckpoint({
+      assistMode: 'off',
+      assistTargetIndex: 0,
+      coastPredictionHorizonHours: 12,
+      targetHeading: null,
+      targetHeadingTurn: null,
+      viewportSize: snapshotBase.viewportSize,
+      world: {
+        elapsed: snapshotBase.elapsed,
+        bodies: snapshotBase.bodies,
+        controls: idleControls(),
+        spacecraft: snapshotBase.spacecraft,
+      },
+    })
+    const snapshot = { ...snapshotBase, runtimeScenario }
+
+    expect(validateDebugScenarioSnapshot(snapshot)).toEqual({
+      ok: true,
+      snapshot,
     })
   })
 
@@ -265,6 +428,14 @@ describe('createScenarioFromSnapshot', () => {
 
     expect(snapshotBase.bodies[0].position.x).toBe(1)
     expect(snapshotBase.spacecraft.position.y).toBe(6)
+  })
+
+  it('uses a version 3 fallback session when runtime scenario data is absent', () => {
+    const scenario = createScenarioFromSnapshot(snapshotBase)
+
+    expect(scenario.scenarioSession?.scenarioId).toBe(
+      'debug-snapshot-without-runtime-scenario',
+    )
   })
 
   it('preserves scenario session metadata for current snapshots', () => {

@@ -1,17 +1,24 @@
 import type { AssistTargetSelectionMode } from './runtime/appRuntimeState'
-import { type InfoPin, normalizeInfoPins } from './runtime/infoPins'
-import type { CameraFollowSubject } from './scenario/scenarioDirectiveTypes'
+import { type InfoPin, isInfoPin, normalizeInfoPins } from './runtime/infoPins'
+import {
+  type CameraFollowSubject,
+  isCameraFollowSubject,
+} from './scenario/scenarioDirectiveTypes'
 import {
   cloneRuntimeScenarioSession,
   createRuntimeScenarioSession,
+  type RuntimeScenarioCheckpoint,
   type RuntimeScenarioSession,
+  type ScenarioSessionValue,
 } from './scenario/scenarioSession'
 import { cloneBodies, cloneSpacecraft } from './simulation/state'
 import type {
   Body,
+  ControlInput,
   Scenario,
   SimulationState,
   Spacecraft,
+  TargetHeadingTurn,
 } from './simulation/types'
 import type { Vec2 } from './simulation/vector'
 
@@ -94,7 +101,7 @@ const getSnapshotScenarioSession = (
 ): RuntimeScenarioSession =>
   snapshot.runtimeScenario
     ? cloneRuntimeScenarioSession(snapshot.runtimeScenario)
-    : createRuntimeScenarioSession('legacy-debug-snapshot')
+    : createRuntimeScenarioSession('debug-snapshot-without-runtime-scenario')
 
 const getSnapshotAssistTargetIndex = (snapshot: DebugScenarioSnapshot) =>
   Number.isInteger(snapshot.assistTargetIndex)
@@ -216,6 +223,111 @@ const isSpacecraft = (value: unknown): value is Spacecraft =>
   isFiniteNumber(value.fuelMass) &&
   isFiniteNumber(value.fuelCapacity)
 
+const isControlInput = (value: unknown): value is ControlInput =>
+  isRecord(value) &&
+  isFiniteNumber(value.main) &&
+  isFiniteNumber(value.reverse) &&
+  isFiniteNumber(value.strafe) &&
+  isFiniteNumber(value.turn)
+
+const isSimulationState = (value: unknown): value is SimulationState =>
+  isRecord(value) &&
+  isFiniteNumber(value.elapsed) &&
+  Array.isArray(value.bodies) &&
+  value.bodies.every(isBody) &&
+  isSpacecraft(value.spacecraft) &&
+  isControlInput(value.controls)
+
+const isTargetHeadingTurn = (value: unknown): value is TargetHeadingTurn =>
+  isRecord(value) &&
+  isFiniteNumber(value.durationSeconds) &&
+  isFiniteNumber(value.elapsedSeconds) &&
+  isFiniteNumber(value.startHeading) &&
+  isFiniteNumber(value.targetHeading)
+
+const isScenarioSessionValue = (
+  value: unknown,
+): value is ScenarioSessionValue => {
+  const pendingValues = [value]
+  const seenValues = new Set<object>()
+
+  while (pendingValues.length > 0) {
+    const candidate = pendingValues.pop()
+    if (
+      candidate === null ||
+      typeof candidate === 'boolean' ||
+      typeof candidate === 'string' ||
+      isFiniteNumber(candidate)
+    ) {
+      continue
+    }
+    if (
+      !candidate ||
+      typeof candidate !== 'object' ||
+      seenValues.has(candidate)
+    ) {
+      return false
+    }
+
+    seenValues.add(candidate)
+    if (Array.isArray(candidate)) {
+      pendingValues.push(...candidate)
+      continue
+    }
+    if (!isRecord(candidate)) {
+      return false
+    }
+    const prototype = Object.getPrototypeOf(candidate)
+    if (prototype !== Object.prototype && prototype !== null) {
+      return false
+    }
+    pendingValues.push(...Object.values(candidate))
+  }
+
+  return true
+}
+
+const isRuntimeScenarioCheckpoint = (
+  value: unknown,
+): value is RuntimeScenarioCheckpoint =>
+  isRecord(value) &&
+  (value.assistMode === 'off' ||
+    value.assistMode === 'capture' ||
+    value.assistMode === 'circularize') &&
+  Number.isInteger(value.assistTargetIndex) &&
+  (value.cameraFollow === undefined ||
+    isCameraFollowSubject(value.cameraFollow)) &&
+  (value.cameraMode === undefined ||
+    value.cameraMode === 'centered' ||
+    value.cameraMode === 'target' ||
+    value.cameraMode === 'unlocked') &&
+  (value.cameraPanOffset === undefined || isVec2(value.cameraPanOffset)) &&
+  (value.cameraView === undefined ||
+    value.cameraView === 'free' ||
+    value.cameraView === 'locked') &&
+  isFiniteNumber(value.coastPredictionHorizonHours) &&
+  (value.targetHeading === null || isFiniteNumber(value.targetHeading)) &&
+  (value.targetHeadingTurn === undefined ||
+    value.targetHeadingTurn === null ||
+    isTargetHeadingTurn(value.targetHeadingTurn)) &&
+  isFiniteNumber(value.viewportSize) &&
+  isSimulationState(value.world)
+
+const isRuntimeScenarioSession = (
+  value: unknown,
+): value is RuntimeScenarioSession =>
+  isRecord(value) &&
+  (value.checkpoint === null ||
+    isRuntimeScenarioCheckpoint(value.checkpoint)) &&
+  typeof value.completed === 'boolean' &&
+  isRecord(value.promptUi) &&
+  (value.promptUi.activePromptId === null ||
+    typeof value.promptUi.activePromptId === 'string') &&
+  (value.promptUi.replayPromptId === null ||
+    typeof value.promptUi.replayPromptId === 'string') &&
+  typeof value.scenarioId === 'string' &&
+  isScenarioSessionValue(value.state)
+
 const malformedSnapshot = (
   message: string,
 ): DebugScenarioSnapshotValidationFailure => ({
@@ -260,6 +372,74 @@ export const validateDebugScenarioSnapshot = (
   }
   if (!isSpacecraft(value.spacecraft)) {
     return malformedSnapshot('Snapshot data must include a valid spacecraft.')
+  }
+  if (
+    value.assistTargetIndex !== undefined &&
+    !Number.isInteger(value.assistTargetIndex)
+  ) {
+    return malformedSnapshot(
+      'Snapshot data must include a valid assistTargetIndex when present.',
+    )
+  }
+  if (
+    value.assistTargetSelectionMode !== undefined &&
+    value.assistTargetSelectionMode !== 'auto' &&
+    value.assistTargetSelectionMode !== 'manual'
+  ) {
+    return malformedSnapshot(
+      'Snapshot data must include a valid assistTargetSelectionMode when present.',
+    )
+  }
+  if (
+    value.cameraFollow !== undefined &&
+    !isCameraFollowSubject(value.cameraFollow)
+  ) {
+    return malformedSnapshot(
+      'Snapshot data must include a valid cameraFollow when present.',
+    )
+  }
+  if (value.cameraPanOffset !== undefined && !isVec2(value.cameraPanOffset)) {
+    return malformedSnapshot(
+      'Snapshot data must include a valid cameraPanOffset when present.',
+    )
+  }
+  if (
+    value.cameraView !== undefined &&
+    value.cameraView !== 'free' &&
+    value.cameraView !== 'locked'
+  ) {
+    return malformedSnapshot(
+      'Snapshot data must include a valid cameraView when present.',
+    )
+  }
+  if (value.viewportSize !== undefined && !isFiniteNumber(value.viewportSize)) {
+    return malformedSnapshot(
+      'Snapshot data must include a finite viewportSize when present.',
+    )
+  }
+  if (
+    value.coastPredictionHorizonHours !== undefined &&
+    !isFiniteNumber(value.coastPredictionHorizonHours)
+  ) {
+    return malformedSnapshot(
+      'Snapshot data must include finite coastPredictionHorizonHours when present.',
+    )
+  }
+  if (
+    value.runtimeScenario !== undefined &&
+    !isRuntimeScenarioSession(value.runtimeScenario)
+  ) {
+    return malformedSnapshot(
+      'Snapshot data must include a valid runtimeScenario when present.',
+    )
+  }
+  if (
+    value.userInfoPins !== undefined &&
+    (!Array.isArray(value.userInfoPins) || !value.userInfoPins.every(isInfoPin))
+  ) {
+    return malformedSnapshot(
+      'Snapshot data must include valid userInfoPins when present.',
+    )
   }
 
   return {
