@@ -1,17 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   clearRecentDebugScenarioSnapshotsForTests,
   createDebugScenarioSnapshotEntryName,
+  createDebugScenarioSnapshotFilename,
   createScenarioFromSnapshot,
   createSnapshotFromState,
+  downloadDebugScenarioSnapshot,
   getRecentDebugScenarioSnapshotLinks,
   getRecentDebugScenarioSnapshots,
   insertExportedDebugScenarioSnapshot,
   insertImportedDebugScenarioSnapshot,
   loadRecentDebugScenarioSnapshot,
   markRecentDebugScenarioSnapshotExported,
+  parseDebugScenarioSnapshotJson,
   readDebugScenarioSnapshot,
+  serializeDebugScenarioSnapshot,
+  validateDebugScenarioSnapshot,
   writeDebugScenarioSnapshot,
 } from '@/debugScenarioSnapshot'
 import { createRuntimeScenarioSession } from '@/scenario/scenarioSession'
@@ -64,6 +69,129 @@ beforeEach(() => {
     localStorage: createStorage(),
   })
   clearRecentDebugScenarioSnapshotsForTests()
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('portable debug scenario snapshots', () => {
+  it.each([
+    1, 2, 3,
+  ] as const)('accepts supported snapshot version %s', (version) => {
+    const snapshot = { ...snapshotBase, version }
+
+    expect(validateDebugScenarioSnapshot(snapshot)).toEqual({
+      ok: true,
+      snapshot,
+    })
+    expect(parseDebugScenarioSnapshotJson(JSON.stringify(snapshot))).toEqual({
+      ok: true,
+      snapshot,
+    })
+  })
+
+  it('distinguishes invalid JSON, unsupported versions, and malformed data', () => {
+    expect(parseDebugScenarioSnapshotJson('{ nope')).toEqual({
+      ok: false,
+      error: 'invalid-json',
+      message: 'Snapshot file is not valid JSON.',
+    })
+    expect(
+      parseDebugScenarioSnapshotJson(
+        JSON.stringify({ ...snapshotBase, version: 99 }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: 'unsupported-version',
+      message: 'Debug snapshot version 99 is not supported.',
+    })
+    expect(
+      parseDebugScenarioSnapshotJson(
+        JSON.stringify({ ...snapshotBase, spacecraft: null }),
+      ),
+    ).toEqual({
+      ok: false,
+      error: 'malformed-snapshot',
+      message: 'Snapshot data must include a valid spacecraft.',
+    })
+  })
+
+  it('serializes only the canonical snapshot payload', () => {
+    const snapshotWithTransportMetadata = {
+      ...snapshotBase,
+      importedAt: '2026-07-27T10:30:00.000Z',
+      lastExportedAt: '2026-07-27T10:31:00.000Z',
+    }
+    const serialized = serializeDebugScenarioSnapshot(
+      snapshotWithTransportMetadata,
+    )
+
+    expect(JSON.parse(serialized)).toEqual(snapshotBase)
+    expect(serialized).not.toContain('importedAt')
+    expect(serialized).not.toContain('lastExportedAt')
+  })
+
+  it('creates sanitized filenames with the game, scenario, and saved time', () => {
+    const snapshot = {
+      ...snapshotBase,
+      version: 3 as const,
+      runtimeScenario: createRuntimeScenarioSession(
+        '../Tutorial: Réach / Moon',
+      ),
+    }
+
+    expect(createDebugScenarioSnapshotFilename(snapshot)).toBe(
+      'space-web-game-Tutorial-Reach-Moon-2026-04-10T10-00-00-000Z.json',
+    )
+    expect(createDebugScenarioSnapshotFilename(snapshotBase)).toBe(
+      'space-web-game-2026-04-10T10-00-00-000Z.json',
+    )
+  })
+
+  it('initiates a browser download and releases its temporary resources', async () => {
+    const click = vi.fn()
+    const remove = vi.fn()
+    const downloadLink = {
+      click,
+      download: '',
+      hidden: false,
+      href: '',
+      remove,
+    }
+    const append = vi.fn()
+    const createElement = vi.fn(() => downloadLink)
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:debug-snapshot')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('document', {
+      body: { append },
+      createElement,
+    })
+    vi.stubGlobal('URL', {
+      createObjectURL,
+      revokeObjectURL,
+    })
+
+    downloadDebugScenarioSnapshot(snapshotBase)
+
+    expect(createElement).toHaveBeenCalledWith('a')
+    expect(append).toHaveBeenCalledWith(downloadLink)
+    expect(downloadLink).toMatchObject({
+      download: 'space-web-game-2026-04-10T10-00-00-000Z.json',
+      hidden: true,
+      href: 'blob:debug-snapshot',
+    })
+    expect(click).toHaveBeenCalledOnce()
+    expect(remove).toHaveBeenCalledOnce()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:debug-snapshot')
+
+    const blob = createObjectURL.mock.calls[0]?.[0]
+    expect(blob).toBeInstanceOf(Blob)
+    expect(blob?.type).toBe('application/json')
+    await expect(blob?.text()).resolves.toBe(
+      serializeDebugScenarioSnapshot(snapshotBase),
+    )
+  })
 })
 
 describe('createScenarioFromSnapshot', () => {
@@ -255,6 +383,27 @@ describe('createScenarioFromSnapshot', () => {
 })
 
 describe('recent debug scenario snapshots', () => {
+  it('uses shared compatibility checks for active and recent stored snapshots', () => {
+    window.localStorage.setItem(
+      'space-web-game.debugScenarioSnapshot.v1',
+      JSON.stringify({ ...snapshotBase, version: 4 }),
+    )
+    window.localStorage.setItem(
+      'space-web-game.recentDebugScenarioSnapshots.v1',
+      JSON.stringify([
+        {
+          id: 'unsupported-recent-entry',
+          name: 'Unsupported recent entry',
+          savedAt: snapshotBase.savedAt,
+          snapshot: { ...snapshotBase, version: 4 },
+        },
+      ]),
+    )
+
+    expect(readDebugScenarioSnapshot()).toBeNull()
+    expect(getRecentDebugScenarioSnapshots()).toEqual([])
+  })
+
   it('loads stored entries created before transport metadata was added', () => {
     window.localStorage.setItem(
       'space-web-game.recentDebugScenarioSnapshots.v1',

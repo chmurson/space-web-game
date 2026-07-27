@@ -19,6 +19,7 @@ const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
 const recentDebugSnapshotsStorageKey =
   'space-web-game.recentDebugScenarioSnapshots.v1'
 const maxRecentDebugScenarioSnapshots = 10
+const debugScenarioSnapshotFilenamePrefix = 'space-web-game'
 
 type DebugScenarioSnapshotV1 = {
   version: 1
@@ -56,6 +57,29 @@ export type DebugScenarioSnapshot =
   | DebugScenarioSnapshotV1
   | DebugScenarioSnapshotV2
   | DebugScenarioSnapshotV3
+
+type DebugScenarioSnapshotValidationSuccess = {
+  ok: true
+  snapshot: DebugScenarioSnapshot
+}
+
+type DebugScenarioSnapshotValidationFailure = {
+  ok: false
+  error: 'malformed-snapshot' | 'unsupported-version'
+  message: string
+}
+
+export type DebugScenarioSnapshotValidationResult =
+  | DebugScenarioSnapshotValidationSuccess
+  | DebugScenarioSnapshotValidationFailure
+
+export type DebugScenarioSnapshotParseResult =
+  | DebugScenarioSnapshotValidationResult
+  | {
+      ok: false
+      error: 'invalid-json'
+      message: string
+    }
 
 export type DebugScenarioSnapshotEntry = {
   id: string
@@ -192,17 +216,164 @@ export const createDebugScenarioSnapshotEntryName = (
   return `Snapshot ${new Date(snapshot.savedAt).toLocaleTimeString()}`
 }
 
-const isDebugScenarioSnapshot = (
-  snapshot: unknown,
-): snapshot is DebugScenarioSnapshot =>
-  !!snapshot &&
-  typeof snapshot === 'object' &&
-  'version' in snapshot &&
-  ((snapshot as DebugScenarioSnapshot).version === 1 ||
-    (snapshot as DebugScenarioSnapshot).version === 2 ||
-    (snapshot as DebugScenarioSnapshot).version === 3) &&
-  Array.isArray((snapshot as DebugScenarioSnapshot).bodies) &&
-  !!(snapshot as DebugScenarioSnapshot).spacecraft
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value)
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+
+const isVec2 = (value: unknown): value is Vec2 =>
+  isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y)
+
+const isBody = (value: unknown): value is Body =>
+  isRecord(value) &&
+  typeof value.id === 'string' &&
+  typeof value.name === 'string' &&
+  isFiniteNumber(value.mass) &&
+  isFiniteNumber(value.radius) &&
+  isVec2(value.position) &&
+  isVec2(value.velocity) &&
+  typeof value.color === 'string'
+
+const isSpacecraft = (value: unknown): value is Spacecraft =>
+  isRecord(value) &&
+  isVec2(value.position) &&
+  isVec2(value.velocity) &&
+  isFiniteNumber(value.heading) &&
+  (value.angularVelocity === undefined ||
+    isFiniteNumber(value.angularVelocity)) &&
+  isFiniteNumber(value.fuel) &&
+  isFiniteNumber(value.fuelUsed) &&
+  isFiniteNumber(value.dryMass) &&
+  isFiniteNumber(value.fuelMass) &&
+  isFiniteNumber(value.fuelCapacity)
+
+const malformedSnapshot = (
+  message: string,
+): DebugScenarioSnapshotValidationFailure => ({
+  ok: false,
+  error: 'malformed-snapshot',
+  message,
+})
+
+export const validateDebugScenarioSnapshot = (
+  value: unknown,
+): DebugScenarioSnapshotValidationResult => {
+  if (!isRecord(value)) {
+    return malformedSnapshot('Snapshot data must be a JSON object.')
+  }
+
+  if (value.version !== 1 && value.version !== 2 && value.version !== 3) {
+    if (typeof value.version === 'number') {
+      return {
+        ok: false,
+        error: 'unsupported-version',
+        message: `Debug snapshot version ${value.version} is not supported.`,
+      }
+    }
+
+    return malformedSnapshot(
+      'Snapshot data must include a numeric version field.',
+    )
+  }
+
+  if (typeof value.savedAt !== 'string' || value.savedAt.length === 0) {
+    return malformedSnapshot(
+      'Snapshot data must include a non-empty savedAt timestamp.',
+    )
+  }
+  if (!isFiniteNumber(value.elapsed)) {
+    return malformedSnapshot(
+      'Snapshot data must include a finite elapsed time.',
+    )
+  }
+  if (!Array.isArray(value.bodies) || !value.bodies.every(isBody)) {
+    return malformedSnapshot('Snapshot data must include valid bodies.')
+  }
+  if (!isSpacecraft(value.spacecraft)) {
+    return malformedSnapshot('Snapshot data must include a valid spacecraft.')
+  }
+
+  return {
+    ok: true,
+    snapshot: value as DebugScenarioSnapshot,
+  }
+}
+
+export const parseDebugScenarioSnapshotJson = (
+  json: string,
+): DebugScenarioSnapshotParseResult => {
+  let value: unknown
+
+  try {
+    value = JSON.parse(json)
+  } catch {
+    return {
+      ok: false,
+      error: 'invalid-json',
+      message: 'Snapshot file is not valid JSON.',
+    }
+  }
+
+  return validateDebugScenarioSnapshot(value)
+}
+
+export const serializeDebugScenarioSnapshot = (
+  snapshot: DebugScenarioSnapshot,
+) => {
+  const portableSnapshot = {
+    ...snapshot,
+  } as Record<string, unknown>
+  delete portableSnapshot.importedAt
+  delete portableSnapshot.lastExportedAt
+  return JSON.stringify(portableSnapshot, null, 2)
+}
+
+const sanitizeDebugScenarioSnapshotFilenamePart = (value: string) =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+export const createDebugScenarioSnapshotFilename = (
+  snapshot: DebugScenarioSnapshot,
+) => {
+  const parsedSavedAt = new Date(snapshot.savedAt)
+  const savedAt = Number.isNaN(parsedSavedAt.getTime())
+    ? snapshot.savedAt
+    : parsedSavedAt.toISOString()
+  const scenarioId =
+    snapshot.version === 1 ? '' : (snapshot.runtimeScenario?.scenarioId ?? '')
+  const filenameParts = [
+    debugScenarioSnapshotFilenamePrefix,
+    sanitizeDebugScenarioSnapshotFilenamePart(scenarioId),
+    sanitizeDebugScenarioSnapshotFilenamePart(savedAt) || 'unknown-time',
+  ].filter(Boolean)
+
+  return `${filenameParts.join('-')}.json`
+}
+
+export const downloadDebugScenarioSnapshot = (
+  snapshot: DebugScenarioSnapshot,
+) => {
+  const blob = new Blob([serializeDebugScenarioSnapshot(snapshot)], {
+    type: 'application/json',
+  })
+  const objectUrl = URL.createObjectURL(blob)
+  const downloadLink = document.createElement('a')
+  downloadLink.href = objectUrl
+  downloadLink.download = createDebugScenarioSnapshotFilename(snapshot)
+  downloadLink.hidden = true
+
+  try {
+    document.body.append(downloadLink)
+    downloadLink.click()
+  } finally {
+    downloadLink.remove()
+    URL.revokeObjectURL(objectUrl)
+  }
+}
 
 const isDebugScenarioSnapshotEntry = (
   entry: unknown,
@@ -220,7 +391,7 @@ const isDebugScenarioSnapshotEntry = (
       typeof candidate.lastExportedAt === 'string') &&
     typeof candidate.name === 'string' &&
     typeof candidate.savedAt === 'string' &&
-    isDebugScenarioSnapshot(candidate.snapshot)
+    validateDebugScenarioSnapshot(candidate.snapshot).ok
   )
 }
 
@@ -390,8 +561,8 @@ export const readDebugScenarioSnapshot = (): DebugScenarioSnapshot | null => {
       return null
     }
 
-    const snapshot = JSON.parse(rawSnapshot)
-    return isDebugScenarioSnapshot(snapshot) ? snapshot : null
+    const result = parseDebugScenarioSnapshotJson(rawSnapshot)
+    return result.ok ? result.snapshot : null
   } catch {
     return null
   }
