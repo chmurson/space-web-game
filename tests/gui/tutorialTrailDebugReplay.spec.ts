@@ -4,10 +4,11 @@ import type {
   DevtoolsBridgeResponse,
   SpaceGameDevtoolsSnapshot,
 } from '../../src/devtools/devtoolsBridge'
+import { EARTH_MOON_VIEWPORT_SIZE } from '../../src/domain/viewportPresets'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
 const userSettingsStorageKey = 'space-web-game.userSettings.v1'
-const targetViewportSize = 1_000
+const targetViewportSize = EARTH_MOON_VIEWPORT_SIZE
 
 type DevtoolsWindow = Window & {
   __SPACE_WEB_GAME_DEVTOOLS__?: {
@@ -318,7 +319,7 @@ test('replays tutorial transfer trail debug state from a fixed checkpoint', asyn
   expect(snapshot.debug.debugModeEnabled).toBe(true)
   expect(renderedTrailSliceCount).toBeGreaterThan(0)
   expect(debugText).toContain('assist target: Moon')
-  expect(debugText).toContain('viewport: 1000.00')
+  expect(debugText).toContain(`viewport: ${targetViewportSize.toFixed(2)}`)
   expect(debugText).toContain('trail frame: inertial')
 
   await attachReplayScreenshot(page, testInfo, 'tutorial-trail-debug-replay')

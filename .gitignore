@@ -3,6 +3,8 @@ dist
 .DS_Store
 debug
 tmp
+.playwright-cli/
+output/playwright/
 
 # Local Codex/Shipit workflow notes
 .codex/shipit-workflows/

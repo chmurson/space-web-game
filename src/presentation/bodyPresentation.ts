@@ -1,6 +1,7 @@
 import { renderPosition } from '../render/sceneUpdates'
 import type { InfoPin } from '../runtime/infoPins'
 import type { GameSceneRefs } from '../scene/createGameScene'
+import { SPHERE_OF_INFLUENCE_RENDER_LIFT } from '../scene/sphereOfInfluenceVisual'
 import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
 import type { OverlayUiRefs } from '../ui/overlayUI/createOverlayUi'
@@ -25,6 +26,12 @@ const updateBodyWorldVisuals = (options: {
   for (const [bodyId, mesh] of gameScene.bodyMeshes.entries()) {
     mesh.visible = visibleBodyIds.has(bodyId)
   }
+  for (const [
+    bodyId,
+    group,
+  ] of gameScene.bodySphereOfInfluenceGroups.entries()) {
+    group.visible = visibleBodyIds.has(bodyId)
+  }
 
   for (const body of bodies) {
     const mesh = gameScene.bodyMeshes.get(body.id)
@@ -42,6 +49,19 @@ const updateBodyWorldVisuals = (options: {
           options.elapsedSeconds,
         )
       }
+    }
+    const sphereOfInfluenceGroup = gameScene.bodySphereOfInfluenceGroups.get(
+      body.id,
+    )
+    if (sphereOfInfluenceGroup) {
+      sphereOfInfluenceGroup.visible = true
+      sphereOfInfluenceGroup.position.copy(
+        renderPosition(
+          body.position.x,
+          body.position.y,
+          SPHERE_OF_INFLUENCE_RENDER_LIFT,
+        ),
+      )
     }
   }
 }

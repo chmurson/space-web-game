@@ -1,4 +1,8 @@
 import * as THREE from 'three'
+import {
+  parseSphereOfInfluenceVariant,
+  type SphereOfInfluenceVariant,
+} from '../config/featureFlags'
 import { gameConfig } from '../config/gameConfig'
 import type { TrajectoryPredictionSamplingConfig } from '../prediction/trajectoryPrediction'
 import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
@@ -21,6 +25,7 @@ export type AppConfigContext = {
   requestedScenarioId: string
   featureFlags: {
     noHorizonLimit: boolean
+    sphereOfInfluenceVariant: SphereOfInfluenceVariant | null
   }
   userSettings: UserSettings
   controls: {
@@ -82,6 +87,9 @@ export const createAppConfigContext = (): AppConfigContext => {
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
+    sphereOfInfluenceVariant: parseSphereOfInfluenceVariant(
+      urlParams.get('soi'),
+    ),
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'

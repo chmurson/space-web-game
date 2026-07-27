@@ -8,7 +8,7 @@ camera:
   viewport:
     default: 100
     minDivisor: 30
-    max: 2500
+    max: 4000
   spacecraftModelZoomThreshold: 15
 
 controls:

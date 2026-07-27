@@ -8,6 +8,7 @@ export type Body = {
   position: Vec2
   velocity: Vec2
   color: string
+  sphereOfInfluenceRadius?: number
 }
 
 export type Spacecraft = {
