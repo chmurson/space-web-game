@@ -14,6 +14,7 @@ import {
   type TouchTrajectoryControlState,
   type UserSettings,
 } from '../userSettingsStorage'
+import type { DeveloperFeatureFlags } from './developerFeatureFlags'
 
 export type AppMode = 'menu' | 'game'
 
@@ -22,10 +23,7 @@ export type AppConfigContext = {
   requestedEngine: string
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
-  featureFlags: {
-    noHorizonLimit: boolean
-    trajectoryPredictionImplementation: TrajectoryPredictionImplementation
-  }
+  featureFlags: DeveloperFeatureFlags
   userSettings: UserSettings
   controls: {
     timeWarps: number[]
