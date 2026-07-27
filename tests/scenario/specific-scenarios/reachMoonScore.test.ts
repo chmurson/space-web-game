@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateReachMoonOrbitQualityPoints,
   calculateReachMoonScore,
+  formatReachMoonOrbitAltitude,
   formatReachMoonOrbitQualityContext,
   formatReachMoonScoreSummary,
   formatReachMoonScoreSummaryDisplay,
@@ -209,15 +210,24 @@ describe('reachMoonScore', () => {
     expect(
       formatReachMoonOrbitQualityContext(
         {
-          orbitApoapsisAltitudeMeters: 420_000,
-          orbitPeriapsisAltitudeMeters: 390_000,
+          orbitApoapsisAltitudeMeters: 1_180_000,
+          orbitPeriapsisAltitudeMeters: 999_999,
         },
         {
           lunarOrbitCircularityPoints: 0,
           lunarOrbitEccentricity: 0.007,
         },
       ),
-    ).toBe('Ap 420 km / Pe 390 km - very elongated')
+    ).toBe(
+      `Ap ${(1.2).toLocaleString()} Mm / Pe ${(1_000).toLocaleString()} km - very elongated`,
+    )
+  })
+
+  it('uses shared cosmic-distance formatting for lunar orbit altitudes', () => {
+    expect(formatReachMoonOrbitAltitude(135_000)).toBe('140 km')
+    expect(formatReachMoonOrbitAltitude(1_180_000)).toBe(
+      `${(1.2).toLocaleString()} Mm`,
+    )
   })
 
   it.each([

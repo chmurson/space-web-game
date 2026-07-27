@@ -1,11 +1,26 @@
 import type { BodyInfluence } from '../simulation/bodyInfluence'
 
-export const formatDistance = (meters: number) => {
-  if (meters >= 1_000_000) {
-    return `${Math.round(meters / 1_000_000).toLocaleString()} Mm`
+const roundToTwoSignificantDigits = (value: number) => {
+  if (value === 0 || !Number.isFinite(value)) {
+    return value
   }
 
-  return `${Math.round(meters / 1_000).toLocaleString()} km`
+  const roundingScale = 10 ** (1 - Math.floor(Math.log10(Math.abs(value))))
+  return Math.round(value * roundingScale) / roundingScale
+}
+
+const formatCosmicDistanceValue = (value: number) =>
+  roundToTwoSignificantDigits(value).toLocaleString(undefined, {
+    minimumSignificantDigits: 2,
+    maximumSignificantDigits: 2,
+  })
+
+export const formatDistance = (meters: number) => {
+  if (meters >= 1_000_000) {
+    return `${formatCosmicDistanceValue(meters / 1_000_000)} Mm`
+  }
+
+  return `${formatCosmicDistanceValue(meters / 1_000)} km`
 }
 
 export const formatDuration = (seconds: number) => {
@@ -43,15 +58,17 @@ export const formatCompactElapsed = (seconds: number) => {
   const days = Math.floor(roundedSeconds / 86_400)
   const hours = Math.floor((roundedSeconds % 86_400) / 3_600)
   const minutes = Math.floor((roundedSeconds % 3_600) / 60)
+  const paddedHours = hours.toString().padStart(2, '0')
+  const paddedMinutes = minutes.toString().padStart(2, '0')
 
   if (days > 0) {
-    return `${days}d${hours}h`
+    return `${days}d${paddedHours}h`
   }
   if (hours > 0) {
-    return `${hours}h${minutes}m`
+    return `${paddedHours}h${paddedMinutes}m`
   }
   if (minutes > 0) {
-    return `${minutes}m`
+    return `${paddedMinutes}m`
   }
 
   return `${roundedSeconds}s`

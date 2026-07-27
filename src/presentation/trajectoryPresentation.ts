@@ -21,7 +21,6 @@ import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body, PhysicsEngine } from '../simulation/types'
 import { fromAngle, type Vec2 } from '../simulation/vector'
-import type { OrbitPointDisplaySettings } from '../userSettingsStorage'
 import { getCoastPredictionFadeColors } from './predictionLineFade'
 import {
   getTrajectoryRenderMaxChordErrorMeters,
@@ -292,7 +291,6 @@ const updateTargetRelativePredictionVisuals = (options: {
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
   apsidesScenarioOwned: boolean
-  orbitPointDisplaySettings: OrbitPointDisplaySettings
   pinnedEventMarkerKinds: ReadonlySet<TrajectoryPredictionEventMarkerKind>
   predictedImpact: { bodyName: string; time: number } | null
   stabilizedEventMarkers: Map<
@@ -432,7 +430,6 @@ const updateTargetRelativePredictionVisuals = (options: {
     eventMarkerLabels: options.eventMarkerLabels,
     gameScene: options.gameScene,
     apsidesScenarioOwned: options.apsidesScenarioOwned,
-    orbitPointDisplaySettings: options.orbitPointDisplaySettings,
     pinnedEventMarkerKinds: options.pinnedEventMarkerKinds,
     stabilizedEventMarkers: options.stabilizedEventMarkers,
     target: options.target,
@@ -695,7 +692,6 @@ const updateTrajectoryEventMarkers = (options: {
   eventMarkers: TrajectoryPredictionEventMarker[]
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
   gameScene: GameSceneRefs
-  orbitPointDisplaySettings: OrbitPointDisplaySettings
   pinnedEventMarkerKinds: ReadonlySet<TrajectoryPredictionEventMarkerKind>
   stabilizedEventMarkers: Map<
     TrajectoryPredictionEventMarkerKind,
@@ -704,12 +700,6 @@ const updateTrajectoryEventMarkers = (options: {
   target: Body
   viewportSize: number
 }) => {
-  if (!options.orbitPointDisplaySettings.markersVisible) {
-    options.stabilizedEventMarkers.clear()
-    hideTrajectoryEventMarkers(options.eventMarkerLabels)
-    return
-  }
-
   const selectedEventMarkers = options.eventMarkers.filter((eventMarker) =>
     options.pinnedEventMarkerKinds.has(eventMarker.kind),
   )
@@ -844,29 +834,13 @@ const shouldHideTutorialOrbitPointMarkers = (runtime: AppRuntimeState) => {
   return isTutorialScenarioState(state) && state.phase === 'escape-earth'
 }
 
-const getEffectiveOrbitPointDisplaySettings = (
-  runtime: AppRuntimeState,
-  settings: OrbitPointDisplaySettings,
-): OrbitPointDisplaySettings => {
-  if (
-    !settings.markersVisible ||
-    !shouldHideTutorialOrbitPointMarkers(runtime)
-  ) {
-    return settings
-  }
-
-  return {
-    ...settings,
-    markersVisible: false,
-  }
-}
-
 const getApsidesSelectionState = (runtime: AppRuntimeState) => {
   const scenarioOwned = runtime.scenario.directives.infoPins.some(
     (pin) => pin.kind === 'apsis',
   )
   const selected =
-    scenarioOwned || runtime.info.userPins.some((pin) => pin.kind === 'apsis')
+    !shouldHideTutorialOrbitPointMarkers(runtime) &&
+    (scenarioOwned || runtime.info.userPins.some((pin) => pin.kind === 'apsis'))
 
   return {
     pinnedEventMarkerKinds: selected
@@ -879,7 +853,6 @@ const getApsidesSelectionState = (runtime: AppRuntimeState) => {
 export const createTrajectoryPresentation = (options: {
   autopilotRotationRate: number
   gameScene: GameSceneRefs
-  getOrbitPointDisplaySettings: () => OrbitPointDisplaySettings
   physicsEngine: PhysicsEngine
   queries: GameQueries
   runtime: AppRuntimeState
@@ -1064,10 +1037,6 @@ export const createTrajectoryPresentation = (options: {
         debugModeEnabled: options.runtime.debug.debugModeEnabled,
         eventMarkerLabels: options.trajectoryEventMarkerLabels,
         gameScene: options.gameScene,
-        orbitPointDisplaySettings: getEffectiveOrbitPointDisplaySettings(
-          options.runtime,
-          options.getOrbitPointDisplaySettings(),
-        ),
         pinnedEventMarkerKinds: apsidesSelection.pinnedEventMarkerKinds,
         predictedImpact: predictionTargetMatches
           ? predictionState.predictedImpact

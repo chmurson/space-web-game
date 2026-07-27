@@ -514,6 +514,14 @@
       0 0 24px rgba(251, 191, 36, 0.24);
   }
 
+  .mobile-command-dock[data-tutorial-focused="rcs"]
+    .mobile-command-dock-rcs-yaw {
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.34),
+      0 0 24px rgba(56, 189, 248, 0.24);
+  }
+
   .mobile-command-dock[data-tutorial-focused="warp"]
     .mobile-command-dock-nav-time-warp {
     border-radius: 12px;

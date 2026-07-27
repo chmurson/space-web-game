@@ -12,10 +12,8 @@ type TimeWarpSelectionOptions = {
 }
 
 export const createNavigationTimeWarpController = (options: {
-  maxControlWarp: number
   timeWarps: number[]
 }) => {
-  let headingPlanActive = false
   let simulationControlMaxWarp: number | null = null
   let usablePredictionCoverageSeconds: number | null = null
   let requestedTimeWarpIndex: number | null = null
@@ -45,17 +43,7 @@ export const createNavigationTimeWarpController = (options: {
       timeWarps: options.timeWarps,
     }).timeWarpIndex
 
-  const getActiveControlMaxWarp = () => {
-    if (headingPlanActive && simulationControlMaxWarp !== null) {
-      return Math.min(options.maxControlWarp, simulationControlMaxWarp)
-    }
-
-    if (headingPlanActive) {
-      return options.maxControlWarp
-    }
-
-    return simulationControlMaxWarp
-  }
+  const getActiveControlMaxWarp = () => simulationControlMaxWarp
 
   const navigationActive = () => getActiveControlMaxWarp() !== null
 
@@ -90,7 +78,6 @@ export const createNavigationTimeWarpController = (options: {
   }
 
   const reset = () => {
-    headingPlanActive = false
     simulationControlMaxWarp = null
     usablePredictionCoverageSeconds = null
     requestedTimeWarpIndex = null
@@ -125,14 +112,6 @@ export const createNavigationTimeWarpController = (options: {
   }
 
   return {
-    beginHeadingPlan: (selection: TimeWarpSelectionOptions) => {
-      headingPlanActive = true
-      return beginNavigation(selection)
-    },
-    endHeadingPlan: (nowMs: number) => {
-      headingPlanActive = false
-      markNavigationStopped(nowMs)
-    },
     reset,
     resolveFrame: (
       selection: TimeWarpSelectionOptions & {

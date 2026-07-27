@@ -10,6 +10,8 @@ export type TelemetryStripRefs = {
   statTargetAltitude: HTMLElement | null
   statThrust: HTMLElement | null
   statTime: HTMLElement | null
+  statTimeElapsed: HTMLElement | null
+  statTimeWarp: HTMLElement | null
   targetCluster: HTMLElement | null
   targetPill: HTMLElement | null
   targetSelectorButton: HTMLButtonElement | null
@@ -91,12 +93,30 @@ export const TelemetryStripSurface = ({ refs }: TelemetryStripSurfaceProps) => (
           />
           <circle class="telemetry-time-icon-center" cx="8" cy="8" r="0.9" />
         </svg>
-        <strong
+        <span
+          class="telemetry-time-value"
           data-stat="time"
           ref={(element) => {
             refs.statTime = element
           }}
-        />
+        >
+          <span
+            class="telemetry-pill-secondary"
+            data-stat="time-elapsed"
+            ref={(element) => {
+              refs.statTimeElapsed = element
+            }}
+          />
+          <span aria-hidden="true" class="telemetry-pill-secondary">
+            ·
+          </span>
+          <strong
+            data-stat="time-warp"
+            ref={(element) => {
+              refs.statTimeWarp = element
+            }}
+          />
+        </span>
       </span>
     </div>
     <div class="telemetry-pill telemetry-pill-thrust">

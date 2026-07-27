@@ -31,11 +31,6 @@ export type OverlayUiRefs = {
   fuelDepletedNotice: HTMLElement
   fuelIconLevel: SVGRectElement | null
   fuelPill: HTMLElement | null
-  headingTargetDot: HTMLElement
-  headingCommittedTargetLine: SVGLineElement
-  headingTargetLine: SVGLineElement
-  headingTargetOverlay: SVGSVGElement
-  headingTargetTurnSlice: SVGPathElement
   offscreenIndicators: Map<string, HTMLElement>
   rcsActualTurnOverlay: SVGSVGElement
   rcsActualTurnSlices: SVGPathElement[]
@@ -78,6 +73,8 @@ export type OverlayUiRefs = {
   targetStatus: HTMLElement | null
   statTargetSpeed: HTMLElement | null
   statTime: HTMLElement | null
+  statTimeElapsed: HTMLElement | null
+  statTimeWarp: HTMLElement | null
   timeIcon: SVGSVGElement | null
   timeIconHand: SVGLineElement | null
   trajectoryEventMarkerLabels: Record<
@@ -104,6 +101,8 @@ const createEmptyTelemetryRefs = (): TelemetryStripRefs => ({
   statTargetAltitude: null,
   statThrust: null,
   statTime: null,
+  statTimeElapsed: null,
+  statTimeWarp: null,
   targetCluster: null,
   targetPill: null,
   targetSelectorButton: null,
@@ -196,40 +195,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
   spacecraftIconThrust.style.display = 'none'
   options.app.appendChild(spacecraftIconThrust)
 
-  const headingTargetOverlay = document.createElementNS(
-    'http://www.w3.org/2000/svg',
-    'svg',
-  )
-  headingTargetOverlay.classList.add('heading-target-overlay')
-  headingTargetOverlay.setAttribute('aria-hidden', 'true')
-  headingTargetOverlay.setAttribute(
-    'viewBox',
-    `0 0 ${window.innerWidth} ${window.innerHeight}`,
-  )
-  headingTargetOverlay.style.display = 'none'
-
-  const headingTargetLine = document.createElementNS(
-    'http://www.w3.org/2000/svg',
-    'line',
-  )
-  headingTargetLine.classList.add('heading-target-line')
-  headingTargetOverlay.appendChild(headingTargetLine)
-
-  const headingCommittedTargetLine = document.createElementNS(
-    'http://www.w3.org/2000/svg',
-    'line',
-  )
-  headingCommittedTargetLine.classList.add('heading-committed-target-line')
-  headingTargetOverlay.appendChild(headingCommittedTargetLine)
-
-  const headingTargetTurnSlice = document.createElementNS(
-    'http://www.w3.org/2000/svg',
-    'path',
-  )
-  headingTargetTurnSlice.classList.add('heading-target-turn-slice')
-  headingTargetOverlay.appendChild(headingTargetTurnSlice)
-  options.app.appendChild(headingTargetOverlay)
-
   const rcsActualTurnOverlay = document.createElementNS(
     'http://www.w3.org/2000/svg',
     'svg',
@@ -257,11 +222,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     return slice
   })
   options.app.appendChild(rcsActualTurnOverlay)
-
-  const headingTargetDot = document.createElement('div')
-  headingTargetDot.className = 'heading-target-dot'
-  headingTargetDot.style.display = 'none'
-  options.app.appendChild(headingTargetDot)
 
   const offscreenIndicators = new Map<string, HTMLElement>()
   const bodyLabels = new Map<string, HTMLElement>()
@@ -311,11 +271,6 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     fuelDepletedNotice: bottomHudNotices.fuelDepletedNotice,
     fuelIconLevel: hudTelemetry.telemetryRefs.fuelIconLevel,
     fuelPill: hudTelemetry.telemetryRefs.fuelPill,
-    headingTargetDot,
-    headingCommittedTargetLine,
-    headingTargetLine,
-    headingTargetOverlay,
-    headingTargetTurnSlice,
     offscreenIndicators,
     rcsActualTurnOverlay,
     rcsActualTurnSlices,
@@ -363,6 +318,8 @@ export const createOverlayUi = (options: OverlayUiOptions): OverlayUiRefs => {
     targetStatus: hudTelemetry.telemetryRefs.targetStatus,
     statTargetSpeed: null,
     statTime: hudTelemetry.telemetryRefs.statTime,
+    statTimeElapsed: hudTelemetry.telemetryRefs.statTimeElapsed,
+    statTimeWarp: hudTelemetry.telemetryRefs.statTimeWarp,
     timeIcon: hudTelemetry.telemetryRefs.timeIcon,
     timeIconHand: hudTelemetry.telemetryRefs.timeIconHand,
     trajectoryEventMarkerLabels,

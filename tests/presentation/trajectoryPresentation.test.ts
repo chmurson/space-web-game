@@ -13,7 +13,6 @@ import { createGameScene } from '@/scene/createGameScene'
 import { idleControls } from '@/simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '@/simulation/types'
 import type { Vec2 } from '@/simulation/vector'
-import type { OrbitPointDisplaySettings } from '@/userSettingsStorage'
 
 const globals = globalThis as unknown as {
   window?: { innerHeight: number; innerWidth: number }
@@ -75,10 +74,6 @@ const createTrajectoryEventMarkerLabels = () => ({
   apoapsis: new FakeTrajectoryEventLabel() as unknown as HTMLElement,
   periapsis: new FakeTrajectoryEventLabel() as unknown as HTMLElement,
 })
-
-const defaultOrbitPointDisplaySettings: OrbitPointDisplaySettings = {
-  markersVisible: true,
-}
 
 const createEventMarker = (
   marker: Pick<TrajectoryPredictionEventMarker, 'kind' | 'point' | 'time'> &
@@ -151,7 +146,6 @@ const createRuntime = (target: Body, viewportSize: number): AppRuntimeState =>
         panOffset: { x: 0, y: 0 },
       },
       spacecraftLabelIntroUntil: 0,
-      targetHeadingSelectionEpoch: 0,
       touchThrustControl: {
         engaged: false,
         interactive: false,
@@ -305,7 +299,6 @@ const createPredictionRuntime = (
 
 const createTestPresentation = (options: {
   debugModeEnabled?: boolean
-  orbitPointDisplaySettings?: OrbitPointDisplaySettings
   eventMarkers: TrajectoryPredictionEventMarker[]
   farVisible?: 'current' | 'none' | 'retained-stale'
   nearPointCount?: number
@@ -342,8 +335,6 @@ const createTestPresentation = (options: {
     presentation: createTrajectoryPresentation({
       autopilotRotationRate: 0.9,
       gameScene,
-      getOrbitPointDisplaySettings: () =>
-        options.orbitPointDisplaySettings ?? defaultOrbitPointDisplaySettings,
       physicsEngine,
       queries: createQueries(target),
       runtime,
@@ -698,34 +689,6 @@ describe('createTrajectoryPresentation', () => {
     expect(staleFarColorStart.getX(0)).toBeCloseTo(1)
     expect(staleFarColorStart.getY(0)).toBeCloseTo(1)
     expect(staleFarColorStart.getZ(0)).toBeCloseTo(1)
-  })
-
-  it('uses orbit point display settings for marker visibility', () => {
-    const eventMarkers = [
-      createEventMarker({
-        altitude: 400_000,
-        distance: 12_000_000,
-        kind: 'periapsis',
-        point: { x: 12_000_000, y: 0 },
-        time: 30,
-      }),
-    ]
-    const hiddenMarkers = createTestPresentation({
-      eventMarkers,
-      orbitPointDisplaySettings: {
-        ...defaultOrbitPointDisplaySettings,
-        markersVisible: false,
-      },
-      viewportSize: 50,
-    })
-    hiddenMarkers.runtime.info.userPins = [
-      { apsis: 'periapsis', kind: 'apsis' },
-    ]
-    hiddenMarkers.presentation.updateVisuals()
-
-    expect(
-      hiddenMarkers.trajectoryEventMarkerLabels.periapsis.style.display,
-    ).toBe('none')
   })
 
   it('hides only Pe/Ap marker visuals during tutorial phases before reach-moon', () => {

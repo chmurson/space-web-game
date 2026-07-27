@@ -41,11 +41,13 @@ describe('createAppConfigContext', () => {
   it('uses configured default touch control settings without stored settings', () => {
     expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
     expect(
+      createAppConfigContext().trajectory.defaultCoastPredictionHorizonHours,
+    ).toBe(48)
+    expect(
       createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
     ).toBe(48)
     expect(createAppConfigContext().userSettings).toMatchObject({
       desktopEdgePanEnabled: false,
-      mobileManeuverStartByDrag: true,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'left',
       touchTrajectoryControlSide: 'hidden',
@@ -60,6 +62,7 @@ describe('createAppConfigContext', () => {
         debugModeEnabled: false,
         desktopEdgePanEnabled: true,
         mobileManeuverStartByDrag: false,
+        orbitPointDisplay: { markersVisible: false },
         touchBurnControlSide: 'left',
         touchTargetControlSide: 'right',
         touchTrajectoryControlSide: 'left',
@@ -69,7 +72,6 @@ describe('createAppConfigContext', () => {
 
     expect(createAppConfigContext().userSettings).toMatchObject({
       desktopEdgePanEnabled: true,
-      mobileManeuverStartByDrag: false,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'left',
@@ -85,6 +87,7 @@ describe('createAppConfigContext', () => {
         {
           debugModeEnabled: false,
           mobileManeuverStartByDrag: true,
+          orbitPointDisplay: { markersVisible: false },
           touchBurnControlSide: 'right',
           touchTargetControlSide: 'left',
           touchTrajectoryControlSide: 'left',
@@ -98,7 +101,6 @@ describe('createAppConfigContext', () => {
     expect(config.initialAppMode).toBe('game')
     expect(config.requestedScenarioId).toBe('earth-moon')
     expect(config.userSettings).toMatchObject({
-      mobileManeuverStartByDrag: true,
       touchBurnControlSide: 'right',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'hidden',
@@ -114,6 +116,7 @@ describe('createAppConfigContext', () => {
         {
           debugModeEnabled: false,
           mobileManeuverStartByDrag: false,
+          orbitPointDisplay: { markersVisible: false },
           touchBurnControlSide: 'left',
           touchTargetControlSide: 'right',
           touchTrajectoryControlSide: 'right',
@@ -123,7 +126,6 @@ describe('createAppConfigContext', () => {
     })
 
     expect(createAppConfigContext().userSettings).toMatchObject({
-      mobileManeuverStartByDrag: false,
       touchBurnControlSide: 'left',
       touchTargetControlSide: 'right',
       touchTrajectoryControlSide: 'right',

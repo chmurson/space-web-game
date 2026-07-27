@@ -53,7 +53,6 @@ export const createInitialAppRuntimeState = (
     scenario: {
       directives: createDefaultScenarioDirectives(),
       metadata: initialScenarioTransition.scenario.metadata,
-      orbitPointDisplay: initialScenarioTransition.scenario.orbitPointDisplay,
       render: initialScenarioTransition.scenario.render,
       session: initialScenarioTransition.scenario.session,
     },
@@ -64,10 +63,6 @@ export const createInitialAppRuntimeState = (
       ),
       rcsActualTurnFeedback: null,
       spacecraftLabelIntroUntil: performance.now() + 5_000,
-      targetHeadingPlan: null,
-      targetHeadingScreenPosition: null,
-      targetHeadingWorldPosition: null,
-      targetHeadingSelectionEpoch: 0,
       touchThrustControl: createDefaultTouchThrustControlUiState(),
       uiEffectEpoch: 0,
     },

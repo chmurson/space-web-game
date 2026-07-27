@@ -104,7 +104,6 @@ const createRuntime = (): AppRuntimeState => {
         panOffset: runtimeScenario.cameraPanOffset,
       },
       spacecraftLabelIntroUntil: 0,
-      targetHeadingSelectionEpoch: 0,
       touchThrustControl: {
         engaged: false,
         interactive: false,
@@ -387,10 +386,12 @@ describe('reachMoonScenario', () => {
     expect(runtime.scenario.session.promptUi.activePromptId).toBe(
       'mission-complete',
     )
+    const twoMegameters = `${(2).toLocaleString(undefined, {
+      minimumSignificantDigits: 2,
+    })} Mm`
     expect(resolveScenarioPrompts(runtime, 'desktop').active).toMatchObject({
       title: 'Mission Complete',
-      description:
-        'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km - near circular (25).',
+      description: `Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap ${twoMegameters} / Pe ${twoMegameters} - near circular (25).`,
       buttons: [{ label: 'Highscores' }, { label: 'Free roam' }],
     })
     expect(
@@ -398,7 +399,7 @@ describe('reachMoonScenario', () => {
         resolveScenarioPrompts(runtime, 'desktop').active?.description,
       ),
     ).toBe(
-      'Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap 2,000 km / Pe 2,000 km - near circular (25).',
+      `Score 196.2. Time used 1d 1h (+49.7). Fuel left 50% (+121.5). Lunar orbit Ap ${twoMegameters} / Pe ${twoMegameters} - near circular (25).`,
     )
   })
 
@@ -482,7 +483,9 @@ describe('reachMoonScenario', () => {
       100_000,
       6_000,
       {
-        body: 'Pe 6 km - too low',
+        body: `Pe ${(6).toLocaleString(undefined, {
+          minimumSignificantDigits: 2,
+        })} km - too low`,
         title: 'Risky lunar orbit',
       },
     ],
@@ -491,7 +494,7 @@ describe('reachMoonScenario', () => {
       1_400_000,
       1_250_000,
       {
-        body: 'Ap 1,400 / Pe 1,250 km - high',
+        body: `Ap ${(1.4).toLocaleString()} / Pe ${(1.3).toLocaleString()} Mm - high`,
         title: 'Circular lunar orbit',
       },
     ],

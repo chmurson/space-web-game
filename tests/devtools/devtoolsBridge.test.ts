@@ -223,9 +223,6 @@ const createRuntime = (): AppRuntimeState => ({
       panOffset: { x: 1, y: 2 },
     },
     spacecraftLabelIntroUntil: 0,
-    targetHeadingScreenPosition: { x: 300, y: 200 },
-    targetHeadingSelectionEpoch: 3,
-    targetHeadingWorldPosition: { x: 30, y: 40 },
     touchThrustControl: {
       engaged: false,
       interactive: true,

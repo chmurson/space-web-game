@@ -12,6 +12,7 @@ import './mobileCommandDock.css'
 export type MobileCommandDockPanel = 'flight' | 'info' | 'nav'
 type MobileCommandDockTutorialFocus =
   | 'burn'
+  | 'rcs'
   | 'target'
   | 'trajectory'
   | 'warp'
@@ -41,10 +42,6 @@ const unavailableDockItems = [
   {
     iconPath: 'm12 3-5 5v8l5 5 5-5V8l-5-5ZM7 12h10',
     label: 'Ship',
-  },
-  {
-    iconPath: 'M4 7h10m4 0h2m-6-3v6M4 17h2m4 0h10M6 14v6',
-    label: 'Settings',
   },
 ] as const
 
@@ -318,24 +315,6 @@ const MobileCommandDockSurface = ({
           <span>Flight</span>
         </button>
         <button
-          aria-controls="mobile-command-dock-nav-panel"
-          aria-expanded={openPanel === 'nav'}
-          aria-label={navButtonLabel}
-          class="mobile-command-dock-item"
-          data-target-recommended={String(targetRecommendationName !== null)}
-          id="mobile-command-dock-nav-button"
-          type="button"
-        >
-          <svg
-            aria-hidden="true"
-            class="mobile-command-dock-item-icon"
-            viewBox="0 0 24 24"
-          >
-            <path d={navIconPath} />
-          </svg>
-          <span>Nav</span>
-        </button>
-        <button
           aria-controls="mobile-command-dock-info-panel"
           aria-expanded={infoOpen}
           aria-keyshortcuts="I"
@@ -357,6 +336,24 @@ const MobileCommandDockSurface = ({
             <path d="M12 10.5v6M12 7.5v.2" />
           </svg>
           <span>Info</span>
+        </button>
+        <button
+          aria-controls="mobile-command-dock-nav-panel"
+          aria-expanded={openPanel === 'nav'}
+          aria-label={navButtonLabel}
+          class="mobile-command-dock-item"
+          data-target-recommended={String(targetRecommendationName !== null)}
+          id="mobile-command-dock-nav-button"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="mobile-command-dock-item-icon"
+            viewBox="0 0 24 24"
+          >
+            <path d={navIconPath} />
+          </svg>
+          <span>Nav</span>
         </button>
         {unavailableDockItems.map((item) => (
           <button
@@ -681,7 +678,10 @@ export const createMobileCommandDock = (options: {
         setOpenPanel(null)
         return
       }
-      if (tutorialFocused === 'burn' && isFlightAvailable()) {
+      if (
+              (tutorialFocused === 'burn' || tutorialFocused === 'rcs') &&
+              isFlightAvailable()
+            ) {
         setOpenPanel('flight')
         return
       }
@@ -730,7 +730,7 @@ export const createMobileCommandDock = (options: {
     },
     setTutorialFocused(focused: MobileCommandDockTutorialFocus) {
       tutorialFocused = focused
-      if (focused === 'burn' && isFlightAvailable()) {
+      if ((focused === 'burn' || focused === 'rcs') && isFlightAvailable()) {
         setOpenPanel('flight')
         return
       }
