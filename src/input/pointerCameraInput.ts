@@ -37,6 +37,7 @@ const wheelLineModePixels = 16
 const wheelDeltaModeLine = 1
 const wheelDeltaModePage = 2
 const cameraPanTapTolerancePx = 8
+const wheelZoomGestureIdleMs = 125
 const defaultDesktopEdgePanSpeedPixelsPerSecond = 420
 const edgeScrollBandPx = 44
 
@@ -176,9 +177,10 @@ export const bindPointerCameraInput = (
   let pointerInsideRenderer = false
   const defaultRendererCursor = options.rendererElement.style.cursor
   let edgeScrollCursor: string | null = null
+  let wheelZoomGestureActive = false
+  let wheelZoomGestureIdleTimer: ReturnType<typeof setTimeout> | null = null
   let activeCameraPan: {
     button: number
-    contextMenuSuppressed: boolean
     hasMovedForTap: boolean
     hasPanned: boolean
     panBehavior: 'left-drag' | 'none' | 'right-drag' | 'touch'
@@ -188,7 +190,6 @@ export const bindPointerCameraInput = (
     startX: number
     startY: number
   } | null = null
-  let suppressNextContextMenu = false
 
   options.windowTarget.addEventListener('resize', () => {
     options.onResize()
@@ -213,6 +214,17 @@ export const bindPointerCameraInput = (
   const setEdgeScrollCursor = (cursor: string | null) => {
     edgeScrollCursor = cursor
     syncRendererCursor()
+  }
+
+  const continueWheelZoomGesture = () => {
+    wheelZoomGestureActive = true
+    if (wheelZoomGestureIdleTimer !== null) {
+      clearTimeout(wheelZoomGestureIdleTimer)
+    }
+    wheelZoomGestureIdleTimer = setTimeout(() => {
+      wheelZoomGestureActive = false
+      wheelZoomGestureIdleTimer = null
+    }, wheelZoomGestureIdleMs)
   }
 
   const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
@@ -329,18 +341,9 @@ export const bindPointerCameraInput = (
     }
   }
 
-  options.windowTarget.addEventListener(
-    'pointerdown',
-    () => {
-      suppressNextContextMenu = false
-    },
-    true,
-  )
-
   options.rendererElement.addEventListener('pointerdown', (event) => {
     pointerInsideRenderer = true
     updatePointerPosition(event.clientX, event.clientY)
-    suppressNextContextMenu = false
 
     if (!options.getInteractionsEnabled()) {
       return
@@ -376,7 +379,6 @@ export const bindPointerCameraInput = (
 
     activeCameraPan = {
       button: event.button,
-      contextMenuSuppressed: false,
       hasMovedForTap: false,
       hasPanned: false,
       panBehavior,
@@ -462,14 +464,9 @@ export const bindPointerCameraInput = (
 
     if (activeCameraPan?.pointerId === event.pointerId) {
       const completedButton = activeCameraPan.button
-      const suppressContextMenu =
-        activeCameraPan.panBehavior === 'right-drag' &&
-        activeCameraPan.hasPanned &&
-        !activeCameraPan.contextMenuSuppressed
       const completedPan =
         activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned
       clearActiveCameraPan(event)
-      suppressNextContextMenu = suppressContextMenu
       if (
         completedButton === 0 &&
         !completedPan &&
@@ -482,29 +479,13 @@ export const bindPointerCameraInput = (
     }
   })
   options.rendererElement.addEventListener('pointercancel', (event) => {
-    suppressNextContextMenu = false
     clearActiveCameraPan(event)
   })
 
   options.windowTarget.addEventListener(
     'contextmenu',
     (event) => {
-      if (event.button !== 2) {
-        return
-      }
-
-      if (
-        activeCameraPan?.panBehavior === 'right-drag' &&
-        activeCameraPan.hasPanned
-      ) {
-        activeCameraPan.contextMenuSuppressed = true
-        suppressNextContextMenu = false
-        event.preventDefault()
-        return
-      }
-
-      if (suppressNextContextMenu) {
-        suppressNextContextMenu = false
+      if (event.button === 2) {
         event.preventDefault()
       }
     },
@@ -543,7 +524,16 @@ export const bindPointerCameraInput = (
       }
 
       const panMode = options.getDesktopCameraPanMode()
-      if (panMode === 'wheel' && !modifiedForZoom) {
+      if (panMode === 'wheel' && (modifiedForZoom || wheelZoomGestureActive)) {
+        continueWheelZoomGesture()
+        event.preventDefault()
+        options.onZoom(
+          getWheelZoomFactor(event, options.windowTarget.innerHeight),
+        )
+        return
+      }
+
+      if (panMode === 'wheel') {
         if (options.getCameraControlsLocked()) {
           return
         }
@@ -578,7 +568,7 @@ export const bindPointerCameraInput = (
         return
       }
 
-      if (panMode !== 'wheel' && modifiedForZoom) {
+      if (modifiedForZoom) {
         return
       }
 
