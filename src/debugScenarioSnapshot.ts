@@ -59,6 +59,8 @@ export type DebugScenarioSnapshot =
 
 export type DebugScenarioSnapshotEntry = {
   id: string
+  importedAt?: string
+  lastExportedAt?: string
   name: string
   savedAt: string
   snapshot: DebugScenarioSnapshot
@@ -212,21 +214,32 @@ const isDebugScenarioSnapshotEntry = (
   const candidate = entry as Partial<DebugScenarioSnapshotEntry>
   return (
     typeof candidate.id === 'string' &&
+    (candidate.importedAt === undefined ||
+      typeof candidate.importedAt === 'string') &&
+    (candidate.lastExportedAt === undefined ||
+      typeof candidate.lastExportedAt === 'string') &&
     typeof candidate.name === 'string' &&
     typeof candidate.savedAt === 'string' &&
     isDebugScenarioSnapshot(candidate.snapshot)
   )
 }
 
-const readStoredRecentDebugScenarioSnapshots = () => {
-  try {
-    const rawEntries = window.localStorage.getItem(
-      recentDebugSnapshotsStorageKey,
-    )
-    if (!rawEntries) {
-      return []
-    }
+const readStoredRecentDebugScenarioSnapshots = ():
+  | DebugScenarioSnapshotEntry[]
+  | null => {
+  let rawEntries: string | null
 
+  try {
+    rawEntries = window.localStorage.getItem(recentDebugSnapshotsStorageKey)
+  } catch {
+    return null
+  }
+
+  if (!rawEntries) {
+    return []
+  }
+
+  try {
     const entries = JSON.parse(rawEntries)
     return Array.isArray(entries)
       ? entries
@@ -260,24 +273,49 @@ const createDebugScenarioSnapshotEntry = (
   }
 }
 
-const readRecentDebugScenarioSnapshots = () => {
-  const storedEntries = readStoredRecentDebugScenarioSnapshots()
-  if (storedEntries.length > 0) {
-    return storedEntries
-  }
-
+const readActiveDebugScenarioSnapshotAsRecentEntry = () => {
   const activeSnapshot = readDebugScenarioSnapshot()
   return activeSnapshot
     ? [createDebugScenarioSnapshotEntry(activeSnapshot, undefined, [])]
     : []
 }
 
-const addRecentDebugScenarioSnapshot = (
+const readRecentDebugScenarioSnapshots = () => {
+  const storedEntries = readStoredRecentDebugScenarioSnapshots()
+  if (storedEntries && storedEntries.length > 0) {
+    return storedEntries
+  }
+
+  return readActiveDebugScenarioSnapshotAsRecentEntry()
+}
+
+const readRecentDebugScenarioSnapshotsForMutation = () => {
+  const storedEntries = readStoredRecentDebugScenarioSnapshots()
+  if (storedEntries === null) {
+    throw new Error('Recent debug snapshots could not be read.')
+  }
+  if (storedEntries.length > 0) {
+    return storedEntries
+  }
+
+  return readActiveDebugScenarioSnapshotAsRecentEntry()
+}
+
+type DebugScenarioSnapshotEntryTransportMetadata = Pick<
+  DebugScenarioSnapshotEntry,
+  'importedAt' | 'lastExportedAt'
+>
+
+const insertRecentDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
+  metadata: DebugScenarioSnapshotEntryTransportMetadata = {},
   name?: string,
 ) => {
-  const recentEntries = readRecentDebugScenarioSnapshots()
-  const entry = createDebugScenarioSnapshotEntry(snapshot, name, recentEntries)
+  const recentEntries = readRecentDebugScenarioSnapshotsForMutation()
+  const entry = {
+    ...createDebugScenarioSnapshotEntry(snapshot, name, recentEntries),
+    ...metadata,
+  }
   const nextEntries = [entry, ...recentEntries].slice(
     0,
     maxRecentDebugScenarioSnapshots,
@@ -287,6 +325,8 @@ const addRecentDebugScenarioSnapshot = (
     recentDebugSnapshotsStorageKey,
     JSON.stringify(nextEntries),
   )
+
+  return entry
 }
 
 export const createScenarioFromSnapshot = (
@@ -361,8 +401,55 @@ export const writeDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
   name?: string,
 ) => {
-  addRecentDebugScenarioSnapshot(snapshot, name)
+  insertRecentDebugScenarioSnapshot(snapshot, {}, name)
   window.localStorage.setItem(debugSnapshotStorageKey, JSON.stringify(snapshot))
+}
+
+export const insertImportedDebugScenarioSnapshot = (
+  snapshot: DebugScenarioSnapshot,
+): DebugScenarioSnapshotEntry | null => {
+  try {
+    return insertRecentDebugScenarioSnapshot(snapshot, {
+      importedAt: new Date().toISOString(),
+    })
+  } catch {
+    return null
+  }
+}
+
+export const insertExportedDebugScenarioSnapshot = (
+  snapshot: DebugScenarioSnapshot,
+): DebugScenarioSnapshotEntry | null => {
+  try {
+    return insertRecentDebugScenarioSnapshot(snapshot, {
+      lastExportedAt: new Date().toISOString(),
+    })
+  } catch {
+    return null
+  }
+}
+
+export const markRecentDebugScenarioSnapshotExported = (id: string) => {
+  try {
+    const recentEntries = readRecentDebugScenarioSnapshotsForMutation()
+    const entryIndex = recentEntries.findIndex((entry) => entry.id === id)
+    if (entryIndex < 0) {
+      return false
+    }
+
+    const nextEntries = recentEntries.map((entry, index) =>
+      index === entryIndex
+        ? { ...entry, lastExportedAt: new Date().toISOString() }
+        : entry,
+    )
+    window.localStorage.setItem(
+      recentDebugSnapshotsStorageKey,
+      JSON.stringify(nextEntries),
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 
 export const getRecentDebugScenarioSnapshots = () => {

@@ -7,7 +7,10 @@ import {
   createSnapshotFromState,
   getRecentDebugScenarioSnapshotLinks,
   getRecentDebugScenarioSnapshots,
+  insertExportedDebugScenarioSnapshot,
+  insertImportedDebugScenarioSnapshot,
   loadRecentDebugScenarioSnapshot,
+  markRecentDebugScenarioSnapshotExported,
   readDebugScenarioSnapshot,
   writeDebugScenarioSnapshot,
 } from '@/debugScenarioSnapshot'
@@ -56,6 +59,7 @@ const createStorage = () => {
 }
 
 beforeEach(() => {
+  vi.useRealTimers()
   vi.stubGlobal('window', {
     localStorage: createStorage(),
   })
@@ -251,6 +255,30 @@ describe('createScenarioFromSnapshot', () => {
 })
 
 describe('recent debug scenario snapshots', () => {
+  it('loads stored entries created before transport metadata was added', () => {
+    window.localStorage.setItem(
+      'space-web-game.recentDebugScenarioSnapshots.v1',
+      JSON.stringify([
+        {
+          id: 'legacy-recent-entry',
+          name: 'Legacy recent entry',
+          savedAt: snapshotBase.savedAt,
+          snapshot: snapshotBase,
+        },
+      ]),
+    )
+
+    const [entry] = getRecentDebugScenarioSnapshots()
+
+    expect(entry).toMatchObject({
+      id: 'legacy-recent-entry',
+      name: 'Legacy recent entry',
+      snapshot: snapshotBase,
+    })
+    expect(entry).not.toHaveProperty('importedAt')
+    expect(entry).not.toHaveProperty('lastExportedAt')
+  })
+
   it('keeps recent snapshots newest first and capped at 10 entries', () => {
     for (let index = 0; index < 11; index += 1) {
       writeDebugScenarioSnapshot({
@@ -266,6 +294,156 @@ describe('recent debug scenario snapshots', () => {
     expect(recentSnapshots.map((entry) => entry.snapshot.elapsed)).toEqual([
       10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
     ])
+  })
+
+  it('inserts imported snapshots newest first with local metadata', () => {
+    writeDebugScenarioSnapshot({
+      ...snapshotBase,
+      savedAt: '2026-01-01T00:00:00.000Z',
+      elapsed: 1,
+    })
+    vi.useFakeTimers()
+    vi.setSystemTime('2026-07-27T10:30:00.000Z')
+
+    const importedSnapshot = {
+      ...snapshotBase,
+      savedAt: '2026-01-01T00:00:01.000Z',
+      elapsed: 2,
+    }
+    const entry = insertImportedDebugScenarioSnapshot(importedSnapshot)
+
+    expect(entry).toMatchObject({
+      importedAt: '2026-07-27T10:30:00.000Z',
+      snapshot: importedSnapshot,
+    })
+    expect(entry).not.toHaveProperty('lastExportedAt')
+    expect(entry?.snapshot).not.toHaveProperty('importedAt')
+    expect(getRecentDebugScenarioSnapshots()[0]).toEqual(entry)
+    expect(readDebugScenarioSnapshot()?.elapsed).toBe(1)
+    expect(loadRecentDebugScenarioSnapshot(entry?.id ?? '')).toBe(true)
+    expect(readDebugScenarioSnapshot()?.elapsed).toBe(2)
+    expect(readDebugScenarioSnapshot()).not.toHaveProperty('importedAt')
+  })
+
+  it('marks an existing entry exported without changing its identity or order', () => {
+    writeDebugScenarioSnapshot({
+      ...snapshotBase,
+      savedAt: '2026-01-01T00:00:00.000Z',
+      elapsed: 1,
+    })
+    writeDebugScenarioSnapshot({
+      ...snapshotBase,
+      savedAt: '2026-01-01T00:00:01.000Z',
+      elapsed: 2,
+    })
+    const before = getRecentDebugScenarioSnapshots()
+    vi.useFakeTimers()
+    vi.setSystemTime('2026-07-27T10:31:00.000Z')
+
+    expect(markRecentDebugScenarioSnapshotExported(before[1].id)).toBe(true)
+
+    const after = getRecentDebugScenarioSnapshots()
+    expect(after.map(({ id, name }) => ({ id, name }))).toEqual(
+      before.map(({ id, name }) => ({ id, name })),
+    )
+    expect(after[0]).not.toHaveProperty('lastExportedAt')
+    expect(after[1]).toMatchObject({
+      id: before[1].id,
+      lastExportedAt: '2026-07-27T10:31:00.000Z',
+      name: before[1].name,
+      snapshot: before[1].snapshot,
+    })
+  })
+
+  it('inserts exported captures newest first and keeps unique IDs within capacity', () => {
+    for (let index = 0; index < 10; index += 1) {
+      writeDebugScenarioSnapshot({
+        ...snapshotBase,
+        savedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),
+        elapsed: index,
+      })
+    }
+    vi.useFakeTimers()
+    vi.setSystemTime('2026-07-27T10:32:00.000Z')
+    const duplicateTimestampSnapshot = {
+      ...snapshotBase,
+      savedAt: '2026-01-01T00:00:09.000Z',
+      elapsed: 10,
+    }
+
+    const importedEntry = insertImportedDebugScenarioSnapshot(
+      duplicateTimestampSnapshot,
+    )
+    const exportedEntry = insertExportedDebugScenarioSnapshot({
+      ...duplicateTimestampSnapshot,
+      elapsed: 11,
+    })
+    const recentSnapshots = getRecentDebugScenarioSnapshots()
+
+    expect(importedEntry?.id).toBe('debug-snapshot-2026-01-01T00:00:09.000Z-2')
+    expect(exportedEntry?.id).toBe('debug-snapshot-2026-01-01T00:00:09.000Z-3')
+    expect(recentSnapshots).toHaveLength(10)
+    expect(recentSnapshots[0]).toMatchObject({
+      id: exportedEntry?.id,
+      lastExportedAt: '2026-07-27T10:32:00.000Z',
+      snapshot: { elapsed: 11 },
+    })
+    expect(recentSnapshots[0].snapshot).not.toHaveProperty('lastExportedAt')
+    expect(recentSnapshots[1]).toMatchObject({
+      id: importedEntry?.id,
+      importedAt: '2026-07-27T10:32:00.000Z',
+      snapshot: { elapsed: 10 },
+    })
+    expect(readDebugScenarioSnapshot()?.elapsed).toBe(9)
+  })
+
+  it('leaves recent entries intact when metadata mutations fail', () => {
+    writeDebugScenarioSnapshot(snapshotBase)
+    const before = getRecentDebugScenarioSnapshots()
+    const setItem = vi
+      .spyOn(window.localStorage, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('Storage unavailable')
+      })
+
+    expect(
+      insertImportedDebugScenarioSnapshot({
+        ...snapshotBase,
+        savedAt: '2026-04-10T10:00:01.000Z',
+      }),
+    ).toBeNull()
+    expect(markRecentDebugScenarioSnapshotExported(before[0].id)).toBe(false)
+
+    setItem.mockRestore()
+    expect(getRecentDebugScenarioSnapshots()).toEqual(before)
+  })
+
+  it('does not write when export metadata targets a missing entry', () => {
+    writeDebugScenarioSnapshot(snapshotBase)
+    const setItem = vi.spyOn(window.localStorage, 'setItem')
+
+    expect(markRecentDebugScenarioSnapshotExported('missing')).toBe(false)
+    expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it('does not overwrite recent entries when storage reads fail', () => {
+    writeDebugScenarioSnapshot(snapshotBase)
+    const before = getRecentDebugScenarioSnapshots()
+    const getItem = vi
+      .spyOn(window.localStorage, 'getItem')
+      .mockImplementationOnce(() => {
+        throw new Error('Storage unavailable')
+      })
+
+    expect(
+      insertExportedDebugScenarioSnapshot({
+        ...snapshotBase,
+        savedAt: '2026-04-10T10:00:01.000Z',
+      }),
+    ).toBeNull()
+
+    getItem.mockRestore()
+    expect(getRecentDebugScenarioSnapshots()).toEqual(before)
   })
 
   it('generates basic labels from scenario phase and elapsed time', () => {
