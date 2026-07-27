@@ -559,7 +559,7 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
       }),
     )
     const contextMenu = createContextMenuEvent()
-    harness.windowTarget.dispatchEvent(contextMenu)
+    harness.canvas.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
     expect(harness.canvas.style.cursor).toBe('')
@@ -591,13 +591,13 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
       }),
     )
     const contextMenu = createContextMenuEvent()
-    harness.windowTarget.dispatchEvent(contextMenu)
+    harness.canvas.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
     expect(contextMenu.defaultPrevented).toBe(true)
   })
 
-  it('pans at the existing drag tolerance and suppresses right-click context menus', () => {
+  it('pans at the existing drag tolerance and suppresses canvas context menus', () => {
     const harness = createHarness({ desktopCameraPanMode: 'wheel' })
 
     harness.canvas.dispatchEvent(
@@ -622,21 +622,21 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
       }),
     )
     const keyboardContextMenu = createContextMenuEvent(0)
-    harness.windowTarget.dispatchEvent(keyboardContextMenu)
+    harness.canvas.dispatchEvent(keyboardContextMenu)
     const handledContextMenu = createContextMenuEvent()
-    harness.windowTarget.dispatchEvent(handledContextMenu)
-    const laterContextMenu = createContextMenuEvent()
-    harness.windowTarget.dispatchEvent(laterContextMenu)
+    harness.canvas.dispatchEvent(handledContextMenu)
+    const bodyContextMenu = createContextMenuEvent()
+    harness.windowTarget.dispatchEvent(bodyContextMenu)
 
     expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
     expect(pointerMove.defaultPrevented).toBe(true)
     expect(harness.canvas.style.cursor).toBe('')
     expect(keyboardContextMenu.defaultPrevented).toBe(false)
     expect(handledContextMenu.defaultPrevented).toBe(true)
-    expect(laterContextMenu.defaultPrevented).toBe(true)
+    expect(bodyContextMenu.defaultPrevented).toBe(false)
   })
 
-  it('suppresses window-boundary context menus during and after an accepted drag', () => {
+  it('allows window-boundary context menus during and after an accepted drag', () => {
     const harness = createHarness({ desktopCameraPanMode: 'wheel' })
 
     harness.canvas.dispatchEvent(
@@ -668,8 +668,8 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
     harness.windowTarget.dispatchEvent(laterContextMenu)
 
     expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
-    expect(contextMenu.defaultPrevented).toBe(true)
-    expect(laterContextMenu.defaultPrevented).toBe(true)
+    expect(contextMenu.defaultPrevented).toBe(false)
+    expect(laterContextMenu.defaultPrevented).toBe(false)
     expect(harness.canvas.style.cursor).toBe('')
   })
 
@@ -717,14 +717,39 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
       }),
     )
     const contextMenu = createContextMenuEvent()
-    harness.windowTarget.dispatchEvent(contextMenu)
+    harness.canvas.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
     expect(harness.canvas.style.cursor).toBe('')
-    expect(contextMenu.defaultPrevented).toBe(true)
+    expect(contextMenu.defaultPrevented).toBe(false)
   })
 
-  it('suppresses context menus when a locked camera rejects right drag', () => {
+  it.each([
+    {
+      label: 'global interactions are disabled',
+      options: { interactionsEnabled: false },
+    },
+    {
+      label: 'desktop camera input is unavailable',
+      options: { desktopCameraInputEnabled: false },
+    },
+    {
+      label: 'desktop camera interactions are disabled',
+      options: { desktopCameraInteractionsEnabled: false },
+    },
+  ])('allows canvas context menus when $label', ({ options }) => {
+    const harness = createHarness({
+      desktopCameraPanMode: 'wheel',
+      ...options,
+    })
+    const contextMenu = createContextMenuEvent()
+
+    harness.canvas.dispatchEvent(contextMenu)
+
+    expect(contextMenu.defaultPrevented).toBe(false)
+  })
+
+  it('allows context menus when a locked camera rejects right drag', () => {
     const harness = createHarness({
       cameraControlsLocked: true,
       desktopCameraPanMode: 'wheel',
@@ -752,11 +777,11 @@ describe('bindPointerCameraInput wheel-mode right-button fallback', () => {
       }),
     )
     const contextMenu = createContextMenuEvent()
-    harness.windowTarget.dispatchEvent(contextMenu)
+    harness.canvas.dispatchEvent(contextMenu)
 
     expect(harness.onCameraPan).not.toHaveBeenCalled()
     expect(harness.canvas.style.cursor).toBe('')
-    expect(contextMenu.defaultPrevented).toBe(true)
+    expect(contextMenu.defaultPrevented).toBe(false)
   })
 })
 

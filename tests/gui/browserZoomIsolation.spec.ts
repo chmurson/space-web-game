@@ -266,7 +266,7 @@ test('routes diagonal wheel pan only while the desktop game surface owns input',
   }
 })
 
-test('owns right-button context menus across the game surface', async ({
+test('keeps wheel-mode context-menu ownership on the canvas', async ({
   browser,
 }, testInfo) => {
   const { context, page } = await createDesktopPage(browser, testInfo)
@@ -359,27 +359,27 @@ test('owns right-button context menus across the game surface', async ({
         clientY: 400,
       })
       const cursorAfterRelease = getComputedStyle(canvas).cursor
-      const handledDragContextMenuAllowed = dispatchContextMenu(document.body)
-      const laterContextMenuAllowed = dispatchContextMenu(document.body)
+      const handledDragContextMenuAllowed = dispatchContextMenu(canvas)
+      const bodyContextMenuAllowed = dispatchContextMenu(document.body)
 
       return {
+        bodyContextMenuAllowed,
         cursorAfterRelease,
         cursorWhileHeld,
         cursorWhilePanning,
         handledDragContextMenuAllowed,
         keyboardContextMenuAllowed,
-        laterContextMenuAllowed,
       }
     })
 
-    expect(stationaryContextMenusPrevented).toEqual([true, true])
+    expect(stationaryContextMenusPrevented).toEqual([true, false])
     expect(result).toEqual({
+      bodyContextMenuAllowed: true,
       cursorAfterRelease: 'auto',
       cursorWhileHeld: 'move',
       cursorWhilePanning: 'move',
       handledDragContextMenuAllowed: false,
       keyboardContextMenuAllowed: true,
-      laterContextMenuAllowed: false,
     })
   } finally {
     await context.close()

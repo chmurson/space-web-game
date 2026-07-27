@@ -26,10 +26,9 @@ Shipit state:
   until 125 ms of wheel inactivity, after which a new unmodified event may pan.
 - Wheel mode keeps left-button movement out of camera pan and adds right-button
   drag after the existing 8 px movement tolerance.
-- Mouse right-click context menus are suppressed at the window capture boundary
-  across the entire game surface, including stationary clicks on the renderer
-  canvas and clicks targeting HUD DOM layers. Keyboard-triggered context menus
-  remain available.
+- Mouse right-click context menus are suppressed on the renderer canvas only
+  while fine-pointer wheel-mode camera interaction is enabled. HUD, body, and
+  keyboard-triggered context menus remain available.
 - The renderer uses the `move` cursor from accepted wheel-mode right-button
   press until pointer up, cancellation, or interaction loss. This active-drag
   cursor takes priority over frame-by-frame edge-cursor cleanup.
@@ -74,9 +73,10 @@ drag, edge, camera-lock, and mobile behavior intact.
 - The wheel zoom gesture boundary uses a short resettable idle timer rather than
   modifier state alone because wheel and trackpad momentum can outlive the
   physical key press.
-- Context-menu ownership is checked at the window capture boundary because the
-  event can target either the renderer or any in-game DOM layer. Restricting the
-  rule to `button === 2` preserves keyboard-triggered context-menu behavior.
+- Context-menu ownership uses the renderer canvas as its native boundary and
+  mirrors the fine-pointer, wheel-mode, desktop interaction, and camera-lock
+  gates. Restricting the rule to `button === 2` preserves keyboard-triggered
+  context-menu behavior.
 - No target-heading planning behavior or API was added.
 - No visual-system change was needed; implementation remains aligned with
   `DESIGN.md`.
@@ -86,13 +86,13 @@ drag, edge, camera-lock, and mobile behavior intact.
 - Targeted Biome checks cover every changed source, test, and note file.
 - The release build validates configuration, TypeScript, and the production
   Vite bundle.
-- Focused pointer-input Vitest covers 39 mode and boundary cases, including
+- Focused pointer-input Vitest passes 42 mode and boundary cases, including
   Ctrl and Cmd modifier-release momentum tails.
-- Focused Chromium checks cover diagonal wheel pan, Ctrl/Cmd wheel zoom,
+- Focused Chromium checks pass 4/4 and cover diagonal wheel pan, Ctrl/Cmd wheel zoom,
   the 125 ms modifier-release gesture boundary, right-button
   cursor/context-menu ownership, menu/dialog/scroll ownership, touch drag, edge
   pan, and default-wheel updates to existing camera navigation tests.
-- Full product Vitest passes 696/696. Claim-helper tests pass 16/16 and
+- Full product Vitest passes 699/699. Claim-helper tests pass 16/16 and
   automation-workflow tests pass 4/4.
 - Full Playwright passes 86/88. One failure is the unchanged leaderboard
   assertion expecting `Time 7h30m` while the rendered accessible name is
@@ -108,8 +108,8 @@ drag, edge, camera-lock, and mobile behavior intact.
   diagonal wheel input and unchanged camera marker styles while the paused UI
   settings dialog owned the same gesture.
 - A live fine-pointer Chromium playtest also confirmed `move` from right-button
-  press through accepted pan, original-cursor restoration on release, and
-  cross-layer context-menu suppression.
+  press through accepted pan, original-cursor restoration on release, canvas
+  context-menu suppression, and native HUD/body context menus.
 
 ## Follow-up and known gaps
 

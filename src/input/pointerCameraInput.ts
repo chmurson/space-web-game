@@ -482,15 +482,20 @@ export const bindPointerCameraInput = (
     clearActiveCameraPan(event)
   })
 
-  options.windowTarget.addEventListener(
-    'contextmenu',
-    (event) => {
-      if (event.button === 2) {
-        event.preventDefault()
-      }
-    },
-    true,
-  )
+  options.rendererElement.addEventListener('contextmenu', (event) => {
+    if (
+      event.button !== 2 ||
+      !options.getInteractionsEnabled() ||
+      !options.getDesktopCameraInputEnabled() ||
+      !options.getDesktopCameraInteractionsEnabled() ||
+      options.getCameraControlsLocked() ||
+      options.getDesktopCameraPanMode() !== 'wheel'
+    ) {
+      return
+    }
+
+    event.preventDefault()
+  })
 
   options.rendererElement.addEventListener('pointerenter', () => {
     pointerInsideRenderer = true
