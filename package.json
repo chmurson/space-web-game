@@ -18,10 +18,11 @@
     "lint": "biome lint --write src tests scripts benchmarks",
     "commitlint": "commitlint --edit $1",
     "format": "biome format --write src tests scripts benchmarks",
-    "test": "vitest run --config vite.config.ts && npm run test:automation-claims && npm run test:automation-workflow",
+    "test": "vitest run --config vite.config.ts && npm run test:automation-claims && npm run test:automation-workflow && npm run test:pr-owner-assignment",
     "benchmark:trajectory": "vitest bench --config vite.config.ts benchmarks/trajectoryPrediction.bench.ts",
     "test:automation-claims": "node --test scripts/automationTaskClaim.test.mjs",
     "test:automation-workflow": "node --test scripts/engineerWorkflowPrompt.test.mjs",
+    "test:pr-owner-assignment": "node --test scripts/prOwnerAssignmentWorkflow.test.mjs",
     "test:gui": "playwright test --config playwright.config.ts",
     "test:watch": "vitest --config vite.config.ts",
     "prepare": "husky"
