@@ -62,6 +62,54 @@ const expectWorldVisualsSuppressed = async (page: Page) => {
 
 const getReachMoonUrl = (query = '') => (query ? `/?${query}` : '/')
 
+const recentSnapshotDetailEntries = [
+  {
+    id: 'reach-moon-entry',
+    importedAt: '2026-07-27T13:00:00.000Z',
+    lastExportedAt: '2026-07-28T08:30:00.000Z',
+    name: 'Moon transfer',
+    savedAt: '2026-07-27T12:00:00.000Z',
+    snapshot: {
+      version: 3,
+      savedAt: '2026-07-27T12:00:00.000Z',
+      elapsed: 90 * 60,
+      bodies: [],
+      spacecraft: {},
+      runtimeScenario: {
+        checkpoint: null,
+        completed: false,
+        promptUi: {
+          activePromptId: null,
+          replayPromptId: null,
+        },
+        scenarioId: 'reach-moon',
+        state: { phase: 'reach-moon' },
+      },
+    },
+  },
+  {
+    id: 'legacy-entry',
+    name: 'Legacy approach',
+    savedAt: '2026-07-26T10:00:00.000Z',
+    snapshot: {
+      version: 1,
+      savedAt: '2026-07-26T10:00:00.000Z',
+      elapsed: 15 * 60,
+      bodies: [],
+      spacecraft: {},
+    },
+  },
+]
+
+const seedRecentSnapshotDetails = async (page: Page) => {
+  await page.addInitScript((entries) => {
+    window.localStorage.setItem(
+      'space-web-game.recentDebugScenarioSnapshots.v1',
+      JSON.stringify(entries),
+    )
+  }, recentSnapshotDetailEntries)
+}
+
 const highscoreScore = {
   baseScorePoints: 0,
   fuelBonusPoints: 196,
@@ -237,6 +285,103 @@ test('captures the mobile main menu HUD with world visuals suppressed', async ({
     testInfo,
     'mobile-main-menu-snapshot-load-disabled',
   )
+  await expect(page.locator('.menu-recent-snapshot-details')).toHaveCount(0)
+})
+
+test('shows selected debug snapshot details on mobile', async ({
+  page,
+}, testInfo) => {
+  await seedRecentSnapshotDetails(page)
+  await openReachMoonMainMenu(page)
+
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  await page.getByRole('button', { name: 'Load any game' }).click()
+
+  const details = page.locator('.menu-recent-snapshot-details')
+  const loadButton = page.getByRole('button', { name: 'Load', exact: true })
+  await expect(details).toHaveAttribute('aria-live', 'polite')
+  await expect(details.evaluate((element) => element.tagName)).resolves.toBe(
+    'DL',
+  )
+  await expect(details.locator('dt')).toHaveText([
+    'Game time',
+    'Scenario',
+    'Created',
+    'Imported',
+    'Last exported',
+  ])
+  await expect(details.locator('dd')).toHaveText([
+    '01h30m',
+    'Reach the Moon (reach-moon)',
+    /Jul 27, 2026/,
+    /Jul 27, 2026/,
+    /Jul 28, 2026/,
+  ])
+  await expect(loadButton).toBeEnabled()
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-main-menu-snapshot-details',
+  )
+
+  await page.locator('#main-menu-recent-snapshot').selectOption('legacy-entry')
+  await expect(details.locator('dt')).toHaveText([
+    'Game time',
+    'Scenario',
+    'Created',
+  ])
+  await expect(details.locator('dd')).toHaveText([
+    '15m',
+    'Legacy snapshot (version 1)',
+    /Jul 26, 2026/,
+  ])
+  await expect(loadButton).toBeEnabled()
+})
+
+test('keeps selected debug snapshot details within the desktop menu', async ({
+  baseURL,
+  browser,
+}, testInfo) => {
+  if (!baseURL) {
+    throw new Error('Playwright base URL is not configured')
+  }
+
+  const context = await browser.newContext({
+    baseURL,
+    hasTouch: false,
+    isMobile: false,
+    viewport: { width: 1024, height: 720 },
+  })
+  const page = await context.newPage()
+
+  try {
+    await seedRecentSnapshotDetails(page)
+    await openReachMoonMainMenu(page)
+    await page.getByRole('button', { name: 'Load Game' }).click()
+    await page.getByRole('button', { name: 'Load any game' }).click()
+
+    const panel = page.locator('[data-main-menu-view="load-game-snapshot"]')
+    const panelBounds = await panel.boundingBox()
+    expect(panelBounds).not.toBeNull()
+    expect(panelBounds?.y ?? -1).toBeGreaterThanOrEqual(0)
+    expect(
+      (panelBounds?.y ?? 0) + (panelBounds?.height ?? Number.POSITIVE_INFINITY),
+    ).toBeLessThanOrEqual(720)
+    await expect(page.locator('.menu-recent-snapshot-details dt')).toHaveText([
+      'Game time',
+      'Scenario',
+      'Created',
+      'Imported',
+      'Last exported',
+    ])
+    await attachMobileScreenshot(
+      page,
+      testInfo,
+      'desktop-main-menu-snapshot-details',
+    )
+  } finally {
+    await context.close()
+  }
 })
 
 test('captures the mobile Reach the Moon menu transition', async ({
@@ -269,11 +414,20 @@ test('keeps named debug snapshots available after a page refresh', async ({
     localStorage.clear()
     writeDebugScenarioSnapshot(
       {
-        version: 1,
+        version: 3,
         savedAt: '2026-07-19T09:00:00.000Z',
         elapsed: 42,
         bodies: [],
-        spacecraft: {},
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
       },
       'Moon approach',
     )
@@ -1230,21 +1384,31 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
       await import(debugSnapshotModulePath)
     const app = document.createElement('div')
     const events: string[] = []
+    const spacecraft = {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      heading: 0,
+      fuel: 0,
+      fuelUsed: 0,
+      dryMass: 1,
+      fuelMass: 0,
+      fuelCapacity: 0,
+    }
 
     document.body.append(app)
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 0,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(1).toISOString(),
       elapsed: 1,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
 
     const menu = createMainMenu({
@@ -1348,11 +1512,20 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     document.body.append(beforeButton, app)
     beforeButton.focus()
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 0,
       bodies: [],
-      spacecraft: {},
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 0,
+        fuelUsed: 0,
+        dryMass: 1,
+        fuelMass: 0,
+        fuelCapacity: 0,
+      },
     })
 
     const menu = createCrashMenu({
@@ -1489,6 +1662,16 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const outsideButton = document.createElement('button')
     const events: string[] = []
     const savedSnapshotNames: string[] = []
+    const spacecraft = {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      heading: 0,
+      fuel: 0,
+      fuelUsed: 0,
+      dryMass: 1,
+      fuelMass: 0,
+      fuelCapacity: 0,
+    }
     let debugModeEnabled = false
     let fpsIndicatorEnabled = false
 
@@ -1631,18 +1814,18 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
 
     menu.close()
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 1,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(1).toISOString(),
       elapsed: 2,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     menu.syncState()
     openMenu()

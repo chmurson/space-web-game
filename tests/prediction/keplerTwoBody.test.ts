@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   computeKeplerTwoBodyTrajectoryPrediction,
   propagateKeplerTwoBody,
+  sampleKeplerTwoBodyTrajectory,
 } from '@/prediction/keplerTwoBody'
 import { EARTH_MASS, EARTH_RADIUS, G } from '@/simulation/constants'
 import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
@@ -101,9 +102,57 @@ describe('propagateKeplerTwoBody', () => {
       }),
     ).toBeCloseTo(orbitRadius, -2)
   })
+
+  it('returns a best-effort finite state when iteration does not converge', () => {
+    const propagated = propagateKeplerTwoBody(
+      earth,
+      {
+        dryMass: spacecraft.dryMass,
+        position: spacecraft.position,
+        velocity: {
+          x: earth.velocity.x - 11_000,
+          y: earth.velocity.y,
+        },
+      },
+      1_000_000,
+    )
+
+    expect(Number.isFinite(propagated.position.x)).toBe(true)
+    expect(Number.isFinite(propagated.position.y)).toBe(true)
+    expect(Number.isFinite(propagated.velocity.x)).toBe(true)
+    expect(Number.isFinite(propagated.velocity.y)).toBe(true)
+  })
+})
+
+describe('sampleKeplerTwoBodyTrajectory', () => {
+  it.each([0, -1])('rejects a non-positive sample step (%s)', (sampleStep) => {
+    expect(() =>
+      sampleKeplerTwoBodyTrajectory(earth, spacecraft, 60, sampleStep),
+    ).toThrow('sampleStepSeconds must be positive')
+  })
 })
 
 describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
+  it.each([
+    0, -1,
+  ])('preserves non-positive step validation (%s)', (stepSeconds) => {
+    expect(() =>
+      computeKeplerTwoBodyTrajectoryPrediction(
+        createState(earth),
+        earth,
+        {
+          horizonSeconds: 60,
+          maxIntegrationStepSeconds: 60,
+          maxLoopRevolutions: 1,
+          refreshInterval: 0.4,
+          stepSeconds,
+        },
+        false,
+        semiImplicitEuler,
+      ),
+    ).toThrow('sampleStepSeconds must be positive')
+  })
+
   it('honors loop trimming and the configured revolution limit', () => {
     const stationaryEarth = { ...earth, velocity: { x: 0, y: 0 } }
     const stationarySpacecraft = {
@@ -150,36 +199,5 @@ describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
     expect(twoLoops.predictionTime).toBeGreaterThan(oneLoop.predictionTime)
     expect(oneLoop.result.integration.stepCount).toBe(0)
     expect(twoLoops.result.integration.stepCount).toBe(0)
-  })
-
-  it('falls back to numerical prediction when Kepler propagation does not converge', () => {
-    const stationaryEarth = {
-      ...earth,
-      position: { x: 0, y: 0 },
-      velocity: { x: 0, y: 0 },
-    }
-    const state = createState(stationaryEarth, {
-      dryMass: 10_000,
-      position: { x: 6_800_000, y: 0 },
-      velocity: { x: 0, y: 20_000 },
-    })
-
-    const prediction = computeKeplerTwoBodyTrajectoryPrediction(
-      state,
-      stationaryEarth,
-      {
-        horizonSeconds: 10_000,
-        maxIntegrationStepSeconds: 100,
-        maxLoopRevolutions: 2.5,
-        refreshInterval: 0.4,
-        stepSeconds: 10_000,
-      },
-      false,
-      semiImplicitEuler,
-    )
-
-    expect(prediction.predictionTime).toBe(10_000)
-    expect(prediction.result.integration.stepCount).toBeGreaterThan(0)
-    expect(prediction.terminationReason).toBe('horizon')
   })
 })

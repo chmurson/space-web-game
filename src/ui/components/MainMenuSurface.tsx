@@ -28,7 +28,10 @@ import {
   MenuKicker,
   MenuPanel,
 } from './MenuSurfacePrimitives'
-import { formatRecentSnapshotSavedAt } from './recentSnapshotFormatting'
+import {
+  formatRecentSnapshotSavedAt,
+  getRecentSnapshotDetails,
+} from './recentSnapshotFormatting'
 
 export type MainMenuView =
   | 'main'
@@ -636,6 +639,13 @@ export const MainMenuSurface = ({
   const highscoreDescription = reachMoonHighscorePendingRun
     ? 'Your completed run submits automatically, then the board refreshes.'
     : 'Compare completed Earth-Moon mission runs.'
+  const selectedRecentSnapshot =
+    recentSnapshots.find(
+      (snapshot) => snapshot.id === selectedRecentSnapshotId,
+    ) ?? null
+  const selectedRecentSnapshotDetails = selectedRecentSnapshot
+    ? getRecentSnapshotDetails(selectedRecentSnapshot)
+    : []
 
   return (
     <section
@@ -817,7 +827,7 @@ export const MainMenuSurface = ({
       </MenuPanel>
 
       <MenuPanel
-        className="main-menu-panel"
+        className="main-menu-panel main-menu-panel-snapshot"
         view="load-game-snapshot"
         viewAttribute={mainMenuViewAttribute}
         hidden={displayedView !== 'load-game-snapshot'}
@@ -856,6 +866,21 @@ export const MainMenuSurface = ({
                 ))
               )}
             </select>
+            {selectedRecentSnapshot ? (
+              <dl
+                aria-atomic="true"
+                aria-label="Selected snapshot details"
+                aria-live="polite"
+                class="menu-recent-snapshot-details"
+              >
+                {selectedRecentSnapshotDetails.map((detail) => (
+                  <div class="menu-recent-snapshot-detail" key={detail.label}>
+                    <dt>{detail.label}</dt>
+                    <dd>{detail.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
             <MenuActionButton
               action="load-any"
               actionAttribute={mainMenuActionAttribute}

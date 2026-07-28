@@ -6,10 +6,10 @@
   numerical coast predictor and a Kepler two-body predictor.
 - Added an extended trajectory-horizon developer option and production-path
   trajectory benchmarks.
-- Hardened the Kepler path after review: the production wrapper falls back to
-  the configured numerical predictor on propagation failure, loop trimming
-  honors the shared revolution limit, and near/far dispatch requires the target
-  to be the only massive body.
+- Hardened the Kepler path after review: iteration exhaustion returns a
+  best-effort estimate, remaining production-wrapper failures fall back to the
+  configured numerical predictor, loop trimming honors the shared revolution
+  limit, and near/far dispatch requires the target to be the only massive body.
 - Limited the Kepler URL override to loopback hosts or the existing exact
   `devtools=1` authorization.
 
@@ -37,9 +37,12 @@ ignoring another body's gravity.
 - A scenario is eligible for Kepler prediction only when the selected target has
   positive mass and every other body has zero mass. Massless scenario helpers do
   not force a fallback, while Earth-Moon and other multi-gravity scenarios do.
-- Kepler non-convergence falls back to `computeCoastTrajectoryPrediction` with
-  the caller's physics engine. This preserves configured near-tier behavior and
-  the worker's existing semi-implicit Euler behavior.
+- Universal-anomaly iteration exhaustion keeps the best-effort result now
+  shipped on `main`. Other propagation or sampling exceptions fall back to
+  `computeCoastTrajectoryPrediction` with the caller's physics engine. This
+  preserves configured near-tier behavior and the worker's existing
+  semi-implicit Euler behavior. Invalid non-positive sampling steps remain
+  fail-fast `RangeError`s rather than being retried through the fallback.
 - Loop trimming uses target-relative angular travel and the existing
   `maxLoopRevolutions` configuration, matching the numerical predictor's
   termination semantics.
@@ -62,3 +65,26 @@ ignoring another body's gravity.
   numerical prediction for multi-body scenarios.
 - The fallback is deliberately transparent to the player; richer diagnostics
   can be added later if solver convergence needs operational visibility.
+
+## 2026-07-28 conflict resolution
+
+- Merged current `main` after PR #326 landed the overlapping Kepler
+  implementation, preserving its positive-step validation, best-effort
+  iteration behavior, focused gameplay coverage, and public sampling API.
+- Retained this PR's developer menu and access gate, shared single-mass
+  eligibility rule, numerical fallback containment, loop-event behavior, and
+  production-wrapper benchmark naming.
+- Preserved current-main non-positive sampling-step validation across the
+  branch's numerical fallback wrapper.
+- Post-merge validation passed 80 focused tests, 766 product tests, 16 claim
+  tests, 4 workflow tests, the release build, and focused desktop/mobile Kepler
+  Playwright coverage.
+- The focused 2-hour production-wrapper benchmark completed at about 8.5k
+  operations per second.
+- The full Playwright run passed 91 of 95 tests. Two unchanged snapshot-detail
+  fixtures are rejected by current `main` snapshot validation, the unchanged
+  leaderboard assertion still expects `7h30m` while the UI renders `07h30m`,
+  and one highscore navigation timeout passed immediately in isolation.
+- Desktop/mobile Kepler screenshots and developer-menu screenshots were
+  inspected at original resolution. The trajectory remained coherent and the
+  menu controls stayed inside both viewports.

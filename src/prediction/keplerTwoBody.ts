@@ -30,7 +30,7 @@ export type KeplerTwoBodyPropagation = {
   velocity: Vec2
 }
 
-type KeplerTwoBodyTrajectory = {
+export type KeplerTwoBodyTrajectory = {
   absolutePoints: Vec2[]
   closestApproach: PredictedClosestApproach | null
   eventMarkers: ReturnType<typeof getCoastTrajectoryEventMarkers>
@@ -111,7 +111,9 @@ const solveUniversalAnomaly = (
     }
   }
 
-  throw new Error('Kepler two-body propagation did not converge')
+  // Keep prediction best-effort so an experimental solver miss cannot unwind
+  // the main animation loop. Consumers can reject unusable output separately.
+  return anomaly
 }
 
 /** Propagates a spacecraft under only one body's gravity for elapsedSeconds. */
@@ -199,26 +201,31 @@ export const canUseKeplerTwoBodyPrediction = (
   target.mass > 0 &&
   !state.bodies.some((body) => body.id !== target.id && body.mass > 0)
 
-const sampleKeplerTwoBodyTrajectory = (
+export const sampleKeplerTwoBodyTrajectory = (
   body: Body,
   spacecraft: Pick<Spacecraft, 'dryMass' | 'position' | 'velocity'>,
   horizonSeconds: number,
   sampleStepSeconds: number,
-  allowLoopTrim: boolean,
-  maxLoopRevolutions: number,
+  maxLoopRevolutions: number | null = null,
 ): KeplerTwoBodyTrajectory => {
+  if (sampleStepSeconds <= 0) {
+    throw new RangeError('sampleStepSeconds must be positive')
+  }
+
   const absolutePoints: Vec2[] = [{ ...spacecraft.position }]
   const samples: CoastTrajectoryPredictionSample[] = []
   let closestApproach: PredictedClosestApproach | null = null
   let impact: PredictedImpact | null = null
   const relativePoints: Vec2[] = []
   const sampleTimes: number[] = []
-  const maxLoopAngularTravel = maxLoopRevolutions * Math.PI * 2
-  let angularTravel = 0
-  let previousAngle = Math.atan2(
-    spacecraft.position.y - body.position.y,
-    spacecraft.position.x - body.position.x,
+  const maxLoopAngularTravel =
+    maxLoopRevolutions === null ? null : maxLoopRevolutions * Math.PI * 2
+  const initialRelativePoint = sub(spacecraft.position, body.position)
+  let previousPredictionAngle = Math.atan2(
+    initialRelativePoint.y,
+    initialRelativePoint.x,
   )
+  let predictionAngularTravel = 0
   let reachedLoopLimit = false
 
   for (
@@ -255,16 +262,21 @@ const sampleKeplerTwoBodyTrajectory = (
       point: relativePoint,
       time: elapsedSeconds,
     })
-    const angle = Math.atan2(relativePoint.y, relativePoint.x)
-    angularTravel += Math.abs(normalizeAngle(angle - previousAngle))
-    previousAngle = angle
+    const predictionAngle = Math.atan2(relativePoint.y, relativePoint.x)
+    predictionAngularTravel += Math.abs(
+      normalizeAngle(predictionAngle - previousPredictionAngle),
+    )
+    previousPredictionAngle = predictionAngle
 
     if (approach.altitude <= 0) {
       impact = { bodyName: body.name, time: elapsedSeconds }
       break
     }
 
-    if (allowLoopTrim && angularTravel >= maxLoopAngularTravel) {
+    if (
+      maxLoopAngularTravel !== null &&
+      predictionAngularTravel >= maxLoopAngularTravel
+    ) {
       reachedLoopLimit = true
       break
     }
@@ -285,7 +297,7 @@ const sampleKeplerTwoBodyTrajectory = (
     absolutePoints,
     closestApproach,
     eventMarkers: getCoastTrajectoryEventMarkers(samples, {
-      includeApoapsis: allowLoopTrim && !impact,
+      includeApoapsis: maxLoopRevolutions !== null && !impact,
       targetRadius: body.radius,
     }),
     impact,
@@ -306,8 +318,7 @@ const computeKeplerTwoBodyTrajectory = (
     state.spacecraft,
     predictionConfig.horizonSeconds,
     predictionConfig.stepSeconds,
-    allowLoopTrim,
-    predictionConfig.maxLoopRevolutions,
+    allowLoopTrim ? predictionConfig.maxLoopRevolutions : null,
   )
   const predictionTime = trajectory.sampleTimes.at(-1) ?? 0
   const finalPropagation = propagateKeplerTwoBody(
@@ -374,7 +385,11 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
       predictionConfig,
       allowLoopTrim,
     )
-  } catch {
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw error
+    }
+
     return computeCoastTrajectoryPrediction(
       state,
       fallbackPhysicsEngine,
