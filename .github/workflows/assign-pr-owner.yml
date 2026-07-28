@@ -7,7 +7,7 @@ on:
       - reopened
 
 permissions:
-  issues: write
+  pull-requests: write
 
 jobs:
   assign-owner:
