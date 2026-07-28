@@ -36,7 +36,7 @@ const formatRecentSnapshotGameTime = (elapsed: number) =>
   Number.isFinite(elapsed) ? formatCompactElapsed(elapsed) : 'Unknown'
 
 const formatRecentSnapshotScenario = (snapshot: DebugScenarioSnapshot) => {
-  if (snapshot.version === 1 || !snapshot.runtimeScenario) {
+  if (!snapshot.runtimeScenario) {
     return `Legacy snapshot (version ${snapshot.version})`
   }
 
