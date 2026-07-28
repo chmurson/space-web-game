@@ -6,12 +6,47 @@ const promptUrl = new URL(
   '../docs/automation-prompts/engineer-workflow.md',
   import.meta.url,
 )
+const claimsUrl = new URL(
+  '../docs/automation-task-claims.md',
+  import.meta.url,
+)
 
 const readPrompt = () => readFile(promptUrl, 'utf8')
+const readClaims = () => readFile(claimsUrl, 'utf8')
+
+const normalizeWhitespace = (value) => value.replace(/\s+/g, ' ').trim()
 
 const assertContainsAll = (prompt, policies) => {
   for (const policy of policies) {
     assert.ok(prompt.includes(policy), `Missing workflow policy: ${policy}`)
+  }
+}
+
+const extractSection = (document, heading, nextHeading) => {
+  const start = document.indexOf(heading)
+  assert.notEqual(start, -1, `Missing section heading: ${heading}`)
+
+  const end = document.indexOf(nextHeading, start + heading.length)
+  assert.notEqual(end, -1, `Missing next section heading: ${nextHeading}`)
+
+  return document.slice(start, end)
+}
+
+const assertContainsInOrder = (document, policies) => {
+  const normalizedDocument = normalizeWhitespace(document)
+  let previousIndex = -1
+
+  for (const policy of policies) {
+    const normalizedPolicy = normalizeWhitespace(policy)
+    const policyIndex = normalizedDocument.indexOf(
+      normalizedPolicy,
+      previousIndex + 1,
+    )
+    assert.ok(
+      policyIndex > previousIndex,
+      `Missing or out-of-order workflow policy: ${normalizedPolicy}`,
+    )
+    previousIndex = policyIndex
   }
 }
 
@@ -65,15 +100,79 @@ describe('engineer workflow prompt', () => {
 
     assertContainsAll(prompt, [
       'before yielding while the worker is active',
-      'active delegated-worker, claim, and continuation/wakeup handoff state',
-      'including the next reconciliation action',
-      'reconcile the worker result rather than mark the run complete',
-      'Only after delegated-worker reconciliation and claim release',
       'current run time and terminal outcome',
-      'reconcile persisted active-worker handoffs before performing fresh PR/issue triage',
-      'if the worker is terminal, perform the terminal-result reconciliation immediately',
-      'rather than starting another task',
       'before any new delegation',
     ])
+
+    const completionBoundary = extractSection(
+      prompt,
+      'Delegated worker completion boundary:',
+      'Priority order:',
+    )
+    assertContainsInOrder(completionBoundary, [
+      'inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
+      'For a foreign claim, skip that task and continue triage; for a claim owned by this run, continue waiting or refresh the continuation',
+      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff and triggering sidecars',
+      'If the worker is terminal, perform the terminal-result reconciliation immediately',
+      'If the run must yield while a claim is recent, preserve the active delegated-worker, claim, and continuation/wakeup handoff state',
+      'While waiting on that claim, continue the existing handoff rather than starting another task',
+      'Wait for a terminal worker result',
+      'Only after reconciliation and claim release may the orchestrator prepend a terminal memory event and emit its final report',
+    ])
+  })
+
+  it('uses recent live claims as the authority during reconciliation', async () => {
+    const [prompt, claims] = await Promise.all([readPrompt(), readClaims()])
+
+    const automationMemory = extractSection(
+      prompt,
+      'Automation memory:',
+      'Mandatory PR conversation inventory:',
+    )
+    assertContainsInOrder(automationMemory, [
+      'Automation memory is historical context and an audit trail, not an authoritative current-state database',
+      'Derive current state at decision time from fresh live GitHub/`gh` data, claim and sidecar files, direct delegated-worker status, and current branch/worktree Git state',
+      'Claim-first reconciliation: the live task claim is the concurrency authority',
+      'Before interpreting memory, worker ids, continuation records, or sidecars, read the matching claim',
+      'Do not release, replace, or duplicate that claim',
+      'If this is a foreign claim, skip that task and continue with other claimable work; if it is owned by this run, wait for the owning worker/continuation or the normal claim-expiry path',
+      'Sidecars, memory events, and worker ids are audit and wakeup hints, not ownership state',
+    ])
+
+    const completionBoundary = extractSection(
+      prompt,
+      'Delegated worker completion boundary:',
+      'Priority order:',
+    )
+    assertContainsInOrder(completionBoundary, [
+      'inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
+      'For a foreign claim, skip that task and continue triage; for a claim owned by this run, continue waiting or refresh the continuation',
+      'Once the freshness window has elapsed, question the handoff using worker status, sidecars, and branch/worktree state',
+      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff and triggering sidecars',
+      'If worker status is unavailable while the claim is within the freshness window, do not classify the work as terminal or failed',
+      'terminal worker status overrides the freshness wait for the owning run',
+    ])
+
+    const reconciliationRule = extractSection(
+      claims,
+      '## Reconciliation rule',
+      '## Claim Record Fields',
+    )
+    assertContainsInOrder(reconciliationRule, [
+      'The claim file is the single source of truth for ownership',
+      'an unexpired `active` claim is treated as healthy when its `last_seen` is within the 2-hour freshness window',
+      'A parallel orchestrator must not release, replace, or duplicate that claim',
+      'For a foreign claim, leave it untouched, skip only its associated task, and continue with other claimable work',
+      'For a claim owned by the current run, wait for the owning worker/continuation or the normal claim-expiry path',
+      'Those other files are audit and wakeup hints only',
+      'After 2 hours without a heartbeat, or after the claim\'s own TTL has expired',
+    ])
+
+    const sharedPolicies = [
+      'continue with other claimable work',
+      'owning worker/continuation or the normal claim-expiry path',
+    ]
+    assertContainsAll(normalizeWhitespace(automationMemory), sharedPolicies)
+    assertContainsAll(normalizeWhitespace(reconciliationRule), sharedPolicies)
   })
 })
