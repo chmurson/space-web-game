@@ -269,11 +269,20 @@ test('keeps named debug snapshots available after a page refresh', async ({
     localStorage.clear()
     writeDebugScenarioSnapshot(
       {
-        version: 1,
+        version: 3,
         savedAt: '2026-07-19T09:00:00.000Z',
         elapsed: 42,
         bodies: [],
-        spacecraft: {},
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
       },
       'Moon approach',
     )
@@ -1230,21 +1239,31 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
       await import(debugSnapshotModulePath)
     const app = document.createElement('div')
     const events: string[] = []
+    const spacecraft = {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      heading: 0,
+      fuel: 0,
+      fuelUsed: 0,
+      dryMass: 1,
+      fuelMass: 0,
+      fuelCapacity: 0,
+    }
 
     document.body.append(app)
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 0,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(1).toISOString(),
       elapsed: 1,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
 
     const menu = createMainMenu({
@@ -1348,11 +1367,20 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     document.body.append(beforeButton, app)
     beforeButton.focus()
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 0,
       bodies: [],
-      spacecraft: {},
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 0,
+        fuelUsed: 0,
+        dryMass: 1,
+        fuelMass: 0,
+        fuelCapacity: 0,
+      },
     })
 
     const menu = createCrashMenu({
@@ -1489,6 +1517,16 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const outsideButton = document.createElement('button')
     const events: string[] = []
     const savedSnapshotNames: string[] = []
+    const spacecraft = {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      heading: 0,
+      fuel: 0,
+      fuelUsed: 0,
+      dryMass: 1,
+      fuelMass: 0,
+      fuelCapacity: 0,
+    }
     let debugModeEnabled = false
     let fpsIndicatorEnabled = false
 
@@ -1631,18 +1669,18 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
 
     menu.close()
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 1,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(1).toISOString(),
       elapsed: 2,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     menu.syncState()
     openMenu()
