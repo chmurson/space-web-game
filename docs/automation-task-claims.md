@@ -79,8 +79,11 @@ The claim file is the single source of truth for ownership. For reconciliation,
 an unexpired `active` claim is treated as healthy when its `last_seen` is within
 the 2-hour freshness window. During that window, assume the worker is in progress
 even when a worker id, continuation record, sidecar, or memory event is missing or
-stale. A parallel orchestrator must wait and must not release, replace, or
-duplicate that claim. Those other files are audit and wakeup hints only.
+stale. A parallel orchestrator must not release, replace, or duplicate that claim.
+For a foreign claim, leave it untouched, skip only its associated task, and
+continue with other claimable work. For a claim owned by the current run, wait
+for the owning worker/continuation or the normal claim-expiry path. Those other
+files are audit and wakeup hints only.
 
 After 2 hours without a heartbeat, or after the claim's own TTL has expired, the
 orchestrator may question the handoff
