@@ -101,6 +101,15 @@ const createWheelEvent = (
   return event
 }
 
+const createSafariGestureEvent = (type: string, scale: number) => {
+  const event = new Event(type, {
+    bubbles: true,
+    cancelable: true,
+  })
+  Object.defineProperty(event, 'scale', { value: scale })
+  return event
+}
+
 const createContextMenuEvent = (button = 2) =>
   createPointerEvent('contextmenu', {
     button,
@@ -184,9 +193,10 @@ const createHarness = (
 
 describe('bindPointerCameraInput wheel routing', () => {
   it.each([
+    'wheel',
     'drag',
     'edge',
-  ] as const)('leaves browser-modified wheel gestures to the browser in %s mode', (desktopCameraPanMode) => {
+  ] as const)('zooms and consumes Ctrl/Cmd-modified wheel gestures in %s mode', (desktopCameraPanMode) => {
     const harness = createHarness({ desktopCameraPanMode })
 
     for (const modifier of ['ctrlKey', 'metaKey'] as const) {
@@ -194,10 +204,11 @@ describe('bindPointerCameraInput wheel routing', () => {
 
       harness.canvas.dispatchEvent(event)
 
-      expect(event.defaultPrevented).toBe(false)
+      expect(event.defaultPrevented).toBe(true)
     }
 
-    expect(harness.onZoom).not.toHaveBeenCalled()
+    expect(harness.onZoom).toHaveBeenCalledTimes(2)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
   it('pans both platform wheel axes diagonally in wheel mode', () => {
@@ -267,23 +278,6 @@ describe('bindPointerCameraInput wheel routing', () => {
     }
     expect(lineDelta.x).toBeGreaterThan(pixelDelta.x * 15)
     expect(lineDelta.y).toBeGreaterThan(pixelDelta.y * 15)
-  })
-
-  it.each([
-    'ctrlKey',
-    'metaKey',
-  ] as const)('zooms and consumes %s wheel gestures in wheel mode', (modifier) => {
-    const harness = createHarness({ desktopCameraPanMode: 'wheel' })
-    const event =
-      modifier === 'ctrlKey'
-        ? createWheelEvent({ ctrlKey: true, deltaY: -120 })
-        : createWheelEvent({ deltaY: -120, metaKey: true })
-
-    harness.canvas.dispatchEvent(event)
-
-    expect(event.defaultPrevented).toBe(true)
-    expect(harness.onZoom).toHaveBeenCalledTimes(1)
-    expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -372,6 +366,80 @@ describe('bindPointerCameraInput wheel routing', () => {
 
     expect(event.defaultPrevented).toBe(true)
     expect(harness.onZoom).toHaveBeenCalledTimes(1)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+})
+
+describe('bindPointerCameraInput Safari gesture routing', () => {
+  it.each([
+    'wheel',
+    'drag',
+    'edge',
+  ] as const)('converts cumulative pinch scale into incremental zoom in %s mode', (desktopCameraPanMode) => {
+    const harness = createHarness({ desktopCameraPanMode })
+    const start = createSafariGestureEvent('gesturestart', 1)
+    const firstChange = createSafariGestureEvent('gesturechange', 1.2)
+    const secondChange = createSafariGestureEvent('gesturechange', 1.5)
+    const end = createSafariGestureEvent('gestureend', 1.5)
+
+    harness.canvas.dispatchEvent(start)
+    harness.canvas.dispatchEvent(firstChange)
+    harness.canvas.dispatchEvent(secondChange)
+    harness.canvas.dispatchEvent(end)
+
+    expect(start.defaultPrevented).toBe(true)
+    expect(firstChange.defaultPrevented).toBe(true)
+    expect(secondChange.defaultPrevented).toBe(true)
+    expect(end.defaultPrevented).toBe(true)
+    expect(harness.onZoom).toHaveBeenNthCalledWith(1, 1 / 1.2)
+    expect(harness.onZoom).toHaveBeenNthCalledWith(2, 1.2 / 1.5)
+    expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it('clamps large scale steps and resets normalization at gesture end', () => {
+    const harness = createHarness({ desktopCameraPanMode: 'drag' })
+
+    harness.canvas.dispatchEvent(createSafariGestureEvent('gesturestart', 1))
+    harness.canvas.dispatchEvent(createSafariGestureEvent('gesturechange', 4))
+    harness.canvas.dispatchEvent(createSafariGestureEvent('gestureend', 4))
+    const orphanedChange = createSafariGestureEvent('gesturechange', 8)
+    harness.canvas.dispatchEvent(orphanedChange)
+
+    expect(harness.onZoom).toHaveBeenCalledOnce()
+    expect(harness.onZoom).toHaveBeenCalledWith(0.75)
+    expect(orphanedChange.defaultPrevented).toBe(false)
+  })
+
+  it.each([
+    ['disabled game interactions', { interactionsEnabled: false }],
+    [
+      'gated desktop camera interactions',
+      { desktopCameraInteractionsEnabled: false },
+    ],
+    ['coarse-pointer input', { desktopCameraInputEnabled: false }],
+  ] as const)('leaves Safari pinch unhandled for %s', (_label, options) => {
+    const harness = createHarness(options)
+    const start = createSafariGestureEvent('gesturestart', 1)
+    const change = createSafariGestureEvent('gesturechange', 1.2)
+
+    harness.canvas.dispatchEvent(start)
+    harness.canvas.dispatchEvent(change)
+
+    expect(start.defaultPrevented).toBe(false)
+    expect(change.defaultPrevented).toBe(false)
+    expect(harness.onZoom).not.toHaveBeenCalled()
+  })
+
+  it('preserves zoom while camera pan controls are locked', () => {
+    const harness = createHarness({
+      cameraControlsLocked: true,
+      desktopCameraPanMode: 'edge',
+    })
+
+    harness.canvas.dispatchEvent(createSafariGestureEvent('gesturestart', 1))
+    harness.canvas.dispatchEvent(createSafariGestureEvent('gesturechange', 0.8))
+
+    expect(harness.onZoom).toHaveBeenCalledWith(1.25)
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 })

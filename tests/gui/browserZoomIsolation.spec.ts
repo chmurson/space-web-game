@@ -113,6 +113,78 @@ test('keeps browser zoom keys separate while modified wheel zoom belongs to the 
   }
 })
 
+test('routes Chromium trackpad pinch wheel events through every pan mode', async ({
+  browser,
+}, testInfo) => {
+  const { context, page } = await createDesktopPage(browser, testInfo)
+
+  try {
+    await page.goto('/?scenario=earth-moon&devtools=1')
+    await expect(page.locator('[data-boot-screen]')).toBeHidden()
+
+    for (const panMode of ['wheel', 'drag', 'edge'] as const) {
+      await page.evaluate((nextPanMode) => {
+        const storageKey = 'space-web-game.userSettings.v1'
+        const storedSettings = JSON.parse(
+          window.localStorage.getItem(storageKey) ?? '{}',
+        ) as Record<string, unknown>
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            ...storedSettings,
+            desktopCameraPanMode: nextPanMode,
+          }),
+        )
+      }, panMode)
+      await page.reload()
+      await expect(page.locator('[data-boot-screen]')).toBeHidden()
+      await page.waitForFunction(() =>
+        Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__),
+      )
+
+      const result = await page.evaluate(() => {
+        const getCameraState = () => {
+          const snapshot = window.__SPACE_WEB_GAME_DEVTOOLS__?.getSnapshot()
+          return {
+            panOffset: snapshot?.camera.panOffset ?? null,
+            viewportSize: snapshot?.simulation.viewportSize ?? null,
+          }
+        }
+        const canvas = document.querySelector('canvas')
+        if (!canvas) {
+          throw new Error('Game canvas is missing')
+        }
+
+        const initialState = getCameraState()
+        const eventAllowed = canvas.dispatchEvent(
+          new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            deltaY: -120,
+          }),
+        )
+
+        return {
+          eventAllowed,
+          initialState,
+          stateAfterPinch: getCameraState(),
+        }
+      })
+
+      expect(result.eventAllowed, panMode).toBe(false)
+      expect(result.stateAfterPinch.viewportSize, panMode).toBeLessThan(
+        result.initialState.viewportSize ?? 0,
+      )
+      expect(result.stateAfterPinch.panOffset, panMode).toEqual(
+        result.initialState.panOffset,
+      )
+    }
+  } finally {
+    await context.close()
+  }
+})
+
 test('keeps a modifier-release wheel tail in zoom until the gesture is idle', async ({
   browser,
 }, testInfo) => {
