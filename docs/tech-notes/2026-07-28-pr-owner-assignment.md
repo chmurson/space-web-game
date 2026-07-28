@@ -13,9 +13,6 @@ Shipit state:
   pull request path.
 - Added a GitHub Actions workflow that assigns `@chmurson` when a pull request
   is opened or reopened and the owner is not already assigned.
-- Added focused static validation for ownership coverage, workflow triggers,
-  least-privilege permissions, duplicate suppression, and the absence of
-  pull-request code execution.
 
 ## Why
 
@@ -42,11 +39,9 @@ leaving CODEOWNERS responsible for review ownership.
 
 ## Validation
 
-- Focused owner-assignment validation passed: 3/3 tests.
 - Full product Vitest passed: 759/759 tests across 72 files.
 - Automation claim tests passed: 16/16.
 - Engineer workflow tests passed: 4/4.
-- Focused Biome validation passed for the new test and `package.json`.
 - `git diff --check` passed.
 - GitHub confirmed that `@chmurson` is an assignable repository user with a
   `204` response from the assignee eligibility endpoint.
