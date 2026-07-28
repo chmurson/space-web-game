@@ -45,15 +45,18 @@ describe('engineer workflow prompt', () => {
     ])
   })
 
-  it('keeps addressed tracking comment-specific and guards the PR 252 regression', async () => {
+  it('keeps addressed tracking comment-specific and preserves human request triage', async () => {
     const prompt = await readPrompt()
 
     assertContainsAll(prompt, [
-      'pull/252#issuecomment-4980190452',
+      'an actionable human-authored `issue_comment`',
+      'contains an unchecked concrete checklist',
       'one sidecar record per triggering comment',
       'a reaction on one comment never acknowledges another comment',
       'Add the automation `rocket` reaction only when its `updatedAt` and body hash still match the sidecar',
       'Workers must not add these markers',
+      'If the current comment version matches an existing sidecar and already has the automation `rocket` reaction',
+      'a stale local `in_progress` record must never cause duplicate delegation',
     ])
   })
 
@@ -67,6 +70,10 @@ describe('engineer workflow prompt', () => {
       'reconcile the worker result rather than mark the run complete',
       'Only after delegated-worker reconciliation and claim release',
       'current run time and terminal outcome',
+      'reconcile persisted active-worker handoffs before performing fresh PR/issue triage',
+      'if the worker is terminal, perform the terminal-result reconciliation immediately',
+      'rather than starting another task',
+      'before any new delegation',
     ])
   })
 })
