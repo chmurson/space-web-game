@@ -6,8 +6,8 @@ import type {
 } from '@/debugScenarioSnapshot'
 import { getRecentSnapshotDetails } from '@/ui/components/recentSnapshotFormatting'
 
-const legacySnapshot: DebugScenarioSnapshot = {
-  version: 1,
+const snapshotWithoutRuntimeScenario: DebugScenarioSnapshot = {
+  version: 3,
   savedAt: '2026-07-27T12:34:00',
   elapsed: 15 * 60,
   bodies: [],
@@ -35,8 +35,7 @@ const currentRuntimeScenario = {
 } as const
 
 const currentSnapshot: DebugScenarioSnapshot = {
-  ...legacySnapshot,
-  version: 3,
+  ...snapshotWithoutRuntimeScenario,
   elapsed: 90 * 60,
   runtimeScenario: currentRuntimeScenario,
 }
@@ -61,10 +60,12 @@ describe('recent snapshot details', () => {
     ])
   })
 
-  it('uses a useful fallback for legacy and unknown scenarios', () => {
-    expect(getRecentSnapshotDetails(createEntry(legacySnapshot))).toEqual([
+  it('uses a useful fallback for snapshots without runtime and unknown scenarios', () => {
+    expect(
+      getRecentSnapshotDetails(createEntry(snapshotWithoutRuntimeScenario)),
+    ).toEqual([
       { label: 'Game time', value: '15m' },
-      { label: 'Scenario', value: 'Legacy snapshot (version 1)' },
+      { label: 'Scenario', value: 'Legacy snapshot (version 3)' },
       { label: 'Created', value: 'Jul 27, 2026, 12:34 PM' },
     ])
     expect(
@@ -119,13 +120,13 @@ describe('recent snapshot details', () => {
   it('includes optional import and export rows only when metadata exists', () => {
     expect(
       getRecentSnapshotDetails(
-        createEntry(legacySnapshot, {
+        createEntry(snapshotWithoutRuntimeScenario, {
           savedAt: '2020-01-01T00:00:00.000Z',
         }),
       ),
     ).toEqual([
       { label: 'Game time', value: '15m' },
-      { label: 'Scenario', value: 'Legacy snapshot (version 1)' },
+      { label: 'Scenario', value: 'Legacy snapshot (version 3)' },
       { label: 'Created', value: 'Jul 27, 2026, 12:34 PM' },
     ])
 
