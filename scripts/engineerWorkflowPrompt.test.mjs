@@ -61,7 +61,9 @@ describe('engineer workflow prompt', () => {
       'as two independent data sources',
       '/issues/{number}/comments',
       '/pulls/{number}/comments',
+      '/pulls/{number}/reviews',
       'must not replace either required comment fetch',
+      'do not merge them into either comment stream',
       'PR triage is incomplete',
       'If a normalized tool omits a required field such as `updatedAt`',
       'Never convert a fetch failure into “no actionable comments.”',
@@ -92,6 +94,44 @@ describe('engineer workflow prompt', () => {
       'Workers must not add these markers',
       'If the current comment version matches an existing sidecar and already has the automation `rocket` reaction',
       'a stale local `in_progress` record must never cause duplicate delegation',
+    ])
+  })
+
+  it('persists addressed review submissions separately and reopens changed versions', async () => {
+    const prompt = await readPrompt()
+
+    const reviewSubmissionTracking = extractSection(
+      prompt,
+      'Review submission tracking:',
+      'Delegated worker completion boundary:',
+    )
+    assertContainsInOrder(reviewSubmissionTracking, [
+      'Treat review submissions (`review_submission`) and inline review comments (`review_comment`) as separate record kinds with separate state namespaces',
+      're-fetch the exact review through `GET /repos/{owner}/{repo}/pulls/{number}/reviews/{review_id}`',
+      'record the observed review version as the exact `submitted_at`, `commit_id`, and `state` values',
+      'dedicated `review-submissions/` state directory',
+      'consult the dedicated review-submission record before acquiring a claim',
+      'If its status is `addressed` and its complete fingerprint exactly matches the freshly fetched review, classify that submission `addressed`',
+      'do not acquire a claim solely for it, add `eyes` or `rocket`, or spawn a worker',
+      'If the fetched body hash or any observed review-version field differs, treat the previous fingerprint as non-matching and re-triage the current submission',
+      'fail closed instead of using placeholder fingerprint values',
+      'acquire the branch-bound PR claim, mark any previous record `stale` or `superseded`',
+      'delegate its explicit request items without attempting comment reactions',
+      'Mark its dedicated record `addressed` only when the complete fingerprint is unchanged',
+      'store the item mapping, evidence, and reconciliation timestamp without requiring a GitHub reaction',
+    ])
+
+    assertContainsAll(reviewSubmissionTracking, [
+      'Never use a review-submission record to acknowledge or suppress an inline review comment',
+      'A new review id is always a distinct submission',
+      'Keep addressed records through claim release and routine cleanup while their PR remains open',
+    ])
+
+    const runChecklist = prompt.slice(prompt.indexOf('## Run Checklist'))
+    assertContainsInOrder(runChecklist, [
+      'Before treating a review submission as actionable, re-fetch it and consult its dedicated addressed fingerprint',
+      'For a review-submission candidate without a matching addressed fingerprint, acquire the claim',
+      'Reconcile review submissions through their complete body/version fingerprint without requiring a reaction',
     ])
   })
 
