@@ -658,10 +658,6 @@ export const bindPointerCameraInput = (
         return
       }
 
-      if (modifiedForZoom) {
-        return
-      }
-
       event.preventDefault()
       options.onZoom(
         getWheelZoomFactor(event, options.windowTarget.innerHeight),
