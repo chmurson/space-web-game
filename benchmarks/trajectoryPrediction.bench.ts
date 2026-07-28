@@ -86,11 +86,13 @@ const benchmarkEarthOnlyNumerical = (horizonSeconds: number) => {
 
 const benchmarkEarthOnlyKepler = (horizonSeconds: number) => {
   const state = createEarthOnlyState()
+  const config = createPredictionConfig(horizonSeconds)
   computeKeplerTwoBodyTrajectoryPrediction(
     state,
     earthTarget(state),
-    createPredictionConfig(horizonSeconds),
+    config,
     false,
+    semiImplicitEuler,
   )
 }
 
@@ -124,25 +126,25 @@ describe('trajectory prediction baseline', () => {
   bench('Earth-only numerical coast: 2-hour horizon', () =>
     benchmarkEarthOnlyNumerical(2 * 60 * 60),
   )
-  bench('Earth-only Kepler sampled coast: 2-hour horizon', () =>
+  bench('Earth-only Kepler production coast: 2-hour horizon', () =>
     benchmarkEarthOnlyKepler(2 * 60 * 60),
   )
   bench('Earth-only numerical coast: 24-hour horizon', () =>
     benchmarkEarthOnlyNumerical(24 * 60 * 60),
   )
-  bench('Earth-only Kepler sampled coast: 24-hour horizon', () =>
+  bench('Earth-only Kepler production coast: 24-hour horizon', () =>
     benchmarkEarthOnlyKepler(24 * 60 * 60),
   )
   bench('Earth-only numerical coast: 2-day horizon', () =>
     benchmarkEarthOnlyNumerical(2 * 24 * 60 * 60),
   )
-  bench('Earth-only Kepler sampled coast: 2-day horizon', () =>
+  bench('Earth-only Kepler production coast: 2-day horizon', () =>
     benchmarkEarthOnlyKepler(2 * 24 * 60 * 60),
   )
   bench('Earth-only numerical coast: 16-day horizon', () =>
     benchmarkEarthOnlyNumerical(16 * 24 * 60 * 60),
   )
-  bench('Earth-only Kepler sampled coast: 16-day horizon', () =>
+  bench('Earth-only Kepler production coast: 16-day horizon', () =>
     benchmarkEarthOnlyKepler(16 * 24 * 60 * 60),
   )
 

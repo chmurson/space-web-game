@@ -1,6 +1,11 @@
 import { G } from '../simulation/constants'
 import { cloneSimulationState } from '../simulation/state'
-import type { Body, SimulationState, Spacecraft } from '../simulation/types'
+import type {
+  Body,
+  PhysicsEngine,
+  SimulationState,
+  Spacecraft,
+} from '../simulation/types'
 import {
   add,
   length,
@@ -13,6 +18,7 @@ import {
   type CoastTrajectoryPredictionComputation,
   type CoastTrajectoryPredictionSample,
   type CoastTrajectoryPredictionTerminationReason,
+  computeCoastTrajectoryPrediction,
   getCoastTrajectoryEventMarkers,
   type PredictedClosestApproach,
   type PredictedImpact,
@@ -188,6 +194,13 @@ export const propagateKeplerTwoBody = (
   }
 }
 
+export const canUseKeplerTwoBodyPrediction = (
+  state: Pick<SimulationState, 'bodies'>,
+  target: Pick<Body, 'id' | 'mass'>,
+) =>
+  target.mass > 0 &&
+  !state.bodies.some((body) => body.id !== target.id && body.mass > 0)
+
 export const sampleKeplerTwoBodyTrajectory = (
   body: Body,
   spacecraft: Pick<Spacecraft, 'dryMass' | 'position' | 'velocity'>,
@@ -284,7 +297,7 @@ export const sampleKeplerTwoBodyTrajectory = (
     absolutePoints,
     closestApproach,
     eventMarkers: getCoastTrajectoryEventMarkers(samples, {
-      includeApoapsis: false,
+      includeApoapsis: maxLoopRevolutions !== null && !impact,
       targetRadius: body.radius,
     }),
     impact,
@@ -294,7 +307,7 @@ export const sampleKeplerTwoBodyTrajectory = (
   }
 }
 
-export const computeKeplerTwoBodyTrajectoryPrediction = (
+const computeKeplerTwoBodyTrajectory = (
   state: SimulationState,
   target: Body,
   predictionConfig: TrajectoryPredictionConfig,
@@ -355,5 +368,34 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
       ]
     }),
     terminationReason: trajectory.terminationReason,
+  }
+}
+
+export const computeKeplerTwoBodyTrajectoryPrediction = (
+  state: SimulationState,
+  target: Body,
+  predictionConfig: TrajectoryPredictionConfig,
+  allowLoopTrim: boolean,
+  fallbackPhysicsEngine: PhysicsEngine,
+): CoastTrajectoryPredictionComputation => {
+  try {
+    return computeKeplerTwoBodyTrajectory(
+      state,
+      target,
+      predictionConfig,
+      allowLoopTrim,
+    )
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw error
+    }
+
+    return computeCoastTrajectoryPrediction(
+      state,
+      fallbackPhysicsEngine,
+      target,
+      predictionConfig,
+      allowLoopTrim,
+    )
   }
 }

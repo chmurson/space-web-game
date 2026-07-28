@@ -186,6 +186,25 @@ canvas {
   gap: 16px;
 }
 
+.main-menu-feature-flag {
+  display: grid;
+  gap: 8px;
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.main-menu-feature-flag select {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: rgba(241, 245, 249, 0.96);
+  background: rgba(15, 23, 42, 0.82);
+  font: inherit;
+}
+
 .menu-copy {
   display: grid;
   gap: 8px;

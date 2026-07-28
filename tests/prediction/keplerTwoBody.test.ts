@@ -6,6 +6,7 @@ import {
   sampleKeplerTwoBodyTrajectory,
 } from '@/prediction/keplerTwoBody'
 import { EARTH_MASS, EARTH_RADIUS, G } from '@/simulation/constants'
+import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
 import { idleControls } from '@/simulation/state'
 import type { Body, SimulationState } from '@/simulation/types'
 import { length } from '@/simulation/vector'
@@ -34,18 +35,20 @@ const spacecraft = {
   dryMass: 10_000,
 }
 
-const createCircularOrbitState = (): SimulationState => ({
-  bodies: [{ ...earth, velocity: { x: 0, y: 0 } }],
+const createState = (
+  body: Body,
+  coastSpacecraft = spacecraft,
+): SimulationState => ({
+  bodies: [body],
   controls: idleControls(),
   elapsed: 0,
   spacecraft: {
-    ...spacecraft,
-    fuel: 1,
-    fuelCapacity: 1,
-    fuelMass: 1,
+    ...coastSpacecraft,
+    fuel: 0,
+    fuelCapacity: 0,
+    fuelMass: 0,
     fuelUsed: 0,
     heading: 0,
-    velocity: { x: 0, y: orbitSpeed },
   },
 })
 
@@ -130,45 +133,71 @@ describe('sampleKeplerTwoBodyTrajectory', () => {
 })
 
 describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
-  it('honors the configured loop limit only when loop trimming is allowed', () => {
-    const state = createCircularOrbitState()
-    const target = state.bodies[0]
-    if (!target) {
-      throw new Error('Expected circular-orbit target')
+  it.each([
+    0, -1,
+  ])('preserves non-positive step validation (%s)', (stepSeconds) => {
+    expect(() =>
+      computeKeplerTwoBodyTrajectoryPrediction(
+        createState(earth),
+        earth,
+        {
+          horizonSeconds: 60,
+          maxIntegrationStepSeconds: 60,
+          maxLoopRevolutions: 1,
+          refreshInterval: 0.4,
+          stepSeconds,
+        },
+        false,
+        semiImplicitEuler,
+      ),
+    ).toThrow('sampleStepSeconds must be positive')
+  })
+
+  it('honors loop trimming and the configured revolution limit', () => {
+    const stationaryEarth = { ...earth, velocity: { x: 0, y: 0 } }
+    const stationarySpacecraft = {
+      ...spacecraft,
+      velocity: { x: 0, y: orbitSpeed },
     }
-    const orbitalPeriod =
-      2 * Math.PI * Math.sqrt(orbitRadius ** 3 / (G * earth.mass))
-    const stepSeconds = orbitalPeriod / 32
-    const predictionConfig = {
-      horizonSeconds: orbitalPeriod * 2,
-      maxIntegrationStepSeconds: stepSeconds,
-      maxLoopRevolutions: 0.5,
+    const state = createState(stationaryEarth, stationarySpacecraft)
+    const period = 2 * Math.PI * Math.sqrt(orbitRadius ** 3 / (G * earth.mass))
+    const baseConfig = {
+      horizonSeconds: period * 4,
+      maxIntegrationStepSeconds: 60,
+      maxLoopRevolutions: 1,
       refreshInterval: 0.4,
-      stepSeconds,
+      stepSeconds: period / 64,
     }
 
-    const trimmed = computeKeplerTwoBodyTrajectoryPrediction(
-      state,
-      target,
-      predictionConfig,
-      true,
-    )
     const untrimmed = computeKeplerTwoBodyTrajectoryPrediction(
       state,
-      target,
-      predictionConfig,
+      stationaryEarth,
+      baseConfig,
       false,
+      semiImplicitEuler,
+    )
+    const oneLoop = computeKeplerTwoBodyTrajectoryPrediction(
+      state,
+      stationaryEarth,
+      baseConfig,
+      true,
+      semiImplicitEuler,
+    )
+    const twoLoops = computeKeplerTwoBodyTrajectoryPrediction(
+      state,
+      stationaryEarth,
+      { ...baseConfig, maxLoopRevolutions: 2 },
+      true,
+      semiImplicitEuler,
     )
 
-    expect(trimmed.terminationReason).toBe('loop-limit')
-    expect(trimmed.predictionTime).toBeLessThan(
-      orbitalPeriod / 2 + stepSeconds * 1.1,
-    )
-    expect(trimmed.predictionTime).toBeLessThan(predictionConfig.horizonSeconds)
     expect(untrimmed.terminationReason).toBe('horizon')
-    expect(untrimmed.predictionTime).toBeCloseTo(
-      predictionConfig.horizonSeconds,
-      6,
-    )
+    expect(untrimmed.predictionTime).toBeCloseTo(baseConfig.horizonSeconds)
+    expect(oneLoop.terminationReason).toBe('loop-limit')
+    expect(oneLoop.predictionTime).toBeLessThan(untrimmed.predictionTime)
+    expect(twoLoops.terminationReason).toBe('loop-limit')
+    expect(twoLoops.predictionTime).toBeGreaterThan(oneLoop.predictionTime)
+    expect(oneLoop.result.integration.stepCount).toBe(0)
+    expect(twoLoops.result.integration.stepCount).toBe(0)
   })
 })
