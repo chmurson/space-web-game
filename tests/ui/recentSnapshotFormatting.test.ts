@@ -4,16 +4,11 @@ import type {
   DebugScenarioSnapshot,
   DebugScenarioSnapshotEntry,
 } from '@/debugScenarioSnapshot'
-import {
-  formatRecentSnapshotGameTime,
-  formatRecentSnapshotScenario,
-  formatRecentSnapshotTimestamp,
-  getRecentSnapshotDetails,
-} from '@/ui/components/recentSnapshotFormatting'
+import { getRecentSnapshotDetails } from '@/ui/components/recentSnapshotFormatting'
 
 const legacySnapshot: DebugScenarioSnapshot = {
   version: 1,
-  savedAt: '2026-07-27T12:00:00.000Z',
+  savedAt: '2026-07-27T12:34:00',
   elapsed: 15 * 60,
   bodies: [],
   spacecraft: {
@@ -59,30 +54,66 @@ const createEntry = (
 
 describe('recent snapshot details', () => {
   it('formats current game time, timestamp, and friendly scenario context', () => {
-    expect(formatRecentSnapshotGameTime(currentSnapshot.elapsed)).toBe('01h30m')
-    expect(formatRecentSnapshotTimestamp('2026-07-27T12:34:00')).toBe(
-      'Jul 27, 2026, 12:34 PM',
-    )
-    expect(formatRecentSnapshotScenario(currentSnapshot)).toBe(
-      'Reach the Moon (reach-moon)',
-    )
+    expect(getRecentSnapshotDetails(createEntry(currentSnapshot))).toEqual([
+      { label: 'Game time', value: '01h30m' },
+      { label: 'Scenario', value: 'Reach the Moon (reach-moon)' },
+      { label: 'Created', value: 'Jul 27, 2026, 12:34 PM' },
+    ])
   })
 
   it('uses a useful fallback for legacy and unknown scenarios', () => {
-    expect(formatRecentSnapshotScenario(legacySnapshot)).toBe(
-      'Legacy snapshot (version 1)',
-    )
+    expect(getRecentSnapshotDetails(createEntry(legacySnapshot))).toEqual([
+      { label: 'Game time', value: '15m' },
+      { label: 'Scenario', value: 'Legacy snapshot (version 1)' },
+      { label: 'Created', value: 'Jul 27, 2026, 12:34 PM' },
+    ])
     expect(
-      formatRecentSnapshotScenario({
+      getRecentSnapshotDetails(
+        createEntry({
+          ...currentSnapshot,
+          elapsed: Number.NaN,
+          savedAt: 'not-a-timestamp',
+          runtimeScenario: {
+            ...currentRuntimeScenario,
+            scenarioId: 'future-scenario',
+          },
+        }),
+      ),
+    ).toEqual([
+      { label: 'Game time', value: 'Unknown' },
+      { label: 'Scenario', value: 'Scenario ID: future-scenario' },
+      { label: 'Created', value: 'Unknown' },
+    ])
+  })
+
+  it('identifies current snapshots with blank or missing scenario IDs', () => {
+    const blankScenarioDetails = getRecentSnapshotDetails(
+      createEntry({
         ...currentSnapshot,
         runtimeScenario: {
           ...currentRuntimeScenario,
-          scenarioId: 'future-scenario',
+          scenarioId: '   ',
         },
       }),
-    ).toBe('Scenario ID: future-scenario')
-    expect(formatRecentSnapshotGameTime(Number.NaN)).toBe('Unknown')
-    expect(formatRecentSnapshotTimestamp('not-a-timestamp')).toBe('Unknown')
+    )
+    const missingScenarioDetails = getRecentSnapshotDetails(
+      createEntry({
+        ...currentSnapshot,
+        runtimeScenario: {
+          ...currentRuntimeScenario,
+          scenarioId: undefined as unknown as string,
+        },
+      }),
+    )
+
+    expect(blankScenarioDetails[1]).toEqual({
+      label: 'Scenario',
+      value: 'Scenario ID unavailable (version 3)',
+    })
+    expect(missingScenarioDetails[1]).toEqual({
+      label: 'Scenario',
+      value: 'Scenario ID unavailable (version 3)',
+    })
   })
 
   it('includes optional import and export rows only when metadata exists', () => {
@@ -95,34 +126,22 @@ describe('recent snapshot details', () => {
     ).toEqual([
       { label: 'Game time', value: '15m' },
       { label: 'Scenario', value: 'Legacy snapshot (version 1)' },
-      {
-        label: 'Created',
-        value: formatRecentSnapshotTimestamp(legacySnapshot.savedAt),
-      },
+      { label: 'Created', value: 'Jul 27, 2026, 12:34 PM' },
     ])
 
     expect(
       getRecentSnapshotDetails(
         createEntry(currentSnapshot, {
-          importedAt: '2026-07-27T13:00:00.000Z',
-          lastExportedAt: '2026-07-27T14:00:00.000Z',
+          importedAt: '2026-07-27T13:00:00',
+          lastExportedAt: '2026-07-27T14:00:00',
         }),
       ),
     ).toEqual([
       { label: 'Game time', value: '01h30m' },
       { label: 'Scenario', value: 'Reach the Moon (reach-moon)' },
-      {
-        label: 'Created',
-        value: formatRecentSnapshotTimestamp(currentSnapshot.savedAt),
-      },
-      {
-        label: 'Imported',
-        value: formatRecentSnapshotTimestamp('2026-07-27T13:00:00.000Z'),
-      },
-      {
-        label: 'Last exported',
-        value: formatRecentSnapshotTimestamp('2026-07-27T14:00:00.000Z'),
-      },
+      { label: 'Created', value: 'Jul 27, 2026, 12:34 PM' },
+      { label: 'Imported', value: 'Jul 27, 2026, 1:00 PM' },
+      { label: 'Last exported', value: 'Jul 27, 2026, 2:00 PM' },
     ])
   })
 })

@@ -17,7 +17,7 @@ export const formatRecentSnapshotSavedAt = (value: string) => {
   return Number.isFinite(date.valueOf()) ? date.toLocaleTimeString() : 'Unknown'
 }
 
-export const formatRecentSnapshotTimestamp = (value: string) => {
+const formatRecentSnapshotTimestamp = (value: string) => {
   const date = new Date(value)
   if (!Number.isFinite(date.valueOf())) {
     return 'Unknown'
@@ -32,12 +32,10 @@ export const formatRecentSnapshotTimestamp = (value: string) => {
   })
 }
 
-export const formatRecentSnapshotGameTime = (elapsed: number) =>
+const formatRecentSnapshotGameTime = (elapsed: number) =>
   Number.isFinite(elapsed) ? formatCompactElapsed(elapsed) : 'Unknown'
 
-export const formatRecentSnapshotScenario = (
-  snapshot: DebugScenarioSnapshot,
-) => {
+const formatRecentSnapshotScenario = (snapshot: DebugScenarioSnapshot) => {
   if (snapshot.version === 1 || !snapshot.runtimeScenario) {
     return `Legacy snapshot (version ${snapshot.version})`
   }
@@ -47,7 +45,7 @@ export const formatRecentSnapshotScenario = (
       ? snapshot.runtimeScenario.scenarioId.trim()
       : ''
   if (!scenarioId) {
-    return `Legacy snapshot (version ${snapshot.version}, no scenario ID)`
+    return `Scenario ID unavailable (version ${snapshot.version})`
   }
 
   const friendlyName = currentScenarioNames[scenarioId]

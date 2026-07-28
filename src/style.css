@@ -904,10 +904,14 @@ canvas {
   background: var(--ui-glass-row-bg);
 }
 
-.menu-recent-snapshot-label {
+.menu-recent-snapshot-label,
+.menu-recent-snapshot-detail dt {
   color: rgba(226, 232, 240, 0.72);
-  font-size: 11px;
   font-weight: 700;
+}
+
+.menu-recent-snapshot-label {
+  font-size: 11px;
 }
 
 .menu-recent-snapshot-buttons {
@@ -948,9 +952,7 @@ canvas {
 }
 
 .menu-recent-snapshot-detail dt {
-  color: rgba(226, 232, 240, 0.72);
   font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

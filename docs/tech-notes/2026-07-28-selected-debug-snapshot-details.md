@@ -30,7 +30,8 @@ transport context to identify a snapshot before a later load or export action.
 - `src/style.css` keeps the details inside the existing shared glass row and
   adjusts only the taller desktop snapshot panel position.
 - `tests/ui/recentSnapshotFormatting.test.ts` covers current, unknown, legacy,
-  invalid, and optional-metadata formatting.
+  invalid, malformed current-scenario, and optional-metadata formatting through
+  the public detail-row API.
 - `tests/gui/mobileHudScreenshot.spec.ts` covers selection changes, the empty
   state, semantic markup, and mobile/desktop screenshots.
 
@@ -42,17 +43,23 @@ transport context to identify a snapshot before a later load or export action.
   visible as `Scenario ID: ...`.
 - Snapshots without runtime scenario metadata use an explicit versioned legacy
   fallback rather than an empty value.
+- Current-version snapshots with a blank or missing scenario ID use
+  `Scenario ID unavailable (version ...)` instead of being mislabeled legacy.
 - Detail timestamps use one full English date-and-time format, while the
   existing compact selector label remains unchanged.
 - Optional rows are omitted rather than filled with placeholder text.
+- Granular timestamp, game-time, and scenario formatters stay internal; tests
+  verify their behavior through `getRecentSnapshotDetails`.
+- Detail terms share the existing recent-snapshot label color and weight while
+  retaining their component-specific size, spacing, and uppercase treatment.
 - A definition list with a polite live region communicates both label/value
   semantics and selection-driven updates.
 - No snapshot schema, storage API, selection state, or loading path changed.
 
 ## Validation
 
-- Focused recent-snapshot formatting tests pass (3/3).
-- Full product Vitest passes (723/723 across 71 files).
+- Focused recent-snapshot formatting tests pass (4/4).
+- Full product Vitest passes (724/724 across 71 files).
 - Automation claim tests pass (16/16).
 - Automation workflow tests pass (4/4).
 - The release build, config validation, TypeScript, and Vite build pass.
