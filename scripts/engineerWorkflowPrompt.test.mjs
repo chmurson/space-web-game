@@ -70,10 +70,32 @@ describe('engineer workflow prompt', () => {
       'reconcile the worker result rather than mark the run complete',
       'Only after delegated-worker reconciliation and claim release',
       'current run time and terminal outcome',
-      'reconcile persisted active-worker handoffs before performing fresh PR/issue triage',
-      'if the worker is terminal, perform the terminal-result reconciliation immediately',
+      'Do not reconcile persisted active-worker handoffs before performing fresh PR/issue triage for a foreign recent claim',
+      'If the worker is terminal, perform the terminal-result reconciliation immediately',
       'rather than starting another task',
       'before any new delegation',
     ])
+  })
+
+  it('uses recent live claims as the authority during reconciliation', async () => {
+    const prompt = await readPrompt()
+
+    assertContainsAll(prompt, [
+      'Claim-first reconciliation: the live task claim is the concurrency authority',
+      'If it is `active`, unexpired, and `last_seen` is within the 2-hour reconciliation freshness window, treat the task as in progress',
+      'Do not release, replace, or duplicate that claim',
+      'Sidecars, memory events, and worker ids are audit and wakeup hints, not ownership state',
+      'inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
+      'Once the freshness window has elapsed, question the handoff using worker status, sidecars, and branch/worktree state',
+      'If worker status is unavailable while the claim is within the freshness window, do not classify the work as terminal or failed',
+      'terminal worker status overrides the freshness wait for the owning run',
+    ])
+
+    const claims = await readFile(
+      new URL('../docs/automation-task-claims.md', import.meta.url),
+      'utf8',
+    )
+    assert.ok(claims.includes('2-hour freshness window'))
+    assert.ok(claims.includes("an unexpired `active` claim"))
   })
 })
