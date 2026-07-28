@@ -155,7 +155,7 @@ test('routes Chromium trackpad pinch wheel events through every pan mode', async
           throw new Error('Game canvas is missing')
         }
 
-        const zoomInScale = 1.2
+        const zoomInScale = 1.1
         const zoomOutScale = 1 / zoomInScale
         const initialState = getCameraState()
         const zoomInEventAllowed = canvas.dispatchEvent(
@@ -179,6 +179,7 @@ test('routes Chromium trackpad pinch wheel events through every pan mode', async
         return {
           eventAllowed: [zoomInEventAllowed, zoomOutEventAllowed],
           initialState,
+          pinchZoomStrength: 2,
           stateAfterZoomIn,
           stateAfterZoomOut: getCameraState(),
           zoomInScale,
@@ -188,7 +189,8 @@ test('routes Chromium trackpad pinch wheel events through every pan mode', async
       expect(result.initialState.viewportSize, panMode).not.toBeNull()
       expect(result.eventAllowed, panMode).toEqual([false, false])
       expect(result.stateAfterZoomIn.viewportSize, panMode).toBeCloseTo(
-        (result.initialState.viewportSize ?? 0) / result.zoomInScale,
+        (result.initialState.viewportSize ?? 0) /
+          result.zoomInScale ** result.pinchZoomStrength,
         8,
       )
       expect(result.stateAfterZoomOut.viewportSize, panMode).toBeCloseTo(

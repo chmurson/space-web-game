@@ -196,11 +196,11 @@ describe('bindPointerCameraInput wheel routing', () => {
     'wheel',
     'drag',
     'edge',
-  ] as const)('matches Chromium pinch scale for Ctrl/Cmd-modified wheel gestures in %s mode', (desktopCameraPanMode) => {
+  ] as const)('applies twice Chromium pinch scale for Ctrl/Cmd-modified wheel gestures in %s mode', (desktopCameraPanMode) => {
     const harness = createHarness({ desktopCameraPanMode })
 
     for (const modifier of ['ctrlKey', 'metaKey'] as const) {
-      for (const pinchScale of [1.2, 0.8]) {
+      for (const pinchScale of [1.1, 0.9]) {
         const event = createWheelEvent({
           [modifier]: true,
           deltaY: -100 * Math.log(pinchScale),
@@ -210,7 +210,7 @@ describe('bindPointerCameraInput wheel routing', () => {
 
         expect(event.defaultPrevented).toBe(true)
         const [zoomFactor] = harness.onZoom.mock.lastCall ?? []
-        expect(zoomFactor).toBeCloseTo(1 / pinchScale, 10)
+        expect(zoomFactor).toBeCloseTo(1 / pinchScale ** 2, 10)
       }
     }
 
@@ -331,7 +331,7 @@ describe('bindPointerCameraInput wheel routing', () => {
       expect(harness.onZoom).toHaveBeenCalledTimes(3)
       expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
       for (const [zoomFactor] of harness.onZoom.mock.calls) {
-        expect(zoomFactor).toBeCloseTo(1 / 1.1, 10)
+        expect(zoomFactor).toBeCloseTo(1 / 1.1 ** 2, 10)
       }
     } finally {
       vi.useRealTimers()
@@ -402,9 +402,9 @@ describe('bindPointerCameraInput Safari gesture routing', () => {
   ] as const)('converts cumulative pinch scale into incremental zoom in %s mode', (desktopCameraPanMode) => {
     const harness = createHarness({ desktopCameraPanMode })
     const start = createSafariGestureEvent('gesturestart', 1)
-    const firstChange = createSafariGestureEvent('gesturechange', 1.2)
-    const secondChange = createSafariGestureEvent('gesturechange', 1.5)
-    const end = createSafariGestureEvent('gestureend', 1.5)
+    const firstChange = createSafariGestureEvent('gesturechange', 1.1)
+    const secondChange = createSafariGestureEvent('gesturechange', 1.2)
+    const end = createSafariGestureEvent('gestureend', 1.2)
 
     harness.canvas.dispatchEvent(start)
     harness.canvas.dispatchEvent(firstChange)
@@ -415,8 +415,8 @@ describe('bindPointerCameraInput Safari gesture routing', () => {
     expect(firstChange.defaultPrevented).toBe(true)
     expect(secondChange.defaultPrevented).toBe(true)
     expect(end.defaultPrevented).toBe(true)
-    expect(harness.onZoom).toHaveBeenNthCalledWith(1, 1 / 1.2)
-    expect(harness.onZoom).toHaveBeenNthCalledWith(2, 1.2 / 1.5)
+    expect(harness.onZoom).toHaveBeenNthCalledWith(1, 1 / 1.1 ** 2)
+    expect(harness.onZoom).toHaveBeenNthCalledWith(2, (1.1 / 1.2) ** 2)
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 
@@ -461,9 +461,10 @@ describe('bindPointerCameraInput Safari gesture routing', () => {
     })
 
     harness.canvas.dispatchEvent(createSafariGestureEvent('gesturestart', 1))
-    harness.canvas.dispatchEvent(createSafariGestureEvent('gesturechange', 0.8))
+    harness.canvas.dispatchEvent(createSafariGestureEvent('gesturechange', 0.9))
 
-    expect(harness.onZoom).toHaveBeenCalledWith(1.25)
+    const [zoomFactor] = harness.onZoom.mock.lastCall ?? []
+    expect(zoomFactor).toBeCloseTo(1 / 0.9 ** 2, 10)
     expect(harness.onCameraPan).not.toHaveBeenCalled()
   })
 })

@@ -31,8 +31,9 @@ export type PointerCameraInputOptions = {
 }
 
 const wheelZoomSensitivity = 0.0015
+const desktopPinchZoomStrength = 2
 // Chromium encodes touchpad pinch scale as a wheel delta of -100 * log(scale).
-const pinchWheelZoomSensitivity = 1 / 100
+const pinchWheelZoomSensitivity = desktopPinchZoomStrength / 100
 const minZoomFactorPerEvent = 0.75
 const maxZoomFactorPerEvent = 1.35
 const wheelLineModePixels = 16
@@ -164,7 +165,7 @@ const getSafariGestureZoomFactor = (
   currentScale: number,
 ) =>
   clamp(
-    previousScale / currentScale,
+    (previousScale / currentScale) ** desktopPinchZoomStrength,
     minZoomFactorPerEvent,
     maxZoomFactorPerEvent,
   )
