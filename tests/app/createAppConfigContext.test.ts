@@ -41,6 +41,9 @@ describe('createAppConfigContext', () => {
   it('uses configured default touch control settings without stored settings', () => {
     expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
     expect(
+      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
+    ).toBe('euler')
+    expect(
       createAppConfigContext().trajectory.defaultCoastPredictionHorizonHours,
     ).toBe(48)
     expect(
@@ -54,6 +57,25 @@ describe('createAppConfigContext', () => {
       touchTrajectoryControlSide: 'hidden',
       touchWarpControlSide: 'right',
     })
+  })
+
+  it('selects Kepler trajectory prediction only behind the exact URL override', () => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?trajectoryPrediction=kepler'),
+    })
+
+    expect(
+      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
+    ).toBe('kepler')
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?trajectoryPrediction=unknown'),
+    })
+    expect(
+      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
+    ).toBe('euler')
   })
 
   it('uses persisted touch control sides by default', () => {

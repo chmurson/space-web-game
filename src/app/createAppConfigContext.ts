@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import { gameConfig } from '../config/gameConfig'
-import type { TrajectoryPredictionSamplingConfig } from '../prediction/trajectoryPrediction'
+import type {
+  TrajectoryPredictionImplementation,
+  TrajectoryPredictionSamplingConfig,
+} from '../prediction/trajectoryPrediction'
 import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { defaultPhysicsEngine, physicsEngines } from '../simulation/physics'
@@ -21,6 +24,7 @@ export type AppConfigContext = {
   requestedScenarioId: string
   featureFlags: {
     noHorizonLimit: boolean
+    trajectoryPredictionImplementation: TrajectoryPredictionImplementation
   }
   userSettings: UserSettings
   controls: {
@@ -75,6 +79,11 @@ const parseTouchTrajectoryControlStateOverride = (
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSideOverride(value)
 
+const parseTrajectoryPredictionImplementation = (
+  value: string | null,
+): TrajectoryPredictionImplementation =>
+  value === 'kepler' ? 'kepler' : 'euler'
+
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
@@ -82,6 +91,9 @@ export const createAppConfigContext = (): AppConfigContext => {
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
+    trajectoryPredictionImplementation: parseTrajectoryPredictionImplementation(
+      urlParams.get('trajectoryPrediction'),
+    ),
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'
