@@ -155,28 +155,50 @@ test('routes Chromium trackpad pinch wheel events through every pan mode', async
           throw new Error('Game canvas is missing')
         }
 
+        const zoomInScale = 1.2
+        const zoomOutScale = 1 / zoomInScale
         const initialState = getCameraState()
-        const eventAllowed = canvas.dispatchEvent(
+        const zoomInEventAllowed = canvas.dispatchEvent(
           new WheelEvent('wheel', {
             bubbles: true,
             cancelable: true,
             ctrlKey: true,
-            deltaY: -120,
+            deltaY: -100 * Math.log(zoomInScale),
+          }),
+        )
+        const stateAfterZoomIn = getCameraState()
+        const zoomOutEventAllowed = canvas.dispatchEvent(
+          new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            deltaY: -100 * Math.log(zoomOutScale),
           }),
         )
 
         return {
-          eventAllowed,
+          eventAllowed: [zoomInEventAllowed, zoomOutEventAllowed],
           initialState,
-          stateAfterPinch: getCameraState(),
+          stateAfterZoomIn,
+          stateAfterZoomOut: getCameraState(),
+          zoomInScale,
         }
       })
 
-      expect(result.eventAllowed, panMode).toBe(false)
-      expect(result.stateAfterPinch.viewportSize, panMode).toBeLessThan(
-        result.initialState.viewportSize ?? 0,
+      expect(result.initialState.viewportSize, panMode).not.toBeNull()
+      expect(result.eventAllowed, panMode).toEqual([false, false])
+      expect(result.stateAfterZoomIn.viewportSize, panMode).toBeCloseTo(
+        (result.initialState.viewportSize ?? 0) / result.zoomInScale,
+        8,
       )
-      expect(result.stateAfterPinch.panOffset, panMode).toEqual(
+      expect(result.stateAfterZoomOut.viewportSize, panMode).toBeCloseTo(
+        result.initialState.viewportSize ?? 0,
+        8,
+      )
+      expect(result.stateAfterZoomIn.panOffset, panMode).toEqual(
+        result.initialState.panOffset,
+      )
+      expect(result.stateAfterZoomOut.panOffset, panMode).toEqual(
         result.initialState.panOffset,
       )
     }

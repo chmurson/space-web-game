@@ -31,6 +31,8 @@ export type PointerCameraInputOptions = {
 }
 
 const wheelZoomSensitivity = 0.0015
+// Chromium encodes touchpad pinch scale as a wheel delta of -100 * log(scale).
+const pinchWheelZoomSensitivity = 1 / 100
 const minZoomFactorPerEvent = 0.75
 const maxZoomFactorPerEvent = 1.35
 const wheelLineModePixels = 16
@@ -120,18 +122,35 @@ const getEdgeScrollCursor = (direction: Vec2) => {
   return 's-resize'
 }
 
-export const getWheelZoomFactor = (
+const getWheelZoomFactorWithSensitivity = (
   event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
   viewportHeight: number,
+  sensitivity: number,
 ) => {
   const normalizedDelta =
     event.deltaY * getWheelModeScale(event.deltaMode, viewportHeight)
   return clamp(
-    Math.exp(normalizedDelta * wheelZoomSensitivity),
+    Math.exp(normalizedDelta * sensitivity),
     minZoomFactorPerEvent,
     maxZoomFactorPerEvent,
   )
 }
+
+export const getWheelZoomFactor = (
+  event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
+  viewportHeight: number,
+) =>
+  getWheelZoomFactorWithSensitivity(event, viewportHeight, wheelZoomSensitivity)
+
+const getPinchWheelZoomFactor = (
+  event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
+  viewportHeight: number,
+) =>
+  getWheelZoomFactorWithSensitivity(
+    event,
+    viewportHeight,
+    pinchWheelZoomSensitivity,
+  )
 
 const getSafariGestureScale = (event: Event) => {
   const scale = (event as Event & { scale?: unknown }).scale
@@ -618,7 +637,7 @@ export const bindPointerCameraInput = (
         }
         event.preventDefault()
         options.onZoom(
-          getWheelZoomFactor(event, options.windowTarget.innerHeight),
+          getPinchWheelZoomFactor(event, options.windowTarget.innerHeight),
         )
         return
       }

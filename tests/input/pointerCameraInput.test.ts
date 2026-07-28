@@ -196,19 +196,39 @@ describe('bindPointerCameraInput wheel routing', () => {
     'wheel',
     'drag',
     'edge',
-  ] as const)('zooms and consumes Ctrl/Cmd-modified wheel gestures in %s mode', (desktopCameraPanMode) => {
+  ] as const)('matches Chromium pinch scale for Ctrl/Cmd-modified wheel gestures in %s mode', (desktopCameraPanMode) => {
     const harness = createHarness({ desktopCameraPanMode })
 
     for (const modifier of ['ctrlKey', 'metaKey'] as const) {
-      const event = createWheelEvent({ [modifier]: true, deltaY: -120 })
+      for (const pinchScale of [1.2, 0.8]) {
+        const event = createWheelEvent({
+          [modifier]: true,
+          deltaY: -100 * Math.log(pinchScale),
+        })
 
-      harness.canvas.dispatchEvent(event)
+        harness.canvas.dispatchEvent(event)
 
-      expect(event.defaultPrevented).toBe(true)
+        expect(event.defaultPrevented).toBe(true)
+        const [zoomFactor] = harness.onZoom.mock.lastCall ?? []
+        expect(zoomFactor).toBeCloseTo(1 / pinchScale, 10)
+      }
     }
 
-    expect(harness.onZoom).toHaveBeenCalledTimes(2)
+    expect(harness.onZoom).toHaveBeenCalledTimes(4)
     expect(harness.onCameraPan).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    'drag',
+    'edge',
+  ] as const)('keeps ordinary wheel zoom sensitivity unchanged in %s mode', (desktopCameraPanMode) => {
+    const harness = createHarness({ desktopCameraPanMode })
+    const deltaY = -100 * Math.log(1.2)
+
+    harness.canvas.dispatchEvent(createWheelEvent({ deltaY }))
+
+    const [zoomFactor] = harness.onZoom.mock.lastCall ?? []
+    expect(zoomFactor).toBeCloseTo(Math.exp(deltaY * 0.0015), 10)
   })
 
   it('pans both platform wheel axes diagonally in wheel mode', () => {
@@ -287,12 +307,13 @@ describe('bindPointerCameraInput wheel routing', () => {
     vi.useFakeTimers()
     try {
       const harness = createHarness({ desktopCameraPanMode: 'wheel' })
+      const pinchDeltaY = -100 * Math.log(1.1)
       const modifiedEvent =
         modifier === 'ctrlKey'
-          ? createWheelEvent({ ctrlKey: true, deltaY: -120 })
-          : createWheelEvent({ deltaY: -120, metaKey: true })
-      const firstTailEvent = createWheelEvent({ deltaY: -80 })
-      const continuedTailEvent = createWheelEvent({ deltaY: -40 })
+          ? createWheelEvent({ ctrlKey: true, deltaY: pinchDeltaY })
+          : createWheelEvent({ deltaY: pinchDeltaY, metaKey: true })
+      const firstTailEvent = createWheelEvent({ deltaY: pinchDeltaY })
+      const continuedTailEvent = createWheelEvent({ deltaY: pinchDeltaY })
       const postIdleEvent = createWheelEvent({ deltaY: 30 })
 
       harness.canvas.dispatchEvent(modifiedEvent)
@@ -309,6 +330,9 @@ describe('bindPointerCameraInput wheel routing', () => {
       expect(postIdleEvent.defaultPrevented).toBe(true)
       expect(harness.onZoom).toHaveBeenCalledTimes(3)
       expect(harness.onCameraPan).toHaveBeenCalledTimes(1)
+      for (const [zoomFactor] of harness.onZoom.mock.calls) {
+        expect(zoomFactor).toBeCloseTo(1 / 1.1, 10)
+      }
     } finally {
       vi.useRealTimers()
     }
