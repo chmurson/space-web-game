@@ -6,7 +6,7 @@ import {
   type FarTrajectoryPredictionRequestPayload,
   predictFarTrajectory,
 } from '@/prediction/farTrajectoryPrediction'
-import { sampleKeplerTwoBodyTrajectory } from '@/prediction/keplerTwoBody'
+import { computeKeplerTwoBodyTrajectoryPrediction } from '@/prediction/keplerTwoBody'
 import {
   computeCoastTrajectoryPrediction,
   getTrajectoryPredictionConfig,
@@ -86,12 +86,11 @@ const benchmarkEarthOnlyNumerical = (horizonSeconds: number) => {
 
 const benchmarkEarthOnlyKepler = (horizonSeconds: number) => {
   const state = createEarthOnlyState()
-  const config = createPredictionConfig(horizonSeconds)
-  sampleKeplerTwoBodyTrajectory(
+  computeKeplerTwoBodyTrajectoryPrediction(
+    state,
     earthTarget(state),
-    state.spacecraft,
-    horizonSeconds,
-    config.stepSeconds,
+    createPredictionConfig(horizonSeconds),
+    false,
   )
 }
 

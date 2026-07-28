@@ -12,6 +12,7 @@ import {
 import {
   type CoastTrajectoryPredictionComputation,
   type CoastTrajectoryPredictionSample,
+  type CoastTrajectoryPredictionTerminationReason,
   getCoastTrajectoryEventMarkers,
   type PredictedClosestApproach,
   type PredictedImpact,
@@ -30,7 +31,11 @@ export type KeplerTwoBodyTrajectory = {
   impact: PredictedImpact | null
   relativePoints: Vec2[]
   sampleTimes: number[]
+  terminationReason: CoastTrajectoryPredictionTerminationReason
 }
+
+const normalizeAngle = (angle: number) =>
+  Math.atan2(Math.sin(angle), Math.cos(angle))
 
 const stumpffC = (z: number) => {
   if (z > 1e-8) {
@@ -100,7 +105,9 @@ const solveUniversalAnomaly = (
     }
   }
 
-  throw new Error('Kepler two-body propagation did not converge')
+  // Keep prediction best-effort so an experimental solver miss cannot unwind
+  // the main animation loop. Consumers can reject unusable output separately.
+  return anomaly
 }
 
 /** Propagates a spacecraft under only one body's gravity for elapsedSeconds. */
@@ -186,13 +193,27 @@ export const sampleKeplerTwoBodyTrajectory = (
   spacecraft: Pick<Spacecraft, 'dryMass' | 'position' | 'velocity'>,
   horizonSeconds: number,
   sampleStepSeconds: number,
+  maxLoopRevolutions: number | null = null,
 ): KeplerTwoBodyTrajectory => {
+  if (sampleStepSeconds <= 0) {
+    throw new RangeError('sampleStepSeconds must be positive')
+  }
+
   const absolutePoints: Vec2[] = [{ ...spacecraft.position }]
   const samples: CoastTrajectoryPredictionSample[] = []
   let closestApproach: PredictedClosestApproach | null = null
   let impact: PredictedImpact | null = null
   const relativePoints: Vec2[] = []
   const sampleTimes: number[] = []
+  const maxLoopAngularTravel =
+    maxLoopRevolutions === null ? null : maxLoopRevolutions * Math.PI * 2
+  const initialRelativePoint = sub(spacecraft.position, body.position)
+  let previousPredictionAngle = Math.atan2(
+    initialRelativePoint.y,
+    initialRelativePoint.x,
+  )
+  let predictionAngularTravel = 0
+  let reachedLoopLimit = false
 
   for (
     let elapsedSeconds = Math.min(sampleStepSeconds, horizonSeconds);
@@ -228,15 +249,35 @@ export const sampleKeplerTwoBodyTrajectory = (
       point: relativePoint,
       time: elapsedSeconds,
     })
+    const predictionAngle = Math.atan2(relativePoint.y, relativePoint.x)
+    predictionAngularTravel += Math.abs(
+      normalizeAngle(predictionAngle - previousPredictionAngle),
+    )
+    previousPredictionAngle = predictionAngle
 
     if (approach.altitude <= 0) {
       impact = { bodyName: body.name, time: elapsedSeconds }
       break
     }
 
+    if (
+      maxLoopAngularTravel !== null &&
+      predictionAngularTravel >= maxLoopAngularTravel
+    ) {
+      reachedLoopLimit = true
+      break
+    }
+
     if (elapsedSeconds === horizonSeconds) {
       break
     }
+  }
+
+  let terminationReason: CoastTrajectoryPredictionTerminationReason = 'horizon'
+  if (impact) {
+    terminationReason = 'impact'
+  } else if (reachedLoopLimit) {
+    terminationReason = 'loop-limit'
   }
 
   return {
@@ -249,6 +290,7 @@ export const sampleKeplerTwoBodyTrajectory = (
     impact,
     relativePoints,
     sampleTimes,
+    terminationReason,
   }
 }
 
@@ -256,13 +298,14 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
   state: SimulationState,
   target: Body,
   predictionConfig: TrajectoryPredictionConfig,
-  _allowLoopTrim: boolean,
+  allowLoopTrim: boolean,
 ): CoastTrajectoryPredictionComputation => {
   const trajectory = sampleKeplerTwoBodyTrajectory(
     target,
     state.spacecraft,
     predictionConfig.horizonSeconds,
     predictionConfig.stepSeconds,
+    allowLoopTrim ? predictionConfig.maxLoopRevolutions : null,
   )
   const predictionTime = trajectory.sampleTimes.at(-1) ?? 0
   const finalPropagation = propagateKeplerTwoBody(
@@ -311,6 +354,6 @@ export const computeKeplerTwoBodyTrajectoryPrediction = (
         },
       ]
     }),
-    terminationReason: trajectory.impact ? 'impact' : 'horizon',
+    terminationReason: trajectory.terminationReason,
   }
 }
