@@ -64,8 +64,15 @@ and preserves the runtime's existing bound-orbit coverage contract.
   The repository-wide audit still reports 23 errors and 4 warnings in untouched
   files, including existing extension formatting and import-order findings.
 - `git diff --check` passed.
-- GUI screenshot validation was not run because the change has no visual, HUD,
-  control, or responsive-layout effect.
+- Focused Kepler gameplay Playwright coverage passed 2/2 at a 1024×720 desktop
+  viewport and a 390×844 mobile viewport. Both tests loaded the exact
+  `trajectoryPrediction=kepler` mode, observed more than 20 visible trajectory
+  points, and confirmed simulation elapsed time continued advancing.
+- The desktop and mobile PNGs under
+  `tmp/playwright-results/keplerTrajectoryPlaytest-*` were inspected at original
+  resolution. The cyan coast path remained coherent around Earth; desktop HUD
+  and controls were unobstructed; and mobile top telemetry plus the command dock
+  remained readable without overlap.
 
 ## Follow-ups and known gaps
 
