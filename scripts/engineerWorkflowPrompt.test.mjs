@@ -76,11 +76,43 @@ describe('engineer workflow prompt', () => {
     const prompt = await readPrompt()
 
     assertContainsAll(prompt, [
-      'A direct `@andrzejkoduje` mention creates an explicit triage obligation',
+      'A direct mention of the resolved automation identity (currently `@andrzejkoduje`) creates an explicit triage obligation',
       'unchecked task-list items',
       'requests to inspect or respond to an earlier comment',
       'Reclassify an edited comment whenever its current `updatedAt` or body hash differs from tracking metadata',
       'clean automated/formal-review signals cannot downgrade a human request',
+    ])
+  })
+
+  it('treats assigned PRs as owned and limits other PRs to direct requests', async () => {
+    const prompt = await readPrompt()
+    const ownership = extractSection(
+      prompt,
+      'PR ownership and scope:',
+      'Automation memory:',
+    )
+
+    assertContainsInOrder(ownership, [
+      'Resolve the current automation identity with `gh api user --jq .login`',
+      'Treat an open PR as automation-owned when its fresh `assignees` metadata contains the resolved automation identity',
+      'An assignment is explicit PR-level ownership',
+      'An `explicit_request` claim retains only that comment scope and must not upgrade the whole PR to owned',
+      'Re-evaluate assignment and other ownership evidence from live metadata every run',
+      'an old memory event, released claim, label, author, requested-review state, or branch-name guess alone is not ownership',
+      'Build both mandatory comment inventories for every open PR',
+      'only a current direct mention of the resolved automation identity that contains a concrete request creates `explicit_request` scope',
+      'acquire the normal branch-bound PR claim and verify the current checkout and push permission before delegation',
+      'include `scope=automation_owned|assigned|explicit_request` in its purpose',
+      'For `explicit_request`, also record the triggering comment URL/id',
+    ])
+
+    assertContainsAll(prompt, [
+      'For every open PR, fetch every page of issue-level PR Conversation comments',
+      'On an owned or assigned PR, treat concrete requests as actionable even without a mention',
+      'On an otherwise unowned/unassigned PR, require a direct mention of the resolved automation identity before treating a request as actionable',
+      'Actionable external/human PR comments on owned or assigned open PRs, plus exact `explicit_request` comments on other open PRs',
+      'An assigned PR is owned for full follow-up even when it was not originally created by automation',
+      'PR scope: `<automation-owned | assigned-to-automation | explicit-request>`',
     ])
   })
 
