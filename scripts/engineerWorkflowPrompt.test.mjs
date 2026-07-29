@@ -112,7 +112,7 @@ describe('engineer workflow prompt', () => {
       'On an otherwise unowned/unassigned PR, require a direct mention of the resolved automation identity before treating a request as actionable',
       'Actionable external/human PR comments on owned or assigned open PRs, plus exact `explicit_request` comments on other open PRs',
       'An assigned PR is owned for full follow-up even when it was not originally created by automation',
-      'PR scope: `<automation-owned | assigned-to-automation | explicit-request>`',
+      'PR scope: `<automation_owned | assigned | explicit_request>`',
     ])
   })
 

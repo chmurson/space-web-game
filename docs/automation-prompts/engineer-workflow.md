@@ -162,7 +162,7 @@ The launcher supplied these resolved values unchanged.
 Task: <issue/PR URL and exact requested action>.
 Worktree/branch: <existing or task-scoped worktree path>, branch `<branch>`. Reuse this context; do not work in the orchestrator checkout.
 Claim: kind `<pr|issue>`, id `<id>`, branch `<branch if applicable>`, token file `<token-file>`.
-PR scope: `<automation-owned | assigned-to-automation | explicit-request>`; for `explicit-request`, name the exact triggering comment and do not expand the task beyond it.
+PR scope: `<automation_owned | assigned | explicit_request>`; for `explicit_request`, name the exact triggering comment and do not expand the task beyond it.
 Triggering comments, when applicable: `<one record per comment: URL/id, kind, observed updatedAt, body hash, and extracted request/checklist items>`.
 Triggering review submissions, when applicable: `<one record per submission: URL/id, body hash, observed submitted_at/commit_id/state version, and extracted request/checklist items>`.
 
