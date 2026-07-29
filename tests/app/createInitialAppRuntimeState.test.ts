@@ -32,6 +32,7 @@ const createConfig = (
   featureFlags: {
     noHorizonLimit: false,
     sphereOfInfluenceVariant: null,
+    trajectoryPredictionImplementation: 'euler',
   },
   userSettings: {
     desktopCameraPanMode: 'wheel',

@@ -75,6 +75,10 @@ import {
 } from '../userSettingsStorage'
 import { bindDevicePixelRatioChanges } from './bindDevicePixelRatioChanges'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
+import {
+  isDeveloperFeatureFlagsMenuEnabled,
+  writeDeveloperFeatureFlagsToUrl,
+} from './developerFeatureFlags'
 
 type AppRuntimeCoordinator = {
   dispatchRuntimeAction(action: UIUserAction): void
@@ -256,7 +260,10 @@ export const createAppComponents = (options: {
       }
     }
   }
-  const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime()
+  const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime({
+    predictionImplementation:
+      options.config.featureFlags.trajectoryPredictionImplementation,
+  })
   const ripples: Ripple[] = []
   const overlayUi = createOverlayUi({
     app: options.app,
@@ -690,6 +697,9 @@ export const createAppComponents = (options: {
   })
   const mainMenu = createMainMenu({
     app: options.app,
+    developerFeatureFlags: options.config.featureFlags,
+    developerFeatureFlagsMenuEnabled: isDeveloperFeatureFlagsMenuEnabled(),
+    onDeveloperFeatureFlagsApply: writeDeveloperFeatureFlagsToUrl,
     onFreeRoam: () =>
       gameHighLevelActionsMediator.dispatch({ type: 'startFreeRoam' }),
     onLoadGame: () =>
@@ -791,6 +801,8 @@ export const createAppComponents = (options: {
     gameScene,
     hudPresentation,
     autopilotRotationRate: options.config.controls.autopilotRotationRate,
+    predictionImplementation:
+      options.config.featureFlags.trajectoryPredictionImplementation,
     getFpsMeterVisible: () =>
       options.runtimeState.debug.fpsIndicatorEnabled &&
       getAppMode() === 'game' &&

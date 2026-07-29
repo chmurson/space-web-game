@@ -4,7 +4,10 @@ import {
   type SphereOfInfluenceVariant,
 } from '../config/featureFlags'
 import { gameConfig } from '../config/gameConfig'
-import type { TrajectoryPredictionSamplingConfig } from '../prediction/trajectoryPrediction'
+import type {
+  TrajectoryPredictionImplementation,
+  TrajectoryPredictionSamplingConfig,
+} from '../prediction/trajectoryPrediction'
 import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
 import { defaultPhysicsEngine, physicsEngines } from '../simulation/physics'
@@ -15,6 +18,10 @@ import {
   type TouchTrajectoryControlState,
   type UserSettings,
 } from '../userSettingsStorage'
+import {
+  type DeveloperFeatureFlags,
+  isDeveloperFeatureFlagsMenuEnabled,
+} from './developerFeatureFlags'
 
 export type AppMode = 'menu' | 'game'
 
@@ -23,8 +30,7 @@ export type AppConfigContext = {
   requestedEngine: string
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
-  featureFlags: {
-    noHorizonLimit: boolean
+  featureFlags: DeveloperFeatureFlags & {
     sphereOfInfluenceVariant: SphereOfInfluenceVariant | null
   }
   userSettings: UserSettings
@@ -80,8 +86,14 @@ const parseTouchTrajectoryControlStateOverride = (
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSideOverride(value)
 
+const parseTrajectoryPredictionImplementation = (
+  value: string | null,
+): TrajectoryPredictionImplementation =>
+  value === 'kepler' ? 'kepler' : 'euler'
+
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
+  const developerFeatureFlagsEnabled = isDeveloperFeatureFlagsMenuEnabled()
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
@@ -90,6 +102,11 @@ export const createAppConfigContext = (): AppConfigContext => {
     sphereOfInfluenceVariant: parseSphereOfInfluenceVariant(
       urlParams.get('soi'),
     ),
+    trajectoryPredictionImplementation: developerFeatureFlagsEnabled
+      ? parseTrajectoryPredictionImplementation(
+          urlParams.get('trajectoryPrediction'),
+        )
+      : 'euler',
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'

@@ -69,7 +69,7 @@ const seedTutorialEscapeCheckpoint = async (page: Page) => {
       y: earth.velocity.y + 500,
     }
     const snapshot = {
-      version: 2,
+      version: 3,
       savedAt: '2026-06-26T08:25:00.000Z',
       assistTargetIndex: moonIndex,
       assistTargetSelectionMode: 'manual',

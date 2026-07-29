@@ -11,6 +11,10 @@ import type {
   Spacecraft,
 } from '../simulation/types'
 import { length, sub, type Vec2 } from '../simulation/vector'
+import {
+  canUseKeplerTwoBodyPrediction,
+  computeKeplerTwoBodyTrajectoryPrediction,
+} from './keplerTwoBody'
 import type {
   CoastTrajectoryPredictionComputation,
   CoastTrajectoryPredictionSample,
@@ -40,6 +44,7 @@ export type FarTrajectoryPredictionRequestPayload = {
   inputKey: string
   jobId: number
   predictionConfig: TrajectoryPredictionConfig
+  predictionImplementation?: 'euler' | 'kepler'
   semanticInputKey: string
   state: FarTrajectoryPredictionStateSnapshot
   targetId: string
@@ -90,6 +95,7 @@ export type FarTrajectoryPredictionReuseFallbackReason =
   | 'reuse-limit'
   | 'semantic-change'
   | 'state-diverged'
+  | 'kepler-mode'
 
 export type FarTrajectoryPredictionDivergenceReason =
   | 'extension-target-missing'
@@ -1084,23 +1090,31 @@ const calculateFarTrajectory = (
 
   const allowLoopTrim =
     getCaptureMetricsForState(state, target).specificEnergy < 0
-  const reused = tryReuseCoastPrediction(
-    payload,
-    state,
-    target,
-    cache,
-    allowLoopTrim,
-  )
+  const useKepler =
+    payload.predictionImplementation === 'kepler' &&
+    isPassiveCoast(payload) &&
+    canUseKeplerTwoBodyPrediction(state, target)
+  const reused = useKepler
+    ? { divergence: null, fallbackReason: 'kepler-mode' as const }
+    : tryReuseCoastPrediction(payload, state, target, cache, allowLoopTrim)
   const coastCalculation: CoastPredictionCalculation =
     'fallbackReason' in reused
       ? {
-          computation: computeCoastTrajectoryPrediction(
-            state,
-            semiImplicitEuler,
-            target,
-            payload.predictionConfig,
-            allowLoopTrim,
-          ),
+          computation: useKepler
+            ? computeKeplerTwoBodyTrajectoryPrediction(
+                state,
+                target,
+                payload.predictionConfig,
+                allowLoopTrim,
+                semiImplicitEuler,
+              )
+            : computeCoastTrajectoryPrediction(
+                state,
+                semiImplicitEuler,
+                target,
+                payload.predictionConfig,
+                allowLoopTrim,
+              ),
           reuse: {
             divergence: reused.divergence,
             extendedPointCount: 0,

@@ -31,8 +31,11 @@ export type PointerCameraInputOptions = {
 }
 
 const wheelZoomSensitivity = 0.0015
-const minWheelZoomFactor = 0.75
-const maxWheelZoomFactor = 1.35
+const desktopPinchZoomStrength = 2
+// Chromium encodes touchpad pinch scale as a wheel delta of -100 * log(scale).
+const pinchWheelZoomSensitivity = desktopPinchZoomStrength / 100
+const minZoomFactorPerEvent = 0.75
+const maxZoomFactorPerEvent = 1.35
 const wheelLineModePixels = 16
 const wheelDeltaModeLine = 1
 const wheelDeltaModePage = 2
@@ -120,18 +123,52 @@ const getEdgeScrollCursor = (direction: Vec2) => {
   return 's-resize'
 }
 
-export const getWheelZoomFactor = (
+const getWheelZoomFactorWithSensitivity = (
   event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
   viewportHeight: number,
+  sensitivity: number,
 ) => {
   const normalizedDelta =
     event.deltaY * getWheelModeScale(event.deltaMode, viewportHeight)
   return clamp(
-    Math.exp(normalizedDelta * wheelZoomSensitivity),
-    minWheelZoomFactor,
-    maxWheelZoomFactor,
+    Math.exp(normalizedDelta * sensitivity),
+    minZoomFactorPerEvent,
+    maxZoomFactorPerEvent,
   )
 }
+
+export const getWheelZoomFactor = (
+  event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
+  viewportHeight: number,
+) =>
+  getWheelZoomFactorWithSensitivity(event, viewportHeight, wheelZoomSensitivity)
+
+const getPinchWheelZoomFactor = (
+  event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
+  viewportHeight: number,
+) =>
+  getWheelZoomFactorWithSensitivity(
+    event,
+    viewportHeight,
+    pinchWheelZoomSensitivity,
+  )
+
+const getSafariGestureScale = (event: Event) => {
+  const scale = (event as Event & { scale?: unknown }).scale
+  return typeof scale === 'number' && Number.isFinite(scale) && scale > 0
+    ? scale
+    : null
+}
+
+const getSafariGestureZoomFactor = (
+  previousScale: number,
+  currentScale: number,
+) =>
+  clamp(
+    (previousScale / currentScale) ** desktopPinchZoomStrength,
+    minZoomFactorPerEvent,
+    maxZoomFactorPerEvent,
+  )
 
 export const createScreenPointWorldPicker = (
   camera: THREE.Camera,
@@ -179,6 +216,7 @@ export const bindPointerCameraInput = (
   let edgeScrollCursor: string | null = null
   let wheelZoomGestureActive = false
   let wheelZoomGestureIdleTimer: ReturnType<typeof setTimeout> | null = null
+  let safariGesturePreviousScale: number | null = null
   let activeCameraPan: {
     button: number
     hasMovedForTap: boolean
@@ -226,6 +264,11 @@ export const bindPointerCameraInput = (
       wheelZoomGestureIdleTimer = null
     }, wheelZoomGestureIdleMs)
   }
+
+  const canOwnDesktopZoomGesture = () =>
+    options.getInteractionsEnabled() &&
+    options.getDesktopCameraInputEnabled() &&
+    options.getDesktopCameraInteractionsEnabled()
 
   const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
     if (
@@ -507,6 +550,66 @@ export const bindPointerCameraInput = (
   })
 
   options.rendererElement.addEventListener(
+    'gesturestart',
+    (event) => {
+      safariGesturePreviousScale = null
+      if (!canOwnDesktopZoomGesture()) {
+        return
+      }
+
+      const scale = getSafariGestureScale(event)
+      if (scale === null) {
+        return
+      }
+
+      safariGesturePreviousScale = scale
+      event.preventDefault()
+    },
+    { passive: false },
+  )
+
+  options.rendererElement.addEventListener(
+    'gesturechange',
+    (event) => {
+      if (safariGesturePreviousScale === null) {
+        return
+      }
+      if (!canOwnDesktopZoomGesture()) {
+        safariGesturePreviousScale = null
+        return
+      }
+
+      event.preventDefault()
+      const scale = getSafariGestureScale(event)
+      if (scale === null) {
+        return
+      }
+
+      const zoomFactor = getSafariGestureZoomFactor(
+        safariGesturePreviousScale,
+        scale,
+      )
+      safariGesturePreviousScale = scale
+      if (zoomFactor !== 1) {
+        options.onZoom(zoomFactor)
+      }
+    },
+    { passive: false },
+  )
+
+  options.rendererElement.addEventListener(
+    'gestureend',
+    (event) => {
+      const gestureWasActive = safariGesturePreviousScale !== null
+      safariGesturePreviousScale = null
+      if (gestureWasActive && canOwnDesktopZoomGesture()) {
+        event.preventDefault()
+      }
+    },
+    { passive: false },
+  )
+
+  options.rendererElement.addEventListener(
     'wheel',
     (event) => {
       if (!options.getInteractionsEnabled()) {
@@ -529,11 +632,13 @@ export const bindPointerCameraInput = (
       }
 
       const panMode = options.getDesktopCameraPanMode()
-      if (panMode === 'wheel' && (modifiedForZoom || wheelZoomGestureActive)) {
-        continueWheelZoomGesture()
+      if (modifiedForZoom || (panMode === 'wheel' && wheelZoomGestureActive)) {
+        if (panMode === 'wheel') {
+          continueWheelZoomGesture()
+        }
         event.preventDefault()
         options.onZoom(
-          getWheelZoomFactor(event, options.windowTarget.innerHeight),
+          getPinchWheelZoomFactor(event, options.windowTarget.innerHeight),
         )
         return
       }
@@ -570,10 +675,6 @@ export const bindPointerCameraInput = (
         ) {
           event.preventDefault()
         }
-        return
-      }
-
-      if (modifiedForZoom) {
         return
       }
 

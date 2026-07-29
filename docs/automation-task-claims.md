@@ -73,6 +73,28 @@ The helper fails closed:
 - A stale active claim is replaceable only after TTL expiry and only when the recorded same-host PID is absent or not live. If PID liveness is uncertain, the task stays blocked.
 - A stale write mutex is reclaimable only when its recorded same-host PID is clearly dead.
 
+## Reconciliation rule
+
+The claim file is the single source of truth for ownership. For reconciliation,
+an unexpired `active` claim is treated as healthy when its `last_seen` is within
+the 2-hour freshness window. During that window, assume the worker is in progress
+even when a worker id, continuation record, sidecar, or memory event is missing or
+stale. A parallel orchestrator must not release, replace, or duplicate that claim.
+For a foreign claim, leave it untouched, skip only its associated task, and
+continue with other claimable work. For a claim owned by the current run, wait
+for the owning worker/continuation or the normal claim-expiry path. Those other
+files are audit and wakeup hints only.
+
+After 2 hours without a heartbeat, or after the claim's own TTL has expired, the
+orchestrator may question the handoff
+and inspect worker/sidecar state. This does not authorize taking ownership: claim
+replacement still requires the claim TTL to expire and the helper's PID-liveness
+rules to permit it.
+
+When the claim is expired, missing metadata still does not prove completion. Use
+the helper's normal stale-claim replacement rules and PID-liveness checks; if they
+do not permit replacement, report the task as uncertain and leave it untouched.
+
 Workers invoked by automation should stop immediately when `verify` or `heartbeat` fails. Orchestrators should skip the task when `acquire` fails instead of spawning duplicate work.
 
 ## Claim Record Fields

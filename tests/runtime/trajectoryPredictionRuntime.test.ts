@@ -6,12 +6,16 @@ import type {
   FarTrajectoryPredictionRequestPayload,
   FarTrajectoryPredictionResultPayload,
 } from '@/prediction/farTrajectoryPrediction'
-import type { CoastTrajectoryPredictionSample } from '@/prediction/trajectoryPrediction'
+import type {
+  CoastTrajectoryPredictionSample,
+  TrajectoryPredictionImplementation,
+} from '@/prediction/trajectoryPrediction'
 import { createTrajectoryPredictionRuntime } from '@/runtime/trajectoryPredictionRuntime'
 import type {
   TrajectoryPredictionFarWorkerClientFactory,
   TrajectoryPredictionFarWorkerClientHandlers,
 } from '@/runtime/trajectoryPredictionWorkerClient'
+import { G } from '@/simulation/constants'
 import { idleControls } from '@/simulation/state'
 import type { Body, PhysicsEngine, SimulationState } from '@/simulation/types'
 
@@ -241,7 +245,9 @@ const createFarWorkerHarness = () => {
   }
 }
 
-const createRuntimeHarness = () => {
+const createRuntimeHarness = (
+  predictionImplementation: TrajectoryPredictionImplementation = 'euler',
+) => {
   let assistMode: AssistMode = 'off'
   let predictionConfig = createPredictionConfig()
   let state = createState()
@@ -255,6 +261,7 @@ const createRuntimeHarness = () => {
   }
   const predictionRuntime = createTrajectoryPredictionRuntime({
     createFarWorkerClient: farWorker.createFarWorkerClient,
+    predictionImplementation,
   })
 
   const getOptions = () => ({
@@ -302,6 +309,48 @@ const createLongHorizonPredictionConfig = () => ({
 })
 
 describe('createTrajectoryPredictionRuntime', () => {
+  it('uses Kepler near prediction only when the target is the sole gravitating body', () => {
+    const massiveEarth = {
+      ...earth,
+      mass: 1_000_000_000_000_000,
+    }
+    const orbitRadius = 1_000
+    const createOrbitalState = (bodies: Body[]): SimulationState => ({
+      ...createState(),
+      bodies,
+      spacecraft: {
+        ...createState().spacecraft,
+        position: { x: orbitRadius, y: 0 },
+        velocity: {
+          x: 0,
+          y: Math.sqrt((G * massiveEarth.mass) / orbitRadius),
+        },
+      },
+    })
+
+    const oneBodyHarness = createRuntimeHarness('kepler')
+    oneBodyHarness.setTarget(massiveEarth)
+    oneBodyHarness.setState(createOrbitalState([massiveEarth]))
+    oneBodyHarness.predictionRuntime.refresh(oneBodyHarness.getOptions())
+
+    const multiBodyHarness = createRuntimeHarness('kepler')
+    multiBodyHarness.setTarget(massiveEarth)
+    multiBodyHarness.setState(
+      createOrbitalState([
+        massiveEarth,
+        {
+          ...moon,
+          mass: 1_000_000_000_000,
+          position: { x: 1_000_000, y: 0 },
+        },
+      ]),
+    )
+    multiBodyHarness.predictionRuntime.refresh(multiBodyHarness.getOptions())
+
+    expect(oneBodyHarness.engineStep).not.toHaveBeenCalled()
+    expect(multiBodyHarness.engineStep).toHaveBeenCalled()
+  })
+
   it('refreshes immediately when the assist target changes', () => {
     const { getOptions, predictionRuntime, setTarget } = createRuntimeHarness()
 
@@ -580,6 +629,7 @@ describe('createTrajectoryPredictionRuntime', () => {
       'inputKey',
       'jobId',
       'predictionConfig',
+      'predictionImplementation',
       'semanticInputKey',
       'state',
       'targetId',
