@@ -143,6 +143,46 @@ describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
     ).toBeLessThan(1e-3)
   })
 
+  it('samples a long-period closed orbit without stalling near escape energy', () => {
+    const semimajorAxis = 120_000_000
+    const periapsisSpeed = Math.sqrt(
+      G * earth.mass * (2 / orbitRadius - 1 / semimajorAxis),
+    )
+    const longPeriodSpacecraft = {
+      ...spacecraft,
+      velocity: {
+        x: earth.velocity.x,
+        y: earth.velocity.y + periapsisSpeed,
+      },
+    }
+    const coastedState = propagateKeplerTwoBody(earth, longPeriodSpacecraft, 60)
+    const coastedSpacecraft = {
+      ...longPeriodSpacecraft,
+      position: coastedState.position,
+      velocity: coastedState.velocity,
+    }
+    const computation = computeKeplerTwoBodyTrajectoryPrediction(
+      createState(coastedSpacecraft),
+      earth,
+      createPredictionConfig(2 * 24 * 3_600, 180),
+    )
+    const firstPosition = {
+      x: coastedSpacecraft.position.x - earth.position.x,
+      y: coastedSpacecraft.position.y - earth.position.y,
+    }
+    const finalPosition = computation.result.relativePoints.at(-1)
+
+    expect(computation.terminationReason).toBe('closed-orbit')
+    expect(computation.result.relativePoints).toHaveLength(1_200)
+    expect(finalPosition).toBeDefined()
+    expect(
+      length({
+        x: (finalPosition?.x ?? 0) - firstPosition.x,
+        y: (finalPosition?.y ?? 0) - firstPosition.y,
+      }),
+    ).toBeLessThan(1e-2)
+  })
+
   it('keeps an intersecting bound orbit as an impact trajectory', () => {
     const impactSpacecraft = {
       ...spacecraft,

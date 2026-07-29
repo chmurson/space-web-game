@@ -46,6 +46,7 @@ type KeplerTwoBodyParameters = {
 
 const closedOrbitMinSampleCount = 128
 const closedOrbitMaxSampleCount = 1_200
+const universalAnomalyTolerance = 1e-8
 
 const getKeplerTwoBodyParameters = (
   body: Body,
@@ -171,10 +172,12 @@ const solveUniversalAnomaly = (
 ) => {
   const sqrtMu = Math.sqrt(gravitationalParameter)
   const alpha = reciprocalSemimajorAxis
-  let anomaly =
-    Math.abs(alpha) > 1e-8
-      ? sqrtMu * Math.abs(alpha) * elapsedSeconds
-      : (sqrtMu * elapsedSeconds) / radius
+  const useEnergyScaledGuess = alpha > 0 || Math.abs(alpha) > 1e-8
+  let anomaly = useEnergyScaledGuess
+    ? sqrtMu * Math.abs(alpha) * elapsedSeconds
+    : (sqrtMu * elapsedSeconds) / radius
+  let lowerBound = 0
+  let upperBound = alpha > 0 ? (2 * Math.PI) / Math.sqrt(alpha) : null
 
   if (elapsedSeconds < 0) {
     anomaly = -anomaly
@@ -195,11 +198,27 @@ const solveUniversalAnomaly = (
       (1 - alpha * radius) * anomalySquared * c +
       radius
     const correction = functionValue / derivative
-    anomaly -= correction
-
-    if (Math.abs(correction) < 1e-10) {
+    if (Math.abs(correction) < universalAnomalyTolerance) {
       return anomaly
     }
+    let nextAnomaly = anomaly - correction
+
+    if (upperBound !== null) {
+      if (functionValue > 0) {
+        upperBound = anomaly
+      } else {
+        lowerBound = anomaly
+      }
+      if (
+        !Number.isFinite(nextAnomaly) ||
+        nextAnomaly <= lowerBound ||
+        nextAnomaly >= upperBound
+      ) {
+        nextAnomaly = (lowerBound + upperBound) / 2
+      }
+    }
+
+    anomaly = nextAnomaly
   }
 
   throw new Error('Kepler two-body propagation did not converge')

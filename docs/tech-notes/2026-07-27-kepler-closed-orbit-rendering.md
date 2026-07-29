@@ -88,3 +88,59 @@ because the refresh timer elapsed provided no useful visual update.
   count for the current zoom.
 - The existing GUI highscores accessible-name expectation should be updated
   separately from trajectory work.
+
+## 2026-07-29 long-period convergence follow-up
+
+### What changed and why
+
+A human playtest found that Free roam could freeze after a burn extended the
+spacecraft into a long, highly eccentric bound orbit while one-minute time warp
+was active. The freeze was an uncaught
+`Kepler two-body propagation did not converge` error from the animation frame.
+
+The universal-anomaly solver now:
+
+- uses the energy-scaled initial guess for every bound orbit instead of
+  switching to the near-parabolic guess at a fixed semimajor-axis threshold;
+- keeps each bound-orbit Newton step inside the physically valid
+  zero-to-one-period anomaly interval, falling back to bisection when a Newton
+  step leaves that interval or becomes non-finite; and
+- uses an absolute anomaly tolerance of `1e-8`, which remains sub-centimeter
+  accurate for the regression orbit without demanding precision below stable
+  floating-point resolution after the spacecraft moves away from periapsis.
+
+This is limited to convergence of the existing two-body solver. Closed-orbit
+classification, sample caps, refresh policy, presentation, and non-bound
+trajectory behavior are unchanged.
+
+### Ownership and regression coverage
+
+- `src/prediction/keplerTwoBody.ts` continues to own universal-variable
+  propagation. The safeguard is internal and does not widen module APIs.
+- `tests/prediction/keplerTwoBody.test.ts` now covers a 120 Mm semimajor-axis
+  Earth orbit after a 60-second coast away from periapsis. Before the fix, this
+  state throws during full-period sampling; after the fix it produces the
+  capped 1,200-point closed loop and closes its seam within one centimeter.
+- `DESIGN.md` remains accurate because no visual language or layout changed.
+
+### Validation
+
+- Focused Biome check passed for the changed prediction source and test.
+- Focused prediction, runtime, and presentation tests passed: 65 tests.
+- `npm test` passed 693 product tests, 16 automation-claim tests, and 4
+  engineer-workflow tests.
+- `npm run build` passed configuration validation, TypeScript, and the release
+  Vite build.
+- `npm run benchmark:trajectory -- --run` passed.
+- The desktop and mobile trajectory render-density GUI tests passed.
+- An exact transient browser replay of the regression state passed at effective
+  x1m on 1440×900 desktop and 390×844 mobile. Over a 1.2-second observation,
+  simulation time advanced by more than 30 seconds, prediction stayed
+  `closed-orbit`, synchronous calculations remained below 20 ms, and the page
+  reported no console or uncaught errors. The inspected screenshots were:
+  - `tmp/playwright-results/pr330KeplerFreeze.playtest-1677d-sponsive-at-one-minute-warp-mobile-chromium/pr-330-long-period-kepler-desktop.png`
+  - `tmp/playwright-results/pr330KeplerFreeze.playtest-1677d-sponsive-at-one-minute-warp-mobile-chromium/pr-330-long-period-kepler-mobile.png`
+- The full `npm run test:gui` run passed 86 of 88 tests. The known highscores
+  accessible-name mismatch still expects `Time 7h30m` while the UI exposes
+  `Time 07h30m`. An unrelated controlled-fling timing expectation also observed
+  `x2m` instead of `x1m` at its early sample and reproduced in isolation.
