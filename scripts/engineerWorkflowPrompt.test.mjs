@@ -64,6 +64,8 @@ describe('engineer workflow prompt', () => {
       '/pulls/{number}/reviews',
       'must not replace either required comment fetch',
       'do not merge them into either comment stream',
+      'build a separate classified review-submission inventory',
+      'Consume that separate inventory through priority item 3',
       'PR triage is incomplete',
       'If a normalized tool omits a required field such as `updatedAt`',
       'Never convert a fetch failure into “no actionable comments.”',
@@ -108,8 +110,11 @@ describe('engineer workflow prompt', () => {
     assertContainsInOrder(reviewSubmissionTracking, [
       'Treat review submissions (`review_submission`) and inline review comments (`review_comment`) as separate record kinds with separate state namespaces',
       're-fetch the exact review through `GET /repos/{owner}/{repo}/pulls/{number}/reviews/{review_id}`',
+      'Compute a SHA-256 hash of its fetched body',
       'record the observed review version as the exact `submitted_at`, `commit_id`, and `state` values',
-      'dedicated `review-submissions/` state directory',
+      'The fingerprint is the repository, PR number, review id, body hash, and observed review version together',
+      'repository-scoped `review-submissions/<canonical-owner>/<canonical-repo>/` state directory',
+      'GitHub `nameWithOwner`, normalized to lowercase',
       'consult the dedicated review-submission record before acquiring a claim',
       'If its status is `addressed` and its complete fingerprint exactly matches the freshly fetched review, classify that submission `addressed`',
       'do not acquire a claim solely for it, add `eyes` or `rocket`, or spawn a worker',
@@ -132,6 +137,7 @@ describe('engineer workflow prompt', () => {
       'Before treating a review submission as actionable, re-fetch it and consult its dedicated addressed fingerprint',
       'For a review-submission candidate without a matching addressed fingerprint, acquire the claim',
       'Reconcile review submissions through their complete body/version fingerprint without requiring a reaction',
+      'Release the claim only after every triggering comment sidecar and dedicated review-submission record is durably reconciled',
     ])
   })
 
@@ -152,7 +158,7 @@ describe('engineer workflow prompt', () => {
     assertContainsInOrder(completionBoundary, [
       'inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
       'For a foreign claim, skip that task and continue triage; for a claim owned by this run, continue waiting or refresh the continuation',
-      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff and triggering sidecars',
+      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff, triggering comment sidecars, and dedicated review-submission records',
       'If the worker is terminal, perform the terminal-result reconciliation immediately',
       'If the run must yield while a claim is recent, preserve the active delegated-worker, claim, and continuation/wakeup handoff state',
       'While waiting on that claim, continue the existing handoff rather than starting another task',
@@ -188,7 +194,7 @@ describe('engineer workflow prompt', () => {
       'inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
       'For a foreign claim, skip that task and continue triage; for a claim owned by this run, continue waiting or refresh the continuation',
       'Once the freshness window has elapsed, question the handoff using worker status, sidecars, and branch/worktree state',
-      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff and triggering sidecars',
+      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff, triggering comment sidecars, and dedicated review-submission records',
       'If worker status is unavailable while the claim is within the freshness window, do not classify the work as terminal or failed',
       'terminal worker status overrides the freshness wait for the owning run',
     ])
