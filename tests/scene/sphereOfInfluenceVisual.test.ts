@@ -25,34 +25,48 @@ const trajectoryRenderingConfig = {
 }
 
 describe('sphere-of-influence visuals', () => {
-  it('builds four structurally distinct body-colored variants', () => {
+  it('uses the approved soft field for all four border widths', () => {
     const childSignatures = new Set<string>()
 
-    for (const variant of sphereOfInfluenceVariants) {
+    for (const [index, variant] of sphereOfInfluenceVariants.entries()) {
       const visual = createSphereOfInfluenceVisual(body, variant)
       const metadata = visual.group.userData.sphereOfInfluence
+      const borderWidthPixels = index + 1
 
       expect(metadata).toEqual({
         bodyId: 'earth',
+        borderWidthPixels,
         radiusMeters: body.sphereOfInfluenceRadius,
         variant,
       })
       expect(visual.group.name).toBe('Earth sphere of influence')
-      expect(visual.group.children.length).toBeGreaterThan(0)
+      expect(visual.group.children.map((child) => child.name)).toEqual([
+        'soi-field-fill',
+      ])
+      expect(visual.group.getObjectByName('soi-field-fill')).toHaveProperty(
+        'material.uniforms.uSoiBorderWidthPixels.value',
+        borderWidthPixels,
+      )
       childSignatures.add(
         visual.group.children.map((child) => child.name).join('|'),
       )
     }
 
-    expect(childSignatures.size).toBe(4)
+    expect(childSignatures.size).toBe(1)
   })
 
-  it('registers a screen-space dash pattern only for the dashed variant', () => {
-    for (const variant of sphereOfInfluenceVariants) {
-      const visual = createSphereOfInfluenceVisual(body, variant)
+  it('preserves the original field gradient shader', () => {
+    const visual = createSphereOfInfluenceVisual(body, 'field-1px')
+    const field = visual.group.getObjectByName('soi-field-fill')
 
-      expect(visual.dashPatterns).toHaveLength(variant === 'dashed' ? 1 : 0)
-    }
+    expect(field).toHaveProperty(
+      'material.fragmentShader',
+      expect.stringContaining('0.045 * (0.32 * interior + outerField)'),
+    )
+    expect(field).toHaveProperty(
+      'material.fragmentShader',
+      expect.stringContaining('dFdx(radiusFromCenter)'),
+    )
   })
 
   it('keeps scene visuals absent until a variant is selected', () => {
@@ -62,7 +76,7 @@ describe('sphere-of-influence visuals', () => {
       trajectoryRenderingConfig,
       undefined,
       undefined,
-      'boundary',
+      'field-2px',
     )
 
     expect(disabledScene.bodySphereOfInfluenceGroups.size).toBe(0)

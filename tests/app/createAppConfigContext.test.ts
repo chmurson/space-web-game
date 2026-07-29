@@ -240,10 +240,10 @@ describe('createAppConfigContext', () => {
 
   it('selects sphere-of-influence visuals only for the four exact flag values', () => {
     const variants = [
-      ['1', 'field'],
-      ['2', 'boundary'],
-      ['3', 'dashed'],
-      ['4', 'contours'],
+      ['1', 'field-1px'],
+      ['2', 'field-2px'],
+      ['3', 'field-3px'],
+      ['4', 'field-4px'],
     ] as const
 
     for (const [flagValue, variant] of variants) {

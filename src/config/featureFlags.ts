@@ -1,8 +1,8 @@
 export const sphereOfInfluenceVariants = [
-  'field',
-  'boundary',
-  'dashed',
-  'contours',
+  'field-1px',
+  'field-2px',
+  'field-3px',
+  'field-4px',
 ] as const
 
 export type SphereOfInfluenceVariant =
@@ -12,10 +12,10 @@ const sphereOfInfluenceVariantByFlagValue: Record<
   string,
   SphereOfInfluenceVariant
 > = {
-  '1': 'field',
-  '2': 'boundary',
-  '3': 'dashed',
-  '4': 'contours',
+  '1': 'field-1px',
+  '2': 'field-2px',
+  '3': 'field-3px',
+  '4': 'field-4px',
 }
 
 export const parseSphereOfInfluenceVariant = (

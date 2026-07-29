@@ -269,12 +269,6 @@ export type SpacecraftTrailPoint = {
   targetRelativePositions: Record<string, Vec2>
 }
 
-export type ScreenSpaceDashPattern = {
-  dashPixels: number
-  gapPixels: number
-  material: LineMaterial | THREE.LineDashedMaterial
-}
-
 export type GameSceneRefs = {
   assistedPredictionGeometry: LineGeometry
   assistedPredictionLine: Line2
@@ -316,7 +310,6 @@ export type GameSceneRefs = {
   predictionStaleFarMaterial: LineMaterial
   replacePredictionLineGeometryOnUpdate: boolean
   scene: THREE.Scene
-  screenSpaceDashPatterns: ScreenSpaceDashPattern[]
   spacecraftMarker: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>
   spacecraftMesh: THREE.Group
   starfield: Starfield
@@ -476,7 +469,6 @@ export const createGameScene = (
     string,
     THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>
   >()
-  const screenSpaceDashPatterns: ScreenSpaceDashPattern[] = []
 
   for (const body of bodies) {
     if (
@@ -493,7 +485,6 @@ export const createGameScene = (
         body.position.y * RENDER_SCALE,
       )
       bodySphereOfInfluenceGroups.set(body.id, sphereOfInfluenceVisual.group)
-      screenSpaceDashPatterns.push(...sphereOfInfluenceVisual.dashPatterns)
       scene.add(sphereOfInfluenceVisual.group)
     }
 
@@ -724,7 +715,6 @@ export const createGameScene = (
     predictionStaleFarMaterial,
     replacePredictionLineGeometryOnUpdate,
     scene,
-    screenSpaceDashPatterns,
     spacecraftMarker,
     spacecraftMesh,
     starfield,

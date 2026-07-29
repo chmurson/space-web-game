@@ -1,22 +1,11 @@
 import * as THREE from 'three'
 
-import type {
-  GameSceneRefs,
-  ScreenSpaceDashPattern,
-} from '../scene/createGameScene'
+import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Vec2 } from '../simulation/vector'
 
 export const renderPosition = (x: number, y: number, lift = 0) =>
   new THREE.Vector3(x * RENDER_SCALE, lift, y * RENDER_SCALE)
-
-const updateScreenSpaceDashPattern = (
-  pattern: ScreenSpaceDashPattern,
-  renderUnitsPerPixel: number,
-) => {
-  pattern.material.dashSize = renderUnitsPerPixel * pattern.dashPixels
-  pattern.material.gapSize = renderUnitsPerPixel * pattern.gapPixels
-}
 
 export const updateCameraView = (options: {
   cameraDistance: number
@@ -93,10 +82,6 @@ export const updateCameraView = (options: {
     options.viewportWidth,
     options.viewportHeight,
   )
-  const renderUnitsPerPixel = options.viewportSize / options.viewportHeight
-  for (const pattern of options.gameScene.screenSpaceDashPatterns) {
-    updateScreenSpaceDashPattern(pattern, renderUnitsPerPixel)
-  }
   options.gameScene.starfield.update({
     cameraTarget: options.gameScene.cameraTarget,
     preserveWorldPosition: options.preserveStarfieldWorldPosition,

@@ -21,7 +21,6 @@ const createGameScene = (
     inertialPredictionMaterial: createScreenSpaceMaterial(),
     predictionMaterial: createScreenSpaceMaterial(),
     predictionStaleFarMaterial: createScreenSpaceMaterial(),
-    screenSpaceDashPatterns: [],
     starfield,
   } as unknown as GameSceneRefs
 }
