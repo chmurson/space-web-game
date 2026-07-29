@@ -78,12 +78,21 @@ The helper fails closed:
 The claim file is the single source of truth for ownership. For reconciliation,
 an unexpired `active` claim is treated as healthy when its `last_seen` is within
 the 2-hour freshness window. During that window, assume the worker is in progress
-even when a worker id, continuation record, sidecar, or memory event is missing or
-stale. A parallel orchestrator must not release, replace, or duplicate that claim.
-For a foreign claim, leave it untouched, skip only its associated task, and
-continue with other claimable work. For a claim owned by the current run, wait
-for the owning worker/continuation or the normal claim-expiry path. Those other
-files are audit and wakeup hints only.
+even when a worker id, sidecar, or memory event is missing or stale. A parallel
+orchestrator must not release, replace, or duplicate that claim.
+
+A durable pending handoff record created by the same active automation is the
+exception to the old same-run waiting rule: a later invocation may verify the
+recorded token and resume reconciliation of that exact claim even when the claim
+owner, parent thread, or run id belongs to an earlier invocation. This is not a
+new ownership acquisition and must not start another worker. The record must
+match the claim's kind, id, and branch, and its recorded token file must verify
+through the claim helper before it is used.
+
+For a foreign claim or a claim without a matching same-automation handoff, leave
+it untouched, skip only its associated task, and continue with other claimable
+work. Handoff records, sidecars, memory events, and worker ids are audit and
+wakeup hints only; none can override a recent active claim.
 
 After 2 hours without a heartbeat, or after the claim's own TTL has expired, the
 orchestrator may question the handoff
