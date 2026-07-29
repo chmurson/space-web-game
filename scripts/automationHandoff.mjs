@@ -407,11 +407,18 @@ export const createHandoff = async (options) => {
     await createJsonAtomically(paths.pendingFile, record)
   } catch (error) {
     if (error instanceof HandoffError && error.codeName === 'HANDOFF_ACTIVE') {
-      const existing = assertRecord(await readJson(paths.pendingFile), paths)
+      let details = null
+      try {
+        const existing = assertRecord(await readJson(paths.pendingFile), paths)
+        details = publicHandoff(existing, paths, paths.pendingFile)
+      } catch {
+        // The duplicate signal remains authoritative when enrichment races or fails.
+      }
+
       throw new HandoffError(
         'HANDOFF_ACTIVE',
         `A pending handoff already exists for ${paths.handoffId}`,
-        { details: publicHandoff(existing, paths, paths.pendingFile) },
+        { details },
       )
     }
     throw error

@@ -93,8 +93,8 @@ describe('automationHandoff', () => {
     assert.equal(mode & 0o077, 0)
   })
 
-  it('fails closed rather than overwrite a pending handoff for the task', async () => {
-    await createHandoff({
+  it('fails closed with existing handoff details rather than overwrite a pending task', async () => {
+    const created = await createHandoff({
       ...handoffOptions(handoffRoot),
       now: at('2026-07-29T12:01:02.000Z'),
     })
@@ -105,8 +105,36 @@ describe('automationHandoff', () => {
           ...handoffOptions(handoffRoot),
           now: at('2026-07-29T12:02:02.000Z'),
         }),
-      { codeName: 'HANDOFF_ACTIVE' },
+      (error) => {
+        assert.equal(error.codeName, 'HANDOFF_ACTIVE')
+        assert.deepEqual(error.details, created.handoff)
+        return true
+      },
     )
+  })
+
+  it('preserves HANDOFF_ACTIVE when existing details cannot be read or validated', async () => {
+    for (const invalidRecord of ['not json', '{}']) {
+      const invalidRoot = await createRoot()
+      const created = await createHandoff({
+        ...handoffOptions(invalidRoot),
+        now: at('2026-07-29T12:01:02.000Z'),
+      })
+      await writeFile(created.handoff.handoff_path, invalidRecord)
+
+      await assert.rejects(
+        () =>
+          createHandoff({
+            ...handoffOptions(invalidRoot),
+            now: at('2026-07-29T12:02:02.000Z'),
+          }),
+        (error) => {
+          assert.equal(error.codeName, 'HANDOFF_ACTIVE')
+          assert.equal(error.details, null)
+          return true
+        },
+      )
+    }
   })
 
   it('accepts the recovery protocol through its command-line interface', async () => {

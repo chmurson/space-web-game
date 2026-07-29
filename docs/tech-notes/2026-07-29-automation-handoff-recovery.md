@@ -37,6 +37,9 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
   handoff record. A different automation remains foreign.
 - The record stores a token-file path, never a raw token, and uses restrictive
   filesystem permissions.
+- Duplicate creation always reports `HANDOFF_ACTIVE`. Existing-record details
+  are included when they can be read and validated, but malformed or
+  concurrently moved records cannot replace the stable duplicate signal.
 - The orchestrator owns handoff and memory writes; workers report their terminal
   result instead of modifying those records.
 - Terminal reconciliation releases the claim before archiving the handoff. A
@@ -47,7 +50,8 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 - `scripts/automationHandoff.mjs` owns durable record validation and filesystem
   operations outside Git worktrees.
 - `scripts/automationHandoff.test.mjs` covers creation, privacy, duplicate
-  rejection, malformed-state failure, and matching-worker archival.
+  rejection with best-effort details, malformed-state failure, and
+  matching-worker archival.
 - `docs/automation-prompts/engineer-workflow.md` owns the orchestration policy
   and worker prompt contract.
 - `docs/automation-task-claims.md` explains how same-automation recovery fits
