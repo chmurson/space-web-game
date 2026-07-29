@@ -13,6 +13,10 @@ record before starting fresh PR or issue triage.
 - `archive` preserves a completed audit record only for the worker thread that
   created the pending record.
 
+Review hardening also makes command-position `-h`/`--help` consistent with the
+existing help flag and returns archive timestamps and reconciliation metadata in
+the archive command's public result.
+
 The workflow prompt uses the helper to make handoff recovery mandatory and
 changes the worker template to receive the active automation id rather than the
 old hard-coded `space-game-automation` identity.
@@ -40,6 +44,12 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 - Duplicate creation always reports `HANDOFF_ACTIVE`. Existing-record details
   are included when they can be read and validated, but malformed or
   concurrently moved records cannot replace the stable duplicate signal.
+- Concurrent duplicate creation remains write-once: one create succeeds, one
+  reports `HANDOFF_ACTIVE`, and the surviving pending record stays valid.
+- Archive retries accept the same worker and outcome after an uncertain pending
+  cleanup, but reject a different outcome as `HANDOFF_ARCHIVE_CONFLICT`.
+- Stored-record validation names invalid sidecar and storage-identity fields
+  directly so recovery failures do not look like malformed CLI input.
 - The orchestrator owns handoff and memory writes; workers report their terminal
   result instead of modifying those records.
 - Terminal reconciliation releases the claim before archiving the handoff. A
@@ -49,9 +59,11 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 
 - `scripts/automationHandoff.mjs` owns durable record validation and filesystem
   operations outside Git worktrees.
-- `scripts/automationHandoff.test.mjs` covers creation, privacy, duplicate
-  rejection with best-effort details, malformed-state failure, and
-  matching-worker archival.
+- `scripts/automationHandoff.test.mjs` covers creation, token privacy,
+  sequential and concurrent duplicate rejection, malformed and
+  storage-identity-invalid state, archive audit output, matching-worker
+  archival, conflict detection, and idempotent recovery after uncertain
+  cleanup.
 - `docs/automation-prompts/engineer-workflow.md` owns the orchestration policy
   and worker prompt contract.
 - `docs/automation-task-claims.md` explains how same-automation recovery fits
@@ -59,13 +71,18 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 
 ## Validation
 
-- `npm test` — 73 test files / 775 tests, plus task-claim, handoff, and
-  workflow-prompt checks
-- `npm run test:automation-handoffs`
+- `npm test` — 73 Vitest files / 775 tests, 16 task-claim tests, 13 handoff
+  tests, and 5 workflow-prompt tests
+- `npm run build`
+- `npm run test:automation-handoffs` — 13 tests
 - `npm run test:automation-workflow`
 - `node --check scripts/automationHandoff.mjs`
 - `node --check scripts/automationHandoff.test.mjs`
 - `node --check scripts/engineerWorkflowPrompt.test.mjs`
+- `npx biome check scripts/automationHandoff.mjs
+  scripts/automationHandoff.test.mjs
+  docs/tech-notes/2026-07-29-automation-handoff-recovery.md`
+- `git diff --check`
 
 ## Follow-up / known gap
 

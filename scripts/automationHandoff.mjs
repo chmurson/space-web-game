@@ -99,24 +99,18 @@ const normalizeOptionalBranch = (value) => {
   return normalizeText(value, '--branch')
 }
 
-const normalizePathList = (values) => {
+const normalizePathList = (values, { invalidListMessage, pathValueLabel }) => {
   if (values === undefined || values === null) {
     return []
   }
 
   if (!Array.isArray(values)) {
-    throw new HandoffError(
-      'USAGE',
-      '--sidecar may be provided more than once',
-      {
-        exitCode: 1,
-      },
-    )
+    throw new HandoffError('USAGE', invalidListMessage, { exitCode: 1 })
   }
 
   return [
     ...new Set(
-      values.map((value) => normalizeAbsolutePath(value, '--sidecar')),
+      values.map((value) => normalizeAbsolutePath(value, pathValueLabel)),
     ),
   ]
 }
@@ -294,7 +288,10 @@ const assertRecord = (record, paths, { allowArchived = false } = {}) => {
     },
   )
   const taskUrl = normalizeText(record.task_url, 'task URL', { optional: true })
-  const sidecarPaths = normalizePathList(record.sidecar_paths)
+  const sidecarPaths = normalizePathList(record.sidecar_paths, {
+    invalidListMessage: 'sidecar paths must be a list',
+    pathValueLabel: 'sidecar path',
+  })
 
   const allowedStatuses = allowArchived
     ? new Set(['abandoned', 'pending', 'reconciled'])
@@ -344,6 +341,9 @@ const getArchivePath = (record, paths) => {
 }
 
 const publicHandoff = (record, paths, handoffPath) => ({
+  ...(Object.hasOwn(record, 'archived_at')
+    ? { archived_at: record.archived_at }
+    : {}),
   automation_id: paths.automationId,
   claim: record.claim,
   created_at: record.created_at,
@@ -352,6 +352,12 @@ const publicHandoff = (record, paths, handoffPath) => ({
   next_reconciliation_action: record.next_reconciliation_action,
   original_run_id: record.original_run_id,
   parent_thread_id: record.parent_thread_id,
+  ...(Object.hasOwn(record, 'reconciliation_note')
+    ? { reconciliation_note: record.reconciliation_note }
+    : {}),
+  ...(Object.hasOwn(record, 'reconciliation_run_id')
+    ? { reconciliation_run_id: record.reconciliation_run_id }
+    : {}),
   scope: record.scope,
   sidecar_paths: record.sidecar_paths,
   status: record.status,
@@ -388,7 +394,10 @@ const createRecord = (options, paths) => {
       },
     ),
     scope: normalizeText(options.scope, '--scope'),
-    sidecar_paths: normalizePathList(options.sidecarPaths),
+    sidecar_paths: normalizePathList(options.sidecarPaths, {
+      invalidListMessage: '--sidecar may be provided more than once',
+      pathValueLabel: '--sidecar',
+    }),
     status: 'pending',
     task_url: normalizeText(options.taskUrl, '--task-url', { optional: true }),
     updated_at: now,
@@ -524,6 +533,7 @@ export const archiveHandoff = async (options) => {
     updated_at: now,
   }
   const archivePath = getArchivePath(record, paths)
+  let persistedArchivedRecord = archivedRecord
   await mkdir(paths.archiveRoot, { mode: 0o700, recursive: true })
 
   try {
@@ -548,6 +558,7 @@ export const archiveHandoff = async (options) => {
         `Completed handoff conflicts with the pending record: ${archivePath}`,
       )
     }
+    persistedArchivedRecord = existing
   }
 
   try {
@@ -561,14 +572,16 @@ export const archiveHandoff = async (options) => {
   }
 
   return {
-    handoff: publicHandoff(archivedRecord, paths, archivePath),
+    handoff: publicHandoff(persistedArchivedRecord, paths, archivePath),
     ok: true,
     status: 'archived',
   }
 }
 
 const parseCliArgs = (argv) => {
-  const command = argv[2]
+  const rawCommand = argv[2]
+  const command =
+    rawCommand === '--help' || rawCommand === '-h' ? 'help' : rawCommand
   const flags = {}
   const repeatableFlags = new Set(['sidecar'])
   const knownFlags = new Set([
