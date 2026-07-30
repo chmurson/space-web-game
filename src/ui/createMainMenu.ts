@@ -379,7 +379,6 @@ export const createMainMenu = (options: {
       message: 'Snapshot imported. Select Load to start.',
       tone: 'success',
     }
-    setActiveView('load-game-snapshot')
     renderMenu()
   }
 

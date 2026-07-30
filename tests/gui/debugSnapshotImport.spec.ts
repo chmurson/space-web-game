@@ -274,6 +274,74 @@ test('shows parser and read errors without mutating recents, active state, or se
   expect(await unchangedState()).toEqual(before)
 })
 
+test('keeps Back navigation while a valid import finishes asynchronously', async ({
+  page,
+}, testInfo) => {
+  const importedSnapshot = createSnapshot(84, '2026-07-30T09:15:00.000Z')
+  const importedId = `debug-snapshot-${importedSnapshot.savedAt}`
+
+  await openSnapshotImportMenu(page)
+  await page.evaluate(() => {
+    let resolveSnapshotText: ((value: string) => void) | undefined
+    const snapshotTextPromise = new Promise<string>((resolve) => {
+      resolveSnapshotText = resolve
+    })
+
+    File.prototype.text = () => snapshotTextPromise
+    Object.assign(window, {
+      resolveSnapshotImportText: (value: string) => {
+        resolveSnapshotText?.(value)
+      },
+    })
+  })
+
+  await setSnapshotFile(
+    page,
+    JSON.stringify(importedSnapshot),
+    'delayed-snapshot.json',
+  )
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('[data-main-menu-view="load-game"]')).toBeVisible()
+
+  await page.evaluate((snapshotJson) => {
+    const resolveSnapshotImportText = Reflect.get(
+      window,
+      'resolveSnapshotImportText',
+    )
+    if (typeof resolveSnapshotImportText !== 'function') {
+      throw new Error('Snapshot import resolver is unavailable')
+    }
+
+    resolveSnapshotImportText(snapshotJson)
+  }, JSON.stringify(importedSnapshot))
+
+  await expect
+    .poll(() =>
+      page.evaluate((recentKey) => {
+        const recent = JSON.parse(localStorage.getItem(recentKey) ?? '[]') as
+          | DebugScenarioSnapshotEntry[]
+          | undefined
+        return recent?.[0]?.id ?? null
+      }, recentSnapshotsStorageKey),
+    )
+    .toBe(importedId)
+  await expect(page.locator('[data-main-menu-view="load-game"]')).toBeVisible()
+  await expect(
+    page.locator('[data-main-menu-view="load-game-snapshot"]'),
+  ).toBeHidden()
+
+  await attachScreenshot(
+    page,
+    testInfo,
+    'mobile-debug-snapshot-import-back-race',
+  )
+
+  await page.getByRole('button', { name: 'Load any game' }).click()
+  await expect(page.locator('#main-menu-recent-snapshot')).toHaveValue(
+    importedId,
+  )
+})
+
 test('keeps Import available with no recents and fits the imported state on desktop', async ({
   baseURL,
   browser,
