@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import {
   createDebugScenarioSnapshotEntryName,
   createSnapshotFromState,
+  downloadDebugScenarioSnapshot,
+  insertExportedDebugScenarioSnapshot,
   writeDebugScenarioSnapshot,
 } from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
@@ -151,6 +153,36 @@ export const createRuntimeActions = (options: {
     } catch {
       options.runtime.debug.debugSnapshotStatus = 'snapshot save failed'
       return false
+    }
+  }
+
+  const exportCurrentDebugScenarioSnapshot = () => {
+    let snapshot: ReturnType<typeof createSnapshotFromState>
+
+    try {
+      snapshot = createCurrentDebugScenarioSnapshot()
+      downloadDebugScenarioSnapshot(snapshot)
+    } catch {
+      options.runtime.debug.debugSnapshotStatus = 'snapshot export failed'
+      return {
+        downloadStarted: false,
+        recentEntrySaved: false,
+      }
+    }
+
+    if (!insertExportedDebugScenarioSnapshot(snapshot)) {
+      options.runtime.debug.debugSnapshotStatus =
+        'snapshot downloaded; recent entry save failed'
+      return {
+        downloadStarted: true,
+        recentEntrySaved: false,
+      }
+    }
+
+    options.runtime.debug.debugSnapshotStatus = 'snapshot exported'
+    return {
+      downloadStarted: true,
+      recentEntrySaved: true,
     }
   }
 
@@ -377,6 +409,7 @@ export const createRuntimeActions = (options: {
     clearUserInfoPins,
     dispatchScenarioPromptAction,
     enterMainMenuBackground: scenarioRuntimeController.enterMainMenuBackground,
+    exportCurrentDebugSnapshot: exportCurrentDebugScenarioSnapshot,
     getDebugSnapshotSuggestedName: () =>
       createDebugScenarioSnapshotEntryName(
         createCurrentDebugScenarioSnapshot(),

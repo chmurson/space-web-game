@@ -13,12 +13,17 @@ export type TopMenuSurfaceProps = {
   pendingConfirmationAction: TopMenuAction | null
   recentSnapshots: DebugScenarioSnapshotEntry[]
   selectedRecentSnapshotId: string
+  snapshotExportStatus: {
+    message: string
+    tone: 'error' | 'success'
+  } | null
   rootRef(element: HTMLElement | null): void
   onAction(action: TopMenuAction): void
   onDebugSnapshotNameChange(name: string): void
   onDebugSnapshotSave(): void
   onDebugSnapshotSaveBack(): void
   onDebugSnapshotSaveMenu(): void
+  onExportCurrentState(): void
   onMenuButtonClick(): void
   onRecentSnapshotBack(): void
   onRecentSnapshotChange(id: string): void
@@ -37,12 +42,14 @@ export const TopMenuSurface = ({
   pendingConfirmationAction,
   recentSnapshots,
   selectedRecentSnapshotId,
+  snapshotExportStatus,
   rootRef,
   onAction,
   onDebugSnapshotNameChange,
   onDebugSnapshotSave,
   onDebugSnapshotSaveBack,
   onDebugSnapshotSaveMenu,
+  onExportCurrentState,
   onMenuButtonClick,
   onRecentSnapshotBack,
   onRecentSnapshotChange,
@@ -53,6 +60,7 @@ export const TopMenuSurface = ({
   const debugSnapshotSectionLabelId = `${menuId}-debug-snapshot`
   const debugSnapshotSaveSectionLabelId = `${menuId}-debug-snapshot-save`
   const scenarioSectionLabelId = `${menuId}-scenario`
+  const snapshotSectionLabelId = `${menuId}-snapshot`
 
   return (
     <div class={open ? 'top-menu top-menu-open' : 'top-menu'} ref={rootRef}>
@@ -228,6 +236,32 @@ export const TopMenuSurface = ({
               </button>
             </div>
           </div>
+        </section>
+
+        <section
+          class="menu-section"
+          aria-labelledby={snapshotSectionLabelId}
+          hidden={activeSection !== 'main'}
+        >
+          <div class="menu-section-label" id={snapshotSectionLabelId}>
+            Snapshot
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            data-menu-action="exportCurrentState"
+            onClick={onExportCurrentState}
+          >
+            Export current state
+          </button>
+          {snapshotExportStatus ? (
+            <p
+              class={`top-menu-snapshot-status top-menu-snapshot-status-${snapshotExportStatus.tone}`}
+              role={snapshotExportStatus.tone === 'error' ? 'alert' : 'status'}
+            >
+              {snapshotExportStatus.message}
+            </p>
+          ) : null}
         </section>
 
         <hr class="menu-separator" />

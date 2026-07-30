@@ -1662,6 +1662,11 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const outsideButton = document.createElement('button')
     const events: string[] = []
     const savedSnapshotNames: string[] = []
+    let exportCount = 0
+    let exportResult = {
+      downloadStarted: true,
+      recentEntrySaved: true,
+    }
     const spacecraft = {
       position: { x: 0, y: 0 },
       velocity: { x: 0, y: 0 },
@@ -1697,6 +1702,10 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
         if (action === 'toggleFpsIndicator') {
           fpsIndicatorEnabled = !fpsIndicatorEnabled
         }
+      },
+      onExportCurrentState: () => {
+        exportCount += 1
+        return exportResult
       },
       onSaveDebugSnapshot: (name: string) => {
         savedSnapshotNames.push(name)
@@ -1793,6 +1802,27 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       getActionButton('toggleFpsIndicator')?.textContent
     const fpsCheckedAfterToggle =
       getActionButton('toggleFpsIndicator')?.getAttribute('aria-checked')
+
+    getActionButton('exportCurrentState')?.click()
+    const exportSuccessRole = menu.element
+      .querySelector('.top-menu-snapshot-status')
+      ?.getAttribute('role')
+    const exportSuccessStatus = menu.element.querySelector(
+      '.top-menu-snapshot-status',
+    )?.textContent
+    const openAfterExport = !getDropdown()?.hidden
+    const focusAfterExport = getActiveAction()
+    exportResult = {
+      downloadStarted: false,
+      recentEntrySaved: false,
+    }
+    getActionButton('exportCurrentState')?.click()
+    const exportFailureRole = menu.element
+      .querySelector('.top-menu-snapshot-status')
+      ?.getAttribute('role')
+    const exportFailureStatus = menu.element.querySelector(
+      '.top-menu-snapshot-status',
+    )?.textContent
 
     menu.close()
     openMenu()
@@ -1893,7 +1923,13 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       debugLabelInitial,
       events,
       expandedAfterClick,
+      exportCount,
+      exportFailureRole,
+      exportFailureStatus,
+      exportSuccessRole,
+      exportSuccessStatus,
       exitLabelAfterFirstClick,
+      focusAfterExport,
       focusAfterEscape,
       focusAfterRestart,
       focusAfterSnapshotSaveBack,
@@ -1908,6 +1944,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       loadDisabledWithSnapshot,
       loadDisabledWithoutSnapshot,
       openAfterClick,
+      openAfterExport,
       recentOptions,
       restartLabelAfterFirstClick,
       savedSnapshotNames,
@@ -1943,7 +1980,13 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       'loadDebugSnapshot',
     ],
     expandedAfterClick: 'true',
+    exportCount: 2,
+    exportFailureRole: 'alert',
+    exportFailureStatus: 'Snapshot download could not be started. Try again.',
+    exportSuccessRole: 'status',
+    exportSuccessStatus: 'Current state download started.',
     exitLabelAfterFirstClick: 'Confirm exit',
+    focusAfterExport: 'exportCurrentState',
     focusAfterEscape: true,
     focusAfterRestart: true,
     focusAfterSnapshotSaveBack: 'saveDebugSnapshot',
@@ -1959,6 +2002,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     loadDisabledWithoutSnapshot: true,
     closedAfterNamedSnapshotSave: true,
     openAfterClick: true,
+    openAfterExport: true,
     recentOptions: [
       expect.stringContaining('Snapshot at 2s - '),
       expect.stringContaining('Snapshot at 1s - '),
@@ -2680,6 +2724,9 @@ test('captures the mobile top menu open over gameplay HUD', async ({
   await expect(
     page.getByRole('menuitemcheckbox', { name: 'Show debug window' }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('menuitem', { name: 'Export current state' }),
+  ).toBeVisible()
 
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-open')
 
@@ -2688,6 +2735,154 @@ test('captures the mobile top menu open over gameplay HUD', async ({
     /Reach the Moon|reach-moon/,
   )
   await attachMobileScreenshot(page, testInfo, 'mobile-top-menu-snapshot-save')
+})
+
+test('exports the live state from the mobile top menu and keeps it loadable', async ({
+  page,
+}, testInfo) => {
+  await startReachMoonMission(page)
+
+  await page.getByLabel('Open menu').click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export current state' }).click()
+  const download = await downloadPromise
+
+  expect(download.suggestedFilename()).toMatch(
+    /^space-web-game-reach-moon-.+\.json$/,
+  )
+  await expect(page.getByRole('status')).toHaveText(
+    'Current state download started.',
+  )
+  const exportedEntry = await page.evaluate(() => {
+    const rawEntries = localStorage.getItem(
+      'space-web-game.recentDebugScenarioSnapshots.v1',
+    )
+    const entries = rawEntries ? JSON.parse(rawEntries) : []
+    return entries[0] ?? null
+  })
+  expect(exportedEntry).toMatchObject({
+    lastExportedAt: expect.any(String),
+    snapshot: {
+      runtimeScenario: { scenarioId: 'reach-moon' },
+      version: 3,
+    },
+  })
+  expect(Number.isFinite(Date.parse(exportedEntry.lastExportedAt))).toBe(true)
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-top-menu-current-state-exported',
+  )
+
+  await page.getByRole('menuitem', { name: 'Exit' }).click()
+  await page.getByRole('menuitem', { name: 'Confirm exit' }).click()
+  await expect(page.getByRole('button', { name: 'Load Game' })).toBeVisible()
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  await page.getByRole('button', { name: 'Load any game' }).click()
+  const recentSelector = page.locator('#main-menu-recent-snapshot')
+  await expect(recentSelector.locator('option')).toHaveCount(1)
+  await expect(recentSelector).toHaveValue(exportedEntry.id)
+})
+
+test('reports a blocked compact-mobile export without saving recent metadata', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 320, height: 568 })
+  await startReachMoonMission(page)
+  await page.evaluate(() => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: () => {
+        throw new Error('Downloads blocked')
+      },
+    })
+  })
+
+  await page.getByLabel('Open menu').click()
+  await page.getByRole('menuitem', { name: 'Export current state' }).click()
+
+  await expect(page.getByRole('alert')).toHaveText(
+    'Snapshot download could not be started. Try again.',
+  )
+  const dropdownBounds = await page.locator('.top-menu-dropdown').boundingBox()
+  expect(dropdownBounds).not.toBeNull()
+  expect(dropdownBounds?.y ?? -1).toBeGreaterThanOrEqual(0)
+  expect(
+    (dropdownBounds?.y ?? 0) +
+      (dropdownBounds?.height ?? Number.POSITIVE_INFINITY),
+  ).toBeLessThanOrEqual(568)
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        localStorage.getItem('space-web-game.recentDebugScenarioSnapshots.v1'),
+      ),
+    )
+    .toBeNull()
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'compact-mobile-top-menu-current-state-export-failed',
+  )
+})
+
+test('exports the live state from the fine-pointer desktop top menu', async ({
+  baseURL,
+  browser,
+}, testInfo) => {
+  if (!baseURL) {
+    throw new Error('Playwright base URL is not configured')
+  }
+
+  const context = await browser.newContext({
+    baseURL,
+    hasTouch: false,
+    isMobile: false,
+    viewport: { width: 1024, height: 720 },
+  })
+  const page = await context.newPage()
+
+  try {
+    await startReachMoonMission(page, '', { touchControlsVisible: false })
+    await page.getByLabel('Open menu').click()
+    await expect(page.locator('.top-menu')).toHaveCSS('zoom', '1.25')
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('menuitem', { name: 'Export current state' }).click()
+    const download = await downloadPromise
+
+    expect(download.suggestedFilename()).toMatch(
+      /^space-web-game-reach-moon-.+\.json$/,
+    )
+    await expect(page.getByRole('status')).toHaveText(
+      'Current state download started.',
+    )
+    const dropdownBounds = await page
+      .locator('.top-menu-dropdown')
+      .boundingBox()
+    expect(dropdownBounds).not.toBeNull()
+    expect(dropdownBounds?.y ?? -1).toBeGreaterThanOrEqual(0)
+    expect(
+      (dropdownBounds?.y ?? 0) +
+        (dropdownBounds?.height ?? Number.POSITIVE_INFINITY),
+    ).toBeLessThanOrEqual(720)
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const rawEntries = localStorage.getItem(
+            'space-web-game.recentDebugScenarioSnapshots.v1',
+          )
+          const entries = rawEntries ? JSON.parse(rawEntries) : []
+          return entries[0]?.lastExportedAt ?? null
+        }),
+      )
+      .not.toBeNull()
+    await attachMobileScreenshot(
+      page,
+      testInfo,
+      'desktop-top-menu-current-state-exported',
+    )
+  } finally {
+    await context.close()
+  }
 })
 
 test('hides the empty in-game controls menu on mobile', async ({

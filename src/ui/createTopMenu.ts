@@ -37,6 +37,10 @@ export const createTopMenu = (options: {
   getDebugSnapshotSuggestedName: () => string
   getFpsIndicatorEnabled: () => boolean
   onAction: (action: TopMenuAction) => void
+  onExportCurrentState: () => {
+    downloadStarted: boolean
+    recentEntrySaved: boolean
+  }
   onSaveDebugSnapshot: (name: string) => void
 }): TopMenu => {
   const menuId = 'top-menu-dropdown'
@@ -60,6 +64,7 @@ export const createTopMenu = (options: {
   let recentSnapshots: DebugScenarioSnapshotEntry[] =
     getRecentDebugScenarioSnapshots()
   let selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
+  let snapshotExportStatus: TopMenuSurfaceProps['snapshotExportStatus'] = null
   let pendingConfirmationAction: ConfirmableTopMenuAction | null = null
 
   const getButton = () =>
@@ -143,6 +148,7 @@ export const createTopMenu = (options: {
       pendingConfirmationAction,
       recentSnapshots,
       selectedRecentSnapshotId,
+      snapshotExportStatus,
       onAction: (action) => {
         if (
           isConfirmableAction(action) &&
@@ -180,6 +186,31 @@ export const createTopMenu = (options: {
       },
       onDebugSnapshotSaveMenu: () => {
         openDebugSnapshotSave()
+      },
+      onExportCurrentState: () => {
+        const result = options.onExportCurrentState()
+        syncSnapshotAvailability()
+
+        if (!result.downloadStarted) {
+          snapshotExportStatus = {
+            message: 'Snapshot download could not be started. Try again.',
+            tone: 'error',
+          }
+        } else if (!result.recentEntrySaved) {
+          snapshotExportStatus = {
+            message:
+              'Download started, but the recent snapshot could not be saved.',
+            tone: 'error',
+          }
+        } else {
+          snapshotExportStatus = {
+            message: 'Current state download started.',
+            tone: 'success',
+          }
+        }
+
+        renderMenu()
+        focusAction('exportCurrentState')
       },
       onRecentSnapshotBack: () => {
         activeSection = 'main'
@@ -236,6 +267,7 @@ export const createTopMenu = (options: {
     if (!nextOpen) {
       activeSection = 'main'
       debugSnapshotName = ''
+      snapshotExportStatus = null
       pendingConfirmationAction = null
     }
     renderMenu()

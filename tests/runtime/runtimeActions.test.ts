@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-
+import {
+  getRecentDebugScenarioSnapshots,
+  readDebugScenarioSnapshot,
+} from '@/debugScenarioSnapshot'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
@@ -134,6 +137,19 @@ const createRendererDouble = (initialPixelRatio = 1) => {
   }
 }
 
+const createStorageDouble = () => {
+  const values = new Map<string, string>()
+
+  return {
+    clear: () => values.clear(),
+    getItem: (key: string) => values.get(key) ?? null,
+    removeItem: (key: string) => values.delete(key),
+    setItem: (key: string, value: string) => {
+      values.set(key, value)
+    },
+  }
+}
+
 const createTestRuntimeActions = (
   runtime: AppRuntimeState,
   options: {
@@ -213,6 +229,95 @@ const getRequiredBody = (runtime: AppRuntimeState, index: number): Body => {
 }
 
 describe('createRuntimeActions', () => {
+  it('captures the live state when export is pressed and records the initiated download', async () => {
+    const runtime = createRuntime()
+    const storage = createStorageDouble()
+    const downloadLink = {
+      click: vi.fn(),
+      download: '',
+      hidden: false,
+      href: '',
+      remove: vi.fn(),
+    }
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:runtime-snapshot')
+    const revokeObjectURL = vi.fn()
+    vi.useFakeTimers()
+    vi.setSystemTime('2026-07-30T08:30:00.000Z')
+    vi.stubGlobal('window', { localStorage: storage })
+    vi.stubGlobal('document', {
+      body: { append: vi.fn() },
+      createElement: vi.fn(() => downloadLink),
+    })
+    vi.stubGlobal('URL', {
+      createObjectURL,
+      revokeObjectURL,
+    })
+
+    try {
+      const runtimeActions = createTestRuntimeActions(runtime)
+      runtime.simulation.state.elapsed = 321
+      runtime.simulation.state.spacecraft.position = { x: 123, y: 456 }
+
+      expect(runtimeActions.exportCurrentDebugSnapshot()).toEqual({
+        downloadStarted: true,
+        recentEntrySaved: true,
+      })
+
+      expect(downloadLink.download).toBe(
+        'space-web-game-tutorial-2026-07-30T08-30-00-000Z.json',
+      )
+      expect(downloadLink.click).toHaveBeenCalledOnce()
+      expect(downloadLink.remove).toHaveBeenCalledOnce()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:runtime-snapshot')
+      const downloadedBlob = createObjectURL.mock.calls[0]?.[0]
+      expect(downloadedBlob).toBeInstanceOf(Blob)
+      const downloadedSnapshot = JSON.parse(
+        (await downloadedBlob?.text()) ?? '',
+      )
+
+      const [recentEntry] = getRecentDebugScenarioSnapshots()
+      expect(recentEntry).toMatchObject({
+        lastExportedAt: '2026-07-30T08:30:00.000Z',
+        snapshot: {
+          elapsed: 321,
+          runtimeScenario: { scenarioId: 'tutorial' },
+          spacecraft: { position: { x: 123, y: 456 } },
+        },
+      })
+      expect(downloadedSnapshot).toEqual(recentEntry.snapshot)
+      expect(recentEntry.snapshot).not.toHaveProperty('lastExportedAt')
+      expect(readDebugScenarioSnapshot()).toBeNull()
+      expect(runtime.debug.debugSnapshotStatus).toBe('snapshot exported')
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('does not record an exported entry when download initiation fails', () => {
+    const runtime = createRuntime()
+    const storage = createStorageDouble()
+    vi.stubGlobal('window', { localStorage: storage })
+    vi.stubGlobal('URL', {
+      createObjectURL: () => {
+        throw new Error('Downloads blocked')
+      },
+    })
+
+    try {
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(runtimeActions.exportCurrentDebugSnapshot()).toEqual({
+        downloadStarted: false,
+        recentEntrySaved: false,
+      })
+      expect(getRecentDebugScenarioSnapshots()).toEqual([])
+      expect(runtime.debug.debugSnapshotStatus).toBe('snapshot export failed')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('toggles valid player pins and clears only player ownership', () => {
     const runtime = createRuntime()
     runtime.scenario.directives.infoPins = [createBodyInfoPin('moon')]
