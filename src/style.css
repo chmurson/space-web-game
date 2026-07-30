@@ -986,6 +986,33 @@ canvas {
   overflow-wrap: anywhere;
 }
 
+.main-menu-snapshot-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.main-menu-snapshot-actions .menu-action {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  text-align: center;
+}
+
+.main-menu-snapshot-status {
+  margin: 2px 2px 0;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.main-menu-snapshot-status-success {
+  color: #86efac;
+}
+
+.main-menu-snapshot-status-error {
+  color: #fecdd3;
+}
+
 .menu-separator {
   width: 100%;
   height: 1px;

@@ -74,7 +74,16 @@ const recentSnapshotDetailEntries = [
       savedAt: '2026-07-27T12:00:00.000Z',
       elapsed: 90 * 60,
       bodies: [],
-      spacecraft: {},
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 5,
+        fuelUsed: 1,
+        dryMass: 10,
+        fuelMass: 5,
+        fuelCapacity: 6,
+      },
       runtimeScenario: {
         checkpoint: null,
         completed: false,
@@ -92,11 +101,20 @@ const recentSnapshotDetailEntries = [
     name: 'Legacy approach',
     savedAt: '2026-07-26T10:00:00.000Z',
     snapshot: {
-      version: 1,
+      version: 3,
       savedAt: '2026-07-26T10:00:00.000Z',
       elapsed: 15 * 60,
       bodies: [],
-      spacecraft: {},
+      spacecraft: {
+        position: { x: 10, y: 20 },
+        velocity: { x: 1, y: 2 },
+        heading: 0.5,
+        fuel: 4,
+        fuelUsed: 2,
+        dryMass: 10,
+        fuelMass: 4,
+        fuelCapacity: 6,
+      },
     },
   },
 ]
@@ -277,9 +295,16 @@ test('captures the mobile main menu HUD with world visuals suppressed', async ({
 
   await page.getByRole('button', { name: 'Load any game' }).click()
   const loadButton = page.getByRole('button', { name: 'Load', exact: true })
+  const exportButton = page.getByRole('button', {
+    name: 'Export',
+    exact: true,
+  })
   await expect(loadButton).toBeDisabled()
   await expect(loadButton).toHaveClass(/menu-action-secondary/)
   await expect(loadButton).toHaveCSS('opacity', '0.5')
+  await expect(exportButton).toBeDisabled()
+  await expect(exportButton).toHaveClass(/menu-action-secondary/)
+  await expect(exportButton).toHaveCSS('opacity', '0.5')
   await attachMobileScreenshot(
     page,
     testInfo,
@@ -299,6 +324,10 @@ test('shows selected debug snapshot details on mobile', async ({
 
   const details = page.locator('.menu-recent-snapshot-details')
   const loadButton = page.getByRole('button', { name: 'Load', exact: true })
+  const exportButton = page.getByRole('button', {
+    name: 'Export',
+    exact: true,
+  })
   await expect(details).toHaveAttribute('aria-live', 'polite')
   await expect(details.evaluate((element) => element.tagName)).resolves.toBe(
     'DL',
@@ -318,6 +347,7 @@ test('shows selected debug snapshot details on mobile', async ({
     /Jul 28, 2026/,
   ])
   await expect(loadButton).toBeEnabled()
+  await expect(exportButton).toBeEnabled()
   await attachMobileScreenshot(
     page,
     testInfo,
@@ -332,10 +362,148 @@ test('shows selected debug snapshot details on mobile', async ({
   ])
   await expect(details.locator('dd')).toHaveText([
     '15m',
-    'Legacy snapshot (version 1)',
+    'Legacy snapshot (version 3)',
     /Jul 26, 2026/,
   ])
   await expect(loadButton).toBeEnabled()
+  await expect(exportButton).toBeEnabled()
+})
+
+test('exports exactly the selected recent snapshot and refreshes its metadata', async ({
+  page,
+}, testInfo) => {
+  await seedRecentSnapshotDetails(page)
+  await openReachMoonMainMenu(page)
+
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  await page.getByRole('button', { name: 'Load any game' }).click()
+  const selector = page.locator('#main-menu-recent-snapshot')
+  await selector.selectOption('legacy-entry')
+  await page.evaluate(() => {
+    const nativeCreateObjectUrl = URL.createObjectURL.bind(URL)
+    const testWindow = window as Window & {
+      __debugSnapshotDownloadPayload?: string
+    }
+    URL.createObjectURL = (blob) => {
+      if (blob instanceof Blob) {
+        void blob.text().then((payload) => {
+          testWindow.__debugSnapshotDownloadPayload = payload
+        })
+      }
+      return nativeCreateObjectUrl(blob)
+    }
+  })
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  const download = await downloadPromise
+
+  expect(download.suggestedFilename()).toBe(
+    'space-web-game-2026-07-26T10-00-00-000Z.json',
+  )
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as Window & { __debugSnapshotDownloadPayload?: string })
+            .__debugSnapshotDownloadPayload ?? null,
+      ),
+    )
+    .not.toBeNull()
+  const downloadedSnapshot = await page.evaluate(() =>
+    JSON.parse(
+      (window as Window & { __debugSnapshotDownloadPayload?: string })
+        .__debugSnapshotDownloadPayload ?? '',
+    ),
+  )
+  expect(downloadedSnapshot).toEqual(recentSnapshotDetailEntries[1].snapshot)
+
+  await expect(page.getByRole('status')).toHaveText(
+    'Snapshot download started.',
+  )
+  await expect(selector).toHaveValue('legacy-entry')
+  await expect(
+    page.locator('.main-menu-recent-snapshot select option'),
+  ).toContainText(['Moon transfer', 'Legacy approach'])
+  await expect(page.locator('.menu-recent-snapshot-details dt')).toHaveText([
+    'Game time',
+    'Scenario',
+    'Created',
+    'Last exported',
+  ])
+
+  const exportState = await page.evaluate(() => {
+    const rawEntries = localStorage.getItem(
+      'space-web-game.recentDebugScenarioSnapshots.v1',
+    )
+    return {
+      activeSnapshot: localStorage.getItem(
+        'space-web-game.debugScenarioSnapshot.v1',
+      ),
+      entries: rawEntries ? JSON.parse(rawEntries) : [],
+    }
+  })
+  expect(exportState.activeSnapshot).toBeNull()
+  expect(
+    exportState.entries.map(
+      (entry: { id: string; name: string }) => `${entry.id}:${entry.name}`,
+    ),
+  ).toEqual(['reach-moon-entry:Moon transfer', 'legacy-entry:Legacy approach'])
+  expect(exportState.entries[0].lastExportedAt).toBe('2026-07-28T08:30:00.000Z')
+  expect(exportState.entries[1].lastExportedAt).toEqual(expect.any(String))
+  expect(
+    Number.isFinite(Date.parse(exportState.entries[1].lastExportedAt)),
+  ).toBe(true)
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-main-menu-snapshot-exported',
+  )
+})
+
+test('reports download initiation failure without recording an export', async ({
+  page,
+}, testInfo) => {
+  await seedRecentSnapshotDetails(page)
+  await openReachMoonMainMenu(page)
+
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  await page.getByRole('button', { name: 'Load any game' }).click()
+  const selector = page.locator('#main-menu-recent-snapshot')
+  await selector.selectOption('legacy-entry')
+  await page.evaluate(() => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: () => {
+        throw new Error('Downloads blocked')
+      },
+    })
+  })
+
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+
+  await expect(page.getByRole('alert')).toHaveText(
+    'Snapshot download could not be started. Try again.',
+  )
+  await expect(selector).toHaveValue('legacy-entry')
+  const entries = await page.evaluate(() => {
+    const rawEntries = localStorage.getItem(
+      'space-web-game.recentDebugScenarioSnapshots.v1',
+    )
+    return rawEntries ? JSON.parse(rawEntries) : []
+  })
+  expect(entries.map((entry: { id: string }) => entry.id)).toEqual([
+    'reach-moon-entry',
+    'legacy-entry',
+  ])
+  expect(entries[1]).not.toHaveProperty('lastExportedAt')
+
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-main-menu-snapshot-export-failed',
+  )
 })
 
 test('keeps selected debug snapshot details within the desktop menu', async ({
@@ -374,6 +542,9 @@ test('keeps selected debug snapshot details within the desktop menu', async ({
       'Imported',
       'Last exported',
     ])
+    await expect(
+      page.getByRole('button', { name: 'Export', exact: true }),
+    ).toBeEnabled()
     await attachMobileScreenshot(
       page,
       testInfo,

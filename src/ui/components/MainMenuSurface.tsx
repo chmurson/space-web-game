@@ -96,6 +96,10 @@ export type MainMenuSurfaceProps = {
   developerFeatureFlagsMenuEnabled: boolean
   loadGameAvailable: boolean
   recentSnapshots: DebugScenarioSnapshotEntry[]
+  recentSnapshotExportStatus: {
+    kind: 'error' | 'success'
+    message: string
+  } | null
   reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null
   reachMoonHighscoreState: ReachMoonHighscoreMenuState
   selectedRecentSnapshotId: string
@@ -119,6 +123,7 @@ export type MainMenuSurfaceProps = {
   onReachMoonMenu(): void
   onTutorial(): void
   onRecentSnapshotChange(id: string): void
+  onRecentSnapshotExport(): void
   onRecentSnapshotLoad(): void
   onRecentSnapshotMenu(): void
 }
@@ -600,6 +605,7 @@ export const MainMenuSurface = ({
   developerFeatureFlagsMenuEnabled,
   loadGameAvailable,
   recentSnapshots,
+  recentSnapshotExportStatus,
   reachMoonHighscorePendingRun,
   reachMoonHighscoreState,
   rootRef,
@@ -623,6 +629,7 @@ export const MainMenuSurface = ({
   onReachMoonMenu,
   onTutorial,
   onRecentSnapshotChange,
+  onRecentSnapshotExport,
   onRecentSnapshotLoad,
   onRecentSnapshotMenu,
 }: MainMenuSurfaceProps) => {
@@ -881,15 +888,38 @@ export const MainMenuSurface = ({
                 ))}
               </dl>
             ) : null}
-            <MenuActionButton
-              action="load-any"
-              actionAttribute={mainMenuActionAttribute}
-              disabled={!selectedRecentSnapshotId}
-              variant="secondary"
-              onClick={onRecentSnapshotLoad}
-            >
-              Load
-            </MenuActionButton>
+            <div class="main-menu-snapshot-actions">
+              <MenuActionButton
+                action="load-any"
+                actionAttribute={mainMenuActionAttribute}
+                disabled={!selectedRecentSnapshotId}
+                variant="secondary"
+                onClick={onRecentSnapshotLoad}
+              >
+                Load
+              </MenuActionButton>
+              <MenuActionButton
+                action="export-snapshot"
+                actionAttribute={mainMenuActionAttribute}
+                disabled={!selectedRecentSnapshotId}
+                variant="secondary"
+                onClick={onRecentSnapshotExport}
+              >
+                Export
+              </MenuActionButton>
+            </div>
+            {recentSnapshotExportStatus ? (
+              <p
+                class={`main-menu-snapshot-status main-menu-snapshot-status-${recentSnapshotExportStatus.kind}`}
+                role={
+                  recentSnapshotExportStatus.kind === 'error'
+                    ? 'alert'
+                    : 'status'
+                }
+              >
+                {recentSnapshotExportStatus.message}
+              </p>
+            ) : null}
           </div>
           <MenuActionButton
             action="load-back"

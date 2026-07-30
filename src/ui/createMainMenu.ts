@@ -1,8 +1,10 @@
 import type { DeveloperFeatureFlags } from '../app/developerFeatureFlags'
 import {
   type DebugScenarioSnapshotEntry,
+  downloadDebugScenarioSnapshot,
   getRecentDebugScenarioSnapshots,
   loadRecentDebugScenarioSnapshot,
+  markRecentDebugScenarioSnapshotExported,
   readDebugScenarioSnapshot,
 } from '../debugScenarioSnapshot'
 import {
@@ -85,6 +87,8 @@ export const createMainMenu = (options: {
   let loadGameAvailable = isLoadGameAvailable()
   let recentSnapshots: DebugScenarioSnapshotEntry[] =
     getRecentDebugScenarioSnapshots()
+  let recentSnapshotExportStatus: MainMenuRenderProps['recentSnapshotExportStatus'] =
+    null
   let selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
   let reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null = null
   let reachMoonHighscoreActivePeriod: ReachMoonHighscorePeriod =
@@ -205,6 +209,7 @@ export const createMainMenu = (options: {
         options.developerFeatureFlagsMenuEnabled,
       loadGameAvailable,
       recentSnapshots,
+      recentSnapshotExportStatus,
       reachMoonHighscorePendingRun,
       reachMoonHighscoreState: {
         activePeriod: reachMoonHighscoreActivePeriod,
@@ -244,6 +249,7 @@ export const createMainMenu = (options: {
         }
       },
       onLoadGameBack: () => {
+        recentSnapshotExportStatus = null
         setActiveView(
           activeView === 'load-game-snapshot' ? 'load-game' : 'main',
         )
@@ -296,6 +302,49 @@ export const createMainMenu = (options: {
       onTutorial: () => handleActionThatClosesMenu(options.onTutorial),
       onRecentSnapshotChange: (id) => {
         selectedRecentSnapshotId = id
+        recentSnapshotExportStatus = null
+        renderMenu()
+      },
+      onRecentSnapshotExport: () => {
+        const selectedSnapshot = recentSnapshots.find(
+          (snapshot) => snapshot.id === selectedRecentSnapshotId,
+        )
+        if (!selectedSnapshot) {
+          recentSnapshotExportStatus = {
+            kind: 'error',
+            message: 'The selected snapshot is no longer available.',
+          }
+          refreshLoadGameAvailable()
+          renderMenu()
+          return
+        }
+
+        try {
+          downloadDebugScenarioSnapshot(selectedSnapshot.snapshot)
+        } catch {
+          recentSnapshotExportStatus = {
+            kind: 'error',
+            message: 'Snapshot download could not be started. Try again.',
+          }
+          renderMenu()
+          return
+        }
+
+        if (!markRecentDebugScenarioSnapshotExported(selectedSnapshot.id)) {
+          recentSnapshotExportStatus = {
+            kind: 'error',
+            message:
+              'Download started, but the local export time could not be saved.',
+          }
+          renderMenu()
+          return
+        }
+
+        recentSnapshots = getRecentDebugScenarioSnapshots()
+        recentSnapshotExportStatus = {
+          kind: 'success',
+          message: 'Snapshot download started.',
+        }
         renderMenu()
       },
       onRecentSnapshotLoad: () => {
@@ -315,6 +364,7 @@ export const createMainMenu = (options: {
       },
       onRecentSnapshotMenu: () => {
         refreshLoadGameAvailable()
+        recentSnapshotExportStatus = null
         setActiveView('load-game-snapshot')
         renderMenu()
       },
