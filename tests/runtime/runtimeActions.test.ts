@@ -318,6 +318,59 @@ describe('createRuntimeActions', () => {
     }
   })
 
+  it('reports partial success when download starts but the recent entry cannot be saved', () => {
+    const runtime = createRuntime()
+    const storage = createStorageDouble()
+    const originalSetItem = storage.setItem
+    storage.setItem = vi.fn((key: string, value: string) => {
+      if (key.includes('recentDebugScenarioSnapshots')) {
+        throw new Error('Storage quota exceeded')
+      }
+      originalSetItem(key, value)
+    })
+    const downloadLink = {
+      click: vi.fn(),
+      download: '',
+      hidden: false,
+      href: '',
+      remove: vi.fn(),
+    }
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:runtime-snapshot')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('window', { localStorage: storage })
+    vi.stubGlobal('document', {
+      body: { append: vi.fn() },
+      createElement: vi.fn(() => downloadLink),
+    })
+    vi.stubGlobal('URL', {
+      createObjectURL,
+      revokeObjectURL,
+    })
+
+    try {
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(runtimeActions.exportCurrentDebugSnapshot()).toEqual({
+        downloadStarted: true,
+        recentEntrySaved: false,
+      })
+      expect(downloadLink.click).toHaveBeenCalledOnce()
+      expect(downloadLink.remove).toHaveBeenCalledOnce()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:runtime-snapshot')
+      expect(storage.setItem).toHaveBeenCalledOnce()
+      expect(storage.setItem).toHaveBeenCalledWith(
+        expect.stringContaining('recentDebugScenarioSnapshots'),
+        expect.any(String),
+      )
+      expect(getRecentDebugScenarioSnapshots()).toEqual([])
+      expect(runtime.debug.debugSnapshotStatus).toBe(
+        'snapshot downloaded; recent entry save failed',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('toggles valid player pins and clears only player ownership', () => {
     const runtime = createRuntime()
     runtime.scenario.directives.infoPins = [createBodyInfoPin('moon')]
