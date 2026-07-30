@@ -958,6 +958,27 @@ canvas {
   border-top: 1px solid var(--ui-glass-panel-border);
 }
 
+.main-menu-recent-snapshot-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.menu-recent-snapshot-status {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.menu-recent-snapshot-status-success {
+  color: #86efac;
+}
+
+.menu-recent-snapshot-status-error {
+  color: #fecdd3;
+}
+
 .menu-recent-snapshot-detail {
   display: grid;
   grid-template-columns: minmax(80px, 0.7fr) minmax(0, 1.3fr);

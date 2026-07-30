@@ -74,7 +74,16 @@ const recentSnapshotDetailEntries = [
       savedAt: '2026-07-27T12:00:00.000Z',
       elapsed: 90 * 60,
       bodies: [],
-      spacecraft: {},
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 5,
+        fuelUsed: 1,
+        dryMass: 10,
+        fuelMass: 5,
+        fuelCapacity: 6,
+      },
       runtimeScenario: {
         checkpoint: null,
         completed: false,
@@ -92,11 +101,20 @@ const recentSnapshotDetailEntries = [
     name: 'Legacy approach',
     savedAt: '2026-07-26T10:00:00.000Z',
     snapshot: {
-      version: 1,
+      version: 3,
       savedAt: '2026-07-26T10:00:00.000Z',
       elapsed: 15 * 60,
       bodies: [],
-      spacecraft: {},
+      spacecraft: {
+        position: { x: 10, y: 20 },
+        velocity: { x: 1, y: 2 },
+        heading: 0.5,
+        fuel: 4,
+        fuelUsed: 2,
+        dryMass: 10,
+        fuelMass: 4,
+        fuelCapacity: 6,
+      },
     },
   },
 ]
@@ -332,7 +350,7 @@ test('shows selected debug snapshot details on mobile', async ({
   ])
   await expect(details.locator('dd')).toHaveText([
     '15m',
-    'Legacy snapshot (version 1)',
+    'Legacy snapshot (version 3)',
     /Jul 26, 2026/,
   ])
   await expect(loadButton).toBeEnabled()
