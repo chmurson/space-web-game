@@ -25,17 +25,19 @@ const trajectoryRenderingConfig = {
 }
 
 describe('sphere-of-influence visuals', () => {
-  it('uses the approved soft field for all four border widths', () => {
+  it('uses the approved soft field and 1px border for all five strengths', () => {
     const childSignatures = new Set<string>()
+    const expectedStrengths = [1, 1.5, 2, 2.5, 3]
 
     for (const [index, variant] of sphereOfInfluenceVariants.entries()) {
       const visual = createSphereOfInfluenceVisual(body, variant)
       const metadata = visual.group.userData.sphereOfInfluence
-      const borderWidthPixels = index + 1
+      const edgeGradientStrength = expectedStrengths[index]
 
       expect(metadata).toEqual({
         bodyId: 'earth',
-        borderWidthPixels,
+        borderWidthPixels: 1,
+        edgeGradientStrength,
         radiusMeters: body.sphereOfInfluenceRadius,
         variant,
       })
@@ -45,7 +47,11 @@ describe('sphere-of-influence visuals', () => {
       ])
       expect(visual.group.getObjectByName('soi-field-fill')).toHaveProperty(
         'material.uniforms.uSoiBorderWidthPixels.value',
-        borderWidthPixels,
+        1,
+      )
+      expect(visual.group.getObjectByName('soi-field-fill')).toHaveProperty(
+        'material.uniforms.uSoiEdgeGradientStrength.value',
+        edgeGradientStrength,
       )
       childSignatures.add(
         visual.group.children.map((child) => child.name).join('|'),
@@ -55,17 +61,27 @@ describe('sphere-of-influence visuals', () => {
     expect(childSignatures.size).toBe(1)
   })
 
-  it('preserves the original field gradient shader', () => {
-    const visual = createSphereOfInfluenceVisual(body, 'field-1px')
+  it('keeps soi=1 as the original field-gradient strength', () => {
+    const visual = createSphereOfInfluenceVisual(body, 'field-gradient-1x')
     const field = visual.group.getObjectByName('soi-field-fill')
 
     expect(field).toHaveProperty(
       'material.fragmentShader',
-      expect.stringContaining('0.045 * (0.32 * interior + outerField)'),
+      expect.stringContaining(
+        '0.32 * interior + uSoiEdgeGradientStrength * outerField',
+      ),
+    )
+    expect(field).toHaveProperty(
+      'material.fragmentShader',
+      expect.stringContaining('float alpha = 0.045 * ('),
     )
     expect(field).toHaveProperty(
       'material.fragmentShader',
       expect.stringContaining('dFdx(radiusFromCenter)'),
+    )
+    expect(field).toHaveProperty(
+      'material.uniforms.uSoiEdgeGradientStrength.value',
+      1,
     )
   })
 
@@ -76,7 +92,7 @@ describe('sphere-of-influence visuals', () => {
       trajectoryRenderingConfig,
       undefined,
       undefined,
-      'field-2px',
+      'field-gradient-1.5x',
     )
 
     expect(disabledScene.bodySphereOfInfluenceGroups.size).toBe(0)

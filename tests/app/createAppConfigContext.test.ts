@@ -238,12 +238,13 @@ describe('createAppConfigContext', () => {
     ).toBe(128 * 24)
   })
 
-  it('selects sphere-of-influence visuals only for the four exact flag values', () => {
+  it('selects sphere-of-influence visuals only for the five exact flag values', () => {
     const variants = [
-      ['1', 'field-1px'],
-      ['2', 'field-2px'],
-      ['3', 'field-3px'],
-      ['4', 'field-4px'],
+      ['1', 'field-gradient-1x'],
+      ['2', 'field-gradient-1.5x'],
+      ['3', 'field-gradient-2x'],
+      ['4', 'field-gradient-2.5x'],
+      ['5', 'field-gradient-3x'],
     ] as const
 
     for (const [flagValue, variant] of variants) {
@@ -257,7 +258,7 @@ describe('createAppConfigContext', () => {
       ).toBe(variant)
     }
 
-    for (const search of ['?soi=', '?soi=0', '?soi=5', '?soi=true', '?SOI=1']) {
+    for (const search of ['?soi=', '?soi=0', '?soi=6', '?soi=true', '?SOI=1']) {
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
         value: createWindowWithSearch(search),

@@ -72,12 +72,12 @@ const captureScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('captures the approved SOI field with four screen-space border widths', async ({
+test('captures the base SOI field and four edge-gradient strengths', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
 
-  for (const variant of [1, 2, 3, 4]) {
+  for (const variant of [1, 2, 3, 4, 5]) {
     await page.goto(`/?scenario=earth-moon&devtools=1&soi=${variant}`)
     await expect(page.locator('[data-boot-screen]')).toBeHidden()
     await page.waitForFunction(() =>
@@ -89,7 +89,7 @@ test('captures the approved SOI field with four screen-space border widths', asy
     await expect(page.locator('canvas')).toBeVisible()
     await captureScreenshot(page, testInfo, `soi-${variant}-portrait`)
 
-    if (variant === 1 || variant === 4) {
+    if (variant === 1 || variant === 5) {
       for (let step = 0; step < 3; step += 1) {
         await dispatchDevtoolsRequest(page, {
           action: 'zoomIn',
