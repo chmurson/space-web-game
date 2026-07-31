@@ -311,6 +311,52 @@ const createLongHorizonPredictionConfig = () => ({
 })
 
 describe('createTrajectoryPredictionRuntime', () => {
+  it('uses Kepler near prediction only when the target is the sole gravitating body', () => {
+    const massiveEarth = {
+      ...earth,
+      mass: 1_000_000_000_000_000,
+    }
+    const orbitRadius = 1_000
+    const createOrbitalState = (bodies: Body[]): SimulationState => ({
+      ...createState(),
+      bodies,
+      spacecraft: {
+        ...createState().spacecraft,
+        position: { x: orbitRadius, y: 0 },
+        velocity: {
+          x: 0,
+          y: Math.sqrt((G * massiveEarth.mass) / orbitRadius),
+        },
+      },
+    })
+
+    const oneBodyHarness = createRuntimeHarness({
+      predictionImplementation: 'kepler',
+    })
+    oneBodyHarness.setTarget(massiveEarth)
+    oneBodyHarness.setState(createOrbitalState([massiveEarth]))
+    oneBodyHarness.predictionRuntime.refresh(oneBodyHarness.getOptions())
+
+    const multiBodyHarness = createRuntimeHarness({
+      predictionImplementation: 'kepler',
+    })
+    multiBodyHarness.setTarget(massiveEarth)
+    multiBodyHarness.setState(
+      createOrbitalState([
+        massiveEarth,
+        {
+          ...moon,
+          mass: 1_000_000_000_000,
+          position: { x: 1_000_000, y: 0 },
+        },
+      ]),
+    )
+    multiBodyHarness.predictionRuntime.refresh(multiBodyHarness.getOptions())
+
+    expect(oneBodyHarness.engineStep).not.toHaveBeenCalled()
+    expect(multiBodyHarness.engineStep).toHaveBeenCalled()
+  })
+
   it('refreshes immediately when the assist target changes', () => {
     const { getOptions, predictionRuntime, setTarget } = createRuntimeHarness()
 

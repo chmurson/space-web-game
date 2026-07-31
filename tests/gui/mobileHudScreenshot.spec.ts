@@ -7,7 +7,11 @@ import {
 } from '@playwright/test'
 import type { UIUserAction } from '../../src/input/uiUserActions'
 import type { ReachMoonHighscorePendingRun } from '../../src/ui/components/MainMenuSurface'
-import type { DesktopEdgePanSpeed } from '../../src/userSettingsStorage'
+import type {
+  DesktopCameraPanMode,
+  DesktopEdgePanSpeed,
+  DesktopWheelPanSpeed,
+} from '../../src/userSettingsStorage'
 
 const screenshotCss = `
   *, *::before, *::after {
@@ -57,6 +61,54 @@ const expectWorldVisualsSuppressed = async (page: Page) => {
 }
 
 const getReachMoonUrl = (query = '') => (query ? `/?${query}` : '/')
+
+const recentSnapshotDetailEntries = [
+  {
+    id: 'reach-moon-entry',
+    importedAt: '2026-07-27T13:00:00.000Z',
+    lastExportedAt: '2026-07-28T08:30:00.000Z',
+    name: 'Moon transfer',
+    savedAt: '2026-07-27T12:00:00.000Z',
+    snapshot: {
+      version: 3,
+      savedAt: '2026-07-27T12:00:00.000Z',
+      elapsed: 90 * 60,
+      bodies: [],
+      spacecraft: {},
+      runtimeScenario: {
+        checkpoint: null,
+        completed: false,
+        promptUi: {
+          activePromptId: null,
+          replayPromptId: null,
+        },
+        scenarioId: 'reach-moon',
+        state: { phase: 'reach-moon' },
+      },
+    },
+  },
+  {
+    id: 'legacy-entry',
+    name: 'Legacy approach',
+    savedAt: '2026-07-26T10:00:00.000Z',
+    snapshot: {
+      version: 1,
+      savedAt: '2026-07-26T10:00:00.000Z',
+      elapsed: 15 * 60,
+      bodies: [],
+      spacecraft: {},
+    },
+  },
+]
+
+const seedRecentSnapshotDetails = async (page: Page) => {
+  await page.addInitScript((entries) => {
+    window.localStorage.setItem(
+      'space-web-game.recentDebugScenarioSnapshots.v1',
+      JSON.stringify(entries),
+    )
+  }, recentSnapshotDetailEntries)
+}
 
 const highscoreScore = {
   baseScorePoints: 0,
@@ -233,6 +285,103 @@ test('captures the mobile main menu HUD with world visuals suppressed', async ({
     testInfo,
     'mobile-main-menu-snapshot-load-disabled',
   )
+  await expect(page.locator('.menu-recent-snapshot-details')).toHaveCount(0)
+})
+
+test('shows selected debug snapshot details on mobile', async ({
+  page,
+}, testInfo) => {
+  await seedRecentSnapshotDetails(page)
+  await openReachMoonMainMenu(page)
+
+  await page.getByRole('button', { name: 'Load Game' }).click()
+  await page.getByRole('button', { name: 'Load any game' }).click()
+
+  const details = page.locator('.menu-recent-snapshot-details')
+  const loadButton = page.getByRole('button', { name: 'Load', exact: true })
+  await expect(details).toHaveAttribute('aria-live', 'polite')
+  await expect(details.evaluate((element) => element.tagName)).resolves.toBe(
+    'DL',
+  )
+  await expect(details.locator('dt')).toHaveText([
+    'Game time',
+    'Scenario',
+    'Created',
+    'Imported',
+    'Last exported',
+  ])
+  await expect(details.locator('dd')).toHaveText([
+    '01h30m',
+    'Reach the Moon (reach-moon)',
+    /Jul 27, 2026/,
+    /Jul 27, 2026/,
+    /Jul 28, 2026/,
+  ])
+  await expect(loadButton).toBeEnabled()
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-main-menu-snapshot-details',
+  )
+
+  await page.locator('#main-menu-recent-snapshot').selectOption('legacy-entry')
+  await expect(details.locator('dt')).toHaveText([
+    'Game time',
+    'Scenario',
+    'Created',
+  ])
+  await expect(details.locator('dd')).toHaveText([
+    '15m',
+    'Legacy snapshot (version 1)',
+    /Jul 26, 2026/,
+  ])
+  await expect(loadButton).toBeEnabled()
+})
+
+test('keeps selected debug snapshot details within the desktop menu', async ({
+  baseURL,
+  browser,
+}, testInfo) => {
+  if (!baseURL) {
+    throw new Error('Playwright base URL is not configured')
+  }
+
+  const context = await browser.newContext({
+    baseURL,
+    hasTouch: false,
+    isMobile: false,
+    viewport: { width: 1024, height: 720 },
+  })
+  const page = await context.newPage()
+
+  try {
+    await seedRecentSnapshotDetails(page)
+    await openReachMoonMainMenu(page)
+    await page.getByRole('button', { name: 'Load Game' }).click()
+    await page.getByRole('button', { name: 'Load any game' }).click()
+
+    const panel = page.locator('[data-main-menu-view="load-game-snapshot"]')
+    const panelBounds = await panel.boundingBox()
+    expect(panelBounds).not.toBeNull()
+    expect(panelBounds?.y ?? -1).toBeGreaterThanOrEqual(0)
+    expect(
+      (panelBounds?.y ?? 0) + (panelBounds?.height ?? Number.POSITIVE_INFINITY),
+    ).toBeLessThanOrEqual(720)
+    await expect(page.locator('.menu-recent-snapshot-details dt')).toHaveText([
+      'Game time',
+      'Scenario',
+      'Created',
+      'Imported',
+      'Last exported',
+    ])
+    await attachMobileScreenshot(
+      page,
+      testInfo,
+      'desktop-main-menu-snapshot-details',
+    )
+  } finally {
+    await context.close()
+  }
 })
 
 test('captures the mobile Reach the Moon menu transition', async ({
@@ -265,11 +414,20 @@ test('keeps named debug snapshots available after a page refresh', async ({
     localStorage.clear()
     writeDebugScenarioSnapshot(
       {
-        version: 1,
+        version: 3,
         savedAt: '2026-07-19T09:00:00.000Z',
         elapsed: 42,
         bodies: [],
-        spacecraft: {},
+        spacecraft: {
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          heading: 0,
+          fuel: 0,
+          fuelUsed: 0,
+          dryMass: 1,
+          fuelMass: 0,
+          fuelCapacity: 0,
+        },
       },
       'Moon approach',
     )
@@ -1226,21 +1384,31 @@ test('refreshes stale main menu load state when the snapshot disappears', async 
       await import(debugSnapshotModulePath)
     const app = document.createElement('div')
     const events: string[] = []
+    const spacecraft = {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      heading: 0,
+      fuel: 0,
+      fuelUsed: 0,
+      dryMass: 1,
+      fuelMass: 0,
+      fuelCapacity: 0,
+    }
 
     document.body.append(app)
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 0,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(1).toISOString(),
       elapsed: 1,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
 
     const menu = createMainMenu({
@@ -1344,11 +1512,20 @@ test('keeps the crash menu adapter state, focus, and keyboard behavior', async (
     document.body.append(beforeButton, app)
     beforeButton.focus()
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 0,
       bodies: [],
-      spacecraft: {},
+      spacecraft: {
+        position: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0 },
+        heading: 0,
+        fuel: 0,
+        fuelUsed: 0,
+        dryMass: 1,
+        fuelMass: 0,
+        fuelCapacity: 0,
+      },
     })
 
     const menu = createCrashMenu({
@@ -1485,6 +1662,16 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     const outsideButton = document.createElement('button')
     const events: string[] = []
     const savedSnapshotNames: string[] = []
+    const spacecraft = {
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      heading: 0,
+      fuel: 0,
+      fuelUsed: 0,
+      dryMass: 1,
+      fuelMass: 0,
+      fuelCapacity: 0,
+    }
     let debugModeEnabled = false
     let fpsIndicatorEnabled = false
 
@@ -1627,18 +1814,18 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
 
     menu.close()
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(0).toISOString(),
       elapsed: 1,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     writeDebugScenarioSnapshot({
-      version: 1,
+      version: 3,
       savedAt: new Date(1).toISOString(),
       elapsed: 2,
       bodies: [],
-      spacecraft: {},
+      spacecraft,
     })
     menu.syncState()
     openMenu()
@@ -2253,7 +2440,7 @@ test('keeps the lunar orbit quality notice text inside the bottom pill', async (
   )
 })
 
-test('keeps the desktop UI settings dialog focus and camera behavior', async ({
+test('keeps the desktop UI settings dialog focus and camera pan behavior', async ({
   page,
 }) => {
   await page.goto('/')
@@ -2266,8 +2453,9 @@ test('keeps the desktop UI settings dialog focus and camera behavior', async ({
     const beforeButton = document.createElement('button')
     const events: string[] = []
     const openEvents: boolean[] = []
-    let desktopEdgePanEnabled = false
+    let desktopCameraPanMode: DesktopCameraPanMode = 'wheel'
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+    let desktopWheelPanSpeed: DesktopWheelPanSpeed = 'normal'
 
     beforeButton.textContent = 'Before settings'
     document.body.append(beforeButton, app)
@@ -2275,17 +2463,22 @@ test('keeps the desktop UI settings dialog focus and camera behavior', async ({
 
     const dialog = createUiSettingsDialog({
       app,
-      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopCameraPanMode: () => desktopCameraPanMode,
+      getDesktopCameraPanVisible: () => true,
       getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-      getDesktopEdgePanVisible: () => true,
+      getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
       onOpenChange: (open: boolean) => openEvents.push(open),
-      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
-        events.push('edgePan:' + enabled)
-        desktopEdgePanEnabled = enabled
+      onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
+        events.push(`panMode:${mode}`)
+        desktopCameraPanMode = mode
       },
       onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
-        events.push('edgePanSpeed:' + speed)
+        events.push(`edgePanSpeed:${speed}`)
         desktopEdgePanSpeed = speed
+      },
+      onDesktopWheelPanSpeedChange: (speed: DesktopWheelPanSpeed) => {
+        events.push(`wheelPanSpeed:${speed}`)
+        desktopWheelPanSpeed = speed
       },
     })
     const getButtonByText = (text: string): HTMLButtonElement | undefined =>
@@ -2294,12 +2487,19 @@ test('keeps the desktop UI settings dialog focus and camera behavior', async ({
           (dialog.element as HTMLElement).querySelectorAll('button'),
         ) as HTMLButtonElement[]
       ).find((button) => button.textContent?.includes(text))
-    const getEdgePanSpeed = () =>
-      dialog.element.querySelector('[data-ui-settings-edge-pan-speed]')
-        ?.textContent
-    const getEdgePanSpeedButton = (action: string) =>
+    const getPanModeRadio = (mode: DesktopCameraPanMode) =>
       dialog.element.querySelector(
-        `[data-ui-settings-edge-pan-speed-action='${action}']`,
+        `.app-dialog-radio-input[value="${mode}"]`,
+      ) as HTMLInputElement | null
+    const getPanSpeed = (setting: 'edge' | 'wheel') =>
+      dialog.element.querySelector(`[data-ui-settings-pan-speed="${setting}"]`)
+        ?.textContent
+    const getPanSpeedButton = (
+      setting: 'edge' | 'wheel',
+      action: 'decrease' | 'increase',
+    ) =>
+      dialog.element.querySelector(
+        `[data-ui-settings-pan-speed-action="${setting}-${action}"]`,
       ) as HTMLButtonElement | null
 
     dialog.open()
@@ -2314,46 +2514,111 @@ test('keeps the desktop UI settings dialog focus and camera behavior', async ({
     const cameraTitle =
       dialog.element.querySelector('.app-dialog-title')?.textContent
     const paneText = dialog.element.textContent ?? ''
-    const edgePanSwitchInitial = getButtonByText(
-      'Turn on scrolling by edge pan',
-    )?.getAttribute('aria-checked')
-    getButtonByText('Turn on scrolling by edge pan')?.click()
-    const edgePanSpeedAfterToggle = getEdgePanSpeed()
-    getEdgePanSpeedButton('increase')?.click()
-    const edgePanSpeedAfterIncrease = getEdgePanSpeed()
+    const panCameraGroup = dialog.element.querySelector(
+      '.app-dialog-radio-group',
+    ) as HTMLFieldSetElement | null
+    const panModeRadios = Array.from(
+      dialog.element.querySelectorAll(
+        '.app-dialog-radio-input',
+      ) as NodeListOf<HTMLInputElement>,
+    )
+    const panModeRadioAccessibleNames = panModeRadios.map((input) =>
+      input.getAttribute('aria-label'),
+    )
+    const panModeRadioDescriptions = panModeRadios.map((input) => {
+      const descriptionId = input.getAttribute('aria-describedby')
+      return descriptionId
+        ? document.getElementById(descriptionId)?.textContent
+        : undefined
+    })
+    const panModeRadioNames = panModeRadios.map((input) => input.name)
+    const wheelModeCheckedInitial = getPanModeRadio('wheel')?.checked
+    const wheelPanSpeedInitial = getPanSpeed('wheel')
+    const edgePanSpeedHiddenInitial = getPanSpeed('edge') === undefined
+
+    getPanModeRadio('edge')?.click()
+    const edgeModeCheckedAfterSelect = getPanModeRadio('edge')?.checked
+    const edgePanSpeedAfterSelect = getPanSpeed('edge')
+    const wheelPanSpeedHiddenForEdge = getPanSpeed('wheel') === undefined
+    getPanSpeedButton('edge', 'increase')?.click()
+    const edgePanSpeedAfterIncrease = getPanSpeed('edge')
+
+    getPanModeRadio('drag')?.click()
+    const panSpeedsHiddenForDrag =
+      getPanSpeed('edge') === undefined && getPanSpeed('wheel') === undefined
+
+    getPanModeRadio('wheel')?.click()
+    getPanSpeedButton('wheel', 'increase')?.click()
+    const wheelPanSpeedAfterIncrease = getPanSpeed('wheel')
     dialog.syncState()
-    const edgePanSwitchAfter = getButtonByText(
-      'Turn on scrolling by edge pan',
-    )?.getAttribute('aria-checked')
+    const wheelModeCheckedAfterSync = getPanModeRadio('wheel')?.checked
     dialog.close()
 
     return {
       activeAfterOpen,
+      edgeModeCheckedAfterSelect,
       edgePanSpeedAfterIncrease,
-      edgePanSpeedAfterToggle,
-      edgePanSwitchAfter,
-      edgePanSwitchInitial,
+      edgePanSpeedAfterSelect,
+      edgePanSpeedHiddenInitial,
       events,
       focusRestored: document.activeElement === beforeButton,
       openEvents,
       paneText,
       cameraTitle,
+      panCameraGroupLabel: panCameraGroup?.querySelector('legend')?.textContent,
+      panCameraGroupTagName: panCameraGroup?.tagName,
+      panModeRadioAccessibleNames,
+      panModeRadioDescriptions,
+      panModeRadioLabelCount: panModeRadios.length,
+      panModeRadioNameCount: new Set(panModeRadioNames).size,
+      panSpeedsHiddenForDrag,
       settingsEntryLabels,
+      wheelModeCheckedAfterSync,
+      wheelModeCheckedInitial,
+      wheelPanSpeedAfterIncrease,
+      wheelPanSpeedHiddenForEdge,
+      wheelPanSpeedInitial,
     }
   })
 
   expect(result).toEqual({
     activeAfterOpen: true,
     cameraTitle: 'Camera settings',
+    edgeModeCheckedAfterSelect: true,
     edgePanSpeedAfterIncrease: 'Fast',
-    edgePanSpeedAfterToggle: 'Normal',
-    edgePanSwitchAfter: 'true',
-    edgePanSwitchInitial: 'false',
-    events: ['edgePan:true', 'edgePanSpeed:fast'],
+    edgePanSpeedAfterSelect: 'Normal',
+    edgePanSpeedHiddenInitial: true,
+    events: [
+      'panMode:edge',
+      'edgePanSpeed:fast',
+      'panMode:drag',
+      'panMode:wheel',
+      'wheelPanSpeed:fast',
+    ],
     focusRestored: true,
     openEvents: [true, false],
     paneText: expect.stringContaining('Camera'),
+    panCameraGroupLabel: 'Pan camera',
+    panCameraGroupTagName: 'FIELDSET',
+    panModeRadioAccessibleNames: [
+      'Wheel / trackpad',
+      'Mouse drag',
+      'Screen edge',
+    ],
+    panModeRadioDescriptions: [
+      'Scroll to pan · Ctrl/Cmd + scroll to zoom',
+      'Click and drag to pan · Scroll to zoom',
+      'Move the pointer to an edge · Scroll to zoom',
+    ],
+    panModeRadioLabelCount: 3,
+    panModeRadioNameCount: 1,
+    panSpeedsHiddenForDrag: true,
     settingsEntryLabels: ['Camera settings: Camera preferences'],
+    wheelModeCheckedAfterSync: true,
+    wheelModeCheckedInitial: true,
+    wheelPanSpeedAfterIncrease: 'Fast',
+    wheelPanSpeedHiddenForEdge: true,
+    wheelPanSpeedInitial: 'Normal',
   })
   expect(result.paneText).not.toContain('Starts by drag or tap')
   expect(result.paneText).not.toContain('Orbit point display')
@@ -2375,20 +2640,22 @@ test('omits retired mobile controls from desktop settings', async ({
 
     const dialog = createUiSettingsDialog({
       app,
-      getDesktopEdgePanEnabled: () => false,
+      getDesktopCameraPanMode: () => 'wheel' as DesktopCameraPanMode,
+      getDesktopCameraPanVisible: () => true,
       getDesktopEdgePanSpeed: () => 'normal' as DesktopEdgePanSpeed,
-      getDesktopEdgePanVisible: () => true,
-      onDesktopEdgePanEnabledChange: () => {},
+      getDesktopWheelPanSpeed: () => 'normal' as DesktopWheelPanSpeed,
+      onDesktopCameraPanModeChange: () => {},
       onDesktopEdgePanSpeedChange: () => {},
+      onDesktopWheelPanSpeedChange: () => {},
     })
     dialog.open()
     const settingsButton = Array.from(
       dialog.element.querySelectorAll(
         'button',
       ) as NodeListOf<HTMLButtonElement>,
-    ).find((button) =>
-      button.textContent?.includes('Spacecraft controls settings'),
-    ) as HTMLButtonElement | undefined
+    ).find((button) => button.textContent?.includes('Camera settings')) as
+      | HTMLButtonElement
+      | undefined
     settingsButton?.click()
     const paneText = dialog.element.textContent ?? ''
     dialog.close()
@@ -2435,10 +2702,14 @@ test('hides the empty in-game controls menu on mobile', async ({
     page.getByRole('dialog', { name: 'In-game controls' }),
   ).toHaveCount(0)
 
-  await attachMobileScreenshot(page, testInfo, 'mobile-gameplay-without-controls-menu')
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'mobile-gameplay-without-controls-menu',
+  )
 })
 
-test('captures the desktop edge pan toggle and speed in UI settings', async ({
+test('captures desktop camera pan modes and conditional speeds in UI settings', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 480, height: 720 })
@@ -2455,8 +2726,9 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
     const uiSettingsDialogModulePath = '/src/ui/createUiSettingsDialog.ts'
     const { createUiSettingsDialog } = await import(uiSettingsDialogModulePath)
     const app = document.querySelector<HTMLElement>('#app')
-    let desktopEdgePanEnabled = false
+    let desktopCameraPanMode: DesktopCameraPanMode = 'wheel'
     let desktopEdgePanSpeed: DesktopEdgePanSpeed = 'normal'
+    let desktopWheelPanSpeed: DesktopWheelPanSpeed = 'normal'
 
     if (!app) {
       throw new Error('Missing app root')
@@ -2467,14 +2739,18 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
 
     const dialog = createUiSettingsDialog({
       app,
-      getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+      getDesktopCameraPanMode: () => desktopCameraPanMode,
+      getDesktopCameraPanVisible: () => true,
       getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-      getDesktopEdgePanVisible: () => true,
-      onDesktopEdgePanEnabledChange: (enabled: boolean) => {
-        desktopEdgePanEnabled = enabled
+      getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
+      onDesktopCameraPanModeChange: (mode: DesktopCameraPanMode) => {
+        desktopCameraPanMode = mode
       },
       onDesktopEdgePanSpeedChange: (speed: DesktopEdgePanSpeed) => {
         desktopEdgePanSpeed = speed
+      },
+      onDesktopWheelPanSpeedChange: (speed: DesktopWheelPanSpeed) => {
+        desktopWheelPanSpeed = speed
       },
     })
 
@@ -2496,28 +2772,81 @@ test('captures the desktop edge pan toggle and speed in UI settings', async ({
   await expect(
     page.getByRole('button', { name: /Orbit point display/ }),
   ).toHaveCount(0)
-  await expect(page.getByRole('group', { name: 'Camera' })).toBeVisible()
-  await expect(page.getByText('Turn on scrolling by edge pan')).toBeVisible()
   await expect(
-    page.getByText('Scrolling by dragging', { exact: true }),
+    page.getByRole('group', { name: 'Camera', exact: true }),
+  ).toBeVisible()
+  const panCameraGroup = page.getByRole('group', { name: 'Pan camera' })
+  const wheelRadio = panCameraGroup.getByRole('radio', {
+    name: 'Wheel / trackpad',
+    exact: true,
+  })
+  const dragRadio = panCameraGroup.getByRole('radio', {
+    name: 'Mouse drag',
+    exact: true,
+  })
+  const edgeRadio = panCameraGroup.getByRole('radio', {
+    name: 'Screen edge',
+    exact: true,
+  })
+
+  await expect(panCameraGroup.getByRole('radio')).toHaveCount(3)
+  await expect(wheelRadio).toBeChecked()
+  await expect(
+    page.getByText('Scroll to pan · Ctrl/Cmd + scroll to zoom'),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Click and drag to pan · Scroll to zoom'),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Move the pointer to an edge · Scroll to zoom'),
   ).toBeVisible()
   await expect(page.getByText('Edge pan speed')).toHaveCount(0)
-
-  await page
-    .getByRole('switch', { name: /Turn on scrolling by edge pan/ })
-    .click()
-  await expect(
-    page.getByText('Scrolling by edge pan', { exact: true }),
-  ).toBeVisible()
-  await expect(page.getByText('Edge pan speed')).toBeVisible()
-  await expect(page.locator('[data-ui-settings-edge-pan-speed]')).toHaveText(
+  await expect(page.getByText('Wheel / trackpad pan speed')).toBeVisible()
+  await expect(page.locator('[data-ui-settings-pan-speed="wheel"]')).toHaveText(
     'Normal',
   )
 
+  await wheelRadio.press('ArrowRight')
+  await expect(dragRadio).toBeChecked()
+  await expect(page.getByText('Edge pan speed')).toHaveCount(0)
+  await expect(page.getByText('Wheel / trackpad pan speed')).toHaveCount(0)
+
+  await dragRadio.press('ArrowRight')
+  await expect(edgeRadio).toBeChecked()
+  await expect(page.getByText('Edge pan speed')).toBeVisible()
+  await expect(page.getByText('Wheel / trackpad pan speed')).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Decrease edge pan speed' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Increase edge pan speed' }),
+  ).toBeVisible()
+
+  await wheelRadio.check()
   await attachMobileScreenshot(
     page,
     testInfo,
-    'desktop-edge-pan-toggle-settings',
+    'desktop-camera-pan-wheel-settings',
+  )
+
+  await edgeRadio.check()
+  const edgeSpeedGroup = page.getByRole('group', { name: 'Edge pan speed' })
+  await edgeSpeedGroup.scrollIntoViewIfNeeded()
+  const edgeSpeedBounds = await edgeSpeedGroup.boundingBox()
+  const dialogBounds = await page
+    .getByRole('dialog', { name: 'Camera settings' })
+    .boundingBox()
+  expect(edgeSpeedBounds).not.toBeNull()
+  expect(dialogBounds).not.toBeNull()
+  expect(
+    (edgeSpeedBounds?.y ?? 0) + (edgeSpeedBounds?.height ?? 0),
+  ).toBeLessThanOrEqual(
+    (dialogBounds?.y ?? 0) + (dialogBounds?.height ?? Number.POSITIVE_INFINITY),
+  )
+  await attachMobileScreenshot(
+    page,
+    testInfo,
+    'desktop-camera-pan-edge-settings',
   )
 })
 
@@ -2640,8 +2969,6 @@ test('captures wide in-game controls keyboard hints', async ({
     await context.close()
   }
 })
-
-
 
 test('captures the mobile Time Warp control in Nav', async ({
   page,

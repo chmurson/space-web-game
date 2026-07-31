@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Vec2 } from '../simulation/vector'
+import type { DesktopCameraPanMode } from '../userSettingsStorage'
 
 export type PointerScreenPosition = {
   x: number
@@ -13,8 +14,11 @@ export type PointerCameraInput = {
 
 export type PointerCameraInputOptions = {
   camera: THREE.Camera
+  getDesktopCameraInputEnabled: () => boolean
+  getDesktopCameraInteractionsEnabled: () => boolean
+  getDesktopCameraPanMode: () => DesktopCameraPanMode
   getDesktopEdgePanSpeedPixelsPerSecond?: () => number
-  getEdgeScrollEnabled?: () => boolean
+  getDesktopWheelPanSpeedMultiplier?: () => number
   getInteractionsEnabled: () => boolean
   getCameraControlsLocked: () => boolean
   onCameraPan: (delta: Vec2) => boolean
@@ -27,23 +31,29 @@ export type PointerCameraInputOptions = {
 }
 
 const wheelZoomSensitivity = 0.0015
-const minWheelZoomFactor = 0.75
-const maxWheelZoomFactor = 1.35
+const desktopPinchZoomStrength = 2
+// Chromium encodes touchpad pinch scale as a wheel delta of -100 * log(scale).
+const pinchWheelZoomSensitivity = desktopPinchZoomStrength / 100
+const minZoomFactorPerEvent = 0.75
+const maxZoomFactorPerEvent = 1.35
 const wheelLineModePixels = 16
+const wheelDeltaModeLine = 1
+const wheelDeltaModePage = 2
 const cameraPanTapTolerancePx = 8
+const wheelZoomGestureIdleMs = 125
 const defaultDesktopEdgePanSpeedPixelsPerSecond = 420
 const edgeScrollBandPx = 44
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-const getWheelModeScale = (deltaMode: number, viewportHeight: number) => {
-  if (deltaMode === WheelEvent.DOM_DELTA_LINE) {
+const getWheelModeScale = (deltaMode: number, viewportDimension: number) => {
+  if (deltaMode === wheelDeltaModeLine) {
     return wheelLineModePixels
   }
 
-  if (deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-    return viewportHeight
+  if (deltaMode === wheelDeltaModePage) {
+    return viewportDimension
   }
 
   return 1
@@ -113,18 +123,52 @@ const getEdgeScrollCursor = (direction: Vec2) => {
   return 's-resize'
 }
 
-export const getWheelZoomFactor = (
+const getWheelZoomFactorWithSensitivity = (
   event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
   viewportHeight: number,
+  sensitivity: number,
 ) => {
   const normalizedDelta =
     event.deltaY * getWheelModeScale(event.deltaMode, viewportHeight)
   return clamp(
-    Math.exp(normalizedDelta * wheelZoomSensitivity),
-    minWheelZoomFactor,
-    maxWheelZoomFactor,
+    Math.exp(normalizedDelta * sensitivity),
+    minZoomFactorPerEvent,
+    maxZoomFactorPerEvent,
   )
 }
+
+export const getWheelZoomFactor = (
+  event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
+  viewportHeight: number,
+) =>
+  getWheelZoomFactorWithSensitivity(event, viewportHeight, wheelZoomSensitivity)
+
+const getPinchWheelZoomFactor = (
+  event: Pick<WheelEvent, 'deltaMode' | 'deltaY'>,
+  viewportHeight: number,
+) =>
+  getWheelZoomFactorWithSensitivity(
+    event,
+    viewportHeight,
+    pinchWheelZoomSensitivity,
+  )
+
+const getSafariGestureScale = (event: Event) => {
+  const scale = (event as Event & { scale?: unknown }).scale
+  return typeof scale === 'number' && Number.isFinite(scale) && scale > 0
+    ? scale
+    : null
+}
+
+const getSafariGestureZoomFactor = (
+  previousScale: number,
+  currentScale: number,
+) =>
+  clamp(
+    (previousScale / currentScale) ** desktopPinchZoomStrength,
+    minZoomFactorPerEvent,
+    maxZoomFactorPerEvent,
+  )
 
 export const createScreenPointWorldPicker = (
   camera: THREE.Camera,
@@ -169,9 +213,15 @@ export const bindPointerCameraInput = (
   )
   let pointerInsideRenderer = false
   const defaultRendererCursor = options.rendererElement.style.cursor
+  let edgeScrollCursor: string | null = null
+  let wheelZoomGestureActive = false
+  let wheelZoomGestureIdleTimer: ReturnType<typeof setTimeout> | null = null
+  let safariGesturePreviousScale: number | null = null
   let activeCameraPan: {
+    button: number
     hasMovedForTap: boolean
     hasPanned: boolean
+    panBehavior: 'left-drag' | 'none' | 'right-drag' | 'touch'
     pointerId: number
     previousX: number
     previousY: number
@@ -188,13 +238,37 @@ export const bindPointerCameraInput = (
     pointerScreenPosition.y = clientY
   }
 
-  const setEdgeScrollCursor = (cursor: string | null) => {
-    const nextCursor = cursor ?? defaultRendererCursor
+  const syncRendererCursor = () => {
+    const nextCursor =
+      activeCameraPan?.panBehavior === 'right-drag'
+        ? 'move'
+        : (edgeScrollCursor ?? defaultRendererCursor)
     if (options.rendererElement.style.cursor === nextCursor) {
       return
     }
     options.rendererElement.style.cursor = nextCursor
   }
+
+  const setEdgeScrollCursor = (cursor: string | null) => {
+    edgeScrollCursor = cursor
+    syncRendererCursor()
+  }
+
+  const continueWheelZoomGesture = () => {
+    wheelZoomGestureActive = true
+    if (wheelZoomGestureIdleTimer !== null) {
+      clearTimeout(wheelZoomGestureIdleTimer)
+    }
+    wheelZoomGestureIdleTimer = setTimeout(() => {
+      wheelZoomGestureActive = false
+      wheelZoomGestureIdleTimer = null
+    }, wheelZoomGestureIdleMs)
+  }
+
+  const canOwnDesktopZoomGesture = () =>
+    options.getInteractionsEnabled() &&
+    options.getDesktopCameraInputEnabled() &&
+    options.getDesktopCameraInteractionsEnabled()
 
   const getEdgeScrollDirection = (bounds: DOMRectReadOnly): Vec2 | null => {
     if (
@@ -262,7 +336,9 @@ export const bindPointerCameraInput = (
       !pointerInsideRenderer ||
       activeCameraPan !== null ||
       !options.getInteractionsEnabled() ||
-      !(options.getEdgeScrollEnabled?.() ?? false)
+      !options.getDesktopCameraInputEnabled() ||
+      !options.getDesktopCameraInteractionsEnabled() ||
+      options.getDesktopCameraPanMode() !== 'edge'
     ) {
       setEdgeScrollCursor(null)
       return
@@ -299,6 +375,7 @@ export const bindPointerCameraInput = (
     }
 
     activeCameraPan = null
+    syncRendererCursor()
 
     try {
       options.rendererElement.releasePointerCapture(event.pointerId)
@@ -315,22 +392,46 @@ export const bindPointerCameraInput = (
       return
     }
 
-    if (
-      !event.isPrimary ||
-      (event.pointerType === 'mouse' && event.button !== 0)
-    ) {
+    if (!event.isPrimary) {
       return
     }
 
+    let panBehavior: NonNullable<typeof activeCameraPan>['panBehavior'] =
+      'touch'
+    if (event.pointerType === 'mouse') {
+      if (!options.getDesktopCameraInputEnabled()) {
+        if (event.button !== 0) {
+          return
+        }
+        panBehavior = 'left-drag'
+      } else {
+        if (!options.getDesktopCameraInteractionsEnabled()) {
+          return
+        }
+
+        const panMode = options.getDesktopCameraPanMode()
+        if (event.button === 0) {
+          panBehavior = panMode === 'drag' ? 'left-drag' : 'none'
+        } else if (event.button === 2 && panMode === 'wheel') {
+          panBehavior = 'right-drag'
+        } else {
+          return
+        }
+      }
+    }
+
     activeCameraPan = {
+      button: event.button,
       hasMovedForTap: false,
       hasPanned: false,
+      panBehavior,
       pointerId: event.pointerId,
       previousX: event.clientX,
       previousY: event.clientY,
       startX: event.clientX,
       startY: event.clientY,
     }
+    setEdgeScrollCursor(null)
 
     try {
       options.rendererElement.setPointerCapture(event.pointerId)
@@ -350,6 +451,14 @@ export const bindPointerCameraInput = (
       clearActiveCameraPan(event)
       return
     }
+    if (
+      event.pointerType === 'mouse' &&
+      options.getDesktopCameraInputEnabled() &&
+      !options.getDesktopCameraInteractionsEnabled()
+    ) {
+      clearActiveCameraPan(event)
+      return
+    }
 
     const totalDeltaX = event.clientX - activeCameraPan.startX
     const totalDeltaY = event.clientY - activeCameraPan.startY
@@ -360,10 +469,14 @@ export const bindPointerCameraInput = (
       activeCameraPan.hasMovedForTap = true
     }
 
-    if (
-      event.pointerType === 'mouse' &&
-      (options.getEdgeScrollEnabled?.() ?? false)
-    ) {
+    const shouldPan =
+      activeCameraPan.panBehavior === 'touch' ||
+      activeCameraPan.panBehavior === 'left-drag' ||
+      (activeCameraPan.panBehavior === 'right-drag' &&
+        activeCameraPan.hasMovedForTap)
+    if (!shouldPan) {
+      activeCameraPan.previousX = event.clientX
+      activeCameraPan.previousY = event.clientY
       return
     }
 
@@ -393,10 +506,12 @@ export const bindPointerCameraInput = (
     updatePointerPosition(event.clientX, event.clientY)
 
     if (activeCameraPan?.pointerId === event.pointerId) {
+      const completedButton = activeCameraPan.button
       const completedPan =
         activeCameraPan.hasMovedForTap || activeCameraPan.hasPanned
       clearActiveCameraPan(event)
       if (
+        completedButton === 0 &&
         !completedPan &&
         event.isPrimary &&
         options.onPrimaryTap?.(event.clientX, event.clientY)
@@ -410,6 +525,21 @@ export const bindPointerCameraInput = (
     clearActiveCameraPan(event)
   })
 
+  options.rendererElement.addEventListener('contextmenu', (event) => {
+    if (
+      event.button !== 2 ||
+      !options.getInteractionsEnabled() ||
+      !options.getDesktopCameraInputEnabled() ||
+      !options.getDesktopCameraInteractionsEnabled() ||
+      options.getCameraControlsLocked() ||
+      options.getDesktopCameraPanMode() !== 'wheel'
+    ) {
+      return
+    }
+
+    event.preventDefault()
+  })
+
   options.rendererElement.addEventListener('pointerenter', () => {
     pointerInsideRenderer = true
   })
@@ -419,10 +549,132 @@ export const bindPointerCameraInput = (
     setEdgeScrollCursor(null)
   })
 
-  options.windowTarget.addEventListener(
+  options.rendererElement.addEventListener(
+    'gesturestart',
+    (event) => {
+      safariGesturePreviousScale = null
+      if (!canOwnDesktopZoomGesture()) {
+        return
+      }
+
+      const scale = getSafariGestureScale(event)
+      if (scale === null) {
+        return
+      }
+
+      safariGesturePreviousScale = scale
+      event.preventDefault()
+    },
+    { passive: false },
+  )
+
+  options.rendererElement.addEventListener(
+    'gesturechange',
+    (event) => {
+      if (safariGesturePreviousScale === null) {
+        return
+      }
+      if (!canOwnDesktopZoomGesture()) {
+        safariGesturePreviousScale = null
+        return
+      }
+
+      event.preventDefault()
+      const scale = getSafariGestureScale(event)
+      if (scale === null) {
+        return
+      }
+
+      const zoomFactor = getSafariGestureZoomFactor(
+        safariGesturePreviousScale,
+        scale,
+      )
+      safariGesturePreviousScale = scale
+      if (zoomFactor !== 1) {
+        options.onZoom(zoomFactor)
+      }
+    },
+    { passive: false },
+  )
+
+  options.rendererElement.addEventListener(
+    'gestureend',
+    (event) => {
+      const gestureWasActive = safariGesturePreviousScale !== null
+      safariGesturePreviousScale = null
+      if (gestureWasActive && canOwnDesktopZoomGesture()) {
+        event.preventDefault()
+      }
+    },
+    { passive: false },
+  )
+
+  options.rendererElement.addEventListener(
     'wheel',
     (event) => {
-      if (event.ctrlKey || event.metaKey || !options.getInteractionsEnabled()) {
+      if (!options.getInteractionsEnabled()) {
+        return
+      }
+
+      const modifiedForZoom = event.ctrlKey || event.metaKey
+      if (!options.getDesktopCameraInputEnabled()) {
+        if (modifiedForZoom) {
+          return
+        }
+        event.preventDefault()
+        options.onZoom(
+          getWheelZoomFactor(event, options.windowTarget.innerHeight),
+        )
+        return
+      }
+      if (!options.getDesktopCameraInteractionsEnabled()) {
+        return
+      }
+
+      const panMode = options.getDesktopCameraPanMode()
+      if (modifiedForZoom || (panMode === 'wheel' && wheelZoomGestureActive)) {
+        if (panMode === 'wheel') {
+          continueWheelZoomGesture()
+        }
+        event.preventDefault()
+        options.onZoom(
+          getPinchWheelZoomFactor(event, options.windowTarget.innerHeight),
+        )
+        return
+      }
+
+      if (panMode === 'wheel') {
+        if (options.getCameraControlsLocked()) {
+          return
+        }
+
+        const bounds = options.rendererElement.getBoundingClientRect()
+        const centerX = bounds.left + bounds.width * 0.5
+        const centerY = bounds.top + bounds.height * 0.5
+        const speedMultiplier = Math.max(
+          0,
+          options.getDesktopWheelPanSpeedMultiplier?.() ?? 1,
+        )
+        const deltaX =
+          event.deltaX *
+          getWheelModeScale(event.deltaMode, bounds.width) *
+          speedMultiplier
+        const deltaY =
+          event.deltaY *
+          getWheelModeScale(event.deltaMode, bounds.height) *
+          speedMultiplier
+
+        if (
+          (deltaX !== 0 || deltaY !== 0) &&
+          panCameraBetweenScreenPoints(
+            centerX,
+            centerY,
+            centerX - deltaX,
+            centerY - deltaY,
+          )
+        ) {
+          event.preventDefault()
+        }
         return
       }
 

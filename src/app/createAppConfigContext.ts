@@ -14,6 +14,10 @@ import {
   type TouchTrajectoryControlState,
   type UserSettings,
 } from '../userSettingsStorage'
+import {
+  type DeveloperFeatureFlags,
+  isDeveloperFeatureFlagsMenuEnabled,
+} from './developerFeatureFlags'
 
 export type AppMode = 'menu' | 'game'
 
@@ -22,10 +26,7 @@ export type AppConfigContext = {
   requestedEngine: string
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
-  featureFlags: {
-    noHorizonLimit: boolean
-    trajectoryPredictionImplementation: TrajectoryPredictionImplementation
-  }
+  featureFlags: DeveloperFeatureFlags
   userSettings: UserSettings
   controls: {
     timeWarps: number[]
@@ -86,14 +87,17 @@ const parseTrajectoryPredictionImplementation = (
 
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
+  const developerFeatureFlagsEnabled = isDeveloperFeatureFlagsMenuEnabled()
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
-    trajectoryPredictionImplementation: parseTrajectoryPredictionImplementation(
-      urlParams.get('trajectoryPrediction'),
-    ),
+    trajectoryPredictionImplementation: developerFeatureFlagsEnabled
+      ? parseTrajectoryPredictionImplementation(
+          urlParams.get('trajectoryPrediction'),
+        )
+      : 'euler',
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'

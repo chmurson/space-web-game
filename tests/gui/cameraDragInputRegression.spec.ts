@@ -170,9 +170,11 @@ test('keeps desktop edge-scroll panning active at the viewport edge', async ({
 
       const pointerInput = bindPointerCameraInput({
         camera,
+        getDesktopCameraInputEnabled: () => true,
+        getDesktopCameraInteractionsEnabled: () => true,
+        getDesktopCameraPanMode: () => 'edge',
         getDesktopEdgePanSpeedPixelsPerSecond: () => 420,
         getCameraControlsLocked: () => false,
-        getEdgeScrollEnabled: () => true,
         getInteractionsEnabled: () => true,
         onCameraPan: (delta) => {
           pans.push(delta)

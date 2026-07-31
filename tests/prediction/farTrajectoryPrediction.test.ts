@@ -47,6 +47,7 @@ const createRequest = (
     jobId?: number
     maxIntegrationStepSeconds?: number
     maxLoopRevolutions?: number
+    predictionImplementation?: 'euler' | 'kepler'
     semanticInputKey?: string
     stepSeconds?: number
   } = {},
@@ -63,6 +64,7 @@ const createRequest = (
     refreshInterval: 0.4,
     stepSeconds: options.stepSeconds ?? 10,
   },
+  predictionImplementation: options.predictionImplementation,
   semanticInputKey: options.semanticInputKey ?? 'semantic-1',
   state: createFarTrajectoryPredictionStateSnapshot(state),
   targetId: target.id,
@@ -72,6 +74,55 @@ const advanceState = (state: SimulationState, elapsedSeconds: number) =>
   semiImplicitEuler.step(state, elapsedSeconds)
 
 describe('createFarTrajectoryPredictor', () => {
+  it('uses Kepler only when the target is the sole gravitating body', () => {
+    const massiveTarget = {
+      ...target,
+      mass: 1_000_000_000_000_000,
+    }
+    const orbitRadius = 1_100
+    const orbitalState = {
+      ...createState(),
+      bodies: [massiveTarget],
+      spacecraft: {
+        ...createState().spacecraft,
+        position: { x: orbitRadius, y: 0 },
+        velocity: {
+          x: 0,
+          y: Math.sqrt((G * massiveTarget.mass) / orbitRadius),
+        },
+      },
+    }
+    const keplerResult = predictFarTrajectory(
+      createRequest(orbitalState, {
+        predictionImplementation: 'kepler',
+      }),
+    )
+    const multiBodyResult = predictFarTrajectory(
+      createRequest(
+        {
+          ...orbitalState,
+          bodies: [
+            massiveTarget,
+            {
+              ...target,
+              id: 'secondary',
+              mass: 1_000_000_000_000,
+              position: { x: 1_000_000, y: 0 },
+            },
+          ],
+        },
+        { predictionImplementation: 'kepler' },
+      ),
+    )
+
+    expect(keplerResult.coastPrediction.integration.stepCount).toBe(0)
+    expect(keplerResult.reuse.fallbackReason).toBe('kepler-mode')
+    expect(
+      multiBodyResult.coastPrediction.integration.stepCount,
+    ).toBeGreaterThan(0)
+    expect(multiBodyResult.reuse.fallbackReason).toBe('no-cache')
+  })
+
   it('trims elapsed passive-coast points and extends only the missing tip', () => {
     const predict = createFarTrajectoryPredictor()
     const initialState = createState()

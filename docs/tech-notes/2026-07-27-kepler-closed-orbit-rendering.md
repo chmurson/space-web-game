@@ -144,3 +144,39 @@ trajectory behavior are unchanged.
   accessible-name mismatch still expects `Time 7h30m` while the UI exposes
   `Time 07h30m`. An unrelated controlled-fling timing expectation also observed
   `x2m` instead of `x1m` at its early sample and reproduced in isolation.
+
+## 2026-08-01 current-main conflict resolution
+
+### Integration decisions
+
+- Merged current `main` after its selectable Kepler predictor, developer access
+  gate, single-mass eligibility check, numerical fallback, and production-path
+  benchmark had diverged from this branch.
+- Kept the current-main contracts for authorized developer selection, one-body
+  eligibility in both near and far prediction, non-positive step validation,
+  best-effort iteration exhaustion, and Euler fallback containment.
+- Kept this branch's safe closed-orbit classification, complete one-period
+  sampling, 128-to-1,200 sample bounds, long-period Newton/bisection safeguard,
+  synchronous single-tier coverage, timer-refresh suppression, uniform loop
+  brightness, closed render seam, and omitted end marker.
+- Impacting and unbound trajectories retain the current-main open-path loop and
+  horizon termination behavior. Multi-body scenarios continue to use the
+  numerical predictor even when Kepler mode is selected.
+- No new UI or visual language was introduced, so `DESIGN.md` remains accurate.
+
+### Validation
+
+- Focused Vitest passed 107 tests across Kepler prediction, far prediction,
+  runtime, presentation, and app configuration.
+- `npm test` passed 781 product tests, 16 task-claim tests, and 7 engineer
+  workflow tests.
+- `npm run build` passed config validation, TypeScript, and the release Vite
+  build; Vite emitted only its existing large-chunk advisory.
+- Task-scoped Biome formatting/checks and `git diff --check` passed.
+- `npm run benchmark:trajectory -- --run` passed all 14 cases. The four
+  Earth-only Kepler production cases measured roughly 10.6k to 15.3k
+  operations per second.
+- Focused Playwright passed 4/4 desktop/mobile Kepler-mode and trajectory-density
+  checks. The six desktop/mobile close, orbit, and system captures were
+  inspected at original resolution; the trajectory stayed coherent and the
+  shipped desktop/mobile HUD remained unobstructed.

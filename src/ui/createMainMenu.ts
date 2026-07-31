@@ -1,3 +1,4 @@
+import type { DeveloperFeatureFlags } from '../app/developerFeatureFlags'
 import {
   type DebugScenarioSnapshotEntry,
   getRecentDebugScenarioSnapshots,
@@ -65,6 +66,9 @@ const readHighscoreResponse = async <T>(response: Response): Promise<T> => {
 
 export const createMainMenu = (options: {
   app: HTMLElement
+  developerFeatureFlags: DeveloperFeatureFlags
+  developerFeatureFlagsMenuEnabled: boolean
+  onDeveloperFeatureFlagsApply(flags: DeveloperFeatureFlags): void
   onFreeRoam(): void
   onLoadGame(): void
   onReachMoon(): void
@@ -77,6 +81,7 @@ export const createMainMenu = (options: {
   })
 
   let activeView: MainMenuView = 'main'
+  let developerFeatureFlags = { ...options.developerFeatureFlags }
   let loadGameAvailable = isLoadGameAvailable()
   let recentSnapshots: DebugScenarioSnapshotEntry[] =
     getRecentDebugScenarioSnapshots()
@@ -195,6 +200,9 @@ export const createMainMenu = (options: {
   const renderMenu = () => {
     surface.render({
       activeView,
+      developerFeatureFlags,
+      developerFeatureFlagsMenuEnabled:
+        options.developerFeatureFlagsMenuEnabled,
       loadGameAvailable,
       recentSnapshots,
       reachMoonHighscorePendingRun,
@@ -211,6 +219,21 @@ export const createMainMenu = (options: {
       },
       selectedRecentSnapshotId,
       visible,
+      onDeveloperFeatureFlagsApply: () =>
+        options.onDeveloperFeatureFlagsApply(developerFeatureFlags),
+      onDeveloperFeatureFlagsBack: () => {
+        developerFeatureFlags = { ...options.developerFeatureFlags }
+        setActiveView('main')
+        renderMenu()
+      },
+      onDeveloperFeatureFlagsChange: (nextFlags) => {
+        developerFeatureFlags = { ...nextFlags }
+        renderMenu()
+      },
+      onDeveloperFeatureFlagsMenu: () => {
+        setActiveView('developer-feature-flags')
+        renderMenu()
+      },
       onFreeRoam: () => handleActionThatClosesMenu(options.onFreeRoam),
       onLoadGame: () => {
         const didLoad = runLoadGameAction(() =>

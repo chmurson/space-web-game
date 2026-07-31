@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import type { ComponentChildren } from 'preact'
+import type { DeveloperFeatureFlags } from '../../app/developerFeatureFlags'
 import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import {
   type RankedReachMoonHighscoreRecord,
@@ -27,10 +28,14 @@ import {
   MenuKicker,
   MenuPanel,
 } from './MenuSurfacePrimitives'
-import { formatRecentSnapshotSavedAt } from './recentSnapshotFormatting'
+import {
+  formatRecentSnapshotSavedAt,
+  getRecentSnapshotDetails,
+} from './recentSnapshotFormatting'
 
 export type MainMenuView =
   | 'main'
+  | 'developer-feature-flags'
   | 'load-game'
   | 'load-game-snapshot'
   | 'reach-moon'
@@ -87,6 +92,8 @@ export type ReachMoonHighscoreMenuState = {
 
 export type MainMenuSurfaceProps = {
   activeView: MainMenuView
+  developerFeatureFlags: DeveloperFeatureFlags
+  developerFeatureFlagsMenuEnabled: boolean
   loadGameAvailable: boolean
   recentSnapshots: DebugScenarioSnapshotEntry[]
   reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null
@@ -94,6 +101,10 @@ export type MainMenuSurfaceProps = {
   selectedRecentSnapshotId: string
   rootRef(element: HTMLElement | null): void
   visible: boolean
+  onDeveloperFeatureFlagsApply(): void
+  onDeveloperFeatureFlagsBack(): void
+  onDeveloperFeatureFlagsChange(flags: DeveloperFeatureFlags): void
+  onDeveloperFeatureFlagsMenu(): void
   onFreeRoam(): void
   onLoadGame(): void
   onLoadGameBack(): void
@@ -585,6 +596,8 @@ const ReachMoonHighscoreBoard = ({
 
 export const MainMenuSurface = ({
   activeView,
+  developerFeatureFlags,
+  developerFeatureFlagsMenuEnabled,
   loadGameAvailable,
   recentSnapshots,
   reachMoonHighscorePendingRun,
@@ -592,6 +605,10 @@ export const MainMenuSurface = ({
   rootRef,
   selectedRecentSnapshotId,
   visible,
+  onDeveloperFeatureFlagsApply,
+  onDeveloperFeatureFlagsBack,
+  onDeveloperFeatureFlagsChange,
+  onDeveloperFeatureFlagsMenu,
   onFreeRoam,
   onLoadGame,
   onLoadGameBack,
@@ -622,6 +639,13 @@ export const MainMenuSurface = ({
   const highscoreDescription = reachMoonHighscorePendingRun
     ? 'Your completed run submits automatically, then the board refreshes.'
     : 'Compare completed Earth-Moon mission runs.'
+  const selectedRecentSnapshot =
+    recentSnapshots.find(
+      (snapshot) => snapshot.id === selectedRecentSnapshotId,
+    ) ?? null
+  const selectedRecentSnapshotDetails = selectedRecentSnapshot
+    ? getRecentSnapshotDetails(selectedRecentSnapshot)
+    : []
 
   return (
     <section
@@ -678,6 +702,85 @@ export const MainMenuSurface = ({
           >
             Load Game
           </MenuActionButton>
+          {developerFeatureFlagsMenuEnabled ? (
+            <MenuActionButton
+              action="developer-feature-flags-menu"
+              actionAttribute={mainMenuActionAttribute}
+              className="main-menu-action-developer"
+              variant="secondary"
+              onClick={onDeveloperFeatureFlagsMenu}
+            >
+              Developer flags
+            </MenuActionButton>
+          ) : null}
+        </MenuActions>
+      </MenuPanel>
+
+      <MenuPanel
+        className="main-menu-panel"
+        view="developer-feature-flags"
+        viewAttribute={mainMenuViewAttribute}
+        hidden={displayedView !== 'developer-feature-flags'}
+      >
+        <MenuCopy className="main-menu-copy">
+          <MenuKicker className="main-menu-kicker">Developer flags</MenuKicker>
+          <MenuDescription>
+            Choose the trajectory implementation and horizon. Applying changes
+            reloads the app with the selected configuration.
+          </MenuDescription>
+        </MenuCopy>
+        <MenuActions className="main-menu-actions">
+          <label class="main-menu-feature-flag">
+            <span>Trajectory prediction</span>
+            <select
+              aria-label="Trajectory prediction implementation"
+              value={developerFeatureFlags.trajectoryPredictionImplementation}
+              onChange={(event) =>
+                onDeveloperFeatureFlagsChange({
+                  ...developerFeatureFlags,
+                  trajectoryPredictionImplementation: event.currentTarget
+                    .value as DeveloperFeatureFlags['trajectoryPredictionImplementation'],
+                })
+              }
+            >
+              <option value="euler">Euler numerical</option>
+              <option value="kepler">Kepler two-body</option>
+            </select>
+          </label>
+          <label class="main-menu-feature-flag">
+            <span>Trajectory horizon</span>
+            <select
+              aria-label="Trajectory horizon"
+              value={
+                developerFeatureFlags.noHorizonLimit ? 'extended' : 'default'
+              }
+              onChange={(event) =>
+                onDeveloperFeatureFlagsChange({
+                  ...developerFeatureFlags,
+                  noHorizonLimit: event.currentTarget.value === 'extended',
+                })
+              }
+            >
+              <option value="default">Default limit</option>
+              <option value="extended">Extended limit</option>
+            </select>
+          </label>
+          <MenuActionButton
+            action="developer-feature-flags-apply"
+            actionAttribute={mainMenuActionAttribute}
+            variant="primary"
+            onClick={onDeveloperFeatureFlagsApply}
+          >
+            Apply and reload
+          </MenuActionButton>
+          <MenuActionButton
+            action="developer-feature-flags-back"
+            actionAttribute={mainMenuActionAttribute}
+            variant="secondary"
+            onClick={onDeveloperFeatureFlagsBack}
+          >
+            Back
+          </MenuActionButton>
         </MenuActions>
       </MenuPanel>
 
@@ -724,7 +827,7 @@ export const MainMenuSurface = ({
       </MenuPanel>
 
       <MenuPanel
-        className="main-menu-panel"
+        className="main-menu-panel main-menu-panel-snapshot"
         view="load-game-snapshot"
         viewAttribute={mainMenuViewAttribute}
         hidden={displayedView !== 'load-game-snapshot'}
@@ -763,6 +866,21 @@ export const MainMenuSurface = ({
                 ))
               )}
             </select>
+            {selectedRecentSnapshot ? (
+              <dl
+                aria-atomic="true"
+                aria-label="Selected snapshot details"
+                aria-live="polite"
+                class="menu-recent-snapshot-details"
+              >
+                {selectedRecentSnapshotDetails.map((detail) => (
+                  <div class="menu-recent-snapshot-detail" key={detail.label}>
+                    <dt>{detail.label}</dt>
+                    <dd>{detail.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
             <MenuActionButton
               action="load-any"
               actionAttribute={mainMenuActionAttribute}

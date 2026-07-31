@@ -11,7 +11,10 @@ import type {
   Spacecraft,
 } from '../simulation/types'
 import { length, sub, type Vec2 } from '../simulation/vector'
-import { computeKeplerTwoBodyTrajectoryPrediction } from './keplerTwoBody'
+import {
+  canUseKeplerTwoBodyPrediction,
+  computeKeplerTwoBodyTrajectoryPrediction,
+} from './keplerTwoBody'
 import type {
   CoastTrajectoryPredictionComputation,
   CoastTrajectoryPredictionSample,
@@ -1088,7 +1091,9 @@ const calculateFarTrajectory = (
   const allowLoopTrim =
     getCaptureMetricsForState(state, target).specificEnergy < 0
   const useKepler =
-    payload.predictionImplementation === 'kepler' && isPassiveCoast(payload)
+    payload.predictionImplementation === 'kepler' &&
+    isPassiveCoast(payload) &&
+    canUseKeplerTwoBodyPrediction(state, target)
   const reused = useKepler
     ? { divergence: null, fallbackReason: 'kepler-mode' as const }
     : tryReuseCoastPrediction(payload, state, target, cache, allowLoopTrim)
@@ -1100,6 +1105,8 @@ const calculateFarTrajectory = (
                 state,
                 target,
                 payload.predictionConfig,
+                allowLoopTrim,
+                semiImplicitEuler,
               )
             : computeCoastTrajectoryPrediction(
                 state,

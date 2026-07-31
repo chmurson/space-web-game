@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   computeKeplerTwoBodyTrajectoryPrediction,
   propagateKeplerTwoBody,
+  sampleKeplerTwoBodyTrajectory,
 } from '@/prediction/keplerTwoBody'
 import { EARTH_MASS, EARTH_RADIUS, G } from '@/simulation/constants'
+import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
 import { idleControls } from '@/simulation/state'
 import type { Body, SimulationState } from '@/simulation/types'
 import { length } from '@/simulation/vector'
@@ -35,13 +37,14 @@ const spacecraft = {
 
 const createState = (
   predictionSpacecraft: typeof spacecraft = spacecraft,
+  body: Body = earth,
 ): SimulationState => ({
-  bodies: [earth],
+  bodies: [body],
   controls: idleControls(),
   elapsed: 0,
   spacecraft: {
     ...predictionSpacecraft,
-    fuel: 1,
+    fuel: 0,
     fuelCapacity: 0,
     fuelMass: 0,
     fuelUsed: 0,
@@ -110,15 +113,58 @@ describe('propagateKeplerTwoBody', () => {
       }),
     ).toBeCloseTo(orbitRadius, -2)
   })
+
+  it('returns a best-effort finite state when iteration does not converge', () => {
+    const propagated = propagateKeplerTwoBody(
+      earth,
+      {
+        position: spacecraft.position,
+        velocity: {
+          x: earth.velocity.x - 11_000,
+          y: earth.velocity.y,
+        },
+      },
+      1_000_000,
+    )
+
+    expect(Number.isFinite(propagated.position.x)).toBe(true)
+    expect(Number.isFinite(propagated.position.y)).toBe(true)
+    expect(Number.isFinite(propagated.velocity.x)).toBe(true)
+    expect(Number.isFinite(propagated.velocity.y)).toBe(true)
+  })
+})
+
+describe('sampleKeplerTwoBodyTrajectory', () => {
+  it.each([0, -1])('rejects a non-positive sample step (%s)', (sampleStep) => {
+    expect(() =>
+      sampleKeplerTwoBodyTrajectory(earth, spacecraft, 60, sampleStep),
+    ).toThrow('sampleStepSeconds must be positive')
+  })
 })
 
 describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
+  it.each([
+    0, -1,
+  ])('preserves non-positive step validation (%s)', (stepSeconds) => {
+    expect(() =>
+      computeKeplerTwoBodyTrajectoryPrediction(
+        createState(),
+        earth,
+        createPredictionConfig(60, stepSeconds),
+        false,
+        semiImplicitEuler,
+      ),
+    ).toThrow('sampleStepSeconds must be positive')
+  })
+
   it('samples a complete closed orbit even when its period exceeds the horizon', () => {
     const period = 2 * Math.PI * Math.sqrt(orbitRadius ** 3 / (G * earth.mass))
     const computation = computeKeplerTwoBodyTrajectoryPrediction(
       createState(),
       earth,
       createPredictionConfig(600, 300),
+      true,
+      semiImplicitEuler,
     )
     const lastPoint = computation.result.relativePoints.at(-1)
     const firstPoint = computation.result.relativePoints[0]
@@ -165,6 +211,8 @@ describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
       createState(coastedSpacecraft),
       earth,
       createPredictionConfig(2 * 24 * 3_600, 180),
+      true,
+      semiImplicitEuler,
     )
     const firstPosition = {
       x: coastedSpacecraft.position.x - earth.position.x,
@@ -195,6 +243,8 @@ describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
       createState(impactSpacecraft),
       earth,
       createPredictionConfig(3_600, 10),
+      true,
+      semiImplicitEuler,
     )
 
     expect(computation.terminationReason).toBe('impact')
@@ -217,10 +267,38 @@ describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
       createState(escapeSpacecraft),
       earth,
       createPredictionConfig(600, 60),
+      false,
+      semiImplicitEuler,
     )
 
     expect(computation.terminationReason).toBe('horizon')
     expect(computation.predictionTime).toBe(600)
     expect(computation.result.relativePoints).toHaveLength(10)
+  })
+
+  it('retains loop trimming for open trajectories', () => {
+    const escapeSpeed = Math.sqrt((2 * G * earth.mass) / orbitRadius)
+    const escapeSpacecraft = {
+      ...spacecraft,
+      velocity: {
+        x: earth.velocity.x,
+        y: earth.velocity.y + escapeSpeed * 1.01,
+      },
+    }
+    const config = {
+      ...createPredictionConfig(3_600, 10),
+      maxLoopRevolutions: 0.05,
+    }
+    const computation = computeKeplerTwoBodyTrajectoryPrediction(
+      createState(escapeSpacecraft),
+      earth,
+      config,
+      true,
+      semiImplicitEuler,
+    )
+
+    expect(computation.terminationReason).toBe('loop-limit')
+    expect(computation.predictionTime).toBeLessThan(config.horizonSeconds)
+    expect(computation.result.integration.stepCount).toBe(0)
   })
 })

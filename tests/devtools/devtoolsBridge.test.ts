@@ -450,7 +450,7 @@ describe('createDevtoolsSnapshot', () => {
     const runtime = createRuntime()
     writeDebugScenarioSnapshot(
       {
-        version: 1,
+        version: 3,
         savedAt: '2026-07-19T10:00:00.000Z',
         elapsed: runtime.simulation.state.elapsed,
         bodies: runtime.simulation.state.bodies,

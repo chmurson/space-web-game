@@ -70,10 +70,15 @@ import type { Ripple } from '../ui/overlayUpdates'
 import { createTouchControls } from '../ui/touchControls/createTouchControls'
 import {
   type DesktopEdgePanSpeed,
+  type DesktopWheelPanSpeed,
   updateUserSettings,
 } from '../userSettingsStorage'
 import { bindDevicePixelRatioChanges } from './bindDevicePixelRatioChanges'
 import type { AppConfigContext, AppMode } from './createAppConfigContext'
+import {
+  isDeveloperFeatureFlagsMenuEnabled,
+  writeDeveloperFeatureFlagsToUrl,
+} from './developerFeatureFlags'
 
 type AppRuntimeCoordinator = {
   dispatchRuntimeAction(action: UIUserAction): void
@@ -88,6 +93,11 @@ const desktopEdgePanSpeedPixelsPerSecond: Record<DesktopEdgePanSpeed, number> =
     normal: 420,
     fast: 620,
   }
+const desktopWheelPanSpeedMultiplier: Record<DesktopWheelPanSpeed, number> = {
+  slow: 0.6,
+  normal: 1,
+  fast: 1.6,
+}
 
 export type AppComponents = {
   renderer: THREE.WebGLRenderer
@@ -365,8 +375,9 @@ export const createAppComponents = (options: {
     rendererElement: renderer.domElement,
   })
   let dispatchRuntimeAction: (action: UIUserAction) => void = () => {}
-  let desktopEdgePanEnabled = options.config.userSettings.desktopEdgePanEnabled
+  let desktopCameraPanMode = options.config.userSettings.desktopCameraPanMode
   let desktopEdgePanSpeed = options.config.userSettings.desktopEdgePanSpeed
+  let desktopWheelPanSpeed = options.config.userSettings.desktopWheelPanSpeed
   let uiSettingsOpen = false
   let crashCameraFocusedBodyName: string | null = null
   let getAppMode = () => options.config.initialAppMode
@@ -584,22 +595,27 @@ export const createAppComponents = (options: {
   }
   const uiSettingsDialog = createUiSettingsDialog({
     app: options.app,
-    getDesktopEdgePanEnabled: () => desktopEdgePanEnabled,
+    getDesktopCameraPanMode: () => desktopCameraPanMode,
+    getDesktopCameraPanVisible: () => desktopFinePointerMedia.matches,
     getDesktopEdgePanSpeed: () => desktopEdgePanSpeed,
-    getDesktopEdgePanVisible: () => desktopFinePointerMedia.matches,
+    getDesktopWheelPanSpeed: () => desktopWheelPanSpeed,
     onOpenChange: (open) => {
       uiSettingsOpen = open
       if (open) {
         keyboardInput.clear()
       }
     },
-    onDesktopEdgePanEnabledChange: (enabled) => {
-      desktopEdgePanEnabled = enabled
-      updateUserSettings({ desktopEdgePanEnabled: enabled })
+    onDesktopCameraPanModeChange: (mode) => {
+      desktopCameraPanMode = mode
+      updateUserSettings({ desktopCameraPanMode: mode })
     },
     onDesktopEdgePanSpeedChange: (speed) => {
       desktopEdgePanSpeed = speed
       updateUserSettings({ desktopEdgePanSpeed: speed })
+    },
+    onDesktopWheelPanSpeedChange: (speed) => {
+      desktopWheelPanSpeed = speed
+      updateUserSettings({ desktopWheelPanSpeed: speed })
     },
   })
 
@@ -648,17 +664,19 @@ export const createAppComponents = (options: {
   })
   const pointerCameraInput = bindPointerCameraInput({
     camera: gameScene.camera,
-    getDesktopEdgePanSpeedPixelsPerSecond: () =>
-      desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
-    getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
-    getEdgeScrollEnabled: () =>
-      desktopEdgePanEnabled &&
-      desktopFinePointerMedia.matches &&
+    getDesktopCameraInputEnabled: () => desktopFinePointerMedia.matches,
+    getDesktopCameraInteractionsEnabled: () =>
       !topMenu.isOpen() &&
       !inGameControlsMenu.isOpen() &&
       !uiSettingsOpen &&
       options.runtimeState.simulation.crashedBodyName === null &&
       resolveScenarioPrompts(options.runtimeState, 'desktop').active === null,
+    getDesktopCameraPanMode: () => desktopCameraPanMode,
+    getDesktopEdgePanSpeedPixelsPerSecond: () =>
+      desktopEdgePanSpeedPixelsPerSecond[desktopEdgePanSpeed],
+    getDesktopWheelPanSpeedMultiplier: () =>
+      desktopWheelPanSpeedMultiplier[desktopWheelPanSpeed],
+    getCameraControlsLocked: runtimeActions.getCameraControlsLocked,
     getInteractionsEnabled: getCameraInteractionsEnabled,
     onCameraPan: runtimeActions.panCamera,
     onPrimaryTap: (clientX, clientY) => {
@@ -678,6 +696,9 @@ export const createAppComponents = (options: {
   })
   const mainMenu = createMainMenu({
     app: options.app,
+    developerFeatureFlags: options.config.featureFlags,
+    developerFeatureFlagsMenuEnabled: isDeveloperFeatureFlagsMenuEnabled(),
+    onDeveloperFeatureFlagsApply: writeDeveloperFeatureFlagsToUrl,
     onFreeRoam: () =>
       gameHighLevelActionsMediator.dispatch({ type: 'startFreeRoam' }),
     onLoadGame: () =>

@@ -34,8 +34,9 @@ const createConfig = (
     trajectoryPredictionImplementation: 'euler',
   },
   userSettings: {
-    desktopEdgePanEnabled: false,
+    desktopCameraPanMode: 'wheel',
     desktopEdgePanSpeed: 'normal',
+    desktopWheelPanSpeed: 'normal',
     debugModeEnabled: false,
     touchBurnControlSide: 'right',
     touchTargetControlSide: 'left',

@@ -11,6 +11,7 @@ import {
   sliceFarTrajectoryPredictionCoastWindow,
 } from '../prediction/farTrajectoryPrediction'
 import {
+  canUseKeplerTwoBodyPrediction,
   computeKeplerTwoBodyTrajectoryPrediction,
   getClosedKeplerTwoBodyOrbitPeriod,
 } from '../prediction/keplerTwoBody'
@@ -815,6 +816,7 @@ export const createTrajectoryPredictionRuntime = (
   ) =>
     predictionImplementation === 'kepler' &&
     isPassiveCoast(options) &&
+    canUseKeplerTwoBodyPrediction(options.state, target) &&
     getClosedKeplerTwoBodyOrbitPeriod(target, options.state.spacecraft) !== null
 
   const shouldSplitPrediction = (
@@ -989,11 +991,15 @@ export const createTrajectoryPredictionRuntime = (
   ): TrajectoryPredictionTier => {
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const coastComputation =
-      predictionImplementation === 'kepler' && isPassiveCoast(options)
+      predictionImplementation === 'kepler' &&
+      isPassiveCoast(options) &&
+      canUseKeplerTwoBodyPrediction(options.state, target)
         ? computeKeplerTwoBodyTrajectoryPrediction(
             options.state,
             target,
             predictionConfig,
+            allowLoopTrim,
+            options.physicsEngine,
           )
         : computeCoastTrajectoryPrediction(
             options.state,
