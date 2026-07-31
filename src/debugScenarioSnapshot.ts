@@ -719,8 +719,9 @@ export const writeDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
   name?: string,
 ) => {
-  insertRecentDebugScenarioSnapshot(snapshot, {}, name)
+  const entry = insertRecentDebugScenarioSnapshot(snapshot, {}, name)
   window.localStorage.setItem(debugSnapshotStorageKey, JSON.stringify(snapshot))
+  return entry
 }
 
 export const insertImportedDebugScenarioSnapshot = (
