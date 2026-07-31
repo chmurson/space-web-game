@@ -719,8 +719,30 @@ export const writeDebugScenarioSnapshot = (
   snapshot: DebugScenarioSnapshot,
   name?: string,
 ) => {
+  const previousRecentSnapshots = window.localStorage.getItem(
+    recentDebugSnapshotsStorageKey,
+  )
   const entry = insertRecentDebugScenarioSnapshot(snapshot, {}, name)
-  window.localStorage.setItem(debugSnapshotStorageKey, JSON.stringify(snapshot))
+  try {
+    window.localStorage.setItem(
+      debugSnapshotStorageKey,
+      JSON.stringify(snapshot),
+    )
+  } catch (error) {
+    try {
+      if (previousRecentSnapshots === null) {
+        window.localStorage.removeItem(recentDebugSnapshotsStorageKey)
+      } else {
+        window.localStorage.setItem(
+          recentDebugSnapshotsStorageKey,
+          previousRecentSnapshots,
+        )
+      }
+    } catch {
+      // Preserve the active snapshot write error if rollback also fails.
+    }
+    throw error
+  }
   return entry
 }
 

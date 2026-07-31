@@ -610,6 +610,48 @@ describe('recent debug scenario snapshots', () => {
     ])
   })
 
+  it('rolls back the recent entry when the active snapshot write fails', () => {
+    writeDebugScenarioSnapshot(snapshotBase)
+    const activeStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
+    const recentStorageKey = 'space-web-game.recentDebugScenarioSnapshots.v1'
+    const previousActiveSnapshot = window.localStorage.getItem(activeStorageKey)
+    const previousRecentSnapshots =
+      window.localStorage.getItem(recentStorageKey)
+    const previousRecentEntries = getRecentDebugScenarioSnapshots()
+    const saveError = new Error('Active snapshot storage failed')
+    const originalSetItem = window.localStorage.setItem.bind(
+      window.localStorage,
+    )
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation(
+      (key, value) => {
+        if (key === activeStorageKey) {
+          throw saveError
+        }
+        originalSetItem(key, value)
+      },
+    )
+
+    let thrownError: unknown
+    try {
+      writeDebugScenarioSnapshot({
+        ...snapshotBase,
+        savedAt: '2026-04-10T10:00:01.000Z',
+        elapsed: 43,
+      })
+    } catch (error) {
+      thrownError = error
+    }
+
+    expect(thrownError).toBe(saveError)
+    expect(window.localStorage.getItem(activeStorageKey)).toBe(
+      previousActiveSnapshot,
+    )
+    expect(window.localStorage.getItem(recentStorageKey)).toBe(
+      previousRecentSnapshots,
+    )
+    expect(getRecentDebugScenarioSnapshots()).toEqual(previousRecentEntries)
+  })
+
   it('inserts imported snapshots newest first with local metadata', () => {
     writeDebugScenarioSnapshot({
       ...snapshotBase,
