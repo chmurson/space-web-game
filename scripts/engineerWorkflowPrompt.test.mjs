@@ -58,7 +58,11 @@ describe('engineer workflow prompt', () => {
       'as two independent data sources',
       '/issues/{number}/comments',
       '/pulls/{number}/comments',
+      '/pulls/{number}/reviews',
       'must not replace either required comment fetch',
+      'do not merge them into either comment stream',
+      'build a separate classified review-submission inventory',
+      'Consume that separate inventory through priority item 3',
       'PR triage is incomplete',
       'If a normalized tool omits a required field such as `updatedAt`',
       'Never convert a fetch failure into “no actionable comments.”',
@@ -69,11 +73,43 @@ describe('engineer workflow prompt', () => {
     const prompt = await readPrompt()
 
     assertContainsAll(prompt, [
-      'A direct `@andrzejkoduje` mention creates an explicit triage obligation',
+      'A direct mention of the resolved automation identity (currently `@andrzejkoduje`) creates an explicit triage obligation',
       'unchecked task-list items',
       'requests to inspect or respond to an earlier comment',
       'Reclassify an edited comment whenever its current `updatedAt` or body hash differs from tracking metadata',
       'clean automated/formal-review signals cannot downgrade a human request',
+    ])
+  })
+
+  it('treats assigned PRs as owned and limits other PRs to direct requests', async () => {
+    const prompt = await readPrompt()
+    const ownership = extractSection(
+      prompt,
+      'PR ownership and scope:',
+      'Automation memory:',
+    )
+
+    assertContainsInOrder(ownership, [
+      'Resolve the current automation identity with `gh api user --jq .login`',
+      'Treat an open PR as automation-owned when its fresh `assignees` metadata contains the resolved automation identity',
+      'An assignment is explicit PR-level ownership',
+      'An `explicit_request` claim retains only that comment scope and must not upgrade the whole PR to owned',
+      'Re-evaluate assignment and other ownership evidence from live metadata every run',
+      'an old memory event, released claim, label, author, requested-review state, or branch-name guess alone is not ownership',
+      'Build both mandatory comment inventories for every open PR',
+      'only a current direct mention of the resolved automation identity that contains a concrete request creates `explicit_request` scope',
+      'acquire the normal branch-bound PR claim and verify the current checkout and push permission before delegation',
+      'include `scope=automation_owned|assigned|explicit_request` in its purpose',
+      'For `explicit_request`, also record the triggering comment URL/id',
+    ])
+
+    assertContainsAll(prompt, [
+      'For every open PR, fetch every page of issue-level PR Conversation comments',
+      'On an owned or assigned PR, treat concrete requests as actionable even without a mention',
+      'On an otherwise unowned/unassigned PR, require a direct mention of the resolved automation identity before treating a request as actionable',
+      'Actionable external/human PR comments on owned or assigned open PRs, plus exact `explicit_request` comments on other open PRs',
+      'An assigned PR is owned for full follow-up even when it was not originally created by automation',
+      'PR scope: `<automation_owned | assigned | explicit_request>`',
     ])
   })
 
@@ -89,6 +125,48 @@ describe('engineer workflow prompt', () => {
       'Workers must not add these markers',
       'If the current comment version matches an existing sidecar and already has the automation `rocket` reaction',
       'a stale local `in_progress` record must never cause duplicate delegation',
+    ])
+  })
+
+  it('persists addressed review submissions separately and reopens changed versions', async () => {
+    const prompt = await readPrompt()
+
+    const reviewSubmissionTracking = extractSection(
+      prompt,
+      'Review submission tracking:',
+      'Delegated worker completion boundary:',
+    )
+    assertContainsInOrder(reviewSubmissionTracking, [
+      'Treat review submissions (`review_submission`) and inline review comments (`review_comment`) as separate record kinds with separate state namespaces',
+      're-fetch the exact review through `GET /repos/{owner}/{repo}/pulls/{number}/reviews/{review_id}`',
+      'Compute a SHA-256 hash of its fetched body',
+      'record the observed review version as the exact `submitted_at`, `commit_id`, and `state` values',
+      'The fingerprint is the repository, PR number, review id, body hash, and observed review version together',
+      'repository-scoped `review-submissions/<canonical-owner>/<canonical-repo>/` state directory',
+      'GitHub `nameWithOwner`, normalized to lowercase',
+      'consult the dedicated review-submission record before acquiring a claim',
+      'If its status is `addressed` and its complete fingerprint exactly matches the freshly fetched review, classify that submission `addressed`',
+      'do not acquire a claim solely for it, add `eyes` or `rocket`, or spawn a worker',
+      'If the fetched body hash or any observed review-version field differs, treat the previous fingerprint as non-matching and re-triage the current submission',
+      'fail closed instead of using placeholder fingerprint values',
+      'acquire the branch-bound PR claim, mark any previous record `stale` or `superseded`',
+      'delegate its explicit request items without attempting comment reactions',
+      'Mark its dedicated record `addressed` only when the complete fingerprint is unchanged',
+      'store the item mapping, evidence, and reconciliation timestamp without requiring a GitHub reaction',
+    ])
+
+    assertContainsAll(reviewSubmissionTracking, [
+      'Never use a review-submission record to acknowledge or suppress an inline review comment',
+      'A new review id is always a distinct submission',
+      'Keep addressed records through claim release and routine cleanup while their PR remains open',
+    ])
+
+    const runChecklist = prompt.slice(prompt.indexOf('## Run Checklist'))
+    assertContainsInOrder(runChecklist, [
+      'Before treating a review submission as actionable, re-fetch it and consult its dedicated addressed fingerprint',
+      'For a review-submission candidate without a matching addressed fingerprint, acquire the claim',
+      'Reconcile review submissions through their complete body/version fingerprint without requiring a reaction',
+      'Release the claim only after every triggering comment sidecar and dedicated review-submission record is durably reconciled',
     ])
   })
 
@@ -120,7 +198,8 @@ describe('engineer workflow prompt', () => {
       'The current invocation may resume that record even when the claim `owner`, original run id, or parent thread id belongs to an earlier invocation',
       'If it is active, verify and heartbeat the recorded claim',
       'end this invocation as `awaiting_worker`',
-      'Only when the recorded worker returns a terminal result while its claim is still valid may the same-automation invocation reconcile the worker handoff and triggering sidecars',
+      'Only when the recorded worker returns a terminal result while its claim is still valid may the same-automation invocation reconcile the worker handoff, triggering comment sidecars, and dedicated review-submission records',
+      'perform the terminal-result reconciliation immediately',
       'release the task claim, then archive the matching durable handoff',
       'a later scheduled invocation under the same active automation id must run this recovery protocol',
     ])
@@ -157,6 +236,7 @@ describe('engineer workflow prompt', () => {
       'This is recovery of the same claim, not a claim replacement',
       'Query the recorded worker thread through `codex_app__read_thread` when that tool is available',
       'If worker status is unavailable while the claim is within the freshness window, retain the record and classify it as `awaiting_status`, not terminal or failed',
+      'terminal worker status overrides the freshness wait',
       'Once the freshness window has elapsed, classify unavailable worker state as `uncertain`',
     ])
 
