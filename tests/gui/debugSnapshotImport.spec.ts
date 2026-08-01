@@ -372,6 +372,45 @@ test('keeps Import available with no recents and fits the imported state on desk
       'file',
     )
 
+    const snapshotCard = page.locator('.main-menu-recent-snapshot')
+    const navigationActions = page.locator(
+      '.main-menu-snapshot-navigation-actions',
+    )
+    const importAction = navigationActions.getByRole('button', {
+      name: 'Import',
+    })
+    const backAction = navigationActions.getByRole('button', { name: 'Back' })
+
+    await expect(
+      snapshotCard.getByRole('button', { name: 'Load', exact: true }),
+    ).toBeVisible()
+    await expect(
+      snapshotCard.getByRole('button', { name: 'Import' }),
+    ).toHaveCount(0)
+    await expect(importAction).toBeVisible()
+    await expect(backAction).toBeVisible()
+
+    const snapshotCardBounds = await snapshotCard.boundingBox()
+    const importActionBounds = await importAction.boundingBox()
+    const backActionBounds = await backAction.boundingBox()
+
+    expect(snapshotCardBounds).not.toBeNull()
+    expect(importActionBounds).not.toBeNull()
+    expect(backActionBounds).not.toBeNull()
+    expect(importActionBounds?.y).toBe(backActionBounds?.y)
+    expect(importActionBounds?.x ?? Number.POSITIVE_INFINITY).toBeLessThan(
+      backActionBounds?.x ?? Number.NEGATIVE_INFINITY,
+    )
+    expect(importActionBounds?.y ?? Number.NEGATIVE_INFINITY).toBeGreaterThan(
+      (snapshotCardBounds?.y ?? 0) + (snapshotCardBounds?.height ?? 0),
+    )
+
+    await attachScreenshot(
+      page,
+      testInfo,
+      'desktop-debug-snapshot-menu-level-import',
+    )
+
     const importedSnapshot = createSnapshot(99, '2026-07-30T08:30:00.000Z')
     await setSnapshotFile(page, JSON.stringify(importedSnapshot))
 

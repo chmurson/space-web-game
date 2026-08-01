@@ -906,25 +906,15 @@ export const MainMenuSurface = ({
                 }
               }}
             />
-            <div class="main-menu-recent-snapshot-actions">
-              <MenuActionButton
-                action="import-snapshot"
-                actionAttribute={mainMenuActionAttribute}
-                variant="secondary"
-                onClick={() => recentSnapshotFileInputRef.current?.click()}
-              >
-                Import
-              </MenuActionButton>
-              <MenuActionButton
-                action="load-any"
-                actionAttribute={mainMenuActionAttribute}
-                disabled={!selectedRecentSnapshotId}
-                variant="secondary"
-                onClick={onRecentSnapshotLoad}
-              >
-                Load
-              </MenuActionButton>
-            </div>
+            <MenuActionButton
+              action="load-any"
+              actionAttribute={mainMenuActionAttribute}
+              disabled={!selectedRecentSnapshotId}
+              variant="secondary"
+              onClick={onRecentSnapshotLoad}
+            >
+              Load
+            </MenuActionButton>
             {recentSnapshotImportStatus ? (
               <p
                 class={clsx(
@@ -941,14 +931,24 @@ export const MainMenuSurface = ({
               </p>
             ) : null}
           </div>
-          <MenuActionButton
-            action="load-back"
-            actionAttribute={mainMenuActionAttribute}
-            variant="secondary"
-            onClick={onLoadGameBack}
-          >
-            Back
-          </MenuActionButton>
+          <div class="main-menu-snapshot-navigation-actions">
+            <MenuActionButton
+              action="import-snapshot"
+              actionAttribute={mainMenuActionAttribute}
+              variant="secondary"
+              onClick={() => recentSnapshotFileInputRef.current?.click()}
+            >
+              Import
+            </MenuActionButton>
+            <MenuActionButton
+              action="load-back"
+              actionAttribute={mainMenuActionAttribute}
+              variant="secondary"
+              onClick={onLoadGameBack}
+            >
+              Back
+            </MenuActionButton>
+          </div>
         </MenuActions>
       </MenuPanel>
 
