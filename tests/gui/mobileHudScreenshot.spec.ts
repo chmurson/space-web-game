@@ -300,7 +300,7 @@ test('captures the mobile main menu HUD with world visuals suppressed', async ({
     exact: true,
   })
   await expect(loadButton).toBeDisabled()
-  await expect(loadButton).toHaveClass(/menu-action-secondary/)
+  await expect(loadButton).toHaveClass(/menu-action-primary/)
   await expect(loadButton).toHaveCSS('opacity', '0.5')
   await expect(exportButton).toBeDisabled()
   await expect(exportButton).toHaveClass(/menu-action-secondary/)
@@ -347,7 +347,9 @@ test('shows selected debug snapshot details on mobile', async ({
     /Jul 28, 2026/,
   ])
   await expect(loadButton).toBeEnabled()
+  await expect(loadButton).toHaveClass(/menu-action-primary/)
   await expect(exportButton).toBeEnabled()
+  await expect(exportButton).toHaveClass(/menu-action-secondary/)
   await attachMobileScreenshot(
     page,
     testInfo,

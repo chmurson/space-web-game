@@ -893,7 +893,7 @@ export const MainMenuSurface = ({
                 action="load-any"
                 actionAttribute={mainMenuActionAttribute}
                 disabled={!selectedRecentSnapshotId}
-                variant="secondary"
+                variant="primary"
                 onClick={onRecentSnapshotLoad}
               >
                 Load
