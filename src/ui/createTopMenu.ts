@@ -249,6 +249,7 @@ export const createTopMenu = (options: {
           }
           syncSnapshotAvailability()
           renderMenu()
+          focusAction('exportRecentDebugSnapshot')
           return
         }
 

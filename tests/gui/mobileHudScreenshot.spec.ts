@@ -1896,6 +1896,21 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
 
     openMenu()
     getActionButton('openDebugSnapshotLoad')?.click()
+    const staleRecentSelect = getRecentSelect()
+    const staleRecentOption = staleRecentSelect?.options[0]
+    if (staleRecentSelect && staleRecentOption) {
+      staleRecentOption.value = 'missing-snapshot'
+      staleRecentSelect.value = staleRecentOption.value
+      staleRecentSelect.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+    getActionButton('exportRecentDebugSnapshot')?.click()
+    const focusAfterStaleRecentExport = getActiveAction()
+    const staleRecentExportRole = menu.element
+      .querySelector('.top-menu-snapshot-status')
+      ?.getAttribute('role')
+    const staleRecentExportStatus = menu.element.querySelector(
+      '.top-menu-snapshot-status',
+    )?.textContent
     getActionButton('backFromDebugSnapshotLoad')?.click()
     const focusAfterDebugSnapshotBack = getActiveAction()
 
@@ -1954,6 +1969,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       fpsLabelAfterToggle,
       focusAfterDebugSnapshotBack,
       focusAfterDebugSnapshotOpen,
+      focusAfterStaleRecentExport,
       debugSnapshotSectionHiddenAfterOpen,
       debugSnapshotSectionHiddenBeforeOpen,
       loadLastDebugLabel,
@@ -1967,6 +1983,8 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
       savedAndExportedSnapshotNames,
       savedSnapshotNames,
       selectedRecentLoadedElapsed,
+      staleRecentExportRole,
+      staleRecentExportStatus,
       suggestedSnapshotName,
     }
   })
@@ -2016,6 +2034,7 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     fpsLabelAfterToggle: 'Hide FPS meter',
     focusAfterDebugSnapshotBack: 'openDebugSnapshotLoad',
     focusAfterDebugSnapshotOpen: true,
+    focusAfterStaleRecentExport: 'exportRecentDebugSnapshot',
     debugSnapshotSectionHiddenAfterOpen: false,
     debugSnapshotSectionHiddenBeforeOpen: true,
     loadLastDebugLabel: 'Load last debug snapshot',
@@ -2033,6 +2052,8 @@ test('keeps the top menu adapter state, focus, keyboard, and debug behavior', as
     savedAndExportedSnapshotNames: ['Snapshot at 42s', 'Snapshot at 42s'],
     savedSnapshotNames: ['Moon approach'],
     selectedRecentLoadedElapsed: 1,
+    staleRecentExportRole: 'alert',
+    staleRecentExportStatus: 'The selected snapshot is no longer available.',
     suggestedSnapshotName: 'Snapshot at 42s',
   })
 })
