@@ -626,6 +626,7 @@ export const createAppComponents = (options: {
     getFpsIndicatorEnabled: () =>
       options.runtimeState.debug.fpsIndicatorEnabled,
     onAction: handleTopMenuAction,
+    onSaveAndExportDebugSnapshot: runtimeActions.saveAndExportDebugSnapshot,
     onSaveDebugSnapshot: runtimeActions.saveDebugSnapshot,
   })
   const inGameControlsMenu = createInGameControlsMenu({

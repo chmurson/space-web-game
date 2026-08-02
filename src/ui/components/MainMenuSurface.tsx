@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import type { ComponentChildren } from 'preact'
+import { useRef } from 'preact/hooks'
 import type { DeveloperFeatureFlags } from '../../app/developerFeatureFlags'
 import type { DebugScenarioSnapshotEntry } from '../../debugScenarioSnapshot'
 import {
@@ -90,6 +91,11 @@ export type ReachMoonHighscoreMenuState = {
   submitStatus: ReachMoonHighscoreSubmitStatus
 }
 
+type RecentSnapshotImportStatus = {
+  message: string
+  tone: 'error' | 'success'
+}
+
 export type MainMenuSurfaceProps = {
   activeView: MainMenuView
   developerFeatureFlags: DeveloperFeatureFlags
@@ -100,6 +106,7 @@ export type MainMenuSurfaceProps = {
     kind: 'error' | 'success'
     message: string
   } | null
+  recentSnapshotImportStatus: RecentSnapshotImportStatus | null
   reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null
   reachMoonHighscoreState: ReachMoonHighscoreMenuState
   selectedRecentSnapshotId: string
@@ -124,6 +131,7 @@ export type MainMenuSurfaceProps = {
   onTutorial(): void
   onRecentSnapshotChange(id: string): void
   onRecentSnapshotExport(): void
+  onRecentSnapshotImport(file: File): void
   onRecentSnapshotLoad(): void
   onRecentSnapshotMenu(): void
 }
@@ -606,6 +614,7 @@ export const MainMenuSurface = ({
   loadGameAvailable,
   recentSnapshots,
   recentSnapshotExportStatus,
+  recentSnapshotImportStatus,
   reachMoonHighscorePendingRun,
   reachMoonHighscoreState,
   rootRef,
@@ -630,6 +639,7 @@ export const MainMenuSurface = ({
   onTutorial,
   onRecentSnapshotChange,
   onRecentSnapshotExport,
+  onRecentSnapshotImport,
   onRecentSnapshotLoad,
   onRecentSnapshotMenu,
 }: MainMenuSurfaceProps) => {
@@ -653,6 +663,7 @@ export const MainMenuSurface = ({
   const selectedRecentSnapshotDetails = selectedRecentSnapshot
     ? getRecentSnapshotDetails(selectedRecentSnapshot)
     : []
+  const recentSnapshotFileInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <section
@@ -888,6 +899,20 @@ export const MainMenuSurface = ({
                 ))}
               </dl>
             ) : null}
+            <input
+              accept=".json,application/json"
+              aria-label="Snapshot JSON file"
+              hidden
+              ref={recentSnapshotFileInputRef}
+              type="file"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ''
+                if (file) {
+                  onRecentSnapshotImport(file)
+                }
+              }}
+            />
             <div class="main-menu-snapshot-actions">
               <MenuActionButton
                 action="load-any"
@@ -910,7 +935,10 @@ export const MainMenuSurface = ({
             </div>
             {recentSnapshotExportStatus ? (
               <p
-                class={`main-menu-snapshot-status main-menu-snapshot-status-${recentSnapshotExportStatus.kind}`}
+                class={clsx(
+                  'menu-recent-snapshot-status',
+                  `menu-recent-snapshot-status-${recentSnapshotExportStatus.kind}`,
+                )}
                 role={
                   recentSnapshotExportStatus.kind === 'error'
                     ? 'alert'
@@ -920,15 +948,40 @@ export const MainMenuSurface = ({
                 {recentSnapshotExportStatus.message}
               </p>
             ) : null}
+            {recentSnapshotImportStatus ? (
+              <p
+                class={clsx(
+                  'menu-recent-snapshot-status',
+                  `menu-recent-snapshot-status-${recentSnapshotImportStatus.tone}`,
+                )}
+                role={
+                  recentSnapshotImportStatus.tone === 'error'
+                    ? 'alert'
+                    : 'status'
+                }
+              >
+                {recentSnapshotImportStatus.message}
+              </p>
+            ) : null}
           </div>
-          <MenuActionButton
-            action="load-back"
-            actionAttribute={mainMenuActionAttribute}
-            variant="secondary"
-            onClick={onLoadGameBack}
-          >
-            Back
-          </MenuActionButton>
+          <div class="main-menu-snapshot-navigation-actions">
+            <MenuActionButton
+              action="import-snapshot"
+              actionAttribute={mainMenuActionAttribute}
+              variant="secondary"
+              onClick={() => recentSnapshotFileInputRef.current?.click()}
+            >
+              Import
+            </MenuActionButton>
+            <MenuActionButton
+              action="load-back"
+              actionAttribute={mainMenuActionAttribute}
+              variant="secondary"
+              onClick={onLoadGameBack}
+            >
+              Back
+            </MenuActionButton>
+          </div>
         </MenuActions>
       </MenuPanel>
 

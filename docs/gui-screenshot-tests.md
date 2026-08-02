@@ -8,11 +8,11 @@ npm run test:gui
 
 The current paths boot the app at `/?reachmoon=1`, use a `390x844` mobile
 Chromium viewport, hide the WebGL canvas and world-overlay elements with
-test-only CSS, and capture visible HUD/menu states. They cover the main menu,
-the selected recent debug snapshot details and export action at mobile and
-`1024x720` desktop, plus successful and failed mobile export status states
-sizes, Reach the Moon menu/prompt states, and playable in-game touch controls
-such as Time Warp, target selection, Trajectory horizon, and thrust controls.
+test-only CSS, and capture visible HUD/menu states. They cover the main menu;
+selected recent debug snapshot details, import, and export at mobile and
+`1024x720` desktop sizes; successful and failed mobile status states; Reach the
+Moon menu/prompt states; and playable in-game touch controls such as Time Warp,
+target selection, Trajectory horizon, and thrust controls.
 Playwright writes the PNGs under `tmp/playwright-results/` and attaches them
 to the test result.
 

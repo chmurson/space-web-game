@@ -34,7 +34,7 @@ browsers without changing what the game will load.
 - `src/ui/components/MainMenuSurface.tsx` owns the disabled state, sibling Load
   and Export actions, and accessible status/alert markup.
 - `src/style.css` keeps both actions equal within the existing shared glass row
-  and uses the established success/error accent colors for status text.
+  and reuses the recent-snapshot status styles for success/error feedback.
 - `tests/gui/mobileHudScreenshot.spec.ts` covers the exact selection, download
   filename and Blob payload, metadata update, unchanged ordering/selection and
   active slot, native initiation failure, and mobile/desktop visual states.
@@ -50,8 +50,13 @@ browsers without changing what the game will load.
 - Refresh replaces the in-memory recent-entry data after persistence but leaves
   `selectedRecentSnapshotId` untouched. The storage mutation already preserves
   entry identity, name, order, count, and snapshot payload.
-- Load and Export are sibling secondary menu actions. No import placeholder,
-  top-menu action, snapshot-manager abstraction, or new transport API was added.
+- Load is the primary card action and Export is its secondary sibling, matching
+  the accepted action hierarchy without changing either action's disabled rule.
+- The portable file Import added on `main` remains a separate menu-level action
+  beside Back. Starting Import or Export clears the other operation's prior
+  status so the shared view never presents a stale result from the other flow.
+- The live-runtime Save & export flow added on `main` remains a separate top-menu
+  capture path; no snapshot-manager abstraction or new transport API was added.
 - Existing portable helpers remain the only source of the canonical JSON shape
   and descriptive sanitized filename.
 
@@ -84,9 +89,33 @@ browsers without changing what the game will load.
   announced. The focused Playwright test separately captured the native
   download and verified its filename and canonical JSON payload.
 
+### Main conflict reconciliation (2026-08-02)
+
+- Merged `origin/main` at `f6dbf49`, preserving its portable Import and
+  live-runtime export flows alongside selected-entry Export. The two content
+  conflicts were limited to `MainMenuSurface.tsx` and `createMainMenu.ts`.
+- Focused merged-menu Playwright coverage passed 9/9 across Import, empty and
+  selected states, exact selected-entry export, failure handling, and mobile
+  and desktop layouts.
+- Full product Vitest passed 780/780, automation claim tests passed 16/16,
+  engineer workflow tests passed 7/7, and the release build passed.
+- Targeted Biome and `git diff --check` passed, and no conflict markers remain.
+- The complete GUI suite passed 104/106. The Time Warp fling failure passed on
+  its immediate `--last-failed` rerun. The only stable failure remains the
+  unrelated leaderboard assertion expecting accessible text `Time 7h30m`
+  while the rendered accessibility tree exposes `Time 07h30m`; the PR delta
+  does not touch that assertion or formatter.
+- Generated mobile export success, mobile import success, desktop import
+  success, and empty-recents screenshots were visually inspected. The primary
+  Load, secondary Export, menu-level Import/Back, details, and current status
+  fit without overlap or clipping.
+- Inspected reconciliation artifacts:
+  - `tmp/playwright-results/mobileHudScreenshot-export-9d37a--and-refreshes-its-metadata-mobile-chromium/mobile-main-menu-snapshot-exported.png`
+  - `tmp/playwright-results/debugSnapshotImport-import-596b9-nd-loads-it-only-after-Load-mobile-chromium/mobile-debug-snapshot-import-success.png`
+  - `tmp/playwright-results/debugSnapshotImport-keeps--0271d-e-imported-state-on-desktop-mobile-chromium/desktop-debug-snapshot-import-success.png`
+  - `tmp/playwright-results/mobileHudScreenshot-captur-92051-th-world-visuals-suppressed-mobile-chromium/mobile-main-menu-snapshot-load-disabled.png`
+
 ## Follow-ups and known gaps
 
-- File import remains owned by issue #323.
-- Live runtime capture remains outside this flow.
 - Browsers report native download initiation, not whether the user ultimately
   keeps or deletes the downloaded file.

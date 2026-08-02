@@ -13,15 +13,21 @@ export type TopMenuSurfaceProps = {
   pendingConfirmationAction: TopMenuAction | null
   recentSnapshots: DebugScenarioSnapshotEntry[]
   selectedRecentSnapshotId: string
+  snapshotExportStatus: {
+    message: string
+    tone: 'error' | 'success'
+  } | null
   rootRef(element: HTMLElement | null): void
   onAction(action: TopMenuAction): void
   onDebugSnapshotNameChange(name: string): void
   onDebugSnapshotSave(): void
+  onDebugSnapshotSaveAndExport(): void
   onDebugSnapshotSaveBack(): void
   onDebugSnapshotSaveMenu(): void
   onMenuButtonClick(): void
   onRecentSnapshotBack(): void
   onRecentSnapshotChange(id: string): void
+  onRecentSnapshotExport(): void
   onRecentSnapshotLoad(): void
   onRecentSnapshotMenu(): void
 }
@@ -37,15 +43,18 @@ export const TopMenuSurface = ({
   pendingConfirmationAction,
   recentSnapshots,
   selectedRecentSnapshotId,
+  snapshotExportStatus,
   rootRef,
   onAction,
   onDebugSnapshotNameChange,
   onDebugSnapshotSave,
+  onDebugSnapshotSaveAndExport,
   onDebugSnapshotSaveBack,
   onDebugSnapshotSaveMenu,
   onMenuButtonClick,
   onRecentSnapshotBack,
   onRecentSnapshotChange,
+  onRecentSnapshotExport,
   onRecentSnapshotLoad,
   onRecentSnapshotMenu,
 }: TopMenuSurfaceProps) => {
@@ -53,6 +62,15 @@ export const TopMenuSurface = ({
   const debugSnapshotSectionLabelId = `${menuId}-debug-snapshot`
   const debugSnapshotSaveSectionLabelId = `${menuId}-debug-snapshot-save`
   const scenarioSectionLabelId = `${menuId}-scenario`
+  const renderSnapshotExportStatus = () =>
+    snapshotExportStatus ? (
+      <p
+        class={`top-menu-snapshot-status top-menu-snapshot-status-${snapshotExportStatus.tone}`}
+        role={snapshotExportStatus.tone === 'error' ? 'alert' : 'status'}
+      >
+        {snapshotExportStatus.message}
+      </p>
+    ) : null
 
   return (
     <div class={open ? 'top-menu top-menu-open' : 'top-menu'} ref={rootRef}>
@@ -164,12 +182,21 @@ export const TopMenuSurface = ({
               <button
                 type="button"
                 role="menuitem"
+                data-menu-action="saveAndExportDebugSnapshot"
+                onClick={onDebugSnapshotSaveAndExport}
+              >
+                Save &amp; export
+              </button>
+              <button
+                type="button"
+                role="menuitem"
                 data-menu-action="backFromDebugSnapshotSave"
                 onClick={onDebugSnapshotSaveBack}
               >
                 Back
               </button>
             </div>
+            {renderSnapshotExportStatus()}
           </div>
         </section>
 
@@ -221,12 +248,22 @@ export const TopMenuSurface = ({
               <button
                 type="button"
                 role="menuitem"
+                data-menu-action="exportRecentDebugSnapshot"
+                disabled={!selectedRecentSnapshotId}
+                onClick={onRecentSnapshotExport}
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                role="menuitem"
                 data-menu-action="backFromDebugSnapshotLoad"
                 onClick={onRecentSnapshotBack}
               >
                 Back
               </button>
             </div>
+            {renderSnapshotExportStatus()}
           </div>
         </section>
 

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-
+import {
+  getRecentDebugScenarioSnapshots,
+  readDebugScenarioSnapshot,
+} from '@/debugScenarioSnapshot'
 import {
   EARTH_MOON_VIEWPORT_SIZE,
   EARTH_VIEWPORT_SIZE,
@@ -134,6 +137,19 @@ const createRendererDouble = (initialPixelRatio = 1) => {
   }
 }
 
+const createStorageDouble = () => {
+  const values = new Map<string, string>()
+
+  return {
+    clear: () => values.clear(),
+    getItem: (key: string) => values.get(key) ?? null,
+    removeItem: (key: string) => values.delete(key),
+    setItem: (key: string, value: string) => {
+      values.set(key, value)
+    },
+  }
+}
+
 const createTestRuntimeActions = (
   runtime: AppRuntimeState,
   options: {
@@ -213,6 +229,213 @@ const getRequiredBody = (runtime: AppRuntimeState, index: number): Body => {
 }
 
 describe('createRuntimeActions', () => {
+  it('captures one live state when save and export is pressed', async () => {
+    const runtime = createRuntime()
+    const storage = createStorageDouble()
+    const downloadLink = {
+      click: vi.fn(),
+      download: '',
+      hidden: false,
+      href: '',
+      remove: vi.fn(),
+    }
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:runtime-snapshot')
+    const revokeObjectURL = vi.fn()
+    vi.useFakeTimers()
+    vi.setSystemTime('2026-07-30T08:30:00.000Z')
+    vi.stubGlobal('window', { localStorage: storage })
+    vi.stubGlobal('document', {
+      body: { append: vi.fn() },
+      createElement: vi.fn(() => downloadLink),
+    })
+    vi.stubGlobal('URL', {
+      createObjectURL,
+      revokeObjectURL,
+    })
+
+    try {
+      const runtimeActions = createTestRuntimeActions(runtime)
+      runtime.simulation.state.elapsed = 321
+      runtime.simulation.state.spacecraft.position = { x: 123, y: 456 }
+
+      expect(
+        runtimeActions.saveAndExportDebugSnapshot('Moon approach'),
+      ).toEqual({
+        downloadStarted: true,
+        recentEntrySaved: true,
+        snapshotSaved: true,
+      })
+
+      expect(downloadLink.download).toBe(
+        'space-web-game-tutorial-2026-07-30T08-30-00-000Z.json',
+      )
+      expect(downloadLink.click).toHaveBeenCalledOnce()
+      expect(downloadLink.remove).toHaveBeenCalledOnce()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:runtime-snapshot')
+      const downloadedBlob = createObjectURL.mock.calls[0]?.[0]
+      expect(downloadedBlob).toBeInstanceOf(Blob)
+      const downloadedSnapshot = JSON.parse(
+        (await downloadedBlob?.text()) ?? '',
+      )
+
+      const [recentEntry] = getRecentDebugScenarioSnapshots()
+      expect(recentEntry).toMatchObject({
+        lastExportedAt: '2026-07-30T08:30:00.000Z',
+        name: 'Moon approach',
+        snapshot: {
+          elapsed: 321,
+          runtimeScenario: { scenarioId: 'tutorial' },
+          spacecraft: { position: { x: 123, y: 456 } },
+        },
+      })
+      expect(downloadedSnapshot).toEqual(recentEntry.snapshot)
+      expect(recentEntry.snapshot).not.toHaveProperty('lastExportedAt')
+      expect(readDebugScenarioSnapshot()).toEqual(recentEntry.snapshot)
+      expect(runtime.debug.debugSnapshotStatus).toBe(
+        'snapshot saved and exported',
+      )
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('keeps the saved snapshot when save and export download initiation fails', () => {
+    const runtime = createRuntime()
+    const storage = createStorageDouble()
+    vi.stubGlobal('window', { localStorage: storage })
+    vi.stubGlobal('URL', {
+      createObjectURL: () => {
+        throw new Error('Downloads blocked')
+      },
+    })
+
+    try {
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(runtimeActions.saveAndExportDebugSnapshot('Before burn')).toEqual({
+        downloadStarted: false,
+        recentEntrySaved: false,
+        snapshotSaved: true,
+      })
+      const [savedEntry] = getRecentDebugScenarioSnapshots()
+      expect(savedEntry).toMatchObject({ name: 'Before burn' })
+      expect(savedEntry).not.toHaveProperty('lastExportedAt')
+      expect(readDebugScenarioSnapshot()).not.toBeNull()
+      expect(runtime.debug.debugSnapshotStatus).toBe(
+        'snapshot saved; export failed',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('reports partial success when download starts but the snapshot cannot be saved', () => {
+    const runtime = createRuntime()
+    const storage = createStorageDouble()
+    const originalSetItem = storage.setItem
+    storage.setItem = vi.fn((key: string, value: string) => {
+      if (key.includes('recentDebugScenarioSnapshots')) {
+        throw new Error('Storage quota exceeded')
+      }
+      originalSetItem(key, value)
+    })
+    const downloadLink = {
+      click: vi.fn(),
+      download: '',
+      hidden: false,
+      href: '',
+      remove: vi.fn(),
+    }
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:runtime-snapshot')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('window', { localStorage: storage })
+    vi.stubGlobal('document', {
+      body: { append: vi.fn() },
+      createElement: vi.fn(() => downloadLink),
+    })
+    vi.stubGlobal('URL', {
+      createObjectURL,
+      revokeObjectURL,
+    })
+
+    try {
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(
+        runtimeActions.saveAndExportDebugSnapshot('Moon approach'),
+      ).toEqual({
+        downloadStarted: true,
+        recentEntrySaved: false,
+        snapshotSaved: false,
+      })
+      expect(downloadLink.click).toHaveBeenCalledOnce()
+      expect(downloadLink.remove).toHaveBeenCalledOnce()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:runtime-snapshot')
+      expect(storage.setItem).toHaveBeenCalledOnce()
+      expect(storage.setItem).toHaveBeenCalledWith(
+        expect.stringContaining('recentDebugScenarioSnapshots'),
+        expect.any(String),
+      )
+      expect(getRecentDebugScenarioSnapshots()).toEqual([])
+      expect(runtime.debug.debugSnapshotStatus).toBe(
+        'snapshot downloaded; save failed',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('reports partial success when the saved export timestamp cannot be updated', () => {
+    const runtime = createRuntime()
+    const storage = createStorageDouble()
+    const originalSetItem = storage.setItem
+    storage.setItem = vi.fn((key: string, value: string) => {
+      if (value.includes('lastExportedAt')) {
+        throw new Error('Storage quota exceeded')
+      }
+      originalSetItem(key, value)
+    })
+    const downloadLink = {
+      click: vi.fn(),
+      download: '',
+      hidden: false,
+      href: '',
+      remove: vi.fn(),
+    }
+    vi.stubGlobal('window', { localStorage: storage })
+    vi.stubGlobal('document', {
+      body: { append: vi.fn() },
+      createElement: vi.fn(() => downloadLink),
+    })
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:runtime-snapshot',
+      revokeObjectURL: vi.fn(),
+    })
+
+    try {
+      const runtimeActions = createTestRuntimeActions(runtime)
+
+      expect(
+        runtimeActions.saveAndExportDebugSnapshot('Moon approach'),
+      ).toEqual({
+        downloadStarted: true,
+        recentEntrySaved: false,
+        snapshotSaved: true,
+      })
+      expect(downloadLink.click).toHaveBeenCalledOnce()
+      const [savedEntry] = getRecentDebugScenarioSnapshots()
+      expect(savedEntry).toMatchObject({ name: 'Moon approach' })
+      expect(savedEntry).not.toHaveProperty('lastExportedAt')
+      expect(readDebugScenarioSnapshot()).not.toBeNull()
+      expect(runtime.debug.debugSnapshotStatus).toBe(
+        'snapshot saved and downloaded; export timestamp save failed',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('toggles valid player pins and clears only player ownership', () => {
     const runtime = createRuntime()
     runtime.scenario.directives.infoPins = [createBodyInfoPin('moon')]
