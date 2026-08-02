@@ -915,6 +915,20 @@ canvas {
   text-transform: uppercase;
 }
 
+.top-menu-snapshot-status {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.top-menu-snapshot-status-success {
+  color: #86efac;
+}
+
+.top-menu-snapshot-status-error {
+  color: #fecdd3;
+}
+
 .menu-recent-snapshot {
   display: grid;
   gap: 6px;
