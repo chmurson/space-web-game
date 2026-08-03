@@ -160,6 +160,19 @@ describe('createInitialAppRuntimeState', () => {
     })
   })
 
+  it('rejects multi-body scenarios for the Kepler engine', () => {
+    expect(() =>
+      createInitialAppRuntimeState(
+        createConfig({
+          requestedEngine: 'kepler',
+          requestedScenarioId: 'tutorial',
+        }),
+      ),
+    ).toThrow(
+      'The Kepler engine currently supports scenarios with one body only.',
+    )
+  })
+
   it('starts manual target selection when auto target selection is disabled', () => {
     const runtime = createInitialAppRuntimeState(
       createConfig({

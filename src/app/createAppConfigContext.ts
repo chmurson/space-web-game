@@ -85,19 +85,34 @@ const parseTrajectoryPredictionImplementation = (
 ): TrajectoryPredictionImplementation =>
   value === 'kepler' ? 'kepler' : 'euler'
 
+const getTrajectoryPredictionImplementation = (options: {
+  developerFeatureFlagsEnabled: boolean
+  keplerEngineRequested: boolean
+  requestedImplementation: string | null
+}): TrajectoryPredictionImplementation => {
+  if (options.keplerEngineRequested) return 'kepler'
+  if (options.developerFeatureFlagsEnabled) {
+    return parseTrajectoryPredictionImplementation(
+      options.requestedImplementation,
+    )
+  }
+  return 'euler'
+}
+
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
   const developerFeatureFlagsEnabled = isDeveloperFeatureFlagsMenuEnabled()
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
+  const keplerEngineRequested = requestedEngine === 'kepler'
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
-    trajectoryPredictionImplementation: developerFeatureFlagsEnabled
-      ? parseTrajectoryPredictionImplementation(
-          urlParams.get('trajectoryPrediction'),
-        )
-      : 'euler',
+    trajectoryPredictionImplementation: getTrajectoryPredictionImplementation({
+      developerFeatureFlagsEnabled,
+      keplerEngineRequested,
+      requestedImplementation: urlParams.get('trajectoryPrediction'),
+    }),
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'

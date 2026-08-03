@@ -14,9 +14,7 @@ const runKeplerPlaytest = async (
   testInfo: TestInfo,
   viewportName: 'desktop' | 'mobile',
 ) => {
-  await page.goto(
-    '/?scenario=earth-kepler-orbit-debug&devtools=1&trajectoryPrediction=kepler',
-  )
+  await page.goto('/?scenario=earth-kepler-orbit-debug&engine=kepler')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
   await expect(page.locator('canvas')).toBeVisible()
@@ -45,9 +43,7 @@ const runKeplerPlaytest = async (
   expect(
     snapshot.simulation.trajectoryPrediction.predictionTerminationReason,
   ).toBe('closed-orbit')
-  expect(new URL(page.url()).searchParams.get('trajectoryPrediction')).toBe(
-    'kepler',
-  )
+  expect(new URL(page.url()).searchParams.get('engine')).toBe('kepler')
 
   const screenshotPath = testInfo.outputPath(
     `${viewportName}-kepler-trajectory.png`,
