@@ -79,12 +79,6 @@ const earthMoonScenarioScene: ScenarioSceneDefinition = {
   }),
 }
 
-const earthKeplerOrbitDebugScenarioScene: ScenarioSceneDefinition = {
-  directives: () => ({
-    maxViewportSize: EARTH_VIEWPORT_SIZE,
-  }),
-}
-
 const runtimeScenarioDefinitions = {
   'earth-moon': {
     id: 'earth-moon',
@@ -102,7 +96,7 @@ const runtimeScenarioDefinitions = {
       ...createEarthKeplerOrbitDebugScenario(),
       viewportSize: EARTH_VIEWPORT_SIZE,
     }),
-    getSceneDefinition: () => earthKeplerOrbitDebugScenarioScene,
+    getSceneDefinition: () => earthMoonScenarioScene,
   },
   'menu-background': registerMenuBackgroundScenario(),
   tutorial: registerTutorialScenario(),

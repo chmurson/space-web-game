@@ -6,7 +6,7 @@ Source PR: [#330](https://github.com/chmurson/space-web-game/pull/330)
 
 - Added the `earth-kepler-orbit-debug` developer scenario.
 - The scenario contains only stationary Earth and a spacecraft in a circular 400 km parking orbit.
-- Registered it with an Earth-scale viewport limit and initial Earth-scale view.
+- Registered it with an initial Earth-scale view while retaining the standard Earth-Moon maximum zoom-out range.
 
 ## Why
 
