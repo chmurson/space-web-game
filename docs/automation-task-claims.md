@@ -19,17 +19,31 @@ Each task is stored as `<kind>-<id>.json`, for example `pr-71.json` or `issue-59
 Acquire before an orchestrator delegates or a worker starts automation-owned work:
 
 ```sh
+AUTOMATION_CONFIG_PATH="/absolute/path/to/resolved/automation.toml"
+ACTIVE_AUTOMATION_ID="$(sed -n 's/^id = "\([^"]*\)"$/\1/p' "$AUTOMATION_CONFIG_PATH")"
+: "${ACTIVE_AUTOMATION_ID:?resolved automation config has no id}"
+AUTOMATION_CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+TOKEN_FILE="$AUTOMATION_CODEX_HOME/automations/$ACTIVE_AUTOMATION_ID/tokens/pr-71.claim-token"
+
 npm run claim:task -- acquire \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
   --owner "$CODEX_THREAD_ID" \
-  --purpose "automation_id=space-web-game-engineer-workflow;token_file=/tmp/space-game-pr-71.claim-token;scope=explicit_request;reason=PR #71 review follow-up" \
+  --purpose "automation_id=$ACTIVE_AUTOMATION_ID;token_file=$TOKEN_FILE;scope=explicit_request;reason=PR #71 review follow-up" \
   --ttl 14400 \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 The command writes the generated token to `--token-file` when provided and redacts the raw token from stdout by default. Keep that token in the worker context only; committed files should contain only the token hash stored in the claim record. Use `--print-token` only for an explicit manual handoff that cannot use a token file.
+
+When `--purpose` is supplied, the helper validates its workflow registration
+before writing a token or claim. The value must begin with the exact
+`automation_id=<active automation id>;token_file=<absolute path>` prefix, the
+registered token path must match `--token-file`, and that path must be inside
+the matching automation's canonical `tokens/` directory. Claims without this
+validated registration may still support legacy or explicit manual workflows,
+but recovery must not treat them as same-automation ownership evidence.
 
 Verify before edits, tests, commits, pushes, deploys, or GitHub replies:
 
@@ -38,7 +52,7 @@ npm run claim:task -- verify \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 Heartbeat during long work:
@@ -48,7 +62,7 @@ npm run claim:task -- heartbeat \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 Release when the active automation handoff is done or intentionally abandoned:
@@ -58,7 +72,7 @@ npm run claim:task -- release \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 ## Failure Policy
@@ -82,8 +96,12 @@ even when a worker id, sidecar, or memory event is missing or stale. A parallel
 orchestrator must not release, replace, or duplicate that claim.
 
 Every automation claim registers the exact active automation id and token-file
-path in its `purpose` metadata when acquired. Determine same-automation ownership
-from that registration, not from whether a durable handoff already exists. A
+path in its `purpose` metadata when acquired. Treat that registration as
+same-automation ownership evidence only when its exact prefix is valid, its
+automation id matches the resolved active automation, its canonical token path
+matches the registration and live claim workflow, and the token verifies.
+Determine same-automation ownership from that validated registration, not from
+whether a durable handoff already exists. A
 durable pending handoff created by the same active automation lets a later
 invocation verify the recorded token and resume reconciliation of that exact
 claim even when the claim owner, parent thread, or run id belongs to an earlier

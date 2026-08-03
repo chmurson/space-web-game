@@ -28,6 +28,13 @@ could create the durable handoff. The workflow also uses the dynamically
 resolved GitHub login for mention matching and issue assignment instead of
 embedding one account name in the contract.
 
+The task-claim helper now validates any supplied workflow registration before
+acquisition. The registered automation id must match the canonical automation
+token namespace, and the absolute registered token path must match the actual
+`--token-file`. Invalid registration fails before either the token or claim is
+written, while claims with no registration remain untrusted legacy/manual state
+instead of recovery ownership evidence.
+
 ## Why it changed
 
 The scheduler can finish a parent orchestration run while its delegated worker
@@ -49,6 +56,10 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 - A same-automation claim without its pending record is explicitly retained as
   `same_automation_unregistered` when its registration metadata and token verify;
   absence of the handoff alone no longer makes the claim foreign.
+- Supplied claim registration is accepted only when its structured prefix,
+  active automation id, canonical token namespace, actual token-file option,
+  and later token verification all agree. Free-form or mismatched purpose text
+  cannot become same-automation recovery evidence.
 - The record stores a token-file path, never a raw token, and uses restrictive
   filesystem permissions.
 - Duplicate creation always reports `HANDOFF_ACTIVE`. Existing-record details
@@ -76,6 +87,10 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
   storage-identity-invalid state, archive audit output, matching-worker
   archival, conflict detection, and idempotent recovery after uncertain
   cleanup.
+- `scripts/automationTaskClaim.mjs` validates workflow-owned purpose
+  registration before acquisition; `scripts/automationTaskClaim.test.mjs`
+  covers accepted canonical registration plus malformed, missing, and
+  mismatched registration failures.
 - `docs/automation-prompts/engineer-workflow.md` owns the orchestration policy
   and worker prompt contract.
 - `docs/automation-task-claims.md` explains how same-automation recovery fits
@@ -84,7 +99,7 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 
 ## Validation
 
-- `npm test` — 73 Vitest files / 775 tests, 16 task-claim tests, 13 handoff
+- `npm test` — 73 Vitest files / 775 tests, 18 task-claim tests, 13 handoff
   tests, and 7 workflow-prompt tests
 - `npm run build`
 - `npm run test:automation-handoffs` — 13 tests

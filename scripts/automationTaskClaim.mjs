@@ -18,6 +18,8 @@ const allowedKinds = new Set(['pr', 'issue'])
 const defaultTtlSeconds = 4 * 60 * 60
 const defaultMutexTimeoutMs = 5000
 const taskIdPattern = /^[A-Za-z0-9._-]+$/
+const purposeRegistrationPattern =
+  /^automation_id=([^;]+);token_file=([^;]+)(?:;.*)?$/
 
 export class ClaimError extends Error {
   constructor(codeName, message, options = {}) {
@@ -38,6 +40,96 @@ export const getDefaultClaimRoot = (env = process.env) => {
 
   const codexHome = env.CODEX_HOME || path.join(homedir(), '.codex')
   return path.join(codexHome, 'automation-locks', 'space-web-game', 'tasks')
+}
+
+const validatePurposeRegistration = (options) => {
+  if (options.purpose === undefined || options.purpose === null) {
+    return null
+  }
+
+  if (typeof options.purpose !== 'string' || options.purpose.length === 0) {
+    throw new ClaimError(
+      'USAGE',
+      '--purpose must begin with automation_id=<active automation id>;token_file=<absolute token-file path>',
+      { exitCode: 1 },
+    )
+  }
+
+  const match = options.purpose.match(purposeRegistrationPattern)
+  if (!match) {
+    throw new ClaimError(
+      'USAGE',
+      '--purpose must begin with automation_id=<active automation id>;token_file=<absolute token-file path>',
+      { exitCode: 1 },
+    )
+  }
+
+  const [, automationId, registeredTokenFile] = match
+  if (
+    !taskIdPattern.test(automationId) ||
+    automationId === '.' ||
+    automationId === '..'
+  ) {
+    throw new ClaimError(
+      'USAGE',
+      '--purpose automation_id may contain only letters, digits, dots, underscores, and dashes',
+      { exitCode: 1 },
+    )
+  }
+
+  if (!path.isAbsolute(registeredTokenFile)) {
+    throw new ClaimError('USAGE', '--purpose token_file must be absolute', {
+      exitCode: 1,
+    })
+  }
+
+  if (path.normalize(registeredTokenFile) !== registeredTokenFile) {
+    throw new ClaimError(
+      'USAGE',
+      '--purpose token_file must be a normalized absolute path',
+      { exitCode: 1 },
+    )
+  }
+
+  if (!options.tokenFile) {
+    throw new ClaimError(
+      'USAGE',
+      'A registered --purpose requires the matching --token-file',
+      { exitCode: 1 },
+    )
+  }
+
+  if (options.tokenFile !== registeredTokenFile) {
+    throw new ClaimError(
+      'USAGE',
+      '--purpose token_file must match --token-file',
+      { exitCode: 1 },
+    )
+  }
+
+  const env = options.env ?? process.env
+  const codexHome = env.CODEX_HOME || path.join(homedir(), '.codex')
+  const tokenRoot = path.resolve(
+    codexHome,
+    'automations',
+    automationId,
+    'tokens',
+  )
+  const tokenRelativePath = path.relative(tokenRoot, registeredTokenFile)
+  if (
+    !tokenRelativePath ||
+    tokenRelativePath === '..' ||
+    tokenRelativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(tokenRelativePath)
+  ) {
+    throw new ClaimError(
+      'USAGE',
+      '--purpose token_file must be under the registered automation tokens directory',
+      { exitCode: 1 },
+    )
+  }
+
+  return options.purpose
 }
 
 const parsePositiveInteger = (value, label) => {
@@ -570,6 +662,7 @@ const normalizeClaimOptions = async (options) => {
 
 export const acquireClaim = async (rawOptions) => {
   const options = rawOptions
+  const purpose = validatePurposeRegistration(options)
   const paths = getTaskPaths(options)
   const token = options.token || generateToken()
   const ttlSeconds =
@@ -603,7 +696,7 @@ export const acquireClaim = async (rawOptions) => {
       last_seen: now.toISOString(),
       owner: getOwner(options),
       pid: getPid(options),
-      purpose: options.purpose || null,
+      purpose,
       run_id: env.AUTOMATION_RUN_ID || env.CODEX_RUN_ID || null,
       started_at: now.toISOString(),
       status: 'active',
@@ -781,10 +874,12 @@ const mapCliOptions = (flags) => ({
 })
 
 const usage = `Usage:
-  node scripts/automationTaskClaim.mjs acquire --kind pr|issue --id ID [--branch NAME] [--owner OWNER] [--purpose TEXT] [--ttl SECONDS] [--token TOKEN|--token-file PATH|--print-token]
+  node scripts/automationTaskClaim.mjs acquire --kind pr|issue --id ID [--branch NAME] [--owner OWNER] [--purpose "automation_id=ID;token_file=PATH;..."] [--ttl SECONDS] [--token TOKEN|--token-file PATH|--print-token]
   node scripts/automationTaskClaim.mjs heartbeat --kind pr|issue --id ID --token TOKEN|--token-file PATH [--branch NAME]
   node scripts/automationTaskClaim.mjs verify --kind pr|issue --id ID --token TOKEN|--token-file PATH [--branch NAME]
   node scripts/automationTaskClaim.mjs release --kind pr|issue --id ID --token TOKEN|--token-file PATH [--branch NAME]
+
+Supplied purpose registration must use the matching canonical automation token file.
 
 Claims are stored in:
   $SPACE_WEB_GAME_TASK_CLAIM_ROOT, or
