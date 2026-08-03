@@ -24,7 +24,7 @@ npm run claim:task -- acquire \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
   --owner "$CODEX_THREAD_ID" \
-  --purpose "PR #71 review follow-up" \
+  --purpose "automation_id=space-web-game-engineer-workflow;token_file=/tmp/space-game-pr-71.claim-token;scope=explicit_request;reason=PR #71 review follow-up" \
   --ttl 14400 \
   --token-file /tmp/space-game-pr-71.claim-token
 ```
@@ -81,18 +81,32 @@ the 2-hour freshness window. During that window, assume the worker is in progres
 even when a worker id, sidecar, or memory event is missing or stale. A parallel
 orchestrator must not release, replace, or duplicate that claim.
 
-A durable pending handoff record created by the same active automation is the
-exception to the old same-run waiting rule: a later invocation may verify the
-recorded token and resume reconciliation of that exact claim even when the claim
-owner, parent thread, or run id belongs to an earlier invocation. This is not a
-new ownership acquisition and must not start another worker. The record must
-match the claim's kind, id, and branch, and its recorded token file must verify
-through the claim helper before it is used.
+Every automation claim registers the exact active automation id and token-file
+path in its `purpose` metadata when acquired. Determine same-automation ownership
+from that registration, not from whether a durable handoff already exists. A
+durable pending handoff created by the same active automation lets a later
+invocation verify the recorded token and resume reconciliation of that exact
+claim even when the claim owner, parent thread, or run id belongs to an earlier
+invocation. This is not a new ownership acquisition and must not start another
+worker. The record must match the claim's kind, id, and branch, and its recorded
+token file must verify through the claim helper before it is used.
 
-For a foreign claim or a claim without a matching same-automation handoff, leave
-it untouched, skip only its associated task, and continue with other claimable
-work. Handoff records, sidecars, memory events, and worker ids are audit and
-wakeup hints only; none can override a recent active claim.
+A registered same-automation claim whose token verifies but whose handoff is
+missing is `same_automation_unregistered`, not foreign. Preserve the claim and
+use exact sidecar, worker-status, branch/worktree, and GitHub evidence to
+reconstruct the record only when the original worker identity and context are
+proven, or to reconcile an evidenced terminal/abandoned pre-handoff attempt. If
+that evidence is incomplete, wait for direct status or the normal expiry path;
+never start a second worker. A claim registered to another automation, or one
+with missing/malformed registration metadata and no matching handoff, remains
+foreign and must be left untouched.
+
+After terminal reconciliation releases a claim, an archive failure may leave
+the same-automation pending handoff behind. That is `archive_recovery`, not a
+live-claim mismatch: confirm there is no live claim or worker and that every
+referenced sidecar/review record has the terminal outcome, then retry only the
+idempotent archive. Handoff records, sidecars, memory events, and worker ids are
+otherwise audit and wakeup hints only; none can override a recent active claim.
 
 After 2 hours without a heartbeat, or after the claim's own TTL has expired, the
 orchestrator may question the handoff
@@ -115,6 +129,7 @@ Records include:
 - `token_hash`
 - `started_at`, `last_seen`, `ttl_seconds`, optional `released_at`
 - `status`
-- `purpose`
+- `purpose`, whose workflow-owned prefix registers the active automation id and
+  token-file path before a durable handoff exists
 
 The raw token is never written to the claim record.

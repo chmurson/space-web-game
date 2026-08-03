@@ -21,6 +21,13 @@ The workflow prompt uses the helper to make handoff recovery mandatory and
 changes the worker template to receive the active automation id rather than the
 old hard-coded `space-game-automation` identity.
 
+Claim acquisition now registers the exact active automation id and token-file
+path in claim purpose metadata. That registration lets a later invocation
+recognize a same-automation claim even if the original run crashed before it
+could create the durable handoff. The workflow also uses the dynamically
+resolved GitHub login for mention matching and issue assignment instead of
+embedding one account name in the contract.
+
 ## Why it changed
 
 The scheduler can finish a parent orchestration run while its delegated worker
@@ -39,6 +46,9 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
   claim or authorizes another worker.
 - Only a later invocation with the same active automation id may use a matching
   handoff record. A different automation remains foreign.
+- A same-automation claim without its pending record is explicitly retained as
+  `same_automation_unregistered` when its registration metadata and token verify;
+  absence of the handoff alone no longer makes the claim foreign.
 - The record stores a token-file path, never a raw token, and uses restrictive
   filesystem permissions.
 - Duplicate creation always reports `HANDOFF_ACTIVE`. Existing-record details
@@ -53,7 +63,9 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 - The orchestrator owns handoff and memory writes; workers report their terminal
   result instead of modifying those records.
 - Terminal reconciliation releases the claim before archiving the handoff. A
-  failed archive remains pending rather than being silently discarded.
+  failed archive remains pending as explicit `archive_recovery`; a later
+  same-automation invocation can verify terminal sidecar/review state and retry
+  only the idempotent archive without requiring the released claim.
 
 ## Key files
 
@@ -67,12 +79,13 @@ worker and parent thread ids, worktree, sidecars, scope, and next action.
 - `docs/automation-prompts/engineer-workflow.md` owns the orchestration policy
   and worker prompt contract.
 - `docs/automation-task-claims.md` explains how same-automation recovery fits
-  the existing claim-first reconciliation rule.
+  the existing claim-first reconciliation rule, including pre-handoff claim
+  registration and post-release archive recovery.
 
 ## Validation
 
 - `npm test` — 73 Vitest files / 775 tests, 16 task-claim tests, 13 handoff
-  tests, and 5 workflow-prompt tests
+  tests, and 7 workflow-prompt tests
 - `npm run build`
 - `npm run test:automation-handoffs` — 13 tests
 - `npm run test:automation-workflow`

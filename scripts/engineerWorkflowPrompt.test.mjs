@@ -73,12 +73,15 @@ describe('engineer workflow prompt', () => {
     const prompt = await readPrompt()
 
     assertContainsAll(prompt, [
-      'A direct mention of the resolved automation identity (currently `@andrzejkoduje`) creates an explicit triage obligation',
+      'A direct mention of `@<resolved automation identity>` creates an explicit triage obligation',
+      'match the exact login returned by `gh api user --jq .login`',
       'unchecked task-list items',
       'requests to inspect or respond to an earlier comment',
       'Reclassify an edited comment whenever its current `updatedAt` or body hash differs from tracking metadata',
       'clean automated/formal-review signals cannot downgrade a human request',
+      'assign the issue to the resolved automation identity',
     ])
+    assert.doesNotMatch(prompt, /andrzejkoduje/)
   })
 
   it('treats assigned PRs as owned and limits other PRs to direct requests', async () => {
@@ -178,10 +181,13 @@ describe('engineer workflow prompt', () => {
       'Never infer it from a legacy automation name or hard-code `space-game-automation`.',
       'Cron/standalone scheduled runs can begin in a fresh chat',
       'node scripts/automationHandoff.mjs list --automation-id <active automation id>',
+      'claim registration metadata, not free-form ownership evidence',
       'After spawning a worker and before yielding, create exactly one pending record',
+      'identifying a matching claim as same-automation before this record exists',
       'The record contains a token-file path only; never place a raw claim token in it.',
       'A worker must not create, alter, archive, or write automation memory or handoff records.',
-      'Archive a record only after terminal reconciliation and successful claim release',
+      'retain the same-automation pending record as explicit `archive_recovery` state',
+      'must not require verification of the released claim or repeat GitHub reconciliation writes',
       'before yielding while the worker is active',
       'current run time and terminal outcome',
       'A later scheduled invocation with the same automation id must reconcile the record',
@@ -195,12 +201,17 @@ describe('engineer workflow prompt', () => {
     assertContainsInOrder(completionBoundary, [
       'resolve the active automation id, list its pending handoffs, and inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
       'Handoff recovery precedes fresh triage',
+      'classify it as `same_automation_unregistered`',
+      'do not call the claim foreign merely because the handoff is absent',
+      'enter `archive_recovery` instead of the live-worker path',
+      'retry only the idempotent archive command',
       'The current invocation may resume that record even when the claim `owner`, original run id, or parent thread id belongs to an earlier invocation',
       'If it is active, verify and heartbeat the recorded claim',
       'end this invocation as `awaiting_worker`',
       'Only when the recorded worker returns a terminal result while its claim is still valid may the same-automation invocation reconcile the worker handoff, triggering comment sidecars, and dedicated review-submission records',
       'perform the terminal-result reconciliation immediately',
       'release the task claim, then archive the matching durable handoff',
+      'If release succeeds but archive fails, retain the pending record as `archive_recovery`',
       'a later scheduled invocation under the same active automation id must run this recovery protocol',
     ])
   })
@@ -219,7 +230,10 @@ describe('engineer workflow prompt', () => {
       'Claim-first reconciliation: the live task claim is the concurrency authority',
       'Before interpreting memory, worker ids, handoff records, or sidecars, read the matching claim',
       'Do not release, replace, or duplicate that claim',
-      'If it lacks a matching same-automation handoff, it is foreign: skip that task and continue with other claimable work',
+      'Determine claim ownership from its exact `automation_id` registration metadata, not from whether a handoff exists',
+      'whose handoff is missing is `same_automation_unregistered`',
+      'never start a second worker',
+      'one with missing/malformed registration metadata and no matching handoff, is foreign',
       'a later invocation may use its recorded token file to verify that exact claim and resume the handoff',
       'it does not acquire a new claim or start a second worker',
       'A durable handoff tells the same automation what to reconcile, but it must never override a recent active claim or justify a second worker',
@@ -249,17 +263,20 @@ describe('engineer workflow prompt', () => {
       'The claim file is the single source of truth for ownership',
       'an unexpired `active` claim is treated as healthy when its `last_seen` is within the 2-hour freshness window',
       'A parallel orchestrator must not release, replace, or duplicate that claim',
-      'A durable pending handoff record created by the same active automation is the exception to the old same-run waiting rule',
+      'Every automation claim registers the exact active automation id and token-file path in its `purpose` metadata when acquired',
+      'Determine same-automation ownership from that registration, not from whether a durable handoff already exists',
       'This is not a new ownership acquisition and must not start another worker',
       "match the claim's kind, id, and branch, and its recorded token file must verify through the claim helper before it is used",
-      'For a foreign claim or a claim without a matching same-automation handoff, leave it untouched, skip only its associated task, and continue with other claimable work',
-      'Handoff records, sidecars, memory events, and worker ids are audit and wakeup hints only',
+      'whose handoff is missing is `same_automation_unregistered`, not foreign',
+      'A claim registered to another automation, or one with missing/malformed registration metadata and no matching handoff, remains foreign',
+      'That is `archive_recovery`, not a live-claim mismatch',
+      'retry only the idempotent archive',
       "After 2 hours without a heartbeat, or after the claim's own TTL has expired",
     ])
 
     const sharedPolicies = [
-      'continue with other claimable work',
       'must not start another worker',
+      'normal expiry path',
     ]
     assertContainsAll(normalizeWhitespace(reconciliationRule), sharedPolicies)
   })
