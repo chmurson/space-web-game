@@ -1,8 +1,12 @@
+import type * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
 import { sphereOfInfluenceVariants } from '@/config/featureFlags'
 import { createGameScene } from '@/scene/createGameScene'
-import { createSphereOfInfluenceVisual } from '@/scene/sphereOfInfluenceVisual'
+import {
+  createSphereOfInfluenceVisual,
+  updateSphereOfInfluenceVisualViewport,
+} from '@/scene/sphereOfInfluenceVisual'
 import type { Body } from '@/simulation/types'
 
 const body: Body = {
@@ -25,19 +29,20 @@ const trajectoryRenderingConfig = {
 }
 
 describe('sphere-of-influence visuals', () => {
-  it('uses the approved soft field and 1px border for all five strengths', () => {
+  it('uses selected variant 2 as the shared field for all zoom variants', () => {
     const childSignatures = new Set<string>()
-    const expectedStrengths = [1, 1.5, 2, 2.5, 3]
+    const expectedCompensations = [0, 0.25, 0.5, 0.75, 1]
 
     for (const [index, variant] of sphereOfInfluenceVariants.entries()) {
       const visual = createSphereOfInfluenceVisual(body, variant)
       const metadata = visual.group.userData.sphereOfInfluence
-      const edgeGradientStrength = expectedStrengths[index]
+      const gradientZoomCompensation = expectedCompensations[index]
 
       expect(metadata).toEqual({
         bodyId: 'earth',
         borderWidthPixels: 1,
-        edgeGradientStrength,
+        edgeGradientStrength: 1.5,
+        gradientZoomCompensation,
         radiusMeters: body.sphereOfInfluenceRadius,
         variant,
       })
@@ -50,8 +55,8 @@ describe('sphere-of-influence visuals', () => {
         1,
       )
       expect(visual.group.getObjectByName('soi-field-fill')).toHaveProperty(
-        'material.uniforms.uSoiEdgeGradientStrength.value',
-        edgeGradientStrength,
+        'material.uniforms.uSoiEdgeGradientWidthScale.value',
+        1,
       )
       childSignatures.add(
         visual.group.children.map((child) => child.name).join('|'),
@@ -61,15 +66,43 @@ describe('sphere-of-influence visuals', () => {
     expect(childSignatures.size).toBe(1)
   })
 
-  it('keeps soi=1 as the original field-gradient strength', () => {
-    const visual = createSphereOfInfluenceVisual(body, 'field-gradient-1x')
+  it('scales perceived gradient growth by the five requested amounts', () => {
+    const viewportSize = 2_000
+    const maxViewportSize = 4_000
+    const expectedWidthScales = [1, 0.875, 0.75, 0.625, 0.5]
+    const expectedPerceivedGrowth = [2, 1.75, 1.5, 1.25, 1]
+
+    for (const [index, variant] of sphereOfInfluenceVariants.entries()) {
+      const visual = createSphereOfInfluenceVisual(body, variant)
+
+      updateSphereOfInfluenceVisualViewport(visual.group, {
+        maxViewportSize,
+        viewportSize,
+      })
+
+      const field = visual.group.getObjectByName(
+        'soi-field-fill',
+      ) as THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial>
+      const widthScale =
+        field.material.uniforms.uSoiEdgeGradientWidthScale.value
+
+      expect(widthScale).toBe(expectedWidthScales[index])
+      expect(widthScale / (viewportSize / maxViewportSize)).toBe(
+        expectedPerceivedGrowth[index],
+      )
+    }
+  })
+
+  it('keeps the selected gradient profile and screen-space border', () => {
+    const visual = createSphereOfInfluenceVisual(
+      body,
+      'gradient-zoom-compensation-0pct',
+    )
     const field = visual.group.getObjectByName('soi-field-fill')
 
     expect(field).toHaveProperty(
       'material.fragmentShader',
-      expect.stringContaining(
-        '0.32 * interior + uSoiEdgeGradientStrength * outerField',
-      ),
+      expect.stringContaining('0.32 * interior + 1.50 * outerField'),
     )
     expect(field).toHaveProperty(
       'material.fragmentShader',
@@ -80,8 +113,10 @@ describe('sphere-of-influence visuals', () => {
       expect.stringContaining('dFdx(radiusFromCenter)'),
     )
     expect(field).toHaveProperty(
-      'material.uniforms.uSoiEdgeGradientStrength.value',
-      1,
+      'material.fragmentShader',
+      expect.stringContaining(
+        'float outerFieldWidth = 0.60 * uSoiEdgeGradientWidthScale',
+      ),
     )
   })
 
@@ -92,7 +127,7 @@ describe('sphere-of-influence visuals', () => {
       trajectoryRenderingConfig,
       undefined,
       undefined,
-      'field-gradient-1.5x',
+      'gradient-zoom-compensation-25pct',
     )
 
     expect(disabledScene.bodySphereOfInfluenceGroups.size).toBe(0)

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import type { GameSceneRefs } from '../scene/createGameScene'
+import { updateSphereOfInfluenceVisualViewport } from '../scene/sphereOfInfluenceVisual'
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Vec2 } from '../simulation/vector'
 
@@ -12,6 +13,7 @@ export const updateCameraView = (options: {
   cameraElevation: number
   cameraTargetPosition: Vec2
   gameScene: GameSceneRefs
+  maxViewportSize: number
   preserveStarfieldWorldPosition?: boolean
   viewportHeight: number
   viewportBottomInset?: number
@@ -82,6 +84,12 @@ export const updateCameraView = (options: {
     options.viewportWidth,
     options.viewportHeight,
   )
+  for (const group of options.gameScene.bodySphereOfInfluenceGroups.values()) {
+    updateSphereOfInfluenceVisualViewport(group, {
+      maxViewportSize: options.maxViewportSize,
+      viewportSize: options.viewportSize,
+    })
+  }
   options.gameScene.starfield.update({
     cameraTarget: options.gameScene.cameraTarget,
     preserveWorldPosition: options.preserveStarfieldWorldPosition,

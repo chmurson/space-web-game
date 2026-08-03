@@ -186,6 +186,9 @@ export const createRuntimeActions = (options: {
       cameraElevation: options.cameraElevation,
       cameraTargetPosition: getCameraTargetPosition(),
       gameScene: options.gameScene,
+      maxViewportSize:
+        options.runtime.scenario.directives.maxViewportSize ??
+        options.maxViewport,
       preserveStarfieldWorldPosition,
       viewportBottomInset: options.getFollowCameraViewportBottomInset?.() ?? 0,
       viewportHeight: window.innerHeight,

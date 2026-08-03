@@ -6,17 +6,22 @@ import type { Body } from '../simulation/types'
 
 const CIRCLE_SEGMENTS = 192
 const BORDER_WIDTH_PIXELS = 1
+const EDGE_GRADIENT_END = 0.98
+const EDGE_GRADIENT_START = 0.38
+const EDGE_GRADIENT_STRENGTH = 1.5
 const FIELD_OPACITY = 0.045
 const SOI_RENDER_ORDER = -8
 const WHITE = new THREE.Color('#ffffff')
-const edgeGradientStrengthByVariant: Record<SphereOfInfluenceVariant, number> =
-  {
-    'field-gradient-1x': 1,
-    'field-gradient-1.5x': 1.5,
-    'field-gradient-2x': 2,
-    'field-gradient-2.5x': 2.5,
-    'field-gradient-3x': 3,
-  }
+const gradientZoomCompensationByVariant: Record<
+  SphereOfInfluenceVariant,
+  number
+> = {
+  'gradient-zoom-compensation-0pct': 0,
+  'gradient-zoom-compensation-25pct': 0.25,
+  'gradient-zoom-compensation-50pct': 0.5,
+  'gradient-zoom-compensation-75pct': 0.75,
+  'gradient-zoom-compensation-100pct': 1,
+}
 
 export const SPHERE_OF_INFLUENCE_RENDER_LIFT = -0.08
 
@@ -32,11 +37,7 @@ const configureVisualObject = (object: THREE.Object3D, name: string) => {
   object.renderOrder = SOI_RENDER_ORDER
 }
 
-const createField = (
-  radius: number,
-  color: THREE.Color,
-  edgeGradientStrength: number,
-) => {
+const createField = (radius: number, color: THREE.Color) => {
   const material = new THREE.ShaderMaterial({
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -44,14 +45,26 @@ const createField = (
       varying vec2 vSoiUv;
       uniform vec3 uSoiColor;
       uniform float uSoiBorderWidthPixels;
-      uniform float uSoiEdgeGradientStrength;
+      uniform float uSoiEdgeGradientWidthScale;
 
       void main() {
         float radiusFromCenter = length(vSoiUv * 2.0 - 1.0);
-        float interior = 1.0 - smoothstep(0.0, 0.98, radiusFromCenter);
-        float outerField = smoothstep(0.38, 0.98, radiusFromCenter);
+        float interior = 1.0 - smoothstep(
+          0.0,
+          ${EDGE_GRADIENT_END.toFixed(2)},
+          radiusFromCenter
+        );
+        float outerFieldWidth = ${(
+          EDGE_GRADIENT_END - EDGE_GRADIENT_START
+        ).toFixed(2)} * uSoiEdgeGradientWidthScale;
+        float outerFieldStart = ${EDGE_GRADIENT_END.toFixed(2)} - outerFieldWidth;
+        float outerField = smoothstep(
+          outerFieldStart,
+          ${EDGE_GRADIENT_END.toFixed(2)},
+          radiusFromCenter
+        );
         float alpha = ${FIELD_OPACITY.toFixed(3)} * (
-          0.32 * interior + uSoiEdgeGradientStrength * outerField
+          0.32 * interior + ${EDGE_GRADIENT_STRENGTH.toFixed(2)} * outerField
         );
         float radiusGradient = length(vec2(
           dFdx(radiusFromCenter),
@@ -73,7 +86,7 @@ const createField = (
     uniforms: {
       uSoiBorderWidthPixels: { value: BORDER_WIDTH_PIXELS },
       uSoiColor: { value: color },
-      uSoiEdgeGradientStrength: { value: edgeGradientStrength },
+      uSoiEdgeGradientWidthScale: { value: 1 },
     },
     vertexShader: `
       varying vec2 vSoiUv;
@@ -106,17 +119,45 @@ export const createSphereOfInfluenceVisual = (
 
   const radius = body.sphereOfInfluenceRadius * RENDER_SCALE
   const color = getDisplayColor(body.color)
-  const edgeGradientStrength = edgeGradientStrengthByVariant[variant]
+  const gradientZoomCompensation = gradientZoomCompensationByVariant[variant]
   const group = new THREE.Group()
   group.name = `${body.name} sphere of influence`
   group.userData.sphereOfInfluence = {
     bodyId: body.id,
     borderWidthPixels: BORDER_WIDTH_PIXELS,
-    edgeGradientStrength,
+    edgeGradientStrength: EDGE_GRADIENT_STRENGTH,
+    gradientZoomCompensation,
     radiusMeters: body.sphereOfInfluenceRadius,
     variant,
   }
-  group.add(createField(radius, color, edgeGradientStrength))
+  group.add(createField(radius, color))
 
   return { group }
+}
+
+export const updateSphereOfInfluenceVisualViewport = (
+  group: THREE.Group,
+  options: {
+    maxViewportSize: number
+    viewportSize: number
+  },
+) => {
+  const metadata = group.userData.sphereOfInfluence as {
+    gradientZoomCompensation: number
+  }
+  const viewportRatio = THREE.MathUtils.clamp(
+    options.viewportSize / options.maxViewportSize,
+    0,
+    1,
+  )
+  const gradientWidthScale = THREE.MathUtils.lerp(
+    1,
+    viewportRatio,
+    metadata.gradientZoomCompensation,
+  )
+  const field = group.getObjectByName('soi-field-fill') as THREE.Mesh<
+    THREE.CircleGeometry,
+    THREE.ShaderMaterial
+  >
+  field.material.uniforms.uSoiEdgeGradientWidthScale.value = gradientWidthScale
 }

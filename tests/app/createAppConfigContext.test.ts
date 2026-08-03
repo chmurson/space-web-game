@@ -240,11 +240,11 @@ describe('createAppConfigContext', () => {
 
   it('selects sphere-of-influence visuals only for the five exact flag values', () => {
     const variants = [
-      ['1', 'field-gradient-1x'],
-      ['2', 'field-gradient-1.5x'],
-      ['3', 'field-gradient-2x'],
-      ['4', 'field-gradient-2.5x'],
-      ['5', 'field-gradient-3x'],
+      ['1', 'gradient-zoom-compensation-0pct'],
+      ['2', 'gradient-zoom-compensation-25pct'],
+      ['3', 'gradient-zoom-compensation-50pct'],
+      ['4', 'gradient-zoom-compensation-75pct'],
+      ['5', 'gradient-zoom-compensation-100pct'],
     ] as const
 
     for (const [flagValue, variant] of variants) {

@@ -72,7 +72,7 @@ const captureScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('captures the base SOI field and four edge-gradient strengths', async ({
+test('captures the five SOI edge-gradient zoom scalings', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ height: 844, width: 390 })
@@ -89,18 +89,16 @@ test('captures the base SOI field and four edge-gradient strengths', async ({
     await expect(page.locator('canvas')).toBeVisible()
     await captureScreenshot(page, testInfo, `soi-${variant}-portrait`)
 
-    if (variant === 1 || variant === 5) {
-      for (let step = 0; step < 3; step += 1) {
-        await dispatchDevtoolsRequest(page, {
-          action: 'zoomIn',
-          type: 'dispatch-ui-action',
-        })
-      }
-      const nearSnapshot = await getSnapshot(page)
-      expect(nearSnapshot.simulation.viewportSize).toBeLessThan(
-        EARTH_MOON_VIEWPORT_SIZE,
-      )
-      await captureScreenshot(page, testInfo, `soi-${variant}-near-portrait`)
+    for (let step = 0; step < 3; step += 1) {
+      await dispatchDevtoolsRequest(page, {
+        action: 'zoomIn',
+        type: 'dispatch-ui-action',
+      })
     }
+    const nearSnapshot = await getSnapshot(page)
+    expect(nearSnapshot.simulation.viewportSize).toBeLessThan(
+      EARTH_MOON_VIEWPORT_SIZE,
+    )
+    await captureScreenshot(page, testInfo, `soi-${variant}-near-portrait`)
   }
 })
