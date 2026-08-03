@@ -15,7 +15,7 @@ const runKeplerPlaytest = async (
   viewportName: 'desktop' | 'mobile',
 ) => {
   await page.goto(
-    '/?scenario=earth-moon&devtools=1&trajectoryPrediction=kepler',
+    '/?scenario=earth-kepler-orbit-debug&devtools=1&engine=kepler&trajectoryPrediction=kepler',
   )
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
@@ -42,6 +42,9 @@ const runKeplerPlaytest = async (
   expect(
     snapshot.simulation.trajectoryPrediction.visiblePointCount,
   ).toBeGreaterThan(20)
+  expect(
+    snapshot.simulation.trajectoryPrediction.predictionTerminationReason,
+  ).toBe('closed-orbit')
   expect(new URL(page.url()).searchParams.get('trajectoryPrediction')).toBe(
     'kepler',
   )
