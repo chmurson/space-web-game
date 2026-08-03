@@ -19,6 +19,7 @@ The closed-orbit predictor in PR #330 applies only when the selected body is the
 - The scenario remains developer-facing through its explicit `engine=kepler` URL selection; it does not change the normal player flow.
 - Closed-orbit prediction is independent of the selected simulation engine. The Kepler predictor uses its own two-body propagation; the selected engine is only retained as a fallback if that experimental predictor cannot produce a usable result.
 - `engine=kepler` is the unified URL entry point: it selects the Kepler trajectory path and rejects scenarios with more than one body. The temporary guard is intentional until patched-conic support can provide a multi-body engine contract.
+- A closed Kepler loop is now an osculating orbit: it describes the spacecraft state if its thrust stopped at that instant. Turning does not invalidate it; while manual thrust is active it is recalculated every two runtime ticks. If the instantaneous state becomes unbound or unsafe, it immediately returns to the existing open-path behavior.
 
 ## Validation
 
@@ -30,6 +31,7 @@ The closed-orbit predictor in PR #330 applies only when the selected body is the
 - `npm run build`, task-scoped Biome, and `git diff --check` passed. Vite emitted only its existing large-chunk advisory.
 - Full `npm run test:gui` passed 104 browser tests.
 - Focused config and startup tests passed 15/15; focused browser checks passed 2/2 using `engine=kepler` as the only Kepler URL parameter.
+- Focused runtime regression tests cover preserving a closed loop through turn and thrust input, then refreshing it on the second runtime tick.
 
 ## Follow-up
 

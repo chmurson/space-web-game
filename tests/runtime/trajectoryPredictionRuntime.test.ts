@@ -488,6 +488,62 @@ describe('createTrajectoryPredictionRuntime', () => {
     })
   })
 
+  it('keeps a closed Kepler orbit visible while turning or thrusting', () => {
+    const harness = createRuntimeHarness({
+      predictionImplementation: 'kepler',
+    })
+    const target = {
+      ...earth,
+      mass: EARTH_MASS,
+      radius: EARTH_RADIUS,
+    }
+    const orbitRadius = EARTH_RADIUS + 400_000
+    const orbitSpeed = Math.sqrt((G * target.mass) / orbitRadius)
+    harness.setTarget(target)
+    harness.setState({
+      ...harness.state(),
+      bodies: [target],
+      spacecraft: {
+        ...harness.state().spacecraft,
+        position: { x: orbitRadius, y: 0 },
+        velocity: { x: 0, y: orbitSpeed },
+      },
+    })
+    harness.predictionRuntime.refresh(harness.getOptions())
+    const calculationCount =
+      harness.predictionRuntime.getDiagnostics().nearCalculationSampleCount
+
+    harness.setState({
+      ...harness.state(),
+      controls: { ...harness.state().controls, turn: 1 },
+      spacecraft: { ...harness.state().spacecraft, heading: 0.5 },
+    })
+    expect(
+      harness.predictionRuntime.maybeRefresh(0, harness.getOptions()),
+    ).toBe(false)
+    expect(
+      harness.predictionRuntime.getState().targetRelativePredictionPoints
+        .length,
+    ).toBeGreaterThanOrEqual(128)
+
+    harness.setState({
+      ...harness.state(),
+      controls: { ...harness.state().controls, main: 1, turn: 0 },
+      spacecraft: {
+        ...harness.state().spacecraft,
+        velocity: { x: 0, y: orbitSpeed + 20 },
+      },
+    })
+    expect(
+      harness.predictionRuntime.maybeRefresh(0, harness.getOptions()),
+    ).toBe(true)
+    expect(harness.predictionRuntime.getDiagnostics()).toMatchObject({
+      nearCalculationSampleCount: calculationCount + 1,
+      predictionTerminationReason: 'closed-orbit',
+      splitHorizon: false,
+    })
+  })
+
   it('reports refreshes from the last second', () => {
     const { getOptions, predictionRuntime, setTarget } = createRuntimeHarness()
     const nowSpy = vi.spyOn(performance, 'now')

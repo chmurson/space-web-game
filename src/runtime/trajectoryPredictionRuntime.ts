@@ -548,6 +548,7 @@ const quantizeVelocity = (value: number) => quantize(value, 5)
 const createPredictionInputKeyParts = (
   options: RefreshTrajectoryPredictionOptions,
   target: Body,
+  omitOrientationAndControls = false,
 ): PredictionInputKeyParts => ({
   assist: JSON.stringify({
     mode: options.assistMode,
@@ -576,13 +577,23 @@ const createPredictionInputKeyParts = (
     stepSeconds: quantizeScalar(options.predictionConfig.stepSeconds),
   }),
   controls: JSON.stringify({
-    main: quantizeScalar(options.state.controls.main),
-    reverse: quantizeScalar(options.state.controls.reverse),
-    strafe: quantizeScalar(options.state.controls.strafe),
-    turn: quantizeScalar(options.state.controls.turn),
+    main: omitOrientationAndControls
+      ? 0
+      : quantizeScalar(options.state.controls.main),
+    reverse: omitOrientationAndControls
+      ? 0
+      : quantizeScalar(options.state.controls.reverse),
+    strafe: omitOrientationAndControls
+      ? 0
+      : quantizeScalar(options.state.controls.strafe),
+    turn: omitOrientationAndControls
+      ? 0
+      : quantizeScalar(options.state.controls.turn),
   }),
   spacecraft: JSON.stringify({
-    heading: quantizeAngle(options.state.spacecraft.heading),
+    heading: omitOrientationAndControls
+      ? 0
+      : quantizeAngle(options.state.spacecraft.heading),
     px: quantizePosition(options.state.spacecraft.position.x),
     py: quantizePosition(options.state.spacecraft.position.y),
     vx: quantizeVelocity(options.state.spacecraft.velocity.x),
@@ -804,27 +815,44 @@ export const createTrajectoryPredictionRuntime = (
   let previousSpacecraftPosition: Vec2 | null = null
   let predictionRefreshTimesMs: number[] = []
   let predictionRefreshElapsed = 0
+  let closedKeplerOrbitFramesSinceRefresh = 0
   let predictionDiagnostics = emptyTrajectoryPredictionDiagnostics()
   let predictionState = emptyTrajectoryPredictionState()
   const createFarWorkerClient =
     runtimeOptions.createFarWorkerClient ??
     createTrajectoryPredictionFarWorkerClient
 
-  const isClosedPassiveKeplerOrbit = (
+  const canUseKeplerOrbitPrediction = (
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
   ) =>
     predictionImplementation === 'kepler' &&
-    isPassiveCoast(options) &&
-    canUseKeplerTwoBodyPrediction(options.state, target) &&
+    options.assistMode === 'off' &&
+    canUseKeplerTwoBodyPrediction(options.state, target)
+
+  const hasClosedKeplerOrbit = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+  ) =>
+    canUseKeplerOrbitPrediction(options, target) &&
     getClosedKeplerTwoBodyOrbitPeriod(target, options.state.spacecraft) !== null
+
+  const createCurrentPredictionInputKeyParts = (
+    options: RefreshTrajectoryPredictionOptions,
+    target: Body,
+  ) =>
+    createPredictionInputKeyParts(
+      options,
+      target,
+      canUseKeplerOrbitPrediction(options, target),
+    )
 
   const shouldSplitPrediction = (
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
   ) =>
     shouldSplitPredictionHorizon(options.predictionConfig) &&
-    !isClosedPassiveKeplerOrbit(options, target)
+    !hasClosedKeplerOrbit(options, target)
 
   const getFarCoalescingMinIntervalSeconds = (
     options: RefreshTrajectoryPredictionOptions,
@@ -990,24 +1018,21 @@ export const createTrajectoryPredictionRuntime = (
     inputKey: string,
   ): TrajectoryPredictionTier => {
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
-    const coastComputation =
-      predictionImplementation === 'kepler' &&
-      isPassiveCoast(options) &&
-      canUseKeplerTwoBodyPrediction(options.state, target)
-        ? computeKeplerTwoBodyTrajectoryPrediction(
-            options.state,
-            target,
-            predictionConfig,
-            allowLoopTrim,
-            options.physicsEngine,
-          )
-        : computeCoastTrajectoryPrediction(
-            options.state,
-            options.physicsEngine,
-            target,
-            predictionConfig,
-            allowLoopTrim,
-          )
+    const coastComputation = canUseKeplerOrbitPrediction(options, target)
+      ? computeKeplerTwoBodyTrajectoryPrediction(
+          options.state,
+          target,
+          predictionConfig,
+          allowLoopTrim,
+          options.physicsEngine,
+        )
+      : computeCoastTrajectoryPrediction(
+          options.state,
+          options.physicsEngine,
+          target,
+          predictionConfig,
+          allowLoopTrim,
+        )
 
     return {
       assistedPoints:
@@ -1295,7 +1320,10 @@ export const createTrajectoryPredictionRuntime = (
     }
 
     const target = options.getAssistTarget()
-    const nextInputKeyParts = createPredictionInputKeyParts(options, target)
+    const nextInputKeyParts = createCurrentPredictionInputKeyParts(
+      options,
+      target,
+    )
     const inputKey = createPredictionInputKey(nextInputKeyParts)
     const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
     const semanticInputKey = createFarPredictionSemanticInputKey(
@@ -1681,7 +1709,7 @@ export const createTrajectoryPredictionRuntime = (
     options: RefreshTrajectoryPredictionOptions,
     target: Body,
     reason: TrajectoryPredictionRefreshReason,
-    nextInputKeyParts = createPredictionInputKeyParts(options, target),
+    nextInputKeyParts = createCurrentPredictionInputKeyParts(options, target),
   ) => {
     const refreshStartMs = nowMs()
     predictionRefreshTimesMs.push(refreshStartMs)
@@ -1848,6 +1876,7 @@ export const createTrajectoryPredictionRuntime = (
     })
     updateFarCoalescingDiagnostics(options)
     predictionRefreshElapsed = 0
+    closedKeplerOrbitFramesSinceRefresh = 0
   }
 
   const refresh = (
@@ -1905,16 +1934,40 @@ export const createTrajectoryPredictionRuntime = (
       predictionRefreshElapsed += realDt
       setCurrentSpacecraftPosition(options.state.spacecraft.position)
       const target = options.getAssistTarget()
-      const nextInputKeyParts = createPredictionInputKeyParts(options, target)
+      const nextInputKeyParts = createCurrentPredictionInputKeyParts(
+        options,
+        target,
+      )
       let reason = getRefreshReason(
         predictionInputKeyParts,
         nextInputKeyParts,
         predictionRefreshElapsed,
         options.predictionConfig.refreshInterval,
-        predictionImplementation === 'kepler' &&
-          isPassiveCoast(options) &&
+        hasClosedKeplerOrbit(options, target) &&
           nearPredictionTier?.terminationReason === 'closed-orbit',
       )
+      const hasClosedOrbit = hasClosedKeplerOrbit(options, target)
+      if (hasClosedOrbit) {
+        closedKeplerOrbitFramesSinceRefresh += 1
+        if (
+          closedKeplerOrbitFramesSinceRefresh < 2 &&
+          reason &&
+          canReuseAcceptedWindowForReason(reason)
+        ) {
+          reason = null
+        }
+        if (closedKeplerOrbitFramesSinceRefresh >= 2 && !reason) {
+          reason = 'timed-refresh'
+        }
+      } else {
+        closedKeplerOrbitFramesSinceRefresh = 0
+        if (
+          nearPredictionTier?.terminationReason === 'closed-orbit' &&
+          (!reason || canReuseAcceptedWindowForReason(reason))
+        ) {
+          reason = 'orbit-policy-change'
+        }
+      }
       const allowLoopTrim = options.getCaptureMetrics(target).specificEnergy < 0
       const orbitPolicyChanged =
         predictionInputAllowLoopTrim !== null &&
