@@ -109,14 +109,13 @@ const getKeplerTwoBodyParameters = (
           gravitationalParameter,
     ),
   )
-  const semimajorAxis = 1 / reciprocalSemimajorAxis
-
   return {
     gravitationalParameter,
     orbitalPeriod:
       (2 * Math.PI) /
       Math.sqrt(gravitationalParameter * reciprocalSemimajorAxis ** 3),
-    periapsisRadius: semimajorAxis * (1 - eccentricity),
+    periapsisRadius:
+      angularMomentum ** 2 / (gravitationalParameter * (1 + eccentricity)),
     radialVelocity,
     radius,
     reciprocalSemimajorAxis,

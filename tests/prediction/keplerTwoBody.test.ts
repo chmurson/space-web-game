@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   computeKeplerTwoBodyTrajectoryPrediction,
+  getClosedKeplerTwoBodyOrbitPeriod,
   propagateKeplerTwoBody,
   sampleKeplerTwoBodyTrajectory,
 } from '@/prediction/keplerTwoBody'
@@ -131,6 +132,36 @@ describe('propagateKeplerTwoBody', () => {
     expect(Number.isFinite(propagated.position.y)).toBe(true)
     expect(Number.isFinite(propagated.velocity.x)).toBe(true)
     expect(Number.isFinite(propagated.velocity.y)).toBe(true)
+  })
+})
+
+describe('getClosedKeplerTwoBodyOrbitPeriod', () => {
+  it('rejects a high-eccentricity orbit whose periapsis intersects the body', () => {
+    const gravitationalParameter = 1
+    const semimajorAxis = 104_426_802_766.55951
+    const eccentricity = 0.9999999999904239
+    const apoapsisRadius = semimajorAxis * (1 + eccentricity)
+    const body: Body = {
+      id: 'test-body',
+      name: 'Test body',
+      mass: gravitationalParameter / G,
+      radius: 1,
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      color: '#fff',
+    }
+
+    expect(
+      getClosedKeplerTwoBodyOrbitPeriod(body, {
+        position: { x: apoapsisRadius, y: 0 },
+        velocity: {
+          x: 0,
+          y: Math.sqrt(
+            gravitationalParameter * (2 / apoapsisRadius - 1 / semimajorAxis),
+          ),
+        },
+      }),
+    ).toBeNull()
   })
 })
 
