@@ -286,6 +286,7 @@ const selectPredictionColors = (
 ) => pointIndices.flatMap((index) => colors.slice(index * 3, index * 3 + 3))
 
 const updateTargetRelativePredictionVisuals = (options: {
+  closedOrbit: boolean
   coastPredictionHorizonSeconds: number
   debugModeEnabled: boolean
   eventMarkerLabels: TrajectoryEventMarkerLabelRefs
@@ -339,17 +340,24 @@ const updateTargetRelativePredictionVisuals = (options: {
       ? predictionLineDebugMaterialColor
       : predictionLineBaseColor,
   )
-  const predictionFadeColors = getCoastPredictionFadeColors(
-    predictionPositions,
-    options.coastPredictionHorizonSeconds,
-  )
-  const predictionColors = options.debugModeEnabled
-    ? getDebugPredictionTierColors(
-        options.targetRelativePredictionPoints.length,
-        options.targetRelativeNearPointCount,
-        options.targetRelativeFarVisible,
-      )
-    : predictionFadeColors
+  let predictionColors: number[]
+  if (options.debugModeEnabled) {
+    predictionColors = getDebugPredictionTierColors(
+      options.targetRelativePredictionPoints.length,
+      options.targetRelativeNearPointCount,
+      options.targetRelativeFarVisible,
+    )
+  } else if (options.closedOrbit) {
+    predictionColors = Array.from(
+      { length: options.targetRelativePredictionPoints.length * 3 },
+      () => 1,
+    )
+  } else {
+    predictionColors = getCoastPredictionFadeColors(
+      predictionPositions,
+      options.coastPredictionHorizonSeconds,
+    )
+  }
   const renderSelections = options.selectRenderGeometry({
     assistedPoints: options.targetRelativeAssistedPoints,
     coastPoints: options.targetRelativePredictionPoints,
@@ -360,14 +368,25 @@ const updateTargetRelativePredictionVisuals = (options: {
     viewportSize: options.viewportSize,
   })
   const predictionSelection = renderSelections.coast
-  const visiblePredictionPoints = selectPredictionPoints(
+  const selectedVisiblePredictionPoints = selectPredictionPoints(
     options.targetRelativePredictionPoints,
     predictionSelection.visiblePointIndices,
   )
-  const visiblePredictionColors = selectPredictionColors(
+  const selectedVisiblePredictionColors = selectPredictionColors(
     predictionColors,
     predictionSelection.visiblePointIndices,
   )
+  const shouldCloseVisiblePrediction =
+    options.closedOrbit && selectedVisiblePredictionPoints.length > 1
+  const visiblePredictionPoints = shouldCloseVisiblePrediction
+    ? [...selectedVisiblePredictionPoints, selectedVisiblePredictionPoints[0]]
+    : selectedVisiblePredictionPoints
+  const visiblePredictionColors = shouldCloseVisiblePrediction
+    ? [
+        ...selectedVisiblePredictionColors,
+        ...selectedVisiblePredictionColors.slice(0, 3),
+      ]
+    : selectedVisiblePredictionColors
   const staleFarPredictionPoints = selectPredictionPoints(
     options.targetRelativePredictionPoints,
     predictionSelection.staleFarPointIndices,
@@ -436,7 +455,7 @@ const updateTargetRelativePredictionVisuals = (options: {
     viewportSize: options.viewportSize,
   })
 
-  if (!options.targetRelativePredictionEnd) {
+  if (options.closedOrbit || !options.targetRelativePredictionEnd) {
     options.gameScene.predictionEndMarker.visible = false
     options.gameScene.impactGradientLine.visible = false
     return
@@ -1032,6 +1051,9 @@ export const createTrajectoryPresentation = (options: {
       const apsidesSelection = getApsidesSelectionState(options.runtime)
       updateTargetRelativePredictionVisuals({
         apsidesScenarioOwned: apsidesSelection.scenarioOwned,
+        closedOrbit:
+          predictionTargetMatches &&
+          predictionDiagnostics.predictionTerminationReason === 'closed-orbit',
         coastPredictionHorizonSeconds:
           options.queries.getCoastPredictionHorizonSeconds(),
         debugModeEnabled: options.runtime.debug.debugModeEnabled,

@@ -14,9 +14,7 @@ const runKeplerPlaytest = async (
   testInfo: TestInfo,
   viewportName: 'desktop' | 'mobile',
 ) => {
-  await page.goto(
-    '/?scenario=earth-moon&devtools=1&trajectoryPrediction=kepler',
-  )
+  await page.goto('/?scenario=earth-kepler-orbit-debug&engine=kepler')
   await expect(page.locator('[data-boot-screen]')).toBeHidden()
   await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
   await expect(page.locator('canvas')).toBeVisible()
@@ -42,9 +40,10 @@ const runKeplerPlaytest = async (
   expect(
     snapshot.simulation.trajectoryPrediction.visiblePointCount,
   ).toBeGreaterThan(20)
-  expect(new URL(page.url()).searchParams.get('trajectoryPrediction')).toBe(
-    'kepler',
-  )
+  expect(
+    snapshot.simulation.trajectoryPrediction.predictionTerminationReason,
+  ).toBe('closed-orbit')
+  expect(new URL(page.url()).searchParams.get('engine')).toBe('kepler')
 
   const screenshotPath = testInfo.outputPath(
     `${viewportName}-kepler-trajectory.png`,
@@ -61,7 +60,7 @@ const runKeplerPlaytest = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('keeps Kepler trajectory prediction active on desktop', async ({
+test('closes the Kepler trajectory under default simulation physics on desktop', async ({
   browser,
 }, testInfo) => {
   const context = await browser.newContext({
@@ -81,7 +80,7 @@ test('keeps Kepler trajectory prediction active on desktop', async ({
   }
 })
 
-test('keeps Kepler trajectory prediction active on mobile', async ({
+test('closes the Kepler trajectory under default simulation physics on mobile', async ({
   page,
 }, testInfo) => {
   await runKeplerPlaytest(page, testInfo, 'mobile')

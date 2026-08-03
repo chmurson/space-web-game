@@ -1,8 +1,12 @@
 import type { RuntimeScenario } from '../debugScenarioSnapshot'
-import { EARTH_MOON_VIEWPORT_SIZE } from '../domain/viewportPresets'
+import {
+  EARTH_MOON_VIEWPORT_SIZE,
+  EARTH_VIEWPORT_SIZE,
+} from '../domain/viewportPresets'
 import type { AppRuntimeState } from '../runtime/appRuntimeState'
 import type { TrajectoryPredictionState } from '../runtime/trajectoryPredictionRuntime'
 import {
+  createEarthKeplerOrbitDebugScenario,
   createEarthMoonScenario,
   createMoonCaptureDebugScenario,
 } from '../simulation/scenarios/earthMoon'
@@ -75,6 +79,12 @@ const earthMoonScenarioScene: ScenarioSceneDefinition = {
   }),
 }
 
+const earthKeplerOrbitDebugScenarioScene: ScenarioSceneDefinition = {
+  directives: () => ({
+    maxViewportSize: EARTH_VIEWPORT_SIZE,
+  }),
+}
+
 const runtimeScenarioDefinitions = {
   'earth-moon': {
     id: 'earth-moon',
@@ -85,6 +95,14 @@ const runtimeScenarioDefinitions = {
     id: 'moon-capture-debug',
     createScenario: createMoonCaptureDebugScenario,
     getSceneDefinition: () => earthMoonScenarioScene,
+  },
+  'earth-kepler-orbit-debug': {
+    id: 'earth-kepler-orbit-debug',
+    createScenario: () => ({
+      ...createEarthKeplerOrbitDebugScenario(),
+      viewportSize: EARTH_VIEWPORT_SIZE,
+    }),
+    getSceneDefinition: () => earthKeplerOrbitDebugScenarioScene,
   },
   'menu-background': registerMenuBackgroundScenario(),
   tutorial: registerTutorialScenario(),

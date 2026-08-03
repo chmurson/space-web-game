@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   computeKeplerTwoBodyTrajectoryPrediction,
+  getClosedKeplerTwoBodyOrbitPeriod,
   propagateKeplerTwoBody,
   sampleKeplerTwoBodyTrajectory,
 } from '@/prediction/keplerTwoBody'
@@ -36,20 +37,31 @@ const spacecraft = {
 }
 
 const createState = (
-  body: Body,
-  coastSpacecraft = spacecraft,
+  predictionSpacecraft: typeof spacecraft = spacecraft,
+  body: Body = earth,
 ): SimulationState => ({
   bodies: [body],
   controls: idleControls(),
   elapsed: 0,
   spacecraft: {
-    ...coastSpacecraft,
+    ...predictionSpacecraft,
     fuel: 0,
     fuelCapacity: 0,
     fuelMass: 0,
     fuelUsed: 0,
     heading: 0,
   },
+})
+
+const createPredictionConfig = (
+  horizonSeconds: number,
+  stepSeconds: number,
+) => ({
+  horizonSeconds,
+  maxIntegrationStepSeconds: stepSeconds,
+  maxLoopRevolutions: 2.5,
+  refreshInterval: 0.4,
+  stepSeconds,
 })
 
 describe('propagateKeplerTwoBody', () => {
@@ -107,7 +119,6 @@ describe('propagateKeplerTwoBody', () => {
     const propagated = propagateKeplerTwoBody(
       earth,
       {
-        dryMass: spacecraft.dryMass,
         position: spacecraft.position,
         velocity: {
           x: earth.velocity.x - 11_000,
@@ -121,6 +132,36 @@ describe('propagateKeplerTwoBody', () => {
     expect(Number.isFinite(propagated.position.y)).toBe(true)
     expect(Number.isFinite(propagated.velocity.x)).toBe(true)
     expect(Number.isFinite(propagated.velocity.y)).toBe(true)
+  })
+})
+
+describe('getClosedKeplerTwoBodyOrbitPeriod', () => {
+  it('rejects a high-eccentricity orbit whose periapsis intersects the body', () => {
+    const gravitationalParameter = 1
+    const semimajorAxis = 104_426_802_766.55951
+    const eccentricity = 0.9999999999904239
+    const apoapsisRadius = semimajorAxis * (1 + eccentricity)
+    const body: Body = {
+      id: 'test-body',
+      name: 'Test body',
+      mass: gravitationalParameter / G,
+      radius: 1,
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+      color: '#fff',
+    }
+
+    expect(
+      getClosedKeplerTwoBodyOrbitPeriod(body, {
+        position: { x: apoapsisRadius, y: 0 },
+        velocity: {
+          x: 0,
+          y: Math.sqrt(
+            gravitationalParameter * (2 / apoapsisRadius - 1 / semimajorAxis),
+          ),
+        },
+      }),
+    ).toBeNull()
   })
 })
 
@@ -138,66 +179,157 @@ describe('computeKeplerTwoBodyTrajectoryPrediction', () => {
   ])('preserves non-positive step validation (%s)', (stepSeconds) => {
     expect(() =>
       computeKeplerTwoBodyTrajectoryPrediction(
-        createState(earth),
+        createState(),
         earth,
-        {
-          horizonSeconds: 60,
-          maxIntegrationStepSeconds: 60,
-          maxLoopRevolutions: 1,
-          refreshInterval: 0.4,
-          stepSeconds,
-        },
+        createPredictionConfig(60, stepSeconds),
         false,
         semiImplicitEuler,
       ),
     ).toThrow('sampleStepSeconds must be positive')
   })
 
-  it('honors loop trimming and the configured revolution limit', () => {
-    const stationaryEarth = { ...earth, velocity: { x: 0, y: 0 } }
-    const stationarySpacecraft = {
-      ...spacecraft,
-      velocity: { x: 0, y: orbitSpeed },
-    }
-    const state = createState(stationaryEarth, stationarySpacecraft)
+  it('samples a complete closed orbit even when its period exceeds the horizon', () => {
     const period = 2 * Math.PI * Math.sqrt(orbitRadius ** 3 / (G * earth.mass))
-    const baseConfig = {
-      horizonSeconds: period * 4,
-      maxIntegrationStepSeconds: 60,
-      maxLoopRevolutions: 1,
-      refreshInterval: 0.4,
-      stepSeconds: period / 64,
+    const computation = computeKeplerTwoBodyTrajectoryPrediction(
+      createState(),
+      earth,
+      createPredictionConfig(600, 300),
+      true,
+      semiImplicitEuler,
+    )
+    const lastPoint = computation.result.relativePoints.at(-1)
+    const firstPoint = computation.result.relativePoints[0]
+    const initialRelativePosition = {
+      x: spacecraft.position.x - earth.position.x,
+      y: spacecraft.position.y - earth.position.y,
     }
 
-    const untrimmed = computeKeplerTwoBodyTrajectoryPrediction(
-      state,
-      stationaryEarth,
-      baseConfig,
+    expect(computation.terminationReason).toBe('closed-orbit')
+    expect(computation.predictionTime).toBeCloseTo(period, 8)
+    expect(computation.result.relativePoints.length).toBeGreaterThanOrEqual(128)
+    expect(computation.result.absolutePoints).toHaveLength(
+      computation.result.relativePoints.length + 1,
+    )
+    expect(firstPoint).not.toEqual(initialRelativePosition)
+    expect(lastPoint).toBeDefined()
+    expect(
+      length({
+        x: (lastPoint?.x ?? 0) - initialRelativePosition.x,
+        y: (lastPoint?.y ?? 0) - initialRelativePosition.y,
+      }),
+    ).toBeLessThan(1e-3)
+  })
+
+  it('samples a long-period closed orbit without stalling near escape energy', () => {
+    const semimajorAxis = 120_000_000
+    const periapsisSpeed = Math.sqrt(
+      G * earth.mass * (2 / orbitRadius - 1 / semimajorAxis),
+    )
+    const longPeriodSpacecraft = {
+      ...spacecraft,
+      velocity: {
+        x: earth.velocity.x,
+        y: earth.velocity.y + periapsisSpeed,
+      },
+    }
+    const coastedState = propagateKeplerTwoBody(earth, longPeriodSpacecraft, 60)
+    const coastedSpacecraft = {
+      ...longPeriodSpacecraft,
+      position: coastedState.position,
+      velocity: coastedState.velocity,
+    }
+    const computation = computeKeplerTwoBodyTrajectoryPrediction(
+      createState(coastedSpacecraft),
+      earth,
+      createPredictionConfig(2 * 24 * 3_600, 180),
+      true,
+      semiImplicitEuler,
+    )
+    const firstPosition = {
+      x: coastedSpacecraft.position.x - earth.position.x,
+      y: coastedSpacecraft.position.y - earth.position.y,
+    }
+    const finalPosition = computation.result.relativePoints.at(-1)
+
+    expect(computation.terminationReason).toBe('closed-orbit')
+    expect(computation.result.relativePoints).toHaveLength(1_200)
+    expect(finalPosition).toBeDefined()
+    expect(
+      length({
+        x: (finalPosition?.x ?? 0) - firstPosition.x,
+        y: (finalPosition?.y ?? 0) - firstPosition.y,
+      }),
+    ).toBeLessThan(1e-2)
+  })
+
+  it('keeps an intersecting bound orbit as an impact trajectory', () => {
+    const impactSpacecraft = {
+      ...spacecraft,
+      velocity: {
+        x: earth.velocity.x,
+        y: earth.velocity.y + orbitSpeed * 0.75,
+      },
+    }
+    const computation = computeKeplerTwoBodyTrajectoryPrediction(
+      createState(impactSpacecraft),
+      earth,
+      createPredictionConfig(3_600, 10),
+      true,
+      semiImplicitEuler,
+    )
+
+    expect(computation.terminationReason).toBe('impact')
+    expect(computation.result.impact).toMatchObject({
+      bodyName: earth.name,
+    })
+    expect(computation.predictionTime).toBeLessThan(3_600)
+  })
+
+  it('keeps an escape path open and horizon-bounded', () => {
+    const escapeSpeed = Math.sqrt((2 * G * earth.mass) / orbitRadius)
+    const escapeSpacecraft = {
+      ...spacecraft,
+      velocity: {
+        x: earth.velocity.x,
+        y: earth.velocity.y + escapeSpeed * 1.01,
+      },
+    }
+    const computation = computeKeplerTwoBodyTrajectoryPrediction(
+      createState(escapeSpacecraft),
+      earth,
+      createPredictionConfig(600, 60),
       false,
       semiImplicitEuler,
     )
-    const oneLoop = computeKeplerTwoBodyTrajectoryPrediction(
-      state,
-      stationaryEarth,
-      baseConfig,
-      true,
-      semiImplicitEuler,
-    )
-    const twoLoops = computeKeplerTwoBodyTrajectoryPrediction(
-      state,
-      stationaryEarth,
-      { ...baseConfig, maxLoopRevolutions: 2 },
+
+    expect(computation.terminationReason).toBe('horizon')
+    expect(computation.predictionTime).toBe(600)
+    expect(computation.result.relativePoints).toHaveLength(10)
+  })
+
+  it('retains loop trimming for open trajectories', () => {
+    const escapeSpeed = Math.sqrt((2 * G * earth.mass) / orbitRadius)
+    const escapeSpacecraft = {
+      ...spacecraft,
+      velocity: {
+        x: earth.velocity.x,
+        y: earth.velocity.y + escapeSpeed * 1.01,
+      },
+    }
+    const config = {
+      ...createPredictionConfig(3_600, 10),
+      maxLoopRevolutions: 0.05,
+    }
+    const computation = computeKeplerTwoBodyTrajectoryPrediction(
+      createState(escapeSpacecraft),
+      earth,
+      config,
       true,
       semiImplicitEuler,
     )
 
-    expect(untrimmed.terminationReason).toBe('horizon')
-    expect(untrimmed.predictionTime).toBeCloseTo(baseConfig.horizonSeconds)
-    expect(oneLoop.terminationReason).toBe('loop-limit')
-    expect(oneLoop.predictionTime).toBeLessThan(untrimmed.predictionTime)
-    expect(twoLoops.terminationReason).toBe('loop-limit')
-    expect(twoLoops.predictionTime).toBeGreaterThan(oneLoop.predictionTime)
-    expect(oneLoop.result.integration.stepCount).toBe(0)
-    expect(twoLoops.result.integration.stepCount).toBe(0)
+    expect(computation.terminationReason).toBe('loop-limit')
+    expect(computation.predictionTime).toBeLessThan(config.horizonSeconds)
+    expect(computation.result.integration.stepCount).toBe(0)
   })
 })

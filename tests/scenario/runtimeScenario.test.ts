@@ -182,6 +182,24 @@ describe('createRuntimeScenarioState', () => {
     })
   })
 
+  it('creates the Kepler orbit debug scenario with Earth as its only massive body', () => {
+    const scenario = createRequestedRuntimeScenario('earth-kepler-orbit-debug')
+
+    expect(scenario.id).toBe('earth-kepler-orbit-debug')
+    expect(scenario.bodies).toHaveLength(1)
+    expect(scenario.bodies[0]).toMatchObject({ id: 'earth' })
+
+    const runtimeScenario = createRuntimeScenarioStateFromId(
+      'earth-kepler-orbit-debug',
+      options,
+    )
+
+    expect(runtimeScenario.scenarioSession.scenarioId).toBe(
+      'earth-kepler-orbit-debug',
+    )
+    expect(runtimeScenario.viewportSize).toBe(EARTH_VIEWPORT_SIZE)
+  })
+
   it('keeps finite fuel opt-in scoped to Reach the Moon', () => {
     expect(
       createRequestedRuntimeScenario('earth-moon').spacecraft.fuelCapacity,

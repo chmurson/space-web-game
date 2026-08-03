@@ -104,6 +104,20 @@ describe('createAppConfigContext', () => {
     ).toBe('euler')
   })
 
+  it('selects Kepler trajectory prediction from the unified engine URL', () => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?engine=kepler'),
+    })
+
+    const config = createAppConfigContext()
+
+    expect(config.requestedEngine).toBe('kepler')
+    expect(config.featureFlags.trajectoryPredictionImplementation).toBe(
+      'kepler',
+    )
+  })
+
   it('uses persisted touch control sides by default', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
