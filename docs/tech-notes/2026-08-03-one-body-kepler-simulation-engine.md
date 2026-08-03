@@ -123,3 +123,35 @@ restriction explicit until patched-conic work exists.
   while keeping `engine` as the only model-selection surface.
 - A future finite-burn integrator could reduce the documented one-second
   operator-split approximation without changing the coast propagator.
+
+## Zoom-out cap follow-up
+
+The one-body debug scenario initially reused `EARTH_VIEWPORT_SIZE` (`50`) as
+both its starting viewport and its scenario-level `maxViewportSize`. The camera
+zoom action prefers a scenario directive over the global camera maximum, so the
+Kepler scene started at its cap and could not zoom out. The equivalent
+Earth-Moon parking orbit instead uses `EARTH_MOON_VIEWPORT_SIZE` (`1000`) as its
+scenario cap.
+
+The Kepler scenario now reuses the existing Earth-Moon scene directive. Its
+initial viewport remains `50`, preserving the useful close orbit framing, while
+its effective zoom-out cap becomes `1000`. Removing the scenario directive
+entirely would have exposed the broader global `2500` cap and made the two
+otherwise equivalent parking-orbit scenarios behave differently. The default
+camera configuration and Earth-Moon directive are unchanged.
+
+Focused directive coverage asserts that both scenarios resolve the same cap.
+The Playwright comparison loads each scenario in a 1024×720 viewport, confirms
+their initial Earth-relative parking-orbit radius, speed, and heading remain
+equivalent, zooms both to viewport size `1000`, verifies another zoom-out stays
+clamped there, and captures both final views for inspection.
+
+Follow-up validation passed 13 focused scenario-directive tests, all 5 focused
+Kepler Playwright tests, 803 product tests, 16 task-claim tests, 7 engineer
+workflow tests, the release build, task-scoped Biome, and `git diff --check`.
+The full GUI suite passed 108 of 109 tests. Its sole failure remains the
+unrelated mobile leaderboard accessible-name mismatch: the test expects
+`Time 7h30m`, while the rendered cell is `Time 07h30m`. The two 1024×720
+zoom-cap screenshots and the existing 390×844 Kepler orbit screenshot were
+inspected; the wide views share the same scale without new HUD overlap, and the
+mobile close-orbit view remains unchanged.

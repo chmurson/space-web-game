@@ -193,6 +193,23 @@ describe('scenarioDirectives', () => {
     expect(directives.maxViewportSize).toBe(EARTH_MOON_VIEWPORT_SIZE)
   })
 
+  it('matches the earth-moon zoom-out cap for the one-body Kepler orbit', () => {
+    const getMaxViewportSize = (scenarioId: string) => {
+      const runtime = createRuntime()
+      runtime.scenario.session = createRuntimeScenarioSession(scenarioId)
+
+      return resolveRuntimeScenarioDirectives(
+        runtime,
+        globalScenarioDirectiveLimits,
+      ).maxViewportSize
+    }
+
+    expect(getMaxViewportSize('earth-moon')).toBe(EARTH_MOON_VIEWPORT_SIZE)
+    expect(getMaxViewportSize('earth-kepler-orbit-debug')).toBe(
+      getMaxViewportSize('earth-moon'),
+    )
+  })
+
   it('constrains runtime state to directive caps', () => {
     const runtime = createRuntime()
     runtime.scenario.directives = {

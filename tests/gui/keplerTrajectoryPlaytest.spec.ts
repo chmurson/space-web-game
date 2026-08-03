@@ -167,6 +167,36 @@ const runKeplerPlaytest = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
+const zoomOutToViewportCap = async (page: Page, expectedCap: number) => {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const snapshot = await getSnapshot(page)
+    if (snapshot.simulation.viewportSize === expectedCap) {
+      const cappedResponse = await page.evaluate(() =>
+        window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+          action: 'zoomOut',
+          type: 'dispatch-ui-action',
+        }),
+      )
+      expect(cappedResponse?.ok).toBe(true)
+      expect((await getSnapshot(page)).simulation.viewportSize).toBe(
+        expectedCap,
+      )
+      return snapshot
+    }
+
+    expect(snapshot.simulation.viewportSize).toBeLessThan(expectedCap)
+    const response = await page.evaluate(() =>
+      window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+        action: 'zoomOut',
+        type: 'dispatch-ui-action',
+      }),
+    )
+    expect(response?.ok).toBe(true)
+  }
+
+  throw new Error(`Viewport did not reach zoom-out cap ${expectedCap}.`)
+}
+
 test('runs a live closed Kepler orbit for one period on desktop', async ({
   browser,
 }, testInfo) => {
@@ -191,6 +221,91 @@ test('runs a live closed Kepler orbit for one period on mobile', async ({
   page,
 }, testInfo) => {
   await runKeplerPlaytest(page, testInfo, 'mobile')
+})
+
+test('matches the earth-moon zoom-out range at the same desktop viewport', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    baseURL: testInfo.project.use.baseURL as string,
+    colorScheme: 'dark',
+    hasTouch: false,
+    isMobile: false,
+    reducedMotion: 'reduce',
+    viewport: { height: 720, width: 1_024 },
+  })
+  const page = await context.newPage()
+  const expectedCap = 1_000
+
+  const inspectScenario = async (url: string, screenshotName: string) => {
+    await page.goto(url)
+    await expect(page.locator('[data-boot-screen]')).toBeHidden()
+    await page.waitForFunction(() =>
+      Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__),
+    )
+    await expect(page.locator('canvas')).toBeVisible()
+
+    const initialSnapshot = await getSnapshot(page)
+    const earth = initialSnapshot.simulation.bodies.find(
+      (body) => body.id === 'earth',
+    )
+    if (!earth) {
+      throw new Error('Missing Earth while comparing camera zoom ranges.')
+    }
+    const relativePosition = getRelativeVector(
+      initialSnapshot.simulation.spacecraft,
+      earth,
+    )
+    const relativeVelocity = getRelativeVelocity(
+      initialSnapshot.simulation.spacecraft,
+      earth,
+    )
+
+    expect(initialSnapshot.scenario.directives.maxViewportSize).toBe(
+      expectedCap,
+    )
+    const cappedSnapshot = await zoomOutToViewportCap(page, expectedCap)
+
+    const screenshotPath = testInfo.outputPath(`${screenshotName}.png`)
+    const screenshot = await page.screenshot({
+      animations: 'disabled',
+      fullPage: false,
+      path: screenshotPath,
+    })
+    await testInfo.attach(screenshotName, {
+      contentType: 'image/png',
+      path: screenshotPath,
+    })
+    expect(screenshot.byteLength).toBeGreaterThan(5_000)
+
+    return {
+      heading: initialSnapshot.simulation.spacecraft.heading,
+      orbitRadius: magnitude(relativePosition),
+      orbitSpeed: magnitude(relativeVelocity),
+      viewportSize: cappedSnapshot.simulation.viewportSize,
+    }
+  }
+
+  try {
+    const earthMoon = await inspectScenario(
+      '/?scenario=earth-moon',
+      'desktop-earth-moon-zoom-out-cap',
+    )
+    const kepler = await inspectScenario(
+      '/?scenario=earth-kepler-orbit-debug&engine=kepler',
+      'desktop-kepler-zoom-out-cap',
+    )
+
+    expect(earthMoon.viewportSize).toBe(expectedCap)
+    expect(kepler.viewportSize).toBe(earthMoon.viewportSize)
+    expect(Math.abs(kepler.orbitRadius - earthMoon.orbitRadius)).toBeLessThan(
+      5_000,
+    )
+    expect(Math.abs(kepler.orbitSpeed - earthMoon.orbitSpeed)).toBeLessThan(10)
+    expect(Math.abs(kepler.heading - earthMoon.heading)).toBeLessThan(0.01)
+  } finally {
+    await context.close()
+  }
 })
 
 test('boots the Kepler main menu with a one-body background', async ({

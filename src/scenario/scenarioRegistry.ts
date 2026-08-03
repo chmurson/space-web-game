@@ -73,15 +73,9 @@ export type RuntimeScenarioDefinition<
   shouldAutoRestartOnCrash?(runtime: AppRuntimeState): boolean
 }
 
-const earthMoonScenarioScene: ScenarioSceneDefinition = {
+const earthMoonViewportScenarioScene: ScenarioSceneDefinition = {
   directives: () => ({
     maxViewportSize: EARTH_MOON_VIEWPORT_SIZE,
-  }),
-}
-
-const earthKeplerOrbitDebugScenarioScene: ScenarioSceneDefinition = {
-  directives: () => ({
-    maxViewportSize: EARTH_VIEWPORT_SIZE,
   }),
 }
 
@@ -89,12 +83,12 @@ const runtimeScenarioDefinitions = {
   'earth-moon': {
     id: 'earth-moon',
     createScenario: createEarthMoonScenario,
-    getSceneDefinition: () => earthMoonScenarioScene,
+    getSceneDefinition: () => earthMoonViewportScenarioScene,
   },
   'moon-capture-debug': {
     id: 'moon-capture-debug',
     createScenario: createMoonCaptureDebugScenario,
-    getSceneDefinition: () => earthMoonScenarioScene,
+    getSceneDefinition: () => earthMoonViewportScenarioScene,
   },
   'earth-kepler-orbit-debug': {
     id: 'earth-kepler-orbit-debug',
@@ -102,7 +96,7 @@ const runtimeScenarioDefinitions = {
       ...createEarthKeplerOrbitDebugScenario(),
       viewportSize: EARTH_VIEWPORT_SIZE,
     }),
-    getSceneDefinition: () => earthKeplerOrbitDebugScenarioScene,
+    getSceneDefinition: () => earthMoonViewportScenarioScene,
   },
   'menu-background': registerMenuBackgroundScenario(),
   'menu-background-kepler': registerMenuBackgroundScenario(
