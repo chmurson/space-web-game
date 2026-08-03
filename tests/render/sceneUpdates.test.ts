@@ -49,6 +49,7 @@ describe('updateCameraView', () => {
       cameraTargetPosition: { x: 12, y: 34 },
       gameScene,
       maxViewportSize: 4_000,
+      minViewportSize: 100 / 30,
       viewportBottomInset: 260,
       viewportHeight: 800,
       viewportSize: 600,
@@ -74,6 +75,7 @@ describe('updateCameraView', () => {
       cameraTargetPosition: { x: 12, y: 34 },
       gameScene,
       maxViewportSize: 4_000,
+      minViewportSize: 100 / 30,
       viewportHeight: 800,
       viewportSize: 600,
       viewportWidth: 400,
@@ -91,7 +93,7 @@ describe('updateCameraView', () => {
     const gameScene = createGameSceneRefs()
     const visual = createSphereOfInfluenceVisual(
       body,
-      'gradient-zoom-compensation-100pct',
+      'gradient-max-zoom-width-25pct',
     )
     gameScene.bodySphereOfInfluenceGroups.set(body.id, visual.group)
 
@@ -101,6 +103,7 @@ describe('updateCameraView', () => {
       cameraTargetPosition: { x: 0, y: 0 },
       gameScene,
       maxViewportSize: 4_000,
+      minViewportSize: 100 / 30,
       viewportHeight: 800,
       viewportSize: 2_000,
       viewportWidth: 400,

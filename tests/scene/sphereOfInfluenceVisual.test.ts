@@ -29,20 +29,20 @@ const trajectoryRenderingConfig = {
 }
 
 describe('sphere-of-influence visuals', () => {
-  it('uses selected variant 2 as the shared field for all zoom variants', () => {
+  it('uses current soi=5 as the shared field for all thinness variants', () => {
     const childSignatures = new Set<string>()
-    const expectedCompensations = [0, 0.25, 0.5, 0.75, 1]
+    const expectedMaxZoomWidthScales = [0.25, 0.15, 0.1, 0.05]
 
     for (const [index, variant] of sphereOfInfluenceVariants.entries()) {
       const visual = createSphereOfInfluenceVisual(body, variant)
       const metadata = visual.group.userData.sphereOfInfluence
-      const gradientZoomCompensation = expectedCompensations[index]
+      const maxZoomGradientWidthScale = expectedMaxZoomWidthScales[index]
 
       expect(metadata).toEqual({
         bodyId: 'earth',
         borderWidthPixels: 1,
         edgeGradientStrength: 1.5,
-        gradientZoomCompensation,
+        maxZoomGradientWidthScale,
         radiusMeters: body.sphereOfInfluenceRadius,
         variant,
       })
@@ -66,37 +66,59 @@ describe('sphere-of-influence visuals', () => {
     expect(childSignatures.size).toBe(1)
   })
 
-  it('scales perceived gradient growth by the five requested amounts', () => {
-    const viewportSize = 2_000
+  it('preserves the selected width until local zoom, then reaches four thin endpoints', () => {
     const maxViewportSize = 4_000
-    const expectedWidthScales = [1, 0.875, 0.75, 0.625, 0.5]
-    const expectedPerceivedGrowth = [2, 1.75, 1.5, 1.25, 1]
+    const minViewportSize = 4
+    const middleViewportSize = 100
+    const taperMidpointViewportSize = 22
+    const expectedMaxZoomWidthScales = [0.25, 0.15, 0.1, 0.05]
 
     for (const [index, variant] of sphereOfInfluenceVariants.entries()) {
       const visual = createSphereOfInfluenceVisual(body, variant)
-
-      updateSphereOfInfluenceVisualViewport(visual.group, {
-        maxViewportSize,
-        viewportSize,
-      })
-
       const field = visual.group.getObjectByName(
         'soi-field-fill',
       ) as THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial>
-      const widthScale =
+
+      updateSphereOfInfluenceVisualViewport(visual.group, {
+        maxViewportSize,
+        minViewportSize,
+        viewportSize: middleViewportSize,
+      })
+      expect(field.material.uniforms.uSoiEdgeGradientWidthScale.value).toBe(
+        middleViewportSize / maxViewportSize,
+      )
+
+      updateSphereOfInfluenceVisualViewport(visual.group, {
+        maxViewportSize,
+        minViewportSize,
+        viewportSize: taperMidpointViewportSize,
+      })
+      expect(
+        field.material.uniforms.uSoiEdgeGradientWidthScale.value /
+          (taperMidpointViewportSize / maxViewportSize),
+      ).toBeCloseTo((1 + expectedMaxZoomWidthScales[index]) / 2)
+
+      updateSphereOfInfluenceVisualViewport(visual.group, {
+        maxViewportSize,
+        minViewportSize,
+        viewportSize: minViewportSize,
+      })
+      const maxZoomWidthScale =
         field.material.uniforms.uSoiEdgeGradientWidthScale.value
 
-      expect(widthScale).toBe(expectedWidthScales[index])
-      expect(widthScale / (viewportSize / maxViewportSize)).toBe(
-        expectedPerceivedGrowth[index],
+      expect(maxZoomWidthScale).toBeCloseTo(
+        (minViewportSize / maxViewportSize) * expectedMaxZoomWidthScales[index],
       )
+      expect(
+        maxZoomWidthScale / (minViewportSize / maxViewportSize),
+      ).toBeCloseTo(expectedMaxZoomWidthScales[index])
     }
   })
 
   it('keeps the selected gradient profile and screen-space border', () => {
     const visual = createSphereOfInfluenceVisual(
       body,
-      'gradient-zoom-compensation-0pct',
+      'gradient-max-zoom-width-25pct',
     )
     const field = visual.group.getObjectByName('soi-field-fill')
 
@@ -127,7 +149,7 @@ describe('sphere-of-influence visuals', () => {
       trajectoryRenderingConfig,
       undefined,
       undefined,
-      'gradient-zoom-compensation-25pct',
+      'gradient-max-zoom-width-15pct',
     )
 
     expect(disabledScene.bodySphereOfInfluenceGroups.size).toBe(0)

@@ -10,17 +10,17 @@ const EDGE_GRADIENT_END = 0.98
 const EDGE_GRADIENT_START = 0.38
 const EDGE_GRADIENT_STRENGTH = 1.5
 const FIELD_OPACITY = 0.045
+const LOCAL_ZOOM_TAPER_START_MULTIPLIER = 10
 const SOI_RENDER_ORDER = -8
 const WHITE = new THREE.Color('#ffffff')
-const gradientZoomCompensationByVariant: Record<
+const maxZoomGradientWidthScaleByVariant: Record<
   SphereOfInfluenceVariant,
   number
 > = {
-  'gradient-zoom-compensation-0pct': 0,
-  'gradient-zoom-compensation-25pct': 0.25,
-  'gradient-zoom-compensation-50pct': 0.5,
-  'gradient-zoom-compensation-75pct': 0.75,
-  'gradient-zoom-compensation-100pct': 1,
+  'gradient-max-zoom-width-25pct': 0.25,
+  'gradient-max-zoom-width-15pct': 0.15,
+  'gradient-max-zoom-width-10pct': 0.1,
+  'gradient-max-zoom-width-5pct': 0.05,
 }
 
 export const SPHERE_OF_INFLUENCE_RENDER_LIFT = -0.08
@@ -119,14 +119,14 @@ export const createSphereOfInfluenceVisual = (
 
   const radius = body.sphereOfInfluenceRadius * RENDER_SCALE
   const color = getDisplayColor(body.color)
-  const gradientZoomCompensation = gradientZoomCompensationByVariant[variant]
+  const maxZoomGradientWidthScale = maxZoomGradientWidthScaleByVariant[variant]
   const group = new THREE.Group()
   group.name = `${body.name} sphere of influence`
   group.userData.sphereOfInfluence = {
     bodyId: body.id,
     borderWidthPixels: BORDER_WIDTH_PIXELS,
     edgeGradientStrength: EDGE_GRADIENT_STRENGTH,
-    gradientZoomCompensation,
+    maxZoomGradientWidthScale,
     radiusMeters: body.sphereOfInfluenceRadius,
     variant,
   }
@@ -139,22 +139,40 @@ export const updateSphereOfInfluenceVisualViewport = (
   group: THREE.Group,
   options: {
     maxViewportSize: number
+    minViewportSize: number
     viewportSize: number
   },
 ) => {
   const metadata = group.userData.sphereOfInfluence as {
-    gradientZoomCompensation: number
+    maxZoomGradientWidthScale: number
   }
   const viewportRatio = THREE.MathUtils.clamp(
     options.viewportSize / options.maxViewportSize,
     0,
     1,
   )
-  const gradientWidthScale = THREE.MathUtils.lerp(
-    1,
-    viewportRatio,
-    metadata.gradientZoomCompensation,
+  const localZoomTaperStart = Math.min(
+    options.maxViewportSize,
+    options.minViewportSize * LOCAL_ZOOM_TAPER_START_MULTIPLIER,
   )
+  let localZoomProgress = 0
+  if (localZoomTaperStart > options.minViewportSize) {
+    localZoomProgress =
+      1 -
+      THREE.MathUtils.smoothstep(
+        options.viewportSize,
+        options.minViewportSize,
+        localZoomTaperStart,
+      )
+  } else if (options.viewportSize <= options.minViewportSize) {
+    localZoomProgress = 1
+  }
+  const localGradientWidthScale = THREE.MathUtils.lerp(
+    1,
+    metadata.maxZoomGradientWidthScale,
+    localZoomProgress,
+  )
+  const gradientWidthScale = viewportRatio * localGradientWidthScale
   const field = group.getObjectByName('soi-field-fill') as THREE.Mesh<
     THREE.CircleGeometry,
     THREE.ShaderMaterial

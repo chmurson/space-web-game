@@ -14,6 +14,7 @@ export const updateCameraView = (options: {
   cameraTargetPosition: Vec2
   gameScene: GameSceneRefs
   maxViewportSize: number
+  minViewportSize: number
   preserveStarfieldWorldPosition?: boolean
   viewportHeight: number
   viewportBottomInset?: number
@@ -87,6 +88,7 @@ export const updateCameraView = (options: {
   for (const group of options.gameScene.bodySphereOfInfluenceGroups.values()) {
     updateSphereOfInfluenceVisualViewport(group, {
       maxViewportSize: options.maxViewportSize,
+      minViewportSize: options.minViewportSize,
       viewportSize: options.viewportSize,
     })
   }

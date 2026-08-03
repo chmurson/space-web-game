@@ -1,9 +1,8 @@
 export const sphereOfInfluenceVariants = [
-  'gradient-zoom-compensation-0pct',
-  'gradient-zoom-compensation-25pct',
-  'gradient-zoom-compensation-50pct',
-  'gradient-zoom-compensation-75pct',
-  'gradient-zoom-compensation-100pct',
+  'gradient-max-zoom-width-25pct',
+  'gradient-max-zoom-width-15pct',
+  'gradient-max-zoom-width-10pct',
+  'gradient-max-zoom-width-5pct',
 ] as const
 
 export type SphereOfInfluenceVariant =
@@ -13,11 +12,10 @@ const sphereOfInfluenceVariantByFlagValue: Record<
   string,
   SphereOfInfluenceVariant
 > = {
-  '1': 'gradient-zoom-compensation-0pct',
-  '2': 'gradient-zoom-compensation-25pct',
-  '3': 'gradient-zoom-compensation-50pct',
-  '4': 'gradient-zoom-compensation-75pct',
-  '5': 'gradient-zoom-compensation-100pct',
+  '1': 'gradient-max-zoom-width-25pct',
+  '2': 'gradient-max-zoom-width-15pct',
+  '3': 'gradient-max-zoom-width-10pct',
+  '4': 'gradient-max-zoom-width-5pct',
 }
 
 export const parseSphereOfInfluenceVariant = (
