@@ -26,6 +26,7 @@ export const createInitialAppRuntimeState = (
   const initialScenarioTransition = createScenarioRuntimeTransition(
     resolveStartupScenarioId({
       initialAppMode: config.initialAppMode,
+      physicsEngine: config.physicsEngine,
       requestedScenarioId: config.requestedScenarioId,
     }),
     config.runtimeScenarioOptions,

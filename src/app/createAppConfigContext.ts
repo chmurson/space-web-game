@@ -6,7 +6,7 @@ import type {
 } from '../prediction/trajectoryPrediction'
 import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import { defaultPhysicsEngine, physicsEngines } from '../simulation/physics'
+import { physicsEngines, resolvePhysicsEngine } from '../simulation/physics'
 import type { PhysicsEngine } from '../simulation/types'
 import {
   readUserSettings,
@@ -82,8 +82,8 @@ export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
-  const keplerEngineRequested = requestedEngine === 'kepler'
-  const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
+  const physicsEngine = resolvePhysicsEngine(requestedEngine)
+  const keplerEngineSelected = physicsEngine === physicsEngines.kepler
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
   }
@@ -118,7 +118,7 @@ export const createAppConfigContext = (): AppConfigContext => {
   }
 
   const predictionImplementation: TrajectoryPredictionImplementation =
-    keplerEngineRequested ? 'kepler' : 'euler'
+    keplerEngineSelected ? 'kepler' : 'euler'
 
   const trajectory = {
     defaultCoastPredictionHorizonHours:

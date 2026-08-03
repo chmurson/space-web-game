@@ -24,6 +24,9 @@ Issue: [#347](https://github.com/chmurson/space-web-game/issues/347)
   loads, resets, debug snapshot loads, and checkpoint restores. Kepler mode
   throws a clear error before state mutation unless there is exactly one
   positive-mass body.
+- Added a one-body variant of the existing menu background so menu-mode Kepler
+  URLs keep the shipped menu framing without constructing an invalid Earth-Moon
+  state.
 - Added focused engine/runtime tests and desktop/mobile Playwright coverage for
   a complete displayed Earth orbit.
 
@@ -49,6 +52,9 @@ restriction explicit until patched-conic work exists.
 - `src/runtime/createScenarioRuntimeController.ts` owns validation before
   runtime scenario state changes; initial startup validates in
   `src/app/createInitialAppRuntimeState.ts`.
+- `src/scenario/specific-scenarios/menuBackgroundScenario.ts` owns both menu
+  background variants. They share the same camera, spacecraft, and menu
+  directives; the Kepler variant removes the already-hidden Moon.
 - `src/runtime/simulationStep.ts` remains the owner of time-warp subdivision,
   collision detection, and crash freeze behavior.
 
@@ -83,27 +89,33 @@ restriction explicit until patched-conic work exists.
   longer chooses a physical model.
 - No patched conics, SOI/Hill transitions, or multi-body approximations were
   introduced.
+- Engine URL lookup accepts only own registry keys. Unknown names, including
+  inherited `Object.prototype` names, resolve to the default engine, and the
+  prediction implementation derives from that resolved engine.
 
 ## Validation
 
-- `npm test`: passed all 799 product tests, 16 task-claim tests, and 7 engineer
+- `npm test`: passed all 802 product tests, 16 task-claim tests, and 7 engineer
   workflow tests.
 - `npm run build`: passed config validation, TypeScript compilation, and the
   production Vite build. The existing large-chunk warning remains informational.
 - Focused Playwright coverage in `tests/gui/keplerTrajectoryPlaytest.spec.ts`:
-  passed all 3 tests. The 1024×720 desktop and 390×844 mobile cases each ran
+  passed all 4 tests. The 1024×720 desktop and 390×844 mobile cases each ran
   longer than one approximately 92-minute simulated orbit at 1800× warp,
   retained a closed Kepler prediction, stayed out of crash state, and bounded
   position mismatch below 100 m, radius drift below 10 m, and speed drift below
-  0.02 m/s.
-- Full `npm run test:gui`: 106 of 107 tests passed, including all 3 new Kepler
+  0.02 m/s. The fourth case verifies that `?engine=kepler` boots the main menu
+  with the one-body menu background.
+- Full `npm run test:gui`: 107 of 108 tests passed, including all 4 Kepler
   tests. The sole failure is the existing mobile Reach the Moon leaderboard
-  expectation for accessible text `Time 7h30m`; this branch does not touch that
-  test or leaderboard behavior.
+  expectation for accessible text `Time 7h30m`; the rendered cell is
+  `Time 07h30m`, and this branch does not touch that test or leaderboard
+  behavior.
 - Visually inspected the generated desktop/mobile one-period orbit screenshots
-  and the developer-flags screenshot. Both game viewports showed a coherent
-  closed cyan orbit with usable HUD controls, and the developer menu retained
-  only the trajectory-horizon selector.
+  plus the Kepler menu and developer-flags screenshots. Both game viewports
+  showed a coherent closed cyan orbit with usable HUD controls, the Kepler menu
+  retained the shipped framing, and the developer menu retained only the
+  trajectory-horizon selector.
 
 ## Follow-ups and known gaps
 

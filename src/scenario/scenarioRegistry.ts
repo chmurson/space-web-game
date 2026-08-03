@@ -105,6 +105,9 @@ const runtimeScenarioDefinitions = {
     getSceneDefinition: () => earthKeplerOrbitDebugScenarioScene,
   },
   'menu-background': registerMenuBackgroundScenario(),
+  'menu-background-kepler': registerMenuBackgroundScenario(
+    'menu-background-kepler',
+  ),
   tutorial: registerTutorialScenario(),
   'reach-moon': registerReachMoonScenario(),
 }

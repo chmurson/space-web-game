@@ -41,6 +41,7 @@ const defaultBodyDiffuseTextureIds = ['earth', 'moon'] as const
 const scenarioBodyDiffuseTextureIds: Record<string, readonly string[]> = {
   'earth-moon': defaultBodyDiffuseTextureIds,
   'menu-background': ['earth'],
+  'menu-background-kepler': ['earth'],
   'moon-capture-debug': defaultBodyDiffuseTextureIds,
   'reach-moon': defaultBodyDiffuseTextureIds,
   'debug-snapshot': defaultBodyDiffuseTextureIds,

@@ -8,56 +8,67 @@ type MenuBackgroundScenarioState = {
   cameraFollowBodyId: 'earth'
   cameraFollowOffsetX: number
   cameraFollowOffsetY: number
-  hiddenBodyIds: ['moon']
+  hiddenBodyIds: [] | ['moon']
 }
 
-export const registerMenuBackgroundScenario =
-  (): RuntimeScenarioDefinition<MenuBackgroundScenarioState> => ({
-    id: 'menu-background',
-    getSceneDefinition: () => ({
-      directives: () => ({
-        hiddenUIElements: new Set(['timeWarpPill']),
-      }),
+type MenuBackgroundScenarioId = 'menu-background' | 'menu-background-kepler'
+
+export const registerMenuBackgroundScenario = (
+  scenarioId: MenuBackgroundScenarioId = 'menu-background',
+): RuntimeScenarioDefinition<MenuBackgroundScenarioState> => ({
+  id: scenarioId,
+  getSceneDefinition: () => ({
+    directives: () => ({
+      hiddenUIElements: new Set(['timeWarpPill']),
     }),
-    createScenario: () => {
-      const scenario = createEarthMoonScenario()
-      const earth = scenario.bodies.find((body) => body.id === 'earth')
+  }),
+  createScenario: () => {
+    const scenario = createEarthMoonScenario()
+    const singleBody = scenarioId === 'menu-background-kepler'
+    const bodies = singleBody
+      ? scenario.bodies.filter((body) => body.id === 'earth')
+      : scenario.bodies
+    const earth = bodies.find((body) => body.id === 'earth')
+    const hiddenBodyIds: MenuBackgroundScenarioState['hiddenBodyIds'] =
+      singleBody ? [] : ['moon']
 
-      if (!earth) {
-        return {
-          ...scenario,
-          id: 'menu-background',
-          name: 'Menu background',
-          scenarioSession: createRuntimeScenarioSession('menu-background'),
-        }
-      }
-
-      const orbitRadius = earth.radius + 1_000_000
-      const orbitSpeed = Math.sqrt((G * earth.mass) / orbitRadius) * 1.01
-
+    if (!earth) {
       return {
         ...scenario,
-        id: 'menu-background',
+        bodies,
+        id: scenarioId,
         name: 'Menu background',
-        viewportSize: EARTH_VIEWPORT_SIZE,
-        scenarioSession: createRuntimeScenarioSession('menu-background', {
-          cameraFollowBodyId: 'earth',
-          cameraFollowOffsetX: 4_000_000,
-          cameraFollowOffsetY: 4_000_000,
-          hiddenBodyIds: ['moon'],
-        }),
-        spacecraft: {
-          ...scenario.spacecraft,
-          heading: Math.PI / 2,
-          position: {
-            x: earth.position.x + orbitRadius,
-            y: earth.position.y,
-          },
-          velocity: {
-            x: earth.velocity.x,
-            y: earth.velocity.y + orbitSpeed,
-          },
-        },
+        scenarioSession: createRuntimeScenarioSession(scenarioId),
       }
-    },
-  })
+    }
+
+    const orbitRadius = earth.radius + 1_000_000
+    const orbitSpeed = Math.sqrt((G * earth.mass) / orbitRadius) * 1.01
+
+    return {
+      ...scenario,
+      bodies,
+      id: scenarioId,
+      name: 'Menu background',
+      viewportSize: EARTH_VIEWPORT_SIZE,
+      scenarioSession: createRuntimeScenarioSession(scenarioId, {
+        cameraFollowBodyId: 'earth',
+        cameraFollowOffsetX: 4_000_000,
+        cameraFollowOffsetY: 4_000_000,
+        hiddenBodyIds,
+      }),
+      spacecraft: {
+        ...scenario.spacecraft,
+        heading: Math.PI / 2,
+        position: {
+          x: earth.position.x + orbitRadius,
+          y: earth.position.y,
+        },
+        velocity: {
+          x: earth.velocity.x,
+          y: earth.velocity.y + orbitSpeed,
+        },
+      },
+    }
+  },
+})

@@ -144,6 +144,21 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.simulation.timeWarpIndex).toBe(2)
   })
 
+  it('boots an engine-compatible menu background with the Kepler engine', () => {
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        initialAppMode: 'menu',
+        physicsEngine: kepler,
+        requestedEngine: 'kepler',
+      }),
+    )
+
+    expect(runtime.scenario.session.scenarioId).toBe('menu-background-kepler')
+    expect(runtime.scenario.metadata.title).toBe('Menu background')
+    expect(runtime.simulation.state.bodies).toHaveLength(1)
+    expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
+  })
+
   it('boots the requested scenario in game mode', () => {
     const runtime = createInitialAppRuntimeState(
       createConfig({

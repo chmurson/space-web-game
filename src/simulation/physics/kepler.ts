@@ -46,6 +46,8 @@ export const kepler: PhysicsEngine = {
       bodies: [
         {
           ...body,
+          // Keep this linear drift and unchanged body velocity aligned with
+          // propagateKeplerTwoBody.
           position: add(body.position, scale(body.velocity, dt)),
         },
       ],

@@ -83,11 +83,20 @@ const createStepOptions = (state: SimulationState) => ({
 describe('Kepler runtime integration', () => {
   it('advances through the existing time-warp substep path', () => {
     const state = createState()
-    const result = stepSimulationFrame(createStepOptions(state))
+    const engineStep = vi.fn(kepler.step)
+    const result = stepSimulationFrame({
+      ...createStepOptions(state),
+      physicsEngine: { ...kepler, step: engineStep },
+      realDt: 0.25,
+    })
 
     expect(result.timeWarpIndex).toBe(1)
-    expect(result.state.elapsed).toBeCloseTo(1)
+    expect(result.state.elapsed).toBeCloseTo(2.5)
     expect(result.crashedBodyName).toBeNull()
+    expect(engineStep.mock.calls.length).toBeGreaterThan(1)
+    for (const [, dt] of engineStep.mock.calls) {
+      expect(dt).toBeLessThanOrEqual(1)
+    }
   })
 
   it('uses existing collision and crash freeze behavior', () => {

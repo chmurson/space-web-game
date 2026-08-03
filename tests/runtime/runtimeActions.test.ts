@@ -1087,6 +1087,20 @@ describe('createRuntimeActions', () => {
     expect(requestedTimeWarps[runtime.simulation.timeWarpIndex]).toBe(240)
   })
 
+  it('switches Kepler to an engine-compatible menu background', () => {
+    const runtime = createRuntime()
+    const runtimeActions = createTestRuntimeActions(runtime, {
+      physicsEngine: kepler,
+    })
+
+    runtimeActions.enterMainMenuBackground()
+
+    expect(runtime.scenario.session.scenarioId).toBe('menu-background-kepler')
+    expect(runtime.scenario.metadata.title).toBe('Menu background')
+    expect(runtime.simulation.state.bodies).toHaveLength(1)
+    expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
+  })
+
   it('syncs directives immediately after acknowledging the tutorial intro prompt', () => {
     const runtime = createRuntime()
     runtime.scenario.session = createRuntimeScenarioSession(

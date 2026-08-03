@@ -141,12 +141,16 @@ const runKeplerPlaytest = async (
   expect(speedDrift).toBeLessThan(0.02)
   expect(new URL(page.url()).searchParams.get('engine')).toBe('kepler')
 
-  await page.evaluate(() => {
+  const resetWarpResponse = await page.evaluate(() =>
     window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
       type: 'set-time-warp-index',
       index: 0,
-    })
-  })
+    }),
+  )
+  expect(resetWarpResponse?.ok).toBe(true)
+  await expect
+    .poll(async () => (await getSnapshot(page)).simulation.timeWarp)
+    .toBe(1)
 
   const screenshotPath = testInfo.outputPath(
     `${viewportName}-kepler-live-orbit-after-one-period.png`,
@@ -187,6 +191,49 @@ test('runs a live closed Kepler orbit for one period on mobile', async ({
   page,
 }, testInfo) => {
   await runKeplerPlaytest(page, testInfo, 'mobile')
+})
+
+test('boots the Kepler main menu with a one-body background', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    baseURL: testInfo.project.use.baseURL as string,
+    colorScheme: 'dark',
+    hasTouch: false,
+    isMobile: false,
+    reducedMotion: 'reduce',
+    viewport: { height: 720, width: 1_024 },
+  })
+  const page = await context.newPage()
+
+  try {
+    await page.goto('/?engine=kepler')
+    await expect(page.locator('[data-boot-screen]')).toBeHidden()
+    await expect(page.locator('.main-menu')).toBeVisible()
+    await page.waitForFunction(() =>
+      Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__),
+    )
+
+    const snapshot = await getSnapshot(page)
+    expect(snapshot.appMode).toBe('menu')
+    expect(snapshot.scenario.scenarioId).toBe('menu-background-kepler')
+    expect(snapshot.simulation.bodies.map((body) => body.id)).toEqual(['earth'])
+
+    const screenshotPath = testInfo.outputPath(
+      'desktop-kepler-one-body-main-menu.png',
+    )
+    await page.screenshot({
+      animations: 'disabled',
+      fullPage: false,
+      path: screenshotPath,
+    })
+    await testInfo.attach('desktop-kepler-one-body-main-menu', {
+      contentType: 'image/png',
+      path: screenshotPath,
+    })
+  } finally {
+    await context.close()
+  }
 })
 
 test('removes the retired trajectory model from developer flags', async ({

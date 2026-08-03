@@ -109,17 +109,30 @@ describe('kepler physics engine', () => {
 
     expect(
       controlledState.spacecraft.velocity.x - idleState.spacecraft.velocity.x,
-    ).toBeGreaterThan(0.1)
+    ).toBeCloseTo(0.138_889, 5)
     expect(
       controlledState.spacecraft.velocity.y - idleState.spacecraft.velocity.y,
-    ).toBeLessThan(-0.1)
+    ).toBeCloseTo(-0.194_444, 5)
   })
 
-  it('rejects states without exactly one massive body', () => {
+  it('validates exactly one positive-mass body', () => {
     const multiBodyState = createState(createEarthMoonScenario())
     const zeroBodyState = { ...multiBodyState, bodies: [] }
+    const validState = createState(createEarthKeplerOrbitDebugScenario())
+    const validBody = validState.bodies[0]
+    if (!validBody) {
+      throw new Error('Expected a valid one-body Kepler state.')
+    }
+    const masslessBodyState = {
+      ...validState,
+      bodies: [{ ...validBody, mass: 0 }],
+    }
 
+    expect(() => kepler.validateState?.(validState)).not.toThrow()
     expect(() => kepler.validateState?.(multiBodyState)).toThrow(
+      'The Kepler engine requires exactly one massive body.',
+    )
+    expect(() => kepler.validateState?.(masslessBodyState)).toThrow(
       'The Kepler engine requires exactly one massive body.',
     )
     expect(() => kepler.step(multiBodyState, 1)).toThrow(

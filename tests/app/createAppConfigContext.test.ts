@@ -96,6 +96,19 @@ describe('createAppConfigContext', () => {
     expect(config.trajectory.predictionImplementation).toBe('kepler')
   })
 
+  it('falls back from inherited Object prototype engine names', () => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?engine=toString'),
+    })
+
+    const config = createAppConfigContext()
+
+    expect(config.requestedEngine).toBe('toString')
+    expect(config.physicsEngine).toBe(defaultPhysicsEngine)
+    expect(config.trajectory.predictionImplementation).toBe('euler')
+  })
+
   it('uses persisted touch control sides by default', () => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
