@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AppConfigContext } from '@/app/createAppConfigContext'
 import { createInitialAppRuntimeState } from '@/app/createInitialAppRuntimeState'
+import { kepler } from '@/simulation/physics/kepler'
 import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
@@ -31,7 +32,6 @@ const createConfig = (
   requestedScenarioId: 'tutorial',
   featureFlags: {
     noHorizonLimit: false,
-    trajectoryPredictionImplementation: 'euler',
   },
   userSettings: {
     desktopCameraPanMode: 'wheel',
@@ -55,6 +55,7 @@ const createConfig = (
     defaultCoastPredictionHorizonHours: 4,
     minCoastPredictionHorizonHours: 1,
     maxCoastPredictionHorizonHours: 48,
+    predictionImplementation: 'euler',
     predictionSampling: {
       maxIntegrationStepSeconds: 10,
       refreshInterval: 0.25,
@@ -164,13 +165,25 @@ describe('createInitialAppRuntimeState', () => {
     expect(() =>
       createInitialAppRuntimeState(
         createConfig({
+          physicsEngine: kepler,
           requestedEngine: 'kepler',
           requestedScenarioId: 'tutorial',
         }),
       ),
-    ).toThrow(
-      'The Kepler engine currently supports scenarios with one body only.',
+    ).toThrow('The Kepler engine requires exactly one massive body.')
+  })
+
+  it('boots the one-body orbit scenario with the Kepler engine', () => {
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        physicsEngine: kepler,
+        requestedEngine: 'kepler',
+        requestedScenarioId: 'earth-kepler-orbit-debug',
+      }),
     )
+
+    expect(runtime.scenario.session.scenarioId).toBe('earth-kepler-orbit-debug')
+    expect(runtime.simulation.state.bodies).toHaveLength(1)
   })
 
   it('starts manual target selection when auto target selection is disabled', () => {

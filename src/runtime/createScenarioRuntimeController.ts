@@ -9,6 +9,7 @@ import type {
   GlobalScenarioDirectiveLimits,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
+import type { PhysicsEngine } from '../simulation/types'
 import type {
   AppRuntimeScenarioSlice,
   AppRuntimeSimulationSlice,
@@ -91,16 +92,25 @@ export const createScenarioRuntimeController = (options: {
   runtime: AppRuntimeState
   runtimeScenarioOptions: RuntimeScenarioOptions
   globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
+  physicsEngine: PhysicsEngine
   setTimeWarp: (warp: number) => void
   clearTransientScenarioState: () => void
 }) => {
-  const loadScenarioById = (scenarioId: string) => {
-    applyScenarioLoadTransition(
-      options.runtime,
+  const assertSupportedTransition = (transition: ScenarioRuntimeTransition) => {
+    options.physicsEngine.validateState?.(transition.state)
+    return transition
+  }
+  const createSupportedScenarioTransition = (scenarioId: string) =>
+    assertSupportedTransition(
       createScenarioRuntimeTransition(
         scenarioId,
         options.runtimeScenarioOptions,
       ),
+    )
+  const loadScenarioById = (scenarioId: string) => {
+    applyScenarioLoadTransition(
+      options.runtime,
+      createSupportedScenarioTransition(scenarioId),
       {
         clearTransientScenarioState: options.clearTransientScenarioState,
         globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
@@ -134,6 +144,10 @@ export const createScenarioRuntimeController = (options: {
         options.runtime.debug.debugSnapshotStatus = 'no debug snapshot saved'
         return false
       }
+
+      options.physicsEngine.validateState?.(
+        loadedDebugScenario.runtimeState.state,
+      )
 
       applyScenarioLoadTransition(
         options.runtime,
@@ -177,9 +191,8 @@ export const createScenarioRuntimeController = (options: {
     resetScenario: () => {
       applyScenarioLoadTransition(
         options.runtime,
-        createScenarioRuntimeTransition(
+        createSupportedScenarioTransition(
           options.runtime.scenario.session.scenarioId,
-          options.runtimeScenarioOptions,
         ),
         {
           clearTransientScenarioState: options.clearTransientScenarioState,
@@ -188,43 +201,25 @@ export const createScenarioRuntimeController = (options: {
       )
     },
     restartFromCheckpoint: () => {
-      return applyCheckpointRestoreTransition(
+      const transition = createRuntimeCheckpointRestoreTransition(
         options.runtime,
-        createRuntimeCheckpointRestoreTransition(options.runtime),
-        {
-          clearTransientScenarioState: options.clearTransientScenarioState,
-          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
-        },
       )
+      if (transition) {
+        options.physicsEngine.validateState?.(transition.state)
+      }
+      return applyCheckpointRestoreTransition(options.runtime, transition, {
+        clearTransientScenarioState: options.clearTransientScenarioState,
+        globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+      })
     },
     startFreeRoam: () => {
-      applyScenarioLoadTransition(
-        options.runtime,
-        createScenarioRuntimeTransition(
-          'earth-moon',
-          options.runtimeScenarioOptions,
-        ),
-        {
-          clearTransientScenarioState: options.clearTransientScenarioState,
-          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
-        },
-      )
+      loadScenarioById('earth-moon')
     },
     startReachMoon: () => {
       loadScenarioById('reach-moon')
     },
     startTutorial: () => {
-      applyScenarioLoadTransition(
-        options.runtime,
-        createScenarioRuntimeTransition(
-          'tutorial',
-          options.runtimeScenarioOptions,
-        ),
-        {
-          clearTransientScenarioState: options.clearTransientScenarioState,
-          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
-        },
-      )
+      loadScenarioById('tutorial')
     },
   }
 }

@@ -1,5 +1,7 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test'
 
+const gravitationalConstant = 6.6743e-11
+
 const getSnapshot = async (page: Page) =>
   page.evaluate(() => {
     const bridge = window.__SPACE_WEB_GAME_DEVTOOLS__
@@ -8,6 +10,25 @@ const getSnapshot = async (page: Page) =>
     }
     return bridge.getSnapshot()
   })
+
+const getRelativeVector = (
+  object: { position: { x: number; y: number } },
+  body: { position: { x: number; y: number } },
+) => ({
+  x: object.position.x - body.position.x,
+  y: object.position.y - body.position.y,
+})
+
+const getRelativeVelocity = (
+  object: { velocity: { x: number; y: number } },
+  body: { velocity: { x: number; y: number } },
+) => ({
+  x: object.velocity.x - body.velocity.x,
+  y: object.velocity.y - body.velocity.y,
+})
+
+const magnitude = (vector: { x: number; y: number }) =>
+  Math.hypot(vector.x, vector.y)
 
 const runKeplerPlaytest = async (
   page: Page,
@@ -26,12 +47,82 @@ const runKeplerPlaytest = async (
     )
     .toBeGreaterThan(20)
 
-  const initialElapsed = (await getSnapshot(page)).simulation.elapsed
+  const initialSnapshot = await getSnapshot(page)
+  const initialBody = initialSnapshot.simulation.bodies[0]
+  if (!initialBody) {
+    throw new Error('Missing Earth in the one-body Kepler playtest.')
+  }
+  const initialRelativePosition = getRelativeVector(
+    initialSnapshot.simulation.spacecraft,
+    initialBody,
+  )
+  const initialRelativeVelocity = getRelativeVelocity(
+    initialSnapshot.simulation.spacecraft,
+    initialBody,
+  )
+  const orbitRadius = magnitude(initialRelativePosition)
+  const orbitalPeriod =
+    2 *
+    Math.PI *
+    Math.sqrt(orbitRadius ** 3 / (gravitationalConstant * initialBody.mass))
+  const orbitDirection = Math.sign(
+    initialRelativePosition.x * initialRelativeVelocity.y -
+      initialRelativePosition.y * initialRelativeVelocity.x,
+  )
+  const maxWarpIndex = initialSnapshot.simulation.timeWarps.indexOf(1_800)
+  expect(maxWarpIndex).toBeGreaterThanOrEqual(0)
+  const warpResponse = await page.evaluate((index) => {
+    return window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      type: 'set-time-warp-index',
+      index,
+    })
+  }, maxWarpIndex)
+  expect(warpResponse?.ok).toBe(true)
   await expect
-    .poll(async () => (await getSnapshot(page)).simulation.elapsed)
-    .toBeGreaterThan(initialElapsed)
+    .poll(async () => (await getSnapshot(page)).simulation.timeWarp)
+    .toBe(1_800)
+
+  const targetElapsed = initialSnapshot.simulation.elapsed + orbitalPeriod
+  await expect
+    .poll(async () => (await getSnapshot(page)).simulation.elapsed, {
+      timeout: 30_000,
+    })
+    .toBeGreaterThanOrEqual(targetElapsed)
 
   const snapshot = await getSnapshot(page)
+  const finalBody = snapshot.simulation.bodies[0]
+  if (!finalBody) {
+    throw new Error('Missing Earth after the one-body Kepler playtest.')
+  }
+  const elapsedDelta =
+    snapshot.simulation.elapsed - initialSnapshot.simulation.elapsed
+  const expectedAngle =
+    orbitDirection * ((2 * Math.PI * elapsedDelta) / orbitalPeriod)
+  const expectedRelativePosition = {
+    x:
+      initialRelativePosition.x * Math.cos(expectedAngle) -
+      initialRelativePosition.y * Math.sin(expectedAngle),
+    y:
+      initialRelativePosition.x * Math.sin(expectedAngle) +
+      initialRelativePosition.y * Math.cos(expectedAngle),
+  }
+  const finalRelativePosition = getRelativeVector(
+    snapshot.simulation.spacecraft,
+    finalBody,
+  )
+  const finalRelativeVelocity = getRelativeVelocity(
+    snapshot.simulation.spacecraft,
+    finalBody,
+  )
+  const positionMismatch = magnitude({
+    x: finalRelativePosition.x - expectedRelativePosition.x,
+    y: finalRelativePosition.y - expectedRelativePosition.y,
+  })
+  const radialDrift = Math.abs(magnitude(finalRelativePosition) - orbitRadius)
+  const speedDrift = Math.abs(
+    magnitude(finalRelativeVelocity) - magnitude(initialRelativeVelocity),
+  )
+
   expect(snapshot.appMode).toBe('game')
   expect(snapshot.simulation.assistTarget).toEqual({
     id: 'earth',
@@ -43,24 +134,36 @@ const runKeplerPlaytest = async (
   expect(
     snapshot.simulation.trajectoryPrediction.predictionTerminationReason,
   ).toBe('closed-orbit')
+  expect(snapshot.simulation.crashedBodyName).toBeNull()
+  expect(elapsedDelta).toBeGreaterThanOrEqual(orbitalPeriod)
+  expect(positionMismatch).toBeLessThan(100)
+  expect(radialDrift).toBeLessThan(10)
+  expect(speedDrift).toBeLessThan(0.02)
   expect(new URL(page.url()).searchParams.get('engine')).toBe('kepler')
 
+  await page.evaluate(() => {
+    window.__SPACE_WEB_GAME_DEVTOOLS__?.handleRequest({
+      type: 'set-time-warp-index',
+      index: 0,
+    })
+  })
+
   const screenshotPath = testInfo.outputPath(
-    `${viewportName}-kepler-trajectory.png`,
+    `${viewportName}-kepler-live-orbit-after-one-period.png`,
   )
   const screenshot = await page.screenshot({
     animations: 'disabled',
     fullPage: false,
     path: screenshotPath,
   })
-  await testInfo.attach(`${viewportName}-kepler-trajectory`, {
+  await testInfo.attach(`${viewportName}-kepler-live-orbit-after-one-period`, {
     contentType: 'image/png',
     path: screenshotPath,
   })
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('closes the Kepler trajectory under default simulation physics on desktop', async ({
+test('runs a live closed Kepler orbit for one period on desktop', async ({
   browser,
 }, testInfo) => {
   const context = await browser.newContext({
@@ -80,8 +183,52 @@ test('closes the Kepler trajectory under default simulation physics on desktop',
   }
 })
 
-test('closes the Kepler trajectory under default simulation physics on mobile', async ({
+test('runs a live closed Kepler orbit for one period on mobile', async ({
   page,
 }, testInfo) => {
   await runKeplerPlaytest(page, testInfo, 'mobile')
+})
+
+test('removes the retired trajectory model from developer flags', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    baseURL: testInfo.project.use.baseURL as string,
+    colorScheme: 'dark',
+    hasTouch: false,
+    isMobile: false,
+    reducedMotion: 'reduce',
+    viewport: { height: 720, width: 1_024 },
+  })
+  const page = await context.newPage()
+
+  try {
+    await page.goto('/?devtools=1&trajectoryPrediction=kepler')
+    await expect(page.locator('[data-boot-screen]')).toBeHidden()
+    await page.getByRole('button', { name: 'Developer flags' }).click()
+    await expect(
+      page.getByLabel('Trajectory prediction implementation'),
+    ).toHaveCount(0)
+    await expect(page.getByLabel('Trajectory horizon')).toBeVisible()
+
+    const screenshotPath = testInfo.outputPath(
+      'desktop-developer-flags-without-trajectory-model.png',
+    )
+    await page.screenshot({
+      animations: 'disabled',
+      fullPage: false,
+      path: screenshotPath,
+    })
+    await testInfo.attach('desktop-developer-flags-without-trajectory-model', {
+      contentType: 'image/png',
+      path: screenshotPath,
+    })
+
+    await page.getByRole('button', { name: 'Apply' }).click()
+    await page.waitForURL(
+      (url) => !url.searchParams.has('trajectoryPrediction'),
+    )
+  } finally {
+    await context.close()
+  }
 })

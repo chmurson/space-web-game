@@ -26,7 +26,9 @@ import {
   createRuntimeScenarioSession,
 } from '@/scenario/scenarioSession'
 import { RENDER_SCALE } from '@/simulation/constants'
-import type { Body } from '@/simulation/types'
+import { kepler } from '@/simulation/physics/kepler'
+import { semiImplicitEuler } from '@/simulation/physics/semiImplicitEuler'
+import type { Body, PhysicsEngine } from '@/simulation/types'
 import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const globalScenarioDirectiveLimits = {
@@ -156,6 +158,7 @@ const createTestRuntimeActions = (
     autoSelectNearestSurface?: boolean
     getFollowCameraViewportBottomInset?: () => number
     navigationTimeWarpController?: NavigationTimeWarpController
+    physicsEngine?: PhysicsEngine
     renderer?: Parameters<typeof createRuntimeActions>[0]['renderer']
   } = {},
 ) =>
@@ -185,6 +188,7 @@ const createTestRuntimeActions = (
       createNavigationTimeWarpController({
         timeWarps: requestedTimeWarps,
       }),
+    physicsEngine: options.physicsEngine ?? semiImplicitEuler,
     renderer: options.renderer ?? createRendererDouble(),
     runtime,
     globalScenarioDirectiveLimits,
@@ -964,6 +968,28 @@ describe('createRuntimeActions', () => {
 
     expect(runtime.simulation.timeWarpIndex).toBe(0)
     expect(runtime.scenario.session.scenarioId).toBe('earth-moon')
+  })
+
+  it('rejects a multi-body transition before mutating Kepler runtime state', () => {
+    const runtime = createRuntime()
+    runtime.simulation.state = {
+      ...runtime.simulation.state,
+      bodies: [getRequiredBody(runtime, 0)],
+    }
+    runtime.scenario.session = createRuntimeScenarioSession(
+      'earth-kepler-orbit-debug',
+    )
+    const originalState = runtime.simulation.state
+    const originalSession = runtime.scenario.session
+    const runtimeActions = createTestRuntimeActions(runtime, {
+      physicsEngine: kepler,
+    })
+
+    expect(() => runtimeActions.startFreeRoam()).toThrow(
+      'The Kepler engine requires exactly one massive body.',
+    )
+    expect(runtime.simulation.state).toBe(originalState)
+    expect(runtime.scenario.session).toBe(originalSession)
   })
 
   it('starts the Reach the Moon scenario shell', () => {

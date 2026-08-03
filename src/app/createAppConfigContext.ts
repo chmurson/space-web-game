@@ -14,10 +14,7 @@ import {
   type TouchTrajectoryControlState,
   type UserSettings,
 } from '../userSettingsStorage'
-import {
-  type DeveloperFeatureFlags,
-  isDeveloperFeatureFlagsMenuEnabled,
-} from './developerFeatureFlags'
+import type { DeveloperFeatureFlags } from './developerFeatureFlags'
 
 export type AppMode = 'menu' | 'game'
 
@@ -40,6 +37,7 @@ export type AppConfigContext = {
     defaultCoastPredictionHorizonHours: number
     minCoastPredictionHorizonHours: number
     maxCoastPredictionHorizonHours: number
+    predictionImplementation: TrajectoryPredictionImplementation
     predictionSampling: TrajectoryPredictionSamplingConfig
     maxPredictionLoopRevolutions: number
     rendering: typeof gameConfig.trajectory.rendering
@@ -80,39 +78,14 @@ const parseTouchTrajectoryControlStateOverride = (
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSideOverride(value)
 
-const parseTrajectoryPredictionImplementation = (
-  value: string | null,
-): TrajectoryPredictionImplementation =>
-  value === 'kepler' ? 'kepler' : 'euler'
-
-const getTrajectoryPredictionImplementation = (options: {
-  developerFeatureFlagsEnabled: boolean
-  keplerEngineRequested: boolean
-  requestedImplementation: string | null
-}): TrajectoryPredictionImplementation => {
-  if (options.keplerEngineRequested) return 'kepler'
-  if (options.developerFeatureFlagsEnabled) {
-    return parseTrajectoryPredictionImplementation(
-      options.requestedImplementation,
-    )
-  }
-  return 'euler'
-}
-
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
-  const developerFeatureFlagsEnabled = isDeveloperFeatureFlagsMenuEnabled()
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
   const keplerEngineRequested = requestedEngine === 'kepler'
   const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
-    trajectoryPredictionImplementation: getTrajectoryPredictionImplementation({
-      developerFeatureFlagsEnabled,
-      keplerEngineRequested,
-      requestedImplementation: urlParams.get('trajectoryPrediction'),
-    }),
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'
@@ -144,6 +117,9 @@ export const createAppConfigContext = (): AppConfigContext => {
     switchRangeMultiplier: gameConfig.assistTarget.switchRangeMultiplier,
   }
 
+  const predictionImplementation: TrajectoryPredictionImplementation =
+    keplerEngineRequested ? 'kepler' : 'euler'
+
   const trajectory = {
     defaultCoastPredictionHorizonHours:
       gameConfig.trajectory.horizon.defaultHours,
@@ -151,6 +127,7 @@ export const createAppConfigContext = (): AppConfigContext => {
     maxCoastPredictionHorizonHours: featureFlags.noHorizonLimit
       ? gameConfig.trajectory.horizon.maxHours
       : gameConfig.trajectory.horizon.defaultMaxHours,
+    predictionImplementation,
     predictionSampling: { ...gameConfig.trajectory.sampling },
     maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
     rendering: { ...gameConfig.trajectory.rendering },
