@@ -60,7 +60,7 @@ browsers without changing what the game will load.
 - Existing portable helpers remain the only source of the canonical JSON shape
   and descriptive sanitized filename.
 
-## Validation
+## Pre-reconciliation validation
 
 - Focused Playwright main-menu coverage passes 5/5 for empty, selected,
   successful export, failed initiation, and `1024x720` desktop states.
@@ -89,7 +89,7 @@ browsers without changing what the game will load.
   announced. The focused Playwright test separately captured the native
   download and verified its filename and canonical JSON payload.
 
-### Main conflict reconciliation (2026-08-02)
+### Final post-merge validation after main conflict reconciliation (2026-08-02)
 
 - Merged `origin/main` at `f6dbf49`, preserving its portable Import and
   live-runtime export flows alongside selected-entry Export. The two content
