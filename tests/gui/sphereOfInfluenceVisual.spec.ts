@@ -59,12 +59,13 @@ const zoomOutToSystemViewport = async (
   )
 }
 
-const zoomInToFramingViewport = async (
+const zoomInToViewport = async (
   page: Page,
+  maximumViewportSize: number,
 ): Promise<SpaceGameDevtoolsSnapshot> => {
-  for (let attempt = 0; attempt < 16; attempt += 1) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
     const snapshot = await getSnapshot(page)
-    if (snapshot.simulation.viewportSize <= 2_000) {
+    if (snapshot.simulation.viewportSize <= maximumViewportSize) {
       return snapshot
     }
 
@@ -74,7 +75,9 @@ const zoomInToFramingViewport = async (
     })
   }
 
-  throw new Error('Viewport did not reach the SOI edge-framing range.')
+  throw new Error(
+    `Viewport did not reach ${maximumViewportSize} for SOI capture.`,
+  )
 }
 
 const zoomInToMinimumViewport = async (
@@ -198,7 +201,7 @@ test('captures four current-soi-5 variants with thin maximum-zoom edges', async 
     await expect(page.locator('canvas')).toBeVisible()
     await captureScreenshot(page, testInfo, `soi-${variant}-wide-portrait`)
 
-    const framingSnapshot = await zoomInToFramingViewport(page)
+    const framingSnapshot = await zoomInToViewport(page, 2_000)
     await centerEarthSoiEdge(page, framingSnapshot)
     await captureScreenshot(page, testInfo, `soi-${variant}-middle-portrait`)
 
@@ -208,4 +211,19 @@ test('captures four current-soi-5 variants with thin maximum-zoom edges', async 
     )
     await captureScreenshot(page, testInfo, `soi-${variant}-max-portrait`)
   }
+})
+
+test('captures a compact SOI edge at desktop close zoom', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(30_000)
+  await page.setViewportSize({ height: 900, width: 1_440 })
+  await page.goto('/?scenario=earth-moon&devtools=1&soi=1')
+  await expect(page.locator('[data-boot-screen]')).toBeHidden()
+  await page.waitForFunction(() => Boolean(window.__SPACE_WEB_GAME_DEVTOOLS__))
+
+  await zoomOutToSystemViewport(page)
+  const closeSnapshot = await zoomInToViewport(page, 100)
+  await centerEarthSoiEdge(page, closeSnapshot)
+  await captureScreenshot(page, testInfo, 'soi-1-desktop-close')
 })

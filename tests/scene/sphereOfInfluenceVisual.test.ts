@@ -66,11 +66,12 @@ describe('sphere-of-influence visuals', () => {
     expect(childSignatures.size).toBe(1)
   })
 
-  it('preserves the selected width until local zoom, then reaches four thin endpoints', () => {
+  it('preserves the selected width until close zoom, then reaches four thin endpoints', () => {
     const maxViewportSize = 4_000
     const minViewportSize = 4
-    const middleViewportSize = 100
-    const taperMidpointViewportSize = 22
+    const wideViewportSize = 1_000
+    const taperMidpointViewportSize = 202
+    const desktopCloseUpViewportSize = 100
     const expectedMaxZoomWidthScales = [0.25, 0.15, 0.1, 0.05]
 
     for (const [index, variant] of sphereOfInfluenceVariants.entries()) {
@@ -82,10 +83,10 @@ describe('sphere-of-influence visuals', () => {
       updateSphereOfInfluenceVisualViewport(visual.group, {
         maxViewportSize,
         minViewportSize,
-        viewportSize: middleViewportSize,
+        viewportSize: wideViewportSize,
       })
       expect(field.material.uniforms.uSoiEdgeGradientWidthScale.value).toBe(
-        middleViewportSize / maxViewportSize,
+        wideViewportSize / maxViewportSize,
       )
 
       updateSphereOfInfluenceVisualViewport(visual.group, {
@@ -97,6 +98,16 @@ describe('sphere-of-influence visuals', () => {
         field.material.uniforms.uSoiEdgeGradientWidthScale.value /
           (taperMidpointViewportSize / maxViewportSize),
       ).toBeCloseTo((1 + expectedMaxZoomWidthScales[index]) / 2)
+
+      updateSphereOfInfluenceVisualViewport(visual.group, {
+        maxViewportSize,
+        minViewportSize,
+        viewportSize: desktopCloseUpViewportSize,
+      })
+      expect(
+        field.material.uniforms.uSoiEdgeGradientWidthScale.value /
+          (desktopCloseUpViewportSize / maxViewportSize),
+      ).toBeLessThan(0.4)
 
       updateSphereOfInfluenceVisualViewport(visual.group, {
         maxViewportSize,

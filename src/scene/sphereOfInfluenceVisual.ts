@@ -10,7 +10,9 @@ const EDGE_GRADIENT_END = 0.98
 const EDGE_GRADIENT_START = 0.38
 const EDGE_GRADIENT_STRENGTH = 1.5
 const FIELD_OPACITY = 0.045
-const LOCAL_ZOOM_TAPER_START_MULTIPLIER = 10
+// Begin narrowing before the final close-up range so the edge remains a
+// compact field on desktop zoom rather than becoming a screen-wide wall.
+const LOCAL_ZOOM_TAPER_START_MULTIPLIER = 100
 const SOI_RENDER_ORDER = -8
 const WHITE = new THREE.Color('#ffffff')
 const maxZoomGradientWidthScaleByVariant: Record<
