@@ -59,4 +59,5 @@ export type SimulationState = {
 export type PhysicsEngine = {
   name: string
   step(state: SimulationState, dt: number): SimulationState
+  validateState?(state: SimulationState): void
 }

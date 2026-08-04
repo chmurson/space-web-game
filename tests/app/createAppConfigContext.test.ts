@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createAppConfigContext } from '@/app/createAppConfigContext'
+import { defaultPhysicsEngine, physicsEngines } from '@/simulation/physics'
 
 const storageKey = 'space-web-game.userSettings.v1'
 
@@ -44,9 +45,10 @@ describe('createAppConfigContext', () => {
 
   it('uses configured default touch control settings without stored settings', () => {
     expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
-    expect(
-      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
-    ).toBe('euler')
+    expect(createAppConfigContext().trajectory.predictionImplementation).toBe(
+      'euler',
+    )
+    expect(createAppConfigContext().physicsEngine).toBe(defaultPhysicsEngine)
     expect(
       createAppConfigContext().trajectory.defaultCoastPredictionHorizonHours,
     ).toBe(48)
@@ -63,45 +65,22 @@ describe('createAppConfigContext', () => {
     })
   })
 
-  it('selects Kepler trajectory prediction only for authorized developer URLs', () => {
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: createWindowWithSearch('?trajectoryPrediction=kepler'),
-    })
+  it('ignores the retired trajectoryPrediction URL parameter', () => {
+    for (const [search, hostname] of [
+      ['?trajectoryPrediction=kepler', 'game.example.test'],
+      ['?devtools=1&trajectoryPrediction=kepler', 'game.example.test'],
+      ['?trajectoryPrediction=kepler', 'localhost'],
+    ] as const) {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: createWindowWithSearch(search, undefined, hostname),
+      })
 
-    expect(
-      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
-    ).toBe('euler')
+      const config = createAppConfigContext()
 
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: createWindowWithSearch('?devtools=1&trajectoryPrediction=kepler'),
-    })
-
-    expect(
-      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
-    ).toBe('kepler')
-
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: createWindowWithSearch(
-        '?trajectoryPrediction=kepler',
-        undefined,
-        'localhost',
-      ),
-    })
-
-    expect(
-      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
-    ).toBe('kepler')
-
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: createWindowWithSearch('?devtools=1&trajectoryPrediction=unknown'),
-    })
-    expect(
-      createAppConfigContext().featureFlags.trajectoryPredictionImplementation,
-    ).toBe('euler')
+      expect(config.physicsEngine).toBe(defaultPhysicsEngine)
+      expect(config.trajectory.predictionImplementation).toBe('euler')
+    }
   })
 
   it('selects Kepler trajectory prediction from the unified engine URL', () => {
@@ -113,9 +92,21 @@ describe('createAppConfigContext', () => {
     const config = createAppConfigContext()
 
     expect(config.requestedEngine).toBe('kepler')
-    expect(config.featureFlags.trajectoryPredictionImplementation).toBe(
-      'kepler',
-    )
+    expect(config.physicsEngine).toBe(physicsEngines.kepler)
+    expect(config.trajectory.predictionImplementation).toBe('kepler')
+  })
+
+  it('falls back from inherited Object prototype engine names', () => {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: createWindowWithSearch('?engine=toString'),
+    })
+
+    const config = createAppConfigContext()
+
+    expect(config.requestedEngine).toBe('toString')
+    expect(config.physicsEngine).toBe(defaultPhysicsEngine)
+    expect(config.trajectory.predictionImplementation).toBe('euler')
   })
 
   it('uses persisted touch control sides by default', () => {

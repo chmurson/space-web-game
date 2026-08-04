@@ -1,8 +1,5 @@
-import type { TrajectoryPredictionImplementation } from '../prediction/trajectoryPrediction'
-
 export type DeveloperFeatureFlags = {
   noHorizonLimit: boolean
-  trajectoryPredictionImplementation: TrajectoryPredictionImplementation
 }
 
 export const isDeveloperFeatureFlagsMenuEnabled = () => {
@@ -24,11 +21,7 @@ export const writeDeveloperFeatureFlagsToUrl = (
   if (flags.noHorizonLimit) url.searchParams.set('nohiroznlimit', '1')
   else url.searchParams.delete('nohiroznlimit')
 
-  if (flags.trajectoryPredictionImplementation === 'kepler') {
-    url.searchParams.set('trajectoryPrediction', 'kepler')
-  } else {
-    url.searchParams.delete('trajectoryPrediction')
-  }
+  url.searchParams.delete('trajectoryPrediction')
 
   window.location.assign(url.toString())
 }

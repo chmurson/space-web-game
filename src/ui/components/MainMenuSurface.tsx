@@ -743,28 +743,11 @@ export const MainMenuSurface = ({
         <MenuCopy className="main-menu-copy">
           <MenuKicker className="main-menu-kicker">Developer flags</MenuKicker>
           <MenuDescription>
-            Choose the trajectory implementation and horizon. Applying changes
-            reloads the app with the selected configuration.
+            Choose the trajectory horizon limit. Applying changes reloads the
+            app with the selected configuration.
           </MenuDescription>
         </MenuCopy>
         <MenuActions className="main-menu-actions">
-          <label class="main-menu-feature-flag">
-            <span>Trajectory prediction</span>
-            <select
-              aria-label="Trajectory prediction implementation"
-              value={developerFeatureFlags.trajectoryPredictionImplementation}
-              onChange={(event) =>
-                onDeveloperFeatureFlagsChange({
-                  ...developerFeatureFlags,
-                  trajectoryPredictionImplementation: event.currentTarget
-                    .value as DeveloperFeatureFlags['trajectoryPredictionImplementation'],
-                })
-              }
-            >
-              <option value="euler">Euler numerical</option>
-              <option value="kepler">Kepler two-body</option>
-            </select>
-          </label>
           <label class="main-menu-feature-flag">
             <span>Trajectory horizon</span>
             <select

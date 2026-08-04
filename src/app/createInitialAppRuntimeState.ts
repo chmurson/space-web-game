@@ -26,18 +26,12 @@ export const createInitialAppRuntimeState = (
   const initialScenarioTransition = createScenarioRuntimeTransition(
     resolveStartupScenarioId({
       initialAppMode: config.initialAppMode,
+      physicsEngine: config.physicsEngine,
       requestedScenarioId: config.requestedScenarioId,
     }),
     config.runtimeScenarioOptions,
   )
-  if (
-    config.requestedEngine === 'kepler' &&
-    initialScenarioTransition.state.bodies.length > 1
-  ) {
-    throw new Error(
-      'The Kepler engine currently supports scenarios with one body only.',
-    )
-  }
+  config.physicsEngine.validateState?.(initialScenarioTransition.state)
   const defaultAssistTargetSelectionMode = config.assistTarget
     .autoSelectNearestSurface
     ? 'auto'
