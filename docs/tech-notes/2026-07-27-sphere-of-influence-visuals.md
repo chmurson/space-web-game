@@ -77,8 +77,8 @@ Earth. NASA describes the same approximation and rounds the regions to roughly
   strength, interior gradient, 1px true border, color, blend mode, and lifecycle.
 - All variants use the former `soi=5` base formula, scaling world-space gradient
   width by the current-to-maximum viewport ratio so its perceived width stays
-  constant. They remain identical until the active viewport reaches ten times
-  its minimum, then a smooth local-zoom taper reaches the selected 25%, 15%,
+  constant. They remain identical until the active viewport reaches 100× its
+  minimum, then a smooth local-zoom taper reaches the selected 25%, 15%,
   10%, or 5% endpoint exactly at maximum zoom-in.
 - The active camera minimum anchors the transition, so scenario-specific zoom
   limits do not require an SOI-specific viewport constant.

@@ -129,36 +129,30 @@ const centerEarthSoiEdge = async (
   const start = { x: viewport.width / 2, y: viewport.height / 2 }
   const end = { x: start.x - panDistancePixels, y: start.y }
 
-  await page.locator('.touch-controls').evaluate(
-    (target, gesture) => {
-      const dispatchTouch = (
-        type: 'touchend' | 'touchmove' | 'touchstart',
-        point: { x: number; y: number },
-      ) => {
-        const touch = new Touch({
-          clientX: point.x,
-          clientY: point.y,
-          identifier: 41,
-          target,
-        })
-        const activeTouches = type === 'touchend' ? [] : [touch]
-        target.dispatchEvent(
-          new TouchEvent(type, {
-            bubbles: true,
-            cancelable: true,
-            changedTouches: [touch],
-            targetTouches: activeTouches,
-            touches: activeTouches,
-          }),
-        )
-      }
-
-      dispatchTouch('touchstart', gesture.start)
-      dispatchTouch('touchmove', gesture.end)
-      dispatchTouch('touchend', gesture.end)
-    },
-    { end, start },
-  )
+  const canvas = page.locator('canvas')
+  const pointer = {
+    button: 0,
+    buttons: 1,
+    isPrimary: true,
+    pointerId: 41,
+    pointerType: 'touch',
+  }
+  await canvas.dispatchEvent('pointerdown', {
+    ...pointer,
+    clientX: start.x,
+    clientY: start.y,
+  })
+  await canvas.dispatchEvent('pointermove', {
+    ...pointer,
+    clientX: end.x,
+    clientY: end.y,
+  })
+  await canvas.dispatchEvent('pointerup', {
+    ...pointer,
+    buttons: 0,
+    clientX: end.x,
+    clientY: end.y,
+  })
 
   const framedSnapshot = await getSnapshot(page)
   expect(framedSnapshot.camera.panOffset).not.toEqual({ x: 0, y: 0 })
@@ -183,7 +177,7 @@ const captureScreenshot = async (
   expect(screenshot.byteLength).toBeGreaterThan(5_000)
 }
 
-test('captures four current-soi-5 variants with thin maximum-zoom edges', async ({
+test('captures four SOI variants with thin maximum-zoom edges', async ({
   page,
 }, testInfo) => {
   test.setTimeout(90_000)
