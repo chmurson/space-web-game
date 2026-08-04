@@ -6,10 +6,7 @@ const promptUrl = new URL(
   '../docs/automation-prompts/engineer-workflow.md',
   import.meta.url,
 )
-const claimsUrl = new URL(
-  '../docs/automation-task-claims.md',
-  import.meta.url,
-)
+const claimsUrl = new URL('../docs/automation-task-claims.md', import.meta.url)
 
 const readPrompt = () => readFile(promptUrl, 'utf8')
 const readClaims = () => readFile(claimsUrl, 'utf8')
@@ -76,12 +73,15 @@ describe('engineer workflow prompt', () => {
     const prompt = await readPrompt()
 
     assertContainsAll(prompt, [
-      'A direct mention of the resolved automation identity (currently `@andrzejkoduje`) creates an explicit triage obligation',
+      'A direct mention of `@<resolved automation identity>` creates an explicit triage obligation',
+      'match the exact login returned by `gh api user --jq .login`',
       'unchecked task-list items',
       'requests to inspect or respond to an earlier comment',
       'Reclassify an edited comment whenever its current `updatedAt` or body hash differs from tracking metadata',
       'clean automated/formal-review signals cannot downgrade a human request',
+      'assign the issue to the resolved automation identity',
     ])
+    assert.doesNotMatch(prompt, /andrzejkoduje/)
   })
 
   it('treats assigned PRs as owned and limits other PRs to direct requests', async () => {
@@ -173,13 +173,26 @@ describe('engineer workflow prompt', () => {
     ])
   })
 
-  it('persists active worker handoffs before yielding and terminal outcomes after reconciliation', async () => {
+  it('recovers durable worker handoffs before fresh triage', async () => {
     const prompt = await readPrompt()
 
     assertContainsAll(prompt, [
+      'Durable worker handoffs:',
+      'Never infer it from a legacy automation name or hard-code `space-game-automation`.',
+      'Cron/standalone scheduled runs can begin in a fresh chat',
+      'node scripts/automationHandoff.mjs list --automation-id <active automation id>',
+      'claim registration metadata, not free-form ownership evidence',
+      'If that validation fails, no claim or token file may be written',
+      'A missing registration is untrusted legacy/manual state',
+      'After spawning a worker and before yielding, create exactly one pending record',
+      'identifying a matching claim as same-automation before this record exists',
+      'The record contains a token-file path only; never place a raw claim token in it.',
+      'A worker must not create, alter, archive, or write automation memory or handoff records.',
+      'retain the same-automation pending record as explicit `archive_recovery` state',
+      'must not require verification of the released claim or repeat GitHub reconciliation writes',
       'before yielding while the worker is active',
       'current run time and terminal outcome',
-      'before any new delegation',
+      'A later scheduled invocation with the same automation id must reconcile the record',
     ])
 
     const completionBoundary = extractSection(
@@ -188,18 +201,24 @@ describe('engineer workflow prompt', () => {
       'Priority order:',
     )
     assertContainsInOrder(completionBoundary, [
-      'inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
-      'For a foreign claim, skip that task and continue triage; for a claim owned by this run, continue waiting or refresh the continuation',
-      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff, triggering comment sidecars, and dedicated review-submission records',
-      'If the worker is terminal, perform the terminal-result reconciliation immediately',
-      'If the run must yield while a claim is recent, preserve the active delegated-worker, claim, and continuation/wakeup handoff state',
-      'While waiting on that claim, continue the existing handoff rather than starting another task',
-      'Wait for a terminal worker result',
-      'Only after reconciliation and claim release may the orchestrator prepend a terminal memory event and emit its final report',
+      'resolve the active automation id, list its pending handoffs, and inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
+      'Handoff recovery precedes fresh triage',
+      'classify it as `same_automation_unregistered`',
+      'do not call a valid matching claim foreign merely because the handoff is absent',
+      'enter `archive_recovery` instead of the live-worker path',
+      'retry only the idempotent archive command',
+      'The current invocation may resume that record even when the claim `owner`, original run id, or parent thread id belongs to an earlier invocation',
+      'If it is active, verify and heartbeat the recorded claim',
+      'end this invocation as `awaiting_worker`',
+      'Only when the recorded worker returns a terminal result while its claim is still valid may the same-automation invocation reconcile the worker handoff, triggering comment sidecars, and dedicated review-submission records',
+      'perform the terminal-result reconciliation immediately',
+      'release the task claim, then archive the matching durable handoff',
+      'If release succeeds but archive fails, retain the pending record as `archive_recovery`',
+      'a later scheduled invocation under the same active automation id must run this recovery protocol',
     ])
   })
 
-  it('uses recent live claims as the authority during reconciliation', async () => {
+  it('keeps live claims authoritative while allowing same-automation recovery', async () => {
     const [prompt, claims] = await Promise.all([readPrompt(), readClaims()])
 
     const automationMemory = extractSection(
@@ -209,12 +228,19 @@ describe('engineer workflow prompt', () => {
     )
     assertContainsInOrder(automationMemory, [
       'Automation memory is historical context and an audit trail, not an authoritative current-state database',
-      'Derive current state at decision time from fresh live GitHub/`gh` data, claim and sidecar files, direct delegated-worker status, and current branch/worktree Git state',
+      'Derive current state at decision time from fresh live GitHub/`gh` data, claim and sidecar files, durable handoff records, direct delegated-worker status, and current branch/worktree Git state',
       'Claim-first reconciliation: the live task claim is the concurrency authority',
-      'Before interpreting memory, worker ids, continuation records, or sidecars, read the matching claim',
+      'Before interpreting memory, worker ids, handoff records, or sidecars, read the matching claim',
       'Do not release, replace, or duplicate that claim',
-      'If this is a foreign claim, skip that task and continue with other claimable work; if it is owned by this run, wait for the owning worker/continuation or the normal claim-expiry path',
-      'Sidecars, memory events, and worker ids are audit and wakeup hints, not ownership state',
+      'Determine claim ownership from its exact `automation_id` registration metadata, not from whether a handoff exists',
+      'Registration matches only when the exact prefix is well formed',
+      "its absolute token path is under that automation's canonical `tokens/` directory",
+      'whose handoff is missing is `same_automation_unregistered`',
+      'never start a second worker',
+      'one with missing/malformed registration metadata and no matching handoff, is foreign',
+      'a later invocation may use its recorded token file to verify that exact claim and resume the handoff',
+      'it does not acquire a new claim or start a second worker',
+      'A durable handoff tells the same automation what to reconcile, but it must never override a recent active claim or justify a second worker',
     ])
 
     const completionBoundary = extractSection(
@@ -223,12 +249,13 @@ describe('engineer workflow prompt', () => {
       'Priority order:',
     )
     assertContainsInOrder(completionBoundary, [
-      'inspect live claims before possible active-worker handoffs or fresh PR/issue triage',
-      'For a foreign claim, skip that task and continue triage; for a claim owned by this run, continue waiting or refresh the continuation',
-      'Once the freshness window has elapsed, question the handoff using worker status, sidecars, and branch/worktree state',
-      'Only when the claim is no longer active, or the owning worker returns a terminal result while its claim is still valid, reconcile the worker handoff, triggering comment sidecars, and dedicated review-submission records',
-      'If worker status is unavailable while the claim is within the freshness window, do not classify the work as terminal or failed',
-      'terminal worker status overrides the freshness wait for the owning run',
+      'Handoff recovery precedes fresh triage',
+      'verify that its kind/id/branch exactly matches the live claim, then use the recorded token file with the claim helper to verify that claim before acting',
+      'This is recovery of the same claim, not a claim replacement',
+      'Query the recorded worker thread through `codex_app__read_thread` when that tool is available',
+      'If worker status is unavailable while the claim is within the freshness window, retain the record and classify it as `awaiting_status`, not terminal or failed',
+      'terminal worker status overrides the freshness wait',
+      'Once the freshness window has elapsed, classify unavailable worker state as `uncertain`',
     ])
 
     const reconciliationRule = extractSection(
@@ -240,17 +267,21 @@ describe('engineer workflow prompt', () => {
       'The claim file is the single source of truth for ownership',
       'an unexpired `active` claim is treated as healthy when its `last_seen` is within the 2-hour freshness window',
       'A parallel orchestrator must not release, replace, or duplicate that claim',
-      'For a foreign claim, leave it untouched, skip only its associated task, and continue with other claimable work',
-      'For a claim owned by the current run, wait for the owning worker/continuation or the normal claim-expiry path',
-      'Those other files are audit and wakeup hints only',
-      'After 2 hours without a heartbeat, or after the claim\'s own TTL has expired',
+      'Every automation claim registers the exact active automation id and token-file path in its `purpose` metadata when acquired',
+      'Determine same-automation ownership from that validated registration, not from whether a durable handoff already exists',
+      'This is not a new ownership acquisition and must not start another worker',
+      "match the claim's kind, id, and branch, and its recorded token file must verify through the claim helper before it is used",
+      'whose handoff is missing is `same_automation_unregistered`, not foreign',
+      'A claim registered to another automation, or one with missing/malformed registration metadata and no matching handoff, remains foreign',
+      'That is `archive_recovery`, not a live-claim mismatch',
+      'retry only the idempotent archive',
+      "After 2 hours without a heartbeat, or after the claim's own TTL has expired",
     ])
 
     const sharedPolicies = [
-      'continue with other claimable work',
-      'owning worker/continuation or the normal claim-expiry path',
+      'must not start another worker',
+      'normal expiry path',
     ]
-    assertContainsAll(normalizeWhitespace(automationMemory), sharedPolicies)
     assertContainsAll(normalizeWhitespace(reconciliationRule), sharedPolicies)
   })
 })

@@ -52,7 +52,6 @@ describe('automationTaskClaim', () => {
       now: at('2026-06-27T10:00:00.000Z'),
       owner: 'worker-a',
       pid: null,
-      purpose: 'address review comments',
       token: 'secret-a',
       ttlSeconds: 60,
     })
@@ -72,6 +71,102 @@ describe('automationTaskClaim', () => {
       `sha256:${createHash('sha256').update('secret-a').digest('hex')}`,
     )
     assert.equal(Object.hasOwn(record, 'token'), false)
+  })
+
+  it('acquires a claim with validated automation registration metadata', async () => {
+    const codexHome = path.join(claimRoot, 'codex-home')
+    const tokenFile = path.join(
+      codexHome,
+      'automations',
+      'review-automation',
+      'tokens',
+      'pr-71.token',
+    )
+    const purpose = `automation_id=review-automation;token_file=${tokenFile};scope=explicit_request;reason=review follow-up`
+
+    const result = await acquireClaim({
+      claimRoot,
+      env: { CODEX_HOME: codexHome },
+      id: '71',
+      kind: 'pr',
+      now: at('2026-06-27T10:00:00.000Z'),
+      owner: 'worker-a',
+      pid: null,
+      purpose,
+      tokenFile,
+      ttlSeconds: 60,
+    })
+
+    assert.equal(result.claim.purpose, purpose)
+    assert.equal((await readFile(tokenFile, 'utf8')).trim(), result.token)
+  })
+
+  it('rejects malformed or mismatched automation registration metadata', async () => {
+    const codexHome = path.join(claimRoot, 'codex-home')
+    const tokenFile = path.join(
+      codexHome,
+      'automations',
+      'review-automation',
+      'tokens',
+      'pr-72.token',
+    )
+
+    await assert.rejects(
+      () =>
+        acquireClaim({
+          claimRoot,
+          env: { CODEX_HOME: codexHome },
+          id: '72',
+          kind: 'pr',
+          pid: null,
+          purpose: 'review follow-up',
+          tokenFile,
+        }),
+      { codeName: 'USAGE' },
+    )
+
+    await assert.rejects(
+      () =>
+        acquireClaim({
+          claimRoot,
+          env: { CODEX_HOME: codexHome },
+          id: '73',
+          kind: 'pr',
+          pid: null,
+          purpose: `automation_id=review-automation;token_file=${tokenFile};scope=explicit_request`,
+          token: 'secret-a',
+        }),
+      { codeName: 'USAGE' },
+    )
+
+    const wrongAutomationTokenFile = path.join(
+      codexHome,
+      'automations',
+      'other-automation',
+      'tokens',
+      'pr-74.token',
+    )
+    await assert.rejects(
+      () =>
+        acquireClaim({
+          claimRoot,
+          env: { CODEX_HOME: codexHome },
+          id: '74',
+          kind: 'pr',
+          pid: null,
+          purpose: `automation_id=review-automation;token_file=${wrongAutomationTokenFile};scope=explicit_request`,
+          tokenFile: wrongAutomationTokenFile,
+        }),
+      { codeName: 'USAGE' },
+    )
+
+    await assert.rejects(() => readFile(tokenFile, 'utf8'), { code: 'ENOENT' })
+    for (const id of ['72', '73', '74']) {
+      await assert.rejects(
+        () => readFile(path.join(claimRoot, `pr-${id}.json`), 'utf8'),
+        { code: 'ENOENT' },
+      )
+    }
   })
 
   it('denies a duplicate active claim for the same task', async () => {

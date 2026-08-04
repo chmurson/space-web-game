@@ -19,17 +19,31 @@ Each task is stored as `<kind>-<id>.json`, for example `pr-71.json` or `issue-59
 Acquire before an orchestrator delegates or a worker starts automation-owned work:
 
 ```sh
+AUTOMATION_CONFIG_PATH="/absolute/path/to/resolved/automation.toml"
+ACTIVE_AUTOMATION_ID="$(sed -n 's/^id = "\([^"]*\)"$/\1/p' "$AUTOMATION_CONFIG_PATH")"
+: "${ACTIVE_AUTOMATION_ID:?resolved automation config has no id}"
+AUTOMATION_CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+TOKEN_FILE="$AUTOMATION_CODEX_HOME/automations/$ACTIVE_AUTOMATION_ID/tokens/pr-71.claim-token"
+
 npm run claim:task -- acquire \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
   --owner "$CODEX_THREAD_ID" \
-  --purpose "PR #71 review follow-up" \
+  --purpose "automation_id=$ACTIVE_AUTOMATION_ID;token_file=$TOKEN_FILE;scope=explicit_request;reason=PR #71 review follow-up" \
   --ttl 14400 \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 The command writes the generated token to `--token-file` when provided and redacts the raw token from stdout by default. Keep that token in the worker context only; committed files should contain only the token hash stored in the claim record. Use `--print-token` only for an explicit manual handoff that cannot use a token file.
+
+When `--purpose` is supplied, the helper validates its workflow registration
+before writing a token or claim. The value must begin with the exact
+`automation_id=<active automation id>;token_file=<absolute path>` prefix, the
+registered token path must match `--token-file`, and that path must be inside
+the matching automation's canonical `tokens/` directory. Claims without this
+validated registration may still support legacy or explicit manual workflows,
+but recovery must not treat them as same-automation ownership evidence.
 
 Verify before edits, tests, commits, pushes, deploys, or GitHub replies:
 
@@ -38,7 +52,7 @@ npm run claim:task -- verify \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 Heartbeat during long work:
@@ -48,7 +62,7 @@ npm run claim:task -- heartbeat \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 Release when the active automation handoff is done or intentionally abandoned:
@@ -58,7 +72,7 @@ npm run claim:task -- release \
   --kind pr \
   --id 71 \
   --branch issue-59-trail-render-frame-debug-state \
-  --token-file /tmp/space-game-pr-71.claim-token
+  --token-file "$TOKEN_FILE"
 ```
 
 ## Failure Policy
@@ -78,12 +92,39 @@ The helper fails closed:
 The claim file is the single source of truth for ownership. For reconciliation,
 an unexpired `active` claim is treated as healthy when its `last_seen` is within
 the 2-hour freshness window. During that window, assume the worker is in progress
-even when a worker id, continuation record, sidecar, or memory event is missing or
-stale. A parallel orchestrator must not release, replace, or duplicate that claim.
-For a foreign claim, leave it untouched, skip only its associated task, and
-continue with other claimable work. For a claim owned by the current run, wait
-for the owning worker/continuation or the normal claim-expiry path. Those other
-files are audit and wakeup hints only.
+even when a worker id, sidecar, or memory event is missing or stale. A parallel
+orchestrator must not release, replace, or duplicate that claim.
+
+Every automation claim registers the exact active automation id and token-file
+path in its `purpose` metadata when acquired. Treat that registration as
+same-automation ownership evidence only when its exact prefix is valid, its
+automation id matches the resolved active automation, its canonical token path
+matches the registration and live claim workflow, and the token verifies.
+Determine same-automation ownership from that validated registration, not from
+whether a durable handoff already exists. A
+durable pending handoff created by the same active automation lets a later
+invocation verify the recorded token and resume reconciliation of that exact
+claim even when the claim owner, parent thread, or run id belongs to an earlier
+invocation. This is not a new ownership acquisition and must not start another
+worker. The record must match the claim's kind, id, and branch, and its recorded
+token file must verify through the claim helper before it is used.
+
+A registered same-automation claim whose token verifies but whose handoff is
+missing is `same_automation_unregistered`, not foreign. Preserve the claim and
+use exact sidecar, worker-status, branch/worktree, and GitHub evidence to
+reconstruct the record only when the original worker identity and context are
+proven, or to reconcile an evidenced terminal/abandoned pre-handoff attempt. If
+that evidence is incomplete, wait for direct status or the normal expiry path;
+never start a second worker. A claim registered to another automation, or one
+with missing/malformed registration metadata and no matching handoff, remains
+foreign and must be left untouched.
+
+After terminal reconciliation releases a claim, an archive failure may leave
+the same-automation pending handoff behind. That is `archive_recovery`, not a
+live-claim mismatch: confirm there is no live claim or worker and that every
+referenced sidecar/review record has the terminal outcome, then retry only the
+idempotent archive. Handoff records, sidecars, memory events, and worker ids are
+otherwise audit and wakeup hints only; none can override a recent active claim.
 
 After 2 hours without a heartbeat, or after the claim's own TTL has expired, the
 orchestrator may question the handoff
@@ -106,6 +147,7 @@ Records include:
 - `token_hash`
 - `started_at`, `last_seen`, `ttl_seconds`, optional `released_at`
 - `status`
-- `purpose`
+- `purpose`, whose workflow-owned prefix registers the active automation id and
+  token-file path before a durable handoff exists
 
 The raw token is never written to the claim record.
