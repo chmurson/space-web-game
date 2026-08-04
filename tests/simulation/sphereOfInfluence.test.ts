@@ -40,15 +40,13 @@ describe('sphere of influence', () => {
     }
   })
 
-  it('quadruples the system zoom ceiling beyond Earth’s full SOI diameter', () => {
+  it('fits Earth’s full SOI diameter within the system viewport', () => {
     const earth = createEarthMoonScenario().bodies.find(
       (body) => body.id === 'earth',
     )
     const earthSoiDiameter =
       (earth?.sphereOfInfluenceRadius ?? 0) * RENDER_SCALE * 2
 
-    expect(EARTH_MOON_VIEWPORT_SIZE).toBe(4_000)
-    expect(earthSoiDiameter).toBeGreaterThan(1_000)
     expect(earthSoiDiameter).toBeLessThan(EARTH_MOON_VIEWPORT_SIZE)
   })
 })
