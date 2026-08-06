@@ -9,6 +9,8 @@ import type {
   GlobalScenarioDirectiveLimits,
 } from '../scenario/scenarioDirectiveTypes'
 import { resolveScenarioRenderConfig } from '../scenario/scenarioRenderConfig'
+import { physicsEngines } from '../simulation/physics'
+import type { PhysicsEngine } from '../simulation/types'
 import type {
   AppRuntimeScenarioSlice,
   AppRuntimeSimulationSlice,
@@ -36,11 +38,17 @@ export type ScenarioRuntimeTransition = {
 
 export const resolveStartupScenarioId = (options: {
   initialAppMode: 'menu' | 'game'
+  physicsEngine: PhysicsEngine
   requestedScenarioId: string
-}) =>
-  options.initialAppMode === 'menu'
-    ? 'menu-background'
-    : options.requestedScenarioId
+}) => {
+  if (options.initialAppMode === 'game') {
+    return options.requestedScenarioId
+  }
+  if (options.physicsEngine === physicsEngines.kepler) {
+    return 'menu-background-kepler'
+  }
+  return 'menu-background'
+}
 
 export const createScenarioRuntimeTransition = (
   scenarioId: string,
@@ -91,16 +99,25 @@ export const createScenarioRuntimeController = (options: {
   runtime: AppRuntimeState
   runtimeScenarioOptions: RuntimeScenarioOptions
   globalScenarioDirectiveLimits: GlobalScenarioDirectiveLimits
+  physicsEngine: PhysicsEngine
   setTimeWarp: (warp: number) => void
   clearTransientScenarioState: () => void
 }) => {
-  const loadScenarioById = (scenarioId: string) => {
-    applyScenarioLoadTransition(
-      options.runtime,
+  const assertSupportedTransition = (transition: ScenarioRuntimeTransition) => {
+    options.physicsEngine.validateState?.(transition.state)
+    return transition
+  }
+  const createSupportedScenarioTransition = (scenarioId: string) =>
+    assertSupportedTransition(
       createScenarioRuntimeTransition(
         scenarioId,
         options.runtimeScenarioOptions,
       ),
+    )
+  const loadScenarioById = (scenarioId: string) => {
+    applyScenarioLoadTransition(
+      options.runtime,
+      createSupportedScenarioTransition(scenarioId),
       {
         clearTransientScenarioState: options.clearTransientScenarioState,
         globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
@@ -110,7 +127,13 @@ export const createScenarioRuntimeController = (options: {
 
   return {
     enterMainMenuBackground: () => {
-      loadScenarioById('menu-background')
+      loadScenarioById(
+        resolveStartupScenarioId({
+          initialAppMode: 'menu',
+          physicsEngine: options.physicsEngine,
+          requestedScenarioId: 'menu-background',
+        }),
+      )
       options.runtime.ui.spacecraftLabelIntroUntil = Number.POSITIVE_INFINITY
       options.setTimeWarp(300)
     },
@@ -118,7 +141,12 @@ export const createScenarioRuntimeController = (options: {
       initialAppMode: 'menu' | 'game'
       requestedScenarioId: string
     }) => {
-      loadScenarioById(resolveStartupScenarioId(startupOptions))
+      loadScenarioById(
+        resolveStartupScenarioId({
+          ...startupOptions,
+          physicsEngine: options.physicsEngine,
+        }),
+      )
       if (startupOptions.initialAppMode !== 'menu') {
         return
       }
@@ -134,6 +162,10 @@ export const createScenarioRuntimeController = (options: {
         options.runtime.debug.debugSnapshotStatus = 'no debug snapshot saved'
         return false
       }
+
+      options.physicsEngine.validateState?.(
+        loadedDebugScenario.runtimeState.state,
+      )
 
       applyScenarioLoadTransition(
         options.runtime,
@@ -177,9 +209,8 @@ export const createScenarioRuntimeController = (options: {
     resetScenario: () => {
       applyScenarioLoadTransition(
         options.runtime,
-        createScenarioRuntimeTransition(
+        createSupportedScenarioTransition(
           options.runtime.scenario.session.scenarioId,
-          options.runtimeScenarioOptions,
         ),
         {
           clearTransientScenarioState: options.clearTransientScenarioState,
@@ -188,43 +219,25 @@ export const createScenarioRuntimeController = (options: {
       )
     },
     restartFromCheckpoint: () => {
-      return applyCheckpointRestoreTransition(
+      const transition = createRuntimeCheckpointRestoreTransition(
         options.runtime,
-        createRuntimeCheckpointRestoreTransition(options.runtime),
-        {
-          clearTransientScenarioState: options.clearTransientScenarioState,
-          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
-        },
       )
+      if (transition) {
+        options.physicsEngine.validateState?.(transition.state)
+      }
+      return applyCheckpointRestoreTransition(options.runtime, transition, {
+        clearTransientScenarioState: options.clearTransientScenarioState,
+        globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+      })
     },
     startFreeRoam: () => {
-      applyScenarioLoadTransition(
-        options.runtime,
-        createScenarioRuntimeTransition(
-          'earth-moon',
-          options.runtimeScenarioOptions,
-        ),
-        {
-          clearTransientScenarioState: options.clearTransientScenarioState,
-          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
-        },
-      )
+      loadScenarioById('earth-moon')
     },
     startReachMoon: () => {
       loadScenarioById('reach-moon')
     },
     startTutorial: () => {
-      applyScenarioLoadTransition(
-        options.runtime,
-        createScenarioRuntimeTransition(
-          'tutorial',
-          options.runtimeScenarioOptions,
-        ),
-        {
-          clearTransientScenarioState: options.clearTransientScenarioState,
-          globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
-        },
-      )
+      loadScenarioById('tutorial')
     },
   }
 }

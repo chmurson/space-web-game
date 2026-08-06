@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import {
   createDebugScenarioSnapshotEntryName,
   createSnapshotFromState,
+  downloadDebugScenarioSnapshot,
+  markRecentDebugScenarioSnapshotExported,
   writeDebugScenarioSnapshot,
 } from '../debugScenarioSnapshot'
 import type { UIUserAction } from '../input/uiUserActions'
@@ -16,6 +18,7 @@ import { resolveScenarioPrompts } from '../scenario/scenarioPrompts'
 import type { PromptAction } from '../scenario/scenarioPromptTypes'
 import type { GameSceneRefs } from '../scene/createGameScene'
 import { RENDER_SCALE } from '../simulation/constants'
+import type { PhysicsEngine } from '../simulation/types'
 import { add, sub, type Vec2 } from '../simulation/vector'
 import type { AppRuntimeState } from './appRuntimeState'
 import { createScenarioRuntimeController } from './createScenarioRuntimeController'
@@ -59,6 +62,7 @@ export const createRuntimeActions = (options: {
   minCoastPredictionHorizonHours: number
   minViewport: number
   navigationTimeWarpController: NavigationTimeWarpController
+  physicsEngine: PhysicsEngine
   renderer: Pick<
     THREE.WebGLRenderer,
     'getPixelRatio' | 'setPixelRatio' | 'setSize'
@@ -123,6 +127,7 @@ export const createRuntimeActions = (options: {
   const scenarioRuntimeController = createScenarioRuntimeController({
     clearTransientScenarioState,
     globalScenarioDirectiveLimits: options.globalScenarioDirectiveLimits,
+    physicsEngine: options.physicsEngine,
     runtime: options.runtime,
     runtimeScenarioOptions: options.runtimeScenarioOptions,
     setTimeWarp,
@@ -151,6 +156,65 @@ export const createRuntimeActions = (options: {
     } catch {
       options.runtime.debug.debugSnapshotStatus = 'snapshot save failed'
       return false
+    }
+  }
+
+  const saveAndExportCurrentDebugScenarioSnapshot = (name?: string) => {
+    let snapshot: ReturnType<typeof createSnapshotFromState>
+
+    try {
+      snapshot = createCurrentDebugScenarioSnapshot()
+    } catch {
+      options.runtime.debug.debugSnapshotStatus =
+        'snapshot save and export failed'
+      return {
+        downloadStarted: false,
+        recentEntrySaved: false,
+        snapshotSaved: false,
+      }
+    }
+
+    let savedEntryId: string | null = null
+    try {
+      savedEntryId = writeDebugScenarioSnapshot(snapshot, name).id
+    } catch {
+      savedEntryId = null
+    }
+
+    let downloadStarted = false
+    try {
+      downloadDebugScenarioSnapshot(snapshot)
+      downloadStarted = true
+    } catch {
+      downloadStarted = false
+    }
+
+    const snapshotSaved = savedEntryId !== null
+    const recentEntrySaved =
+      downloadStarted && savedEntryId !== null
+        ? markRecentDebugScenarioSnapshotExported(savedEntryId)
+        : false
+
+    if (snapshotSaved && downloadStarted && recentEntrySaved) {
+      options.runtime.debug.debugSnapshotStatus = 'snapshot saved and exported'
+    } else if (snapshotSaved && downloadStarted) {
+      options.runtime.debug.debugSnapshotStatus =
+        'snapshot saved and downloaded; export timestamp save failed'
+    } else if (snapshotSaved) {
+      options.runtime.debug.debugSnapshotStatus =
+        'snapshot saved; export failed'
+    } else if (downloadStarted) {
+      options.runtime.debug.debugSnapshotStatus =
+        'snapshot downloaded; save failed'
+    } else {
+      options.runtime.debug.debugSnapshotStatus =
+        'snapshot save and export failed'
+    }
+
+    return {
+      downloadStarted,
+      recentEntrySaved,
+      snapshotSaved,
     }
   }
 
@@ -512,6 +576,7 @@ export const createRuntimeActions = (options: {
 
       return { refreshTrajectoryPrediction: false }
     },
+    saveAndExportDebugSnapshot: saveAndExportCurrentDebugScenarioSnapshot,
     saveDebugSnapshot: saveDebugScenarioSnapshot,
     loadDebugSnapshot: () => {
       const previousStatus = options.runtime.debug.debugSnapshotStatus

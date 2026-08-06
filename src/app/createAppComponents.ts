@@ -262,7 +262,7 @@ export const createAppComponents = (options: {
   }
   const trajectoryPredictionRuntime = createTrajectoryPredictionRuntime({
     predictionImplementation:
-      options.config.featureFlags.trajectoryPredictionImplementation,
+      options.config.trajectory.predictionImplementation,
   })
   const ripples: Ripple[] = []
   const overlayUi = createOverlayUi({
@@ -355,6 +355,7 @@ export const createAppComponents = (options: {
       options.config.trajectory.minCoastPredictionHorizonHours,
     minViewport: options.config.camera.minViewport,
     navigationTimeWarpController,
+    physicsEngine: options.config.physicsEngine,
     renderer,
     runtime: options.runtimeState,
     globalScenarioDirectiveLimits: options.config.globalScenarioDirectiveLimits,
@@ -627,6 +628,7 @@ export const createAppComponents = (options: {
     getFpsIndicatorEnabled: () =>
       options.runtimeState.debug.fpsIndicatorEnabled,
     onAction: handleTopMenuAction,
+    onSaveAndExportDebugSnapshot: runtimeActions.saveAndExportDebugSnapshot,
     onSaveDebugSnapshot: runtimeActions.saveDebugSnapshot,
   })
   const inGameControlsMenu = createInGameControlsMenu({
@@ -802,7 +804,7 @@ export const createAppComponents = (options: {
     hudPresentation,
     autopilotRotationRate: options.config.controls.autopilotRotationRate,
     predictionImplementation:
-      options.config.featureFlags.trajectoryPredictionImplementation,
+      options.config.trajectory.predictionImplementation,
     getFpsMeterVisible: () =>
       options.runtimeState.debug.fpsIndicatorEnabled &&
       getAppMode() === 'game' &&

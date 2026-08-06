@@ -26,10 +26,12 @@ export const createInitialAppRuntimeState = (
   const initialScenarioTransition = createScenarioRuntimeTransition(
     resolveStartupScenarioId({
       initialAppMode: config.initialAppMode,
+      physicsEngine: config.physicsEngine,
       requestedScenarioId: config.requestedScenarioId,
     }),
     config.runtimeScenarioOptions,
   )
+  config.physicsEngine.validateState?.(initialScenarioTransition.state)
   const defaultAssistTargetSelectionMode = config.assistTarget
     .autoSelectNearestSurface
     ? 'auto'

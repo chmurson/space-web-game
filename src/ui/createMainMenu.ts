@@ -1,8 +1,12 @@
 import type { DeveloperFeatureFlags } from '../app/developerFeatureFlags'
 import {
   type DebugScenarioSnapshotEntry,
+  downloadDebugScenarioSnapshot,
   getRecentDebugScenarioSnapshots,
+  insertImportedDebugScenarioSnapshot,
   loadRecentDebugScenarioSnapshot,
+  markRecentDebugScenarioSnapshotExported,
+  parseDebugScenarioSnapshotJson,
   readDebugScenarioSnapshot,
 } from '../debugScenarioSnapshot'
 import {
@@ -85,6 +89,10 @@ export const createMainMenu = (options: {
   let loadGameAvailable = isLoadGameAvailable()
   let recentSnapshots: DebugScenarioSnapshotEntry[] =
     getRecentDebugScenarioSnapshots()
+  let recentSnapshotExportStatus: MainMenuRenderProps['recentSnapshotExportStatus'] =
+    null
+  let recentSnapshotImportStatus: MainMenuRenderProps['recentSnapshotImportStatus'] =
+    null
   let selectedRecentSnapshotId = recentSnapshots[0]?.id ?? ''
   let reachMoonHighscorePendingRun: ReachMoonHighscorePendingRun | null = null
   let reachMoonHighscoreActivePeriod: ReachMoonHighscorePeriod =
@@ -205,6 +213,8 @@ export const createMainMenu = (options: {
         options.developerFeatureFlagsMenuEnabled,
       loadGameAvailable,
       recentSnapshots,
+      recentSnapshotExportStatus,
+      recentSnapshotImportStatus,
       reachMoonHighscorePendingRun,
       reachMoonHighscoreState: {
         activePeriod: reachMoonHighscoreActivePeriod,
@@ -244,6 +254,10 @@ export const createMainMenu = (options: {
         }
       },
       onLoadGameBack: () => {
+        if (activeView === 'load-game-snapshot') {
+          recentSnapshotExportStatus = null
+          recentSnapshotImportStatus = null
+        }
         setActiveView(
           activeView === 'load-game-snapshot' ? 'load-game' : 'main',
         )
@@ -295,8 +309,56 @@ export const createMainMenu = (options: {
       },
       onTutorial: () => handleActionThatClosesMenu(options.onTutorial),
       onRecentSnapshotChange: (id) => {
+        recentSnapshotImportStatus = null
         selectedRecentSnapshotId = id
+        recentSnapshotExportStatus = null
         renderMenu()
+      },
+      onRecentSnapshotExport: () => {
+        recentSnapshotImportStatus = null
+        const selectedSnapshot = recentSnapshots.find(
+          (snapshot) => snapshot.id === selectedRecentSnapshotId,
+        )
+        if (!selectedSnapshot) {
+          recentSnapshotExportStatus = {
+            kind: 'error',
+            message: 'The selected snapshot is no longer available.',
+          }
+          refreshLoadGameAvailable()
+          renderMenu()
+          return
+        }
+
+        try {
+          downloadDebugScenarioSnapshot(selectedSnapshot.snapshot)
+        } catch {
+          recentSnapshotExportStatus = {
+            kind: 'error',
+            message: 'Snapshot download could not be started. Try again.',
+          }
+          renderMenu()
+          return
+        }
+
+        if (!markRecentDebugScenarioSnapshotExported(selectedSnapshot.id)) {
+          recentSnapshotExportStatus = {
+            kind: 'error',
+            message:
+              'Download started, but the local export time could not be saved.',
+          }
+          renderMenu()
+          return
+        }
+
+        recentSnapshots = getRecentDebugScenarioSnapshots()
+        recentSnapshotExportStatus = {
+          kind: 'success',
+          message: 'Snapshot download started.',
+        }
+        renderMenu()
+      },
+      onRecentSnapshotImport: (file) => {
+        void importRecentSnapshot(file)
       },
       onRecentSnapshotLoad: () => {
         if (
@@ -315,10 +377,61 @@ export const createMainMenu = (options: {
       },
       onRecentSnapshotMenu: () => {
         refreshLoadGameAvailable()
+        recentSnapshotExportStatus = null
+        recentSnapshotImportStatus = null
         setActiveView('load-game-snapshot')
         renderMenu()
       },
     })
+  }
+
+  const importRecentSnapshot = async (file: File) => {
+    recentSnapshotExportStatus = null
+    recentSnapshotImportStatus = null
+    renderMenu()
+
+    let snapshotJson: string
+    try {
+      snapshotJson = await file.text()
+    } catch {
+      recentSnapshotImportStatus = {
+        message: 'Snapshot file could not be read.',
+        tone: 'error',
+      }
+      renderMenu()
+      return
+    }
+
+    const parsedSnapshot = parseDebugScenarioSnapshotJson(snapshotJson)
+    if (!parsedSnapshot.ok) {
+      recentSnapshotImportStatus = {
+        message: parsedSnapshot.message,
+        tone: 'error',
+      }
+      renderMenu()
+      return
+    }
+
+    const importedEntry = insertImportedDebugScenarioSnapshot(
+      parsedSnapshot.snapshot,
+    )
+    if (!importedEntry) {
+      recentSnapshotImportStatus = {
+        message:
+          'Snapshot is valid, but it could not be added to recent games.',
+        tone: 'error',
+      }
+      renderMenu()
+      return
+    }
+
+    recentSnapshots = getRecentDebugScenarioSnapshots()
+    selectedRecentSnapshotId = importedEntry.id
+    recentSnapshotImportStatus = {
+      message: 'Snapshot imported. Select Load to start.',
+      tone: 'success',
+    }
+    renderMenu()
   }
 
   const loadReachMoonHighscores = (
@@ -452,6 +565,8 @@ export const createMainMenu = (options: {
   const setVisible = (nextVisible: boolean) => {
     visible = nextVisible
     if (nextVisible) {
+      recentSnapshotExportStatus = null
+      recentSnapshotImportStatus = null
       setActiveView('main')
     }
     renderMenu()

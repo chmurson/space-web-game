@@ -67,7 +67,7 @@ describe('developer feature flags', () => {
 
   it('preserves other query parameters when applying flags', () => {
     const testWindow = createWindow(
-      'https://localhost:5173/?scenario=earth-moon&devtools=1',
+      'https://localhost:5173/?scenario=earth-moon&devtools=1&trajectoryPrediction=kepler',
     )
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
@@ -76,11 +76,10 @@ describe('developer feature flags', () => {
 
     writeDeveloperFeatureFlagsToUrl({
       noHorizonLimit: true,
-      trajectoryPredictionImplementation: 'kepler',
     })
 
     expect(testWindow.location.assign).toHaveBeenCalledWith(
-      'https://localhost:5173/?scenario=earth-moon&devtools=1&nohiroznlimit=1&trajectoryPrediction=kepler',
+      'https://localhost:5173/?scenario=earth-moon&devtools=1&nohiroznlimit=1',
     )
   })
 })

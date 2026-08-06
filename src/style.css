@@ -915,6 +915,20 @@ canvas {
   text-transform: uppercase;
 }
 
+.top-menu-snapshot-status {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.top-menu-snapshot-status-success {
+  color: #86efac;
+}
+
+.top-menu-snapshot-status-error {
+  color: #fecdd3;
+}
+
 .menu-recent-snapshot {
   display: grid;
   gap: 6px;
@@ -958,6 +972,26 @@ canvas {
   border-top: 1px solid var(--ui-glass-panel-border);
 }
 
+.main-menu-snapshot-navigation-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.menu-recent-snapshot-status {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.menu-recent-snapshot-status-success {
+  color: #86efac;
+}
+
+.menu-recent-snapshot-status-error {
+  color: #fecdd3;
+}
+
 .menu-recent-snapshot-detail {
   display: grid;
   grid-template-columns: minmax(80px, 0.7fr) minmax(0, 1.3fr);
@@ -984,6 +1018,18 @@ canvas {
   font-variant-numeric: tabular-nums;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.main-menu-snapshot-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.main-menu-snapshot-actions .menu-action {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  text-align: center;
 }
 
 .menu-separator {

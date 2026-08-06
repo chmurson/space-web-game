@@ -10,7 +10,7 @@ import type {
 } from '../prediction/trajectoryPrediction'
 import type { RuntimeScenarioOptions } from '../scenario/runtimeScenario'
 import type { GlobalScenarioDirectiveLimits } from '../scenario/scenarioDirectiveTypes'
-import { defaultPhysicsEngine, physicsEngines } from '../simulation/physics'
+import { physicsEngines, resolvePhysicsEngine } from '../simulation/physics'
 import type { PhysicsEngine } from '../simulation/types'
 import {
   readUserSettings,
@@ -18,10 +18,7 @@ import {
   type TouchTrajectoryControlState,
   type UserSettings,
 } from '../userSettingsStorage'
-import {
-  type DeveloperFeatureFlags,
-  isDeveloperFeatureFlagsMenuEnabled,
-} from './developerFeatureFlags'
+import type { DeveloperFeatureFlags } from './developerFeatureFlags'
 
 export type AppMode = 'menu' | 'game'
 
@@ -46,6 +43,7 @@ export type AppConfigContext = {
     defaultCoastPredictionHorizonHours: number
     minCoastPredictionHorizonHours: number
     maxCoastPredictionHorizonHours: number
+    predictionImplementation: TrajectoryPredictionImplementation
     predictionSampling: TrajectoryPredictionSamplingConfig
     maxPredictionLoopRevolutions: number
     rendering: typeof gameConfig.trajectory.rendering
@@ -86,27 +84,17 @@ const parseTouchTrajectoryControlStateOverride = (
 ): TouchTrajectoryControlState | null =>
   value === 'hidden' ? value : parseTouchControlSideOverride(value)
 
-const parseTrajectoryPredictionImplementation = (
-  value: string | null,
-): TrajectoryPredictionImplementation =>
-  value === 'kepler' ? 'kepler' : 'euler'
-
 export const createAppConfigContext = (): AppConfigContext => {
   const urlParams = new URLSearchParams(window.location.search)
-  const developerFeatureFlagsEnabled = isDeveloperFeatureFlagsMenuEnabled()
   const initialAppMode: AppMode = urlParams.has('scenario') ? 'game' : 'menu'
   const requestedEngine = urlParams.get('engine') ?? ''
-  const physicsEngine = physicsEngines[requestedEngine] ?? defaultPhysicsEngine
+  const physicsEngine = resolvePhysicsEngine(requestedEngine)
+  const keplerEngineSelected = physicsEngine === physicsEngines.kepler
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
     sphereOfInfluenceVariant: parseSphereOfInfluenceVariant(
       urlParams.get('soi'),
     ),
-    trajectoryPredictionImplementation: developerFeatureFlagsEnabled
-      ? parseTrajectoryPredictionImplementation(
-          urlParams.get('trajectoryPrediction'),
-        )
-      : 'euler',
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'
@@ -138,6 +126,9 @@ export const createAppConfigContext = (): AppConfigContext => {
     switchRangeMultiplier: gameConfig.assistTarget.switchRangeMultiplier,
   }
 
+  const predictionImplementation: TrajectoryPredictionImplementation =
+    keplerEngineSelected ? 'kepler' : 'euler'
+
   const trajectory = {
     defaultCoastPredictionHorizonHours:
       gameConfig.trajectory.horizon.defaultHours,
@@ -145,6 +136,7 @@ export const createAppConfigContext = (): AppConfigContext => {
     maxCoastPredictionHorizonHours: featureFlags.noHorizonLimit
       ? gameConfig.trajectory.horizon.maxHours
       : gameConfig.trajectory.horizon.defaultMaxHours,
+    predictionImplementation,
     predictionSampling: { ...gameConfig.trajectory.sampling },
     maxPredictionLoopRevolutions: gameConfig.trajectory.loopTrim.maxRevolutions,
     rendering: { ...gameConfig.trajectory.rendering },

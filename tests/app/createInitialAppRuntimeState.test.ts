@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AppConfigContext } from '@/app/createAppConfigContext'
 import { createInitialAppRuntimeState } from '@/app/createInitialAppRuntimeState'
+import { kepler } from '@/simulation/physics/kepler'
 import { requestedTimeWarps } from '../fixtures/requestedTimeWarps'
 
 const debugSnapshotStorageKey = 'space-web-game.debugScenarioSnapshot.v1'
@@ -32,7 +33,6 @@ const createConfig = (
   featureFlags: {
     noHorizonLimit: false,
     sphereOfInfluenceVariant: null,
-    trajectoryPredictionImplementation: 'euler',
   },
   userSettings: {
     desktopCameraPanMode: 'wheel',
@@ -56,6 +56,7 @@ const createConfig = (
     defaultCoastPredictionHorizonHours: 4,
     minCoastPredictionHorizonHours: 1,
     maxCoastPredictionHorizonHours: 48,
+    predictionImplementation: 'euler',
     predictionSampling: {
       maxIntegrationStepSeconds: 10,
       refreshInterval: 0.25,
@@ -144,6 +145,21 @@ describe('createInitialAppRuntimeState', () => {
     expect(runtime.simulation.timeWarpIndex).toBe(2)
   })
 
+  it('boots an engine-compatible menu background with the Kepler engine', () => {
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        initialAppMode: 'menu',
+        physicsEngine: kepler,
+        requestedEngine: 'kepler',
+      }),
+    )
+
+    expect(runtime.scenario.session.scenarioId).toBe('menu-background-kepler')
+    expect(runtime.scenario.metadata.title).toBe('Menu background')
+    expect(runtime.simulation.state.bodies).toHaveLength(1)
+    expect(runtime.ui.spacecraftLabelIntroUntil).toBe(Number.POSITIVE_INFINITY)
+  })
+
   it('boots the requested scenario in game mode', () => {
     const runtime = createInitialAppRuntimeState(
       createConfig({
@@ -159,6 +175,31 @@ describe('createInitialAppRuntimeState', () => {
       follow: 'spacecraft',
       panOffset: { x: 0, y: 0 },
     })
+  })
+
+  it('rejects multi-body scenarios for the Kepler engine', () => {
+    expect(() =>
+      createInitialAppRuntimeState(
+        createConfig({
+          physicsEngine: kepler,
+          requestedEngine: 'kepler',
+          requestedScenarioId: 'tutorial',
+        }),
+      ),
+    ).toThrow('The Kepler engine requires exactly one massive body.')
+  })
+
+  it('boots the one-body orbit scenario with the Kepler engine', () => {
+    const runtime = createInitialAppRuntimeState(
+      createConfig({
+        physicsEngine: kepler,
+        requestedEngine: 'kepler',
+        requestedScenarioId: 'earth-kepler-orbit-debug',
+      }),
+    )
+
+    expect(runtime.scenario.session.scenarioId).toBe('earth-kepler-orbit-debug')
+    expect(runtime.simulation.state.bodies).toHaveLength(1)
   })
 
   it('starts manual target selection when auto target selection is disabled', () => {

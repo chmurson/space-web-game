@@ -1,7 +1,10 @@
 import * as THREE from 'three'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import type { TrajectoryPredictionEventMarker } from '@/prediction/trajectoryPrediction'
+import type {
+  CoastTrajectoryPredictionTerminationReason,
+  TrajectoryPredictionEventMarker,
+} from '@/prediction/trajectoryPrediction'
 import { createTrajectoryPresentation } from '@/presentation/trajectoryPresentation'
 import { updateCameraView } from '@/render/sceneUpdates'
 import type { AppRuntimeState } from '@/runtime/appRuntimeState'
@@ -186,6 +189,7 @@ const createPredictionRuntime = (
     { x: 12, y: 0 },
     { x: 20, y: 0 },
   ],
+  predictionTerminationReason: CoastTrajectoryPredictionTerminationReason | null = null,
 ): TrajectoryPredictionRuntime =>
   ({
     getDiagnostics: () => ({
@@ -266,7 +270,7 @@ const createPredictionRuntime = (
       pendingFarInputKeyShort: null,
       predictionAnchorElapsed: null,
       predictionRefreshMs: 0,
-      predictionTerminationReason: null,
+      predictionTerminationReason,
       refreshCountLastSecond: 0,
       refreshIntervalSeconds: 0,
       refreshReason: null,
@@ -298,6 +302,7 @@ const createPredictionRuntime = (
   }) as TrajectoryPredictionRuntime
 
 const createTestPresentation = (options: {
+  closedOrbit?: boolean
   debugModeEnabled?: boolean
   eventMarkers: TrajectoryPredictionEventMarker[]
   farVisible?: 'current' | 'none' | 'retained-stale'
@@ -349,6 +354,7 @@ const createTestPresentation = (options: {
         options.nearPointCount,
         options.farVisible,
         options.predictionPoints,
+        options.closedOrbit ? 'closed-orbit' : null,
       ),
     }),
     runtime,
@@ -505,6 +511,44 @@ describe('createTrajectoryPresentation', () => {
     expect(systemSegmentCount).toBe(1)
     expect(restoredSegmentCount).toBe(closeSegmentCount)
     expect(predictionPoints).toHaveLength(49)
+  })
+
+  it('renders a closed orbit as an evenly lit line loop', () => {
+    const test = createTestPresentation({
+      closedOrbit: true,
+      eventMarkers: [],
+      predictionPoints: [
+        { x: 1_000_000, y: 0 },
+        { x: 0, y: 1_000_000 },
+        { x: -1_000_000, y: 0 },
+        { x: 0, y: -1_000_000 },
+      ],
+      viewportSize: 50,
+    })
+
+    test.presentation.updateVisuals()
+
+    const starts =
+      test.gameScene.predictionGeometry.getAttribute('instanceStart')
+    const ends = test.gameScene.predictionGeometry.getAttribute('instanceEnd')
+    const colorStarts =
+      test.gameScene.predictionGeometry.getAttribute('instanceColorStart')
+    const colorEnds =
+      test.gameScene.predictionGeometry.getAttribute('instanceColorEnd')
+    const lastSegment = ends.count - 1
+
+    expect(starts.count).toBe(4)
+    expect(ends.getX(lastSegment)).toBeCloseTo(starts.getX(0))
+    expect(ends.getY(lastSegment)).toBeCloseTo(starts.getY(0))
+    expect(ends.getZ(lastSegment)).toBeCloseTo(starts.getZ(0))
+    for (let segment = 0; segment < starts.count; segment += 1) {
+      expect(colorStarts.getX(segment)).toBe(1)
+      expect(colorStarts.getY(segment)).toBe(1)
+      expect(colorStarts.getZ(segment)).toBe(1)
+      expect(colorEnds.getX(segment)).toBe(1)
+      expect(colorEnds.getY(segment)).toBe(1)
+      expect(colorEnds.getZ(segment)).toBe(1)
+    }
   })
 
   it('keeps impact-gradient endpoints on the decimated prediction line', () => {

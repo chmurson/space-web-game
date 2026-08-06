@@ -16,6 +16,38 @@ type EarthMoonScenarioOptions = {
   render?: Scenario['render']
 }
 
+export const createEarthKeplerOrbitDebugScenario = (): Scenario => {
+  const earth = {
+    id: 'earth',
+    name: 'Earth',
+    mass: EARTH_MASS,
+    radius: EARTH_RADIUS,
+    position: { x: 0, y: 0 },
+    velocity: { x: 0, y: 0 },
+    color: '#2f80ed',
+  }
+  const parkingOrbitRadius = earth.radius + 400_000
+  const parkingOrbitSpeed = Math.sqrt((G * earth.mass) / parkingOrbitRadius)
+
+  return {
+    id: 'earth-kepler-orbit-debug',
+    name: 'Earth Kepler orbit debug',
+    description:
+      'Inspect the closed two-body Kepler trajectory from a circular Earth parking orbit.',
+    bodies: [earth],
+    spacecraft: {
+      position: { x: parkingOrbitRadius, y: 0 },
+      velocity: { x: 0, y: parkingOrbitSpeed },
+      heading: Math.PI / 2,
+      fuel: 1,
+      fuelUsed: 0,
+      dryMass: 10_000,
+      fuelMass: 8_000,
+      fuelCapacity: 0,
+    },
+  }
+}
+
 export const createEarthMoonScenario = (
   options: EarthMoonScenarioOptions = {},
 ): Scenario => {
