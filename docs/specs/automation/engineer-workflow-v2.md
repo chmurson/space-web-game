@@ -653,6 +653,123 @@ Proposed Luna acceptance gate:
 If Luna cannot satisfy the semantic gates, Terra/medium is evaluated before
 considering an hourly Sol/XHigh orchestrator.
 
+## Evidence and traceability contract
+
+Workflow v2 must be evaluated by observable outcomes, not by whether its prose
+looks shorter than v1. Implementation PR 1 must generate a read-only evidence
+record for fixture tests, model evals, dry-runs, and the live pilot.
+
+The evidence record is a projection of data already collected by the workflow.
+It is not a dashboard, a sidecar, or a new source of truth: it must never
+control a later triage decision, replace a fresh GitHub fetch, or reintroduce a
+cross-run reconciliation protocol. GitHub remains authoritative; snapshots are
+derived observations. The output may be a test artifact, scheduler log, or
+human-readable report, but its storage location is an implementation detail
+rather than new workflow state.
+Deleting an old report must not affect workflow behavior. Its rendering should
+use canonical ordering so identical captured inputs and model outputs produce
+the same reviewer-facing trace; this does not imply that model judgment itself
+is deterministic.
+
+### One run, one navigable trace
+
+For each complete changed snapshot that reaches Luna and each worker run, the
+evidence record must make this chain navigable with stable identifiers:
+
+```text
+GitHub record or PR condition
+        -> normalized snapshot record and digest
+        -> Luna disposition and reason
+        -> validator coverage result
+        -> selected PR-level work item
+        -> Sol result and before/after head SHA
+        -> refreshed PR snapshot
+```
+
+Every relevant record must appear exactly once in the classification portion of
+that complete changed snapshot. Every actionable record or actionable PR
+condition must reference one or more work items, unless the plan supplies an
+evidenced `not_applicable` disposition. Every work item must link back to its
+source record or condition. Selected packet items must end as `addressed`,
+`not_addressed`, or evidenced `not_applicable`; work on an unselected PR must
+instead be marked `not_selected` with its selection reason and must not be
+reported as addressed. A no-op run may use a compact trace, but it must still
+show a complete unchanged snapshot, its digest, and why no worker was started.
+A stage that was not reached must appear as `not_run` with a reason rather than
+silently disappearing. An incomplete fetch must show that selection, validation,
+and worker execution stopped before they could run.
+
+The human-readable view should link to the GitHub record rather than copy raw
+comment bodies. It may include a short generated reason, record kind/id,
+`updatedAt`, and body hash so that a reviewer can see which revision was
+classified without creating another durable copy of the conversation.
+
+### Required evidence fields
+
+At minimum, the generated record must contain:
+
+- run timestamp, complete/changed status, canonical snapshot digest, and each
+  mandatory source's completeness/status and record count;
+- each open PR's number, authorization scope, head/base SHA, classified state,
+  and selection or non-selection reason;
+- each relevant comment, review submission, review thread, check, and PR
+  condition with its stable source reference, current revision evidence,
+  classification, and reason;
+- record-to-work-item mappings, work-item-to-worker-result mappings, and the
+  validator's coverage and policy result;
+- expected and observed worker head SHA, commit/push outcome, validation
+  summary, and the refreshed selected-PR state; and
+- the zero-or-one-worker decision, any issue-fallback decision, and evidence
+  that its preconditions held.
+
+The same structured evidence should render both a machine-readable artifact and
+a compact Markdown summary. The Markdown summary is the reviewer-facing proof;
+the structured form allows fixture assertions to inspect the exact same facts.
+
+### PR #331 acceptance trace
+
+The historical PR #331 fixture is the minimum traceability regression. Its
+rendered evidence must show all of the following in one selected PR packet:
+
+| Source evidence | Required disposition | Required trace result |
+| --- | --- | --- |
+| `issue_comment:5103175999` | `actionable` | Three distinct product work items: retain option 1 as the base, keep its border width stable across zoom while preserving the gradient, and prepare variants 1–4 with different border widths. |
+| `issue_comment:5107174867` | `actionable` | A conflict-resolution work item. |
+| Draft state and review-skipped evidence | `needs_work` | Never classify the PR as CodeRabbit-accepted or `ready_for_merge`. |
+| PR selection | `pull_request:331` | One worker packet contains the product items and conflict; no issue fallback or second worker. |
+
+`plan.only-conflict.json` must fail because it omits the earlier actionable
+record. The test must expose the missing record in its evidence output, not
+only return a generic invalid-plan result.
+
+### Comparison and rollout gates
+
+The comparison must use fixed historical snapshots for correctness and a
+non-overlapping observation window for operational measurements; v1 and v2 must
+not run as concurrent writing automations. The evaluation scorecard must show
+v1 baseline and v2 result for:
+
+- source-record coverage and actionable-record recall;
+- selected PR and work-packet completeness;
+- duplicate-worker, cross-run-handoff, and repeated-review-request events;
+- the identity and number of durable local state surfaces needed to explain an
+  outcome; and
+- no-op and actionable-run model work, plus cost per PR moved to a valid
+  terminal state when telemetry is available.
+
+| Stage | Required evidence | Gate |
+| --- | --- | --- |
+| Before activation | Deterministic fixtures, including the full PR #331 trace and invalid plans. | Every expected record is present exactly once; deliberately incomplete plans are rejected with the omitted record identified. |
+| Model eval | A repeated-run count fixed under Open decision 7 before the first acceptance evaluation, on every critical fixture with the same trace schema. | Every acceptance run selects the expected PR and produces a validator-accepted complete packet. |
+| Dry-run | At least three complete live inventories, each with an independently reviewed human inventory. Capture at least one changed/actionable and one unchanged or waiting-only case when live activity permits; otherwise replay the missing case read-only. | Zero GitHub writes; source-to-snapshot coverage, actionable-record recall, and packet completeness are all 100%. Missing actionable records, incomplete packets, and incomplete mandatory sources must be corrected; only non-gating differences may be explicitly accepted with a recorded reason. |
+| Live pilot | At least ten scheduled runs and one genuine PR follow-up. | Zero omitted actionable records, duplicate workers for unchanged PR state, cross-run active handoffs, repeated pending review requests, unauthorized writes, expected-head violations, merges, production-deployment attempts, and skipped post-worker refreshes. Every selected packet item has a final disposition and every worker run ends with a complete fresh snapshot. |
+
+Before live writes begin, the owner must set the pilot's cost budget or explicit
+comparison threshold from the recorded v1 baseline. Each pilot report must show
+the target and observed value; "acceptable cost" alone is not a passing gate.
+If usable cost telemetry is unavailable, the economic result is `not_evaluable`
+until the owner agrees an explicit proxy before pilot acceptance.
+
 ## Delivery plan
 
 ### Current specification PR
@@ -694,6 +811,8 @@ Proposed additions:
 - strict plan schema and validator;
 - regression fixtures and ordinary unit tests;
 - opt-in Luna model-eval harness;
+- read-only evidence-report renderer for fixtures, model evals, dry-run, and
+  pilot review;
 - `engineer-workflow-v2.md` orchestrator prompt;
 - compact PR-level worker prompt template;
 - package scripts for focused tests and evals;
@@ -708,6 +827,8 @@ Before activation:
 
 - all deterministic fixture tests pass;
 - Luna passes the agreed critical model-eval gate;
+- v1 baseline evidence has been recorded from the fixed fixture corpus and the
+  agreed non-overlapping observation window;
 - the v2 prompt reads from mission to detailed rules without duplicating the
   same policy in a second long checklist;
 - applicable `AGENTS.md` and Shipit rules explicitly distinguish legacy v1 from
@@ -722,7 +843,8 @@ After implementation PR 1 merges:
 2. Point the scheduled task at v2 in dry-run mode while retaining Luna/low.
 3. Run at least three complete live GitHub inventories without workers or
    GitHub writes.
-4. Compare every generated plan with a human inventory of the same PRs.
+4. Compare every generated evidence report and plan with a human inventory of
+   the same PRs.
 5. Correct the prompt, snapshot schema, or validator before enabling writes if
    any record is missing or materially misclassified.
 
@@ -749,7 +871,8 @@ Pilot success criteria:
 - all worker pushes respect the expected-head guard;
 - every completed worker is followed by a fresh complete PR snapshot;
 - no merge and no direct production deployment;
-- acceptable orchestrator and worker cost per reconciled PR.
+- a recorded v1 comparison and the owner-approved cost budget or telemetry
+  proxy required by the evidence and traceability contract.
 
 ### Implementation PR 2: remove legacy coordination infrastructure
 
@@ -815,6 +938,7 @@ workflow is proven and measured.
 | Strong worker repeats Luna's token spend | Worker refresh is limited to one selected PR and buys defense against missed scope |
 | Migration removes a safety rule too early | Keep v1 and all legacy infrastructure through the live pilot |
 | Complexity moves from prompt into excessive code | Ponytail review of scripts and schemas; implement only fixture-proven invariants |
+| Evidence report becomes another state store | Keep it read-only, disposable, and outside later triage decisions |
 
 ## Open decisions
 
@@ -837,6 +961,8 @@ These decisions should be resolved before implementation PR 1 is marked ready:
 8. Which cost telemetry is actually observable in scheduled runs?
 9. What exact GitHub evidence proves that CodeRabbit reviewed the current head,
    as opposed to reporting a green skipped/status-only result?
+10. What v1 observation window, cost budget, or agreed telemetry proxy must
+    gate live-pilot acceptance?
 
 ## Decision record
 
@@ -847,6 +973,7 @@ These decisions should be resolved before implementation PR 1 is marked ready:
 | Treat Luna work items as minimum scope | Yes; Sol refreshes the whole selected PR | Proposed |
 | Require exhaustive classification of every record | Yes; enforced by validator | Proposed |
 | Short-circuit unchanged complete snapshots | Yes | Proposed |
+| Generate a disposable evidence report for evaluation | Yes; fixtures, model evals, dry-run, and pilot | Proposed |
 | Limit initial rollout to one worker per run | Yes | Proposed |
 | Keep worker inside the parent run | Yes, subject to spike | Pending spike |
 | Replace task claims with no lock or one run-wide lease | Subject to scheduler overlap result | Pending spike |
@@ -863,6 +990,7 @@ The specification is ready to approve when a reviewer can answer:
 - why Luna and Sol retain separate roles;
 - which behavior is deterministic code and which remains model judgment;
 - what fixtures test and what they do not test;
+- how one v2 run traces back to GitHub evidence and can be compared with v1;
 - why the worker receives a whole PR;
 - how no-op cost is reduced;
 - what the spike must prove;
