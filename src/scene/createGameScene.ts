@@ -3,6 +3,7 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 
+import type { SphereOfInfluenceVariant } from '../config/featureFlags'
 import type { GameConfig } from '../config/types'
 import type { ScenarioAssets } from '../render/scenarioAssets'
 import {
@@ -12,6 +13,10 @@ import {
 import { RENDER_SCALE } from '../simulation/constants'
 import type { Body } from '../simulation/types'
 import type { Vec2 } from '../simulation/vector'
+import {
+  createSphereOfInfluenceVisual,
+  SPHERE_OF_INFLUENCE_RENDER_LIFT,
+} from './sphereOfInfluenceVisual'
 import { createStarfield, type Starfield } from './starfield'
 
 const EARTH_ATMOSPHERE_RIM_NAME = 'earth-atmosphere-rim'
@@ -264,12 +269,6 @@ export type SpacecraftTrailPoint = {
   targetRelativePositions: Record<string, Vec2>
 }
 
-export type ScreenSpaceDashPattern = {
-  dashPixels: number
-  gapPixels: number
-  material: LineMaterial | THREE.LineDashedMaterial
-}
-
 export type GameSceneRefs = {
   assistedPredictionGeometry: LineGeometry
   assistedPredictionLine: Line2
@@ -279,6 +278,7 @@ export type GameSceneRefs = {
     THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>
   >
   bodyMeshes: Map<string, THREE.Mesh>
+  bodySphereOfInfluenceGroups: Map<string, THREE.Group>
   camera: THREE.OrthographicCamera
   cameraTarget: THREE.Vector3
   circularOrbitGeometry: LineGeometry
@@ -310,7 +310,6 @@ export type GameSceneRefs = {
   predictionStaleFarMaterial: LineMaterial
   replacePredictionLineGeometryOnUpdate: boolean
   scene: THREE.Scene
-  screenSpaceDashPatterns: ScreenSpaceDashPattern[]
   spacecraftMarker: THREE.Mesh<THREE.TorusGeometry, THREE.MeshBasicMaterial>
   spacecraftMesh: THREE.Group
   starfield: Starfield
@@ -438,6 +437,7 @@ export const createGameScene = (
     bodyDiffuseTextures: new Map(),
   },
   scenarioRenderConfig?: ScenarioRenderConfig,
+  sphereOfInfluenceVariant: SphereOfInfluenceVariant | null = null,
 ): GameSceneRefs => {
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 5_000)
@@ -464,12 +464,30 @@ export const createGameScene = (
   scene.add(debugGrid)
 
   const bodyMeshes = new Map<string, THREE.Mesh>()
+  const bodySphereOfInfluenceGroups = new Map<string, THREE.Group>()
   const bodyCloudMeshes = new Map<
     string,
     THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>
   >()
 
   for (const body of bodies) {
+    if (
+      sphereOfInfluenceVariant !== null &&
+      body.sphereOfInfluenceRadius !== undefined
+    ) {
+      const sphereOfInfluenceVisual = createSphereOfInfluenceVisual(
+        body,
+        sphereOfInfluenceVariant,
+      )
+      sphereOfInfluenceVisual.group.position.set(
+        body.position.x * RENDER_SCALE,
+        SPHERE_OF_INFLUENCE_RENDER_LIFT,
+        body.position.y * RENDER_SCALE,
+      )
+      bodySphereOfInfluenceGroups.set(body.id, sphereOfInfluenceVisual.group)
+      scene.add(sphereOfInfluenceVisual.group)
+    }
+
     const bodyRadius = Math.max(body.radius * RENDER_SCALE, 1)
     const geometry = new THREE.SphereGeometry(
       bodyRadius,
@@ -550,7 +568,6 @@ export const createGameScene = (
 
   const replacePredictionLineGeometryOnUpdate =
     trajectoryRenderingConfig.replaceLineGeometryOnUpdate
-  const screenSpaceDashPatterns: ScreenSpaceDashPattern[] = []
 
   const predictionLineWidth = 0.8
   const createPredictionMaterial = (opacity: number) => {
@@ -669,6 +686,7 @@ export const createGameScene = (
     assistedPredictionMaterial,
     bodyCloudMeshes,
     bodyMeshes,
+    bodySphereOfInfluenceGroups,
     camera,
     cameraTarget,
     circularOrbitGeometry,
@@ -697,7 +715,6 @@ export const createGameScene = (
     predictionStaleFarMaterial,
     replacePredictionLineGeometryOnUpdate,
     scene,
-    screenSpaceDashPatterns,
     spacecraftMarker,
     spacecraftMesh,
     starfield,

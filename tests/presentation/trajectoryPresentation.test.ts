@@ -330,6 +330,8 @@ const createTestPresentation = (options: {
     cameraElevation: 1,
     cameraTargetPosition: { x: 0, y: 0 },
     gameScene,
+    maxViewportSize: 4_000,
+    minViewportSize: 100 / 30,
     viewportHeight: 600,
     viewportSize: options.viewportSize,
     viewportWidth: 800,

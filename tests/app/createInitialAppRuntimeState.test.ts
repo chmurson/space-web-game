@@ -32,6 +32,7 @@ const createConfig = (
   requestedScenarioId: 'tutorial',
   featureFlags: {
     noHorizonLimit: false,
+    sphereOfInfluenceVariant: null,
   },
   userSettings: {
     desktopCameraPanMode: 'wheel',

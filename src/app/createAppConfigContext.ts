@@ -1,4 +1,8 @@
 import * as THREE from 'three'
+import {
+  parseSphereOfInfluenceVariant,
+  type SphereOfInfluenceVariant,
+} from '../config/featureFlags'
 import { gameConfig } from '../config/gameConfig'
 import type {
   TrajectoryPredictionImplementation,
@@ -23,7 +27,9 @@ export type AppConfigContext = {
   requestedEngine: string
   physicsEngine: PhysicsEngine
   requestedScenarioId: string
-  featureFlags: DeveloperFeatureFlags
+  featureFlags: DeveloperFeatureFlags & {
+    sphereOfInfluenceVariant: SphereOfInfluenceVariant | null
+  }
   userSettings: UserSettings
   controls: {
     timeWarps: number[]
@@ -86,6 +92,9 @@ export const createAppConfigContext = (): AppConfigContext => {
   const keplerEngineSelected = physicsEngine === physicsEngines.kepler
   const featureFlags = {
     noHorizonLimit: urlParams.get('nohiroznlimit') === '1',
+    sphereOfInfluenceVariant: parseSphereOfInfluenceVariant(
+      urlParams.get('soi'),
+    ),
   }
   const requestedScenarioParam = urlParams.get('scenario')
   const requestedScenarioId = requestedScenarioParam ?? 'earth-moon'

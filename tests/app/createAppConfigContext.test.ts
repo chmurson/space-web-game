@@ -45,6 +45,9 @@ describe('createAppConfigContext', () => {
 
   it('uses configured default touch control settings without stored settings', () => {
     expect(createAppConfigContext().featureFlags.noHorizonLimit).toBe(false)
+    expect(
+      createAppConfigContext().featureFlags.sphereOfInfluenceVariant,
+    ).toBeNull()
     expect(createAppConfigContext().trajectory.predictionImplementation).toBe(
       'euler',
     )
@@ -55,6 +58,10 @@ describe('createAppConfigContext', () => {
     expect(
       createAppConfigContext().trajectory.maxCoastPredictionHorizonHours,
     ).toBe(48)
+    expect(createAppConfigContext().camera.maxViewport).toBe(4_000)
+    expect(
+      createAppConfigContext().globalScenarioDirectiveLimits.maxViewportSize,
+    ).toBe(4_000)
     expect(createAppConfigContext().userSettings).toMatchObject({
       desktopCameraPanMode: 'wheel',
       desktopWheelPanSpeed: 'normal',
@@ -234,5 +241,36 @@ describe('createAppConfigContext', () => {
       flaggedConfig.globalScenarioDirectiveLimits
         .maxCoastPredictionHorizonHours,
     ).toBe(128 * 24)
+  })
+
+  it('selects sphere-of-influence visuals only for the four exact flag values', () => {
+    const variants = [
+      ['1', 'gradient-max-zoom-width-25pct'],
+      ['2', 'gradient-max-zoom-width-15pct'],
+      ['3', 'gradient-max-zoom-width-10pct'],
+      ['4', 'gradient-max-zoom-width-5pct'],
+    ] as const
+
+    for (const [flagValue, variant] of variants) {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: createWindowWithSearch(`?soi=${flagValue}`),
+      })
+
+      expect(
+        createAppConfigContext().featureFlags.sphereOfInfluenceVariant,
+      ).toBe(variant)
+    }
+
+    for (const search of ['?soi=', '?soi=0', '?soi=5', '?soi=true', '?SOI=1']) {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: createWindowWithSearch(search),
+      })
+
+      expect(
+        createAppConfigContext().featureFlags.sphereOfInfluenceVariant,
+      ).toBeNull()
+    }
   })
 })

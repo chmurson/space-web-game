@@ -1,11 +1,14 @@
 import {
   EARTH_MASS,
   EARTH_MOON_DISTANCE,
+  EARTH_ORBIT_SEMI_MAJOR_AXIS,
   EARTH_RADIUS,
   G,
   MOON_MASS,
   MOON_RADIUS,
+  SUN_MASS,
 } from '../constants'
+import { calculateSphereOfInfluenceRadius } from '../sphereOfInfluence'
 import type { Scenario } from '../types'
 
 type EarthMoonScenarioOptions = {
@@ -60,6 +63,16 @@ export const createEarthMoonScenario = (
 
   const parkingOrbitRadius = EARTH_RADIUS + 400_000
   const parkingOrbitSpeed = Math.sqrt((G * EARTH_MASS) / parkingOrbitRadius)
+  const earthSphereOfInfluenceRadius = calculateSphereOfInfluenceRadius({
+    bodyMass: EARTH_MASS,
+    orbitalSemiMajorAxis: EARTH_ORBIT_SEMI_MAJOR_AXIS,
+    primaryMass: SUN_MASS,
+  })
+  const moonSphereOfInfluenceRadius = calculateSphereOfInfluenceRadius({
+    bodyMass: MOON_MASS,
+    orbitalSemiMajorAxis: EARTH_MOON_DISTANCE,
+    primaryMass: EARTH_MASS,
+  })
 
   return {
     id: 'earth-moon',
@@ -75,6 +88,7 @@ export const createEarthMoonScenario = (
         position: earthPosition,
         velocity: earthVelocity,
         color: '#2f80ed',
+        sphereOfInfluenceRadius: earthSphereOfInfluenceRadius,
       },
       {
         id: 'moon',
@@ -84,6 +98,7 @@ export const createEarthMoonScenario = (
         position: moonPosition,
         velocity: moonVelocity,
         color: '#9aa0a6',
+        sphereOfInfluenceRadius: moonSphereOfInfluenceRadius,
       },
     ],
     spacecraft: {

@@ -216,6 +216,7 @@ export const createAppComponents = (options: {
     options.config.trajectory.rendering,
     options.startupAssets,
     options.runtimeState.scenario.render,
+    options.config.featureFlags.sphereOfInfluenceVariant,
   )
   let scenarioTransitionLoading = false
   const prepareScenarioTransition = async (transitionOptions: {
